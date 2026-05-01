@@ -138,14 +138,10 @@ export const gatewayPoolServiceFactory = ({
         )
       ),
       Promise.all(
-        pools.map((pool) =>
-          pamDomainDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
-        )
+        pools.map((pool) => pamDomainDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count })))
       ),
       Promise.all(
-        pools.map((pool) =>
-          pamResourceDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
-        )
+        pools.map((pool) => pamResourceDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count })))
       ),
       Promise.all(
         pools.map((pool) =>
@@ -153,14 +149,10 @@ export const gatewayPoolServiceFactory = ({
         )
       ),
       Promise.all(
-        pools.map((pool) =>
-          appConnectionDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
-        )
+        pools.map((pool) => appConnectionDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count })))
       ),
       Promise.all(
-        pools.map((pool) =>
-          dynamicSecretDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
-        )
+        pools.map((pool) => dynamicSecretDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count })))
       )
     ]);
 
@@ -353,7 +345,7 @@ export const gatewayPoolServiceFactory = ({
   }: {
     poolId: string;
     orgId: string;
-    actor: OrgServiceActor;
+    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
   }) => {
     await $checkLicense(orgId);
 

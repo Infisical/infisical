@@ -67,7 +67,14 @@ type TExecuteScanDeps = {
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
-  const { pkiDiscoveryConfigDAL, pkiDiscoveryScanHistoryDAL, projectDAL, kmsService, gatewayV2Service, gatewayPoolService } = deps;
+  const {
+    pkiDiscoveryConfigDAL,
+    pkiDiscoveryScanHistoryDAL,
+    projectDAL,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
+  } = deps;
 
   const startedAt = new Date();
   let scanHistoryId: string | undefined;

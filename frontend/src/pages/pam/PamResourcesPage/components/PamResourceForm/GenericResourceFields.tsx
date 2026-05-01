@@ -38,6 +38,18 @@ export const genericResourceFieldsSchema = z.object({
 
 type GatewayOption = { id: string; name: string; kind?: "gateway" | "pool" };
 
+// Hydrate a stored row's gatewayId / gatewayPoolId into the form's discriminated picker value.
+// Pool wins when both are set (pool-backed connections always store gatewayId as null, but if
+// the row somehow carries both, treat the pool as authoritative).
+export const hydrateGatewayValue = (entity: {
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+}): GatewayOption | undefined => {
+  if (entity.gatewayPoolId) return { id: entity.gatewayPoolId, name: "", kind: "pool" };
+  if (entity.gatewayId) return { id: entity.gatewayId, name: "", kind: "gateway" };
+  return undefined;
+};
+
 type GenericFormValues = {
   name: string;
   gateway: GatewayOption | null;
@@ -66,7 +78,9 @@ export const GenericResourceFields = () => {
     name: `Pool: ${p.name}`,
     kind: "pool"
   }));
-  const combinedOptions: GatewayOption[] = showPools ? [...poolOptions, ...gatewayOptions] : gatewayOptions;
+  const combinedOptions: GatewayOption[] = showPools
+    ? [...poolOptions, ...gatewayOptions]
+    : gatewayOptions;
 
   const { control } = useFormContext<GenericFormValues>();
 
@@ -92,7 +106,9 @@ export const GenericResourceFields = () => {
         render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
           const valueKind = value?.kind ?? "gateway";
           const selectedOption = value
-            ? (combinedOptions.find((o) => o.id === value.id && (o.kind ?? "gateway") === valueKind) ?? value)
+            ? (combinedOptions.find(
+                (o) => o.id === value.id && (o.kind ?? "gateway") === valueKind
+              ) ?? value)
             : value;
 
           return (

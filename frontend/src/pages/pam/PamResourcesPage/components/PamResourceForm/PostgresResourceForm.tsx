@@ -7,7 +7,11 @@ import { PamResourceType, TPostgresResource } from "@app/hooks/api/pam";
 
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
-import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import {
+  GenericResourceFields,
+  genericResourceFieldsSchema,
+  hydrateGatewayValue
+} from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -31,11 +35,7 @@ export const PostgresResourceForm = ({ resource, onSubmit, closeSheet }: Props) 
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayPoolId
-            ? { id: resource.gatewayPoolId, name: "", kind: "pool" as const }
-            : resource.gatewayId
-              ? { id: resource.gatewayId, name: "", kind: "gateway" as const }
-              : undefined
+          gateway: hydrateGatewayValue(resource)
         }
       : {
           resourceType: PamResourceType.Postgres,

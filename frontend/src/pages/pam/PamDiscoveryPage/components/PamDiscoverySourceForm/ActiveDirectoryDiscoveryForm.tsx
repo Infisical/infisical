@@ -25,7 +25,11 @@ import {
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { PamDiscoveryType, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
 
-import { GenericDiscoveryFields, genericDiscoveryFieldsSchema } from "./GenericDiscoveryFields";
+import {
+  GenericDiscoveryFields,
+  genericDiscoveryFieldsSchema,
+  hydrateGatewayValue
+} from "./GenericDiscoveryFields";
 
 type Props = {
   source?: TPamDiscoverySource;
@@ -81,11 +85,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
       ? {
           discoveryType: PamDiscoveryType.ActiveDirectory,
           name: source.name,
-          gateway: source.gatewayPoolId
-            ? { id: source.gatewayPoolId, name: "", kind: "pool" as const }
-            : source.gatewayId
-              ? { id: source.gatewayId, name: "", kind: "gateway" as const }
-              : undefined,
+          gateway: hydrateGatewayValue(source),
           schedule: source.schedule || "manual",
           discoveryConfiguration: {
             domainFQDN: (source.discoveryConfiguration?.domainFQDN as string) || "",

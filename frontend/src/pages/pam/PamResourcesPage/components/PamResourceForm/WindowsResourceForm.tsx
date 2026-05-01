@@ -21,7 +21,11 @@ import {
 import { PamResourceType, TWindowsResource } from "@app/hooks/api/pam";
 import { WindowsProtocol } from "@app/hooks/api/pam/types/windows-server-resource";
 
-import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import {
+  GenericResourceFields,
+  genericResourceFieldsSchema,
+  hydrateGatewayValue
+} from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -63,11 +67,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayPoolId
-            ? { id: resource.gatewayPoolId, name: "", kind: "pool" as const }
-            : resource.gatewayId
-              ? { id: resource.gatewayId, name: "", kind: "gateway" as const }
-              : undefined,
+          gateway: hydrateGatewayValue(resource),
           domainId: resource.domainId ?? null,
           connectionDetails: {
             ...(resource.connectionDetails as FormData["connectionDetails"]),

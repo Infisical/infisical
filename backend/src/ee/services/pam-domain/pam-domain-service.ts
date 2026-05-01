@@ -256,10 +256,15 @@ export const pamDomainServiceFactory = ({
 
     const updateDoc: Partial<TPamDomains> = {};
     // Mutual exclusion: setting one clears the other
-    const effectiveGatewayId =
-      gatewayId !== undefined ? gatewayId : gatewayPoolId !== undefined ? null : domain.gatewayId;
-    const effectiveGatewayPoolId =
-      gatewayPoolId !== undefined ? gatewayPoolId : gatewayId !== undefined ? null : domain.gatewayPoolId;
+    let effectiveGatewayId: string | null | undefined = domain.gatewayId;
+    let effectiveGatewayPoolId: string | null | undefined = domain.gatewayPoolId;
+    if (gatewayId !== undefined) {
+      effectiveGatewayId = gatewayId;
+      effectiveGatewayPoolId = null;
+    } else if (gatewayPoolId !== undefined) {
+      effectiveGatewayId = null;
+      effectiveGatewayPoolId = gatewayPoolId;
+    }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {
       updateDoc.gatewayId = effectiveGatewayId;

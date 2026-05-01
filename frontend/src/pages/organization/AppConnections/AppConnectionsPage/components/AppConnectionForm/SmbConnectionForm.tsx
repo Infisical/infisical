@@ -3,16 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem,
-  Tooltip
-} from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, SecretInput, Tooltip } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects, useSubscription } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";

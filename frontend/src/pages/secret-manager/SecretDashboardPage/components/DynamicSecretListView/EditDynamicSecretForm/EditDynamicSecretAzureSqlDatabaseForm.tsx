@@ -17,8 +17,6 @@ import {
   FormControl,
   Input,
   SecretInput,
-  Select,
-  SelectItem,
   Switch,
   TextArea,
   Tooltip

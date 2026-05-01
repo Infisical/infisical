@@ -1,7 +1,7 @@
 import sodium from "libsodium-wrappers";
 
-import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
   getGitHubAppAuthToken,
@@ -277,7 +277,12 @@ export const GithubSyncFns = {
         token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
     }
 
-    const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService, gatewayV2Service, gatewayPoolService);
+    const encryptedSecrets = await getEncryptedSecrets(
+      secretSync,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    );
     const publicKey = await getPublicKey(secretSync, gatewayService, gatewayV2Service, gatewayPoolService, token);
 
     await sodium.ready;
@@ -344,7 +349,12 @@ export const GithubSyncFns = {
         token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
     }
 
-    const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService, gatewayV2Service, gatewayPoolService);
+    const encryptedSecrets = await getEncryptedSecrets(
+      secretSync,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    );
 
     for await (const encryptedSecret of encryptedSecrets) {
       if (encryptedSecret.name in secretMap) {

@@ -908,8 +908,7 @@ export const pamAccountServiceFactory = ({
     // Resolve effective gatewayId once at session-start: directly-attached, or a fresh healthy member of the pool.
     // This single picked gateway is then PINNED to the session row so all subsequent ops
     // within the session (handshake, command relay, termination) hit the same gateway.
-    const sessionResourceGatewayPoolId =
-      (decryptedResource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
+    const sessionResourceGatewayPoolId = (decryptedResource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
     const gatewayId = await resolveEffectiveGatewayId({
       gatewayId: decryptedResource.gatewayId,
       gatewayPoolId: sessionResourceGatewayPoolId

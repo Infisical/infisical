@@ -9,8 +9,8 @@ import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-c
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -166,7 +166,7 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
+    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
   >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
@@ -666,25 +666,21 @@ export const appConnectionServiceFactory = ({
     }
 
     // Mutual exclusion: when one is being set, clear the other.
-    const gatewayIdValue =
-      gatewayId !== undefined
-        ? gatewayId
-        : gatewayPoolId !== undefined && gatewayPoolId !== null
-          ? null
-          : undefined;
-    const gatewayPoolIdValue =
-      gatewayPoolId !== undefined
-        ? gatewayPoolId
-        : gatewayId !== undefined && gatewayId !== null
-          ? null
-          : undefined;
+    let gatewayIdValue: string | null | undefined;
+    let gatewayPoolIdValue: string | null | undefined;
+    if (gatewayId !== undefined) {
+      gatewayIdValue = gatewayId;
+      gatewayPoolIdValue = gatewayId !== null ? null : undefined;
+    } else if (gatewayPoolId !== undefined) {
+      gatewayIdValue = gatewayPoolId !== null ? null : undefined;
+      gatewayPoolIdValue = gatewayPoolId;
+    }
 
     // For validation, resolve the effective gateway: directly-attached, or a fresh pool member.
     // For pool changes, the centralized helper enforces license + RBAC + pool-belongs-to-org.
     // For unchanged pools (re-validation only), pickRandomHealthyGateway is sufficient since the row
     // was already validated when first attached.
-    const effectiveGatewayIdForUpdate =
-      gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
+    const effectiveGatewayIdForUpdate = gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
     const effectiveGatewayPoolIdForUpdate =
       gatewayPoolIdValue !== undefined ? gatewayPoolIdValue : appConnection.gatewayPoolId;
 

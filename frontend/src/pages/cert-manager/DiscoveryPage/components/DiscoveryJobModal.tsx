@@ -436,7 +436,10 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
                   }
                 >
                   <GatewayPicker
-                    value={{ gatewayId: gatewayIdVal ?? null, gatewayPoolId: gatewayPoolIdVal ?? null }}
+                    value={{
+                      gatewayId: gatewayIdVal ?? null,
+                      gatewayPoolId: gatewayPoolIdVal ?? null
+                    }}
                     onChange={({ gatewayId, gatewayPoolId }) => {
                       setValue("gatewayId", gatewayId, { shouldDirty: true });
                       setValue("gatewayPoolId", gatewayPoolId, { shouldDirty: true });

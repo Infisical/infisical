@@ -338,7 +338,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
               id: z.string(),
               name: z.string(),
               app: z.string(),
-              projectId: z.string().nullable(),
+              projectId: z.string().nullish(),
               projectName: z.string().nullable()
             })
           ),

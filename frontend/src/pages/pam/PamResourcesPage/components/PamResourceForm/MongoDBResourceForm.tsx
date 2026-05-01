@@ -20,7 +20,11 @@ import {
 } from "@app/components/v3";
 import { PamResourceType, TMongoDBResource } from "@app/hooks/api/pam";
 
-import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import {
+  GenericResourceFields,
+  genericResourceFieldsSchema,
+  hydrateGatewayValue
+} from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -100,11 +104,7 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayPoolId
-            ? { id: resource.gatewayPoolId, name: "", kind: "pool" as const }
-            : resource.gatewayId
-              ? { id: resource.gatewayId, name: "", kind: "gateway" as const }
-              : undefined,
+          gateway: hydrateGatewayValue(resource),
           connectionDetails: resource.connectionDetails
         }
       : {

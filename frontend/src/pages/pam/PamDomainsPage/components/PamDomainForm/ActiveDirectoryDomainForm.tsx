@@ -22,7 +22,8 @@ import { TPamDomain } from "@app/hooks/api/pamDomain";
 
 import {
   GenericResourceFields,
-  genericResourceFieldsSchema
+  genericResourceFieldsSchema,
+  hydrateGatewayValue
 } from "../../../PamResourcesPage/components/PamResourceForm/GenericResourceFields";
 import { MetadataFields } from "../../../PamResourcesPage/components/PamResourceForm/MetadataFields";
 
@@ -62,11 +63,7 @@ export const ActiveDirectoryDomainForm = ({ domain, onSubmit, closeSheet }: Prop
     defaultValues: domain
       ? {
           name: domain.name,
-          gateway: domain.gatewayPoolId
-            ? { id: domain.gatewayPoolId, name: "", kind: "pool" as const }
-            : domain.gatewayId
-              ? { id: domain.gatewayId, name: "", kind: "gateway" as const }
-              : undefined,
+          gateway: hydrateGatewayValue(domain),
           connectionDetails: {
             ...domain.connectionDetails,
             useLdaps: domain.connectionDetails.useLdaps ?? false,

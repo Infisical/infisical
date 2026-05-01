@@ -15,8 +15,6 @@ import {
   FormControl,
   Input,
   SecretInput,
-  Select,
-  SelectItem,
   TextArea,
   Tooltip
 } from "@app/components/v2";

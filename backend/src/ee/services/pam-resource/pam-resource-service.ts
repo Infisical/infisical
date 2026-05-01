@@ -59,10 +59,7 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
-  gatewayPoolService: Pick<
-    TGatewayPoolServiceFactory,
-    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
-  >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -364,14 +361,16 @@ export const pamResourceServiceFactory = ({
     const updateDoc: Partial<TPamResources> = {};
 
     // Mutual exclusion: setting one clears the other
-    const effectiveGatewayIdAttr =
-      gatewayId !== undefined ? gatewayId : gatewayPoolId !== undefined ? null : resource.gatewayId;
-    const effectiveGatewayPoolIdAttr =
-      gatewayPoolId !== undefined
-        ? gatewayPoolId
-        : gatewayId !== undefined
-          ? null
-          : (resource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
+    let effectiveGatewayIdAttr: string | null | undefined = resource.gatewayId;
+    let effectiveGatewayPoolIdAttr: string | null | undefined =
+      (resource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
+    if (gatewayId !== undefined) {
+      effectiveGatewayIdAttr = gatewayId;
+      effectiveGatewayPoolIdAttr = null;
+    } else if (gatewayPoolId !== undefined) {
+      effectiveGatewayIdAttr = null;
+      effectiveGatewayPoolIdAttr = gatewayPoolId;
+    }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {
       updateDoc.gatewayId = effectiveGatewayIdAttr;

@@ -14,8 +14,6 @@ import {
   FilterableSelect,
   FormControl,
   Input,
-  Select,
-  SelectItem,
   TextArea,
   Tooltip
 } from "@app/components/v2";

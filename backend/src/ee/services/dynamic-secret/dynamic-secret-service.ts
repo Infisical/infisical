@@ -19,8 +19,8 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
-import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
@@ -46,10 +46,7 @@ type TDynamicSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
-  gatewayPoolService: Pick<
-    TGatewayPoolServiceFactory,
-    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
-  >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -230,8 +227,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: selectedGatewayPoolId ? undefined : isGatewayV1 ? selectedGatewayId : undefined,
-          gatewayV2Id: selectedGatewayPoolId ? undefined : isGatewayV1 ? undefined : selectedGatewayId,
+          gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : undefined,
+          gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : undefined,
           gatewayPoolId: selectedGatewayPoolId ?? undefined,
           usernameTemplate
         },
@@ -393,7 +390,12 @@ export const dynamicSecretServiceFactory = ({
         actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
       selectedGatewayPoolId = gatewayPoolId;
-    } else if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
+    } else if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      "gatewayId" in updatedInput &&
+      updatedInput?.gatewayId
+    ) {
       const gatewayId = updatedInput.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
@@ -439,8 +441,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: selectedGatewayPoolId ? null : isGatewayV1 ? selectedGatewayId : null,
-          gatewayV2Id: selectedGatewayPoolId ? null : isGatewayV1 ? null : selectedGatewayId,
+          gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : null,
+          gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : null,
           gatewayPoolId: selectedGatewayPoolId,
           usernameTemplate
         },

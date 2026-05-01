@@ -29,14 +29,16 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     discoveryConfiguration: T["discoveryConfiguration"];
     discoveryCredentials: T["discoveryCredentials"];
     schedule: T["schedule"];
-    gatewayId: T["gatewayId"];
+    gatewayId?: string;
+    gatewayPoolId?: string;
   }>;
   updateDiscoverySourceSchema: z.ZodType<{
     name?: T["name"];
     discoveryConfiguration?: T["discoveryConfiguration"];
     discoveryCredentials?: T["discoveryCredentials"];
     schedule?: T["schedule"];
-    gatewayId?: T["gatewayId"];
+    gatewayId?: string;
+    gatewayPoolId?: string;
   }>;
   discoveryResponseSchema: z.ZodTypeAny;
   discoveryRunResponseSchema: z.ZodTypeAny;

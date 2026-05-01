@@ -191,9 +191,7 @@ export const SqlDatabaseProvider = ({
         database: providerInputs.database,
         port: providerInputs.port,
         host:
-          providerInputs.client === SqlProviders.Postgres &&
-          !providerInputs.gatewayId &&
-          !providerInputs.gatewayPoolId
+          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId && !providerInputs.gatewayPoolId
             ? providerInputs.hostIp
             : providerInputs.host,
         user: effectiveUser,
