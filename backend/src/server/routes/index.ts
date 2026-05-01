@@ -2368,7 +2368,8 @@ export const registerRoutes = async (
     queueService,
     appConnectionDAL,
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const insightsService = insightsServiceFactory({

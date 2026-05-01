@@ -25,9 +25,20 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
   TWindowsLocalAccountRotationWithConnection,
   TWindowsLocalAccountRotationGeneratedCredentials,
   TWindowsLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, _appConnectionDAL, _kmsService, _gatewayService, gatewayV2Service) => {
+> = (secretRotation, _appConnectionDAL, _kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
+
+  // Resolve effective gateway lazily on first need, then pin within this factory invocation.
+  let cachedEffectiveGatewayId: string | null | undefined;
+  const $effectiveGatewayId = async (): Promise<string | null> => {
+    if (cachedEffectiveGatewayId !== undefined) return cachedEffectiveGatewayId;
+    cachedEffectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    return cachedEffectiveGatewayId;
+  };
 
   // Helper to verify Windows credentials work via SMB
   // Note: We don't pass the domain when verifying the rotated account because it's a local account,
@@ -39,7 +50,7 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       method: SmbConnectionMethod.Credentials,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      gatewayId: await $effectiveGatewayId(),
       credentials: {
         host: credentials.host,
         port: credentials.port,
@@ -86,7 +97,7 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       method: connection.method,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      gatewayId: await $effectiveGatewayId(),
       credentials: {
         host: credentials.host,
         port: credentials.port,

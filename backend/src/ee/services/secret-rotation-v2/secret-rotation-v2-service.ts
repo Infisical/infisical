@@ -88,6 +88,7 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-token-rotation-fns";
@@ -156,6 +157,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -210,7 +212,8 @@ export const secretRotationV2ServiceFactory = ({
   folderCommitService,
   appConnectionDAL,
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -555,7 +558,8 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      gatewayPoolService
     );
 
     // Perform ALL validation checks BEFORE rotating credentials on the external system.
@@ -924,7 +928,8 @@ export const secretRotationV2ServiceFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1241,7 +1246,8 @@ export const secretRotationV2ServiceFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(
@@ -1813,7 +1819,8 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      gatewayPoolService
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)

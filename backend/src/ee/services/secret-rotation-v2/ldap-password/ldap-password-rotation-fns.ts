@@ -109,7 +109,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;
@@ -121,7 +121,8 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       await executeWithPotentialGateway(
         { ...connection, credentials: { ...connection.credentials, ...verifyOpts } },
         gatewayV2Service,
-        async () => {}
+        async () => {},
+        gatewayPoolService
       );
     } catch (error) {
       throw new Error(`Failed to verify credentials - ${(error as Error).message}`);
@@ -273,7 +274,8 @@ export const ldapPasswordRotationFactory: TRotationFactory<
                 }
               });
             });
-          }
+          },
+          gatewayPoolService
         );
       } catch (proxyErr) {
         if (capturedReferralError) {

@@ -306,7 +306,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationWithConnection,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service) => {
+> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const {
     username,
@@ -316,6 +316,20 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   } = parameters;
   const shouldUseSudo = Boolean(useSudo);
 
+  // Resolve effective gateway once per factory invocation: directly-attached, or a freshly-picked
+  // healthy pool member. We pin within a single rotation so all sub-steps (verify / connect / rotate)
+  // hit the same gateway, and we do it lazily on first need to avoid an unnecessary pool pick when
+  // the factory builds something other than a rotation request.
+  let cachedEffectiveGatewayId: string | null | undefined;
+  const $effectiveGatewayId = async (): Promise<string | null> => {
+    if (cachedEffectiveGatewayId !== undefined) return cachedEffectiveGatewayId;
+    cachedEffectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    return cachedEffectiveGatewayId;
+  };
+
   // Helper to verify SSH credentials work
   // Tries direct SSH first, then falls back to su via app connection
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
@@ -323,7 +337,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       method: SshConnectionMethod.Password,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      gatewayId: await $effectiveGatewayId(),
       credentials: {
         host: connection.credentials.host,
         port: connection.credentials.port,
@@ -354,7 +368,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       method: connection.method,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      gatewayId: await $effectiveGatewayId(),
       credentials: connection.credentials
     } as TSshConnectionConfig;
 
@@ -392,7 +406,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
         method: SshConnectionMethod.Password,
         app: connection.app,
         orgId: connection.orgId,
-        gatewayId: connection.gatewayId,
+        gatewayId: await $effectiveGatewayId(),
         credentials: {
           host: credentials.host,
           port: credentials.port,
@@ -406,7 +420,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
         method: connection.method,
         app: connection.app,
         orgId: connection.orgId,
-        gatewayId: connection.gatewayId,
+        gatewayId: await $effectiveGatewayId(),
         credentials: connection.credentials
       } as TSshConnectionConfig;
     }

@@ -1,3 +1,4 @@
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -21,9 +22,22 @@ export const getSmbConnectionListItem = () => {
 export const executeSmbWithPotentialGateway = async <T>(
   config: TSmbConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (targetHost: string, targetPort: number) => Promise<T>
+  operation: (targetHost: string, targetPort: number) => Promise<T>,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<T> => {
-  const { gatewayId, credentials } = config;
+  const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
+
+  // Pool-backed connection requires gatewayPoolService — fail loud instead of silently routing
+  // around the gateway when the caller hasn't been wired for pools yet.
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   if (gatewayId) {
     await blockLocalAndPrivateIpAddresses(`smb://${credentials.host}:${credentials.port}`, true);
