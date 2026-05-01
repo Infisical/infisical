@@ -26,6 +26,7 @@ Key features of approval policies include:
 - **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
 - **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
 - **Access duration constraints**: Set maximum access durations for requests matching this policy.
+- **Bypass Approvals**: Optionally allow designated users to self-approve their own request in break-glass situations.
 
 ### Guide to Creating an Approval Policy
 
@@ -109,6 +110,8 @@ Navigate to your PAM Project > Approvals > Requests to view all approval request
   </Step>
   <Step title="Approve">
     If you are an eligible approver for the current step, click **Approve** to approve the request.
+
+    If the policy has Bypass Approvals enabled and you are a configured bypasser on your own request, you can also tick **Approve immediately without approver review (bypass policy)**, provide a reason, and approve in the same step.
   </Step>
 </Steps>
 
