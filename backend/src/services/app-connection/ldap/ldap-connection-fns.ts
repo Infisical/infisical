@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 
 import ldap from "@infisical/ldapjs";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
@@ -222,11 +223,24 @@ export const getLdapConnectionClient = async ({
 export const executeWithPotentialGateway = async <T>(
   config: TLdapConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (client: ldap.Client) => Promise<T>
+  operation: (client: ldap.Client) => Promise<T>,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<T> => {
-  const { gatewayId, credentials } = config;
+  const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
   const { protocol, host, port } = parseLdapUrl(credentials.url);
   const appCfg = getConfig();
+
+  // Pool-backed connection requires gatewayPoolService — fail loud instead of silently routing
+  // around the gateway when the caller hasn't been wired for pools yet.
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   if (gatewayId && gatewayV2Service) {
     await blockLocalAndPrivateIpAddresses(credentials.url, true);

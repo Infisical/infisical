@@ -3,6 +3,7 @@ import knex, { Knex } from "knex";
 import oracledb from "oracledb";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
@@ -144,9 +145,24 @@ export const executeWithPotentialGateway = async <T>(
   config: TSqlConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (client: Knex) => Promise<T>
+  operation: (client: Knex) => Promise<T>,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<T> => {
-  const { credentials, app, gatewayId } = config;
+  const { credentials, app, gatewayId: directGatewayId, gatewayPoolId } = config;
+
+  // Pool-backed connection requires gatewayPoolService — without it we'd fall through to the
+  // non-gateway path and try to reach the target host directly, bypassing the gateway. Fail
+  // loud instead of silent unsafe routing. Callers wired before pool support landed don't pass
+  // gatewayPoolService, but their connections also don't have gatewayPoolId, so they're fine.
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   if (gatewayId && gatewayService && gatewayV2Service) {
     const [targetHost] = await verifyHostInputValidity({
