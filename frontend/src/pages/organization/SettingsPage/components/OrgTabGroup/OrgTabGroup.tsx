@@ -71,7 +71,8 @@ export const OrgTabGroup = () => {
     {
       name: "Product Enforcements",
       key: "product-enforcements",
-      component: OrgProductSettingsTab
+      component: OrgProductSettingsTab,
+      isHidden: isSubOrganization
     },
     {
       name: "Sub Organizations",
