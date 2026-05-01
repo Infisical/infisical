@@ -903,11 +903,17 @@ export const pamAccountServiceFactory = ({
       await mfaSessionService.deleteMfaSession(mfaSessionId);
     }
 
-    const { connectionDetails, gatewayId, resourceType } = await decryptResource(
-      resource,
-      account.projectId,
-      kmsService
-    );
+    const decryptedResource = await decryptResource(resource, account.projectId, kmsService);
+    const { connectionDetails, resourceType } = decryptedResource;
+    // Resolve effective gatewayId once at session-start: directly-attached, or a fresh healthy member of the pool.
+    // This single picked gateway is then PINNED to the session row so all subsequent ops
+    // within the session (handshake, command relay, termination) hit the same gateway.
+    const sessionResourceGatewayPoolId =
+      (decryptedResource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
+    const gatewayId = await resolveEffectiveGatewayId({
+      gatewayId: decryptedResource.gatewayId,
+      gatewayPoolId: sessionResourceGatewayPoolId
+    });
 
     // Temporarily disable access to Windows Server
     if (resourceType === PamResource.Windows)
@@ -977,7 +983,14 @@ export const pamAccountServiceFactory = ({
       };
     }
 
-    // For gateway-based resources (Postgres, MySQL, SSH), create session first
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
+    }
+
+    // For gateway-based resources (Postgres, MySQL, SSH), create session first.
+    // Pin the resolved gatewayId on the session so the rest of the session lifecycle
+    // (handshake, command relay, termination, audit) hits this same gateway — even
+    // if the underlying resource is pool-backed and the next pick would differ.
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -991,13 +1004,10 @@ export const pamAccountServiceFactory = ({
       accountId: account.id,
       resourceId: resource.id,
       userId: actor.id,
+      gatewayId,
       expiresAt: new Date(Date.now() + duration),
       reason: trimmedReason
     });
-
-    if (!gatewayId) {
-      throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
-    }
 
     const { host, port } = (() => {
       if (resourceType === PamResource.Kubernetes) {

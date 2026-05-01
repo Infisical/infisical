@@ -11,13 +11,24 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSession);
 
   const findById = async (id: string, tx?: Knex) => {
+    // Prefer the gateway pinned to this session (set at session-start, even when the resource is pool-backed
+    // and the picked member differs from any direct gatewayId on the resource). Fall back to the resource's
+    // gatewayId for sessions created before pinning was introduced.
     const session = await (tx || db.replicaNode())(TableName.PamSession)
       .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
       .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
+        this.on(
+          `${TableName.GatewayV2}.id`,
+          "=",
+          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
+        );
+      })
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      // Override session.gatewayId with the COALESCE'd value so consumers always see the
+      // gateway actually in use (pinned for new sessions, resource's for legacy ones).
       .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
       .where(`${TableName.PamSession}.id`, id)
       .first();
@@ -55,7 +66,13 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     const sessions = await (tx || db.replicaNode())(TableName.PamSession)
       .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
       .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
+        this.on(
+          `${TableName.GatewayV2}.id`,
+          "=",
+          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
+        );
+      })
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
       .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
