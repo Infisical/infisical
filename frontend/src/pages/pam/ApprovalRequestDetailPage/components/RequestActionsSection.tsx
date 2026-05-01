@@ -1,12 +1,27 @@
 import { Controller, useForm } from "react-hook-form";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faMagnifyingGlass,
+  faTriangleExclamation,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, FormControl, Input, TextArea } from "@app/components/v2";
+import {
+  Button,
+  Checkbox,
+  FormControl,
+  FormLabel,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  TextArea
+} from "@app/components/v2";
 import { useProjectPermission, useUser } from "@app/context";
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -137,110 +152,122 @@ export const RequestActionsSection = ({ request }: Props) => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onApprove)}
-      className="flex w-full flex-col gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3"
-    >
+    <div className="flex w-full flex-col gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
       <div className="flex items-center justify-between border-b border-yellow-500/30 pb-2">
         <h3 className="font-medium text-mineshaft-100">Action Required</h3>
         <span className="text-xs text-yellow-500">Awaiting Your Approval</span>
       </div>
-
-      {isApprover && (
-        <Controller
-          control={control}
-          name="comment"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Comment (optional)"
-              className="mb-0"
-              isError={Boolean(error)}
-              errorText={error?.message}
+      <div className="space-y-4">
+        <p className="text-sm text-mineshaft-300">
+          {isApprover
+            ? "You are an approver for the current step. Please review the request details and provide your decision."
+            : "You can bypass this policy on this request. Provide a reason and approve to grant access immediately."}
+        </p>
+        <Popover>
+          <PopoverTrigger>
+            <Button
+              colorSchema="primary"
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+              className="px-2 py-1"
             >
-              <TextArea
-                {...field}
-                placeholder="Add a comment about your decision..."
-                rows={3}
-                reSize="vertical"
-              />
-            </FormControl>
-          )}
-        />
-      )}
-
-      {request.canBreakGlass && (
-        <div className="flex flex-col space-y-2">
-          <Controller
-            control={control}
-            name="bypassApproval"
-            render={({ field: { value, onChange } }) => (
-              <Checkbox
-                id="byPassApproval"
-                isChecked={value}
-                onCheckedChange={(checked) => onChange(checked === true)}
-                className={twMerge(
-                  "mt-0.5 mr-2 self-start",
-                  value ? "border-red/50! bg-red/30!" : ""
-                )}
-                allowMultilineLabel
-              >
-                <span className="text-xs text-red">
-                  Approve immediately without approver review (bypass policy)
-                </span>
-              </Checkbox>
-            )}
-          />
-          {bypassApproval && (
-            <Controller
-              control={control}
-              name="bypassReason"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Reason for bypass"
-                  className="mt-2 mb-0"
-                  isRequired
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Enter a reason for bypassing the policy"
-                >
-                  <Input
-                    {...field}
-                    placeholder="Enter reason for bypass"
-                    leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
+              Review
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" title="Finish your review" className="w-96 pt-4">
+            <form onSubmit={handleSubmit(onApprove)}>
+              {request.canBreakGlass && (
+                <div className="mb-4 flex flex-col space-y-2">
+                  <Controller
+                    control={control}
+                    name="bypassApproval"
+                    render={({ field: { value, onChange } }) => (
+                      <Checkbox
+                        id="byPassApproval"
+                        isChecked={value}
+                        onCheckedChange={(checked) => onChange(checked === true)}
+                        className={twMerge(
+                          "mt-0.5 mr-2 self-start",
+                          value ? "border-red/50! bg-red/30!" : ""
+                        )}
+                        allowMultilineLabel
+                      >
+                        <span className="text-xs text-red">
+                          Approve immediately without approver review (bypass policy)
+                        </span>
+                      </Checkbox>
+                    )}
                   />
-                </FormControl>
+                  {bypassApproval && (
+                    <Controller
+                      control={control}
+                      name="bypassReason"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Reason for bypass"
+                          isRequired
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                          tooltipText="Enter a reason for bypassing the policy"
+                          className="mb-0"
+                        >
+                          <Input
+                            {...field}
+                            placeholder="Enter reason for bypass"
+                            leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                  )}
+                </div>
               )}
-            />
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-2">
-        <Button
-          type="submit"
-          isLoading={isApproving}
-          isDisabled={isRejecting || !canSubmitApprove}
-          size="sm"
-          variant="outline_bg"
-          colorSchema="primary"
-        >
-          Approve Request
-        </Button>
-        {isApprover && (
-          <Button
-            type="button"
-            isLoading={isRejecting}
-            isDisabled={isApproving}
-            onClick={handleReject}
-            size="sm"
-            colorSchema="danger"
-            variant="plain"
-            className="text-mineshaft-200 hover:border-red hover:bg-red/20"
-          >
-            Reject Request
-          </Button>
-        )}
+              {isApprover && (
+                <>
+                  <FormLabel label="Finish your review" />
+                  <Controller
+                    control={control}
+                    name="comment"
+                    render={({ field }) => (
+                      <TextArea
+                        {...field}
+                        placeholder="Add a comment about your decision..."
+                        rows={3}
+                        reSize="vertical"
+                        className="mt-1 mb-4"
+                      />
+                    )}
+                  />
+                </>
+              )}
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  colorSchema="primary"
+                  leftIcon={<FontAwesomeIcon icon={faCheck} />}
+                  isLoading={isApproving}
+                  isDisabled={isRejecting || !canSubmitApprove}
+                  className="px-2 py-1"
+                >
+                  Approve Request
+                </Button>
+                {isApprover && (
+                  <Button
+                    type="button"
+                    colorSchema="danger"
+                    leftIcon={<FontAwesomeIcon icon={faXmark} />}
+                    onClick={handleReject}
+                    isLoading={isRejecting}
+                    isDisabled={isApproving}
+                    className="px-2 py-1"
+                  >
+                    Reject Request
+                  </Button>
+                )}
+              </div>
+            </form>
+          </PopoverContent>
+        </Popover>
       </div>
-    </form>
+    </div>
   );
 };
