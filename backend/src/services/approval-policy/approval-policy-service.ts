@@ -46,7 +46,6 @@ import {
   TApprovalPolicy,
   TApprovalPolicyInputs,
   TApprovalRequest,
-  TApprovalRequestData,
   TBypassAffordances,
   TCreatePolicyDTO,
   TCreateRequestDTO,
@@ -255,12 +254,11 @@ export const approvalPolicyServiceFactory = ({
     // Re-check project membership in case the user was removed after creating the request.
     await $verifyProjectUserMembership([actor.id], actor.orgId, request.projectId);
 
+    const inputs = (request.requestData as { requestData: TPamAccessRequestData }).requestData;
+
     // Re-validate constraints in case the policy was tightened after the request was created.
     const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
-    const constraintCheck = fac.validateConstraints(
-      policy as unknown as TApprovalPolicy,
-      (request.requestData as { requestData: unknown }).requestData as TApprovalRequestData
-    );
+    const constraintCheck = fac.validateConstraints(policy as unknown as TApprovalPolicy, inputs);
     if (!constraintCheck.valid) {
       throw new BadRequestError({
         message: constraintCheck.errors
@@ -268,8 +266,6 @@ export const approvalPolicyServiceFactory = ({
           : "Policy constraints not met"
       });
     }
-
-    const inputs = (request.requestData as { requestData: TPamAccessRequestData }).requestData;
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 
@@ -319,7 +315,7 @@ export const approvalPolicyServiceFactory = ({
         )
       );
 
-      const currentStepRow = requestSteps.find((s) => s.stepNumber === locked.currentStep) || requestSteps[0] || null;
+      const currentStepRow = requestSteps.find((s) => s.stepNumber === locked.currentStep);
       if (currentStepRow) {
         await approvalRequestApprovalsDAL.create(
           {
