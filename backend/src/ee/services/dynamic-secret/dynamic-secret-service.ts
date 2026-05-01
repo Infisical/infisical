@@ -19,9 +19,14 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
@@ -45,6 +50,7 @@ type TDynamicSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -88,6 +94,7 @@ export const dynamicSecretServiceFactory = ({
   kmsService,
   gatewayDAL,
   gatewayV2DAL,
+  gatewayPoolService,
   resourceMetadataDAL
 }: TDynamicSecretServiceFactoryDep): TDynamicSecretServiceFactory => {
   const create: TDynamicSecretServiceFactory["create"] = async ({
@@ -150,7 +157,35 @@ export const dynamicSecretServiceFactory = ({
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
 
     let selectedGatewayId: string | null = null;
-    if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
+    let selectedGatewayPoolId: string | null = null;
+    if (inputs && typeof inputs === "object" && "gatewayPoolId" in inputs && inputs.gatewayPoolId) {
+      const gatewayPoolId = inputs.gatewayPoolId as string;
+
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      // Verify the pool has at least one healthy gateway
+      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      selectedGatewayPoolId = gatewayPoolId;
+    } else if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
       const gatewayId = inputs.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
@@ -201,8 +236,9 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: isGatewayV1 ? selectedGatewayId : undefined,
-          gatewayV2Id: isGatewayV1 ? undefined : selectedGatewayId,
+          gatewayId: selectedGatewayPoolId ? undefined : isGatewayV1 ? selectedGatewayId : undefined,
+          gatewayV2Id: selectedGatewayPoolId ? undefined : isGatewayV1 ? undefined : selectedGatewayId,
+          gatewayPoolId: selectedGatewayPoolId ?? undefined,
           usernameTemplate
         },
         tx
@@ -337,8 +373,40 @@ export const dynamicSecretServiceFactory = ({
     );
 
     let selectedGatewayId: string | null = null;
+    let selectedGatewayPoolId: string | null = null;
     let isGatewayV1 = true;
-    if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
+    if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      "gatewayPoolId" in updatedInput &&
+      updatedInput?.gatewayPoolId
+    ) {
+      const gatewayPoolId = updatedInput.gatewayPoolId as string;
+
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      selectedGatewayPoolId = gatewayPoolId;
+    } else if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
       const gatewayId = updatedInput.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
@@ -384,8 +452,9 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: isGatewayV1 ? selectedGatewayId : null,
-          gatewayV2Id: isGatewayV1 ? null : selectedGatewayId,
+          gatewayId: selectedGatewayPoolId ? null : isGatewayV1 ? selectedGatewayId : null,
+          gatewayV2Id: selectedGatewayPoolId ? null : isGatewayV1 ? null : selectedGatewayId,
+          gatewayPoolId: selectedGatewayPoolId,
           usernameTemplate
         },
         tx

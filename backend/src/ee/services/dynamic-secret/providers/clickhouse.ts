@@ -11,6 +11,7 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -100,12 +101,23 @@ const generatePassword = (requirements?: PasswordRequirements) => {
 type TClickhouseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
 };
 
 export const ClickhouseProvider = ({
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TClickhouseProviderDTO): TDynamicProviderFns => {
+  const $resolveGatewayId = async (providerInputs: { gatewayId?: string | null; gatewayPoolId?: string | null }) => {
+    if (providerInputs.gatewayId) return providerInputs.gatewayId;
+    if (providerInputs.gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(providerInputs.gatewayPoolId);
+      return picked.id;
+    }
+    return null;
+  };
+
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretClickhouseSchema.parseAsync(inputs);
 
@@ -113,7 +125,7 @@ export const ClickhouseProvider = ({
 
     const [hostIp] = await verifyHostInputValidity({
       host: sanitizedHost,
-      isGateway: Boolean(providerInputs.gatewayId),
+      isGateway: Boolean(providerInputs.gatewayId || providerInputs.gatewayPoolId),
       isDynamicSecret: true
     });
 
@@ -171,8 +183,9 @@ export const ClickhouseProvider = ({
     providerInputs: z.infer<typeof DynamicSecretClickhouseSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
+    const effectiveGatewayId = await $resolveGatewayId(providerInputs);
     const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: providerInputs.gatewayId as string,
+      gatewayId: effectiveGatewayId as string,
       targetHost: providerInputs.host,
       targetPort: providerInputs.port
     });
@@ -191,7 +204,7 @@ export const ClickhouseProvider = ({
       );
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId as string);
     await withGatewayProxy(
       async (port) => {
         await gatewayCallback("localhost", port);
@@ -234,7 +247,7 @@ export const ClickhouseProvider = ({
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -296,7 +309,7 @@ export const ClickhouseProvider = ({
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -339,7 +352,7 @@ export const ClickhouseProvider = ({
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -385,7 +398,7 @@ export const ClickhouseProvider = ({
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();

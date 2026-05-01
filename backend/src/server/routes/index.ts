@@ -1480,7 +1480,8 @@ export const registerRoutes = async (
     pamDomainDAL,
     pamResourceDAL,
     pamDiscoverySourceDAL,
-    appConnectionDAL
+    appConnectionDAL,
+    dynamicSecretDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2119,7 +2120,8 @@ export const registerRoutes = async (
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -2147,6 +2149,7 @@ export const registerRoutes = async (
     kmsService,
     gatewayDAL,
     gatewayV2DAL,
+    gatewayPoolService,
     resourceMetadataDAL
   });
 

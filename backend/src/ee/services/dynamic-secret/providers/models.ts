@@ -179,7 +179,8 @@ export const DynamicSecretSqlDBSchema = z.object({
   ca: z.string().optional(),
   sslEnabled: z.boolean().optional(),
   sslRejectUnauthorized: z.boolean().default(true),
-  gatewayId: z.string().nullable().optional()
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional()
 });
 
 export const DynamicSecretClickhouseSchema = z.object({
@@ -214,7 +215,8 @@ export const DynamicSecretClickhouseSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
-  gatewayId: z.string().nullable().optional()
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional()
 });
 
 export const DynamicSecretCassandraSchema = z.object({
@@ -409,7 +411,8 @@ export const DynamicSecretAzureSqlDBSchema = z.object({
   ca: z.string().optional(),
   sslEnabled: z.boolean().optional(),
   sslRejectUnauthorized: z.boolean().default(true),
-  gatewayId: z.string().nullable().optional()
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional()
 });
 
 export const LdapSchema = z.union([
@@ -460,6 +463,7 @@ export const DynamicSecretKubernetesSchema = z
           "Invalid namespace format"
         ),
       gatewayId: z.string().optional(),
+      gatewayPoolId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
     }),
@@ -489,6 +493,7 @@ export const DynamicSecretKubernetesSchema = z
           );
         }, "Must be a valid comma-separated list of namespace values"),
       gatewayId: z.string().optional(),
+      gatewayPoolId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       roleType: z.nativeEnum(KubernetesRoleType),
       role: z.string().trim().min(1),
@@ -496,11 +501,18 @@ export const DynamicSecretKubernetesSchema = z
     })
   ])
   .superRefine((data, ctx) => {
-    if (data.authMethod === KubernetesAuthMethod.Gateway && !data.gatewayId) {
+    if (data.gatewayId && data.gatewayPoolId) {
+      ctx.addIssue({
+        path: ["gatewayPoolId"],
+        code: z.ZodIssueCode.custom,
+        message: "Cannot specify both a gateway and a gateway pool"
+      });
+    }
+    if (data.authMethod === KubernetesAuthMethod.Gateway && !data.gatewayId && !data.gatewayPoolId) {
       ctx.addIssue({
         path: ["gatewayId"],
         code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Gateway, a gateway must be selected"
+        message: "When auth method is set to Gateway, a gateway or gateway pool must be selected"
       });
     }
     if (data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) {
@@ -528,6 +540,7 @@ export const DynamicSecretVerticaSchema = z.object({
   password: z.string().trim(),
   database: z.string().trim(),
   gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional(),
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   passwordRequirements: z

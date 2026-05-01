@@ -10,6 +10,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretVerticaSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
@@ -132,15 +133,25 @@ const generateUsername = (usernameTemplate?: string | null) => {
 
 type TVerticaProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
 };
 
-export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynamicProviderFns => {
+export const VerticaProvider = ({ gatewayService, gatewayPoolService }: TVerticaProviderDTO): TDynamicProviderFns => {
+  const $resolveGatewayId = async (providerInputs: { gatewayId?: string | null; gatewayPoolId?: string | null }) => {
+    if (providerInputs.gatewayId) return providerInputs.gatewayId;
+    if (providerInputs.gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(providerInputs.gatewayPoolId);
+      return picked.id;
+    }
+    return null;
+  };
+
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretVerticaSchema.parseAsync(inputs);
 
     const [hostIp] = await verifyHostInputValidity({
       host: providerInputs.host,
-      isGateway: Boolean(providerInputs.gatewayId),
+      isGateway: Boolean(providerInputs.gatewayId || providerInputs.gatewayPoolId),
       isDynamicSecret: true
     });
     validateHandlebarTemplate("Vertica creation", providerInputs.creationStatement, {
@@ -194,7 +205,8 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
     providerInputs: z.infer<typeof DynamicSecretVerticaSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
+    const effectiveGatewayId = await $resolveGatewayId(providerInputs);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId as string);
     await withGatewayProxy(
       async (port) => {
         await gatewayCallback("localhost", port);
@@ -234,7 +246,7 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -284,7 +296,7 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -356,7 +368,7 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
