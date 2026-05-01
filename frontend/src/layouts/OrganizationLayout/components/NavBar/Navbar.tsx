@@ -91,6 +91,7 @@ import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
+import { WhatsNewButton } from "./WhatsNewButton";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -659,6 +660,7 @@ export const Navbar = () => {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        <WhatsNewButton />
         <NotificationDropdown />
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
