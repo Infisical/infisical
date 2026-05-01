@@ -54,7 +54,11 @@ export const KubernetesResourceForm = ({ resource, onSubmit, closeSheet }: Props
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined
+          gateway: resource.gatewayPoolId
+            ? { id: resource.gatewayPoolId, name: "", kind: "pool" as const }
+            : resource.gatewayId
+              ? { id: resource.gatewayId, name: "", kind: "gateway" as const }
+              : undefined
         }
       : {
           resourceType: PamResourceType.Kubernetes,

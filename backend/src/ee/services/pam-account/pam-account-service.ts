@@ -1429,11 +1429,9 @@ export const pamAccountServiceFactory = ({
       }
       logResourceType = resource.resourceType;
 
-      const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
-        resource,
-        account.projectId,
-        kmsService
-      );
+      const decrypted = await decryptResource(resource, account.projectId, kmsService);
+      const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = decrypted;
+      const rotationGatewayPoolId = (decrypted as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
       if (!rotationAccountCredentials) {
         logger.warn(
           `[Rotation] Decrypted rotation credentials missing for account [accountId=${account.id}], releasing lock`
@@ -1475,10 +1473,11 @@ export const pamAccountServiceFactory = ({
         return;
       }
 
+      const effectiveGatewayId = await resolveEffectiveGatewayId({ gatewayId, gatewayPoolId: rotationGatewayPoolId });
       const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
         resourceType as PamResource,
         connectionDetails,
-        gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         account.projectId
       );

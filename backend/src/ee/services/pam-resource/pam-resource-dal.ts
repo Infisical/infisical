@@ -172,6 +172,30 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
+  const findByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamResource)
+      .leftJoin(TableName.Project, `${TableName.PamResource}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamResource}.gatewayPoolId`, gatewayPoolId)
+      .select(
+        db.ref("id").withSchema(TableName.PamResource),
+        db.ref("name").withSchema(TableName.PamResource),
+        db.ref("projectId").withSchema(TableName.PamResource),
+        db.ref("resourceType").withSchema(TableName.PamResource),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamResource)
+      .where(`${TableName.PamResource}.gatewayPoolId`, gatewayPoolId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...orm,
     findById,
@@ -179,6 +203,8 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     findMetadataByResourceIds,
     findByDomainId,
     findByGatewayId,
-    countByGatewayId
+    countByGatewayId,
+    findByGatewayPoolId,
+    countByGatewayPoolId
   };
 };

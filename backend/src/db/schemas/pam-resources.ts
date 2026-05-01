@@ -14,6 +14,7 @@ export const PamResourcesSchema = z.object({
   projectId: z.string(),
   name: z.string(),
   gatewayId: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional(),
   resourceType: z.string(),
   encryptedConnectionDetails: zodBuffer,
   createdAt: z.date(),

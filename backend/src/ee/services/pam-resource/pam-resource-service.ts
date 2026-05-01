@@ -1,7 +1,11 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamResources } from "@app/db/schemas";
-import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -21,7 +25,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountView } from "../pam-account/pam-account-enums";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
@@ -58,6 +64,8 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -72,9 +80,24 @@ export const pamResourceServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayPoolService,
+  licenseService,
   resourceMetadataDAL,
   appConnectionDAL
 }: TPamResourceServiceFactoryDep) => {
+  // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
+  // or a freshly-picked healthy member of the configured pool.
+  const resolveEffectiveGatewayId = async (
+    gatewayId: string | null | undefined,
+    gatewayPoolId: string | null | undefined
+  ): Promise<string | null> => {
+    if (gatewayId) return gatewayId;
+    if (gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      return picked.id;
+    }
+    return null;
+  };
   const assertDomainInProject = async (domainId: string, projectId: string) => {
     const domain = await pamDomainDAL.findById(domainId);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${domainId}' not found` });
@@ -161,6 +184,7 @@ export const pamResourceServiceFactory = ({
       resourceType,
       connectionDetails,
       gatewayId,
+      gatewayPoolId,
       name,
       projectId,
       rotationAccountCredentials,
@@ -169,6 +193,10 @@ export const pamResourceServiceFactory = ({
     }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -187,14 +215,39 @@ export const pamResourceServiceFactory = ({
       })
     );
 
+    if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+    }
+
     if (domainId) {
       await assertDomainInProject(domainId, projectId);
     }
 
+    const effectiveGatewayId = await resolveEffectiveGatewayId(gatewayId, gatewayPoolId);
+
     const factory = PAM_RESOURCE_FACTORY_MAP[resourceType](
       resourceType,
       connectionDetails,
-      gatewayId,
+      effectiveGatewayId,
       gatewayV2Service,
       projectId
     );
@@ -224,7 +277,8 @@ export const pamResourceServiceFactory = ({
           {
             resourceType,
             encryptedConnectionDetails,
-            gatewayId,
+            gatewayId: gatewayPoolId ? null : gatewayId,
+            gatewayPoolId: gatewayPoolId ?? null,
             name,
             projectId,
             encryptedRotationAccountCredentials,
@@ -268,12 +322,17 @@ export const pamResourceServiceFactory = ({
       name,
       rotationAccountCredentials,
       gatewayId,
+      gatewayPoolId,
       domainId,
       metadata,
       sessionSummaryConfig
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const resource = await pamResourceDAL.findById(resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
@@ -312,13 +371,48 @@ export const pamResourceServiceFactory = ({
       );
     }
 
+    if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+    }
+
     const updateDoc: Partial<TPamResources> = {};
 
-    const effectiveGatewayId = gatewayId !== undefined ? gatewayId : resource.gatewayId;
+    // Mutual exclusion: setting one clears the other
+    const effectiveGatewayIdAttr =
+      gatewayId !== undefined ? gatewayId : gatewayPoolId !== undefined ? null : resource.gatewayId;
+    const effectiveGatewayPoolIdAttr =
+      gatewayPoolId !== undefined
+        ? gatewayPoolId
+        : gatewayId !== undefined
+          ? null
+          : (resource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
 
-    if (gatewayId !== undefined) {
-      updateDoc.gatewayId = gatewayId;
+    if (gatewayId !== undefined || gatewayPoolId !== undefined) {
+      updateDoc.gatewayId = effectiveGatewayIdAttr;
+      updateDoc.gatewayPoolId = effectiveGatewayPoolIdAttr;
     }
+
+    // Used for connection-validation factory below
+    const effectiveGatewayId = await resolveEffectiveGatewayId(effectiveGatewayIdAttr, effectiveGatewayPoolIdAttr);
 
     if (name !== undefined) {
       updateDoc.name = name;

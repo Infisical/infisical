@@ -53,7 +53,23 @@ const CoreCreatePamResourceSchema = z.object({
 });
 
 export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
-  gatewayId: z.string().uuid()
+  gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional()
+}).superRefine((data, ctx) => {
+  if (data.gatewayId && data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayPoolId"],
+      code: z.ZodIssueCode.custom,
+      message: "Cannot specify both a gateway and a gateway pool"
+    });
+  }
+  if (!data.gatewayId && !data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayId"],
+      code: z.ZodIssueCode.custom,
+      message: "A gateway or gateway pool is required"
+    });
+  }
 });
 
 export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
@@ -65,7 +81,16 @@ const CoreUpdatePamResourceSchema = z.object({
 });
 
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
-  gatewayId: z.string().uuid().optional()
+  gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional()
+}).superRefine((data, ctx) => {
+  if (data.gatewayId && data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayPoolId"],
+      code: z.ZodIssueCode.custom,
+      message: "Cannot specify both a gateway and a gateway pool"
+    });
+  }
 });
 
 export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;

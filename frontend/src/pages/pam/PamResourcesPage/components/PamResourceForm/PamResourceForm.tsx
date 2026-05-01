@@ -41,15 +41,18 @@ const CreateForm = ({ resourceType, closeSheet, projectId }: CreateFormProps) =>
       TPamResource,
       "name" | "resourceType" | "connectionDetails" | "domainId"
     > & {
-      gateway?: { id: string; name: string } | null;
+      gateway?: { id: string; name: string; kind?: "gateway" | "pool" } | null;
       gatewayId?: string;
+      gatewayPoolId?: string;
       metadata?: { key: string; value: string }[];
     }
   ) => {
     const { gateway, ...rest } = formData;
+    const isPool = gateway?.kind === "pool";
     const resource = await createPamResource.mutateAsync({
       ...rest,
-      gatewayId: gateway?.id ?? rest.gatewayId,
+      gatewayId: isPool ? undefined : (gateway?.id ?? rest.gatewayId),
+      gatewayPoolId: isPool ? gateway?.id : rest.gatewayPoolId,
       projectId
     });
     createNotification({
@@ -92,16 +95,19 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
       TPamResource,
       "name" | "resourceType" | "connectionDetails" | "domainId"
     > & {
-      gateway?: { id: string; name: string } | null;
+      gateway?: { id: string; name: string; kind?: "gateway" | "pool" } | null;
       gatewayId?: string;
+      gatewayPoolId?: string;
       metadata?: { key: string; value: string }[];
     }
   ) => {
     const { gateway, ...rest } = formData;
+    const isPool = gateway?.kind === "pool";
     const updatedResource = await updatePamResource.mutateAsync({
       resourceId: resource.id,
       ...rest,
-      gatewayId: gateway?.id ?? rest.gatewayId
+      gatewayId: isPool ? undefined : (gateway?.id ?? rest.gatewayId),
+      gatewayPoolId: isPool ? gateway?.id : rest.gatewayPoolId
     });
     createNotification({
       text: `Successfully updated ${resourceName} resource`,
