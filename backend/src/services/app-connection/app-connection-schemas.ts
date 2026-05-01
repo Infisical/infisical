@@ -79,6 +79,12 @@ export const GenericCreateAppConnectionFieldsSchema = (
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+      gatewayPoolId: supportsGateways
+        ? z.string().uuid().nullish().describe("The Gateway Pool ID to use for this connection.")
+        : z
+            .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
       isAutoRotationEnabled: supportsCredentialRotation
         ? z.boolean().optional().describe(AppConnections.CREATE(app).isAutoRotationEnabled)
@@ -102,6 +108,13 @@ export const GenericCreateAppConnectionFieldsSchema = (
           code: z.ZodIssueCode.custom,
           message: "Rotation details is required when auto rotation is enabled",
           path: ["rotation"]
+        });
+      }
+      if (data.gatewayId && data.gatewayPoolId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Cannot specify both a gateway and a gateway pool",
+          path: ["gatewayPoolId"]
         });
       }
     });
@@ -136,6 +149,12 @@ export const GenericUpdateAppConnectionFieldsSchema = (
           .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    gatewayPoolId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Gateway Pool ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
     isAutoRotationEnabled: supportsCredentialRotation
       ? z.boolean().optional().describe(AppConnections.UPDATE(app).isAutoRotationEnabled)
@@ -152,4 +171,12 @@ export const GenericUpdateAppConnectionFieldsSchema = (
           .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
+  }).superRefine((data, ctx) => {
+    if (data.gatewayId && data.gatewayPoolId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Cannot specify both a gateway and a gateway pool",
+        path: ["gatewayPoolId"]
+      });
+    }
   });

@@ -22,6 +22,7 @@ export const AppConnectionsSchema = z.object({
   updatedAt: z.date(),
   isPlatformManagedCredentials: z.boolean().default(false).nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional(),
   projectId: z.string().nullable().optional(),
   isAutoRotationEnabled: z.boolean().default(false)
 });

@@ -1479,7 +1479,8 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     pamDomainDAL,
     pamResourceDAL,
-    pamDiscoverySourceDAL
+    pamDiscoverySourceDAL,
+    appConnectionDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2302,6 +2303,7 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     gatewayDAL,
     gatewayV2DAL,
     projectDAL,

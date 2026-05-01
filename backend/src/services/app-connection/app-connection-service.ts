@@ -10,11 +10,13 @@ import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/ap
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -163,6 +165,7 @@ export type TAppConnectionServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
@@ -243,6 +246,7 @@ export const appConnectionServiceFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   gatewayDAL,
   gatewayV2DAL,
   projectDAL,
@@ -411,6 +415,7 @@ export const appConnectionServiceFactory = ({
       app,
       credentials,
       gatewayId,
+      gatewayPoolId,
       projectId,
       rotation,
       isAutoRotationEnabled,
@@ -418,6 +423,10 @@ export const appConnectionServiceFactory = ({
     }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -473,7 +482,25 @@ export const appConnectionServiceFactory = ({
           message: `Gateway with ID ${gatewayId} not found for org`
         });
       }
+    } else if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
     }
+
+    // For validation, resolve gatewayPoolId to a concrete gatewayId by picking a healthy member.
+    // The stored row keeps gatewayPoolId; runtime consumers re-resolve a fresh member per use.
+    const validationGatewayId = gatewayPoolId
+      ? (await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId)).id
+      : gatewayId;
 
     await enterpriseAppCheck(
       licenseService,
@@ -488,7 +515,7 @@ export const appConnectionServiceFactory = ({
         credentials,
         method,
         orgId: actor.orgId,
-        gatewayId
+        gatewayId: validationGatewayId
       } as TAppConnectionConfig,
       gatewayService,
       gatewayV2Service,
@@ -511,7 +538,8 @@ export const appConnectionServiceFactory = ({
               encryptedCredentials,
               method,
               app,
-              gatewayId,
+              gatewayId: gatewayPoolId ? null : gatewayId,
+              gatewayPoolId: gatewayPoolId ?? null,
               projectId,
               isAutoRotationEnabled,
               ...params
@@ -542,7 +570,7 @@ export const appConnectionServiceFactory = ({
             orgId: actor.orgId,
             credentials: validatedCredentials,
             method,
-            gatewayId
+            gatewayId: validationGatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
           gatewayService,
@@ -567,9 +595,21 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, gatewayId, isAutoRotationEnabled, rotation, ...params }: TUpdateAppConnectionDTO,
+    {
+      connectionId,
+      credentials,
+      gatewayId,
+      gatewayPoolId,
+      isAutoRotationEnabled,
+      rotation,
+      ...params
+    }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
@@ -628,6 +668,43 @@ export const appConnectionServiceFactory = ({
       }
     }
 
+    if (gatewayPoolId !== undefined && gatewayPoolId !== appConnection.gatewayPoolId && gatewayPoolId !== null) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+    }
+
+    // Mutual exclusion: when one is being set, clear the other.
+    const gatewayIdValue =
+      gatewayId !== undefined
+        ? gatewayId
+        : gatewayPoolId !== undefined && gatewayPoolId !== null
+          ? null
+          : undefined;
+    const gatewayPoolIdValue =
+      gatewayPoolId !== undefined
+        ? gatewayPoolId
+        : gatewayId !== undefined && gatewayId !== null
+          ? null
+          : undefined;
+
+    // For validation, resolve the effective gateway: directly-attached, or a fresh pool member.
+    const effectiveGatewayIdForUpdate =
+      gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
+    const effectiveGatewayPoolIdForUpdate =
+      gatewayPoolIdValue !== undefined ? gatewayPoolIdValue : appConnection.gatewayPoolId;
+    const validationGatewayId = effectiveGatewayPoolIdForUpdate
+      ? (await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate)).id
+      : effectiveGatewayIdForUpdate;
+
     // prevent updating credentials or management status if platform managed
     if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {
       throw new BadRequestError({
@@ -658,7 +735,7 @@ export const appConnectionServiceFactory = ({
           orgId: actor.orgId,
           credentials,
           method,
-          gatewayId
+          gatewayId: validationGatewayId
         } as TAppConnectionConfig,
         gatewayService,
         gatewayV2Service,
@@ -685,7 +762,8 @@ export const appConnectionServiceFactory = ({
           {
             orgId: actor.orgId,
             encryptedCredentials,
-            gatewayId,
+            ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
+            ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
             ...params
           },
           tx
@@ -718,7 +796,7 @@ export const appConnectionServiceFactory = ({
               orgId: actor.orgId,
               credentials: updatedCredentials,
               method,
-              gatewayId
+              gatewayId: validationGatewayId
             } as TAppConnectionConfig,
             (platformCredentials) => updateConnection(platformCredentials, tx),
             gatewayService,
