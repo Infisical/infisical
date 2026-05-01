@@ -243,8 +243,8 @@ export const approvalPolicyServiceFactory = ({
     bypassReason: string;
   }): Promise<{
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
-    audit: "break-glass" | "none";
-    bypassMetadata?: BreakGlassBypassMetadata;
+    audit: "break-glass";
+    bypassMetadata: BreakGlassBypassMetadata;
   }> => {
     if (bypassReason.trim().length < 10) {
       throw new BadRequestError({
@@ -376,8 +376,11 @@ export const approvalPolicyServiceFactory = ({
       approverCount: recipientUserIds.length
     };
 
+    // Idempotent retry: a previous call already committed the grant. We still emit the audit
+    // event (compliance — the first call may have died before audit was queued) but skip the
+    // notification fanout so approvers don't receive duplicate alerts on retry.
     if (idempotent) {
-      return { request: await $decorateRequest(result, actor), audit: "none" };
+      return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
     }
 
     if (recipientUserIds.length === 0) {
@@ -983,7 +986,7 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType
   ): Promise<{
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
-    audit: "standard" | "break-glass" | "none";
+    audit: "standard" | "break-glass";
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
     const request = await approvalRequestDAL.findById(requestId);
