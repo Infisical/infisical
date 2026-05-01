@@ -26,6 +26,13 @@ type Props = {
   // just hides the "no gateway" choice from the dropdown.
   isRequired?: boolean;
   placeholder?: string;
+  // Visual variant for the picker's trigger to match the surrounding form
+  // language. "v2" (default) keeps the picker's native v2 Select look —
+  // filled bg-mineshaft-900 with border-mineshaft-600 — which fits inside v2
+  // FormControl wrappers (App Connections, Dynamic Secrets, K8s identity
+  // auth). "v3" switches to a transparent background + border-border + h-9 to
+  // match v3 Input / FilterableSelect siblings (PAM forms, PKI Discovery).
+  variant?: "v2" | "v3";
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -40,7 +47,8 @@ export const GatewayPicker = ({
   isDisabled,
   className,
   isRequired,
-  placeholder
+  placeholder,
+  variant = "v2"
 }: Props) => {
   const { subscription } = useSubscription();
   const showPools = subscription?.gatewayPool;
@@ -90,7 +98,14 @@ export const GatewayPicker = ({
       // Default to w-full because every consumer (PAM forms, App Connection forms,
       // Dynamic Secret forms, K8s identity auth, PKI Discovery) wants the picker
       // to fill its container. Caller can still override with className.
-      className={twMerge("w-full", className)}
+      // The v3 variant overrides the v2 Select trigger's filled bg-mineshaft-900
+      // and darker border so the picker visually matches v3 Input / FilterableSelect
+      // siblings in v3 form layouts.
+      className={twMerge(
+        "w-full",
+        variant === "v3" && "h-9 border-border bg-transparent text-foreground",
+        className
+      )}
       dropdownContainerClassName="max-w-none"
       position="popper"
       side="bottom"
