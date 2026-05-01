@@ -156,63 +156,52 @@ export const approvalPolicyServiceFactory = ({
     actor: OrgServiceActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
   ): Promise<R & TBypassAffordances> => {
-    let canBreakGlass = false;
+    // Bypass affordances are PAM-only — short-circuit other policy types so we don't fire
+    // a grant lookup for cert/codesigning request views.
+    if (request.type !== ApprovalPolicyType.PamAccess) {
+      return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null };
+    }
 
-    try {
-      if (
-        actor.type === ActorType.USER &&
-        request.type === ApprovalPolicyType.PamAccess &&
-        request.status === ApprovalRequestStatus.Pending &&
-        request.requesterId === actor.id &&
-        request.policyId
-      ) {
-        const policy = ctx.policyById?.get(request.policyId) ?? (await approvalPolicyDAL.findById(request.policyId));
-        if (policy && policy.enforcementLevel === EnforcementLevel.Soft) {
-          const bypassers =
-            ctx.bypassersByPolicyId?.get(request.policyId) ??
-            (await approvalPolicyDAL.findBypassersByPolicyId(request.policyId));
-          if (bypassers.length === 0) {
-            canBreakGlass = true;
-          } else {
-            const userGroupIds = await ctx.getUserGroupIds();
-            canBreakGlass = bypassers.some(
-              (b) =>
-                (b.type === ApproverType.User && b.id === actor.id) ||
-                (b.type === ApproverType.Group && userGroupIds.has(b.id))
-            );
-          }
+    let canBreakGlass = false;
+    if (
+      actor.type === ActorType.USER &&
+      request.status === ApprovalRequestStatus.Pending &&
+      request.requesterId === actor.id &&
+      request.policyId
+    ) {
+      const policy = ctx.policyById?.get(request.policyId) ?? (await approvalPolicyDAL.findById(request.policyId));
+      if (policy && policy.enforcementLevel === EnforcementLevel.Soft) {
+        const bypassers =
+          ctx.bypassersByPolicyId?.get(request.policyId) ??
+          (await approvalPolicyDAL.findBypassersByPolicyId(request.policyId));
+        if (bypassers.length === 0) {
+          canBreakGlass = true;
+        } else {
+          const userGroupIds = await ctx.getUserGroupIds();
+          canBreakGlass = bypassers.some(
+            (b) =>
+              (b.type === ApproverType.User && b.id === actor.id) ||
+              (b.type === ApproverType.Group && userGroupIds.has(b.id))
+          );
         }
       }
-    } catch (err) {
-      logger.error(
-        { err, requestId: request.id },
-        `Failed to compute break-glass eligibility [requestId=${request.id}]`
-      );
-      canBreakGlass = false;
     }
 
     let isBreakGlass = false;
     let bypassReason: string | null = null;
-    try {
-      const prefetched = ctx.grantsByRequestId?.get(request.id);
-      if (prefetched !== undefined) {
-        isBreakGlass = prefetched.isBreakGlass;
-        bypassReason = prefetched.bypassReason;
-      } else if (request.requesterId) {
-        const grant = await approvalRequestGrantsDAL.findOne({
-          requestId: request.id,
-          granteeUserId: request.requesterId
-        });
-        if (grant) {
-          isBreakGlass = Boolean(grant.isBreakGlass);
-          bypassReason = grant.bypassReason ?? null;
-        }
+    const prefetched = ctx.grantsByRequestId?.get(request.id);
+    if (prefetched !== undefined) {
+      isBreakGlass = prefetched.isBreakGlass;
+      bypassReason = prefetched.bypassReason;
+    } else if (request.requesterId) {
+      const grant = await approvalRequestGrantsDAL.findOne({
+        requestId: request.id,
+        granteeUserId: request.requesterId
+      });
+      if (grant) {
+        isBreakGlass = Boolean(grant.isBreakGlass);
+        bypassReason = grant.bypassReason ?? null;
       }
-    } catch (err) {
-      logger.error(
-        { err, requestId: request.id },
-        `Failed to load grant for break-glass decoration [requestId=${request.id}]`
-      );
     }
 
     return {
@@ -884,7 +873,7 @@ export const approvalPolicyServiceFactory = ({
 
       const recipientUserIds = [...approverUserIdSet];
 
-      const { grant, lockedRequest, idempotent } = await approvalRequestDAL.transaction(async (tx) => {
+      const { grant, idempotent } = await approvalRequestDAL.transaction(async (tx) => {
         const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
         if (!locked) {
           throw new ForbiddenRequestError({ message: "Request not found" });
@@ -895,7 +884,7 @@ export const approvalPolicyServiceFactory = ({
           tx
         );
         if (existingBreakGlassGrant) {
-          return { grant: existingBreakGlassGrant, lockedRequest: locked, idempotent: true as const };
+          return { grant: existingBreakGlassGrant, idempotent: true as const };
         }
 
         if (locked.status !== ApprovalRequestStatus.Pending) {
@@ -938,11 +927,11 @@ export const approvalPolicyServiceFactory = ({
 
         const newGrant = await approvalRequestGrantsDAL.create(
           {
-            projectId: locked.projectId,
-            requestId: locked.id,
+            projectId: request.projectId,
+            requestId: request.id,
             granteeUserId: actor.id,
             status: ApprovalRequestGrantStatus.Active,
-            type: locked.type,
+            type: request.type,
             attributes: inputs,
             expiresAt,
             isBreakGlass: true,
@@ -951,7 +940,7 @@ export const approvalPolicyServiceFactory = ({
           tx
         );
 
-        return { grant: newGrant, lockedRequest: locked, idempotent: false as const };
+        return { grant: newGrant, idempotent: false as const };
       });
 
       const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
@@ -976,13 +965,15 @@ export const approvalPolicyServiceFactory = ({
       }
 
       try {
-        const recipients = await userDAL.find({ $in: { id: recipientUserIds } });
-        const project = await projectDAL.findById(lockedRequest.projectId);
+        const [recipients, project, actingUser] = await Promise.all([
+          userDAL.find({ $in: { id: recipientUserIds } }),
+          projectDAL.findById(request.projectId),
+          userDAL.findById(actor.id)
+        ]);
         const cfg = getConfig();
         const approvalPath = project
-          ? `/organizations/${project.orgId}/projects/pam/${lockedRequest.projectId}/approvals/${requestId}`
+          ? `/organizations/${project.orgId}/projects/pam/${request.projectId}/approvals/${requestId}`
           : null;
-        const actingUser = await userDAL.findById(actor.id);
 
         const requesterFullName = actingUser
           ? `${actingUser.firstName ?? ""} ${actingUser.lastName ?? ""}`.trim() || (actingUser.email ?? "")
