@@ -1510,6 +1510,7 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     notificationService,
     projectSlackConfigDAL,
     projectMicrosoftTeamsConfigDAL,

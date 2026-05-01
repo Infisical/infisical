@@ -1145,7 +1145,7 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
     triggerCredentialRotation,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
+    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
