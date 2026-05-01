@@ -44,6 +44,7 @@ To create an approval policy, navigate to your PAM Project > Approvals > Policie
       - **Account name**: Glob pattern for matching account names (e.g. `admin`, `*readonly`).
       - At least one of resource name or account name must be specified. If both are provided, they are ANDed together.
     - **Access Duration**: Configure the maximum access duration allowed for requests matching this policy.
+    - **Bypass Approvals** (optional): Allow specific users or groups to self-approve their own request in break-glass situations. See *Bypass Approvals* below.
 
     ![pam approval policy configuration](/images/pam/product-reference/access-policies/approval-policy-configuration.png)
   </Step>
