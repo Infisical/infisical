@@ -26,15 +26,19 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
     initPerPage: 16
   });
 
-  const filteredOptions = useMemo(
-    () =>
-      appConnectionOptions?.filter(
-        ({ name, app }) =>
-          name?.toLowerCase().includes(search.trim().toLowerCase()) ||
-          app.toLowerCase().includes(search.toLowerCase())
-      ) ?? [],
-    [appConnectionOptions, search]
-  );
+  const filteredOptions = useMemo(() => {
+    const searchLower = search.trim().toLowerCase();
+    return (
+      appConnectionOptions?.filter(({ name, app }) => {
+        const aliases = APP_CONNECTION_MAP[app]?.aliases ?? [];
+        return (
+          name?.toLowerCase().includes(searchLower) ||
+          app.toLowerCase().includes(searchLower) ||
+          aliases.some((alias) => alias.toLowerCase().includes(searchLower))
+        );
+      }) ?? []
+    );
+  }, [appConnectionOptions, search]);
 
   useResetPageHelper({
     totalCount: filteredOptions.length,

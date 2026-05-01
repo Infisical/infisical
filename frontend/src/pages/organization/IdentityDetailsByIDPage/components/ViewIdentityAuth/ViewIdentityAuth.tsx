@@ -7,16 +7,16 @@ import { createNotification } from "@app/components/notifications";
 import { VariablePermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
-  UnstableAccordion,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -183,13 +183,13 @@ export const Content = ({
 
   return (
     <>
-      <UnstableAccordion type={authMethods.length === 1 ? "single" : "multiple"} collapsible>
+      <Accordion type={authMethods.length === 1 ? "single" : "multiple"} collapsible>
         {authMethods.map((authMethod) => {
           const Component = AuthMethodComponentMap[authMethod];
 
           return (
-            <UnstableAccordionItem key={authMethod} value={authMethod}>
-              <UnstableAccordionTrigger>
+            <AccordionItem key={authMethod} value={authMethod}>
+              <AccordionTrigger>
                 <span className="mr-auto">{identityAuthToNameMap[authMethod]}</span>
                 {activeLockoutAuthMethods?.includes(authMethod) && (
                   <Tooltip content="Auth method has active lockouts">
@@ -198,13 +198,13 @@ export const Content = ({
                     </Badge>
                   </Tooltip>
                 )}
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
-                    <UnstableIconButton variant="ghost" size="xs">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton variant="ghost" size="xs">
                       <EllipsisIcon />
-                    </UnstableIconButton>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
                     <VariablePermissionCan
                       type={projectId ? "project" : "org"}
                       I={
@@ -221,7 +221,7 @@ export const Content = ({
                       }
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -229,7 +229,7 @@ export const Content = ({
                           }}
                         >
                           Edit Auth Method
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </VariablePermissionCan>
                     <VariablePermissionCan
@@ -248,7 +248,7 @@ export const Content = ({
                       }
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -257,13 +257,13 @@ export const Content = ({
                           variant="danger"
                         >
                           Remove Auth Method
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </VariablePermissionCan>
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
-              </UnstableAccordionTrigger>
-              <UnstableAccordionContent>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </AccordionTrigger>
+              <AccordionContent>
                 <Component
                   identityId={identityId}
                   onEdit={() => handlePopUpOpen("identityAuthMethod", authMethod)}
@@ -271,11 +271,11 @@ export const Content = ({
                   onResetAllLockouts={onResetAllLockouts}
                   lockedOut={activeLockoutAuthMethods?.includes(authMethod)}
                 />
-              </UnstableAccordionContent>
-            </UnstableAccordionItem>
+              </AccordionContent>
+            </AccordionItem>
           );
         })}
-      </UnstableAccordion>
+      </Accordion>
       <DeleteActionModal
         isOpen={popUp?.revokeAuthMethod?.isOpen}
         title={`Are you sure you want to remove ${popUp?.revokeAuthMethod?.data ? identityAuthToNameMap[popUp?.revokeAuthMethod?.data as IdentityAuthMethod] : "this auth method"} on this identity?`}

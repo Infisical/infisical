@@ -511,11 +511,13 @@ export type IdentityKubernetesAuth = {
   allowedNames: string;
   allowedAudience: string;
   caCert: string;
+  verifyTlsCertificate: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
 };
 
 export type AddIdentityKubernetesAuthDTO = {
@@ -529,7 +531,9 @@ export type AddIdentityKubernetesAuthDTO = {
   allowedNames: string;
   allowedAudience: string;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   caCert: string;
+  verifyTlsCertificate?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -549,7 +553,9 @@ export type UpdateIdentityKubernetesAuthDTO = {
   allowedNames?: string;
   allowedAudience?: string;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   caCert?: string;
+  verifyTlsCertificate?: boolean;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

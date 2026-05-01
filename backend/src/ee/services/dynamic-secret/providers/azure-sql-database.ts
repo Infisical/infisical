@@ -145,7 +145,11 @@ export const AzureSqlDatabaseProvider = ({
     targetDatabase?: string
   ) => {
     const ssl = providerInputs.ca
-      ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
+      ? {
+          rejectUnauthorized: providerInputs.sslRejectUnauthorized,
+          ca: providerInputs.ca,
+          servername: providerInputs.originalHost
+        }
       : undefined;
 
     /*
@@ -177,7 +181,7 @@ export const AzureSqlDatabaseProvider = ({
         // https://github.com/tediousjs/tedious/blob/ebb023ed90969a7ec0e4b036533ad52739d921f7/test/config.ci.ts#L19
         options: {
           ...(providerInputs.sslEnabled !== undefined ? { encrypt: providerInputs.sslEnabled } : {}),
-          trustServerCertificate: !providerInputs.ca,
+          trustServerCertificate: !providerInputs.sslRejectUnauthorized,
           cryptoCredentialsDetails: providerInputs.ca ? { ca: providerInputs.ca } : {}
         }
       },
@@ -367,7 +371,10 @@ export const AzureSqlDatabaseProvider = ({
     const { database, masterDatabase } = providerInputs;
 
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+        username,
+        database
+      });
       const queries = revokeStatement.toString().split(";").filter(Boolean);
 
       const userDropQueries = queries.filter((query) => query.toLowerCase().includes("drop user"));
@@ -487,7 +494,7 @@ export const AzureSqlDatabaseProvider = ({
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration,
         database

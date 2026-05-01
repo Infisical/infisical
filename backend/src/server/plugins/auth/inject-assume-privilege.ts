@@ -1,6 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
@@ -8,12 +9,14 @@ export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
     const assumeRoleCookie = req.cookies["infisical-project-assume-privileges"];
     try {
       if (req?.auth?.authMode === AuthMode.JWT && assumeRoleCookie) {
-        const decodedToken = server.services.assumePrivileges.verifyAssumePrivilegeToken(
+        const decodedToken = await server.services.assumePrivileges.verifyAssumePrivilegeToken(
           assumeRoleCookie,
-          req.auth.tokenVersionId
+          req.auth.tokenVersionId,
+          req.auth.authMethod,
+          req.auth.orgId
         );
         if (decodedToken) {
-          requestContext.set("assumedPrivilegeDetails", decodedToken);
+          requestContext.set(RequestContextKey.AssumedPrivilegeDetails, decodedToken);
         }
       }
     } catch (error) {

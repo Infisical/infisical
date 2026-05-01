@@ -1,0 +1,59 @@
+name: Issue Product Labeler
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-product-label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Add product label based on issue form selection
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+            
+            const productLabels = {
+              'Platform/Access controls/Other': 'product:platform',
+              'Secret Manager': 'product:secret-manager',
+              'Certificate Manager (PKI)': 'product:pki',
+              'KMS': 'product:kms',
+              'Secret Scanning': 'product:secret-scanning',
+              'Privileged Access Manager (PAM)': 'product:pam'
+            };
+            
+            const deploymentLabels = {
+              'Infisical Cloud': 'deployment:cloud',
+              'Self-hosted': 'deployment:self-hosted'
+            };
+            
+            // Parse the Product field specifically (between "### Product" and next "###")
+            const productMatch = body.match(/### Product\s*\n\s*(.+?)(?=\n\s*###|\n\s*$)/s);
+            const productValue = productMatch ? productMatch[1].trim() : '';
+            
+            // Parse the Deployment Type field specifically
+            const deploymentMatch = body.match(/### Deployment Type\s*\n\s*(.+?)(?=\n\s*###|\n\s*$)/s);
+            const deploymentValue = deploymentMatch ? deploymentMatch[1].trim() : '';
+            
+            const labelsToAdd = [];
+            
+            if (productValue && productLabels[productValue]) {
+              labelsToAdd.push(productLabels[productValue]);
+            }
+            
+            if (deploymentValue && deploymentLabels[deploymentValue]) {
+              labelsToAdd.push(deploymentLabels[deploymentValue]);
+            }
+
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labelsToAdd
+              });
+              console.log(`Added labels: ${labelsToAdd.join(', ')}`);
+            }

@@ -4,12 +4,14 @@ import SMTPTransport from "nodemailer/lib/smtp-transport";
 import React from "react";
 
 import { getConfig } from "@app/lib/config/env";
+import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
   AccountDeletionConfirmationTemplate,
+  AuditLogMigrationAlertTemplate,
   CredentialRotationFailedTemplate,
   EmailMfaTemplate,
   EmailVerificationTemplate,
@@ -97,7 +99,8 @@ export enum SmtpTemplates {
   AccountDeletionConfirmation = "accountDeletionConfirmation",
   HealthAlert = "healthAlert",
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
-  CredentialRotationFailed = "credentialRotationFailed"
+  CredentialRotationFailed = "credentialRotationFailed",
+  AuditLogMigrationAlert = "auditLogMigrationAlert"
 }
 
 export enum SmtpHost {
@@ -149,7 +152,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.AccountDeletionConfirmation]: AccountDeletionConfirmationTemplate,
   [SmtpTemplates.HealthAlert]: HealthAlertTemplate,
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
-  [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate
+  [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
+  [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
@@ -208,4 +212,17 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   };
 
   return { sendMail, verify };
+};
+
+export const throwIfSmtpError = (err: unknown, logMessage: string) => {
+  logger.error(err, logMessage);
+  const { isCloud } = getConfig();
+  // We must always throw so the user is not left waiting for an email that never arrives.
+  // On cloud, we show a generic message to avoid exposing internal misconfiguration details.
+  throw new InternalServerError({
+    message: isCloud
+      ? "We could not send you an email. Please try again later."
+      : "Failed to send email. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
+    name: "SmtpError"
+  });
 };

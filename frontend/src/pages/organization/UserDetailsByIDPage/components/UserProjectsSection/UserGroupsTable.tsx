@@ -4,17 +4,17 @@ import { twMerge } from "tailwind-merge";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableInput,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Input,
+  Pagination,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import {
   getUserTablePreference,
@@ -91,17 +91,17 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
 
   return (
     <>
-      <UnstableInput
+      <Input
         className="mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search groups..."
       />
       {filteredGroupMemberships.length ? (
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead onClick={toggleOrderDirection} className="w-full">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead onClick={toggleOrderDirection} className="w-full">
                 Name
                 <ChevronDownIcon
                   className={twMerge(
@@ -109,11 +109,11 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
                     "transition-transform"
                   )}
                 />
-              </UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              </TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredGroupMemberships.slice(offset, perPage * page).map((group) => (
               <UserGroupsRow
                 key={`user-group-${group.id}`}
@@ -121,26 +121,26 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
                 handlePopUpOpen={handlePopUpOpen}
               />
             ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       ) : (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {groupMemberships.length
                 ? "No groups match this search"
                 : "This user has not been assigned to any groups"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {groupMemberships.length
                 ? "Adjust search filters to view group memberships."
                 : "Assign this user to a group from the group access control page."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
       {Boolean(filteredGroupMemberships.length) && (
-        <UnstablePagination
+        <Pagination
           count={filteredGroupMemberships.length}
           page={page}
           perPage={perPage}

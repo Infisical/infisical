@@ -2,6 +2,7 @@ import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitla
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
+import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -57,7 +58,13 @@ export const gitlabSecretScanningService = (
 
     const credentials = JSON.parse(decryptedCredentials.toString()) as TGitLabDataSourceCredentials;
 
-    if (token !== credentials.token) {
+    const storedToken = Buffer.from(credentials.token, "utf8");
+    const receivedToken = Buffer.from(token, "utf8");
+
+    const isValid =
+      storedToken.length === receivedToken.length && crypto.nativeCrypto.timingSafeEqual(storedToken, receivedToken);
+
+    if (!isValid) {
       logger.error(
         `secretScanningV2PushEvent: GitLab - Invalid webhook token [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
       );

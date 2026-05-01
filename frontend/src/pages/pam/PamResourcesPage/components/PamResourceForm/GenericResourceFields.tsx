@@ -8,7 +8,7 @@ import {
   FieldError,
   FieldLabel,
   FilterableSelect,
-  UnstableInput
+  Input
 } from "@app/components/v3";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
@@ -51,12 +51,7 @@ export const GenericResourceFields = () => {
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <UnstableInput
-                {...field}
-                autoFocus
-                isError={Boolean(error)}
-                placeholder="my-resource"
-              />
+              <Input {...field} autoFocus isError={Boolean(error)} placeholder="my-resource" />
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>

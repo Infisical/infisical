@@ -1,5 +1,6 @@
 import { authenticator } from "otplib";
 
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -20,13 +21,16 @@ type TTotpServiceFactoryDep = {
   userDAL: TUserDALFactory;
   totpConfigDAL: TTotpConfigDALFactory;
   kmsService: TKmsServiceFactory;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
+
+authenticator.options = { window: 1 };
 
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
 const MAX_RECOVERY_CODE_LIMIT = 10;
 
-export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotpServiceFactoryDep) => {
+export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStore }: TTotpServiceFactoryDep) => {
   const getUserTotpConfig = async ({ userId }: TGetUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
       userId
@@ -175,6 +179,15 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
       throw new ForbiddenRequestError({
         message: "Invalid TOTP"
       });
+    }
+
+    const claimed = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.UsedTotpCode(userId, totp),
+      KeyStoreTtls.UsedTotpCodeInSeconds,
+      "1"
+    );
+    if (!claimed) {
+      throw new ForbiddenRequestError({ message: "Invalid TOTP" });
     }
   };
 

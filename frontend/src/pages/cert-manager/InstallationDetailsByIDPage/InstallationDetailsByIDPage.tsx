@@ -6,11 +6,11 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstablePageLoader
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  PageLoader
 } from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
@@ -40,7 +40,7 @@ const Page = () => {
   ] as const);
 
   if (isLoading) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   if (!installation) {
@@ -86,30 +86,30 @@ const Page = () => {
           description="Certificate Installation Details"
           title={displayName}
         >
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 Options
                 <EllipsisIcon />
               </Button>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent align="end">
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               <ProjectPermissionCan
                 I={ProjectPermissionPkiCertificateInstallationActions.Delete}
                 a={ProjectPermissionSub.PkiCertificateInstallations}
               >
                 {(isAllowed) => (
-                  <UnstableDropdownMenuItem
+                  <DropdownMenuItem
                     variant="danger"
                     isDisabled={!isAllowed}
                     onClick={() => handlePopUpOpen("deleteInstallation")}
                   >
                     Delete
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </PageHeader>
 
         <div className="flex flex-col gap-5 lg:flex-row">

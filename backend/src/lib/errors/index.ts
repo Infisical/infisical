@@ -160,14 +160,18 @@ export class ScimRequestError extends Error {
 
   error: unknown;
 
+  mutability?: string;
+
   constructor({
     name,
     error,
     detail,
-    status
+    status,
+    mutability
   }: {
     message?: string;
     name?: string;
+    mutability?: string;
     error?: unknown;
     detail: string;
     status: number;
@@ -178,6 +182,7 @@ export class ScimRequestError extends Error {
     this.error = error;
     this.detail = detail;
     this.status = status;
+    this.mutability = mutability;
   }
 }
 

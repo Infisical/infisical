@@ -5,7 +5,7 @@ import * as SeparatorPrimitive from "@radix-ui/react-separator";
 
 import { cn } from "../../utils";
 
-function UnstableSeparator({
+function Separator({
   className,
   orientation = "horizontal",
   decorative = true,
@@ -25,4 +25,4 @@ function UnstableSeparator({
   );
 }
 
-export { UnstableSeparator };
+export { Separator };

@@ -2,13 +2,13 @@ import { EllipsisIcon, HardDriveIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
 import { TGroupMemberMachineIdentity } from "@app/hooks/api/groups/types";
@@ -27,38 +27,35 @@ export const GroupMembershipIdentityRow = ({
   onAssumePrivileges
 }: Props) => {
   return (
-    <UnstableTableRow>
-      <UnstableTableCell>
+    <TableRow>
+      <TableCell>
         <HardDriveIcon size={14} className="text-mineshaft-400" />
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
-      <UnstableTableCell>{new Date(joinedGroupAt).toLocaleDateString()}</UnstableTableCell>
-      <UnstableTableCell>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant="ghost" size="xs">
+      </TableCell>
+      <TableCell isTruncatable>{name}</TableCell>
+      <TableCell>{new Date(joinedGroupAt).toLocaleDateString()}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="ghost" size="xs">
               <EllipsisIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
             <ProjectPermissionCan
               I={ProjectPermissionIdentityActions.AssumePrivileges}
               a={ProjectPermissionSub.Identity}
             >
               {(isAllowed) => {
                 return (
-                  <UnstableDropdownMenuItem
-                    onClick={() => onAssumePrivileges(id)}
-                    isDisabled={!isAllowed}
-                  >
+                  <DropdownMenuItem onClick={() => onAssumePrivileges(id)} isDisabled={!isAllowed}>
                     Assume Privileges
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 );
               }}
             </ProjectPermissionCan>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </UnstableTableCell>
-    </UnstableTableRow>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

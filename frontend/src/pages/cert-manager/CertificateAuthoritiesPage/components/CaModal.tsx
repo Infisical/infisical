@@ -1,5 +1,7 @@
 import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -8,11 +10,13 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  IconButton,
   Input,
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
   // DatePicker
 } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -20,6 +24,8 @@ import {
   CaStatus,
   CaType,
   InternalCaType,
+  MAX_DISTRIBUTION_POINT_URL_LENGTH,
+  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
   useCreateCa,
   useGetCa,
   useUpdateCa
@@ -40,6 +46,36 @@ const getDateTenYearsFromToday = () => {
   return format(date, "yyyy-MM-dd");
 };
 
+const distributionPointUrlEntrySchema = z.object({
+  value: z
+    .string()
+    .trim()
+    .max(MAX_DISTRIBUTION_POINT_URL_LENGTH, "URL is too long")
+    .url("Must be a valid URL")
+    .refine((url) => /^https?:\/\//i.test(url), { message: "URL must use http:// or https://" })
+});
+
+const distributionPointUrlsSchema = z
+  .array(distributionPointUrlEntrySchema)
+  .max(
+    MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
+    `Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS} URLs are allowed`
+  )
+  .superRefine((entries, ctx) => {
+    const seen = new Set<string>();
+    entries.forEach((entry, index) => {
+      const normalized = entry.value.trim().replace(/\/+$/, "").toLowerCase();
+      if (seen.has(normalized)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "value"],
+          message: "Duplicate URL"
+        });
+      }
+      seen.add(normalized);
+    });
+  });
+
 const schema = z
   .object({
     type: z.nativeEnum(CaType),
@@ -58,7 +94,8 @@ const schema = z
         commonName: z.string(),
         notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
         maxPathLength: z.string(),
-        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+        crlDistributionPointUrls: distributionPointUrlsSchema.default([])
       })
       .required()
   })
@@ -108,12 +145,18 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName: "",
         notAfter: getDateTenYearsFromToday(),
         maxPathLength: "-1",
-        keyAlgorithm: CertKeyAlgorithm.RSA_2048
+        keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+        crlDistributionPointUrls: []
       }
     }
   });
 
   const caType = watch("configuration.type");
+
+  const crlUrlsFieldArray = useFieldArray({
+    control,
+    name: "configuration.crlDistributionPointUrls"
+  });
 
   useEffect(() => {
     if (ca && ca.type === CaType.INTERNAL) {
@@ -139,7 +182,10 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
             ca.configuration.keyAlgorithm as CertKeyAlgorithm
           )
             ? ca.configuration.keyAlgorithm
-            : CertKeyAlgorithm.RSA_2048
+            : CertKeyAlgorithm.RSA_2048,
+          crlDistributionPointUrls: (ca.configuration.crlDistributionPointUrls ?? []).map(
+            (value) => ({ value })
+          )
         }
       });
     } else {
@@ -157,7 +203,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           commonName: "",
           notAfter: getDateTenYearsFromToday(),
           maxPathLength: "-1",
-          keyAlgorithm: CertKeyAlgorithm.RSA_2048
+          keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+          crlDistributionPointUrls: []
         }
       });
     }
@@ -183,7 +230,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         status,
         configuration: {
           ...configuration,
-          maxPathLength: Number(configuration.maxPathLength)
+          maxPathLength: Number(configuration.maxPathLength),
+          crlDistributionPointUrls: configuration.crlDistributionPointUrls.map(({ value }) => value)
         }
       });
     }
@@ -433,6 +481,59 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
+          {!ca && (
+            <FormControl
+              label="CRL Distribution Points"
+              helperText={`Backup CRL URLs embedded in issued certificates. Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}.`}
+            >
+              <div className="flex flex-col gap-2">
+                {crlUrlsFieldArray.fields.map((field, index) => (
+                  <Controller
+                    key={field.id}
+                    control={control}
+                    name={`configuration.crlDistributionPointUrls.${index}.value`}
+                    render={({ field: inputField, fieldState: { error } }) => (
+                      <div className="flex items-start gap-2">
+                        <FormControl
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                          className="mb-0 flex-1"
+                        >
+                          <Input
+                            {...inputField}
+                            placeholder="https://crl.example.com/internal-ca.crl"
+                          />
+                        </FormControl>
+                        <Tooltip content="Remove URL" position="right">
+                          <IconButton
+                            ariaLabel="Remove URL"
+                            colorSchema="danger"
+                            variant="plain"
+                            size="sm"
+                            className="mt-1.5"
+                            onClick={() => crlUrlsFieldArray.remove(index)}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
+                    )}
+                  />
+                ))}
+                <Button
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  size="xs"
+                  variant="outline_bg"
+                  isDisabled={
+                    crlUrlsFieldArray.fields.length >= MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
+                  }
+                  onClick={() => crlUrlsFieldArray.append({ value: "" })}
+                >
+                  Add URL
+                </Button>
+              </div>
+            </FormControl>
+          )}
           <div className="flex items-center">
             <Button
               className="mr-4"

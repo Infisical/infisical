@@ -21,6 +21,8 @@ import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
   KMS_ROOT_CONFIG_UUID,
@@ -43,6 +45,7 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGetBulkKeyMaterialDTO,
   TGetKeyMaterialDTO,
   TGetPublicKeyDTO,
   TImportKeyMaterialDTO,
@@ -379,6 +382,24 @@ export const kmsServiceFactory = ({
     return kmsKey;
   };
 
+  const getBulkKeyMaterial = async ({ kmsIds }: TGetBulkKeyMaterialDTO) => {
+    const kmsDocs = await kmsDAL.findByIdsWithAssociatedKms(kmsIds);
+
+    return kmsDocs.map((kmsDoc) => {
+      if (kmsDoc.isReserved) {
+        throw new BadRequestError({ message: `Cannot get key material for reserved key [kmsId=${kmsDoc.id}]` });
+      }
+      if (kmsDoc.externalKms) {
+        throw new BadRequestError({ message: `Cannot get key material for external key [kmsId=${kmsDoc.id}]` });
+      }
+
+      const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+      const keyMaterial = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+      return { kmsId: kmsDoc.id, name: kmsDoc.name, keyMaterial };
+    });
+  };
+
   const importKeyMaterial = async (
     { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
@@ -648,7 +669,8 @@ export const kmsServiceFactory = ({
     return key.id;
   };
 
-  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
+  /** Single project row read; reuses snapshot for data-key path to avoid duplicate findById. */
+  const $getProjectSecretManagerKmsKeyIdAndProject = async (projectId: string, trx?: Knex) => {
     const project = await projectDAL.findById(projectId, trx);
     if (!project) {
       throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -658,7 +680,8 @@ export const kmsServiceFactory = ({
       if (trx) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectKeyCreation(projectId)]);
-        return $createProjectKmsKey(projectId, trx);
+        const kmsKeyId = await $createProjectKmsKey(projectId, trx);
+        return { kmsKeyId, project };
       }
 
       const kmsKeyId = await projectDAL.transaction(async (tx) => {
@@ -667,10 +690,15 @@ export const kmsServiceFactory = ({
         return $createProjectKmsKey(projectId, tx);
       });
 
-      return kmsKeyId;
+      return { kmsKeyId, project };
     }
 
-    return project.kmsSecretManagerKeyId;
+    return { kmsKeyId: project.kmsSecretManagerKeyId, project };
+  };
+
+  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
+    const { kmsKeyId } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx);
+    return kmsKeyId;
   };
 
   // Helper function to create project data key within a transaction
@@ -690,8 +718,8 @@ export const kmsServiceFactory = ({
   };
 
   const $getProjectSecretManagerKmsDataKey = async (projectId: string, trx?: Knex) => {
-    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId, trx);
-    let project = await projectDAL.findById(projectId, trx);
+    const { kmsKeyId, project: projectSnapshot } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx);
+    let project = projectSnapshot;
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
       let projectDataKey: Buffer | undefined;
@@ -892,7 +920,9 @@ export const kmsServiceFactory = ({
   };
 
   const getProjectKeyBackup = async (projectId: string) => {
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project) {
       throw new NotFoundError({
         message: `Project with ID '${projectId}' not found`
@@ -945,6 +975,12 @@ export const kmsServiceFactory = ({
         message: "Backup does not belong to project"
       });
     }
+
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(backupKmsKeyId);
+    if (kmsDoc.orgId !== project.orgId)
+      throw new ForbiddenRequestError({
+        message: "Backup does not belong to project"
+      });
 
     const kmsDecryptor = await decryptWithKmsKey({ kmsId: backupKmsKeyId });
     const dataKey = await kmsDecryptor({
@@ -1078,6 +1114,7 @@ export const kmsServiceFactory = ({
     getKmsById,
     createCipherPairWithDataKey,
     getKeyMaterial,
+    getBulkKeyMaterial,
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,

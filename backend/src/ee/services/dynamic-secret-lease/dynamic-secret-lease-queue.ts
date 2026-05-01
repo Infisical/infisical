@@ -1,8 +1,7 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { DisableRotationErrors } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { getConfig } from "@app/lib/config/env";
 import { applyJitter } from "@app/lib/delay";
-import { NotFoundError } from "@app/lib/errors";
+import { DisableRotationErrors, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";

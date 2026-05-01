@@ -454,6 +454,62 @@ export const registerSecretRotationEndpoints = <
 
   server.route({
     method: "POST",
+    url: "/:rotationId/move",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: `move${rotationTypeId}Rotation`,
+      tags: [ApiDocsTags.SecretRotations],
+      description: `Move the specified ${rotationType} Rotation to a different secret path or environment.`,
+      params: z.object({
+        rotationId: z.string().uuid().describe(SecretRotations.UPDATE(type).rotationId)
+      }),
+      body: z.object({
+        destinationEnvironment: z.string().trim().min(1, "Destination environment required"),
+        destinationSecretPath: z.string().trim().min(1, "Destination secret path required"),
+        overwriteDestination: z.boolean().default(false)
+      }),
+      response: {
+        200: z.object({ secretRotation: responseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { rotationId } = req.params;
+      const { destinationEnvironment, destinationSecretPath, overwriteDestination } = req.body;
+
+      const { secretRotation, sourceEnvironment, sourceSecretPath } =
+        await server.services.secretRotationV2.moveSecretRotation(
+          { rotationId, type, destinationEnvironment, destinationSecretPath, overwriteDestination },
+          req.permission
+        );
+
+      const movedRotation = secretRotation as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: movedRotation.projectId,
+        event: {
+          type: EventType.MOVE_SECRET_ROTATION,
+          metadata: {
+            type,
+            rotationId,
+            sourceEnvironment,
+            sourceSecretPath,
+            destinationEnvironment,
+            destinationSecretPath
+          }
+        }
+      });
+
+      return { secretRotation: movedRotation };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/:rotationId/rotate-secrets",
     config: {
       rateLimit: writeLimit

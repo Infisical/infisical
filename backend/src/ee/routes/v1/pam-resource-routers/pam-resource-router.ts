@@ -3,10 +3,6 @@ import { z } from "zod";
 import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  ActiveDirectoryResourceListItemSchema,
-  SanitizedActiveDirectoryResourceSchema
-} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
-import {
   AwsIamResourceListItemSchema,
   SanitizedAwsIamResourceSchema
 } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
@@ -27,6 +23,7 @@ import {
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource, PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
+import { PAM_AI_INSIGHT_MODELS } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import {
   PostgresResourceListItemSchema,
   SanitizedPostgresResourceSchema
@@ -57,8 +54,7 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedAwsIamResourceSchema,
   SanitizedMongoDBResourceSchema,
   SanitizedRedisResourceSchema,
-  SanitizedWindowsResourceSchema,
-  SanitizedActiveDirectoryResourceSchema
+  SanitizedWindowsResourceSchema
 ]);
 
 const SanitizedResourceWithFavoriteSchema = z.intersection(
@@ -75,11 +71,36 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   AwsIamResourceListItemSchema,
   MongoDBResourceListItemSchema,
   RedisResourceListItemSchema,
-  WindowsResourceListItemSchema,
-  ActiveDirectoryResourceListItemSchema
+  WindowsResourceListItemSchema
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/ai-insights/models",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "List available AI models for PAM session insights, grouped by app connection type",
+      response: {
+        200: z.object({
+          models: z
+            .object({
+              connectionApp: z.string(),
+              id: z.string(),
+              label: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: () => {
+      return { models: PAM_AI_INSIGHT_MODELS };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/options",

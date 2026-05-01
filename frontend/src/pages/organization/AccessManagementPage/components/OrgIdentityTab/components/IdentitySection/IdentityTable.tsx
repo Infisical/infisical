@@ -16,10 +16,22 @@ import { LastLoginSection } from "@app/components/organization/LastLoginSection"
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
@@ -27,27 +39,15 @@ import {
   SelectValue,
   Skeleton,
   SubOrgIcon,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -207,23 +207,23 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             placeholder={`Search ${isSubOrganization ? "sub-organization" : "organization"} machine identities by name...`}
           />
         </InputGroup>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
               variant={
                 // eslint-disable-next-line no-nested-ternary
                 isTableFiltered ? (isSubOrganization ? "sub-org" : "org") : "outline"
               }
             >
               <FilterIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
-            <UnstableDropdownMenuLabel>
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+            <DropdownMenuLabel>
               Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
-            </UnstableDropdownMenuLabel>
+            </DropdownMenuLabel>
             {roles?.map(({ id, slug, name }) => (
-              <UnstableDropdownMenuCheckboxItem
+              <DropdownMenuCheckboxItem
                 key={id}
                 checked={filter.roles.includes(slug)}
                 onClick={(e) => {
@@ -232,32 +232,32 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                 }}
               >
                 {name}
-              </UnstableDropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem>
             ))}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {!isPending && !data?.identities?.length ? (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {isFiltered
                 ? `No ${isSubOrganization ? "sub-" : ""}organization machine identities match search filter`
                 : `No machine identities have been added to this ${isSubOrganization ? "sub-" : ""}organization`}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {isFiltered
                 ? "Adjust your search or filter criteria."
                 : "Add a machine identity to get started."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead
                   className="w-1/2 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                 >
@@ -271,8 +271,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       orderBy !== OrgIdentityOrderBy.Name && "opacity-30"
                     )}
                   />
-                </UnstableTableHead>
-                <UnstableTableHead
+                </TableHead>
+                <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
@@ -286,30 +286,30 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       orderBy !== OrgIdentityOrderBy.Role && "opacity-30"
                     )}
                   />
-                </UnstableTableHead>
-                {isSubOrganization && <UnstableTableHead>Managed By</UnstableTableHead>}
-                <UnstableTableHead className="w-5" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                </TableHead>
+                {isSubOrganization && <TableHead>Managed By</TableHead>}
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isPending &&
                 Array.from({ length: perPage }).map((_, i) => (
-                  <UnstableTableRow key={`skeleton-${i + 1}`}>
-                    <UnstableTableCell>
+                  <TableRow key={`skeleton-${i + 1}`}>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
+                    </TableCell>
                     {isSubOrganization && (
-                      <UnstableTableCell>
+                      <TableCell>
                         <Skeleton className="h-4 w-full" />
-                      </UnstableTableCell>
+                      </TableCell>
                     )}
-                    <UnstableTableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-4" />
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                    </TableCell>
+                  </TableRow>
                 ))}
               {!isPending &&
                 data?.identities?.map(
@@ -323,7 +323,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     const isSubOrgIdentity = currentOrg.id === orgId;
 
                     return (
-                      <UnstableTableRow
+                      <TableRow
                         key={`identity-${id}`}
                         className="cursor-pointer"
                         onClick={() =>
@@ -336,7 +336,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           })
                         }
                       >
-                        <UnstableTableCell isTruncatable className="group">
+                        <TableCell isTruncatable className="group">
                           {name}
                           {lastLoginAuthMethod && lastLoginTime && (
                             <Tooltip>
@@ -351,8 +351,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                               </TooltipContent>
                             </Tooltip>
                           )}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Edit}
                             a={OrgPermissionSubjects.Identity}
@@ -385,9 +385,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                               </Select>
                             )}
                           </OrgPermissionCan>
-                        </UnstableTableCell>
+                        </TableCell>
                         {isSubOrganization && (
-                          <UnstableTableCell>
+                          <TableCell>
                             <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
                               {isSubOrgIdentity ? (
                                 <>
@@ -401,26 +401,26 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                 </>
                               )}
                             </Badge>
-                          </UnstableTableCell>
+                          </TableCell>
                         )}
-                        <UnstableTableCell>
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
                                 variant="ghost"
                                 size="xs"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent align="end">
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
                               <OrgPermissionCan
                                 I={OrgPermissionIdentityActions.Edit}
                                 a={OrgPermissionSubjects.Identity}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate({
@@ -435,7 +435,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   >
                                     <EditIcon />
                                     Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>
                               <OrgPermissionCan
@@ -443,7 +443,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                 a={OrgPermissionSubjects.Identity}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     variant="danger"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -458,20 +458,20 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                     {isSubOrgIdentity
                                       ? "Delete Machine Identity"
                                       : "Remove From Sub-Organization"}
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     );
                   }
                 )}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
           {totalCount > 0 && (
-            <UnstablePagination
+            <Pagination
               count={totalCount}
               page={page}
               perPage={perPage}

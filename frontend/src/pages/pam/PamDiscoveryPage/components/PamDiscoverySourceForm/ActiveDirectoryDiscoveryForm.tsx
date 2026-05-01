@@ -5,22 +5,22 @@ import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
   SheetFooter,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableAlertTitle,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { PamDiscoveryType, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
@@ -194,11 +194,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
-                      {...field}
-                      isError={Boolean(error)}
-                      placeholder="corp.example.com"
-                    />
+                    <Input {...field} isError={Boolean(error)} placeholder="corp.example.com" />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -222,7 +218,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       isError={Boolean(error)}
                       placeholder="dc01.corp.example.com"
@@ -253,7 +249,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <UnstableInput
+                      <Input
                         {...field}
                         placeholder="Administrator"
                         isError={Boolean(error)}
@@ -283,7 +279,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <UnstableInput
+                      <Input
                         {...field}
                         placeholder="••••••"
                         isError={Boolean(error)}
@@ -326,16 +322,16 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
               )}
             />
             {discoverDependencies && (
-              <UnstableAlert variant="info">
+              <Alert variant="info">
                 <TriangleAlertIcon />
-                <UnstableAlertTitle>Warning</UnstableAlertTitle>
-                <UnstableAlertDescription>
+                <AlertTitle>Warning</AlertTitle>
+                <AlertDescription>
                   When an account password is rotated, discovered Windows Services, Scheduled Tasks,
                   and IIS App Pools that run under that account will have their credentials
                   automatically updated to match. You can disable this per-dependency on the
                   account&apos;s dependencies tab.
-                </UnstableAlertDescription>
-              </UnstableAlert>
+                </AlertDescription>
+              </Alert>
             )}
           </div>
 
@@ -361,12 +357,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
-                      {...field}
-                      type="number"
-                      placeholder="636"
-                      isError={Boolean(error)}
-                    />
+                    <Input {...field} type="number" placeholder="636" isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -454,7 +445,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       placeholder="dc.corp.example.com"
                       disabled={!useLdaps || !ldapRejectUnauthorized}
@@ -487,12 +478,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
-                      {...field}
-                      type="number"
-                      placeholder="5986"
-                      isError={Boolean(error)}
-                    />
+                    <Input {...field} type="number" placeholder="5986" isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>

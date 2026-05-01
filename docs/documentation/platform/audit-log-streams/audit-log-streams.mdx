@@ -6,10 +6,24 @@ description: "Learn how to stream Infisical Audit Logs to external logging provi
 <Info>
     Audit log streams is a paid feature.
 
-    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical, then you should contact team@infisical.com to purchase an enterprise license to use it.
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 Infisical Audit Log Streaming enables you to transmit your organization's audit logs to external logging providers for monitoring and analysis.
+
+### Disabling PostgreSQL Audit Log Storage
+
+If you're using audit log streams as your primary log destination and don't need audit logs stored in PostgreSQL, you can disable PostgreSQL audit log storage by setting the following environment variable:
+
+```bash
+DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true
+```
+
+This prevents audit logs from being written to PostgreSQL while still streaming them to all configured log stream destinations. If you're also using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), logs will continue to be inserted into ClickHouse as well.
+
+<Info>
+  See the [environment variables reference](/self-hosting/configuration/envars) for all available audit log configuration options.
+</Info>
 
 ## Overview
 
@@ -108,7 +122,6 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
                 "userAgentType": "web",
                 "eventType": "get-secrets",
                 "eventMetadata": {},
-                "projectName": "MyProject",
                 "orgId": "00000000-0000-0000-0000-000000000000",
                 "projectId": "00000000-0000-0000-0000-000000000000",
                 "TimeGenerated": "2025-01-01T00:00:00.000Z"
@@ -259,7 +272,7 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
 
         				![splunk http collector](/images/platform/audit-log-streams/splunk-http-collector.png)
 
-                Click on **New Token** in the top left.
+                Click on **New Token** in the top right.
 
         				![splunk new token](/images/platform/audit-log-streams/splunk-new-token.png)
 
@@ -312,8 +325,7 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
   "createdAt": "2025-01-15T01:11:25.552Z",
   "updatedAt": "2025-01-15T01:11:25.552Z",
   "orgId": "785649f1-ff4b-4ef9-a40a-9b9878e46e57",
-  "projectId": "09bfcc01-0917-4bea-9c7a-2d320584d5b1",
-  "projectName": "example-project"
+  "projectId": "09bfcc01-0917-4bea-9c7a-2d320584d5b1"
 }
 ```
 
@@ -419,8 +431,4 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
     The `projectId` field will only be present if the event occurred at the project level, not the organization level.
 </ParamField>
 
-<ParamField path="projectName" type="string">
-    The name of the project where the event occurred.
 
-    The `projectName` field will only be present if the event occurred at the project level, not the organization level.
-</ParamField>

@@ -13,8 +13,17 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
+type TAggregateQuery = {
+  orgId: string;
+  projectId: string;
+  eventTypes: EventType[];
+  startDate: string;
+  endDate: string;
+};
+
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
+  getApproximateRowCount: () => Promise<number>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -26,6 +35,15 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
     },
     tx?: knex.Knex
   ) => Promise<TAuditLogs[]>;
+  countByDateAndActor: (
+    arg: TAggregateQuery,
+    tx?: knex.Knex
+  ) => Promise<{ date: string; actor: string; actorMetadata: unknown; count: number }[]>;
+  countByIpAddress: (arg: TAggregateQuery, tx?: knex.Knex) => Promise<{ ipAddress: string; count: number }[]>;
+  countByAuthMethod: (
+    arg: TAggregateQuery,
+    tx?: knex.Knex
+  ) => Promise<{ actor: string; actorMetadata: unknown; count: number }[]>;
 }
 
 type TFindQuery = {
@@ -202,10 +220,40 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
+  const getApproximateRowCount: TAuditLogDALFactory["getApproximateRowCount"] = async () => {
+    try {
+      // Sum across parent + all partitions via pg_inherits
+      const result = await db.raw<{ rows: Array<{ count: string | number }> }>(
+        `SELECT COALESCE(SUM(s.n_live_tup), 0)::bigint AS count
+         FROM pg_stat_user_tables s
+         JOIN pg_class c ON s.relname = c.relname
+         WHERE c.oid = ?::regclass
+            OR c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = ?::regclass)`,
+        [TableName.AuditLog, TableName.AuditLog]
+      );
+
+      const count = Number(result.rows?.[0]?.count ?? 0);
+      if (count > 0) return count;
+
+      // Fallback: reltuples (handles never-analyzed tables returning -1)
+      const fallback = await db.raw<{ rows: Array<{ count: string | number }> }>(
+        `SELECT COALESCE(SUM(GREATEST(c.reltuples, 0)), 0)::bigint AS count
+         FROM pg_class c
+         WHERE c.oid = ?::regclass
+            OR c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = ?::regclass)`,
+        [TableName.AuditLog, TableName.AuditLog]
+      );
+      return Number(fallback.rows?.[0]?.count ?? 0);
+    } catch (error) {
+      logger.error(error, "Failed to get approximate audit log row count");
+      return 0;
+    }
+  };
+
   const create: TAuditLogDALFactory["create"] = async (tx) => {
     const config = getConfig();
 
-    if (config.DISABLE_AUDIT_LOG_STORAGE) {
+    if (config.DISABLE_POSTGRES_AUDIT_LOG_STORAGE) {
       return {
         ...tx,
         id: uuidv4(),
@@ -217,5 +265,111 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
-  return { ...auditLogOrm, create, pruneAuditLog, find };
+  const countByDateAndActor = async (
+    {
+      orgId,
+      projectId,
+      eventTypes,
+      startDate,
+      endDate
+    }: {
+      orgId: string;
+      projectId: string;
+      eventTypes: EventType[];
+      startDate: string;
+      endDate: string;
+    },
+    tx?: knex.Knex
+  ) => {
+    const rows = await (tx || db.replicaNode())(TableName.AuditLog)
+      .where(`${TableName.AuditLog}.orgId`, orgId)
+      .where(`${TableName.AuditLog}.projectId`, projectId)
+      .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+      .select(
+        db.raw(`DATE("${TableName.AuditLog}"."createdAt") as date`),
+        `${TableName.AuditLog}.actor`,
+        `${TableName.AuditLog}.actorMetadata`
+      )
+      .groupByRaw(
+        `DATE("${TableName.AuditLog}"."createdAt"), "${TableName.AuditLog}"."actor", "${TableName.AuditLog}"."actorMetadata"`
+      )
+      .select(db.raw("COUNT(*)::int as count"))
+      .timeout(1000 * 120);
+
+    return rows as { date: string; actor: string; actorMetadata: unknown; count: number }[];
+  };
+
+  const countByIpAddress = async (
+    {
+      orgId,
+      projectId,
+      eventTypes,
+      startDate,
+      endDate
+    }: {
+      orgId: string;
+      projectId: string;
+      eventTypes: EventType[];
+      startDate: string;
+      endDate: string;
+    },
+    tx?: knex.Knex
+  ) => {
+    const rows = await (tx || db.replicaNode())(TableName.AuditLog)
+      .where(`${TableName.AuditLog}.orgId`, orgId)
+      .where(`${TableName.AuditLog}.projectId`, projectId)
+      .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+      .whereNotNull(`${TableName.AuditLog}.ipAddress`)
+      .select(`${TableName.AuditLog}.ipAddress`)
+      .groupBy(`${TableName.AuditLog}.ipAddress`)
+      .select(db.raw("COUNT(*)::int as count"))
+      .timeout(1000 * 120);
+
+    return rows as { ipAddress: string; count: number }[];
+  };
+
+  const countByAuthMethod = async (
+    {
+      orgId,
+      projectId,
+      eventTypes,
+      startDate,
+      endDate
+    }: {
+      orgId: string;
+      projectId: string;
+      eventTypes: EventType[];
+      startDate: string;
+      endDate: string;
+    },
+    tx?: knex.Knex
+  ) => {
+    const rows = await (tx || db.replicaNode())(TableName.AuditLog)
+      .where(`${TableName.AuditLog}.orgId`, orgId)
+      .where(`${TableName.AuditLog}.projectId`, projectId)
+      .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+      .select(`${TableName.AuditLog}.actor`, `${TableName.AuditLog}.actorMetadata`)
+      .groupBy(`${TableName.AuditLog}.actor`, `${TableName.AuditLog}.actorMetadata`)
+      .select(db.raw("COUNT(*)::int as count"))
+      .timeout(1000 * 120);
+
+    return rows as { actor: string; actorMetadata: unknown; count: number }[];
+  };
+
+  return {
+    ...auditLogOrm,
+    create,
+    pruneAuditLog,
+    getApproximateRowCount,
+    find,
+    countByDateAndActor,
+    countByIpAddress,
+    countByAuthMethod
+  };
 };

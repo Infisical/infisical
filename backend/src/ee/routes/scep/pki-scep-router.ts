@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const MAX_SCEP_MESSAGE_SIZE = 64 * 1024; // 64KB
 
@@ -18,6 +21,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
   server.addHook("onRequest", async (req) => {
     if (
       req.method === "POST" &&
+      req.url.includes("/pkiclient.exe") &&
       (!req.headers["content-type"] || req.headers["content-type"] === "application/octet-stream")
     ) {
       // eslint-disable-next-line no-param-reassign
@@ -111,6 +115,47 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
 
       void res.header("Content-Type", "application/x-pki-message");
       return res.send(response);
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:profileId/challenge",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        profileId: z.string().uuid()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      const { profileId } = req.params;
+
+      const result = await server.services.pkiScep.generateDynamicChallenge({
+        profileId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      void server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED,
+          metadata: {
+            profileId,
+            profileSlug: result.profileSlug,
+            expiresAt: result.expiresAt
+          }
+        }
+      });
+
+      void res.header("Content-Type", "text/plain");
+      return res.send(result.challenge);
     }
   });
 };

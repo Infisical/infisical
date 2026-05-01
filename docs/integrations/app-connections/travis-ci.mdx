@@ -1,0 +1,104 @@
+---
+title: "Travis CI Connection"
+description: "Learn how to configure a Travis CI Connection for Infisical."
+---
+
+Infisical supports connecting to [Travis CI](https://www.travis-ci.com/) using a personal API Token.
+
+<Note>
+  The API Token must belong to a user with sufficient permissions to manage
+  environment variables on the repositories you plan to sync with Infisical.
+</Note>
+
+## Create a Travis CI API Token
+
+<Steps>
+  <Step title="Sign in to Travis CI and open your profile">
+    Navigate to [https://app.travis-ci.com](https://app.travis-ci.com) and click your profile avatar in the top-right corner, then select **Settings**.
+  </Step>
+  <Step title="Copy your API Token">
+    In the **Settings** tab, locate the **API authentication** section. Click **Copy Token** to reveal and copy your personal API token.
+
+    ![Copy Travis CI API Token](/images/app-connections/travis-ci/travis-ci-copy-token.png)
+
+    <Note>
+      Treat this token like a password — it grants access to every repository you
+      have permission to administer. Store it somewhere safe; Infisical will
+      encrypt it at rest once the connection is created.
+    </Note>
+  </Step>
+</Steps>
+
+## Create a Travis CI Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, open the **Integrations** tab in the target project and select **App Connections**.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Travis CI Connection">
+        Click **+ Add Connection** and choose **Travis CI Connection** from the list.
+
+        ![Select Travis CI Connection](/images/app-connections/travis-ci/travis-ci-app-connection-option.png)
+      </Step>
+      <Step title="Fill out the Travis CI Connection form">
+        Complete the form by providing:
+        - A descriptive **Name** for the connection
+        - An optional **Description**
+        - The **API Token** you copied from Travis CI
+
+        ![Travis CI Connection Form](/images/app-connections/travis-ci/travis-ci-app-connection-modal.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting, your **Travis CI Connection** is ready to be used by Secret Syncs and other Infisical features.
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a Travis CI Connection via API, send a request to the [Create Travis CI Connection](/api-reference/endpoints/app-connections/travis-ci/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/travis-ci \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-travis-ci-connection",
+                "method": "api-token",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "apiToken": "[API TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+          "name": "my-travis-ci-connection",
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2026-04-17T19:46:34.831Z",
+          "updatedAt": "2026-04-17T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "example-credentials-hash",
+          "app": "travis-ci",
+          "method": "api-token",
+          "credentials": {}
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>

@@ -1,8 +1,25 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ForwardIcon, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import { useDeleteSharedSecret } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -32,31 +49,51 @@ export const ShareSecretTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Shared Secrets</p>
-        <Button
-          colorSchema="primary"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            handlePopUpOpen("createSharedSecret");
-          }}
-        >
-          Share Secret
-        </Button>
-      </div>
-      <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Shared Secrets
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-sharing" />
+        </CardTitle>
+        <CardDescription>Manage and view your shared secrets</CardDescription>
+        <CardAction>
+          <Button
+            variant="org"
+            onClick={() => {
+              handlePopUpOpen("createSharedSecret");
+            }}
+          >
+            <ForwardIcon />
+            Share Secret
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
-        isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
-        title={`Delete ${
-          (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
-        } shared secret?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
-        deleteKey={(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name}
-        onClose={() => handlePopUpClose("deleteSharedSecretConfirmation")}
-        onDeleteApproved={onDeleteApproved}
-      />
-    </div>
+      <AlertDialog
+        open={popUp.deleteSharedSecretConfirmation.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete shared secret?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The shared secret link will no longer be accessible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={onDeleteApproved}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   );
 };

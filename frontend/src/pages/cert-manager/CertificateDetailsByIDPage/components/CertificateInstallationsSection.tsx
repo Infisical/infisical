@@ -4,18 +4,18 @@ import { format } from "date-fns";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
@@ -46,19 +46,17 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
 
   if (isPending) {
     return (
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Installations</UnstableCardTitle>
-          <UnstableCardDescription>
-            Locations where this certificate was discovered
-          </UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Installations</CardTitle>
+          <CardDescription>Locations where this certificate was discovered</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="flex h-40 w-full items-center justify-center">
             <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
           </div>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -69,25 +67,23 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
   const paginatedInstallations = installations || [];
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Installations</UnstableCardTitle>
-        <UnstableCardDescription>
-          Locations where this certificate was discovered
-        </UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent className="p-0">
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Name</UnstableTableHead>
-              <UnstableTableHead>Gateway</UnstableTableHead>
-              <UnstableTableHead>Last Seen</UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Installations</CardTitle>
+        <CardDescription>Locations where this certificate was discovered</CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Gateway</TableHead>
+              <TableHead>Last Seen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {paginatedInstallations.map((installation) => (
-              <UnstableTableRow
+              <TableRow
                 key={installation.id}
                 onClick={() =>
                   navigate({
@@ -100,19 +96,17 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
                   })
                 }
               >
-                <UnstableTableCell>
-                  {installation.name || getEndpoint(installation)}
-                </UnstableTableCell>
-                <UnstableTableCell>{getGatewayLabel(installation) || "N/A"}</UnstableTableCell>
-                <UnstableTableCell>
+                <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
+                <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
+                <TableCell>
                   {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}
-                </UnstableTableCell>
-              </UnstableTableRow>
+                </TableCell>
+              </TableRow>
             ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
         {Boolean(totalCount) && (
-          <UnstablePagination
+          <Pagination
             count={totalCount}
             page={page}
             perPage={perPage}
@@ -120,7 +114,7 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

@@ -57,6 +57,10 @@ export type TCmekGetPrivateKeyDTO = {
   keyId: string;
 };
 
+export type TCmekBulkGetPrivateKeysDTO = {
+  keyIds: string[];
+};
+
 export type TCmekSignDTO = {
   keyId: string;
   data: string;

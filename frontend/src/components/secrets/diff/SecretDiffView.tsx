@@ -7,10 +7,10 @@ import { twMerge } from "tailwind-merge";
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
 import {
   Badge,
+  IconButton,
   Tooltip as V3Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   HIDDEN_SECRET_VALUE,
@@ -117,7 +117,7 @@ const SecretValueRenderer = ({
       <div className="absolute top-[5px] right-1.5 z-10">
         <V3Tooltip>
           <TooltipTrigger asChild>
-            <UnstableIconButton
+            <IconButton
               variant="ghost"
               size="xs"
               className={twMerge(
@@ -127,7 +127,7 @@ const SecretValueRenderer = ({
               onClick={handleToggleVisibility}
             >
               {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-            </UnstableIconButton>
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent>{isVisible ? "Hide value" : "Reveal value"}</TooltipContent>
         </V3Tooltip>

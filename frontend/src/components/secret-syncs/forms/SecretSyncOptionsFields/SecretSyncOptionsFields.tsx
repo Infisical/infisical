@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {
   faCircleInfo,
@@ -27,14 +27,36 @@ type Props = {
 };
 
 export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
-  const { control, watch } = useFormContext<TSecretSyncForm>();
+  const { control, watch, setValue } = useFormContext<TSecretSyncForm>();
 
   const destination = watch("destination");
   const currentSyncOption = watch("syncOptions");
+  const vercelSensitive =
+    destination === SecretSync.Vercel
+      ? Boolean(watch("destinationConfig.sensitive" as never))
+      : false;
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
   const { syncOption } = useSecretSyncOption(destination);
+
+  // Vercel "sensitive" secrets cannot be read back, so importing destination secrets is impossible.
+  // Force the initial sync behavior to OverwriteDestination whenever sensitive is enabled.
+  useEffect(() => {
+    if (
+      vercelSensitive &&
+      currentSyncOption.initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination
+    ) {
+      setValue(
+        "syncOptions.initialSyncBehavior",
+        SecretSyncInitialSyncBehavior.OverwriteDestination
+      );
+    }
+  }, [vercelSensitive, currentSyncOption.initialSyncBehavior, setValue]);
+
+  const initialSyncBehaviorEntries = Object.entries(SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP).filter(
+    ([key]) => !vercelSensitive || key === SecretSyncInitialSyncBehavior.OverwriteDestination
+  );
 
   let AdditionalSyncOptionsFieldsComponent: ReactNode;
 
@@ -86,6 +108,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.CircleCI:
     case SecretSync.AzureEntraIdScim:
     case SecretSync.ExternalInfisical:
+    case SecretSync.Ona:
+    case SecretSync.TravisCI:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
@@ -132,7 +156,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                 label="Initial Sync Behavior"
               >
                 <Select
-                  isDisabled={!syncOption?.canImportSecrets}
+                  isDisabled={!syncOption?.canImportSecrets || vercelSensitive}
                   value={value}
                   onValueChange={(val) => onChange(val)}
                   className="w-full border border-mineshaft-500"
@@ -140,7 +164,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                   placeholder="Select an option..."
                   dropdownContainerClassName="max-w-none"
                 >
-                  {Object.entries(SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP).map(([key, details]) => {
+                  {initialSyncBehaviorEntries.map(([key, details]) => {
                     const { name } = details(destinationName);
 
                     return (
@@ -153,7 +177,14 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
               </FormControl>
             )}
           />
-          {!syncOption?.canImportSecrets ? (
+          {vercelSensitive && (
+            <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
+              <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
+              When secrets are marked as sensitive, Vercel does not allow them to be read back, so
+              only Overwrite Destination Secrets is supported.
+            </p>
+          )}
+          {!vercelSensitive && !syncOption?.canImportSecrets && (
             <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
               <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
               {destinationName} only supports overwriting destination secrets.{" "}
@@ -162,7 +193,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                   syncOption?.supportsDisableSecretDeletion !== false) &&
                 `Secrets not present in Infisical will be removed from the destination. Consider adding a key schema or disabling secret deletion if you do not want existing secrets to be removed from ${destinationName}.`}
             </p>
-          ) : (
+          )}
+          {!vercelSensitive &&
+            syncOption?.canImportSecrets &&
             currentSyncOption.initialSyncBehavior ===
               SecretSyncInitialSyncBehavior.OverwriteDestination &&
             !currentSyncOption.disableSecretDeletion && (
@@ -173,8 +206,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                 sync behavior to import destination secrets. Alternatively, configure a key schema
                 or disable secret deletion below to have Infisical ignore these secrets.
               </p>
-            )
-          )}
+            )}
         </>
       )}
       {syncOption?.supportsKeySchema !== false && (

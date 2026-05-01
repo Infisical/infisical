@@ -330,9 +330,11 @@ export const useGetIdentityLdapAuth = (
   });
 };
 
-export const useGetIdentityTokensTokenAuth = (identityId: string) => {
+export const useGetIdentityTokensTokenAuth = (
+  identityId: string,
+  options?: TReactQueryOptions["options"]
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId),
     queryFn: async () => {
       const {
@@ -341,7 +343,11 @@ export const useGetIdentityTokensTokenAuth = (identityId: string) => {
         `/api/v1/auth/token-auth/identities/${identityId}/tokens`
       );
       return tokens;
-    }
+    },
+    staleTime: 0,
+    gcTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 

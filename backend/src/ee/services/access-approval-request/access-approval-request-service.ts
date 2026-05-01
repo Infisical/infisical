@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
@@ -7,6 +8,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
@@ -26,14 +29,19 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import {
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
@@ -87,25 +95,6 @@ export const accessApprovalRequestServiceFactory = ({
   projectSlackConfigDAL,
   notificationService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
-  const $getEnvironmentFromPermissions = (permissions: unknown): string | null => {
-    if (!Array.isArray(permissions) || permissions.length === 0) {
-      return null;
-    }
-
-    const firstPermission = permissions[0] as unknown[];
-    if (!Array.isArray(firstPermission) || firstPermission.length < 3) {
-      return null;
-    }
-
-    const metadata = firstPermission[2] as Record<string, unknown>;
-    if (typeof metadata === "object" && metadata !== null && "environment" in metadata) {
-      const env = metadata.environment;
-      return typeof env === "string" ? env : null;
-    }
-
-    return null;
-  };
-
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -356,7 +345,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to modify this request" });
     }
 
-    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
+      projectDAL.findById(accessApprovalRequest.projectId)
+    );
 
     if (!project) {
       throw new NotFoundError({
@@ -382,9 +373,25 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
-    const { envSlug, secretPath, accessTypes } = verifyRequestedPermissions({
-      permissions: accessApprovalRequest.permissions
-    });
+    if (policy.maxTimePeriod) {
+      if (ms(temporaryRange) > ms(policy.maxTimePeriod)) {
+        throw new BadRequestError({
+          message: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`
+        });
+      }
+    }
+
+    let envSlug = "unknown";
+    let secretPath = "/";
+    let accessTypes: string[] = [];
+    try {
+      const verified = verifyRequestedPermissions({ permissions: accessApprovalRequest.permissions });
+      envSlug = verified.envSlug;
+      secretPath = verified.secretPath;
+      accessTypes = verified.accessTypes;
+    } catch {
+      // Legacy request with mismatched permissions -- allow update to proceed with fallback values for notifications
+    }
 
     const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
       const approvalRequest = await accessApprovalRequestDAL.updateById(
@@ -484,7 +491,7 @@ export const accessApprovalRequestServiceFactory = ({
       return approvalRequest;
     });
 
-    return { request: approval };
+    return { request: approval, projectId: accessApprovalRequest.projectId };
   };
 
   const listApprovalRequests: TAccessApprovalRequestServiceFactory["listApprovalRequests"] = async ({
@@ -499,7 +506,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -508,8 +515,17 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
+
+    if (!canReadAllApprovalRequests) {
+      requests = requests.filter((request) => request.requestedByUserId === actorId);
+    }
 
     if (authorUserId) {
       requests = requests.filter((request) => request.requestedByUserId === authorUserId);
@@ -520,10 +536,11 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     requests = requests.map((request) => {
-      const permissionEnvironment = $getEnvironmentFromPermissions(request.permissions);
-
-      if (permissionEnvironment) {
-        request.environmentName = permissionEnvironment;
+      try {
+        const { envSlug: requestEnvSlug } = verifyRequestedPermissions({ permissions: request.permissions });
+        request.environmentName = requestEnvSlug;
+      } catch {
+        // Leave environmentName as-is if permissions are malformed (legacy data)
       }
       return request;
     });
@@ -552,19 +569,29 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const permissionEnvironment = $getEnvironmentFromPermissions(permissions);
-    if (
-      !permissionEnvironment ||
-      (!environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED)
-    ) {
+    // Validate permissions strictly when approving. Legacy requests with mismatched
+    // env/paths will fail here, but can still be rejected to clear them out
+    let permissionEnvironment: string | undefined;
+    try {
+      const verified = verifyRequestedPermissions({ permissions });
+      permissionEnvironment = verified.envSlug;
+    } catch (err) {
+      if (status === ApprovalStatus.APPROVED) {
+        throw err;
+      }
+    }
+
+    if (permissionEnvironment && !environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED) {
       throw new BadRequestError({
         message: `The original policy ${policy.name} is not attached to environment '${permissionEnvironment}'.`
       });
     }
-    const environment = await projectEnvDAL.findOne({
-      projectId: accessApprovalRequest.projectId,
-      slug: permissionEnvironment
-    });
+    const environment = permissionEnvironment
+      ? await projectEnvDAL.findOne({
+          projectId: accessApprovalRequest.projectId,
+          slug: permissionEnvironment
+        })
+      : undefined;
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor,
@@ -608,7 +635,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
 
-    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
+      projectDAL.findById(accessApprovalRequest.projectId)
+    );
     if (!project) {
       throw new NotFoundError({ message: "The project associated with this access request was not found." });
     }
@@ -755,11 +784,14 @@ export const accessApprovalRequestServiceFactory = ({
           }
           await accessApprovalRequestDAL.updateById(
             accessApprovalRequest.id,
-            { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
+            {
+              privilegeId: privilegeIdToSet,
+              status: ApprovalStatus.APPROVED,
+              approvedAt: new Date(),
+              approvedByUserId: actorId
+            },
             tx
           );
-
-          await permissionService.invalidateProjectPermissionCache(accessApprovalRequest.projectId, tx);
         }
       }
 
@@ -816,7 +848,73 @@ export const accessApprovalRequestServiceFactory = ({
       return reviewForThisActorProcessing;
     });
 
-    return { ...reviewStatus, projectId: accessApprovalRequest.projectId };
+    return { ...reviewStatus, projectId: accessApprovalRequest.projectId, policyId: accessApprovalRequest.policyId };
+  };
+
+  const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
+    const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
+    if (!accessApprovalRequest)
+      throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accessApprovalRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const targetUser = await userDAL.findById(accessApprovalRequest.requestedByUserId);
+    if (!targetUser) throw new NotFoundError({ message: "Target user not found" });
+
+    const memberSubject = subject(ProjectPermissionSub.Member, {
+      userEmail: targetUser.email ?? undefined
+    });
+
+    const canAssignAdditionalPrivileges = permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      memberSubject
+    );
+    const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
+    const isApprover = accessApprovalRequest.policy.approvers.some((approver) => approver.userId === actorId);
+
+    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && !isApprover) {
+      throw new ForbiddenRequestError({
+        message: "You do not have permission to revoke additional privileges for this user"
+      });
+    }
+
+    if (accessApprovalRequest.status !== ApprovalStatus.APPROVED) {
+      throw new BadRequestError({ message: "Only approved requests can be revoked" });
+    }
+
+    const updatedRequest = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const result = await accessApprovalRequestDAL.updateById(
+        requestId,
+        {
+          status: ApprovalStatus.REVOKED,
+          revokedAt: new Date(),
+          revokedByUserId: actorId,
+          privilegeId: null
+        },
+        tx
+      );
+
+      if (accessApprovalRequest.privilegeId) {
+        await additionalPrivilegeDAL.deleteById(accessApprovalRequest.privilegeId, tx);
+      }
+
+      return result;
+    });
+
+    return { request: updatedRequest, projectId: accessApprovalRequest.projectId };
   };
 
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
@@ -830,7 +928,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -839,7 +937,16 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+
+    const count = await accessApprovalRequestDAL.getCount({
+      projectId: project.id,
+      policyId,
+      requestedByUserId: canReadAllApprovalRequests ? undefined : actorId
+    });
 
     return { count };
   };
@@ -849,6 +956,7 @@ export const accessApprovalRequestServiceFactory = ({
     updateAccessApprovalRequest,
     listApprovalRequests,
     reviewAccessRequest,
+    revokeAccessRequest,
     getCount
   };
 };

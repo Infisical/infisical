@@ -1,9 +1,11 @@
 import {
   Bell,
   BookCheck,
-  Cable,
+  FileCheck,
   FileKey,
   FileText,
+  Key,
+  LayoutDashboard,
   Monitor,
   PenTool,
   Plug,
@@ -13,18 +15,19 @@ import {
   ShieldCheck
 } from "lucide-react";
 
+import { SidebarCollapsibleGroup, SidebarMenu } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import {
   useListWorkspaceCertificateTemplates,
   useListWorkspacePkiSubscribers
 } from "@app/hooks/api";
 
-import { ProjectNavList } from "./ProjectNavLink";
+import { ProjectNavLink, ProjectNavList } from "./ProjectNavLink";
 import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
-  CERT_CODE_SIGNING_SUBMENU,
   CERT_DISCOVERY_SUBMENU,
+  CERT_INTEGRATIONS_SUBMENU,
   CERT_SETTINGS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU
 } from "./submenus";
@@ -43,7 +46,19 @@ export const CertManagerNav = ({
   });
   const templates = templatesData?.certificateTemplates || [];
 
-  const items: NavItem[] = [
+  const dashboardItem: NavItem = {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    pathSuffix: "overview"
+  };
+
+  const certInfraItems: NavItem[] = [
+    {
+      label: "Certificate Authorities",
+      icon: ShieldCheck,
+      pathSuffix: "certificate-authorities",
+      activeMatch: /\/ca\//
+    },
     {
       label: "Certificates",
       icon: FileKey,
@@ -57,19 +72,6 @@ export const CertManagerNav = ({
       activeMatch: /\/discovery/,
       submenu: CERT_DISCOVERY_SUBMENU
     },
-    {
-      label: "Certificate Authorities",
-      icon: ShieldCheck,
-      pathSuffix: "certificate-authorities",
-      activeMatch: /\/ca\//
-    },
-    {
-      label: "Code Signing",
-      icon: PenTool,
-      pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/,
-      submenu: CERT_CODE_SIGNING_SUBMENU
-    },
     { label: "Alerting", icon: Bell, pathSuffix: "alerting" },
     {
       label: "Approvals",
@@ -77,8 +79,6 @@ export const CertManagerNav = ({
       pathSuffix: "approvals",
       submenu: CERT_APPROVALS_SUBMENU
     },
-    { label: "Integrations", icon: Plug, pathSuffix: "integrations" },
-    { label: "App Connections", icon: Cable, pathSuffix: "app-connections" },
     {
       label: "Subscribers (Legacy)",
       icon: Monitor,
@@ -90,6 +90,47 @@ export const CertManagerNav = ({
       icon: FileKey,
       pathSuffix: "certificate-templates",
       hidden: !(subscription.pkiLegacyTemplates || templates.length > 0)
+    }
+  ];
+
+  const codeSigningItems: NavItem[] = [
+    {
+      label: "Signers",
+      icon: PenTool,
+      pathSuffix: "code-signing",
+      activeMatch: /\/code-signing/,
+      search: { selectedTab: "signers" },
+      isDefaultSearch: true
+    },
+    {
+      label: "Signing Requests",
+      icon: FileCheck,
+      pathSuffix: "code-signing",
+      activeMatch: /\/code-signing/,
+      search: { selectedTab: "signing-requests" }
+    },
+    {
+      label: "Signing Policies",
+      icon: Shield,
+      pathSuffix: "code-signing",
+      activeMatch: /\/code-signing/,
+      search: { selectedTab: "signing-policies" }
+    },
+    {
+      label: "Grants",
+      icon: Key,
+      pathSuffix: "code-signing",
+      activeMatch: /\/code-signing/,
+      search: { selectedTab: "grants" }
+    }
+  ];
+
+  const generalItems: NavItem[] = [
+    {
+      label: "Integrations",
+      icon: Plug,
+      pathSuffix: "integrations",
+      submenu: CERT_INTEGRATIONS_SUBMENU
     },
     {
       label: "Access Control",
@@ -106,5 +147,21 @@ export const CertManagerNav = ({
       submenu: CERT_SETTINGS_SUBMENU
     }
   ];
-  return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
+
+  return (
+    <>
+      <SidebarMenu>
+        <ProjectNavLink item={dashboardItem} />
+      </SidebarMenu>
+      <SidebarCollapsibleGroup label="Certificate Infrastructure">
+        <ProjectNavList items={certInfraItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+      <SidebarCollapsibleGroup label="Code Signing">
+        <ProjectNavList items={codeSigningItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+      <SidebarCollapsibleGroup label="General">
+        <ProjectNavList items={generalItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+    </>
+  );
 };

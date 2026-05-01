@@ -92,8 +92,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       //         the query, you need to update the indexes accordingly to avoid performance regressions.
       return dbClient
         .select("id")
-        .from(revokedTokensQuery.unionAll(exceededUsageLimitQuery).unionAll(expiredTTLQuery).as("all_expired_tokens"))
-        .distinct();
+        .from(revokedTokensQuery.unionAll(exceededUsageLimitQuery).unionAll(expiredTTLQuery).as("all_expired_tokens"));
     };
 
     do {

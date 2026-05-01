@@ -7,15 +7,15 @@ import { Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  DetailValue
 } from "@app/components/v3";
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 
@@ -48,11 +48,11 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
   if (isLoading) {
     return (
       <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
-        <UnstableCard>
-          <UnstableCardContent className="flex items-center justify-center py-8">
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
             <p className="text-sm text-mineshaft-400">Loading...</p>
-          </UnstableCardContent>
-        </UnstableCard>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -69,12 +69,12 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
 
   return (
     <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Overview</UnstableCardTitle>
-          <UnstableCardDescription>Certificate overview</UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Overview</CardTitle>
+          <CardDescription>Certificate overview</CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Common Name</DetailLabel>
@@ -138,17 +138,15 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               </DetailValue>
             </Detail>
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Issuance</UnstableCardTitle>
-          <UnstableCardDescription>
-            Certificate authority and profile information
-          </UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Issuance</CardTitle>
+          <CardDescription>Certificate authority and profile information</CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Certificate Authority</DetailLabel>
@@ -236,8 +234,8 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               </Detail>
             )}
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       <CertificateMetadataSection certificateId={certificateId} />
     </div>

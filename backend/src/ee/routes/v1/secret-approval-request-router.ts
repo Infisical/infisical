@@ -1,18 +1,18 @@
 import { z } from "zod";
 
-import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
+import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedTagSchema, SanitizedUserSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
-  UsersSchema.pick({
+  SanitizedUserSchema.pick({
     email: true,
     firstName: true,
     lastName: true,
@@ -133,7 +133,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         id: z.string()
       }),
       body: z.object({
-        bypassReason: z.string().optional()
+        bypassReason: z.string().max(1000).optional()
       }),
       response: {
         200: z.object({

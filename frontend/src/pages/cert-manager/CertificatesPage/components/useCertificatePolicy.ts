@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 import {
+  certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
-  KEY_USAGES_OPTIONS
+  KEY_USAGES_OPTIONS,
+  SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
   CertPolicyState,
@@ -107,23 +109,20 @@ export const useCertificatePolicy = (
   }, [constraints.allowedExtendedKeyUsages]);
 
   const availableSignatureAlgorithms = useMemo(() => {
-    return constraints.allowedSignatureAlgorithms.map((templateAlgorithm) => {
-      const apiAlgorithm = mapPolicySignatureAlgorithmToApi(templateAlgorithm);
-      return {
-        value: apiAlgorithm,
-        label: apiAlgorithm
-      };
-    });
+    const allowed = new Set(
+      constraints.allowedSignatureAlgorithms.map(mapPolicySignatureAlgorithmToApi)
+    );
+    return SIGNATURE_ALGORITHMS_OPTIONS.filter((opt) => allowed.has(opt.value)).map((opt) => ({
+      value: opt.value as string,
+      label: opt.label
+    }));
   }, [constraints.allowedSignatureAlgorithms]);
 
   const availableKeyAlgorithms = useMemo(() => {
-    return constraints.allowedKeyAlgorithms.map((templateAlgorithm) => {
-      const apiAlgorithm = mapPolicyKeyAlgorithmToApi(templateAlgorithm);
-      return {
-        value: apiAlgorithm,
-        label: apiAlgorithm
-      };
-    });
+    const allowed = new Set(constraints.allowedKeyAlgorithms.map(mapPolicyKeyAlgorithmToApi));
+    return certKeyAlgorithms
+      .filter((opt) => allowed.has(opt.value))
+      .map((opt) => ({ value: opt.value as string, label: opt.label }));
   }, [constraints.allowedKeyAlgorithms]);
 
   const resetConstraints = () => {

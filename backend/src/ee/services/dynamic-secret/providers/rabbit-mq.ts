@@ -92,9 +92,9 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
       headers: {
         "Content-Type": "application/json"
       },
-
+      maxRedirects: 0,
       ...(providerInputs.ca && {
-        httpsAgent: new https.Agent({ ca: providerInputs.ca, rejectUnauthorized: false })
+        httpsAgent: new https.Agent({ ca: providerInputs.ca, rejectUnauthorized: providerInputs.sslRejectUnauthorized })
       })
     });
 

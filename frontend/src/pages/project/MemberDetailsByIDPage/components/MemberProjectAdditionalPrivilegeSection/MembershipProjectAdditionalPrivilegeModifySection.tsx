@@ -9,21 +9,21 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
   Badge,
   Button,
   Field,
   FieldError,
   FieldLabel,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   SheetFooter,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAccordion,
-  UnstableInput,
-  UnstableSeparator
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionMemberActions,
@@ -267,7 +267,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                         <FieldLabel>
                           Privilege Name <span className="text-muted">(optional)</span>
                         </FieldLabel>
-                        <UnstableInput {...field} />
+                        <Input {...field} />
                       </Field>
                     )}
                   />
@@ -310,7 +310,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                                 <FieldLabel>
                                   <TtlFormLabel label="Validity" />
                                 </FieldLabel>
-                                <UnstableInput {...field} isError={Boolean(error?.message)} />
+                                <Input {...field} isError={Boolean(error?.message)} />
                                 {error?.message && <FieldError>{error.message}</FieldError>}
                               </Field>
                               <div className="flex items-center space-x-2">
@@ -371,7 +371,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                 </div>
               </div>
             </div>
-            <UnstableSeparator />
+            <Separator />
             <div>
               <div className="mb-3 flex w-full items-center justify-between">
                 <div className="text-lg">Policies</div>
@@ -424,7 +424,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
               {(isCreate || !isPending) && !hasPermissions && <PermissionEmptyState />}
               {hasPermissions && (
                 <div className="thin-scrollbar overflow-y-auto">
-                  <UnstableAccordion
+                  <Accordion
                     type="multiple"
                     value={openPolicies}
                     onValueChange={setOpenPolicies}
@@ -449,7 +449,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                         </GeneralPermissionPolicies>
                       );
                     })}
-                  </UnstableAccordion>
+                  </Accordion>
                 </div>
               )}
             </div>

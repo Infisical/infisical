@@ -31,6 +31,9 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
@@ -164,13 +167,17 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityLdapAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityLdapAuth.identityId), () =>
+      identityDAL.findById(identityLdapAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
       });
 
-    const org = await orgDAL.findById(identity.orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
+      orgDAL.findById(identity.orgId)
+    );
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
@@ -273,8 +280,8 @@ export const identityLdapAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.LDAP_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -288,8 +295,8 @@ export const identityLdapAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.LDAP_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
       throw error;
@@ -830,7 +837,10 @@ export const identityLdapAuthServiceFactory = ({
         scope: OrganizationActionScope.Any
       });
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.RevokeAuth,
@@ -866,19 +876,29 @@ export const identityLdapAuthServiceFactory = ({
   ): Promise<T> => {
     const usernameSlug = slugify(username.trim().toLowerCase());
 
-    const identity = await identityDAL.findById(identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityId), () =>
+      identityDAL.findById(identityId)
+    );
     const orgId = identity?.orgId ?? null;
 
-    const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
+    const lockoutKey = KeyStorePrefixes.IdentityLockoutState(identityId, IdentityAuthMethod.LDAP_AUTH, usernameSlug);
 
-    const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+    const lockoutRaw = await keyStore.getItem(lockoutKey);
 
     let lockout: LockoutObject | undefined;
     if (lockoutRaw) {
       lockout = JSON.parse(lockoutRaw) as LockoutObject;
     }
 
-    if (lockout && lockout?.lockedOut) {
+    const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
+    if (!identityLdapAuth) {
+      throw new UnauthorizedError({
+        message: "Invalid credentials",
+        detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
+      });
+    }
+
+    if (lockout && lockout?.lockedOut && identityLdapAuth.lockoutEnabled) {
       throw new UnauthorizedError({
         message: "This identity auth method is temporarily locked, please try again later",
         detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
@@ -890,32 +910,24 @@ export const identityLdapAuthServiceFactory = ({
 
       // If auth succeeds, clear any existing lockout
       if (lockout) {
-        await keyStore.deleteItem(LOCKOUT_KEY);
+        await keyStore.deleteItem(lockoutKey);
       }
 
       return result;
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
       if ((error as any).status === 401 || error instanceof UnauthorizedError) {
-        const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
-        if (!identityLdapAuth) {
-          throw new UnauthorizedError({
-            message: "Invalid credentials",
-            detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
-          });
-        }
-
         if (identityLdapAuth.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
+            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 500, {
               retryCount: 10,
               retryDelay: 300,
               retryJitter: 100
             });
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
+            const lockoutRawNew = await keyStore.getItem(lockoutKey);
             if (lockoutRawNew) {
               lockout = JSON.parse(lockoutRawNew) as LockoutObject;
             } else {
@@ -938,7 +950,7 @@ export const identityLdapAuthServiceFactory = ({
             }
 
             await keyStore.setItemWithExpiry(
-              LOCKOUT_KEY,
+              lockoutKey,
               lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
               JSON.stringify(lockout)
             );
@@ -1015,7 +1027,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const deleted = await keyStore.deleteItems({
-      pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:*`
+      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.LDAP_AUTH)
     });
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };

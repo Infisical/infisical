@@ -376,6 +376,9 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
   server.route({
     method: "POST",
     url: "/message-endpoint",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       operationId: "handleMicrosoftTeamsMessageEndpoint",
       body: z.any(),

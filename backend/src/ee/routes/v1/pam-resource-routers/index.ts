@@ -1,9 +1,4 @@
 import {
-  CreateActiveDirectoryResourceSchema,
-  SanitizedActiveDirectoryResourceSchema,
-  UpdateActiveDirectoryResourceSchema
-} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
-import {
   CreateAwsIamResourceSchema,
   SanitizedAwsIamResourceSchema,
   UpdateAwsIamResourceSchema
@@ -51,7 +46,6 @@ import {
 } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 
 import {
-  registerActiveDirectoryRelatedResourcesEndpoint,
   registerPamResourceEndpoints,
   registerSshCaPublicKeyEndpoint,
   registerSshCaSetupEndpoint
@@ -140,15 +134,5 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       createResourceSchema: CreateWindowsResourceSchema,
       updateResourceSchema: UpdateWindowsResourceSchema
     });
-  },
-  [PamResource.ActiveDirectory]: async (server: FastifyZodProvider) => {
-    registerPamResourceEndpoints({
-      server,
-      resourceType: PamResource.ActiveDirectory,
-      resourceResponseSchema: SanitizedActiveDirectoryResourceSchema,
-      createResourceSchema: CreateActiveDirectoryResourceSchema,
-      updateResourceSchema: UpdateActiveDirectoryResourceSchema
-    });
-    registerActiveDirectoryRelatedResourcesEndpoint(server);
   }
 };

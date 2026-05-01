@@ -2,7 +2,7 @@ import { cva, VariantProps } from "cva";
 
 import { cn } from "../../utils";
 
-function UnstableEmpty({ className, ...props }: React.ComponentProps<"div">) {
+function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty"
@@ -15,7 +15,7 @@ function UnstableEmpty({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function UnstableEmptyHeader({ className, ...props }: React.ComponentProps<"div">) {
+function EmptyHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-header"
@@ -55,7 +55,7 @@ function EmptyMedia({
   );
 }
 
-function UnstableEmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
+function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-title"
@@ -65,12 +65,12 @@ function UnstableEmptyTitle({ className, ...props }: React.ComponentProps<"div">
   );
 }
 
-function UnstableEmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
+function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
   return (
     <div
       data-slot="empty-description"
       className={cn(
-        "text-xs/relaxed text-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-project",
+        "text-xs/relaxed text-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground",
         className
       )}
       {...props}
@@ -78,7 +78,7 @@ function UnstableEmptyDescription({ className, ...props }: React.ComponentProps<
   );
 }
 
-function UnstableEmptyContent({ className, ...props }: React.ComponentProps<"div">) {
+function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-content"
@@ -91,11 +91,4 @@ function UnstableEmptyContent({ className, ...props }: React.ComponentProps<"div
   );
 }
 
-export {
-  EmptyMedia,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
-};
+export { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle };

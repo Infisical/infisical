@@ -114,7 +114,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.relay.getRelays({
         actorId: req.permission.id,

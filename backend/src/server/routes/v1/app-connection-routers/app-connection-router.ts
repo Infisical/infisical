@@ -15,6 +15,10 @@ import {
   OnePassConnectionListItemSchema,
   SanitizedOnePassConnectionSchema
 } from "@app/services/app-connection/1password";
+import {
+  AnthropicConnectionListItemSchema,
+  SanitizedAnthropicConnectionSchema
+} from "@app/services/app-connection/anthropic";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
@@ -71,6 +75,10 @@ import {
 } from "@app/services/app-connection/databricks";
 import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
 import {
+  DigiCertConnectionListItemSchema,
+  SanitizedDigiCertConnectionSchema
+} from "@app/services/app-connection/digicert";
+import {
   DigitalOceanConnectionListItemSchema,
   SanitizedDigitalOceanConnectionSchema
 } from "@app/services/app-connection/digital-ocean";
@@ -78,6 +86,10 @@ import {
   DNSMadeEasyConnectionListItemSchema,
   SanitizedDNSMadeEasyConnectionSchema
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
+import {
+  DopplerConnectionListItemSchema,
+  SanitizedDopplerConnectionSchema
+} from "@app/services/app-connection/doppler/doppler-connection-schema";
 import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
@@ -127,6 +139,7 @@ import {
   SanitizedOctopusDeployConnectionSchema
 } from "@app/services/app-connection/octopus-deploy";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
+import { OnaConnectionListItemSchema, SanitizedOnaConnectionSchema } from "@app/services/app-connection/ona";
 import {
   OpenRouterConnectionListItemSchema,
   SanitizedOpenRouterConnectionSchema
@@ -158,7 +171,15 @@ import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
+import {
+  SanitizedTravisCIConnectionSchema,
+  TravisCIConnectionListItemSchema
+} from "@app/services/app-connection/travis-ci";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
+import {
+  SanitizedVenafiTppConnectionSchema,
+  VenafiTppConnectionListItemSchema
+} from "@app/services/app-connection/venafi-tpp";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import {
   SanitizedWindmillConnectionSchema,
@@ -220,10 +241,16 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedAnthropicConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
+  ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
-  ...SanitizedNetScalerConnectionSchema.options
+  ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedDopplerConnectionSchema.options,
+  ...SanitizedOnaConnectionSchema.options,
+  ...SanitizedDigiCertConnectionSchema.options,
+  ...SanitizedTravisCIConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -280,8 +307,14 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema,
+  VenafiTppConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
-  NetScalerConnectionListItemSchema
+  DopplerConnectionListItemSchema,
+  NetScalerConnectionListItemSchema,
+  AnthropicConnectionListItemSchema,
+  OnaConnectionListItemSchema,
+  DigiCertConnectionListItemSchema,
+  TravisCIConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

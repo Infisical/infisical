@@ -56,14 +56,14 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
       void res.cookie("jid", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0
@@ -71,7 +71,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
       void res.cookie("aod", "", {
         httpOnly: false,
-        path: "/",
+        path: "/api",
         sameSite: "lax",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0

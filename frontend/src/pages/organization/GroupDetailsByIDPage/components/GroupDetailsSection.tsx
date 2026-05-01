@@ -5,19 +5,19 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
   Badge,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
+  IconButton,
   OrgIcon,
-  SubOrgIcon,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  SubOrgIcon
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -43,15 +43,15 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
   });
 
   return data ? (
-    <UnstableCard className="w-full lg:max-w-[24rem]">
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Details</UnstableCardTitle>
-        <UnstableCardDescription>Group details</UnstableCardDescription>
+    <Card className="w-full lg:max-w-[24rem]">
+      <CardHeader className="border-b">
+        <CardTitle>Details</CardTitle>
+        <CardDescription>Group details</CardDescription>
         {canEditGroup && (
-          <UnstableCardAction>
+          <CardAction>
             <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
               {(isAllowed) => (
-                <UnstableIconButton
+                <IconButton
                   isDisabled={!isAllowed}
                   onClick={() => {
                     handlePopUpOpen("groupCreateUpdate", {
@@ -65,13 +65,13 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
                   variant="outline"
                 >
                   <PencilIcon />
-                </UnstableIconButton>
+                </IconButton>
               )}
             </OrgPermissionCan>
-          </UnstableCardAction>
+          </CardAction>
         )}
-      </UnstableCardHeader>
-      <UnstableCardContent>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
@@ -82,7 +82,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
             <DetailValue className="flex items-center gap-x-1">
               {data.group.id}
               <Tooltip content="Copy group ID to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(data.group.id);
                     setCopyTextId("Copied");
@@ -91,7 +91,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
                   size="xs"
                 >
                   {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -100,7 +100,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
             <DetailValue className="flex items-center gap-x-1">
               {data.group.slug}
               <Tooltip content="Copy slug to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(data.group.slug);
                     setCopyTextSlug("Copied");
@@ -109,7 +109,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
                   size="xs"
                 >
                   {isCopyingSlug ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -140,8 +140,8 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
             <DetailValue>{format(data.group.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   ) : (
     <div />
   );

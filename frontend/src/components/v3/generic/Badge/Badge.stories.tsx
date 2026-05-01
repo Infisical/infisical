@@ -4,6 +4,9 @@ import {
   AlertTriangleIcon,
   AsteriskIcon,
   BanIcon,
+  BoxesIcon as SubOrgIcon,
+  BoxIcon as ProjectIcon,
+  Building2Icon as OrgIcon,
   CheckIcon,
   ChevronsUpDownIcon,
   CircleXIcon,
@@ -15,8 +18,7 @@ import {
   UserIcon
 } from "lucide-react";
 
-import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
-import { UnstableButtonGroup } from "../ButtonGroup";
+import { ButtonGroup } from "../ButtonGroup";
 import { Badge } from "./Badge";
 
 /**
@@ -441,9 +443,9 @@ export const KeyValuePair: Story = {
     }
   },
   decorators: () => (
-    <UnstableButtonGroup>
+    <ButtonGroup>
       <Badge>Key</Badge>
       <Badge variant="outline">Value</Badge>
-    </UnstableButtonGroup>
+    </ButtonGroup>
   )
 };

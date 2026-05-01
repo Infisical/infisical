@@ -20,25 +20,25 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  Empty,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
+  IconButton,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -326,12 +326,12 @@ export const SecretImportTableRow = ({
             {(isAllowed) => (
               <Tooltip>
                 <TooltipTrigger>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     className={twMerge(
-                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                      resyncSecretReplication.isPending && "w-7 animate-spin opacity-100"
+                      "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                      resyncSecretReplication.isPending && "w-7 animate-spin"
                     )}
                     isDisabled={!isAllowed}
                     onClick={(e) => {
@@ -340,7 +340,7 @@ export const SecretImportTableRow = ({
                     }}
                   >
                     <RefreshCwIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>Resync</TooltipContent>
               </Tooltip>
@@ -355,8 +355,48 @@ export const SecretImportTableRow = ({
     if (!singleEnvImport) return null;
 
     return (
-      <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
-        {renderReplicationStatus(singleEnvImport, singleEnvSlug)}
+      <div
+        className={twMerge(
+          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+          "pointer-events-none opacity-0 transition-all duration-300",
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+          resyncSecretReplication.isPending && "pointer-events-auto gap-1 opacity-100"
+        )}
+      >
+        {singleEnvImport.isReplication && (
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={subject(ProjectPermissionSub.SecretImports, {
+              environment: singleEnvSlug,
+              secretPath: secretPath || "/"
+            })}
+            renderTooltip
+            allowedLabel="Resync replicated secrets"
+          >
+            {(isAllowed) => (
+              <Tooltip>
+                <TooltipTrigger>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                      resyncSecretReplication.isPending && "w-7 animate-spin"
+                    )}
+                    isDisabled={!isAllowed}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResyncSecretReplication(singleEnvImport, singleEnvSlug);
+                    }}
+                  >
+                    <RefreshCwIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Resync</TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+        )}
         <ProjectPermissionCan
           I={ProjectPermissionActions.Delete}
           a={subject(ProjectPermissionSub.SecretImports, {
@@ -369,10 +409,10 @@ export const SecretImportTableRow = ({
           {(isAllowed) => (
             <Tooltip>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   isDisabled={!isAllowed}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -380,7 +420,7 @@ export const SecretImportTableRow = ({
                   }}
                 >
                   <TrashIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Delete</TooltipContent>
             </Tooltip>
@@ -420,16 +460,16 @@ export const SecretImportTableRow = ({
         return (
           <>
             {renderReplicationEnvSelector()}
-            <UnstableEmpty className="bg-transparent">
-              <UnstableEmptyHeader>
+            <Empty className="bg-transparent">
+              <EmptyHeader>
                 <EmptyMedia variant="icon">
                   {searchFilter ? <SearchIcon /> : <ImportIcon />}
                 </EmptyMedia>
-                <UnstableEmptyTitle>
+                <EmptyTitle>
                   {searchFilter ? "No imported secrets match search" : "No imported secrets found"}
-                </UnstableEmptyTitle>
-              </UnstableEmptyHeader>
-            </UnstableEmpty>
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           </>
         );
       }
@@ -437,14 +477,14 @@ export const SecretImportTableRow = ({
       return (
         <>
           {renderReplicationEnvSelector()}
-          <UnstableTable containerClassName="border-none rounded-none bg-transparent">
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
-                <UnstableTableHead className="w-1/2">Value</UnstableTableHead>
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+          <Table containerClassName="border-none rounded-none bg-transparent">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-1/2">Name</TableHead>
+                <TableHead className="w-1/2">Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {selectedEnvSecrets.map((secret) => (
                 <SecretImportSecretRow
                   key={`import-secret-multi-${effectiveSelectedEnv}-${secret.key}`}
@@ -458,26 +498,26 @@ export const SecretImportTableRow = ({
                   isEmpty={secret.isEmpty}
                 />
               ))}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
         </>
       );
     }
 
     if (filteredImportedSecrets.length === 0) {
       return (
-        <UnstableEmpty className="bg-transparent">
-          <UnstableEmptyHeader>
+        <Empty className="bg-transparent">
+          <EmptyHeader>
             <EmptyMedia variant="icon">
               {matchingImportedSecrets.length ? <SearchIcon /> : <ImportIcon />}
             </EmptyMedia>
-            <UnstableEmptyTitle>
+            <EmptyTitle>
               {matchingImportedSecrets.length
                 ? "No imported secrets match search"
                 : "No imported secrets found"}
-            </UnstableEmptyTitle>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       );
     }
 
@@ -487,14 +527,14 @@ export const SecretImportTableRow = ({
 
     return (
       <>
-        <UnstableTable containerClassName="border-none rounded-none bg-transparent">
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
-              <UnstableTableHead className="w-1/2">Value</UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+        <Table containerClassName="border-none rounded-none bg-transparent">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-1/2">Name</TableHead>
+              <TableHead className="w-1/2">Value</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredImportedSecrets.map((secret) => {
               const missingEnvNames = environments
                 .filter(
@@ -514,8 +554,8 @@ export const SecretImportTableRow = ({
                 />
               );
             })}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
         {hasAnyDiscrepancy && (
           <p className="max-w-full text-xs text-wrap text-warning">
             <TriangleAlertIcon className="mr-1.5 mb-0.5 inline-block size-3 shrink-0" />
@@ -531,30 +571,30 @@ export const SecretImportTableRow = ({
   const renderExpandedSecrets = (envSlug: string) => {
     if (filteredImportedSecrets.length === 0) {
       return (
-        <UnstableEmpty className="bg-transparent shadow-none">
-          <UnstableEmptyHeader>
+        <Empty className="bg-transparent shadow-none">
+          <EmptyHeader>
             <EmptyMedia variant="icon">
               {matchingImportedSecrets.length ? <SearchIcon /> : <ImportIcon />}
             </EmptyMedia>
-            <UnstableEmptyTitle>
+            <EmptyTitle>
               {matchingImportedSecrets.length
                 ? "No imported secrets match search"
                 : "No imported secrets found"}
-            </UnstableEmptyTitle>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       );
     }
 
     return (
-      <UnstableTable containerClassName="border-none rounded-none bg-transparent">
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
-            <UnstableTableHead className="w-1/2">Value</UnstableTableHead>
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
+      <Table containerClassName="border-none rounded-none bg-transparent">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-1/2">Name</TableHead>
+            <TableHead className="w-1/2">Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {filteredImportedSecrets.map((secret) => (
             <SecretImportSecretRow
               key={`import-secret-${envSlug}-${secret.key}`}
@@ -568,19 +608,19 @@ export const SecretImportTableRow = ({
               isEmpty={secret.isEmpty}
             />
           ))}
-        </UnstableTableBody>
-      </UnstableTable>
+        </TableBody>
+      </Table>
     );
   };
 
   return (
     <>
-      <UnstableTableRow
+      <TableRow
         ref={isSingleEnvView ? (sortableRef as React.Ref<HTMLTableRowElement>) : undefined}
         onClick={handleRowClick}
-        className={twMerge("group", isDragging && "opacity-50")}
+        className={twMerge("group hover:z-10", isDragging && "opacity-50")}
       >
-        <UnstableTableCell
+        <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -605,8 +645,8 @@ export const SecretImportTableRow = ({
           ) : (
             <ImportIcon className="text-import" />
           )}
-        </UnstableTableCell>
-        <UnstableTableCell
+        </TableCell>
+        <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-10 z-10 border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -615,7 +655,7 @@ export const SecretImportTableRow = ({
           isTruncatable
           colSpan={isSingleEnvView ? 2 : undefined}
         >
-          <div className="flex w-full items-center">
+          <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">
               <Badge variant="neutral">
                 <LayersIcon />
@@ -624,16 +664,62 @@ export const SecretImportTableRow = ({
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
               <span className="truncate">{importPath}</span>
             </div>
+            {isSingleEnvView &&
+              singleEnvImport?.isReplication &&
+              singleEnvImport.lastReplicated && (
+                <div className="ml-auto flex items-center transition-[margin] duration-300 group-hover:mr-16">
+                  <Tooltip disableHoverableContent>
+                    <TooltipTrigger>
+                      <div
+                        className={twMerge(
+                          "flex justify-center",
+                          !singleEnvImport.isReplicationSuccess && "text-danger"
+                        )}
+                      >
+                        {singleEnvImport.isReplicationSuccess ? (
+                          <InfoIcon className="size-3.5 text-muted" />
+                        ) : (
+                          <TriangleAlertIcon className="size-3.5" />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <InfoIcon className="size-3" />
+                          <span className="text-sm">Last Replication</span>
+                        </div>
+                        <span className="pl-4 text-xs text-foreground/50">
+                          {new Date(singleEnvImport.lastReplicated).toLocaleString()}
+                        </span>
+                        {!singleEnvImport.isReplicationSuccess && (
+                          <>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <TriangleAlertIcon className="size-3" />
+                              <span className="text-sm">Fail reason</span>
+                            </div>
+                            <span className="pl-4 text-xs text-muted">
+                              {singleEnvImport.replicationStatus}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
             {isSingleEnvView && (
-              <div className="ml-auto flex items-center">{renderSingleEnvActions()}</div>
+              <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
+                {renderSingleEnvActions()}
+              </div>
             )}
           </div>
-        </UnstableTableCell>
+        </TableCell>
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
             if (isExpanded)
               return (
-                <UnstableTableCell
+                <TableCell
                   key={`import-env-expanded-${slug}`}
                   className="border-b-0 bg-container-hover"
                 />
@@ -648,12 +734,12 @@ export const SecretImportTableRow = ({
               />
             );
           })}
-      </UnstableTableRow>
+      </TableRow>
       {isExpanded &&
         !isAnyDragging &&
         (isSingleEnvView ? (
-          <UnstableTableRow key={`expanded-import-row-${index}`}>
-            <UnstableTableCell colSpan={totalCols} className="bg-card p-0">
+          <TableRow key={`expanded-import-row-${index}`}>
+            <TableCell colSpan={totalCols} className="bg-card p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                 className={twMerge(
@@ -663,11 +749,11 @@ export const SecretImportTableRow = ({
               >
                 {renderExpandedSecrets(singleEnvSlug)}
               </div>
-            </UnstableTableCell>
-          </UnstableTableRow>
+            </TableCell>
+          </TableRow>
         ) : (
-          <UnstableTableRow>
-            <UnstableTableCell colSpan={totalCols} className="bg-card p-0">
+          <TableRow>
+            <TableCell colSpan={totalCols} className="bg-card p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                 className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
@@ -699,8 +785,8 @@ export const SecretImportTableRow = ({
                 </div>
                 {renderMultiEnvExpandedSecrets()}
               </div>
-            </UnstableTableCell>
-          </UnstableTableRow>
+            </TableCell>
+          </TableRow>
         ))}
     </>
   );

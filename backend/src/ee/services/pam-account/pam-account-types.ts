@@ -9,10 +9,13 @@ import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 // DTOs
 export type TCreateAccountDTO = Pick<
   TPamAccount,
-  "name" | "description" | "credentials" | "folderId" | "resourceId" | "requireMfa"
+  "name" | "description" | "credentials" | "folderId" | "requireMfa"
 > & {
+  resourceId?: string;
+  domainId?: string;
   internalMetadata?: Record<string, unknown>;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
+  policyId?: string | null;
 };
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
@@ -29,6 +32,7 @@ export type TAccessAccountDTO = {
   actorUserAgent: string;
   duration: number;
   mfaSessionId?: string;
+  reason?: string;
 };
 
 export type TListAccountsDTO = {
@@ -39,6 +43,7 @@ export type TListAccountsDTO = {
   limit?: number;
   offset?: number;
   filterResourceIds?: string[];
+  filterDomainIds?: string[];
   metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 

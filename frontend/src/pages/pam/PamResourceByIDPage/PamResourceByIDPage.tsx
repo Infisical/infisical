@@ -10,21 +10,22 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstablePageLoader
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  PageLoader
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import {
   PAM_RESOURCE_TYPE_MAP,
   PamResourceType,
   useDeletePamResource,
-  useGetPamResourceById
+  useGetPamResourceById,
+  useUpdatePamResource
 } from "@app/hooks/api/pam";
 
 import { PamUpdateResourceModal } from "../PamResourcesPage/components/PamUpdateResourceModal";
@@ -34,9 +35,10 @@ import {
   PamResourceDependenciesSection,
   PamResourceDetailsSection,
   PamResourceMetadataSection,
-  PamResourceRelatedResourcesSection,
   PamResourceRotationPolicySection,
-  PamRotationPolicyModal
+  PamResourceSessionRecordingSection,
+  PamRotationPolicyModal,
+  PamSessionRecordingModal
 } from "./components";
 
 const PageContent = () => {
@@ -69,6 +71,7 @@ const PageContent = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
+  const [isSessionRecordingModalOpen, setIsSessionRecordingModalOpen] = useState(false);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -79,22 +82,23 @@ const PageContent = () => {
   );
 
   const deleteResource = useDeletePamResource();
+  const updateResource = useUpdatePamResource();
 
   if (isPending) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   if (!resource) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <UnstableEmpty className="max-w-2xl">
-          <UnstableEmptyHeader>
+        <Empty className="max-w-2xl">
+          <EmptyHeader>
             <BanIcon className="size-8 text-muted" />
-            <UnstableEmptyTitle className="text-muted">
+            <EmptyTitle className="text-muted">
               Could not find PAM Resource with ID {resourceId}
-            </UnstableEmptyTitle>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
@@ -156,24 +160,24 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <EllipsisVerticalIcon />
               </Button>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent align="end" sideOffset={2}>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={2}>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.PamResources}
               >
                 {(isAllowed) => (
-                  <UnstableDropdownMenuItem
+                  <DropdownMenuItem
                     onClick={() => setIsEditModalOpen(true)}
                     isDisabled={!isAllowed}
                   >
                     Edit Resource
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
               <ProjectPermissionCan
@@ -181,17 +185,17 @@ const PageContent = () => {
                 a={ProjectPermissionSub.PamResources}
               >
                 {(isAllowed) => (
-                  <UnstableDropdownMenuItem
+                  <DropdownMenuItem
                     onClick={() => setIsDeleteModalOpen(true)}
                     variant="danger"
                     isDisabled={!isAllowed}
                   >
                     Delete Resource
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -207,6 +211,12 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsRotationPolicyModalOpen(true)}
           />
+          {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
+            <PamResourceSessionRecordingSection
+              config={resource.sessionSummaryConfig ?? null}
+              onEdit={() => setIsSessionRecordingModalOpen(true)}
+            />
+          )}
           <PamResourceMetadataSection resource={resource} />
         </div>
 
@@ -218,9 +228,6 @@ const PageContent = () => {
               {resource.resourceType === PamResourceType.Windows && (
                 <Tab value="dependencies">Dependencies</Tab>
               )}
-              {resource.resourceType === PamResourceType.ActiveDirectory && (
-                <Tab value="related-resources">Related Resources</Tab>
-              )}
             </TabList>
             <TabPanel value="accounts">
               <PamResourceAccountsSection resource={resource} />
@@ -228,11 +235,6 @@ const PageContent = () => {
             {resource.resourceType === PamResourceType.Windows && (
               <TabPanel value="dependencies">
                 <PamResourceDependenciesSection resource={resource} />
-              </TabPanel>
-            )}
-            {resource.resourceType === PamResourceType.ActiveDirectory && (
-              <TabPanel value="related-resources">
-                <PamResourceRelatedResourcesSection resource={resource} />
               </TabPanel>
             )}
           </Tabs>
@@ -258,6 +260,21 @@ const PageContent = () => {
         onOpenChange={setIsRotationPolicyModalOpen}
         resource={resource}
       />
+
+      {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
+        <PamSessionRecordingModal
+          isOpen={isSessionRecordingModalOpen}
+          onOpenChange={setIsSessionRecordingModalOpen}
+          config={resource.sessionSummaryConfig ?? null}
+          onSave={async (config) => {
+            await updateResource.mutateAsync({
+              resourceId: resource.id,
+              resourceType: resource.resourceType,
+              sessionSummaryConfig: config
+            });
+          }}
+        />
+      )}
     </div>
   );
 };

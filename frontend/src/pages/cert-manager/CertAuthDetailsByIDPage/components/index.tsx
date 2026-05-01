@@ -2,6 +2,7 @@ export { CaCertDetailsSection } from "./CaCertDetailsSection";
 export { CaCertificatesSection } from "./CaCertificatesSection/CaCertificatesSection";
 export { CaCrlsSection } from "./CaCrlsSection";
 export { CaDetailsSection } from "./CaDetailsSection";
+export { CaDistributionPointsSection } from "./CaDistributionPointsSection";
 export { CaGenerateRootCertModal } from "./CaGenerateRootCertModal";
 export { CaRenewalModal } from "./CaRenewalModal";
 export { CaSigningConfigSection } from "./CaSigningConfigSection";

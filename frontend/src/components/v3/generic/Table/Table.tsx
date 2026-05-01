@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";
 
-const UnstableTable = React.forwardRef<
+const Table = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"table"> & { containerClassName?: string }
 >(({ className, containerClassName, ...props }, ref) => {
@@ -26,9 +26,9 @@ const UnstableTable = React.forwardRef<
   );
 });
 
-UnstableTable.displayName = "UnstableTable";
+Table.displayName = "Table";
 
-function UnstableTableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
@@ -38,7 +38,7 @@ function UnstableTableHeader({ className, ...props }: React.ComponentProps<"thea
   );
 }
 
-function UnstableTableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
@@ -48,17 +48,21 @@ function UnstableTableBody({ className, ...props }: React.ComponentProps<"tbody"
   );
 }
 
-function UnstableTableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn("border-t border-border font-medium [&>tr]:last:border-b-0", className)}
+      className={cn(
+        "border-t border-border bg-foreground/[0.03] font-medium",
+        "[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0",
+        className
+      )}
       {...props}
     />
   );
 }
 
-const UnstableTableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
+const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
   ({ className, ...props }, ref) => {
     return (
       <tr
@@ -75,9 +79,9 @@ const UnstableTableRow = React.forwardRef<HTMLTableRowElement, React.ComponentPr
   }
 );
 
-UnstableTableRow.displayName = "UnstableTableRow";
+TableRow.displayName = "TableRow";
 
-function UnstableTableHead({
+function TableHead({
   className,
   isTruncatable,
   ...props
@@ -96,7 +100,7 @@ function UnstableTableHead({
   );
 }
 
-function UnstableTableCell({
+function TableCell({
   className,
   isTruncatable,
   ...props
@@ -114,23 +118,17 @@ function UnstableTableCell({
   );
 }
 
-function UnstableTableCaption({ className, ...props }: React.ComponentProps<"caption">) {
+function TableCaption({ className, ...props }: React.ComponentProps<"caption">) {
   return (
     <caption
       data-slot="table-caption"
-      className={cn("text-muted-foreground mt-4 text-sm", className)}
+      className={cn(
+        "border-t border-border bg-foreground/[0.03] px-3 py-2 text-left text-xs text-muted",
+        className
+      )}
       {...props}
     />
   );
 }
 
-export {
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCaption,
-  UnstableTableCell,
-  UnstableTableFooter,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
-};
+export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow };

@@ -1,27 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { InfoIcon, PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableAlertTitle,
-  UnstableInput
+  SheetTitle
 } from "@app/components/v3";
 import {
   PamResourceType,
@@ -298,29 +298,16 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
-          {/* LDAPS warning for AD resources */}
-          {resource.resourceType === PamResourceType.ActiveDirectory &&
-            !(resource.connectionDetails as { useLdaps?: boolean }).useLdaps && (
-              <UnstableAlert variant="info">
-                <TriangleAlertIcon />
-                <UnstableAlertTitle>LDAPS Required for Rotation</UnstableAlertTitle>
-                <UnstableAlertDescription>
-                  Active Directory requires LDAPS (TLS) to change passwords. Enable LDAPS in the
-                  resource connection settings before configuring rotation.
-                </UnstableAlertDescription>
-              </UnstableAlert>
-            )}
-
           {/* Local account warning for Windows Server resources */}
           {resource.resourceType === PamResourceType.Windows && (
-            <UnstableAlert variant="info">
+            <Alert variant="info">
               <InfoIcon />
-              <UnstableAlertTitle>Local Accounts Only</UnstableAlertTitle>
-              <UnstableAlertDescription>
+              <AlertTitle>Local Accounts Only</AlertTitle>
+              <AlertDescription>
                 Rotation on Windows Server resources applies to local machine accounts only. To
                 rotate domain accounts, configure rotation on the Active Directory resource instead.
-              </UnstableAlertDescription>
-            </UnstableAlert>
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Rotation Credentials */}
@@ -340,7 +327,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
                   <Field>
                     <FieldLabel>Username</FieldLabel>
                     <FieldContent>
-                      <UnstableInput {...field} isError={Boolean(error)} autoComplete="off" />
+                      <Input {...field} isError={Boolean(error)} autoComplete="off" />
                       <FieldError errors={[error]} />
                     </FieldContent>
                   </Field>
@@ -354,7 +341,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
                     <FieldLabel>Password</FieldLabel>
                     <FieldContent>
                       <div className="relative">
-                        <UnstableInput
+                        <Input
                           {...field}
                           placeholder="••••••"
                           isError={Boolean(error)}

@@ -48,7 +48,6 @@ export const NewSubOrganizationForm = ({ onClose, handleOrgSelection }: ContentP
       });
 
       SecurityClient.setToken(token);
-      SecurityClient.setProviderAuthToken("");
     }
 
     const { organization } = await createSubOrg.mutateAsync({

@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { Skeleton } from "@app/components/v2";
-import { Badge, UnstableButtonGroup } from "@app/components/v3";
+import { Badge, ButtonGroup } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
@@ -319,17 +319,14 @@ export const CertificateDetailsSection = ({ request }: Props) => {
           <div className="flex flex-wrap gap-2">
             {metadata.map((item: { key: string; value?: string }) =>
               item.value ? (
-                <UnstableButtonGroup
-                  className="max-w-full min-w-0"
-                  key={`${item.key}=${item.value}`}
-                >
+                <ButtonGroup className="max-w-full min-w-0" key={`${item.key}=${item.value}`}>
                   <Badge isTruncatable className="max-w-[12rem] shrink-0">
                     <span>{item.key}</span>
                   </Badge>
                   <Badge variant="outline" isTruncatable>
                     <span>{item.value}</span>
                   </Badge>
-                </UnstableButtonGroup>
+                </ButtonGroup>
               ) : (
                 <Badge key={item.key} isTruncatable>
                   <span>{item.key}</span>

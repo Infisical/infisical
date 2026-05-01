@@ -55,12 +55,6 @@ export type TServerConfig = {
   allowSignUp: boolean;
   allowedSignUpDomain?: string | null;
   disableAuditLogStorage: boolean;
-  isMigrationModeOn?: boolean;
-  trustSamlEmails: boolean;
-  trustLdapEmails: boolean;
-  trustOidcEmails: boolean;
-  isSecretScanningDisabled: boolean;
-  kubernetesAutoFetchServiceAccountToken: boolean;
   defaultAuthOrgSlug: string | null;
   defaultAuthOrgId: string | null;
   defaultAuthOrgAuthMethod?: string | null;
@@ -69,10 +63,18 @@ export type TServerConfig = {
   authConsentContent?: string;
   pageFrameContent?: string;
   invalidatingCache: boolean;
-  fipsEnabled: boolean;
   envOverrides?: Record<string, string>;
-  paramsFolderSecretDetectionEnabled: boolean;
-  isOfflineUsageReportsEnabled: boolean;
+  // Super admin-only fields (omitted for non-super-admin callers)
+  instanceId?: string;
+  trustSamlEmails?: boolean;
+  trustLdapEmails?: boolean;
+  trustOidcEmails?: boolean;
+  isSecretScanningDisabled?: boolean;
+  kubernetesAutoFetchServiceAccountToken?: boolean;
+  isMigrationModeOn?: boolean;
+  fipsEnabled?: boolean;
+  paramsFolderSecretDetectionEnabled?: boolean;
+  isOfflineUsageReportsEnabled?: boolean;
 };
 
 export type TUpdateServerConfigDTO = {
@@ -113,6 +115,34 @@ export type AdminGetIdentitiesFilters = {
   limit?: number;
   offset?: number;
   searchTerm?: string;
+};
+
+export type AdminEmailDomain = {
+  id: string;
+  orgId: string;
+  domain: string;
+  verificationMethod: string;
+  status: string;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  orgName: string | null;
+};
+
+export type AdminGetEmailDomainsFilters = {
+  limit?: number;
+  offset?: number;
+  searchTerm?: string;
+};
+
+export type TGetEmailDomainsResponse = {
+  emailDomains: AdminEmailDomain[];
+  total: number;
+};
+
+export type TAdminCreateEmailDomainDTO = {
+  orgId: string;
+  domain: string;
 };
 
 export type AdminIntegrationsConfig = {

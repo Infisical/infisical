@@ -1,4 +1,4 @@
-import axios from "axios";
+import { isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
@@ -38,7 +38,7 @@ export const dnsMadeEasyInsertTxtRecord = async (
       }
     );
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       const errorMessage =
         (error.response?.data as { error?: string[] | string })?.error?.[0] ||
         (error.response?.data as { error?: string[] | string })?.error ||
@@ -93,7 +93,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
       logger.warn({ hostedZoneId, domain, value }, "Record to delete not found");
     }
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       const errorMessage =
         (error.response?.data as { error?: string[] | string })?.error?.[0] ||
         (error.response?.data as { error?: string[] | string })?.error ||

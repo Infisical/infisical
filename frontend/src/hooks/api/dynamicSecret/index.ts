@@ -2,5 +2,6 @@ export { useCreateDynamicSecret, useDeleteDynamicSecret, useUpdateDynamicSecret 
 export {
   useGetDynamicSecretDetails,
   useGetDynamicSecrets,
-  useGetDynamicSecretsOfAllEnv
+  useGetDynamicSecretsOfAllEnv,
+  useGetSshCaPublicKey
 } from "./queries";

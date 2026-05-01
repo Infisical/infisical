@@ -205,7 +205,16 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db
             .ref("allowCertBasedRenewal")
             .withSchema(TableName.PkiScepEnrollmentConfig)
-            .as("scepConfigAllowCertBasedRenewal")
+            .as("scepConfigAllowCertBasedRenewal"),
+          db.ref("challengeType").withSchema(TableName.PkiScepEnrollmentConfig).as("scepConfigChallengeType"),
+          db
+            .ref("dynamicChallengeExpiryMinutes")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepConfigDynamicChallengeExpiryMinutes"),
+          db
+            .ref("dynamicChallengeMaxPending")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepConfigDynamicChallengeMaxPending")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -247,7 +256,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             raCertificatePem: result.scepConfigRaCertificate,
             raCertExpiresAt: result.scepConfigRaCertExpiresAt,
             includeCaCertInResponse: result.scepConfigIncludeCaCertInResponse ?? true,
-            allowCertBasedRenewal: result.scepConfigAllowCertBasedRenewal ?? true
+            allowCertBasedRenewal: result.scepConfigAllowCertBasedRenewal ?? true,
+            challengeType: result.scepConfigChallengeType,
+            dynamicChallengeExpiryMinutes: result.scepConfigDynamicChallengeExpiryMinutes,
+            dynamicChallengeMaxPending: result.scepConfigDynamicChallengeMaxPending
           } as TCertificateProfileWithConfigs["scepConfig"])
         : undefined;
 
@@ -430,7 +442,16 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             .ref("includeCaCertInResponse")
             .withSchema(TableName.PkiScepEnrollmentConfig)
             .as("scepIncludeCaCertInResponse"),
-          db.ref("allowCertBasedRenewal").withSchema(TableName.PkiScepEnrollmentConfig).as("scepAllowCertBasedRenewal")
+          db.ref("allowCertBasedRenewal").withSchema(TableName.PkiScepEnrollmentConfig).as("scepAllowCertBasedRenewal"),
+          db.ref("challengeType").withSchema(TableName.PkiScepEnrollmentConfig).as("scepChallengeType"),
+          db
+            .ref("dynamicChallengeExpiryMinutes")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepDynamicChallengeExpiryMinutes"),
+          db
+            .ref("dynamicChallengeMaxPending")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepDynamicChallengeMaxPending")
         );
 
       if (processedRules) {
@@ -479,7 +500,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
               raCertificatePem: result.scepRaCertificate as string,
               raCertExpiresAt: result.scepRaCertExpiresAt as Date,
               includeCaCertInResponse: (result.scepIncludeCaCertInResponse as boolean) ?? true,
-              allowCertBasedRenewal: (result.scepAllowCertBasedRenewal as boolean) ?? true
+              allowCertBasedRenewal: (result.scepAllowCertBasedRenewal as boolean) ?? true,
+              challengeType: result.scepChallengeType as string,
+              dynamicChallengeExpiryMinutes: result.scepDynamicChallengeExpiryMinutes as number,
+              dynamicChallengeMaxPending: result.scepDynamicChallengeMaxPending as number
             }
           : undefined;
 

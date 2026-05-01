@@ -432,6 +432,9 @@ This feature is ideal for scenarios where you need to:
     <ParamField path="CA" type="string">
       Custom CA certificate for the Kubernetes API server. Leave blank to use the system/public CA. Not required when using Gateway authentication as the Gateway will use its internal TLS configuration.
     </ParamField>
+    <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+    </ParamField>
     <ParamField path="Auth Method" type="string" required>
       Choose between Token (API) or Gateway authentication. If using Gateway, the Gateway must be deployed in your Kubernetes cluster.
     </ParamField>

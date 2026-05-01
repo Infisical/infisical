@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
@@ -15,7 +16,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
-import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
@@ -24,40 +25,80 @@ type Props = {
   resourceName?: string;
   accountName?: string;
   accountAccessed?: boolean;
+  accessDurationMax?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
 
-const formSchema = z.object({
-  accessDuration: z
-    .string()
-    .min(1, "Access duration is required")
-    .refine(
-      (value) => {
-        try {
-          const duration = ms(value);
-          return duration > 0;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Invalid duration format. Use formats like: 1h, 3d, 30m" }
-    ),
-  justification: z.string().max(512).optional()
-});
+type ContentProps = {
+  resourceName?: string;
+  accountName?: string;
+  accountAccessed?: boolean;
+  accessDurationMax: string;
+  onOpenChange: (isOpen: boolean) => void;
+};
 
-type FormData = z.infer<typeof formSchema>;
+const buildFormSchema = (max: string) =>
+  z.object({
+    accessDuration: z
+      .string()
+      .min(1, "Access duration is required")
+      .refine(
+        (value) => {
+          try {
+            return ms(value) > 0;
+          } catch {
+            return false;
+          }
+        },
+        { message: "Invalid duration format. Use formats like: 1h, 3d, 30m" }
+      )
+      .refine(
+        (value) => {
+          try {
+            return ms(value) >= ms("30s");
+          } catch {
+            return true;
+          }
+        },
+        { message: "Access duration must be at least 30s" }
+      )
+      .refine(
+        (value) => {
+          try {
+            return ms(value) <= ms(max);
+          } catch {
+            return true;
+          }
+        },
+        { message: `Access duration cannot exceed ${max}` }
+      ),
+    justification: z.string().max(512).optional()
+  });
 
-const Content = ({ onOpenChange, resourceName, accountName, accountAccessed }: Props) => {
+type FormData = z.infer<ReturnType<typeof buildFormSchema>>;
+
+const Content = ({
+  onOpenChange,
+  resourceName,
+  accountName,
+  accountAccessed,
+  accessDurationMax
+}: ContentProps) => {
   const { projectId } = useProject();
   const { mutateAsync: createApprovalRequest, isPending: isSubmitting } =
     useCreateApprovalRequest();
 
+  const resolver = useMemo(
+    () => zodResolver(buildFormSchema(accessDurationMax)),
+    [accessDurationMax]
+  );
+
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver,
     mode: "onChange",
     defaultValues: {
-      accessDuration: "4h",
+      accessDuration: accessDurationMax,
       justification: ""
     }
   });
@@ -99,13 +140,13 @@ const Content = ({ onOpenChange, resourceName, accountName, accountAccessed }: P
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       {accountAccessed && (
-        <UnstableAlert variant="info" className="mb-3">
+        <Alert variant="info" className="mb-3">
           <InfoIcon />
-          <UnstableAlertTitle>This account is protected by an approval policy</UnstableAlertTitle>
-          <UnstableAlertDescription>
+          <AlertTitle>This account is protected by an approval policy</AlertTitle>
+          <AlertDescription>
             You must request access by filling out the fields below.
-          </UnstableAlertDescription>
-        </UnstableAlert>
+          </AlertDescription>
+        </Alert>
       )}
       {resourceName && accountName && (
         <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-3">
@@ -130,7 +171,7 @@ const Content = ({ onOpenChange, resourceName, accountName, accountAccessed }: P
             errorText={error?.message}
             isError={Boolean(error?.message)}
           >
-            <Input placeholder="4h" {...field} />
+            <Input placeholder={accessDurationMax} {...field} />
           </FormControl>
         )}
       />
@@ -169,9 +210,14 @@ const Content = ({ onOpenChange, resourceName, accountName, accountAccessed }: P
   );
 };
 
-export const PamRequestAccountAccessModal = (props: Props) => {
-  const { isOpen, onOpenChange } = props;
-
+export const PamRequestAccountAccessModal = ({
+  isOpen,
+  onOpenChange,
+  accessDurationMax,
+  resourceName,
+  accountName,
+  accountAccessed
+}: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -179,7 +225,15 @@ export const PamRequestAccountAccessModal = (props: Props) => {
         title="Request Account Access"
         subTitle="Request access to a protected account"
       >
-        <Content {...props} />
+        {accessDurationMax && (
+          <Content
+            onOpenChange={onOpenChange}
+            resourceName={resourceName}
+            accountName={accountName}
+            accountAccessed={accountAccessed}
+            accessDurationMax={accessDurationMax}
+          />
+        )}
       </ModalContent>
     </Modal>
   );

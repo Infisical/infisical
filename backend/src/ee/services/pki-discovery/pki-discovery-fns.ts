@@ -103,18 +103,23 @@ export const validateTargetConfig = (
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
     if (shouldBlockPrivateIps(!!hasGateway)) {
+      const appCfg = getConfig();
+      const selfHostedHint = appCfg.isCloud
+        ? ""
+        : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
+
       const privateIp = singleIps.find((ip) => isPrivateIp(ip));
       if (privateIp) {
         return {
           valid: false,
-          error: "Private/internal IP addresses require a gateway. Use a gateway to scan private networks."
+          error: `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
         };
       }
       const privateCidr = cidrRanges.find((cidr) => isPrivateIp(cidr.split("/")[0]));
       if (privateCidr) {
         return {
           valid: false,
-          error: "Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks."
+          error: `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
         };
       }
     }
@@ -310,6 +315,9 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
     const fingerprintSha1 = computeCertFingerprintSha1(derBuffer);
 
     const subject = cert.subject || {};
+    // In Node 22, cert subject/issuer fields can be string | string[] for multi-valued attributes
+    const certField = (val: string | string[] | undefined): string | undefined =>
+      Array.isArray(val) ? val.join(", ") : val;
 
     let keyUsages: CertKeyUsage[] = [];
     const keyUsagesExt = x509Cert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
@@ -341,16 +349,16 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
       pemChain: [pem],
       fingerprint,
       fingerprintSha1,
-      commonName: subject.CN || "",
+      commonName: certField(subject.CN) || "",
       altNames,
       notBefore: new Date(cert.valid_from),
       notAfter: new Date(cert.valid_to),
       serialNumber: cert.serialNumber,
-      subjectOrganization: subject.O,
-      subjectOrganizationalUnit: subject.OU,
-      subjectCountry: subject.C,
-      subjectState: subject.ST,
-      subjectLocality: subject.L,
+      subjectOrganization: certField(subject.O),
+      subjectOrganizationalUnit: certField(subject.OU),
+      subjectCountry: certField(subject.C),
+      subjectState: certField(subject.ST),
+      subjectLocality: certField(subject.L),
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       keyAlgorithm: extractKeyAlgorithm(x509Cert),
       signatureAlgorithm,
@@ -358,8 +366,8 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
       extendedKeyUsages,
       isCA,
       pathLength,
-      issuerCommonName: issuer.CN,
-      issuerOrganization: issuer.O
+      issuerCommonName: certField(issuer.CN),
+      issuerOrganization: certField(issuer.O)
     };
   } catch (error) {
     logger.error(error, "Failed to parse peer certificate");

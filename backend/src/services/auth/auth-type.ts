@@ -15,14 +15,23 @@ export enum AuthMethod {
 export enum AuthTokenType {
   ACCESS_TOKEN = "accessToken",
   REFRESH_TOKEN = "refreshToken",
-  SIGNUP_TOKEN = "signupToken", // TODO: remove in favor of claim
-  MFA_TOKEN = "mfaToken", // TODO: remove in favor of claim
-  PROVIDER_TOKEN = "providerToken", // TODO: remove in favor of claim
+  SIGNUP_TOKEN = "signupToken",
+  MFA_TOKEN = "mfaToken",
   API_KEY = "apiKey",
   SERVICE_ACCESS_TOKEN = "serviceAccessToken",
   SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
-  SCIM_TOKEN = "scimToken"
+  SCIM_TOKEN = "scimToken",
+  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
+  ACCOUNT_RECOVERY_TOKEN = "accountRecoveryToken"
+}
+
+// Result state from processProviderCallback — determines what the route handler should do
+export enum ProviderAuthResult {
+  // User is fully authenticated — set refresh cookie and redirect to app
+  SESSION = "session",
+  // User account is incomplete (new user or unverified alias) — issue signup token
+  SIGNUP_REQUIRED = "signup_required"
 }
 
 export enum AuthMode {
@@ -31,7 +40,8 @@ export enum AuthMode {
   API_KEY = "apiKey",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken",
-  MCP_JWT = "mcpJwt"
+  MCP_JWT = "mcpJwt",
+  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
@@ -45,8 +55,16 @@ export enum ActorType { // would extend to AWS, Azure, ...
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
   SCEP_ACCOUNT = "scepAccount",
-  UNKNOWN_USER = "unknownUser"
+  UNKNOWN_USER = "unknownUser",
+  GATEWAY = "gateway"
 }
+
+export type TGatewayAccessTokenJwtPayload = {
+  authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
+  gatewayId: string;
+  orgId: string;
+  tokenVersion: number;
+};
 
 // This will be null unless the token-type is JWT
 export type ActorAuthMethod = AuthMethod | null;
@@ -71,6 +89,7 @@ export type AuthModeMfaJwtTokenPayload = {
   authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
+  requiredMfaMethod: MfaMethod;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
@@ -86,16 +105,22 @@ export type AuthModeRefreshJwtTokenPayload = {
   mfaMethod?: MfaMethod;
 };
 
-export type AuthModeProviderJwtTokenPayload = {
-  authTokenType: AuthTokenType.PROVIDER_TOKEN;
-  username: string;
+export type AuthModeSignUpTokenPayload = {
+  authTokenType: AuthTokenType.SIGNUP_TOKEN;
+  userId: string;
   authMethod: AuthMethod;
-  email: string;
+  isEmailVerified: boolean;
+  aliasId?: string;
   organizationId?: string;
+  callbackPort?: string;
+  // User profile fields for the frontend signup page
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
-export type AuthModeProviderSignUpTokenPayload = {
-  authTokenType: AuthTokenType.SIGNUP_TOKEN;
+export type AuthModeAccountRecoveryTokenPayload = {
+  authTokenType: AuthTokenType.ACCOUNT_RECOVERY_TOKEN;
   userId: string;
 };
 
@@ -104,3 +129,18 @@ export enum MfaMethod {
   TOTP = "totp",
   WEBAUTHN = "webauthn"
 }
+
+export type TProviderAuthCallback =
+  | {
+      result: ProviderAuthResult.SIGNUP_REQUIRED;
+      signupToken: string;
+      callbackPort?: number;
+    }
+  | {
+      result: ProviderAuthResult.SESSION;
+      tokens: {
+        access: string;
+        refresh: string;
+      };
+      callbackPort?: number;
+    };

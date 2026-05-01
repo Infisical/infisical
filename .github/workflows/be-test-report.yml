@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: 📁 Download test results
         id: download-artifact
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@v6
         with:
           name: be-test-results
           path: backend

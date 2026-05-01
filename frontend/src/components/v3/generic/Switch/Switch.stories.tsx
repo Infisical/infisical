@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from "../Field";
+import { Label } from "../Label";
 import { Switch } from "./Switch";
 
 /**
@@ -40,7 +42,10 @@ const meta = {
       control: "boolean"
     }
   },
-  args: { checked: false, disabled: false, size: "default" }
+  args: { checked: false, disabled: false, size: "default" },
+  globals: {
+    backgrounds: { value: "card" }
+  }
 } satisfies Meta<typeof Switch>;
 
 export default meta;
@@ -242,4 +247,88 @@ export const SizeSmall: Story = {
       }
     }
   }
+};
+
+export const WithLabel: Story = {
+  name: "Example: With Label",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The minimum accessible pairing — a `Label` whose `htmlFor` matches the `Switch`'s `id`. Clicking the label toggles the switch."
+      }
+    }
+  },
+  render: () => (
+    <div className="flex w-80 items-center gap-3">
+      <Switch id="switch-mfa" />
+      <Label htmlFor="switch-mfa">Require MFA on sign-in</Label>
+    </div>
+  )
+};
+
+export const WithDescription: Story = {
+  name: "Example: With Description",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pair a `Switch` with `FieldTitle` and `FieldDescription` inside a horizontal `Field` for the canonical settings-row layout — title and helper text on the left, control on the right."
+      }
+    }
+  },
+  render: () => (
+    <Field orientation="horizontal" className="w-[420px]">
+      <FieldContent>
+        <FieldTitle>Multi-factor authentication</FieldTitle>
+        <FieldDescription>
+          Require a second factor when signing in from a new device.
+        </FieldDescription>
+      </FieldContent>
+      <Switch defaultChecked />
+    </Field>
+  )
+};
+
+export const InFieldGroup: Story = {
+  name: "Example: In Field Group",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Stack multiple toggle rows in a `FieldGroup` for consistent vertical rhythm. The canonical layout for a settings panel of binary preferences."
+      }
+    }
+  },
+  render: () => (
+    <FieldGroup className="w-[420px]">
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldTitle>Multi-factor authentication</FieldTitle>
+          <FieldDescription>
+            Require a second factor when signing in from a new device.
+          </FieldDescription>
+        </FieldContent>
+        <Switch defaultChecked />
+      </Field>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldTitle>Email notifications</FieldTitle>
+          <FieldDescription>
+            Send a digest of audit events every Monday at 09:00 UTC.
+          </FieldDescription>
+        </FieldContent>
+        <Switch />
+      </Field>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldTitle>Telemetry</FieldTitle>
+          <FieldDescription>
+            Help us improve Infisical by sharing anonymous usage data.
+          </FieldDescription>
+        </FieldContent>
+        <Switch defaultChecked />
+      </Field>
+    </FieldGroup>
+  )
 };

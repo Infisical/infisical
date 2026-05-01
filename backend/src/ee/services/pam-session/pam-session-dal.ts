@@ -58,6 +58,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
       .where(`${TableName.PamSession}.projectId`, projectId);
 
     return sessions;
@@ -81,12 +82,79 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const countActiveByProject = async (projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamSession)
+      .where("projectId", projectId)
+      .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
+      .count("id as count")
+      .first();
+
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
+  const countDailyByProject = async (
+    projectId: string,
+    startDate: Date,
+    tx?: Knex
+  ): Promise<{ date: string; count: number }[]> => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamSession)
+      .select(db.raw(`to_char(("createdAt" AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') as date`))
+      .count("id as count")
+      .where("projectId", projectId)
+      .where("createdAt", ">=", startDate)
+      .groupByRaw(`("createdAt" AT TIME ZONE 'UTC')::date`)
+      .orderByRaw(`("createdAt" AT TIME ZONE 'UTC')::date asc`)) as unknown as {
+      date: string;
+      count: string | number;
+    }[];
+
+    return rows.map((row) => ({ date: String(row.date), count: Number(row.count) }));
+  };
+
+  const findTopActorsByProject = async (
+    projectId: string,
+    startDate: Date,
+    limit: number,
+    tx?: Knex
+  ): Promise<
+    {
+      actorName: string;
+      actorEmail: string;
+      userId: string | null;
+      sessionCount: number;
+    }[]
+  > => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamSession)
+      .select("actorName", "actorEmail", "userId")
+      .count("id as count")
+      .where("projectId", projectId)
+      .where("createdAt", ">=", startDate)
+      .groupBy("actorName", "actorEmail", "userId")
+      .orderBy("count", "desc")
+      .limit(limit)) as unknown as {
+      actorName: string;
+      actorEmail: string;
+      userId: string | null;
+      count: string | number;
+    }[];
+
+    return rows.map((row) => ({
+      actorName: row.actorName,
+      actorEmail: row.actorEmail,
+      userId: row.userId,
+      sessionCount: Number(row.count)
+    }));
+  };
+
   return {
     ...orm,
     findById,
     findByProjectId,
     expireSessionById,
     countActiveWebSessions,
+    countActiveByProject,
+    countDailyByProject,
+    findTopActorsByProject,
     endSessionById,
     terminateSessionById
   };

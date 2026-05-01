@@ -29,16 +29,16 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
+  IconButton,
   Skeleton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useGetSecretVersion, useRedactSecretValue, useUpdateSecretV3 } from "@app/hooks/api";
@@ -322,27 +322,27 @@ function VersionItem({
                 <>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <UnstableIconButton
+                      <IconButton
                         variant="ghost"
                         size="xs"
                         onClick={handleCopyValue}
                         isDisabled={isFetchingValue}
                       >
                         <CopyIcon />
-                      </UnstableIconButton>
+                      </IconButton>
                     </TooltipTrigger>
                     <TooltipContent>Copy Value</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <UnstableIconButton
+                      <IconButton
                         variant="ghost"
                         size="xs"
                         onClick={handleToggleVisibility}
                         isDisabled={isFetchingValue}
                       >
                         {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
-                      </UnstableIconButton>
+                      </IconButton>
                     </TooltipTrigger>
                     <TooltipContent>{isValueVisible ? "Hide Value" : "Show Value"}</TooltipContent>
                   </Tooltip>
@@ -361,14 +361,14 @@ function VersionItem({
                   {(isAllowed) => (
                     <Tooltip>
                       <TooltipTrigger>
-                        <UnstableIconButton
+                        <IconButton
                           variant="ghost"
                           size="xs"
                           onClick={() => setIsRestoreDialogOpen(true)}
                           isDisabled={isRestoring || isFetchingValue || !isAllowed}
                         >
                           <RotateCcwIcon />
-                        </UnstableIconButton>
+                        </IconButton>
                       </TooltipTrigger>
                       <TooltipContent>
                         {isAllowed ? "Restore Version" : "Access Denied"}
@@ -390,7 +390,7 @@ function VersionItem({
                   {(isAllowed) => (
                     <Tooltip>
                       <TooltipTrigger>
-                        <UnstableIconButton
+                        <IconButton
                           variant="ghost"
                           size="xs"
                           className="hover:text-danger"
@@ -398,7 +398,7 @@ function VersionItem({
                           isDisabled={isRedacting || !isAllowed}
                         >
                           <Trash2Icon />
-                        </UnstableIconButton>
+                        </IconButton>
                       </TooltipTrigger>
                       <TooltipContent>
                         {isAllowed ? "Redact Secret Value" : "Access Denied"}
@@ -556,17 +556,17 @@ export function SecretVersionHistory({
   // should never happen as we disable
   if (!secretVersions || secretVersions.length === 0) {
     return (
-      <UnstableEmpty className="bg-transparent">
-        <UnstableEmptyHeader>
+      <Empty className="bg-transparent">
+        <EmptyHeader>
           <EmptyMedia variant="icon">
             <BanIcon />
           </EmptyMedia>
-          <UnstableEmptyTitle>Access Denied</UnstableEmptyTitle>
-          <UnstableEmptyDescription>
+          <EmptyTitle>Access Denied</EmptyTitle>
+          <EmptyDescription>
             You do not have permission to view this secrets history
-          </UnstableEmptyDescription>
-        </UnstableEmptyHeader>
-      </UnstableEmpty>
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 

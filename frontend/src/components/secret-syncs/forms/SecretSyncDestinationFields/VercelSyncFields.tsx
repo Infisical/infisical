@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import { FilterableSelect, FormControl, Switch, Tooltip } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { useDebounce } from "@app/hooks";
 import {
@@ -13,15 +13,20 @@ import {
   useVercelConnectionListOrganizations
 } from "@app/hooks/api/appConnections/vercel";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { VercelSyncScope } from "@app/hooks/api/secretSyncs/types/vercel-sync";
+import {
+  VercelEnvironmentType,
+  VercelSyncScope
+} from "@app/hooks/api/secretSyncs/types/vercel-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
-const vercelEnvironments = [
+const standardVercelEnvironments = [
   { name: "Development", slug: "development" },
   { name: "Preview", slug: "preview" },
   { name: "Production", slug: "production" }
 ] as const;
+
+const teamVercelEnvironments = [...standardVercelEnvironments] as const;
 
 export const VercelSyncFields = () => {
   const { control, watch, setValue } = useFormContext<
@@ -36,6 +41,13 @@ export const VercelSyncFields = () => {
   const currentEnv = watch("destinationConfig.env");
   const scope = watch("destinationConfig.scope");
   const teamId = watch("destinationConfig.teamId");
+  const targetEnvironments = watch("destinationConfig.targetEnvironments");
+
+  const isProjectDevTargeted =
+    scope !== VercelSyncScope.Team && currentEnv === VercelEnvironmentType.Development;
+  const isTeamDevTargeted =
+    scope === VercelSyncScope.Team &&
+    Boolean(targetEnvironments?.includes(VercelEnvironmentType.Development));
 
   const { data: teams, isLoading: isTeamsLoading } = useVercelConnectionListOrganizations(
     connectionId,
@@ -61,7 +73,7 @@ export const VercelSyncFields = () => {
   }, [allApps, teamId]);
 
   const environmentOptions = useMemo(() => {
-    return vercelEnvironments
+    return standardVercelEnvironments
       .map((env): { key: string; type: string; name: string } => ({
         key: env.slug,
         type: env.slug,
@@ -101,6 +113,7 @@ export const VercelSyncFields = () => {
           setValue("destinationConfig.teamId", "");
           setValue("destinationConfig.teamName", "");
           setValue("destinationConfig.scope", VercelSyncScope.Project);
+          setValue("destinationConfig.sensitive", false);
         }}
       />
 
@@ -121,6 +134,7 @@ export const VercelSyncFields = () => {
                 if (newScope === VercelSyncScope.Team) {
                   setValue("destinationConfig.teamId", "");
                   setValue("destinationConfig.targetEnvironments", []);
+                  setValue("destinationConfig.applyToAllCustomEnvironments", false);
                   setValue("destinationConfig.targetProjects", undefined);
                   setValue("destinationConfig.teamName", "");
                 } else {
@@ -130,6 +144,7 @@ export const VercelSyncFields = () => {
                   setValue("destinationConfig.branch", "");
                   setValue("destinationConfig.teamId", "");
                 }
+                setValue("destinationConfig.sensitive", false);
               }}
               options={scopeOptions}
               placeholder="Select a scope..."
@@ -175,13 +190,15 @@ export const VercelSyncFields = () => {
               >
                 <FilterableSelect
                   isMulti
-                  value={vercelEnvironments.filter((env) => (value || []).includes(env.slug))}
+                  value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
                   onChange={(option) =>
                     onChange(
-                      (option as MultiValue<(typeof vercelEnvironments)[number]>).map((o) => o.slug)
+                      (option as MultiValue<(typeof teamVercelEnvironments)[number]>).map(
+                        (o) => o.slug
+                      )
                     )
                   }
-                  options={vercelEnvironments}
+                  options={teamVercelEnvironments}
                   placeholder="Select target environments..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.slug}
@@ -213,6 +230,37 @@ export const VercelSyncFields = () => {
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
                 />
+              </FormControl>
+            )}
+          />
+
+          <Controller
+            name="destinationConfig.applyToAllCustomEnvironments"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <FormControl>
+                <Switch
+                  className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                  id="vercel-sync-all-custom-environments"
+                  thumbClassName="bg-mineshaft-800"
+                  isChecked={Boolean(value)}
+                  onCheckedChange={onChange}
+                >
+                  <p className="w-fit">
+                    Apply to All Custom Environments{" "}
+                    <Tooltip
+                      className="max-w-md"
+                      content={
+                        <span>
+                          When enabled, shared environment variables will be applied to all custom
+                          environments in the Vercel team.
+                        </span>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                    </Tooltip>
+                  </p>
+                </Switch>
               </FormControl>
             )}
           />
@@ -307,6 +355,10 @@ export const VercelSyncFields = () => {
                     onChange(envKey);
 
                     setValue("destinationConfig.branch", "");
+
+                    if (envKey === VercelEnvironmentType.Development) {
+                      setValue("destinationConfig.sensitive", false);
+                    }
                   }}
                   options={environmentOptions}
                   placeholder="Select an environment..."
@@ -367,6 +419,64 @@ export const VercelSyncFields = () => {
           )}
         </>
       )}
+
+      <Controller
+        name="destinationConfig.sensitive"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => {
+          const showTeamDevWarning = isTeamDevTargeted && Boolean(value);
+
+          return (
+            <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+              <div className="flex w-fit items-center gap-2">
+                <Tooltip
+                  className="max-w-md"
+                  content="Marking secrets as sensitive in Vercel is not supported for development environments."
+                  isDisabled={!isProjectDevTargeted}
+                >
+                  <div className="w-fit">
+                    <Switch
+                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      id="vercel-sync-sensitive"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={Boolean(value) && !isProjectDevTargeted}
+                      isDisabled={isProjectDevTargeted}
+                      onCheckedChange={(isChecked) => {
+                        if (isProjectDevTargeted) return;
+                        onChange(isChecked);
+                      }}
+                    >
+                      <p className="w-fit">
+                        Mark Secrets as Sensitive in Vercel{" "}
+                        <Tooltip
+                          className="max-w-md"
+                          content={
+                            <span>
+                              When enabled, secrets will be created in Vercel as Sensitive.
+                              Sensitive environment variables cannot be read back via the Vercel API
+                              after creation.
+                            </span>
+                          }
+                        >
+                          <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                        </Tooltip>
+                      </p>
+                    </Switch>
+                  </div>
+                </Tooltip>
+                {showTeamDevWarning && (
+                  <Tooltip
+                    className="max-w-md"
+                    content="Marking secrets as sensitive in Vercel is not supported for development environments. Sensitive secrets will only be applied to your other selected environments."
+                  >
+                    <FontAwesomeIcon icon={faTriangleExclamation} className="text-yellow" />
+                  </Tooltip>
+                )}
+              </div>
+            </FormControl>
+          );
+        }}
+      />
     </>
   );
 };

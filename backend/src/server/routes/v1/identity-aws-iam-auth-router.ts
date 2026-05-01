@@ -53,6 +53,13 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identityAwsAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_AWS_AUTH,

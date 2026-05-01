@@ -2,15 +2,15 @@ import { format } from "date-fns";
 
 import {
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  DetailValue
 } from "@app/components/v3";
 import { PkiDiscoveryTypeLabels, TPkiDiscovery } from "@app/hooks/api";
 import { getDiscoveryStatusBadge } from "@app/pages/cert-manager/pki-discovery-utils";
@@ -21,12 +21,12 @@ type Props = {
 
 export const DiscoveryDetailsSection = ({ discovery }: Props) => {
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Details</UnstableCardTitle>
-        <UnstableCardDescription>Discovery job configuration</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Details</CardTitle>
+        <CardDescription>Discovery job configuration</CardDescription>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
@@ -91,7 +91,7 @@ export const DiscoveryDetailsSection = ({ discovery }: Props) => {
             </Detail>
           )}
         </DetailGroup>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

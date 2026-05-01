@@ -6,13 +6,13 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  DocumentationLinkBadge,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
@@ -49,16 +49,14 @@ export const ServiceTokenSection = withProjectPermission(
 
     return (
       <>
-        <UnstableCard>
-          <UnstableCardHeader>
-            <UnstableCardTitle>
+        <Card>
+          <CardHeader>
+            <CardTitle>
               Service Tokens
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/token" />
-            </UnstableCardTitle>
-            <UnstableCardDescription>
-              {t("section.token.service-tokens-description")}
-            </UnstableCardDescription>
-            <UnstableCardAction>
+            </CardTitle>
+            <CardDescription>{t("section.token.service-tokens-description")}</CardDescription>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Create}
                 a={ProjectPermissionSub.ServiceTokens}
@@ -76,12 +74,12 @@ export const ServiceTokenSection = withProjectPermission(
                   </Button>
                 )}
               </ProjectPermissionCan>
-            </UnstableCardAction>
-          </UnstableCardHeader>
-          <UnstableCardContent>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
             <ServiceTokenTable handlePopUpOpen={handlePopUpOpen} />
-          </UnstableCardContent>
-        </UnstableCard>
+          </CardContent>
+        </Card>
         <AddServiceTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteAPITokenConfirmation.isOpen}

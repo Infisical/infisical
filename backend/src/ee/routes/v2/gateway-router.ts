@@ -47,17 +47,16 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const gateway = await server.services.gatewayV2.registerGateway({
+      return server.services.gatewayV2.registerGateway({
         orgId: req.permission.orgId,
         relayName: req.body.relayName,
         actorId: req.permission.id,
+        actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         name: req.body.name
       });
-
-      return gateway;
     }
   });
 
@@ -75,7 +74,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.gatewayV2.heartbeat({
         orgPermission: req.permission
@@ -92,11 +91,9 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       operationId: "listGateways",
       response: {
         200: SanitizedGatewayV2Schema.extend({
-          identity: z.object({
-            name: z.string(),
-            id: z.string()
-          }),
-          connectedResourcesCount: z.number()
+          identity: z.object({ name: z.string(), id: z.string() }).nullable(),
+          connectedResourcesCount: z.number(),
+          enrollmentTokenStatus: z.enum(["pending", "expired"]).nullable()
         }).array()
       }
     },
@@ -178,7 +175,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         200: zodBuffer
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pamSessionKey = await server.services.gatewayV2.getPamSessionKey({
         orgPermission: req.permission

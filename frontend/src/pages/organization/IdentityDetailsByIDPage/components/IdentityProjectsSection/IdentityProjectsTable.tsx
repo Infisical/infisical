@@ -5,18 +5,18 @@ import { twMerge } from "tailwind-merge";
 import { Lottie } from "@app/components/v2";
 import {
   Button,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableInput,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Input,
+  Pagination,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -101,17 +101,17 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
 
   return (
     <>
-      <UnstableInput
+      <Input
         className="mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search projects..."
       />
       {filteredProjectMemberships.length ? (
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead onClick={toggleOrderDirection} className="w-1/3">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead onClick={toggleOrderDirection} className="w-1/3">
                 Name
                 <ChevronDownIcon
                   className={twMerge(
@@ -119,14 +119,14 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
                     "transition-transform"
                   )}
                 />
-              </UnstableTableHead>
+              </TableHead>
 
-              <UnstableTableHead>Role</UnstableTableHead>
-              <UnstableTableHead>Added On</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              <TableHead>Role</TableHead>
+              <TableHead>Added On</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {!isPending &&
               filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
                 return (
@@ -137,23 +137,23 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
                   />
                 );
               })}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       ) : (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {projectMemberships.length
                 ? "No projects match this search"
                 : "This machine identity is not a member of any projects"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {projectMemberships.length
                 ? "Adjust search filters to view project memberships."
                 : "Assign this machine identity to a project."}
-            </UnstableEmptyDescription>
+            </EmptyDescription>
             {!projectMemberships.length && (
-              <UnstableEmptyContent>
+              <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
@@ -162,13 +162,13 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
                   <PlusIcon />
                   Add to Project
                 </Button>
-              </UnstableEmptyContent>
+              </EmptyContent>
             )}
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+          </EmptyHeader>
+        </Empty>
       )}
       {Boolean(filteredProjectMemberships.length) && (
-        <UnstablePagination
+        <Pagination
           count={filteredProjectMemberships.length}
           page={page}
           perPage={perPage}

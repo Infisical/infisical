@@ -14,13 +14,14 @@ export const GatewaysV2Schema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   orgId: z.string().uuid(),
-  identityId: z.string().uuid(),
+  identityId: z.string().uuid().nullable().optional(),
   relayId: z.string().uuid().nullable().optional(),
   name: z.string(),
   heartbeat: z.date().nullable().optional(),
   encryptedPamSessionKey: zodBuffer.nullable().optional(),
   healthAlertedAt: z.date().nullable().optional(),
-  lastHealthCheckStatus: z.string().nullable().optional()
+  lastHealthCheckStatus: z.string().nullable().optional(),
+  tokenVersion: z.number().default(0)
 });
 
 export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;

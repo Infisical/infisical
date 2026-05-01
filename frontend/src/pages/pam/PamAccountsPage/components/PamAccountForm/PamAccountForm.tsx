@@ -5,6 +5,7 @@ import {
   useCreatePamAccount,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
+import { PamDomainType } from "@app/hooks/api/pamDomain";
 import { DiscriminativePick } from "@app/types";
 
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
@@ -49,16 +50,18 @@ const CreateForm = ({
     > & {
       internalMetadata?: Record<string, unknown>;
       metadata?: { key: string; value: string }[];
+      policyId?: string | null;
     }
   ) => {
-    const { internalMetadata, ...rest } = formData;
+    const { internalMetadata, policyId, ...rest } = formData;
     const account = await createPamAccount.mutateAsync({
       ...rest,
       folderId,
       resourceId,
-      resourceType,
+      parentType: resourceType,
       projectId,
-      internalMetadata
+      internalMetadata,
+      policyId
     });
     createNotification({
       text: "Successfully created account",
@@ -149,15 +152,6 @@ const CreateForm = ({
           resourceType={resourceType}
         />
       );
-    case PamResourceType.ActiveDirectory:
-      return (
-        <ActiveDirectoryAccountForm
-          onSubmit={onSubmit}
-          closeSheet={closeSheet}
-          resourceId={resourceId}
-          resourceType={resourceType}
-        />
-      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -173,14 +167,16 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     > & {
       internalMetadata?: Record<string, unknown>;
       metadata?: { key: string; value: string }[];
+      policyId?: string | null;
     }
   ) => {
-    const { internalMetadata, ...rest } = formData;
+    const { internalMetadata, policyId, ...rest } = formData;
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
-      resourceType: account.resource.resourceType,
+      parentType: account.parentType,
       ...rest,
-      internalMetadata
+      internalMetadata,
+      policyId
     });
     createNotification({
       text: "Successfully updated account",
@@ -189,7 +185,7 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     closeSheet(updatedAccount);
   };
 
-  switch (account.resource.resourceType) {
+  switch (account.parentType) {
     case PamResourceType.Postgres:
       return (
         <PostgresAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
@@ -234,7 +230,7 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
       return (
         <WindowsAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
-    case PamResourceType.ActiveDirectory:
+    case PamDomainType.ActiveDirectory:
       return (
         <ActiveDirectoryAccountForm
           account={account as any}
@@ -243,7 +239,7 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
         />
       );
     default:
-      throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
+      throw new Error(`Unhandled account type: ${account.parentType}`);
   }
 };
 

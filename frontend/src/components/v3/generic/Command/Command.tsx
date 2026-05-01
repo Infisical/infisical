@@ -22,7 +22,7 @@ function Command({
       data-slot="command"
       filter={filter}
       className={cn(
-        "text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md bg-popover outline-0",
+        "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-foreground outline-0",
         className
       )}
       {...props}
@@ -155,7 +155,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) 
   return (
     <span
       data-slot="command-shortcut"
-      className={cn("text-muted-foreground ml-auto text-xs tracking-widest", className)}
+      className={cn("ml-auto text-xs tracking-widest text-accent", className)}
       {...props}
     />
   );

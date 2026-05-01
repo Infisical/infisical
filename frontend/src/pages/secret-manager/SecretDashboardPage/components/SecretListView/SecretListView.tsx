@@ -435,6 +435,9 @@ export const SecretListView = ({
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
       });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
       if (!isReminderEvent) {
         handlePopUpClose("secretDetail");
       }
@@ -544,6 +547,9 @@ export const SecretListView = ({
     });
     queryClient.invalidateQueries({
       queryKey: secretApprovalRequestKeys.count({ projectId })
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
     });
     handlePopUpClose("deleteSecret");
     handlePopUpClose("secretDetail");

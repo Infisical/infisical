@@ -17,13 +17,13 @@ import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Input,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle,
-  UnstableInput
+  SheetTitle
 } from "@app/components/v3";
 import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -683,7 +683,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             <div className="flex w-full flex-col gap-4">
               <div>
                 <label className="mb-2 block text-sm font-medium">Commit Message</label>
-                <UnstableInput
+                <Input
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Describe your changes..."

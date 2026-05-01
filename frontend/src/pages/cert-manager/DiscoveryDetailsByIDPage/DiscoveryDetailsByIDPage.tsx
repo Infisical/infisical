@@ -7,11 +7,11 @@ import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Badge,
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstablePageLoader
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  PageLoader
 } from "@app/components/v3";
 import {
   ProjectPermissionPkiDiscoveryActions,
@@ -55,7 +55,7 @@ const Page = () => {
   ] as const);
 
   if (isLoading) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   if (!discovery) {
@@ -111,25 +111,25 @@ const Page = () => {
           }
         >
           <div className="flex items-center gap-2">
-            <UnstableDropdownMenu>
-              <UnstableDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                   Options
                   <EllipsisIcon />
                 </Button>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
                 <ProjectPermissionCan
                   I={ProjectPermissionPkiDiscoveryActions.Edit}
                   a={ProjectPermissionSub.PkiDiscovery}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       isDisabled={!isAllowed}
                       onClick={() => handlePopUpOpen("editJob", discovery)}
                     >
                       Edit
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
@@ -137,17 +137,17 @@ const Page = () => {
                   a={ProjectPermissionSub.PkiDiscovery}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       variant="danger"
                       isDisabled={!isAllowed}
                       onClick={() => handlePopUpOpen("deleteJob")}
                     >
                       Delete
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </PageHeader>
 

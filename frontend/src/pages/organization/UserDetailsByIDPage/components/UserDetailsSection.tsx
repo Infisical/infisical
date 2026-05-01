@@ -15,18 +15,18 @@ import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
+  ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableButtonGroup,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -102,15 +102,15 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const status = membership ? getStatus(membership) : null;
 
   return membership ? (
-    <UnstableCard className="w-full lg:max-w-[24rem]">
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Details</UnstableCardTitle>
-        <UnstableCardDescription>User membership details</UnstableCardDescription>
+    <Card className="w-full lg:max-w-[24rem]">
+      <CardHeader className="border-b">
+        <CardTitle>Details</CardTitle>
+        <CardDescription>User membership details</CardDescription>
         {userId !== membership.user.id && (
-          <UnstableCardAction>
+          <CardAction>
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
               {(isAllowed) => (
-                <UnstableIconButton
+                <IconButton
                   isDisabled={!isAllowed}
                   onClick={() => {
                     handlePopUpOpen("orgMembership", {
@@ -124,13 +124,13 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                   variant="outline"
                 >
                   <PencilIcon />
-                </UnstableIconButton>
+                </IconButton>
               )}
             </OrgPermissionCan>
-          </UnstableCardAction>
+          </CardAction>
         )}
-      </UnstableCardHeader>
-      <UnstableCardContent>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
@@ -141,7 +141,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
             <DetailValue className="flex items-center gap-x-1">
               {membership.user.id}
               <Tooltip content="Copy user ID to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(membership.user.id);
                     setCopyTextId("Copied");
@@ -150,7 +150,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                   size="xs"
                 >
                   {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -174,7 +174,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                     )}
                   </Tooltip>
                   <Tooltip content="Copy user email to clipboard">
-                    <UnstableIconButton
+                    <IconButton
                       onClick={() => {
                         navigator.clipboard.writeText(membership.user.email!);
                         setCopyEmail("Copied");
@@ -187,7 +187,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                       ) : (
                         <ClipboardListIcon className="text-label" />
                       )}
-                    </UnstableIconButton>
+                    </IconButton>
                   </Tooltip>
                 </>
               ) : (
@@ -239,14 +239,14 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
             <DetailValue className="flex flex-wrap gap-2">
               {membership?.metadata?.length ? (
                 membership.metadata?.map((el) => (
-                  <UnstableButtonGroup className="min-w-0" key={el.id}>
+                  <ButtonGroup className="min-w-0" key={el.id}>
                     <Badge isTruncatable>
                       <span>{el.key}</span>
                     </Badge>
                     <Badge variant="outline" isTruncatable>
                       <span>{el.value}</span>
                     </Badge>
-                  </UnstableButtonGroup>
+                  </ButtonGroup>
                 ))
               ) : (
                 <span className="text-muted">—</span>
@@ -273,8 +273,8 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
               )}
             </OrgPermissionCan>
           )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   ) : (
     <div />
   );

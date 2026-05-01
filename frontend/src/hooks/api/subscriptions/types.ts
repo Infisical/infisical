@@ -57,6 +57,7 @@ export type SubscriptionPlan = {
   caCrl: boolean;
   instanceUserManagement: boolean;
   gateway: boolean;
+  gatewayPool: boolean;
   externalKms: boolean;
   pkiEst: boolean;
   pkiAcme: boolean;
@@ -74,4 +75,5 @@ export type SubscriptionPlan = {
   cardDeclinedDays?: number;
   machineIdentityAuthTemplates: boolean;
   secretShareExternalBranding: boolean;
+  emailDomainVerification: boolean;
 };

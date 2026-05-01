@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 import pathlib
 import typing
@@ -222,5 +223,9 @@ def before_scenario(context: Context, scenario: typing.Any):
 def after_scenario(context: Context, scenario: typing.Any):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
+    # Clean up SCEP temp directories
+    for work_dir in getattr(context, "_scep_work_dirs", []):
+        shutil.rmtree(work_dir, ignore_errors=True)
+    context._scep_work_dirs = []
     clean_all_nock(context)
     restore_nock(context)

@@ -92,6 +92,7 @@
                 "group": "Audit Logs",
                 "pages": [
                   "documentation/platform/audit-logs",
+                  "documentation/platform/audit-logs-clickhouse-setup",
                   "documentation/platform/audit-log-streams/audit-log-streams",
                   "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
                 ]
@@ -105,6 +106,7 @@
                     "group": "Connections",
                     "pages": [
                       "integrations/app-connections/1password",
+                      "integrations/app-connections/anthropic",
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
@@ -122,7 +124,9 @@
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/dbt",
+                      "integrations/app-connections/digicert",
                       "integrations/app-connections/digital-ocean",
+                      "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
@@ -142,6 +146,7 @@
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
+                      "integrations/app-connections/ona",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
@@ -154,7 +159,9 @@
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
+                      "integrations/app-connections/travis-ci",
                       "integrations/app-connections/venafi",
+                      "integrations/app-connections/venafi-tpp",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
@@ -175,6 +182,7 @@
                 "group": "External Migrations",
                 "pages": [
                   "documentation/platform/external-migrations/overview",
+                  "documentation/platform/external-migrations/doppler",
                   "documentation/platform/external-migrations/envkey",
                   "documentation/platform/external-migrations/vault"
                 ]
@@ -191,6 +199,7 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
+                  "documentation/platform/gateways/gateway-pools",
                   "documentation/platform/gateways/gateway-deployment",
                   {
                     "group": "Relay Deployment",
@@ -267,7 +276,8 @@
                       "documentation/platform/scim/pingone",
                       "documentation/platform/scim/group-mappings"
                     ]
-                  }
+                  },
+                  "documentation/platform/email-domain"
                 ]
               },
               {
@@ -474,6 +484,7 @@
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
+                      "documentation/platform/secret-rotation/supabase-api-key",
                       "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/windows-local-account"
                     ]
@@ -505,6 +516,7 @@
                       "documentation/platform/dynamic-secrets/sap-ase",
                       "documentation/platform/dynamic-secrets/sap-hana",
                       "documentation/platform/dynamic-secrets/snowflake",
+                      "documentation/platform/dynamic-secrets/ssh",
                       "documentation/platform/dynamic-secrets/totp",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
@@ -591,6 +603,7 @@
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
+                      "integrations/secret-syncs/ona",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/railway",
@@ -598,6 +611,7 @@
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
+                      "integrations/secret-syncs/travis-ci",
                       "integrations/secret-syncs/vercel",
                       "integrations/secret-syncs/windmill",
                       "integrations/secret-syncs/zabbix"
@@ -694,6 +708,7 @@
                       "documentation/platform/pki/concepts/certificate-mgmt",
                       "documentation/platform/pki/concepts/certificate-lifecycle",
                       "documentation/platform/pki/concepts/certificate-components",
+                      "documentation/platform/pki/concepts/pqc-algorithms",
                       "documentation/platform/pki/concepts/code-signing"
                     ]
                   },
@@ -801,7 +816,8 @@
                   "documentation/platform/pki/integration-guides/nginx-certbot",
                   "documentation/platform/pki/integration-guides/apache-certbot",
                   "documentation/platform/pki/integration-guides/tomcat-certbot",
-                  "documentation/platform/pki/integration-guides/jboss-certbot"
+                  "documentation/platform/pki/integration-guides/jboss-certbot",
+                  "documentation/platform/pki/integration-guides/jamf-pro-scep"
                 ]
               },
               {
@@ -823,10 +839,13 @@
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/lets-encrypt",
                   "documentation/platform/pki/ca/digicert",
+                  "documentation/platform/pki/ca/digicert-direct",
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca",
-                  "documentation/platform/pki/ca/venafi"
+                  "documentation/platform/pki/ca/aws-acm-public-ca",
+                  "documentation/platform/pki/ca/venafi",
+                  "documentation/platform/pki/ca/venafi-tpp"
                 ]
               }
             ]
@@ -890,9 +909,12 @@
                 "group": "Product Reference",
                 "pages": [
                   "documentation/platform/pam/product-reference/access-policies",
+                  "documentation/platform/pam/product-reference/account-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/ai-session-insights",
                   "documentation/platform/pam/product-reference/credential-rotation",
+                  "documentation/platform/pam/product-reference/view-credentials",
                   {
                     "group": "Web Access",
                     "pages": [
@@ -907,29 +929,9 @@
             ]
           },
           {
-            "item": "Agent Sentinel",
-            "groups": [
-              {
-                "group": "Agent Sentinel",
-                "pages": [
-                  "documentation/platform/agent-sentinel/overview",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/agent-sentinel/concepts/mcp-overview"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Product Reference",
-                "pages": [
-                  "documentation/platform/agent-sentinel/mcp-servers",
-                  "documentation/platform/agent-sentinel/mcp-endpoints",
-                  "documentation/platform/agent-sentinel/activity-logs"
-                ]
-              }
-            ]
+            "item": "Agent Vault",
+            "icon": "arrow-up-right-from-square",
+            "href": "https://docs.agent-vault.dev/"
           }
         ]
       },
@@ -1460,6 +1462,18 @@
                     ]
                   },
                   {
+                    "group": "DigiCert",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/digicert/list",
+                      "api-reference/endpoints/app-connections/digicert/available",
+                      "api-reference/endpoints/app-connections/digicert/get-by-id",
+                      "api-reference/endpoints/app-connections/digicert/get-by-name",
+                      "api-reference/endpoints/app-connections/digicert/create",
+                      "api-reference/endpoints/app-connections/digicert/update",
+                      "api-reference/endpoints/app-connections/digicert/delete"
+                    ]
+                  },
+                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",
@@ -1469,6 +1483,18 @@
                       "api-reference/endpoints/app-connections/digital-ocean/create",
                       "api-reference/endpoints/app-connections/digital-ocean/update",
                       "api-reference/endpoints/app-connections/digital-ocean/delete"
+                    ]
+                  },
+                  {
+                    "group": "Doppler",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/doppler/list",
+                      "api-reference/endpoints/app-connections/doppler/available",
+                      "api-reference/endpoints/app-connections/doppler/get-by-id",
+                      "api-reference/endpoints/app-connections/doppler/get-by-name",
+                      "api-reference/endpoints/app-connections/doppler/create",
+                      "api-reference/endpoints/app-connections/doppler/update",
+                      "api-reference/endpoints/app-connections/doppler/delete"
                     ]
                   },
                   {
@@ -2340,6 +2366,19 @@
                     ]
                   },
                   {
+                    "group": "Supabase API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/create",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/delete",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/list",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/update"
+                    ]
+                  },
+                  {
                     "group": "HP iLO Local Account",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/hp-ilo-local-account/create",
@@ -2919,6 +2958,26 @@
                     ]
                   },
                   {
+                    "group": "DigiCert",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/digicert/list",
+                      "api-reference/endpoints/certificate-authorities/digicert/create",
+                      "api-reference/endpoints/certificate-authorities/digicert/read",
+                      "api-reference/endpoints/certificate-authorities/digicert/update",
+                      "api-reference/endpoints/certificate-authorities/digicert/delete"
+                    ]
+                  },
+                  {
+                    "group": "AWS ACM Public CA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
+                    ]
+                  },
+                  {
                     "group": "Internal",
                     "pages": [
                       "api-reference/endpoints/certificate-authorities/internal/list",
@@ -3227,7 +3286,8 @@
                   "api-reference/endpoints/kms/keys/update",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
-                  "api-reference/endpoints/kms/keys/private-key"
+                  "api-reference/endpoints/kms/keys/private-key",
+                  "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                 ]
               },
               {
@@ -3243,6 +3303,23 @@
                   "api-reference/endpoints/kms/signing/sign",
                   "api-reference/endpoints/kms/signing/verify",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "External Migrations",
+            "pages": [
+              {
+                "group": "Doppler",
+                "pages": [
+                  "api-reference/endpoints/external-migrations/doppler/get-configs",
+                  "api-reference/endpoints/external-migrations/doppler/create-config",
+                  "api-reference/endpoints/external-migrations/doppler/update-config",
+                  "api-reference/endpoints/external-migrations/doppler/delete-config",
+                  "api-reference/endpoints/external-migrations/doppler/get-projects",
+                  "api-reference/endpoints/external-migrations/doppler/get-environments",
+                  "api-reference/endpoints/external-migrations/doppler/import-secrets"
                 ]
               }
             ]
@@ -3476,8 +3553,8 @@
             "href": "https://infisical.com/sla"
           },
           {
-            "label": "Team Email",
-            "href": "mailto:team@infisical.com"
+            "label": "Support Email",
+            "href": "mailto:support@infisical.com"
           },
           {
             "label": "Sales",
@@ -3493,7 +3570,7 @@
   },
   "integrations": {
     "posthog": {
-      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE",
+      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV",
       "apiHost": "https://p.infisical.com"
     },
     "koala": {

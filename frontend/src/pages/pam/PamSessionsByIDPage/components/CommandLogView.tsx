@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { faChevronRight, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { TPamCommandLog } from "@app/hooks/api/pam";
@@ -11,11 +12,42 @@ import { formatLogContent } from "./PamSessionLogsSection.utils";
 
 type Props = {
   logs: TPamCommandLog[];
+  scrollToLogIndex?: number;
 };
 
-export const CommandLogView = ({ logs }: Props) => {
+export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
   const [expandedLogTimestamps, setExpandedLogTimestamps] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const handledScrollIndexRef = useRef<number | undefined>(undefined);
+  const toastShownRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (scrollToLogIndex == null) {
+      handledScrollIndexRef.current = undefined;
+      toastShownRef.current = undefined;
+      return;
+    }
+    if (scrollToLogIndex === handledScrollIndexRef.current) return;
+    const target = logs[scrollToLogIndex - 1];
+    if (!target) {
+      if (toastShownRef.current !== scrollToLogIndex) {
+        toastShownRef.current = scrollToLogIndex;
+        createNotification({
+          type: "info",
+          text: "Log entry not yet loaded. Load more logs to jump to this entry."
+        });
+      }
+      return;
+    }
+    handledScrollIndexRef.current = scrollToLogIndex;
+    setSearch("");
+    setExpandedLogTimestamps(new Set([target.timestamp]));
+    setTimeout(() => {
+      document
+        .getElementById(`log-${scrollToLogIndex}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  }, [scrollToLogIndex, logs]);
 
   const toggleExpand = (timestamp: string) => {
     setExpandedLogTimestamps((prev) => {
@@ -53,14 +85,16 @@ export const CommandLogView = ({ logs }: Props) => {
 
       <div className="flex grow flex-col gap-2 overflow-y-auto text-xs">
         {filteredLogs.length > 0 ? (
-          filteredLogs.map((log, index) => {
+          filteredLogs.map((log) => {
+            const originalIndex = logs.indexOf(log) + 1;
             const isExpanded = search.length || expandedLogTimestamps.has(log.timestamp);
             const formattedInput = formatLogContent(log.input);
-            const logKey = `${log.timestamp}-${index}`;
+            const logKey = `${log.timestamp}-${originalIndex}`;
 
             return (
               <button
                 type="button"
+                id={`log-${originalIndex}`}
                 key={logKey}
                 className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:inset-ring-2 focus:inset-ring-mineshaft-400 focus:outline-hidden ${
                   isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800 hover:bg-mineshaft-700"

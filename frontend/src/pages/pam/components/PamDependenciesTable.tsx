@@ -12,23 +12,23 @@ import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import type { TPamAccountDependency } from "@app/hooks/api/pam";
 import { useDeletePamAccountDependency, useTogglePamAccountDependency } from "@app/hooks/api/pam";
@@ -100,30 +100,30 @@ const DependencyRow = ({
 
   return (
     <>
-      <UnstableTableRow className="group cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-        <UnstableTableCell className="w-5">
+      <TableRow className="group cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        <TableCell className="w-5">
           {isExpanded ? (
             <ChevronDownIcon className="size-4 text-muted" />
           ) : (
             <ChevronRightIcon className="size-4 text-muted" />
           )}
-        </UnstableTableCell>
-        <UnstableTableCell className="font-medium">{dep.displayName || dep.name}</UnstableTableCell>
-        <UnstableTableCell>
+        </TableCell>
+        <TableCell className="font-medium">{dep.displayName || dep.name}</TableCell>
+        <TableCell>
           <Badge variant="info">
             {DEPENDENCY_TYPE_LABEL[dep.dependencyType] || dep.dependencyType}
           </Badge>
-        </UnstableTableCell>
-        <UnstableTableCell className="text-muted">{contextColumn.value ?? "-"}</UnstableTableCell>
-        <UnstableTableCell className="text-muted">{dep.state ?? "-"}</UnstableTableCell>
-        <UnstableTableCell>
+        </TableCell>
+        <TableCell className="text-muted">{contextColumn.value ?? "-"}</TableCell>
+        <TableCell className="text-muted">{dep.state ?? "-"}</TableCell>
+        <TableCell>
           {dep.isRotationSyncEnabled ? (
             <Badge variant="success">Enabled</Badge>
           ) : (
             <Badge variant="neutral">Disabled</Badge>
           )}
-        </UnstableTableCell>
-        <UnstableTableCell>
+        </TableCell>
+        <TableCell>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted">
               {dep.lastSyncedAt
@@ -153,16 +153,16 @@ const DependencyRow = ({
               </Badge>
             )}
           </div>
-        </UnstableTableCell>
-        <UnstableTableCell>
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger asChild>
-              <UnstableIconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+        </TableCell>
+        <TableCell>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
                 <EllipsisVerticalIcon />
-              </UnstableIconButton>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent sideOffset={2} align="end">
-              <UnstableDropdownMenuItem
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={2} align="end">
+              <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMutation.mutate({
@@ -173,8 +173,8 @@ const DependencyRow = ({
                 }}
               >
                 {dep.isRotationSyncEnabled ? "Disable Rotation Sync" : "Enable Rotation Sync"}
-              </UnstableDropdownMenuItem>
-              <UnstableDropdownMenuItem
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 variant="danger"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -183,14 +183,14 @@ const DependencyRow = ({
               >
                 <TrashIcon className="size-4" />
                 Delete
-              </UnstableDropdownMenuItem>
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
-        </UnstableTableCell>
-      </UnstableTableRow>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
       {isExpanded && (
-        <UnstableTableRow>
-          <UnstableTableCell colSpan={colCount} className="bg-mineshaft-700/30 px-6 py-4">
+        <TableRow>
+          <TableCell colSpan={colCount} className="bg-mineshaft-700/30 px-6 py-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
               <div className="flex justify-between border-b border-mineshaft-600 py-1">
                 <span className="text-muted">Name</span>
@@ -221,8 +221,8 @@ const DependencyRow = ({
                 </div>
               ))}
             </div>
-          </UnstableTableCell>
-        </UnstableTableRow>
+          </TableCell>
+        </TableRow>
       )}
     </>
   );
@@ -263,15 +263,15 @@ export const PamDependenciesTable = ({
 
   return (
     <>
-      <UnstableTable>
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead className="w-5" />
-            <UnstableTableHead>Name</UnstableTableHead>
-            <UnstableTableHead>Type</UnstableTableHead>
-            <UnstableTableHead>{contextColumnLabel}</UnstableTableHead>
-            <UnstableTableHead>State</UnstableTableHead>
-            <UnstableTableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-5" />
+            <TableHead>Name</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>{contextColumnLabel}</TableHead>
+            <TableHead>State</TableHead>
+            <TableHead>
               <div className="flex items-center gap-1">
                 Rotation Sync
                 <Tooltip>
@@ -284,29 +284,29 @@ export const PamDependenciesTable = ({
                   </TooltipContent>
                 </Tooltip>
               </div>
-            </UnstableTableHead>
-            <UnstableTableHead>Last Synced</UnstableTableHead>
-            <UnstableTableHead className="w-5" />
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
+            </TableHead>
+            <TableHead>Last Synced</TableHead>
+            <TableHead className="w-5" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {isPending && (
-            <UnstableTableRow>
-              <UnstableTableCell colSpan={COL_COUNT} className="text-center text-muted">
+            <TableRow>
+              <TableCell colSpan={COL_COUNT} className="text-center text-muted">
                 Loading dependencies...
-              </UnstableTableCell>
-            </UnstableTableRow>
+              </TableCell>
+            </TableRow>
           )}
           {!isPending && (!dependencies || dependencies.length === 0) && (
-            <UnstableTableRow>
-              <UnstableTableCell colSpan={COL_COUNT}>
-                <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
-                  <UnstableEmptyHeader>
-                    <UnstableEmptyTitle>No dependencies discovered</UnstableEmptyTitle>
-                  </UnstableEmptyHeader>
-                </UnstableEmpty>
-              </UnstableTableCell>
-            </UnstableTableRow>
+            <TableRow>
+              <TableCell colSpan={COL_COUNT}>
+                <Empty className="border-0 bg-transparent py-8 shadow-none">
+                  <EmptyHeader>
+                    <EmptyTitle>No dependencies discovered</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
+              </TableCell>
+            </TableRow>
           )}
           {!isPending &&
             dependencies?.map((dep) => (
@@ -322,8 +322,8 @@ export const PamDependenciesTable = ({
                 onDeleteClick={setDeleteTarget}
               />
             ))}
-        </UnstableTableBody>
-      </UnstableTable>
+        </TableBody>
+      </Table>
 
       <DeleteActionModal
         isOpen={!!deleteTarget}

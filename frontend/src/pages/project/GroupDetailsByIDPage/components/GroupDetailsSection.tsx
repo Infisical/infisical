@@ -4,16 +4,16 @@ import { CheckIcon, ClipboardListIcon } from "lucide-react";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -33,12 +33,12 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
   });
 
   return (
-    <UnstableCard className="w-full lg:max-w-[24rem]">
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Details</UnstableCardTitle>
-        <UnstableCardDescription>Group details</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+    <Card className="w-full lg:max-w-[24rem]">
+      <CardHeader className="border-b">
+        <CardTitle>Details</CardTitle>
+        <CardDescription>Group details</CardDescription>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
@@ -49,7 +49,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             <DetailValue className="flex items-center gap-x-1">
               {group.id}
               <Tooltip content="Copy group ID to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(group.id);
                     setCopyTextId("Copied");
@@ -59,7 +59,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
                 >
                   {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                   {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -86,7 +86,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

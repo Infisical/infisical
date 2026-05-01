@@ -6,23 +6,23 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ConfirmActionModal, Lottie } from "@app/components/v2";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableInput,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Input,
+  Pagination,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
@@ -173,21 +173,21 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     <>
       <div className="mb-5 flex gap-2.5">
         {/* TODO(scott): add input group with icon once component added */}
-        <UnstableInput
+        <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search group members..."
         />
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant={memberTypeFilter.length ? "project" : "outline"}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant={memberTypeFilter.length ? "project" : "outline"}>
               <FilterIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuLabel>Filter by Member Type</UnstableDropdownMenuLabel>
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filter by Member Type</DropdownMenuLabel>
             {filterOptions.map((option) => (
-              <UnstableDropdownMenuCheckboxItem
+              <DropdownMenuCheckboxItem
                 key={option.value}
                 checked={memberTypeFilter.includes(option.value)}
                 onClick={(e) => {
@@ -202,17 +202,17 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                 }}
               >
                 {option.label}
-              </UnstableDropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem>
             ))}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {members.length > 0 ? (
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead className="w-5" />
-              <UnstableTableHead className="w-1/2" onClick={toggleOrderDirection}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-5" />
+              <TableHead className="w-1/2" onClick={toggleOrderDirection}>
                 Name
                 <ChevronDownIcon
                   className={twMerge(
@@ -220,12 +220,12 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                     "transition-transform"
                   )}
                 />
-              </UnstableTableHead>
-              <UnstableTableHead>Joined Group</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              </TableHead>
+              <TableHead>Joined Group</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {groupMemberships?.members?.map((userGroupMembership) => {
               return userGroupMembership.type === GroupMemberType.USER ? (
                 <GroupMembershipUserRow
@@ -251,26 +251,26 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                 />
               );
             })}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       ) : (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {isFiltered
                 ? "No group members match this search"
                 : "This group doesn't have any members"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {isFiltered
                 ? "Adjust search filters to view group members."
                 : "Assign members from organization access control or contact an organization admin."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
       {Boolean(totalCount) && (
-        <UnstablePagination
+        <Pagination
           count={totalCount}
           page={page}
           perPage={perPage}

@@ -9,31 +9,31 @@ import {
 } from "lucide-react";
 
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageLoader,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePageLoader,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
@@ -200,18 +200,18 @@ const Content = ({
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
       <div className="flex gap-2 border-b border-border pb-4">
-        <UnstableDropdownMenu>
+        <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
-              <UnstableDropdownMenuTrigger asChild>
-                <UnstableIconButton variant={hasActiveFilters ? "project" : "outline"}>
+              <DropdownMenuTrigger asChild>
+                <IconButton variant={hasActiveFilters ? "project" : "outline"}>
                   <FilterIcon />
-                </UnstableIconButton>
-              </UnstableDropdownMenuTrigger>
+                </IconButton>
+              </DropdownMenuTrigger>
             </TooltipTrigger>
             <TooltipContent>Search Filters</TooltipContent>
           </Tooltip>
-          <UnstableDropdownMenuContent align="start">
+          <DropdownMenuContent align="start">
             <ResourceFilterMenuContent
               resourceTypes={QUICK_SEARCH_RESOURCE_TYPES}
               resourceTypeFilter={showFilter}
@@ -222,8 +222,8 @@ const Content = ({
               onClearTags={handleClearTags}
               menuLabel="Filter By"
             />
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <InputGroup className="flex-1">
           <InputGroupAddon>
             <SearchIcon />
@@ -241,16 +241,14 @@ const Content = ({
         {isEnabled ? (
           // eslint-disable-next-line no-nested-ternary
           isPending ? (
-            <UnstablePageLoader />
+            <PageLoader />
           ) : isEmpty ? (
-            <UnstableEmpty className="mt-7 border">
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>No results match search.</UnstableEmptyTitle>
-                <UnstableEmptyDescription>
-                  Try updating your search filters...
-                </UnstableEmptyDescription>
-              </UnstableEmptyHeader>
-            </UnstableEmpty>
+            <Empty className="mt-7 border">
+              <EmptyHeader>
+                <EmptyTitle>No results match search.</EmptyTitle>
+                <EmptyDescription>Try updating your search filters...</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="flex flex-col gap-6">
               {resultsByEnv.map(
@@ -263,16 +261,16 @@ const Content = ({
                 }) => (
                   <div key={env.slug}>
                     <h3 className="mb-2 text-sm font-medium text-foreground">{env.name}</h3>
-                    <UnstableTable>
-                      <UnstableTableHeader>
-                        <UnstableTableRow>
-                          <UnstableTableHead className="w-8" />
-                          <UnstableTableHead>Name</UnstableTableHead>
-                          <UnstableTableHead>Location</UnstableTableHead>
-                          <UnstableTableHead className="w-24" />
-                        </UnstableTableRow>
-                      </UnstableTableHeader>
-                      <UnstableTableBody>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8" />
+                          <TableHead>Name</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead className="w-24" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {envFolders.map((folder) => (
                           <QuickSearchFolderItem
                             key={folder.id}
@@ -307,22 +305,22 @@ const Content = ({
                             onClose={onClose}
                           />
                         ))}
-                      </UnstableTableBody>
-                    </UnstableTable>
+                      </TableBody>
+                    </Table>
                   </div>
                 )
               )}
             </div>
           )
         ) : (
-          <UnstableEmpty className="mt-7 border">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>Start typing to begin search...</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
+          <Empty className="mt-7 border">
+            <EmptyHeader>
+              <EmptyTitle>Start typing to begin search...</EmptyTitle>
+              <EmptyDescription>
                 Search by resource name, secret metadata or tag...
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </div>
     </div>

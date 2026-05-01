@@ -8,7 +8,10 @@ import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
-export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
+export const SECRET_SYNC_MAP: Record<
+  SecretSync,
+  { name: string; image: string; aliases?: string[] }
+> = {
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
   [SecretSync.AWSSecretsManager]: { name: "AWS Secrets Manager", image: "Amazon Web Services.png" },
   [SecretSync.GitHub]: { name: "GitHub", image: "GitHub.png" },
@@ -141,6 +144,15 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.ExternalInfisical]: {
     name: "Infisical",
     image: "Infisical.png"
+  },
+  [SecretSync.Ona]: {
+    name: "Ona",
+    image: "Ona.png",
+    aliases: ["gitpod"]
+  },
+  [SecretSync.TravisCI]: {
+    name: "Travis CI",
+    image: "Travis CI.png"
   }
 };
 
@@ -181,7 +193,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
   [SecretSync.CircleCI]: AppConnection.CircleCI,
   [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
-  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical
+  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical,
+  [SecretSync.Ona]: AppConnection.Ona,
+  [SecretSync.TravisCI]: AppConnection.TravisCI
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -1,0 +1,174 @@
+---
+title: "Travis CI Sync"
+description: "Learn how to configure a Travis CI Sync for Infisical."
+---
+
+Infisical's Travis CI Sync keeps your Travis CI repository environment variables in sync with an Infisical project. Account-level environment variables (`account_env_vars`) are not managed by this sync, only repository-scoped environment variables are.
+
+<Note>
+    `account_env_vars` are not exposed by the Travis CI API for listing or creation, so Infisical cannot sync them. 
+</Note>
+
+**Prerequisites:**
+
+- Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+- Create a [Travis CI Connection](/integrations/app-connections/travis-ci)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+            </Step>
+            <Step title="Select 'Travis CI'">
+                Select the **Travis CI** option from the list of destinations.
+
+                ![Select Travis CI](/images/secret-syncs/travis-ci/select-travis-ci-option.png)
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+                ![Configure Source](/images/secret-syncs/travis-ci/travis-ci-source.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then click **Next**.
+
+                ![Configure Destination](/images/secret-syncs/travis-ci/travis-ci-destination.png)
+
+                - **Travis CI Connection**: The Travis CI Connection to authenticate with.
+                - **Repository**: The Travis CI repository to sync secrets to.
+                - **Branch** *Optional*: The branch that synced environment variables will be scoped to on Travis CI. If left empty, the sync will manage environment variables that aren't scoped to any branch (i.e. repository-level variables).
+            </Step>
+            <Step title="Configure Sync Options">
+                Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+
+                ![Configure Options](/images/secret-syncs/travis-ci/travis-ci-options.png)
+
+                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                    - **Overwrite Destination Secrets**: Removes any environment variables at the destination not present in Infisical.
+                <Note>
+                    Travis CI does not support importing secrets.
+                </Note>
+                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+                <Note>
+                    We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+                - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced when changes occur at the source location. Disable to enforce manual syncing only.
+                - **Disable Secret Deletion**: If enabled, Infisical will not remove environment variables from Travis CI during a sync. Enable this option if you intend to manage some environment variables manually outside of Infisical.
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your Travis CI Sync, then click **Next**.
+
+                ![Configure Details](/images/secret-syncs/travis-ci/travis-ci-details.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review configuration">
+                Review your Travis CI Sync configuration, then click **Create Sync**.
+
+                ![Confirm Configuration](/images/secret-syncs/travis-ci/travis-ci-review.png)
+            </Step>
+            <Step title="Sync created">
+                If enabled, your Travis CI Sync will begin pushing your Infisical secrets to the configured repository (and branch, if scoped).
+
+                ![Sync Created](/images/secret-syncs/travis-ci/travis-ci-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a **Travis CI Sync**, make an API request to the [Create Travis CI Sync](/api-reference/endpoints/secret-syncs/travis-ci/create) API endpoint.
+
+        The `branch` field inside `destinationConfig` is optional. Omit it to manage repository-level environment variables, or set it to scope the sync to a specific branch on Travis CI.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/travis-ci \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-travis-ci-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "Push Infisical secrets to the Travis CI repository",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/",
+                    "isAutoSyncEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination",
+                        "disableSecretDeletion": false
+                    },
+                    "destinationConfig": {
+                        "repositoryId": "12345678",
+                        "repositorySlug": "my-org/my-repo",
+                        "branch": "main"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-travis-ci-sync",
+                "description": "Push Infisical secrets to the Travis CI repository",
+                "isAutoSyncEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2026-04-17T05:31:56Z",
+                "updatedAt": "2026-04-17T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2026-04-17T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination",
+                    "disableSecretDeletion": false
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "travis-ci",
+                    "name": "my-travis-ci-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/"
+                },
+                "destination": "travis-ci",
+                "destinationConfig": {
+                    "repositoryId": "12345678",
+                    "repositorySlug": "my-org/my-repo",
+                    "branch": "main"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

@@ -9,10 +9,10 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -123,15 +123,15 @@ const Page = withPermission(
               description={`Configure and manage${isSubOrganization ? " sub-" : " "}organization user membership`}
             >
               {userId !== membership.user.id && (
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="outline">
                       Options
                       <EllipsisIcon />
                     </Button>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
-                    <UnstableDropdownMenuItem
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
                       onClick={() => {
                         navigator.clipboard.writeText(membership.user.id);
                         createNotification({
@@ -141,13 +141,13 @@ const Page = withPermission(
                       }}
                     >
                       Copy User ID
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={() =>
                             handlePopUpOpen("orgMembership", {
@@ -159,7 +159,7 @@ const Page = withPermission(
                           }
                         >
                           Edit User
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
@@ -167,7 +167,7 @@ const Page = withPermission(
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={async () => {
                             if (!membership.isActive) {
@@ -189,7 +189,7 @@ const Page = withPermission(
                           }}
                         >
                           {`${membership.isActive ? "Deactivate" : "Activate"} User`}
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
@@ -197,7 +197,7 @@ const Page = withPermission(
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           variant="danger"
                           isDisabled={!isAllowed}
                           onClick={() => {
@@ -208,11 +208,11 @@ const Page = withPermission(
                           }}
                         >
                           Remove User
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </OrgPermissionCan>
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </PageHeader>
             <div className="flex flex-col gap-5 lg:flex-row">

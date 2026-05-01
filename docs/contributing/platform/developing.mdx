@@ -32,6 +32,24 @@ docker compose -f docker-compose.dev.yml up --build --force-recreate
 
 Once all the services have spun up, browse to http://localhost:8080.
 
+#### Local SMTP with Mailhog
+
+The dev Docker Compose includes [Mailhog](https://github.com/mailhog/MailHog), a local SMTP server that captures all outgoing emails. This is useful for testing email-based flows like user invitations, password resets, and other notifications without sending real emails.
+
+The `.env.dev.example` file already includes the SMTP variables pre-configured for Mailhog — no extra setup is needed.
+
+| Variable | Value |
+|---|---|
+| `SMTP_HOST` | `host.docker.internal` |
+| `SMTP_PORT` | `1025` |
+| `SMTP_FROM_ADDRESS` | `dev@infisical.local` |
+| `SMTP_FROM_NAME` | `Infisical Local` |
+| `SMTP_REQUIRE_TLS` | `false` |
+| `SMTP_USERNAME` | `you@example.com` |
+| `SMTP_PASSWORD` | _(empty)_ |
+
+To view captured emails, open the Mailhog web UI at [http://localhost:8025](http://localhost:8025).
+
 #### Shutdown local server
 
 ```bash

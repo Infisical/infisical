@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { FormControl, Input } from "@app/components/v2";
-import { Button, UnstableAccordion } from "@app/components/v3";
+import { Accordion, Button } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
@@ -191,7 +191,7 @@ export const ProjectTemplateEditRoleForm = ({
           <div className="mb-2 text-lg">Policies</div>
           <PermissionEmptyState />
           {hasPermissions && (
-            <UnstableAccordion
+            <Accordion
               type="multiple"
               value={openPolicies}
               onValueChange={setOpenPolicies}
@@ -210,7 +210,7 @@ export const ProjectTemplateEditRoleForm = ({
                   {renderConditionalComponents(subject, isDisabled)}
                 </GeneralPermissionPolicies>
               ))}
-            </UnstableAccordion>
+            </Accordion>
           )}
         </div>
       </FormProvider>

@@ -84,7 +84,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const [shouldShowWebAuthnRegistration, setShouldShowWebAuthnRegistration] = useState(false);
   const [credentialName, setCredentialName] = useState("");
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
-  const logout = useLogoutUser(true);
+  const logout = useLogoutUser();
 
   const { mutateAsync: generateWebAuthnAuthenticationOptions } = useGenerateAuthenticationOptions();
   const { mutateAsync: verifyWebAuthnAuthentication } = useVerifyAuthentication();

@@ -8,8 +8,7 @@ import {
   IncidentContactsSchema,
   OrgMembershipsSchema,
   OrgMembershipStatus,
-  OrgRolesSchema,
-  UsersSchema
+  OrgRolesSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
@@ -20,7 +19,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
-import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -263,6 +262,37 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/audit-logs/postgres-storage-status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getOrganizationAuditLogPostgresStorageStatus",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get the PostgreSQL audit log storage status for an organization",
+      response: {
+        200: z.object({
+          clickHouseConfigured: z.boolean(),
+          auditLogGenerationDisabled: z.boolean(),
+          auditLogStorageDisabled: z.boolean(),
+          auditLogRowCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.auditLog.getAuditLogPostgresStorageStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:organizationId/users",
     config: {
       rateLimit: readLimit
@@ -276,14 +306,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: OrgMembershipsSchema.merge(
             z.object({
-              user: UsersSchema.pick({
+              user: SanitizedUserSchema.pick({
                 username: true,
                 email: true,
                 firstName: true,
                 lastName: true,
-                id: true,
-                superAdmin: true
-              }).merge(z.object({ publicKey: z.string().nullable().optional() }))
+                id: true
+              }).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }))
             })
           )
             .omit({ createdAt: true, updatedAt: true })

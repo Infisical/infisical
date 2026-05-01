@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -7,61 +7,22 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { Button } from "@app/components/v3";
-import { isLoggedIn } from "@app/hooks/api/reactQuery";
 
 import { InitialStep, SSOStep } from "./components";
-import { useNavigateToSelectOrganization } from "./Login.utils";
+import { LoginSection } from "./Login.utils";
 
 export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const { t } = useTranslation();
-  const [step, setStep] = useState<number | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
-
-  const queryParams = new URLSearchParams(window.location.search);
-
-  useEffect(() => {
-    // TODO(akhilmhdh): workspace will be controlled by a workspace context
-    const handleRedirects = async () => {
-      try {
-        const callbackPort = queryParams?.get("callback_port");
-        // case: a callback port is set, meaning it's a cli login request: redirect to select org with callback port
-        if (callbackPort) {
-          navigateToSelectOrganization(callbackPort);
-        } else {
-          // case: no callback port, meaning it's a regular login request: redirect to select org
-          navigateToSelectOrganization();
-        }
-      } catch {
-        console.log("Error - Not logged in yet");
-      }
-    };
-
-    if (isLoggedIn()) {
-      handleRedirects();
-    } else {
-      setStep(0);
-    }
-  }, []);
+  const [section, setSection] = useState<LoginSection>(LoginSection.Initial);
 
   const renderView = () => {
-    switch (step) {
-      case 0:
-        return (
-          <InitialStep
-            isAdmin={isAdmin}
-            setStep={setStep}
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-          />
-        );
-      case 2:
-        return <SSOStep setStep={setStep} type="SAML" />;
-      case 3:
-        return <SSOStep setStep={setStep} type="OIDC" />;
+    switch (section) {
+      case LoginSection.Initial:
+        return <InitialStep isAdmin={isAdmin} setSection={setSection} />;
+      case LoginSection.SAML:
+        return <SSOStep setSection={setSection} type="SAML" />;
+      case LoginSection.OIDC:
+        return <SSOStep setSection={setSection} type="OIDC" />;
       default:
         return <div />;
     }

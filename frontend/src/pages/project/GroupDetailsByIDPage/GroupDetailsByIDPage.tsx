@@ -8,10 +8,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -103,15 +103,15 @@ const Page = () => {
             title={groupMembership.group.name}
             description="Configure and manage project access control"
           >
-            <UnstableDropdownMenu>
-              <UnstableDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                   Options
                   <EllipsisIcon />
                 </Button>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
-                <UnstableDropdownMenuItem
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                   onClick={() => {
                     navigator.clipboard.writeText(groupMembership.group.id);
                     createNotification({
@@ -121,24 +121,24 @@ const Page = () => {
                   }}
                 >
                   Copy Group ID
-                </UnstableDropdownMenuItem>
+                </DropdownMenuItem>
 
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={ProjectPermissionSub.Groups}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       variant="danger"
                       isDisabled={!isAllowed}
                       onClick={() => handlePopUpOpen("deleteGroup")}
                     >
                       Remove From Project
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <GroupDetailsSection groupMembership={groupMembership} />

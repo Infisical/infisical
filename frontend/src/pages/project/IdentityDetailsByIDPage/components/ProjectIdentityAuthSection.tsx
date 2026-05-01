@@ -5,17 +5,17 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
 import { IdentityAuthMethod, TProjectIdentity } from "@app/hooks/api";
@@ -39,15 +39,15 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Authentication</UnstableCardTitle>
-          <UnstableCardDescription>Configure authentication methods</UnstableCardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle>Authentication</CardTitle>
+          <CardDescription>Configure authentication methods</CardDescription>
           {hasAuthMethods &&
             !Object.values(IdentityAuthMethod).every((method) =>
               identity.authMethods.includes(method)
             ) && (
-              <UnstableCardAction>
+              <CardAction>
                 <ProjectPermissionCan
                   I={ProjectPermissionIdentityActions.Edit}
                   a={subject(ProjectPermissionSub.Identity, {
@@ -73,10 +73,10 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                     </Button>
                   )}
                 </ProjectPermissionCan>
-              </UnstableCardAction>
+              </CardAction>
             )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           {identity.authMethods.length > 0 ? (
             <ViewIdentityAuth
               authMethods={identity.authMethods}
@@ -85,16 +85,12 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
               activeLockoutAuthMethods={identity.activeLockoutAuthMethods}
             />
           ) : (
-            <UnstableEmpty className="border">
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>
-                  This machine identity has no auth methods configured
-                </UnstableEmptyTitle>
-                <UnstableEmptyDescription>
-                  Add an auth method to use this machine identity
-                </UnstableEmptyDescription>
-              </UnstableEmptyHeader>
-              <UnstableEmptyContent>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>This machine identity has no auth methods configured</EmptyTitle>
+                <EmptyDescription>Add an auth method to use this machine identity</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
                 <ProjectPermissionCan
                   I={ProjectPermissionIdentityActions.Edit}
                   a={subject(ProjectPermissionSub.Identity, {
@@ -119,11 +115,11 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                     </Button>
                   )}
                 </ProjectPermissionCan>
-              </UnstableEmptyContent>
-            </UnstableEmpty>
+              </EmptyContent>
+            </Empty>
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <IdentityAuthMethodModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}

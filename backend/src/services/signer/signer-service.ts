@@ -552,6 +552,13 @@ export const signerServiceFactory = ({
       kmsService
     });
 
+    if (!certPublicKey) {
+      throw new BadRequestError({
+        message:
+          "Public key derivation is not supported for this certificate's key type. PQC certificates cannot be used as code signers."
+      });
+    }
+
     const publicKeyObject = crypto.nativeCrypto.createPublicKey({
       key: certPublicKey,
       format: "pem",

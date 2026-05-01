@@ -9,22 +9,16 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   SheetFooter,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
-import { PamResourceType, TWindowsResource, useListPamResources } from "@app/hooks/api/pam";
+import { PamResourceType, TWindowsResource } from "@app/hooks/api/pam";
 import { WindowsProtocol } from "@app/hooks/api/pam/types/windows-server-resource";
 
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
@@ -56,19 +50,13 @@ const formSchema = genericResourceFieldsSchema.extend({
       .transform((val) => val || undefined)
       .optional()
   }),
-  adServerResourceId: z.string().uuid().nullable().optional()
+  domainId: z.string().uuid().nullable().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(resource);
-  const { projectId } = useProject();
-
-  const { data: adResources, isPending: isAdResourcesLoading } = useListPamResources({
-    projectId,
-    filterResourceTypes: PamResourceType.ActiveDirectory
-  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -76,7 +64,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
       ? {
           ...resource,
           gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined,
-          adServerResourceId: resource.adServerResourceId ?? null,
+          domainId: resource.domainId ?? null,
           connectionDetails: {
             ...(resource.connectionDetails as FormData["connectionDetails"]),
             winrmPort: (resource.connectionDetails as any).winrmPort ?? 5986,
@@ -100,7 +88,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
             winrmCaCert: "",
             winrmTlsServerName: ""
           },
-          adServerResourceId: null
+          domainId: null
         }
   });
 
@@ -124,37 +112,6 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
       >
         <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
           <GenericResourceFields />
-          <Controller
-            control={control}
-            name="adServerResourceId"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Active Directory Resource</FieldLabel>
-                <FieldContent>
-                  <Select
-                    value={value || "none"}
-                    onValueChange={(val) => onChange(val === "none" ? null : val)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={isAdResourcesLoading ? "Loading..." : "None"} />
-                    </SelectTrigger>
-                    <SelectContent position="popper" align="start">
-                      <SelectItem value="none">None</SelectItem>
-                      {(adResources?.resources || []).map((adResource) => (
-                        <SelectItem value={adResource.id} key={adResource.id}>
-                          {adResource.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted">
-                    Optionally associate this server with an AD domain
-                  </p>
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
 
           {/* RDP Connection */}
           <div className="flex items-start gap-2">
@@ -165,7 +122,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                 <Field className="flex-1">
                   <FieldLabel>Hostname</FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       isError={Boolean(error)}
                       placeholder="example.com or 192.168.1.1"
@@ -182,7 +139,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                 <Field className="w-28">
                   <FieldLabel>Port</FieldLabel>
                   <FieldContent>
-                    <UnstableInput type="number" {...field} isError={Boolean(error)} />
+                    <Input type="number" {...field} isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -211,12 +168,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
-                      {...field}
-                      type="number"
-                      placeholder="5986"
-                      isError={Boolean(error)}
-                    />
+                    <Input {...field} type="number" placeholder="5986" isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -304,7 +256,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       placeholder="server.corp.example.com"
                       disabled={!useWinrmHttps || !winrmRejectUnauthorized}

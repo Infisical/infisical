@@ -6,24 +6,24 @@ import { HardDriveIcon, UserIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -137,53 +137,51 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
   };
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Signing History</UnstableCardTitle>
-        <UnstableCardDescription>Trail of signing operations</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Timestamp</UnstableTableHead>
-              <UnstableTableHead>Status</UnstableTableHead>
-              <UnstableTableHead>Algorithm</UnstableTableHead>
-              <UnstableTableHead>Data Hash</UnstableTableHead>
-              <UnstableTableHead>Actor</UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+    <Card>
+      <CardHeader>
+        <CardTitle>Signing History</CardTitle>
+        <CardDescription>Trail of signing operations</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Timestamp</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Algorithm</TableHead>
+              <TableHead>Data Hash</TableHead>
+              <TableHead>Actor</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 // eslint-disable-next-line react/no-array-index-key
-                <UnstableTableRow key={`skeleton-${i}`}>
+                <TableRow key={`skeleton-${i}`}>
                   {Array.from({ length: 5 }).map((__, j) => (
                     // eslint-disable-next-line react/no-array-index-key
-                    <UnstableTableCell key={`skeleton-cell-${j}`}>
+                    <TableCell key={`skeleton-cell-${j}`}>
                       <div className="h-4 w-full animate-pulse rounded bg-mineshaft-700" />
-                    </UnstableTableCell>
+                    </TableCell>
                   ))}
-                </UnstableTableRow>
+                </TableRow>
               ))}
             {!isLoading &&
               operations.map((op) => (
-                <UnstableTableRow key={op.id}>
-                  <UnstableTableCell>
-                    {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                <TableRow key={op.id}>
+                  <TableCell>{format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}</TableCell>
+                  <TableCell>
                     <Badge variant={getStatusBadgeVariant(op.status)}>
                       {signingOperationStatusLabels[op.status] ?? op.status}
                     </Badge>
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-xs">
+                  </TableCell>
+                  <TableCell className="text-xs">
                     {ALGORITHM_DISPLAY[op.signingAlgorithm] ?? op.signingAlgorithm}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="max-w-[120px] truncate font-mono text-xs">
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate font-mono text-xs">
                     {op.dataHash}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-1.5">
@@ -207,20 +205,20 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
                       </TooltipTrigger>
                       <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
                     </Tooltip>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
         {!isLoading && operations.length === 0 && (
-          <UnstableEmpty>
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No signing operations yet</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No signing operations yet</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
         {Boolean(totalCount) && (
-          <UnstablePagination
+          <Pagination
             count={totalCount}
             page={page}
             perPage={perPage}
@@ -228,7 +226,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
             onChangePerPage={setPerPage}
           />
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

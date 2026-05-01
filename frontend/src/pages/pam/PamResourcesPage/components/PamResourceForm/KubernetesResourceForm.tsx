@@ -26,10 +26,22 @@ const KubernetesServiceAccountTokenCredentialsSchema = z.object({
   serviceAccountToken: z.string().trim().max(10000)
 });
 
+const KubernetesGatewayAuthCredentialsSchema = z.object({
+  authMethod: z.literal(KubernetesAuthMethod.GatewayKubernetesAuth),
+  namespace: z.string().trim().min(1).max(63),
+  serviceAccountName: z.string().trim().min(1).max(253)
+});
+
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.Kubernetes),
   connectionDetails: KubernetesConnectionDetailsSchema,
-  rotationAccountCredentials: KubernetesServiceAccountTokenCredentialsSchema.nullable().optional()
+  rotationAccountCredentials: z
+    .discriminatedUnion("authMethod", [
+      KubernetesServiceAccountTokenCredentialsSchema,
+      KubernetesGatewayAuthCredentialsSchema
+    ])
+    .nullable()
+    .optional()
 });
 
 type FormData = z.infer<typeof formSchema>;

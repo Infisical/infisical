@@ -89,6 +89,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "HP iLO Local Account",
     image: "SSH.png",
     size: 50
+  },
+  [SecretRotation.SupabaseApiKey]: {
+    name: "Supabase API Key",
+    image: "Supabase.png",
+    size: 50
   }
 };
 
@@ -109,7 +114,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
   [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
-  [SecretRotation.HpIloLocalAccount]: AppConnection.SSH
+  [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
+  [SecretRotation.SupabaseApiKey]: AppConnection.Supabase
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -130,7 +136,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.DbtServiceToken]: true,
   [SecretRotation.WindowsLocalAccount]: false,
   [SecretRotation.OpenRouterApiKey]: true,
-  [SecretRotation.HpIloLocalAccount]: false
+  [SecretRotation.HpIloLocalAccount]: false,
+  [SecretRotation.SupabaseApiKey]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

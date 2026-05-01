@@ -131,7 +131,7 @@ export const IdentityUniversalAuthForm = ({
     defaultValues: {
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
-      accessTokenNumUsesLimit: "0",
+      accessTokenNumUsesLimit: "",
       clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
       accessTokenPeriod: "0",
@@ -172,7 +172,9 @@ export const IdentityUniversalAuthForm = ({
       reset({
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenPeriod: String(data.accessTokenPeriod),
         clientSecretTrustedIps: data.clientSecretTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
@@ -199,7 +201,7 @@ export const IdentityUniversalAuthForm = ({
       reset({
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
-        accessTokenNumUsesLimit: "0",
+        accessTokenNumUsesLimit: "",
         accessTokenPeriod: "0",
         clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
         accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
@@ -241,7 +243,7 @@ export const IdentityUniversalAuthForm = ({
         clientSecretTrustedIps,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps,
         accessTokenPeriod: Number(accessTokenPeriod),
         lockoutEnabled,
@@ -258,7 +260,7 @@ export const IdentityUniversalAuthForm = ({
         clientSecretTrustedIps,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps,
         accessTokenPeriod: Number(accessTokenPeriod),
         lockoutEnabled,
@@ -353,8 +355,9 @@ export const IdentityUniversalAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
               >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
               </FormControl>
             )}
           />

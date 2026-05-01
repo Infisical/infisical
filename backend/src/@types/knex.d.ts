@@ -41,9 +41,6 @@ import {
   TAiMcpServerUserCredentials,
   TAiMcpServerUserCredentialsInsert,
   TAiMcpServerUserCredentialsUpdate,
-  TApiKeys,
-  TApiKeysInsert,
-  TApiKeysUpdate,
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
@@ -110,6 +107,9 @@ import {
   TCertificateCleanupConfigs,
   TCertificateCleanupConfigsInsert,
   TCertificateCleanupConfigsUpdate,
+  TCertificateInventoryViews,
+  TCertificateInventoryViewsInsert,
+  TCertificateInventoryViewsUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -140,6 +140,9 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
+  TExternalMigrationConfigs,
+  TExternalMigrationConfigsInsert,
+  TExternalMigrationConfigsUpdate,
   TFolderCheckpointResources,
   TFolderCheckpointResourcesInsert,
   TFolderCheckpointResourcesUpdate,
@@ -158,6 +161,15 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
+  TGatewayEnrollmentTokens,
+  TGatewayEnrollmentTokensInsert,
+  TGatewayEnrollmentTokensUpdate,
+  TGatewayPoolMemberships,
+  TGatewayPoolMembershipsInsert,
+  TGatewayPoolMembershipsUpdate,
+  TGatewayPools,
+  TGatewayPoolsInsert,
+  TGatewayPoolsUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -368,6 +380,9 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiScepDynamicChallenges,
+  TPkiScepDynamicChallengesInsert,
+  TPkiScepDynamicChallengesUpdate,
   TPkiScepEnrollmentConfigs,
   TPkiScepEnrollmentConfigsInsert,
   TPkiScepEnrollmentConfigsUpdate,
@@ -488,15 +503,6 @@ import {
   TSecretReferencesV2,
   TSecretReferencesV2Insert,
   TSecretReferencesV2Update,
-  TSecretRotationOutputs,
-  TSecretRotationOutputsInsert,
-  TSecretRotationOutputsUpdate,
-  TSecretRotationOutputV2,
-  TSecretRotationOutputV2Insert,
-  TSecretRotationOutputV2Update,
-  TSecretRotations,
-  TSecretRotationsInsert,
-  TSecretRotationsUpdate,
   TSecretRotationsV2,
   TSecretRotationsV2Insert,
   TSecretRotationsV2Update,
@@ -649,6 +655,7 @@ import {
   TCertificateRequestsInsert,
   TCertificateRequestsUpdate
 } from "@app/db/schemas/certificate-requests";
+import { TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate } from "@app/db/schemas/email-domains";
 import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,
@@ -674,6 +681,11 @@ import {
   TPamAccountDependenciesInsert,
   TPamAccountDependenciesUpdate
 } from "@app/db/schemas/pam-account-dependencies";
+import {
+  TPamAccountPolicies,
+  TPamAccountPoliciesInsert,
+  TPamAccountPoliciesUpdate
+} from "@app/db/schemas/pam-account-policies";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import {
   TPamDiscoverySourceAccounts,
@@ -700,6 +712,7 @@ import {
   TPamDiscoverySourcesInsert,
   TPamDiscoverySourcesUpdate
 } from "@app/db/schemas/pam-discovery-sources";
+import { TPamDomains, TPamDomainsInsert, TPamDomainsUpdate } from "@app/db/schemas/pam-domains";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import {
   TPamResourceFavorites,
@@ -712,6 +725,11 @@ import {
   TPamResourceRotationRulesUpdate
 } from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
+import {
+  TPamSessionEventBatches,
+  TPamSessionEventBatchesInsert,
+  TPamSessionEventBatchesUpdate
+} from "@app/db/schemas/pam-session-event-batches";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
@@ -870,6 +888,11 @@ declare module "knex/types/tables" {
       TPkiScepTransactionsInsert,
       TPkiScepTransactionsUpdate
     >;
+    [TableName.PkiScepDynamicChallenge]: KnexOriginal.CompositeTableType<
+      TPkiScepDynamicChallenges,
+      TPkiScepDynamicChallengesInsert,
+      TPkiScepDynamicChallengesUpdate
+    >;
     [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiApiEnrollmentConfigs,
       TPkiApiEnrollmentConfigsInsert,
@@ -1024,7 +1047,6 @@ declare module "knex/types/tables" {
     >;
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
-    [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
     [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<
       TProjectSshConfigs,
@@ -1253,16 +1275,6 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesEnvironmentsInsert,
       TSecretApprovalPoliciesEnvironmentsUpdate
     >;
-    [TableName.SecretRotation]: KnexOriginal.CompositeTableType<
-      TSecretRotations,
-      TSecretRotationsInsert,
-      TSecretRotationsUpdate
-    >;
-    [TableName.SecretRotationOutput]: KnexOriginal.CompositeTableType<
-      TSecretRotationOutputs,
-      TSecretRotationOutputsInsert,
-      TSecretRotationOutputsUpdate
-    >;
     [TableName.Snapshot]: KnexOriginal.CompositeTableType<
       TSecretSnapshots,
       TSecretSnapshotsInsert,
@@ -1288,6 +1300,7 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesInsert,
       TDynamicSecretLeasesUpdate
     >;
+    [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
@@ -1361,11 +1374,6 @@ declare module "knex/types/tables" {
       TSecretApprovalRequestSecretTagsV2,
       TSecretApprovalRequestSecretTagsV2Insert,
       TSecretApprovalRequestSecretTagsV2Update
-    >;
-    [TableName.SecretRotationOutputV2]: KnexOriginal.CompositeTableType<
-      TSecretRotationOutputV2,
-      TSecretRotationOutputV2Insert,
-      TSecretRotationOutputV2Update
     >;
     // KMS service
     [TableName.KmsServerRootConfig]: KnexOriginal.CompositeTableType<
@@ -1573,6 +1581,17 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
+      TGatewayEnrollmentTokens,
+      TGatewayEnrollmentTokensInsert,
+      TGatewayEnrollmentTokensUpdate
+    >;
+    [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
+    [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<
+      TGatewayPoolMemberships,
+      TGatewayPoolMembershipsInsert,
+      TGatewayPoolMembershipsUpdate
+    >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,
       TUserNotificationsInsert,
@@ -1590,8 +1609,19 @@ declare module "knex/types/tables" {
       TPamResourceFavoritesInsert,
       TPamResourceFavoritesUpdate
     >;
+    [TableName.PamDomain]: KnexOriginal.CompositeTableType<TPamDomains, TPamDomainsInsert, TPamDomainsUpdate>;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
+      TPamAccountPolicies,
+      TPamAccountPoliciesInsert,
+      TPamAccountPoliciesUpdate
+    >;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+    [TableName.PamSessionEventBatch]: KnexOriginal.CompositeTableType<
+      TPamSessionEventBatches,
+      TPamSessionEventBatchesInsert,
+      TPamSessionEventBatchesUpdate
+    >;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
       TPamDiscoverySources,
       TPamDiscoverySourcesInsert,
@@ -1640,10 +1670,10 @@ declare module "knex/types/tables" {
       TAdditionalPrivilegesInsert,
       TAdditionalPrivilegesUpdate
     >;
-    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
-      TVaultExternalMigrationConfigs,
-      TVaultExternalMigrationConfigsInsert,
-      TVaultExternalMigrationConfigsUpdate
+    [TableName.ExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TExternalMigrationConfigs,
+      TExternalMigrationConfigsInsert,
+      TExternalMigrationConfigsUpdate
     >;
     [TableName.WebAuthnCredential]: KnexOriginal.CompositeTableType<
       TWebauthnCredentials,
@@ -1747,10 +1777,20 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
     >;
+    [TableName.CertificateInventoryView]: KnexOriginal.CompositeTableType<
+      TCertificateInventoryViews,
+      TCertificateInventoryViewsInsert,
+      TCertificateInventoryViewsUpdate
+    >;
     [TableName.SecretValidationRule]: KnexOriginal.CompositeTableType<
       TSecretValidationRules,
       TSecretValidationRulesInsert,
       TSecretValidationRulesUpdate
+    >;
+    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TVaultExternalMigrationConfigs,
+      TVaultExternalMigrationConfigsInsert,
+      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

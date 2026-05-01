@@ -85,6 +85,10 @@ The user needs:
     	SSL certificate authority certificate. For Azure SQL Database, this is typically not required as Azure manages the certificates.
     </ParamField>
 
+    <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+    </ParamField>
+
     ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/azure-sql-database/create-dynamic-secret-form.png)
 
   </Step>

@@ -2,13 +2,7 @@ import { format } from "date-fns";
 import { PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  Detail,
-  DetailGroup,
-  DetailLabel,
-  DetailValue,
-  UnstableIconButton
-} from "@app/components/v3";
+import { Detail, DetailGroup, DetailLabel, DetailValue, IconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { TPamResource } from "@app/hooks/api/pam";
 
@@ -27,9 +21,9 @@ export const PamResourceDetailsSection = ({ resource, onEdit }: Props) => {
           a={ProjectPermissionSub.PamResources}
         >
           {(isAllowed) => (
-            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+            <IconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
               <PencilIcon />
-            </UnstableIconButton>
+            </IconButton>
           )}
         </ProjectPermissionCan>
       </div>

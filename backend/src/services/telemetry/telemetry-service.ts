@@ -8,6 +8,9 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -17,8 +20,6 @@ export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
 export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled, PostHogEventTypes.MachineIdentityLogin];
-const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
-const GROUP_IDENTIFY_CACHE_TTL = 3600; // 1 hour
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
@@ -59,7 +60,34 @@ const getBucketForDistinctId = (distinctId: string): string => {
 
 export const createTelemetryEventKey = (event: string, distinctId: string): string => {
   const bucketId = getBucketForDistinctId(distinctId);
-  return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
+  return KeyStorePrefixes.TelemetryEvent(event, bucketId, distinctId, crypto.nativeCrypto.randomUUID());
+};
+
+export enum DeploymentType {
+  USCloud = "us-cloud",
+  EUCloud = "eu-cloud",
+  Dedicated = "dedicated",
+  SelfHosted = "self-hosted"
+}
+
+/**
+ * Computes the deployment type based on the instance type and environment configuration.
+ * - US Cloud: instanceType is Cloud and INTERNAL_REGION is "us" (or unset, defaults to US)
+ * - EU Cloud: instanceType is Cloud and INTERNAL_REGION is "eu"
+ * - Dedicated: INFISICAL_DEDICATED is true
+ * - Self-Hosted: everything else
+ */
+const getDeploymentType = (
+  instanceType: InstanceType,
+  appConfig: { INFISICAL_CLOUD: boolean; INFISICAL_DEDICATED: boolean; INTERNAL_REGION?: string }
+) => {
+  if (instanceType === InstanceType.Cloud) {
+    return appConfig.INTERNAL_REGION === "eu" ? DeploymentType.EUCloud : DeploymentType.USCloud;
+  }
+  if (appConfig.INFISICAL_DEDICATED) {
+    return DeploymentType.Dedicated;
+  }
+  return DeploymentType.SelfHosted;
 };
 
 export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
@@ -107,7 +135,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     email: string,
     signupMethod: HubSpotSignupMethod,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
+    hubspotUtk?: string
   ) => {
     const instanceType = licenseService.getInstanceType();
     if (
@@ -131,14 +160,22 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           if (value) fields.push({ name, value });
         }
 
+        const context: Record<string, string> = {
+          pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
+          pageName: "App Signup"
+        };
+
+        // Include the HubSpot tracking cookie to link this submission
+        // to the visitor's browsing session for proper attribution
+        if (hubspotUtk) {
+          context.hutk = hubspotUtk;
+        }
+
         await request.post(
           `https://api.hsforms.com/submissions/v3/integration/submit/${appCfg.HUBSPOT_PORTAL_ID}/${appCfg.HUBSPOT_SIGNUP_FORM_ID}`,
           {
             fields,
-            context: {
-              pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
-              pageName: "App Signup"
-            }
+            context
           },
           {
             headers: {
@@ -160,9 +197,14 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
     const instanceType = licenseService.getInstanceType();
     properties.is_cloud = instanceType === InstanceType.Cloud;
+    properties.instance_type = instanceType;
+    properties.deployment_type = getDeploymentType(instanceType, appCfg);
+    if (appCfg.INTERNAL_REGION) {
+      properties.region = appCfg.INTERNAL_REGION;
+    }
 
     try {
-      const org = await orgDAL.findOrgById(orgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
       if (org) {
         if (!properties.name) {
           properties.name = org.name;
@@ -209,13 +251,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (!postHog) return;
 
     // Resolve org name: prefer explicit value, fall back to request context
-    const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
+    const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);
 
     if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
       const eventKey = createTelemetryEventKey(event.event, event.distinctId);
       await keyStore.setItemWithExpiry(
         eventKey,
-        TELEMETRY_AGGREGATED_KEY_EXP,
+        KeyStoreTtls.TelemetryAggregatedEventInSeconds,
         JSON.stringify({
           distinctId: event.distinctId,
           event: event.event,
@@ -230,7 +272,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         // Dedup groupIdentify: only fire once per org per hour to avoid redundant DB/API calls
         const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(orgId);
         void keyStore
-          .setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1")
+          .setItemWithExpiryNX(groupIdentifyCacheKey, KeyStoreTtls.TelemetryGroupIdentifyInSeconds, "1")
           .then((wasSet) => {
             if (wasSet) {
               return getOrgGroupProperties(orgId, resolvedOrgName).then((groupProperties) => {
@@ -329,7 +371,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (!postHog) return 0;
 
     try {
-      const bucketPattern = `telemetry-event-${eventType}-${bucketId}-*`;
+      const bucketPattern = KeyStorePrefixes.TelemetryEventByBucketPattern(eventType, bucketId);
       const bucketKeys = await keyStore.getKeysByPattern(bucketPattern);
 
       if (bucketKeys.length === 0) return 0;
@@ -369,7 +411,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             // Dedup groupIdentify across all paths: only fire once per org per hour
             const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
             // eslint-disable-next-line no-await-in-loop
-            const wasSet = await keyStore.setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1");
+            const wasSet = await keyStore.setItemWithExpiryNX(
+              groupIdentifyCacheKey,
+              KeyStoreTtls.TelemetryGroupIdentifyInSeconds,
+              "1"
+            );
             if (wasSet) {
               let groupProperties = orgPropertiesCache.get(key.org);
               if (!groupProperties) {
@@ -433,8 +479,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
-  const TELEMETRY_IDENTIFY_CACHE_TTL = 86400; // 24 hours
   // Shorter TTL for in-memory fallback to bound memory growth during Redis outages
   const IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -458,9 +502,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (postHog && distinctId) {
       if (!skipDedup) {
         try {
-          const cacheKey = `${TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX}:${distinctId}`;
+          const cacheKey = KeyStorePrefixes.TelemetryIdentify(distinctId);
           // Atomic SET NX + EX: only the first caller within the TTL window proceeds
-          const wasSet = await keyStore.setItemWithExpiryNX(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
+          const wasSet = await keyStore.setItemWithExpiryNX(
+            cacheKey,
+            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds,
+            "1"
+          );
           if (!wasSet) return;
         } catch (error) {
           logger.error(error, `Failed to check PostHog identify dedup cache for distinctId=${distinctId}`);

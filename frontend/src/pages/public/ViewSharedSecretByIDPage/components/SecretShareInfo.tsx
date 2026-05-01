@@ -1,6 +1,5 @@
-import { faClock, faEye } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { Clock, Eye } from "lucide-react";
 
 import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
@@ -16,7 +15,7 @@ export const SecretShareInfo = ({ secret, brandingTheme }: Props) => {
 
   if (secret.expiresAt) {
     try {
-      timeRemaining = format(new Date(secret.expiresAt), "yyyy-MM-dd 'at' HH:mm a");
+      timeRemaining = format(new Date(secret.expiresAt), "MMM d, yyyy 'at' h:mm a");
     } catch {
       timeRemaining = null;
     }
@@ -45,27 +44,19 @@ export const SecretShareInfo = ({ secret, brandingTheme }: Props) => {
   return (
     <div
       className={`mt-4 flex flex-col gap-2 rounded-md border p-3 text-sm ${
-        brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-700/50 text-gray-300"
+        brandingTheme ? "" : "border-border bg-container text-label"
       }`}
       style={infoStyle}
     >
       {timeRemaining && (
         <div className="flex items-center gap-2">
-          <FontAwesomeIcon
-            icon={faClock}
-            className={brandingTheme ? "" : "text-mineshaft-400"}
-            style={iconStyle}
-          />
+          <Clock className="size-3.5 shrink-0" style={iconStyle} />
           <span>Expires on {timeRemaining}</span>
         </div>
       )}
       {viewsRemaining !== null && (
         <div className="flex items-center gap-2">
-          <FontAwesomeIcon
-            icon={faEye}
-            className={brandingTheme ? "" : "text-mineshaft-400"}
-            style={iconStyle}
-          />
+          <Eye className="size-3.5 shrink-0" style={iconStyle} />
           <span>
             {viewsRemaining === 0
               ? "This is the last time you can view this secret"

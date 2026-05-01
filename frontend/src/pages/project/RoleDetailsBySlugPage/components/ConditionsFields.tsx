@@ -4,9 +4,15 @@ import { AlertTriangleIcon, InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
   Button,
   FieldError,
+  IconButton,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -14,13 +20,7 @@ import {
   SelectValue,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAccordion,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger,
-  UnstableIconButton,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ConditionalProjectPermissionSubject,
@@ -290,9 +290,9 @@ export const ConditionsFields = ({
         </Tooltip>
       </div>
       {incompatibleConditions.length > 0 && (
-        <UnstableAccordion type="single" collapsible className="mt-3 border-danger/35">
-          <UnstableAccordionItem value="errors" className="border-none">
-            <UnstableAccordionTrigger className="min-h-10 flex-row-reverse justify-between bg-danger/[0.075] px-3 py-2 text-foreground hover:bg-danger/10 data-[state=open]:bg-danger/10 [&>svg]:shrink-0">
+        <Accordion type="single" collapsible className="mt-3 border-danger/35">
+          <AccordionItem value="errors" className="border-none">
+            <AccordionTrigger className="min-h-10 flex-row-reverse justify-between bg-danger/[0.075] px-3 py-2 text-foreground hover:bg-danger/10 data-[state=open]:bg-danger/10 [&>svg]:shrink-0">
               <div className="flex items-center gap-2">
                 <AlertTriangleIcon className="size-4 text-danger" />
                 <span>
@@ -300,8 +300,8 @@ export const ConditionsFields = ({
                   {incompatibleConditions.length > 1 ? "s" : ""} incompatible with selected actions
                 </span>
               </div>
-            </UnstableAccordionTrigger>
-            <UnstableAccordionContent className="space-y-1 bg-danger/[0.025] px-3 py-2">
+            </AccordionTrigger>
+            <AccordionContent className="space-y-1 bg-danger/[0.025] px-3 py-2">
               {incompatibleConditions.map((item) => (
                 <div key={item.conditionValue} className="text-sm">
                   <span className="font-medium text-danger">
@@ -315,9 +315,9 @@ export const ConditionsFields = ({
                 Remove the incompatible conditions or update the selected actions to make them
                 compatible.
               </span>
-            </UnstableAccordionContent>
-          </UnstableAccordionItem>
-        </UnstableAccordion>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.length > 0 &&
@@ -465,14 +465,14 @@ export const ConditionsFields = ({
                             </div>
                           </div>
                           <div className="grow">
-                            <UnstableInput
+                            <Input
                               {...rhsField}
                               className={twMerge(rhsError?.message && "border-danger")}
                             />
                           </div>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <UnstableIconButton
+                              <IconButton
                                 aria-label="remove"
                                 variant="outline"
                                 className="hover:border-danger/30 hover:bg-danger/15"
@@ -480,7 +480,7 @@ export const ConditionsFields = ({
                                 onClick={() => items.remove(index)}
                               >
                                 <TrashIcon className="size-4" />
-                              </UnstableIconButton>
+                              </IconButton>
                             </TooltipTrigger>
                             <TooltipContent side="right">Remove Condition</TooltipContent>
                           </Tooltip>

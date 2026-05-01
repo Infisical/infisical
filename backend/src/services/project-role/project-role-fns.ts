@@ -26,7 +26,7 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
     {
       id: uuidv4(),
       projectId,
-      name: "Developer",
+      name: "Member",
       slug: ProjectMembershipRole.Member,
       permissions: projectMemberPermissions,
       description: "Limited read/write role in a project",

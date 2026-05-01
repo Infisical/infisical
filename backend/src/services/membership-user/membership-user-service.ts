@@ -12,8 +12,10 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
-import { isDisposableEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { AuthMethod } from "../auth/auth-type";
@@ -103,35 +105,37 @@ export const membershipUserServiceFactory = ({
   const $getUsers = async (usernames: string[]) => {
     const existingUsers = await userDAL.find({ $in: { username: usernames } });
     if (existingUsers.length !== usernames.length) {
-      const newUserEmails = usernames.filter(
-        (inviteeEmail) => !existingUsers.find((el) => el.username === inviteeEmail)
-      );
+      const newUserEmails = usernames
+        .filter((inviteeEmail) => !existingUsers.find((el) => el.username === inviteeEmail))
+        .map((el) => el.toLowerCase());
+
+      const invalidEmails = newUserEmails.filter((el) => {
+        try {
+          validateEmail(el);
+          return false;
+        } catch (err) {
+          return true;
+        }
+      });
+      if (invalidEmails.length > 0) {
+        throw new BadRequestError({ message: `Invalid emails: ${invalidEmails.join(", ")}` });
+      }
+
       await userDAL.transaction(async (tx) => {
         for await (const inviteeEmail of newUserEmails) {
-          const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
-          let inviteeUser =
-            usersByUsername?.length > 1
-              ? usersByUsername.find((el) => el.username === inviteeEmail)
-              : usersByUsername?.[0];
-
+          let inviteeUser = await userDAL.findOne({ username: inviteeEmail }, tx);
           // if the user doesn't exist we create the user with the email
           if (!inviteeUser) {
-            // TODO(carlos): will be removed once the function receives usernames instead of emails
-            const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
-            if (usersByEmail?.length === 1) {
-              [inviteeUser] = usersByEmail;
-            } else {
-              inviteeUser = await userDAL.create(
-                {
-                  isAccepted: false,
-                  email: inviteeEmail,
-                  username: inviteeEmail,
-                  authMethods: [AuthMethod.EMAIL],
-                  isGhost: false
-                },
-                tx
-              );
-            }
+            inviteeUser = await userDAL.create(
+              {
+                isAccepted: false,
+                email: inviteeEmail,
+                username: inviteeEmail,
+                authMethods: [AuthMethod.EMAIL],
+                isGhost: false
+              },
+              tx
+            );
           }
 
           existingUsers.push(inviteeUser);
@@ -161,7 +165,9 @@ export const membershipUserServiceFactory = ({
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const orgDetails = await orgDAL.findById(dto.permission.orgId);
+    const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
+      orgDAL.findById(dto.permission.orgId)
+    );
 
     // If roles array is empty and scope is Organization, use org's default role
     let rolesToUse = data.roles;
@@ -211,9 +217,9 @@ export const membershipUserServiceFactory = ({
         message: "Disposable emails are not allowed"
       });
     }
-
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
-    const users = await $getUsers(dto.data.usernames);
+    const sanitizedEmails = dto.data.usernames.map((el) => sanitizeEmail(el));
+    const users = await $getUsers(sanitizedEmails);
     const existingMemberships = await membershipUserDAL.find({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
@@ -530,7 +536,9 @@ export const membershipUserServiceFactory = ({
 
     await factory.onListMembershipUserGuard(dto);
 
-    const organizationDetails = await orgDAL.findById(dto.scopeData.orgId);
+    const organizationDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.scopeData.orgId), () =>
+      orgDAL.findById(dto.scopeData.orgId)
+    );
     if (!organizationDetails.rootOrgId) return { users: [] };
 
     const users = await membershipUserDAL.listAvailableUsers(organizationDetails.id, organizationDetails.rootOrgId);

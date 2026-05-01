@@ -4,9 +4,11 @@ import { z } from "zod";
 import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgGatewayPoolPermissionActions,
   OrgPermissionAppConnectionActions,
   OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
+  OrgPermissionEmailDomainActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
@@ -37,6 +39,15 @@ const billingPermissionSchema = z
   .object({
     [OrgPermissionBillingActions.Read]: z.boolean().optional(),
     [OrgPermissionBillingActions.ManageBilling]: z.boolean().optional()
+  })
+  .optional();
+
+const emailDomainPermissionSchema = z
+  .object({
+    [OrgPermissionEmailDomainActions.Read]: z.boolean().optional(),
+    [OrgPermissionEmailDomainActions.Create]: z.boolean().optional(),
+    [OrgPermissionEmailDomainActions.VerifyDomain]: z.boolean().optional(),
+    [OrgPermissionEmailDomainActions.Delete]: z.boolean().optional()
   })
   .optional();
 
@@ -90,6 +101,16 @@ const orgGatewayPermissionSchema = z
     [OrgGatewayPermissionActions.DeleteGateways]: z.boolean().optional(),
     [OrgGatewayPermissionActions.CreateGateways]: z.boolean().optional(),
     [OrgGatewayPermissionActions.AttachGateways]: z.boolean().optional()
+  })
+  .optional();
+
+const orgGatewayPoolPermissionSchema = z
+  .object({
+    [OrgGatewayPoolPermissionActions.ListGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.CreateGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.EditGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.DeleteGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.AttachGatewayPools]: z.boolean().optional()
   })
   .optional();
 
@@ -179,10 +200,12 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
       gateway: orgGatewayPermissionSchema,
+      "gateway-pool": orgGatewayPoolPermissionSchema,
       relay: orgRelayPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,
-      "sub-organization": subOrganizationPermissionSchema
+      "sub-organization": subOrganizationPermissionSchema,
+      "email-domains": emailDomainPermissionSchema
     })
     .optional()
 });

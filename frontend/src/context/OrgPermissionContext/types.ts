@@ -29,6 +29,14 @@ export enum OrgGatewayPermissionActions {
   AttachGateways = "attach-gateways"
 }
 
+export enum OrgGatewayPoolPermissionActions {
+  CreateGatewayPools = "create-gateway-pools",
+  ListGatewayPools = "list-gateway-pools",
+  EditGatewayPools = "edit-gateway-pools",
+  DeleteGatewayPools = "delete-gateway-pools",
+  AttachGatewayPools = "attach-gateway-pools"
+}
+
 export enum OrgRelayPermissionActions {
   CreateRelays = "create-relays",
   ListRelays = "list-relays",
@@ -66,12 +74,21 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  GatewayPool = "gateway-pool",
   Relay = "relay",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
-  SubOrganization = "sub-organization"
+  SubOrganization = "sub-organization",
+  EmailDomains = "email-domains"
+}
+
+export enum OrgPermissionEmailDomainActions {
+  Read = "read",
+  Create = "create",
+  VerifyDomain = "verify-domain",
+  Delete = "delete"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -160,6 +177,7 @@ export type OrgPermissionSet =
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
+  | [OrgGatewayPoolPermissionActions, OrgPermissionSubjects.GatewayPool]
   | [OrgRelayPermissionActions, OrgPermissionSubjects.Relay]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [
@@ -169,6 +187,7 @@ export type OrgPermissionSet =
         | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
       )
     ]
-  | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization];
+  | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

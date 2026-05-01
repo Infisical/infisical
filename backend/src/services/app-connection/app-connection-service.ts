@@ -41,6 +41,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
 import { onePassConnectionService } from "./1password/1password-connection-service";
+import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -85,10 +86,14 @@ import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
+import { ValidateDigiCertConnectionCredentialsSchema } from "./digicert/digicert-connection-schemas";
+import { digicertConnectionService } from "./digicert/digicert-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
+import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-connection-schema";
+import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
@@ -122,6 +127,8 @@ import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-depl
 import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
 import { oktaConnectionService } from "./okta/okta-connection-service";
+import { ValidateOnaConnectionCredentialsSchema } from "./ona";
+import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
@@ -137,8 +144,11 @@ import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
+import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
+import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
+import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
@@ -216,8 +226,14 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
+  [AppConnection.VenafiTpp]: ValidateVenafiTppConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
-  [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema
+  [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
+  [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
+  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
+  [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
+  [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
+  [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1063,6 +1079,7 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
+    ona: onaConnectionService(connectAppConnectionById),
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
@@ -1095,6 +1112,9 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    doppler: dopplerConnectionService(connectAppConnectionById),
+    digicert: digicertConnectionService(connectAppConnectionById),
+    travisCI: travisCIConnectionService(connectAppConnectionById)
   };
 };

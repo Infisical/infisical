@@ -11,4 +11,5 @@ export * from "./ResourceSearchInput";
 export * from "./SecretDropzone";
 export * from "./SecretImportTableRow";
 export * from "./SecretRotationTableRow";
+export * from "./SecretSyncStatusBadgeOverview";
 export * from "./SecretTableRow";

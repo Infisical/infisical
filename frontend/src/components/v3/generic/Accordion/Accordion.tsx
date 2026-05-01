@@ -6,15 +6,22 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 
-function UnstableAccordion({
+function Accordion({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Root>) {
+}: React.ComponentProps<typeof AccordionPrimitive.Root> & {
+  variant?: "default" | "ghost";
+}) {
   return (
     <AccordionPrimitive.Root
       data-slot="accordion"
+      data-variant={variant}
       className={cn(
-        "overflow-clip rounded-md border border-border bg-container text-foreground",
+        "group/accordion",
+        variant === "default" &&
+          "overflow-clip rounded-md border border-border bg-container text-foreground",
+        variant === "ghost" && "text-foreground",
         className
       )}
       {...props}
@@ -22,7 +29,7 @@ function UnstableAccordion({
   );
 }
 
-function UnstableAccordionItem({
+function AccordionItem({
   className,
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Item>) {
@@ -35,7 +42,7 @@ function UnstableAccordionItem({
   );
 }
 
-function UnstableAccordionTrigger({
+function AccordionTrigger({
   className,
   children,
   ...props
@@ -45,18 +52,30 @@ function UnstableAccordionTrigger({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "flex min-h-12 flex-1 items-center gap-4 border-border bg-container px-4 text-left text-sm font-medium",
+          "flex flex-1 items-center border-border text-left text-sm font-medium",
           "transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          "disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>[data-slot=accordion-chevron]]:rotate-180",
-          "cursor-pointer hover:bg-container-hover",
-          "data-[state=open]:bg-container-hover",
+          "disabled:pointer-events-none disabled:opacity-50",
+          "cursor-pointer",
+          // Default variant
+          "group-data-[variant=default]/accordion:min-h-12 group-data-[variant=default]/accordion:gap-4 group-data-[variant=default]/accordion:bg-container group-data-[variant=default]/accordion:px-4",
+          "group-data-[variant=default]/accordion:hover:bg-container-hover",
+          "group-data-[variant=default]/accordion:data-[state=open]:bg-container-hover",
+          "group-data-[variant=default]/accordion:[&[data-state=open]>[data-slot=accordion-chevron]]:rotate-180",
+          // Ghost variant
+          "group-data-[variant=ghost]/accordion:min-h-10 group-data-[variant=ghost]/accordion:gap-2 group-data-[variant=ghost]/accordion:py-2",
+          "group-data-[variant=ghost]/accordion:hover:text-foreground/80",
+          "group-data-[variant=ghost]/accordion:[&[data-state=open]>[data-slot=accordion-chevron]]:rotate-180",
           className
         )}
         {...props}
       >
         <ChevronDownIcon
           data-slot="accordion-chevron"
-          className="pointer-events-none size-4 shrink-0 translate-y-0 text-label transition-transform duration-200"
+          className={cn(
+            "pointer-events-none shrink-0 text-label transition-transform duration-200",
+            "group-data-[variant=default]/accordion:size-4",
+            "group-data-[variant=ghost]/accordion:size-4"
+          )}
         />
         {children}
       </AccordionPrimitive.Trigger>
@@ -64,7 +83,7 @@ function UnstableAccordionTrigger({
   );
 }
 
-function UnstableAccordionContent({
+function AccordionContent({
   className,
   children,
   ...props
@@ -75,14 +94,17 @@ function UnstableAccordionContent({
       className="overflow-hidden text-sm transition data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
       {...props}
     >
-      <div className={cn("p-6", className)}>{children}</div>
+      <div
+        className={cn(
+          "group-data-[variant=default]/accordion:p-6",
+          "group-data-[variant=ghost]/accordion:pt-2 group-data-[variant=ghost]/accordion:pb-4",
+          className
+        )}
+      >
+        {children}
+      </div>
     </AccordionPrimitive.Content>
   );
 }
 
-export {
-  UnstableAccordion,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger
-};
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };

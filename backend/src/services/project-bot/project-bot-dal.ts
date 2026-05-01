@@ -51,12 +51,12 @@ export const projectBotDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .join(TableName.ProjectKeys, `${TableName.Membership}.actorUserId`, `${TableName.ProjectKeys}.receiverId`)
         .where(`${TableName.ProjectKeys}.projectId` as "projectId", projectId)
-        .join<TUserEncryptionKeys>(
+        .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
         )
-        .join<TUserEncryptionKeys>(
+        .leftJoin<TUserEncryptionKeys>(
           db(TableName.UserEncryptionKey).as("senderUserEncryption"),
           `${TableName.ProjectKeys}.senderId`,
           `senderUserEncryption.userId`

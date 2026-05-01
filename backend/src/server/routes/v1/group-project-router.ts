@@ -6,8 +6,7 @@ import {
   GroupsSchema,
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema,
-  TemporaryPermissionMode,
-  UsersSchema
+  TemporaryPermissionMode
 } from "@app/db/schemas";
 import { FilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
@@ -16,6 +15,8 @@ import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerGroupProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -393,7 +394,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          users: UsersSchema.pick({
+          users: SanitizedUserSchema.pick({
             email: true,
             username: true,
             firstName: true,

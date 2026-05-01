@@ -141,9 +141,68 @@ export const extractAlgorithmsFromCSR = (csr: string) => {
           message: `Unsupported ECDSA curve in CSR: ${namedCurve}. Supported: P-256, P-384, P-521`
         });
     }
+  } else if (publicKey.algorithm.name.startsWith("ML-DSA")) {
+    switch (publicKey.algorithm.name) {
+      case "ML-DSA-44":
+        keyAlgorithm = CertKeyAlgorithm.ML_DSA_44;
+        break;
+      case "ML-DSA-65":
+        keyAlgorithm = CertKeyAlgorithm.ML_DSA_65;
+        break;
+      case "ML-DSA-87":
+        keyAlgorithm = CertKeyAlgorithm.ML_DSA_87;
+        break;
+      default:
+        throw new BadRequestError({
+          message: `Unsupported ML-DSA variant in CSR: ${publicKey.algorithm.name}. Supported: ML-DSA-44, ML-DSA-65, ML-DSA-87`
+        });
+    }
+  } else if (publicKey.algorithm.name.startsWith("SLH-DSA")) {
+    switch (publicKey.algorithm.name) {
+      case "SLH-DSA-SHA2-128f":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHA2_128F;
+        break;
+      case "SLH-DSA-SHA2-128s":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHA2_128S;
+        break;
+      case "SLH-DSA-SHA2-192f":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHA2_192F;
+        break;
+      case "SLH-DSA-SHA2-192s":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHA2_192S;
+        break;
+      case "SLH-DSA-SHA2-256f":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHA2_256F;
+        break;
+      case "SLH-DSA-SHA2-256s":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHA2_256S;
+        break;
+      case "SLH-DSA-SHAKE-128f":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHAKE_128F;
+        break;
+      case "SLH-DSA-SHAKE-128s":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHAKE_128S;
+        break;
+      case "SLH-DSA-SHAKE-192f":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHAKE_192F;
+        break;
+      case "SLH-DSA-SHAKE-192s":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHAKE_192S;
+        break;
+      case "SLH-DSA-SHAKE-256f":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHAKE_256F;
+        break;
+      case "SLH-DSA-SHAKE-256s":
+        keyAlgorithm = CertKeyAlgorithm.SLH_DSA_SHAKE_256S;
+        break;
+      default:
+        throw new BadRequestError({
+          message: `Unsupported SLH-DSA variant in CSR: ${publicKey.algorithm.name}. Supported: SLH-DSA-SHA2-128f/s, SLH-DSA-SHA2-192f/s, SLH-DSA-SHA2-256f/s, SLH-DSA-SHAKE-128f/s, SLH-DSA-SHAKE-192f/s, SLH-DSA-SHAKE-256f/s`
+        });
+    }
   } else {
     throw new BadRequestError({
-      message: `Unsupported key algorithm in CSR: ${publicKey.algorithm.name}. Supported: RSASSA-PKCS1-v1_5, ECDSA`
+      message: `Unsupported key algorithm in CSR: ${publicKey.algorithm.name}. Supported: RSASSA-PKCS1-v1_5, ECDSA, ML-DSA, SLH-DSA`
     });
   }
 
@@ -184,9 +243,68 @@ export const extractAlgorithmsFromCSR = (csr: string) => {
           message: `Unsupported ECDSA hash algorithm in CSR: ${hashName}. Supported: SHA-256, SHA-384, SHA-512`
         });
     }
+  } else if (signatureAlgorithm.startsWith("ML-DSA")) {
+    switch (signatureAlgorithm) {
+      case "ML-DSA-44":
+        normalizedSignatureAlg = CertSignatureAlgorithm.ML_DSA_44;
+        break;
+      case "ML-DSA-65":
+        normalizedSignatureAlg = CertSignatureAlgorithm.ML_DSA_65;
+        break;
+      case "ML-DSA-87":
+        normalizedSignatureAlg = CertSignatureAlgorithm.ML_DSA_87;
+        break;
+      default:
+        throw new BadRequestError({
+          message: `Unsupported ML-DSA variant in CSR: ${signatureAlgorithm}. Supported: ML-DSA-44, ML-DSA-65, ML-DSA-87`
+        });
+    }
+  } else if (signatureAlgorithm.startsWith("SLH-DSA")) {
+    switch (signatureAlgorithm) {
+      case "SLH-DSA-SHA2-128f":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHA2_128F;
+        break;
+      case "SLH-DSA-SHA2-128s":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHA2_128S;
+        break;
+      case "SLH-DSA-SHA2-192f":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHA2_192F;
+        break;
+      case "SLH-DSA-SHA2-192s":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHA2_192S;
+        break;
+      case "SLH-DSA-SHA2-256f":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHA2_256F;
+        break;
+      case "SLH-DSA-SHA2-256s":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHA2_256S;
+        break;
+      case "SLH-DSA-SHAKE-128f":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHAKE_128F;
+        break;
+      case "SLH-DSA-SHAKE-128s":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHAKE_128S;
+        break;
+      case "SLH-DSA-SHAKE-192f":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHAKE_192F;
+        break;
+      case "SLH-DSA-SHAKE-192s":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHAKE_192S;
+        break;
+      case "SLH-DSA-SHAKE-256f":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHAKE_256F;
+        break;
+      case "SLH-DSA-SHAKE-256s":
+        normalizedSignatureAlg = CertSignatureAlgorithm.SLH_DSA_SHAKE_256S;
+        break;
+      default:
+        throw new BadRequestError({
+          message: `Unsupported SLH-DSA variant in CSR: ${signatureAlgorithm}. Supported: SLH-DSA-SHA2-128f/s, SLH-DSA-SHA2-192f/s, SLH-DSA-SHA2-256f/s, SLH-DSA-SHAKE-128f/s, SLH-DSA-SHAKE-192f/s, SLH-DSA-SHAKE-256f/s`
+        });
+    }
   } else {
     throw new BadRequestError({
-      message: `Unsupported signature algorithm in CSR: ${signatureAlgorithm}. Supported: RSASSA-PKCS1-v1_5, ECDSA`
+      message: `Unsupported signature algorithm in CSR: ${signatureAlgorithm}. Supported: RSASSA-PKCS1-v1_5, ECDSA, ML-DSA, SLH-DSA`
     });
   }
 

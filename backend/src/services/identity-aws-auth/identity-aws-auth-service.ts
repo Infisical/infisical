@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import axios from "axios";
 import RE2 from "re2";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
@@ -15,6 +14,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -25,6 +25,9 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -66,7 +69,7 @@ const awsRegionFromHeader = (authorizationHeader: string): string | null => {
   // 	SignedHeaders=content-length;content-type;host;x-amz-date,
   //	Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024
   //
-  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"
+  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"xi
   try {
     const fields = authorizationHeader.split(" ");
     for (const field of fields) {
@@ -114,13 +117,17 @@ export const identityAwsAuthServiceFactory = ({
       throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
     }
 
-    const identity = await identityDAL.findById(identityAwsAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityAwsAuth.identityId), () =>
+      identityDAL.findById(identityAwsAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
       });
 
-    const org = await orgDAL.findById(identity.orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
+      orgDAL.findById(identity.orgId)
+    );
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
@@ -145,7 +152,7 @@ export const identityAwsAuthServiceFactory = ({
             GetCallerIdentityResult: { Account, Arn, UserId }
           }
         }
-      }: { data: TGetCallerIdentityResponse } = await axios({
+      }: { data: TGetCallerIdentityResponse } = await request({
         method: iamHttpRequestMethod,
         url,
         headers,
@@ -308,8 +315,8 @@ export const identityAwsAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.AWS_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -323,8 +330,8 @@ export const identityAwsAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.AWS_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
       throw error;
@@ -641,7 +648,10 @@ export const identityAwsAuthServiceFactory = ({
         actorOrgId
       });
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.RevokeAuth,

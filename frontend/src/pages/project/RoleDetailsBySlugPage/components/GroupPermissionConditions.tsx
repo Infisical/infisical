@@ -56,7 +56,7 @@ export const GroupPermissionConditions = ({ position = 0, isDisabled }: Props) =
           value: "assignableRole",
           label: "Assignable Roles",
           description:
-            "The roles that the actor is allowed to assign to the target groups. (e.g., admin, developer, viewer)"
+            "The roles that the actor is allowed to assign to the target groups. (e.g., admin, member, viewer)"
         }
       ]}
       selectedActions={selectedActions}

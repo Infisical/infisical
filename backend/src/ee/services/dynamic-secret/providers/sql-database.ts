@@ -147,7 +147,11 @@ export const SqlDatabaseProvider = ({
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string; originalHost: string }
   ) => {
     const ssl = providerInputs.ca
-      ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
+      ? {
+          rejectUnauthorized: providerInputs.sslRejectUnauthorized,
+          ca: providerInputs.ca,
+          servername: providerInputs.originalHost
+        }
       : undefined;
 
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
@@ -185,7 +189,7 @@ export const SqlDatabaseProvider = ({
         options: isMsSQLClient
           ? {
               ...(providerInputs.sslEnabled !== undefined ? { encrypt: providerInputs.sslEnabled } : {}),
-              trustServerCertificate: !providerInputs.ca,
+              trustServerCertificate: !providerInputs.sslRejectUnauthorized,
               cryptoCredentialsDetails: providerInputs.ca ? { ca: providerInputs.ca } : {}
             }
           : undefined
@@ -345,7 +349,10 @@ export const SqlDatabaseProvider = ({
         originalHost: providerInputs.host
       });
       try {
-        const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+        const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+          username,
+          database
+        });
         const queries = revokeStatement.toString().split(";").filter(Boolean);
         await db.transaction(async (tx) => {
           for (const query of queries) {
@@ -387,7 +394,7 @@ export const SqlDatabaseProvider = ({
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration,
         database

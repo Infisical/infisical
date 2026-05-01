@@ -5,20 +5,20 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
   Badge,
+  ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
+  IconButton,
   OrgIcon,
-  SubOrgIcon,
-  UnstableButtonGroup,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  SubOrgIcon
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -47,17 +47,17 @@ export const IdentityDetailsSection = ({
   const { data } = useGetOrgIdentityMembershipById(identityId);
 
   return data ? (
-    <UnstableCard className="w-full lg:max-w-[24rem]">
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Details</UnstableCardTitle>
-        <UnstableCardDescription>Machine identity details</UnstableCardDescription>
-        <UnstableCardAction>
+    <Card className="w-full lg:max-w-[24rem]">
+      <CardHeader className="border-b">
+        <CardTitle>Details</CardTitle>
+        <CardDescription>Machine identity details</CardDescription>
+        <CardAction>
           <OrgPermissionCan
             I={OrgPermissionIdentityActions.Edit}
             a={OrgPermissionSubjects.Identity}
           >
             {(isAllowed) => (
-              <UnstableIconButton
+              <IconButton
                 isDisabled={!isAllowed}
                 onClick={() => {
                   handlePopUpOpen("identity", {
@@ -74,12 +74,12 @@ export const IdentityDetailsSection = ({
                 variant="outline"
               >
                 <PencilIcon />
-              </UnstableIconButton>
+              </IconButton>
             )}
           </OrgPermissionCan>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
@@ -90,7 +90,7 @@ export const IdentityDetailsSection = ({
             <DetailValue className="flex items-center gap-x-1">
               {data.identity.id}
               <Tooltip content="Copy machine identity ID to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(data.identity.id);
                     setCopyTextId("Copied");
@@ -100,7 +100,7 @@ export const IdentityDetailsSection = ({
                 >
                   {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                   {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -129,14 +129,14 @@ export const IdentityDetailsSection = ({
             <DetailValue className="flex flex-wrap gap-2">
               {data?.metadata?.length ? (
                 data.metadata?.map((el) => (
-                  <UnstableButtonGroup className="min-w-0" key={el.id}>
+                  <ButtonGroup className="min-w-0" key={el.id}>
                     <Badge isTruncatable>
                       <span>{el.key}</span>
                     </Badge>
                     <Badge variant="outline" isTruncatable>
                       <span>{el.value}</span>
                     </Badge>
-                  </UnstableButtonGroup>
+                  </ButtonGroup>
                 ))
               ) : (
                 <span className="text-muted">—</span>
@@ -190,8 +190,8 @@ export const IdentityDetailsSection = ({
             </>
           )}
         </DetailGroup>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   ) : (
     <div />
   );

@@ -58,11 +58,13 @@ import { LaravelForgeSyncListItemSchema, LaravelForgeSyncSchema } from "@app/ser
 import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
 import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/services/secret-sync/northflank";
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
+import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
+import { TravisCISyncListItemSchema, TravisCISyncSchema } from "@app/services/secret-sync/travis-ci";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
@@ -104,7 +106,9 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncSchema,
   CircleCISyncSchema,
   AzureEntraIdScimSyncSchema,
-  ExternalInfisicalSyncSchema
+  ExternalInfisicalSyncSchema,
+  OnaSyncSchema,
+  TravisCISyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -144,7 +148,9 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncListItemSchema,
   CircleCISyncListItemSchema,
   AzureEntraIdScimSyncListItemSchema,
-  ExternalInfisicalSyncListItemSchema
+  ExternalInfisicalSyncListItemSchema,
+  OnaSyncListItemSchema,
+  TravisCISyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

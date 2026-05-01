@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertificateRequestStatus } from "./certificate-request-types";
@@ -393,10 +394,44 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingValidationByCaType = async (
+    caType: string,
+    options: { limit?: number; afterCreatedAt?: Date } = {}
+  ): Promise<TCertificateRequests[]> => {
+    try {
+      const query = db(TableName.CertificateRequests)
+        .join(
+          TableName.CertificateAuthority,
+          `${TableName.CertificateRequests}.caId`,
+          `${TableName.CertificateAuthority}.id`
+        )
+        .join(
+          TableName.ExternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.ExternalCertificateAuthority}.caId`
+        )
+        .where(`${TableName.CertificateRequests}.status`, CertificateRequestStatus.PENDING_VALIDATION)
+        .where(`${TableName.ExternalCertificateAuthority}.type`, caType)
+        .where(`${TableName.CertificateAuthority}.status`, CaStatus.ACTIVE)
+        .select(selectAllTableCols(TableName.CertificateRequests))
+        .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc");
+
+      if (options.afterCreatedAt) {
+        void query.where(`${TableName.CertificateRequests}.createdAt`, ">", options.afterCreatedAt);
+      }
+      if (options.limit) void query.limit(options.limit);
+
+      return (await query) as TCertificateRequests[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find pending validation certificate requests by CA type" });
+    }
+  };
+
   return {
     ...certificateRequestOrm,
     findByIdWithCertificate,
     findPendingByProjectId,
+    findPendingValidationByCaType,
     updateStatus,
     attachCertificate,
     findByProjectId,

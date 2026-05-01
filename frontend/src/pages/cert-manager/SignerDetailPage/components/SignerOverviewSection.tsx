@@ -7,17 +7,17 @@ import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import {
   ProjectPermissionCodeSigningActions,
@@ -60,31 +60,26 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
 
   return (
     <div className="flex flex-col gap-5">
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Signer Details</UnstableCardTitle>
-          <UnstableCardDescription>Signer configuration and key details</UnstableCardDescription>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Signer Details</CardTitle>
+          <CardDescription>Signer configuration and key details</CardDescription>
           {onEdit && (
-            <UnstableCardAction>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionCodeSigningActions.Edit}
                 a={ProjectPermissionSub.CodeSigners}
               >
                 {(isAllowed) => (
-                  <UnstableIconButton
-                    isDisabled={!isAllowed}
-                    onClick={onEdit}
-                    size="xs"
-                    variant="outline"
-                  >
+                  <IconButton isDisabled={!isAllowed} onClick={onEdit} size="xs" variant="outline">
                     <PencilIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 )}
               </ProjectPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Name</DetailLabel>
@@ -95,7 +90,7 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
               <DetailValue className="flex items-center gap-x-1">
                 {signer.id}
                 <Tooltip content="Copy signer ID to clipboard">
-                  <UnstableIconButton
+                  <IconButton
                     onClick={() => {
                       navigator.clipboard.writeText(signer.id);
                       setCopyTextId("Copied");
@@ -104,7 +99,7 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
                     size="xs"
                   >
                     {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                  </UnstableIconButton>
+                  </IconButton>
                 </Tooltip>
               </DetailValue>
             </Detail>
@@ -156,12 +151,12 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
               </DetailValue>
             </Detail>
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Certificate</UnstableCardTitle>
-          <UnstableCardDescription>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Certificate</CardTitle>
+          <CardDescription>
             <div className="flex items-center gap-2">
               <div>Linked signing certificate</div>
               <Button variant="ghost" size="xs" asChild>
@@ -178,9 +173,9 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
                 </Link>
               </Button>
             </div>
-          </UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Common Name</DetailLabel>
@@ -207,8 +202,8 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
               </DetailValue>
             </Detail>
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     </div>
   );
 };

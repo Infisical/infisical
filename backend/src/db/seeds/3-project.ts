@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
-import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -22,8 +22,6 @@ import {
   OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
-  SecretEncryptionAlgo,
-  SecretKeyEncoding,
   TableName
 } from "../schemas";
 import { seedData1 } from "../seed-data";
@@ -141,16 +139,18 @@ const createUserWithGhostUser = async (
 
   const user = await userDAL.findUserEncKeyByUserId(userId, knex);
 
-  if (!user || !user.publicKey) {
+  if (!user || !user.id) {
     throw new Error("User not found");
   }
+
+  const userEnc = await knex(TableName.UserEncryptionKey).where({ userId: user.id }).first();
 
   const [projectAdmin] = assignWorkspaceKeysToMembers({
     decryptKey: latestKey,
     userPrivateKey: encKeys.plainPrivateKey,
     members: [
       {
-        userPublicKey: user.publicKey,
+        userPublicKey: userEnc?.publicKey || "",
         orgMembershipId: userOrgMembershipId
       }
     ]
@@ -257,21 +257,15 @@ export async function seed(knex: Knex): Promise<void> {
   await knex(TableName.SecretFolder).insert(envs.map(({ id }) => ({ name: "root", envId: id, parentId: null })));
 
   // save secret secret blind index
-  const encKey = process.env.ENCRYPTION_KEY;
-  if (!encKey) throw new Error("Missing ENCRYPTION_KEY");
   const salt = crypto.randomBytes(16).toString("base64");
-  const secretBlindIndex = crypto.encryption().symmetric().encrypt({
-    plaintext: salt,
-    key: encKey,
-    keySize: SymmetricKeySize.Bits128
-  });
+  const secretBlindIndex = crypto.encryption().symmetric().encryptWithRootEncryptionKey(salt);
   // insert secret blind index for project
   await knex(TableName.SecretBlindIndex).insert({
     projectId: project.id,
     encryptedSaltCipherText: secretBlindIndex.ciphertext,
     saltIV: secretBlindIndex.iv,
     saltTag: secretBlindIndex.tag,
-    algorithm: SecretEncryptionAlgo.AES_256_GCM,
-    keyEncoding: SecretKeyEncoding.UTF8
+    algorithm: secretBlindIndex.algorithm,
+    keyEncoding: secretBlindIndex.encoding
   });
 }

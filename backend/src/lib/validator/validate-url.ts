@@ -1,6 +1,6 @@
 import dns from "node:dns/promises";
 
-import { isIPv4 } from "net";
+import { isIP } from "net";
 import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -22,28 +22,19 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
   }
 
   const inputHostIps: string[] = [];
-  if (isIPv4(validUrl.hostname)) {
+  if (isIP(validUrl.hostname)) {
     inputHostIps.push(validUrl.hostname);
   } else {
     if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    try {
-      const resolvedIps = await dns.resolve4(validUrl.hostname);
-      inputHostIps.push(...resolvedIps);
-    } catch (err) {
-      if ((err as { code: string })?.code !== "ENOTFOUND") throw err;
+    const entries = await dns.lookup(validUrl.hostname, { all: true });
 
-      const entries = await dns.lookup(validUrl.hostname, { all: true, family: 4 });
-
-      if (!entries || entries.length === 0) {
-        throw new BadRequestError({ message: "Could not resolve hostname to any IPv4 address" });
-      }
-
-      const resolvedIps = entries.map(({ address }) => address);
-
-      inputHostIps.push(...resolvedIps);
+    if (!entries || entries.length === 0) {
+      throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
     }
+
+    inputHostIps.push(...entries.map(({ address }) => address));
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)

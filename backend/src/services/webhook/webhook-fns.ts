@@ -7,6 +7,8 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -53,7 +55,8 @@ export const triggerWebhookRequest = async (
   const req = await request.post(url, payload, {
     headers,
     timeout: WEBHOOK_TRIGGER_TIMEOUT,
-    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
+    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT),
+    maxRedirects: 0
   });
 
   return req;
@@ -97,6 +100,40 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                   short: false
                 }
               ]
+            }
+          ]
+        };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: "A secret value has been added or modified."
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Modified By", value: changedBy || "" },
+                      {
+                        title: "Actor Type",
+                        value: changedByActorType?.toString() || "Unknown Actor Type"
+                      }
+                    ]
+                  }
+                ]
+              }
             }
           ]
         };
@@ -163,6 +200,39 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             }
           ]
         };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              contentUrl: null,
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: "A secret rotation has failed."
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Rotation Name", value: rotationName || "" },
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Error Message", value: errorMessage || "" },
+                      { title: "Triggered Manually", value: triggeredManually ? "Yes" : "No" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
       case WebhookType.GENERAL:
       default:
         return {
@@ -180,60 +250,22 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
-  const { projectName, projectId, environment, secretPath, type, reminderNote, secretName } = event.payload;
-
-  switch (type) {
-    case WebhookType.SLACK:
-      return {
-        text: "You have a secret reminder",
-        attachments: [
-          {
-            color: "#E7F256",
-            fields: [
-              {
-                title: "Project",
-                value: projectName,
-                short: false
-              },
-              {
-                title: "Environment",
-                value: environment,
-                short: false
-              },
-              {
-                title: "Secret Path",
-                value: secretPath,
-                short: false
-              },
-              {
-                title: "Secret Name",
-                value: secretName,
-                short: false
-              },
-              {
-                title: "Reminder Note",
-                value: reminderNote,
-                short: false
-              }
-            ]
-          }
-        ]
-      };
-    case WebhookType.GENERAL:
-    default:
-      return {
-        event: event.type,
-        project: {
-          workspaceId: projectId,
-          projectId,
-          projectName,
-          environment,
-          secretPath,
-          secretName,
-          reminderNote
-        }
-      };
+  if (event.type === WebhookEvents.TestEvent) {
+    const { projectName, projectId, environment, secretPath } = event.payload;
+    return {
+      event: event.type,
+      project: {
+        workspaceId: projectId,
+        projectId,
+        projectName,
+        environment,
+        secretPath
+      }
+    };
   }
+
+  logger.warn({ event }, "Unhandled webhook event");
+  return null;
 };
 
 export type TFnTriggerWebhookDTO = {
@@ -262,15 +294,18 @@ export const fnTriggerWebhook = async ({
   auditLogService
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
-  const toBeTriggeredHooks = webhooks.filter(
-    ({ secretPath: hookSecretPath, isDisabled }) =>
-      !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
-  );
+  const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, filteredEvents }) => {
+    const isEventSubscribed = !filteredEvents || filteredEvents.length === 0 || filteredEvents.includes(event.type);
+
+    return !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed;
+  });
   if (!toBeTriggeredHooks.length) return;
   logger.info({ environment, secretPath, projectId }, "Secret webhook job started");
   let { projectName } = event.payload;
   if (!projectName) {
-    const project = await projectDAL.findById(event.payload.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(event.payload.projectId), () =>
+      projectDAL.findById(event.payload.projectId)
+    );
     projectName = project.name;
   }
 
@@ -280,7 +315,9 @@ export const fnTriggerWebhook = async ({
         type: event.type,
         payload: { ...event.payload, type: hook.type, projectName }
       } as TWebhookPayloads;
-      return triggerWebhookRequest(hook, secretManagerDecryptor, getWebhookPayload(formattedEvent));
+      const payload = getWebhookPayload(formattedEvent);
+      if (!payload) return;
+      return triggerWebhookRequest(hook, secretManagerDecryptor, payload);
     })
   );
 

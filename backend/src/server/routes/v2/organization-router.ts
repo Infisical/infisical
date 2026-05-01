@@ -1,13 +1,6 @@
 import { z } from "zod";
 
-import {
-  OrgMembershipsSchema,
-  OrgMembershipStatus,
-  ProjectMembershipsSchema,
-  ProjectsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { OrgMembershipsSchema, OrgMembershipStatus, ProjectMembershipsSchema, ProjectsSchema } from "@app/db/schemas";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -16,6 +9,8 @@ import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -41,14 +36,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: OrgMembershipsSchema.merge(
             z.object({
-              user: UsersSchema.pick({
-                username: true,
-                email: true,
-                isEmailVerified: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              }).merge(UserEncryptionKeysSchema.pick({ publicKey: true }))
+              user: SanitizedUserSchema
             })
           )
             .omit({ createdAt: true, updatedAt: true })
@@ -152,14 +140,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
               })
               .array()
               .optional(),
-            user: UsersSchema.pick({
-              username: true,
-              email: true,
-              isEmailVerified: true,
-              firstName: true,
-              lastName: true,
-              id: true
-            }).extend({ publicKey: z.string().nullish() })
+            user: SanitizedUserSchema
           }).omit({ createdAt: true, updatedAt: true })
         })
       }
@@ -358,13 +339,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           memberships: ProjectMembershipsSchema.extend({
-            user: UsersSchema.pick({
-              email: true,
-              username: true,
-              firstName: true,
-              lastName: true,
-              id: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            user: SanitizedUserSchema,
             project: ProjectsSchema.pick({ name: true, id: true, type: true }),
             roles: z.array(
               z.object({
@@ -467,7 +442,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       void res.setCookie("jid", tokens.refreshToken, {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED
       });

@@ -41,18 +41,6 @@ export const useSendEmailVerificationCode = () => {
   });
 };
 
-export const useVerifyEmailVerificationCode = () => {
-  return useMutation({
-    mutationFn: async ({ username, code }: { username: string; code: string }) => {
-      await apiRequest.post("/api/v2/users/me/emails/verify", {
-        username,
-        code
-      });
-      return {};
-    }
-  });
-};
-
 export const useUpdateUserProjectFavorites = () => {
   const queryClient = useQueryClient();
   return useMutation({

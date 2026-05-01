@@ -1,14 +1,14 @@
 ---
 title: "AWS IAM"
 sidebarTitle: "AWS IAM"
-description: "Learn how to configure AWS Management Console access through Infisical PAM for secure, audited, and just-in-time access to AWS."
+description: "Learn how to configure AWS access through Infisical PAM for secure, audited, and just-in-time access to AWS, covering both the AWS CLI and the Management Console."
 ---
 
-Infisical PAM supports secure, just-in-time access to the **AWS Management Console** through federated sign-in. This allows your team to access AWS without sharing long-lived credentials, while maintaining a complete audit trail of who accessed what and when.
+Infisical PAM supports secure, just-in-time access to AWS through STS role chaining. Each access request issues short-lived credentials that can be used directly with the **AWS CLI** or exchanged for a federated **AWS Management Console** sign-in URL. Both come from the same session, so there's no duplication and CloudTrail attribution stays consistent.
 
 ## How It Works
 
-Unlike database or SSH resources that require a Gateway for network connectivity, AWS Console access works differently. Infisical uses AWS STS (Security Token Service) to assume roles on your behalf and generates temporary federated sign-in URLs.
+Unlike database or SSH resources that require a Gateway for network connectivity, AWS access works differently. Infisical uses AWS STS (Security Token Service) to assume roles on your behalf and returns the temporary credentials. Those credentials are usable directly by the AWS CLI, and can also be exchanged for a federated console sign-in URL on demand.
 
 ```mermaid
 sequenceDiagram
@@ -229,9 +229,9 @@ A PAM Account represents a specific Target Role that users can request access to
   </Step>
 </Steps>
 
-## Access the AWS Console
+## Access AWS
 
-Once your resource and accounts are configured, users can request access through Infisical:
+Once your resource and accounts are configured, users can request access through Infisical. A single access request creates one session whose credentials power both the CLI and (optionally) the console. Clicking **Open in AWS Console** does not start a separate session.
 
 ![Create AWS IAM Resource](/images/pam/resources/aws-iam/access-account.png)
 
@@ -241,18 +241,47 @@ Once your resource and accounts are configured, users can request access through
   </Step>
 
   <Step title="Select the account">
-    In the resource’s accounts section, find the AWS Console account you want to access.
+    In the resource's accounts section, find the AWS account you want to access.
   </Step>
 
   <Step title="Request Access">
-    Click the **Access** button for that account.
+    Click the **Access** button for that account. Infisical will:
 
-    Infisical will:
     1. Assume the Resource Role using your project's External ID
     2. Assume the Target Role using role chaining
-    3. Generate a federated sign-in URL
-    4. Open the AWS Console in a new browser tab
+    3. Return the temporary STS credentials to your browser
 
-    The user will be signed into the AWS Console with the permissions of the Target Role.
+    The credentials shown are valid until the configured session duration expires.
+  </Step>
+
+  <Step title="Use the AWS CLI">
+    The access dialog shows three fields with copy buttons:
+
+    - **Access Key ID**
+    - **Secret Access Key**
+    - **Session Token**
+
+    Use them however your tooling expects. Common options:
+
+    - Export as environment variables (Bash / Zsh):
+      ```bash
+      export AWS_ACCESS_KEY_ID=ASIA...
+      export AWS_SECRET_ACCESS_KEY=...
+      export AWS_SESSION_TOKEN=...
+      ```
+    - Equivalent `$env:` assignments in PowerShell
+    - Append to a named profile in `~/.aws/credentials`:
+      ```ini
+      [infisical-pam]
+      aws_access_key_id = ASIA...
+      aws_secret_access_key = ...
+      aws_session_token = ...
+      ```
+
+    All standard AWS SDKs and tooling will pick up the credentials automatically once they are in the environment or credentials file.
+  </Step>
+
+  <Step title="(Optional) Open the AWS Console">
+    Click **Open in AWS Console** at the bottom of the access dialog. Infisical exchanges the same STS credentials for a federated sign-in URL and opens it in a new tab. No second session is created, and CloudTrail attribution stays consistent with your CLI activity.
   </Step>
 </Steps>

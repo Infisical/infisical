@@ -4,7 +4,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
-import { UnstableSeparator as Separator } from "../Separator";
+import { Separator } from "../Separator";
 
 function ItemGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -37,8 +37,7 @@ const itemVariants = cva(
     variants: {
       variant: {
         default: "border-transparent",
-        outline: "border-border bg-container",
-        muted: "bg-muted/50 border-transparent"
+        outline: "border-border bg-card"
       },
       size: {
         default: "gap-2.5 px-3 py-2.5",
@@ -73,7 +72,7 @@ function Item({
 }
 
 const itemMediaVariants = cva(
-  "gap-2 group-has-[[data-slot=item-description]]/item:translate-y-0.5 group-has-[[data-slot=item-description]]/item:self-start flex shrink-0 items-center justify-center [&_svg]:pointer-events-none",
+  "gap-2 group-has-[[data-slot=item-description]]/item:translate-y-0.5 text-muted group-has-[[data-slot=item-description]]/item:self-start flex shrink-0 items-center justify-center [&_svg]:pointer-events-none",
   {
     variants: {
       variant: {
@@ -122,7 +121,7 @@ function ItemTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="item-title"
       className={cn(
-        "line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium underline-offset-4",
+        "line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium text-foreground underline-offset-4",
         className
       )}
       {...props}
@@ -135,7 +134,7 @@ function ItemDescription({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="item-description"
       className={cn(
-        "text-muted-foreground line-clamp-2 text-left text-sm leading-normal font-normal group-data-[size=xs]/item:text-xs [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "text-muted-foreground line-clamp-2 text-left text-sm leading-normal font-normal text-accent group-data-[size=xs]/item:text-xs [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground",
         className
       )}
       {...props}
@@ -163,7 +162,7 @@ function ItemFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="item-footer"
-      className={cn("flex basis-full items-center justify-between gap-2", className)}
+      className={cn("flex basis-full items-center justify-between gap-2 text-muted", className)}
       {...props}
     />
   );

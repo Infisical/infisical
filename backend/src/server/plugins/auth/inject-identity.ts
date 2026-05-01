@@ -7,8 +7,17 @@ import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
-import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import {
+  ActorType,
+  AuthMethod,
+  AuthMode,
+  AuthModeJwtTokenPayload,
+  AuthTokenType,
+  MfaMethod,
+  TGatewayAccessTokenJwtPayload
+} from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -24,6 +33,7 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
+      mfaMethod?: MfaMethod;
       token: AuthModeJwtTokenPayload;
     }
   | {
@@ -68,6 +78,16 @@ export type TAuthMode =
       rootOrgId: string;
       parentOrgId: string;
       authMethod: null;
+    }
+  | {
+      authMode: AuthMode.GATEWAY_ACCESS_TOKEN;
+      actor: ActorType.GATEWAY;
+      gatewayId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TGatewayAccessTokenJwtPayload;
     };
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -120,6 +140,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         token: decodedToken as TScimTokenJwtPayload,
         actor: ActorType.SCIM_CLIENT
       } as const;
+    case AuthTokenType.GATEWAY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
+        token: decodedToken as TGatewayAccessTokenJwtPayload,
+        actor: ActorType.GATEWAY
+      } as const;
     default:
       return { authMode: null, token: null } as const;
   }
@@ -150,26 +176,42 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (req.url.includes(".well-known/est") || req.url.includes("/scep/") || req.url.includes("/api/v3/auth/")) {
+      // Match against the pathname only — req.url includes the query string, which a
+      // client can use to smuggle matching substrings and skip auth injection.
+      const pathname = req.url.split("?", 1)[0];
+
+      if (
+        pathname.startsWith("/.well-known/est") ||
+        (pathname.startsWith("/api/v3/auth/") && !pathname.startsWith("/api/v3/auth/select-organization"))
+      ) {
         return;
       }
 
-      if (req.url === "/api/v1/ai/mcp/servers/oauth/callback") {
+      if (pathname.includes("/scep/") && pathname.includes("pkiclient.exe")) {
+        return;
+      }
+
+      if (pathname === "/api/v1/ai/mcp/servers/oauth/callback") {
         return;
       }
 
       // Authentication is handled on a route-level
-      if (req.url === "/api/v1/relays/register-instance-relay") {
+      if (pathname === "/api/v1/relays/register-instance-relay") {
+        return;
+      }
+
+      // Authentication is handled on a route-level (enrollment token in body)
+      if (pathname === "/api/v3/gateways/token-auth/enroll") {
         return;
       }
 
       // Authentication is handled on a route-level
-      if (req.url === "/api/v1/relays/heartbeat-instance-relay") {
+      if (pathname === "/api/v1/relays/heartbeat-instance-relay") {
         return;
       }
 
       // Authentication is handled on a route-level here.
-      if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+      if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;
       }
 
@@ -181,9 +223,9 @@ export const injectIdentity = fp(
         case AuthMode.JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set("orgId", orgId);
-          requestContext.set("orgName", orgName);
-          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.JWT,
             user,
@@ -195,7 +237,8 @@ export const injectIdentity = fp(
             parentOrgId,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
-            token
+            token,
+            mfaMethod: token.mfaMethod
           };
           fireIdentifyForUser(user);
           break;
@@ -203,9 +246,9 @@ export const injectIdentity = fp(
         case AuthMode.MCP_JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set("orgId", orgId);
-          requestContext.set("orgName", orgName);
-          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.MCP_JWT,
             user,
@@ -225,8 +268,8 @@ export const injectIdentity = fp(
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
           const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
           const serverCfg = await getServerCfg();
-          requestContext.set("orgId", identity.orgId);
-          requestContext.set("orgName", identity.orgName);
+          requestContext.set(RequestContextKey.OrgId, identity.orgId);
+          requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {
             authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
             actor,
@@ -255,7 +298,7 @@ export const injectIdentity = fp(
             identityAuthInfo.aws = token?.identityAuth?.aws;
           }
 
-          requestContext.set("identityAuthInfo", identityAuthInfo);
+          requestContext.set(RequestContextKey.IdentityAuthInfo, identityAuthInfo);
 
           // Fire-and-forget: enrich PostHog person record for this machine identity
           void server.services.telemetry
@@ -271,7 +314,7 @@ export const injectIdentity = fp(
         }
         case AuthMode.SERVICE_TOKEN: {
           const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
-          requestContext.set("orgId", serviceToken.orgId);
+          requestContext.set(RequestContextKey.OrgId, serviceToken.orgId);
 
           req.auth = {
             orgId: serviceToken.orgId,
@@ -293,7 +336,7 @@ export const injectIdentity = fp(
         }
         case AuthMode.SCIM_TOKEN: {
           const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
-          requestContext.set("orgId", orgId);
+          requestContext.set(RequestContextKey.OrgId, orgId);
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,
@@ -304,6 +347,27 @@ export const injectIdentity = fp(
             // scim cannot be done for sub organization
             rootOrgId: orgId,
             parentOrgId: orgId
+          };
+          break;
+        }
+        case AuthMode.GATEWAY_ACCESS_TOKEN: {
+          const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: token.gatewayId });
+
+          if (gateway.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({ message: "Gateway token has been revoked" });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
+            actor,
+            gatewayId: token.gatewayId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
           };
           break;
         }

@@ -2,6 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
+  BoxesIcon as SubOrgIcon,
+  BoxIcon as ProjectIcon,
+  Building2Icon as OrgIcon,
   CheckIcon,
   CircleXIcon,
   ExternalLinkIcon,
@@ -10,7 +13,6 @@ import {
   TriangleAlertIcon
 } from "lucide-react";
 
-import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
 import { Button } from "./Button";
 
 /**
@@ -29,8 +31,8 @@ const meta = {
     variant: {
       control: "select",
       options: [
-        "default",
         "outline",
+        "ghost",
         "neutral",
         "success",
         "info",
@@ -100,7 +102,8 @@ export const Neutral: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant for general actions. [TBD]"
+        story:
+          "Use this variant for neutral / general actions that don't warrant a semantic tone — a step up from `ghost` with a subtle filled background."
       }
     }
   }
@@ -345,6 +348,28 @@ export const IsPending: Story = {
       description: {
         story:
           "Use the `isPending` prop to indicate loading states and disable button functionality."
+      }
+    }
+  }
+};
+
+export const IsDisabled: Story = {
+  name: "Example: isDisabled",
+  args: {
+    variant: "neutral",
+    isDisabled: true,
+    children: (
+      <>
+        Login
+        <LogInIcon />
+      </>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use the `isDisabled` prop to block interaction and mute the button (50% opacity). Applies to every variant identically."
       }
     }
   }

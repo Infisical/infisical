@@ -101,7 +101,10 @@ const SIGNATURE_ALGORITHMS = [
   "SHA512-RSA",
   "SHA256-ECDSA",
   "SHA384-ECDSA",
-  "SHA512-ECDSA"
+  "SHA512-ECDSA",
+  "ML-DSA-44",
+  "ML-DSA-65",
+  "ML-DSA-87"
 ] as const;
 
 const KEY_ALGORITHMS = [
@@ -110,7 +113,10 @@ const KEY_ALGORITHMS = [
   "RSA-4096",
   "ECDSA-P256",
   "ECDSA-P384",
-  "ECDSA-P521"
+  "ECDSA-P521",
+  "ML-DSA-44",
+  "ML-DSA-65",
+  "ML-DSA-87"
 ] as const;
 
 export const CreatePolicyModal = ({
@@ -457,11 +463,22 @@ export const CreatePolicyModal = ({
         | "SHA256-ECDSA"
         | "SHA384-ECDSA"
         | "SHA512-ECDSA"
+        | "ML-DSA-44"
+        | "ML-DSA-65"
+        | "ML-DSA-87"
       >;
     }
     if (data.keyAlgorithm?.allowedKeyTypes && data.keyAlgorithm.allowedKeyTypes.length > 0) {
       algorithms.keyAlgorithm = data.keyAlgorithm.allowedKeyTypes as Array<
-        "RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384"
+        | "RSA-2048"
+        | "RSA-3072"
+        | "RSA-4096"
+        | "ECDSA-P256"
+        | "ECDSA-P384"
+        | "ECDSA-P521"
+        | "ML-DSA-44"
+        | "ML-DSA-65"
+        | "ML-DSA-87"
       >;
     }
 

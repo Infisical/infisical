@@ -15,6 +15,7 @@ import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerGeneralCertificateAuthorityRouter } from "./certificate-authority-routers/general-certificate-authority-router";
 import { registerCertificateCleanupRouter } from "./certificate-cleanup-router";
+import { registerCertificateInventoryViewRouter } from "./certificate-inventory-view-router";
 import { registerCertificatePolicyRouter } from "./certificate-policy-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
@@ -78,7 +79,6 @@ import { registerSecretValidationRuleRouter } from "./secret-validation-rule-rou
 import { registerSignerRouter } from "./signer-router";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
-import { registerUpgradePathRouter } from "./upgrade-path-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
@@ -152,6 +152,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (projectRouter) => {
       await projectRouter.register(registerProjectRouter);
+      await projectRouter.register(registerCertificateInventoryViewRouter);
       await projectRouter.register(registerProjectMembershipRouter);
       await projectRouter.register(registerProjectIdentityRouter);
       await projectRouter.register(registerProjectEnvRouter);
@@ -314,8 +315,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerEventRouter, { prefix: "/events" });
-  await server.register(registerUpgradePathRouter, { prefix: "/upgrade-path" });
-
   await server.register(
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints

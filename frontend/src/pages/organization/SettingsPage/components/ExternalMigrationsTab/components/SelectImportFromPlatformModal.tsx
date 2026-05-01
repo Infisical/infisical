@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 
 import { EnvKeyPlatformModal } from "./EnvKeyPlatformModal";
 import { VaultPlatformModal } from "./VaultPlatformModal";
@@ -37,20 +43,27 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
     null
   );
 
-  const handleFormReset = (state: boolean = false) => {
-    onToggle(state);
-    setWizardStep(WizardSteps.SelectPlatform);
-    setSelectedPlatform(null);
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setWizardStep(WizardSteps.SelectPlatform);
+      setSelectedPlatform(null);
+    }
+    onToggle(open);
   };
 
+  const title = selectedPlatform
+    ? `Import from ${selectedPlatform.title}`
+    : "Import from external source";
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
-      <ModalContent
-        title={
-          selectedPlatform ? `Import from ${selectedPlatform.title}` : "Import from external source"
-        }
-        className="my-4"
-      >
+    <Dialog open={Boolean(isOpen)} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg" showCloseButton>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {wizardStep === WizardSteps.SelectPlatform && (
+            <DialogDescription>Select a platform to import from</DialogDescription>
+          )}
+        </DialogHeader>
         <AnimatePresence mode="wait">
           {wizardStep === WizardSteps.SelectPlatform && (
             <motion.div
@@ -60,14 +73,11 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="mb-4 text-sm text-mineshaft-300">
-                Select a platform to import from
-              </div>
               <div className="flex items-center space-x-4">
                 {PLATFORM_LIST.map((platform, idx) => (
                   <div
                     key={`platform-${idx + 1}`}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center justify-between rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-6 py-5 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-28 w-32 cursor-pointer flex-col items-center justify-between rounded-sm border border-border bg-container p-6 py-5 transition-all hover:border-accent/40 hover:bg-foreground/5"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -86,7 +96,9 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
                       alt={`${platform.title} logo`}
                       style={{ width: platform.size }}
                     />
-                    <div className="text-center text-sm whitespace-pre-wrap">{platform.title}</div>
+                    <div className="text-center text-sm whitespace-pre-wrap text-foreground">
+                      {platform.title}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -102,7 +114,7 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
                   animate={{ opacity: 1, translateX: 0 }}
                   exit={{ opacity: 0, translateX: -30 }}
                 >
-                  <EnvKeyPlatformModal onClose={() => handleFormReset(false)} />
+                  <EnvKeyPlatformModal onClose={() => handleOpenChange(false)} />
                 </motion.div>
               )}
               {selectedPlatform?.platform === "vault" && (
@@ -113,13 +125,13 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
                   animate={{ opacity: 1, translateX: 0 }}
                   exit={{ opacity: 0, translateX: -30 }}
                 >
-                  <VaultPlatformModal onClose={() => handleFormReset(false)} />
+                  <VaultPlatformModal onClose={() => handleOpenChange(false)} />
                 </motion.div>
               )}
             </>
           )}
         </AnimatePresence>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

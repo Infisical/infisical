@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
 import { AccessScope, AccessScopeData, IdentitiesSchema, TableName } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { buildAuthMethods } from "../identity/identity-fns";
@@ -144,7 +145,8 @@ export const identityV2DALFactory = (db: TDbClient) => {
         }
       });
 
-    if (filter.search) void baseQuery.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
+    if (filter.search)
+      void baseQuery.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(filter.search)}%`);
 
     const countQuery = baseQuery.clone().count(`${TableName.Identity}.id as count`).first<{ count: string }>();
 

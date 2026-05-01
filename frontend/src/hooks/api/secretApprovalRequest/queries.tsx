@@ -26,6 +26,8 @@ export const secretApprovalRequestKeys = {
       { projectId, environment, status, committer, offset, limit, search },
       "secret-approval-requests"
     ] as const,
+  listAllForProject: ({ projectId }: { projectId: string }) =>
+    [{ projectId }, "secret-approval-requests"] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
     [{ id }, "secret-approval-request-detail"] as const,
   count: ({ projectId, policyId }: TGetSecretApprovalRequestCount) => [
@@ -155,7 +157,8 @@ export const useGetSecretApprovalRequestCount = ({
 }) =>
   useQuery({
     queryKey: secretApprovalRequestKeys.count({ projectId, policyId }),
-    refetchInterval: 15000,
     queryFn: () => fetchSecretApprovalRequestCount({ projectId, policyId }),
-    enabled: Boolean(projectId) && (options?.enabled ?? true)
+    ...options,
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval ?? 30_000
   });

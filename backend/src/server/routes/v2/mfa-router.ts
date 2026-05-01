@@ -10,7 +10,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 
 const handleMfaVerification = async (
-  req: FastifyRequest & { mfa: { userId: string; orgId?: string; user: TUsers } },
+  req: FastifyRequest & { mfa: { userId: string; orgId?: string; user: TUsers; requiredMfaMethod: MfaMethod } },
   res: FastifyReply,
   server: FastifyZodProvider,
   mfaToken: string,
@@ -31,12 +31,13 @@ const handleMfaVerification = async (
     orgId: req.mfa.orgId,
     mfaToken,
     mfaMethod,
+    requiredMfaMethod: req.mfa.requiredMfaMethod,
     isRecoveryCode
   });
 
   void res.setCookie("jid", token.refresh, {
     httpOnly: true,
-    path: "/",
+    path: "/api",
     sameSite: "strict",
     secure: appCfg.HTTPS_ENABLED
   });
@@ -45,10 +46,8 @@ const handleMfaVerification = async (
 
   return {
     ...user,
-    token: token.access,
-    protectedKey: user.protectedKey || null,
-    protectedKeyIV: user.protectedKeyIV || null,
-    protectedKeyTag: user.protectedKeyTag || null
+    hashedPassword: null,
+    token: token.access
   };
 };
 
@@ -74,7 +73,12 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new Error("User not found");
-    req.mfa = { userId: user.id, user, orgId: decodedToken.organizationId };
+    req.mfa = {
+      userId: user.id,
+      user,
+      orgId: decodedToken.organizationId,
+      requiredMfaMethod: decodedToken.requiredMfaMethod
+    };
   });
 
   server.route({
@@ -92,7 +96,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.login.resendMfaToken(req.mfa.userId);
+      await server.services.login.resendMfaToken(req.mfa.userId, req.mfa.requiredMfaMethod);
       return { message: "Successfully send new mfa code" };
     }
   });

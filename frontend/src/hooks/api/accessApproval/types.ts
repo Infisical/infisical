@@ -35,6 +35,7 @@ export enum BypasserType {
 export type Approver = {
   id: string;
   type: ApproverType;
+  name?: string;
   sequence?: number;
   approvalsRequired?: number;
   isOrgMembershipActive: boolean;
@@ -111,6 +112,24 @@ export type TAccessApprovalRequest = {
   editNote?: string;
   editedByUserId?: string;
   expiresAt?: Date | null;
+  approvedAt?: Date | null;
+  revokedAt?: Date | null;
+  approvedByUserId?: string | null;
+  revokedByUserId?: string | null;
+  approvedByUser?: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    username: string;
+  } | null;
+  revokedByUser?: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    username: string;
+  } | null;
 };
 
 export type TAccessApproval = {

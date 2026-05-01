@@ -67,7 +67,9 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         >
           {title && (
             <DialogPrimitive.Title>
-              <CardTitle subTitle={subTitle}>{title}</CardTitle>
+              <CardTitle subTitle={subTitle}>
+                <div className={showCloseButton ? "pr-8" : undefined}>{title}</div>
+              </CardTitle>
             </DialogPrimitive.Title>
           )}
           <CardBody

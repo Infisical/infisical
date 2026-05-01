@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TSecretImports } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 import { EnvironmentInfo, FolderInfo, FolderResult, SecretResult } from "./secret-import-types";
@@ -86,7 +87,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .where(filter)
         .where((bd) => {
           if (search) {
-            void bd.whereILike("importPath", `%${search}%`);
+            void bd.whereILike("importPath", `%${sanitizeSqlLikeString(search)}%`);
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
@@ -172,7 +173,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .where("isReplication", false)
         .where((bd) => {
           if (search) {
-            void bd.whereILike("importPath", `%${search}%`);
+            void bd.whereILike("importPath", `%${sanitizeSqlLikeString(search)}%`);
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
@@ -191,7 +192,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .where(`${TableName.SecretImport}.isReserved`, false)
         .where((bd) => {
           if (search) {
-            void bd.whereILike(`${TableName.SecretImport}.importPath`, `%${search}%`);
+            void bd.whereILike(`${TableName.SecretImport}.importPath`, `%${sanitizeSqlLikeString(search)}%`);
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)

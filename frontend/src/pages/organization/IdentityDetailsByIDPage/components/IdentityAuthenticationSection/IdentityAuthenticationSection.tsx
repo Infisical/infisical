@@ -3,17 +3,17 @@ import { PlusIcon } from "lucide-react";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { IdentityAuthMethod, useGetOrgIdentityMembershipById } from "@app/hooks/api";
@@ -37,15 +37,15 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
   const hasAuthMethods = Boolean(data?.identity.authMethods.length);
 
   return data ? (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Authentication</UnstableCardTitle>
-        <UnstableCardDescription>Configure authentication methods</UnstableCardDescription>
+    <Card>
+      <CardHeader>
+        <CardTitle>Authentication</CardTitle>
+        <CardDescription>Configure authentication methods</CardDescription>
         {hasAuthMethods &&
           !Object.values(IdentityAuthMethod).every((method) =>
             data.identity.authMethods.includes(method)
           ) && (
-            <UnstableCardAction>
+            <CardAction>
               <OrgPermissionCan
                 I={OrgPermissionIdentityActions.Edit}
                 a={OrgPermissionSubjects.Identity}
@@ -69,10 +69,10 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                   </Button>
                 )}
               </OrgPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-      </UnstableCardHeader>
-      <UnstableCardContent>
+      </CardHeader>
+      <CardContent>
         {data.identity.authMethods.length > 0 ? (
           <ViewIdentityAuth
             activeLockoutAuthMethods={data.identity.activeLockoutAuthMethods}
@@ -81,16 +81,12 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
             onResetAllLockouts={refetch}
           />
         ) : (
-          <UnstableEmpty className="border">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>
-                This machine identity has no auth methods configured
-              </UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Add an auth method to use this machine identity
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-            <UnstableEmptyContent>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>This machine identity has no auth methods configured</EmptyTitle>
+              <EmptyDescription>Add an auth method to use this machine identity</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               <OrgPermissionCan
                 I={OrgPermissionIdentityActions.Edit}
                 a={OrgPermissionSubjects.Identity}
@@ -113,11 +109,11 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                   </Button>
                 )}
               </OrgPermissionCan>
-            </UnstableEmptyContent>
-          </UnstableEmpty>
+            </EmptyContent>
+          </Empty>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   ) : (
     <div />
   );

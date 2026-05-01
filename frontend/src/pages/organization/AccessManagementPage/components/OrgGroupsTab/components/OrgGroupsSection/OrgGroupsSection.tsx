@@ -7,13 +7,13 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  DocumentationLinkBadge,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   OrgPermissionGroupActions,
@@ -82,16 +82,16 @@ export const OrgGroupsSection = () => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Groups
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>
+          </CardTitle>
+          <CardDescription>
             Create and manage {isSubOrganization ? "sub-" : ""}organization groups
-          </UnstableCardDescription>
-          <UnstableCardAction>
+          </CardDescription>
+          <CardAction>
             <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
               {(isAllowed) => (
                 <Button
@@ -106,12 +106,12 @@ export const OrgGroupsSection = () => {
                 </Button>
               )}
             </OrgPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <OrgGroupsTable handlePopUpOpen={handlePopUpOpen} />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <OrgGroupModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

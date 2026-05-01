@@ -8,7 +8,11 @@ import { Button, SheetFooter } from "@app/components/v3";
 import { PamResourceType, TRedisAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 
 const formSchema = genericAccountFieldsSchema
@@ -208,6 +212,7 @@ export const RedisAccountForm = ({ account, onSubmit, closeSheet }: Props) => {
               />
             </div>
           )}
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

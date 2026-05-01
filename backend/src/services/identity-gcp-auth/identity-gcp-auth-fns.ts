@@ -1,7 +1,7 @@
-import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
 import RE2 from "re2";
 
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 
@@ -64,7 +64,7 @@ export const validateIamIdentity = async ({
     data: {
       [key: string]: string;
     };
-  } = await axios.get(`https://www.googleapis.com/service_accounts/v1/metadata/x509/${encodeURIComponent(sub)}`);
+  } = await request.get(`https://www.googleapis.com/service_accounts/v1/metadata/x509/${encodeURIComponent(sub)}`);
 
   const publicKey = data[decodedJwt.header.kid];
 

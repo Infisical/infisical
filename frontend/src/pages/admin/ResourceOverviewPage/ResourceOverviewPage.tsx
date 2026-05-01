@@ -4,7 +4,12 @@ import { useSearch } from "@tanstack/react-router";
 
 import { PageHeader } from "@app/components/v2";
 
-import { MachineIdentitiesTable, OrganizationsTable, UserIdentitiesTable } from "./components";
+import {
+  EmailDomainsTable,
+  MachineIdentitiesTable,
+  OrganizationsTable,
+  UserIdentitiesTable
+} from "./components";
 
 export const ResourceOverviewPage = () => {
   const { t } = useTranslation();
@@ -30,6 +35,7 @@ export const ResourceOverviewPage = () => {
             {activeTab === "organizations" && <OrganizationsTable />}
             {activeTab === "users" && <UserIdentitiesTable />}
             {activeTab === "identities" && <MachineIdentitiesTable />}
+            {activeTab === "emailDomains" && <EmailDomainsTable />}
           </div>
         </div>
       </div>

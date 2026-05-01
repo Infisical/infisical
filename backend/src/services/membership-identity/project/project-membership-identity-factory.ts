@@ -12,6 +12,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -73,12 +75,17 @@ export const newProjectMembershipIdentityFactory = ({
     if (!orgMembership)
       throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
 
-    const identityDetails = await identityDAL.findById(dto.data.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
+      identityDAL.findById(dto.data.identityId)
+    );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
     }
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       scope.value
@@ -128,12 +135,17 @@ export const newProjectMembershipIdentityFactory = ({
       subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.projectId && identityDetails.projectId !== scope.value) {
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
     }
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value
@@ -182,7 +194,9 @@ export const newProjectMembershipIdentityFactory = ({
       subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to delete project membership for a project scoped identity" });
     }

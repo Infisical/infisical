@@ -5,21 +5,21 @@ import { format } from "date-fns";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { TPkiInstallationCert } from "@app/hooks/api";
 
@@ -36,40 +36,38 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
   });
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Discovered Certificates</UnstableCardTitle>
-        <UnstableCardDescription>Certificates found on this installation</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent className="p-0">
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Discovered Certificates</CardTitle>
+        <CardDescription>Certificates found on this installation</CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
         {certificates.length === 0 ? (
-          <UnstableEmpty>
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No certificates found on this installation</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Run a scan to discover certificates
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No certificates found on this installation</EmptyTitle>
+              <EmptyDescription>Run a scan to discover certificates</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead>SAN / CN</UnstableTableHead>
-                <UnstableTableHead>Status</UnstableTableHead>
-                <UnstableTableHead>Serial Number</UnstableTableHead>
-                <UnstableTableHead>Expires</UnstableTableHead>
-                <UnstableTableHead>Last Seen</UnstableTableHead>
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>SAN / CN</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Serial Number</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead>Last Seen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {certificates.map((cert) => {
                 const expiryDetails = cert.notAfter
                   ? getCertValidUntilBadgeDetails(cert.notAfter)
                   : null;
 
                 return (
-                  <UnstableTableRow
+                  <TableRow
                     key={cert.id}
                     onClick={() =>
                       navigate({
@@ -82,32 +80,32 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
                       })
                     }
                   >
-                    <UnstableTableCell>{cert.commonName || "N/A"}</UnstableTableCell>
-                    <UnstableTableCell>
+                    <TableCell>{cert.commonName || "N/A"}</TableCell>
+                    <TableCell>
                       {expiryDetails ? (
                         <Badge variant={expiryDetails.variant}>{expiryDetails.label}</Badge>
                       ) : (
                         <Badge variant="neutral">Unknown</Badge>
                       )}
-                    </UnstableTableCell>
-                    <UnstableTableCell isTruncatable>
+                    </TableCell>
+                    <TableCell isTruncatable>
                       {truncateSerialNumber(cert.serialNumber || "")}
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       {cert.notAfter ? format(new Date(cert.notAfter), "MMM dd, yyyy") : "-"}
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       {cert.lastSeenAt
                         ? format(new Date(cert.lastSeenAt), "MMM dd, yyyy HH:mm")
                         : "-"}
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

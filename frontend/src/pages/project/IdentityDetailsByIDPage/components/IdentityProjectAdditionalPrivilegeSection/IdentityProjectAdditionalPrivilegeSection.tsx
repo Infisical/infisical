@@ -9,37 +9,37 @@ import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -111,17 +111,15 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             Project Additional Privileges
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>
-            Assign one-off policies to this machine identity
-          </UnstableCardDescription>
+          </CardTitle>
+          <CardDescription>Assign one-off policies to this machine identity</CardDescription>
           {hasAdditionalPrivileges && (
-            <UnstableCardAction>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.Identity, {
@@ -157,10 +155,10 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                   );
                 }}
               </ProjectPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           {/* eslint-disable-next-line no-nested-ternary */}
           {isPending ? (
             // scott: todo proper loader
@@ -168,15 +166,15 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
               <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
             </div>
           ) : identityProjectPrivileges?.length ? (
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableRow>
-                  <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
-                  <UnstableTableHead className="w-1/2">Duration</UnstableTableHead>
-                  <UnstableTableHead className="w-5" />
-                </UnstableTableRow>
-              </UnstableTableHeader>
-              <UnstableTableBody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/2">Name</TableHead>
+                  <TableHead className="w-1/2">Duration</TableHead>
+                  <TableHead className="w-5" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {!isPending &&
                   identityProjectPrivileges?.map((privilegeDetails) => {
                     const isTemporary = privilegeDetails?.isTemporary;
@@ -203,11 +201,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     }
 
                     return (
-                      <UnstableTableRow key={`user-project-privilege-${privilegeDetails?.id}`}>
-                        <UnstableTableCell className="max-w-0 truncate">
-                          {privilegeDetails.slug}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                      <TableRow key={`user-project-privilege-${privilegeDetails?.id}`}>
+                        <TableCell className="max-w-0 truncate">{privilegeDetails.slug}</TableCell>
+                        <TableCell>
                           {isTemporary ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -224,15 +220,15 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                           ) : (
                             text
                           )}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton size="xs" variant="ghost">
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton size="xs" variant="ghost">
                                 <EllipsisIcon />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent align="end">
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
                               <ProjectPermissionCan
                                 I={ProjectPermissionActions.Edit}
                                 a={subject(ProjectPermissionSub.Identity, {
@@ -242,7 +238,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                                 allowedLabel="Remove Role"
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     isDisabled={!isAllowed || !canModifyIdentityPrivileges}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -250,7 +246,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                                     }}
                                   >
                                     Edit Additional Privilege
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
                               <ProjectPermissionCan
@@ -262,7 +258,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                                 allowedLabel="Remove Role"
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     isDisabled={!isAllowed || !canModifyIdentityPrivileges}
                                     variant="danger"
                                     onClick={(e) => {
@@ -274,28 +270,26 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                                     }}
                                   >
                                     Remove Additional Privilege
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-              </UnstableTableBody>
-            </UnstableTable>
+              </TableBody>
+            </Table>
           ) : (
-            <UnstableEmpty className="border">
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>
-                  This machine identity has no additional privileges
-                </UnstableEmptyTitle>
-                <UnstableEmptyDescription>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>This machine identity has no additional privileges</EmptyTitle>
+                <EmptyDescription>
                   Add an additional privilege to grant one-off access policies
-                </UnstableEmptyDescription>
-              </UnstableEmptyHeader>
-              <UnstableEmptyContent>
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={subject(ProjectPermissionSub.Identity, {
@@ -331,11 +325,11 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     );
                   }}
                 </ProjectPermissionCan>
-              </UnstableEmptyContent>
-            </UnstableEmpty>
+              </EmptyContent>
+            </Empty>
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <Sheet
         open={popUp.modifyPrivilege.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyPrivilege", isOpen)}

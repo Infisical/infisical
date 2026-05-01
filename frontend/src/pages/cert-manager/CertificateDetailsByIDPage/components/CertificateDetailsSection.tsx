@@ -1,15 +1,15 @@
 import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  DetailValue
 } from "@app/components/v3";
 import { useGetCertificateById } from "@app/hooks/api";
 import {
@@ -44,11 +44,11 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
     return (
       <div className="flex flex-col gap-5">
         {["subject", "extensions", "crypto"].map((id) => (
-          <UnstableCard key={id}>
-            <UnstableCardContent className="flex items-center justify-center py-8">
+          <Card key={id}>
+            <CardContent className="flex items-center justify-center py-8">
               <p className="text-sm text-mineshaft-400">Loading...</p>
-            </UnstableCardContent>
-          </UnstableCard>
+            </CardContent>
+          </Card>
         ))}
       </div>
     );
@@ -75,12 +75,12 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
   return (
     <>
       {/* Subject Attributes Card */}
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Subject Attributes</UnstableCardTitle>
-          <UnstableCardDescription>Distinguished name attributes</UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Subject Attributes</CardTitle>
+          <CardDescription>Distinguished name attributes</CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             {certificate.subject && (
               <div className="grid grid-cols-2 gap-4">
@@ -139,16 +139,16 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
               </DetailValue>
             </Detail>
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       {/* Extensions Card */}
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Extensions</UnstableCardTitle>
-          <UnstableCardDescription>Certificate extensions and key usage</UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Extensions</CardTitle>
+          <CardDescription>Certificate extensions and key usage</CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <div className="grid grid-cols-2 gap-4">
               <Detail>
@@ -205,16 +205,16 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
               </DetailValue>
             </Detail>
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       {/* Cryptographic Info Card */}
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Cryptographic Info</UnstableCardTitle>
-          <UnstableCardDescription>Algorithms and fingerprints</UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Cryptographic Info</CardTitle>
+          <CardDescription>Algorithms and fingerprints</CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <div className="grid grid-cols-2 gap-4">
               <Detail>
@@ -267,8 +267,8 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
               </>
             )}
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     </>
   );
 };

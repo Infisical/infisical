@@ -1,0 +1,113 @@
+---
+title: "Ona Connection"
+description: "Learn how to configure an Ona Connection for Infisical."
+---
+
+Infisical supports connecting to [Ona](https://www.gitpod.io/) (Gitpod's cloud development environment platform) using a Personal Access Token (PAT).
+
+## Create an Ona Personal Access Token
+
+<Steps>
+  <Step title="Open your user settings on Ona">
+
+  In the lower-left corner of Ona, select your name, then click the gear icon to open user settings.
+
+  ![Open Account setting](/images/app-connections/ona/ona-account-settings.png)
+
+  </Step>
+  <Step title="Select the Personal Access Tokens tab">
+    
+  ![PAT tab](/images/app-connections/ona/ona-access-token-tab.png)
+    
+  </Step>
+  <Step title="Create the token">
+    Click the **New Token** button and add a description for the token (eg, "infisical integration"). The token must have Read & Write access so that Infisical can apply changes in Ona.
+
+    <Note>
+     Personal access tokens have an expiration date, so you will need to manually rotate them before they expire to avoid integration downtime. Consider setting a calendar reminder for this task.
+    </Note>
+    
+    ![Open PAT section](/images/app-connections/ona/ona-pat-section.png)
+    ![New token modal](/images/app-connections/ona/ona-pat-creation-modal.png)
+  </Step>
+  <Step title="Copy the token">
+    Make sure to save the token, as it won't be shown again.
+
+    ![Copy Token](/images/app-connections/ona/ona-pat-copy.png)
+  </Step>
+</Steps>
+
+## Create an Ona Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, open the **Integrations** tab for the desired project and select **App Connections**. Click **+ Add Connection**.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Ona Connection">
+        Choose **Ona Connection** from the list of integrations.
+
+        ![Select Ona Connection](/images/app-connections/ona/ona-app-connection-option.png)
+      </Step>
+      <Step title="Fill out the Ona Connection form">
+        Complete the form by providing:
+
+        - A descriptive **Name** for the connection.
+        - An optional **Description**.
+        - The **Personal Access Token** you generated in Ona.
+
+        ![Ona Connection Modal](/images/app-connections/ona/ona-app-connection-form.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Ona Connection** will be created.
+
+        ![Ona Connection Created](/images/app-connections/ona/ona-app-connection-generated.png)
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="API">
+    To create an Ona Connection via API, send a request to the [Create Ona Connection](/api-reference/endpoints/app-connections/ona/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/ona \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-ona-connection",
+                "method": "personal-access-token",
+                "projectId": "abcdef12-3456-7890-abcd-ef1234567890",
+                "credentials": {
+                    "personalAccessToken": "[PERSONAL ACCESS TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+          "name": "my-ona-connection",
+          "description": null,
+          "projectId": "abcdef12-3456-7890-abcd-ef1234567890",
+          "version": 1,
+          "orgId": "abcdef12-3456-7890-abcd-ef1234567890",
+          "createdAt": "2025-01-23T10:15:00.000Z",
+          "updatedAt": "2025-01-23T10:15:00.000Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "d41d8cd98f00b204e9800998ecf8427e",
+          "app": "ona",
+          "method": "personal-access-token",
+          "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -19,38 +19,38 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableAlertTitle,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -187,10 +187,10 @@ export const ProjectRoleList = () => {
     <>
       {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
       {isProPlan && customRoles?.length > 0 && (
-        <UnstableAlert variant="warning" className="mb-4">
+        <Alert variant="warning" className="mb-4">
           <TriangleAlertIcon />
-          <UnstableAlertTitle>Custom roles are moving to Enterprise plans</UnstableAlertTitle>
-          <UnstableAlertDescription>
+          <AlertTitle>Custom roles are moving to Enterprise plans</AlertTitle>
+          <AlertDescription>
             <div>
               Custom roles are part of the Infisical Enterprise plan, but were temporarily available
               to Pro users. Creation of new roles will be enforced starting June 1, 2026.
@@ -215,18 +215,18 @@ export const ProjectRoleList = () => {
               </a>{" "}
               to upgrade and retain access to custom roles.
             </div>
-          </UnstableAlertDescription>
-        </UnstableAlert>
+          </AlertDescription>
+        </Alert>
       )}
 
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             Project Roles
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>Create and manage project roles</UnstableCardDescription>
-          <UnstableCardAction>
+          </CardTitle>
+          <CardDescription>Create and manage project roles</CardDescription>
+          <CardAction>
             <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
               {(isAllowed) => (
                 <Button
@@ -239,9 +239,9 @@ export const ProjectRoleList = () => {
                 </Button>
               )}
             </ProjectPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div className="mb-4">
             <InputGroup>
               <InputGroupAddon>
@@ -255,27 +255,24 @@ export const ProjectRoleList = () => {
             </InputGroup>
           </div>
           {!isRolesLoading && !filteredRoles?.length ? (
-            <UnstableEmpty className="border">
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
                   {roles?.length
                     ? "No project roles match search"
                     : "This project does not have any roles"}
-                </UnstableEmptyTitle>
-                <UnstableEmptyDescription>
+                </EmptyTitle>
+                <EmptyDescription>
                   {roles?.length ? "Adjust your search criteria." : "Add a role to get started."}
-                </UnstableEmptyDescription>
-              </UnstableEmptyHeader>
-            </UnstableEmpty>
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <>
-              <UnstableTable>
-                <UnstableTableHeader>
-                  <UnstableTableRow>
-                    <UnstableTableHead
-                      className="w-1/3"
-                      onClick={() => handleSort(RolesOrderBy.Name)}
-                    >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Name)}>
                       Name
                       <ChevronDownIcon
                         className={twMerge(
@@ -286,11 +283,8 @@ export const ProjectRoleList = () => {
                           orderBy !== RolesOrderBy.Name && "opacity-30"
                         )}
                       />
-                    </UnstableTableHead>
-                    <UnstableTableHead
-                      className="w-1/3"
-                      onClick={() => handleSort(RolesOrderBy.Slug)}
-                    >
+                    </TableHead>
+                    <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Slug)}>
                       Slug
                       <ChevronDownIcon
                         className={twMerge(
@@ -301,8 +295,8 @@ export const ProjectRoleList = () => {
                           orderBy !== RolesOrderBy.Slug && "opacity-30"
                         )}
                       />
-                    </UnstableTableHead>
-                    <UnstableTableHead onClick={() => handleSort(RolesOrderBy.Type)}>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort(RolesOrderBy.Type)}>
                       Type
                       <ChevronDownIcon
                         className={twMerge(
@@ -313,27 +307,27 @@ export const ProjectRoleList = () => {
                           orderBy !== RolesOrderBy.Type && "opacity-30"
                         )}
                       />
-                    </UnstableTableHead>
-                    <UnstableTableHead className="w-5" />
-                  </UnstableTableRow>
-                </UnstableTableHeader>
-                <UnstableTableBody>
+                    </TableHead>
+                    <TableHead className="w-5" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {isRolesLoading &&
                     Array.from({ length: 10 }).map((_, i) => (
-                      <UnstableTableRow key={`skeleton-${i + 1}`}>
-                        <UnstableTableCell>
+                      <TableRow key={`skeleton-${i + 1}`}>
+                        <TableCell>
                           <Skeleton className="h-4 w-full" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-full" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-full" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-4" />
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                        </TableCell>
+                      </TableRow>
                     ))}
                   {filteredRolesPage.map((role) => {
                     const { id, name, slug } = role;
@@ -342,7 +336,7 @@ export const ProjectRoleList = () => {
                     );
 
                     return (
-                      <UnstableTableRow
+                      <TableRow
                         key={`role-list-${id}`}
                         className="cursor-pointer"
                         onClick={() =>
@@ -355,9 +349,9 @@ export const ProjectRoleList = () => {
                           })
                         }
                       >
-                        <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
-                        <UnstableTableCell isTruncatable>{slug}</UnstableTableCell>
-                        <UnstableTableCell>
+                        <TableCell isTruncatable>{name}</TableCell>
+                        <TableCell isTruncatable>{slug}</TableCell>
+                        <TableCell>
                           <Badge variant="ghost">
                             {isCustomProjectRole(slug) ? (
                               <>
@@ -371,29 +365,25 @@ export const ProjectRoleList = () => {
                               </>
                             )}
                           </Badge>
-                        </UnstableTableCell>
-                        <UnstableTableCell>
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
                                 variant="ghost"
                                 size="xs"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent
-                              className="min-w-48"
-                              sideOffset={2}
-                              align="end"
-                            >
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                               <ProjectPermissionCan
                                 I={ProjectPermissionActions.Edit}
                                 a={ProjectPermissionSub.Role}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate({
@@ -408,7 +398,7 @@ export const ProjectRoleList = () => {
                                   >
                                     {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
                                     {`${isNonMutatable ? "View" : "Edit"} Role`}
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
                               <ProjectPermissionCan
@@ -416,7 +406,7 @@ export const ProjectRoleList = () => {
                                 a={ProjectPermissionSub.Role}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("duplicateRole", role);
@@ -425,7 +415,7 @@ export const ProjectRoleList = () => {
                                   >
                                     <CopyIcon />
                                     Duplicate Role
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
                               {!isNonMutatable && (
@@ -434,7 +424,7 @@ export const ProjectRoleList = () => {
                                   a={ProjectPermissionSub.Role}
                                 >
                                   {(isAllowed) => (
-                                    <UnstableDropdownMenuItem
+                                    <DropdownMenuItem
                                       variant="danger"
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -444,20 +434,20 @@ export const ProjectRoleList = () => {
                                     >
                                       <TrashIcon />
                                       Delete Role
-                                    </UnstableDropdownMenuItem>
+                                    </DropdownMenuItem>
                                   )}
                                 </ProjectPermissionCan>
                               )}
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </UnstableTableBody>
-              </UnstableTable>
+                </TableBody>
+              </Table>
               {Boolean(filteredRoles?.length) && (
-                <UnstablePagination
+                <Pagination
                   count={filteredRoles!.length}
                   page={page}
                   perPage={perPage}
@@ -467,8 +457,8 @@ export const ProjectRoleList = () => {
               )}
             </>
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}

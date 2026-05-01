@@ -228,12 +228,35 @@ export type TVenafiConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Venafi;
 };
 
+export type TVenafiTppConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.VenafiTpp;
+};
+
 export type TExternalInfisicalConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.ExternalInfisical;
 };
 
+export type TDopplerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Doppler;
+};
 export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NetScaler;
+};
+
+export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Anthropic;
+};
+
+export type TOnaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Ona;
+};
+
+export type TDigiCertConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.DigiCert;
+};
+
+export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TravisCI;
 };
 
 export type TAppConnectionOption =
@@ -290,8 +313,14 @@ export type TAppConnectionOption =
   | TSmbConnectionOption
   | TAzureEntraIdConnectionOption
   | TVenafiConnectionOption
+  | TVenafiTppConnectionOption
   | TExternalInfisicalConnectionOption
-  | TNetScalerConnectionOption;
+  | TDopplerConnectionOption
+  | TNetScalerConnectionOption
+  | TAnthropicConnectionOption
+  | TOnaConnectionOption
+  | TDigiCertConnectionOption
+  | TTravisCIConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -347,6 +376,12 @@ export type TAppConnectionOptionMap = {
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
+  [AppConnection.VenafiTpp]: TVenafiTppConnectionOption;
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
+  [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.Anthropic]: TAnthropicConnectionOption;
+  [AppConnection.Ona]: TOnaConnectionOption;
+  [AppConnection.DigiCert]: TDigiCertConnectionOption;
+  [AppConnection.TravisCI]: TTravisCIConnectionOption;
 };

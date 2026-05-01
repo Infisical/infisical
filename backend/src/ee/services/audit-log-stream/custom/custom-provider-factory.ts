@@ -29,7 +29,8 @@ export const CustomProviderFactory = () => {
         { ping: "ok" },
         {
           headers: streamHeaders,
-          timeout: AUDIT_LOG_STREAM_TIMEOUT
+          timeout: AUDIT_LOG_STREAM_TIMEOUT,
+          maxRedirects: 0
         }
       )
       .catch((err) => {

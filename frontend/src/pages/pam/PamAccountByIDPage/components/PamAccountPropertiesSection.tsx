@@ -2,19 +2,8 @@ import { format } from "date-fns";
 import { CopyIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Detail,
-  DetailLabel,
-  DetailValue,
-  UnstableIconButton,
-  UnstableInput
-} from "@app/components/v3";
-import {
-  PamResourceType,
-  TActiveDirectoryAccount,
-  TPamAccount,
-  TWindowsAccount
-} from "@app/hooks/api/pam";
+import { Detail, DetailLabel, DetailValue, IconButton, Input } from "@app/components/v3";
+import { PamResourceType, TPamAccount, TWindowsAccount } from "@app/hooks/api/pam";
 
 const CopyableField = ({ label, value }: { label: string; value: string }) => {
   const handleCopy = () => {
@@ -30,10 +19,10 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
       <DetailLabel>{label}</DetailLabel>
       <DetailValue>
         <div className="flex items-center gap-2">
-          <UnstableInput value={value} readOnly className="flex-1 font-mono text-sm" />
-          <UnstableIconButton variant="ghost" onClick={handleCopy} size="sm">
+          <Input value={value} readOnly className="flex-1 font-mono text-sm" />
+          <IconButton variant="ghost" onClick={handleCopy} size="sm">
             <CopyIcon />
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailValue>
     </Detail>
@@ -47,30 +36,8 @@ type TPropertyField = {
 };
 
 const getAccountProperties = (account: TPamAccount): TPropertyField[] => {
+  if (!account.resource) return [];
   switch (account.resource.resourceType) {
-    case PamResourceType.ActiveDirectory: {
-      const { internalMetadata } = account as TActiveDirectoryAccount;
-      const fields: TPropertyField[] = [];
-
-      if (internalMetadata.userPrincipalName) {
-        fields.push({ label: "User Principal Name", value: internalMetadata.userPrincipalName });
-      }
-      if (internalMetadata.adGuid) {
-        fields.push({ label: "AD GUID", value: internalMetadata.adGuid });
-      }
-      if (internalMetadata.passwordLastSet) {
-        fields.push({
-          label: "Password Last Set",
-          value: internalMetadata.passwordLastSet,
-          type: "date"
-        });
-      }
-      if (internalMetadata.lastLogon) {
-        fields.push({ label: "Last Logon", value: internalMetadata.lastLogon, type: "date" });
-      }
-
-      return fields;
-    }
     case PamResourceType.Windows: {
       const { internalMetadata } = account as TWindowsAccount;
       const fields: TPropertyField[] = [];

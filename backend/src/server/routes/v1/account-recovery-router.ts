@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { UserEncryption } from "@app/services/user/user-types";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -49,7 +50,7 @@ export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          user: UsersSchema,
+          user: SanitizedUserSchema,
           token: z.string(),
           userEncryptionVersion: z.nativeEnum(UserEncryption)
         })

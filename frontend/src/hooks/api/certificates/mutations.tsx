@@ -14,6 +14,7 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TTriggerCertificateRequestValidationResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
   TUpdateCertificateDTO,
@@ -46,6 +47,9 @@ export const useDeleteCert = () => {
       });
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getDashboardStats(projectId)
       });
     }
   });
@@ -81,6 +85,9 @@ export const useRevokeCert = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectId)
       });
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getDashboardStats(projectId)
+      });
     }
   });
 };
@@ -98,6 +105,9 @@ export const useImportCertificate = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cert-dashboard-stats"]
       });
     }
   });
@@ -129,6 +139,9 @@ export const useRenewCertificate = () => {
       if (data.projectId) {
         queryClient.invalidateQueries({
           queryKey: projectKeys.forProjectCertificates(data.projectId)
+        });
+        queryClient.invalidateQueries({
+          queryKey: certKeys.getDashboardStats(data.projectId)
         });
       }
     }
@@ -256,6 +269,24 @@ export const useUnifiedCertificateIssuance = () => {
       queryClient.invalidateQueries({
         queryKey: ["certificateRequests", "list", projectSlug]
       });
+      queryClient.invalidateQueries({
+        queryKey: ["cert-dashboard-stats"]
+      });
+    }
+  });
+};
+
+export const useTriggerCertificateRequestValidation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TTriggerCertificateRequestValidationResponse, object, { requestId: string }>({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post<TTriggerCertificateRequestValidationResponse>(
+        `/api/v1/cert-manager/certificates/certificate-requests/${requestId}/trigger-validation`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificateRequests", "list"] });
     }
   });
 };

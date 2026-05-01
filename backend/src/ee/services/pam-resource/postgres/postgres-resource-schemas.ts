@@ -64,7 +64,7 @@ export const UpdatePostgresAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedPostgresAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.Postgres),
+  parentType: z.literal(PamResource.Postgres),
   credentials: PostgresAccountCredentialsSchema.pick({
     username: true
   })

@@ -95,3 +95,9 @@ export const BaseCreateApprovalRequestSchema = z.object({
 
 // Grants
 export const BaseApprovalRequestGrantSchema = ApprovalRequestGrantsSchema;
+
+// Check Policy Match Response
+export const BaseCheckPolicyMatchResponseSchema = z.object({
+  requiresApproval: z.boolean(),
+  hasActiveGrant: z.boolean()
+});

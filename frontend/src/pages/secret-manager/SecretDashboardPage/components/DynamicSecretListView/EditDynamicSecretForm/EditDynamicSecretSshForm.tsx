@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDownIcon, ShieldIcon } from "lucide-react";
+import { ChevronDownIcon, EyeIcon, EyeOffIcon, ShieldIcon } from "lucide-react";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -19,7 +19,7 @@ import {
   SelectItem,
   Tag
 } from "@app/components/v2";
-import { useUpdateDynamicSecret } from "@app/hooks/api";
+import { useGetSshCaPublicKey, useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
@@ -102,6 +102,12 @@ export const EditDynamicSecretSshForm = ({
 
   const [principalInput, setPrincipalInput] = useState("");
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [isPublicKeyVisible, setIsPublicKeyVisible] = useState(false);
+
+  const { data: caPublicKey } = useGetSshCaPublicKey({
+    dynamicSecretId: dynamicSecret.id,
+    enabled: cmdOpen
+  });
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
@@ -286,7 +292,10 @@ export const EditDynamicSecretSshForm = ({
 
             <button
               type="button"
-              onClick={() => setCmdOpen(!cmdOpen)}
+              onClick={() => {
+                if (cmdOpen) setIsPublicKeyVisible(false);
+                setCmdOpen(!cmdOpen);
+              }}
               className="flex w-full cursor-pointer flex-col rounded-md border border-border bg-container p-3 text-sm hover:bg-container-hover"
             >
               <div className="flex gap-2.5">
@@ -343,6 +352,52 @@ export const EditDynamicSecretSshForm = ({
                           <span>- Install the CA certificate on the target host</span>
                           <span>- Configure SSH to trust certificate-based authentication</span>
                           <span>- Restart the SSH service</span>
+                        </div>
+                        <span className="mt-4 text-sm text-muted">
+                          Or, copy the CA public key to install it manually:
+                        </span>
+                        <div className="mt-1 flex items-center gap-1">
+                          <Input
+                            type={isPublicKeyVisible ? "text" : "password"}
+                            value={caPublicKey || ""}
+                            isDisabled
+                          />
+                          <IconButton
+                            ariaLabel="toggle visibility"
+                            variant="plain"
+                            colorSchema="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsPublicKeyVisible((v) => !v);
+                            }}
+                            className="size-8 shrink-0"
+                          >
+                            {isPublicKeyVisible ? (
+                              <EyeOffIcon className="size-4 text-label" />
+                            ) : (
+                              <EyeIcon className="size-4 text-label" />
+                            )}
+                          </IconButton>
+                          <IconButton
+                            ariaLabel="copy"
+                            variant="plain"
+                            colorSchema="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (caPublicKey) {
+                                navigator.clipboard.writeText(caPublicKey);
+                                createNotification({
+                                  text: "CA public key copied to clipboard",
+                                  type: "info"
+                                });
+                              }
+                            }}
+                            className="size-8 shrink-0"
+                          >
+                            <FontAwesomeIcon icon={faCopy} className="text-label" />
+                          </IconButton>
                         </div>
                       </div>
                     </div>

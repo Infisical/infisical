@@ -17,6 +17,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TRoleScopeFactory } from "../role-types";
@@ -119,7 +121,9 @@ export const newProjectRoleFactory = ({
 
   const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = async (scopeData) => {
     const scope = getScopeField(scopeData);
-    const project = await projectDAL.findById(scope.value);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
     if (!project) throw new BadRequestError({ message: "Project not found" });
     const projectId = project.id;
 
@@ -136,7 +140,7 @@ export const newProjectRoleFactory = ({
       },
       {
         id: uuidv4(),
-        name: "Developer",
+        name: "Member",
         slug: ProjectMembershipRole.Member,
         permissions: projectMemberPermissions,
         description: "Limited read/write role in a project",

@@ -227,6 +227,10 @@ export enum ProjectPermissionAuditLogsActions {
   Read = "read"
 }
 
+export enum ProjectPermissionInsightsActions {
+  Read = "read"
+}
+
 export enum ProjectPermissionAppConnectionActions {
   Read = "read-app-connections",
   Create = "create-app-connections",
@@ -264,6 +268,17 @@ export enum ProjectPermissionPamAccountActions {
 export enum ProjectPermissionPamSessionActions {
   Read = "read",
   Terminate = "terminate"
+}
+
+export enum ProjectPermissionPamAccountPolicyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionPamInsightsActions {
+  Read = "read"
 }
 
 export enum ProjectPermissionPamDiscoveryActions {
@@ -407,6 +422,7 @@ export enum ProjectPermissionSub {
   SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
+  CertificateInventoryViews = "certificate-inventory-views",
   PkiSubscribers = "pki-subscribers",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
@@ -426,14 +442,18 @@ export enum ProjectPermissionSub {
   AppConnections = "app-connections",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
+  PamDomains = "pam-domains",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  PamAccountPolicies = "pam-account-policies",
   PamDiscovery = "pam-discovery",
+  PamInsights = "pam-insights",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
   ApprovalRequests = "approval-requests",
-  ApprovalRequestGrants = "approval-request-grants"
+  ApprovalRequestGrants = "approval-request-grants",
+  Insights = "insights"
 }
 
 export type SecretSubjectFields = {
@@ -517,8 +537,10 @@ export type CertificatePolicySubjectFields = {
 };
 
 export type PamAccountSubjectFields = {
-  resourceName: string;
-  resourceType: string;
+  resourceName?: string;
+  resourceType?: string;
+  domainName?: string;
+  domainType?: string;
   accountName: string;
   metadata?: { key: string; value: string }[];
 };
@@ -664,6 +686,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]
   | [ProjectPermissionPkiDiscoveryActions, ProjectPermissionSub.PkiDiscovery]
   | [
       ProjectPermissionPkiCertificateInstallationActions,
@@ -706,6 +729,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PamResources> & PamResourceSubjectFields)
       )
     ]
+  | [ProjectPermissionActions, ProjectPermissionSub.PamDomains]
   | [
       ProjectPermissionPamAccountActions,
       (
@@ -714,10 +738,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionPamAccountPolicyActions, ProjectPermissionSub.PamAccountPolicies]
   | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
+  | [ProjectPermissionPamInsightsActions, ProjectPermissionSub.PamInsights]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
   | [
       ProjectPermissionMcpEndpointActions,
       (

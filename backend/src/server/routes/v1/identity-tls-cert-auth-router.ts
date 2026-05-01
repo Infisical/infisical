@@ -79,6 +79,13 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identityTlsCertAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,

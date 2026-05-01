@@ -6,7 +6,6 @@ import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -26,7 +25,6 @@ type TKmipOperationServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   kmsDAL: TKmsKeyDALFactory;
   kmipClientDAL: TKmipClientDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -35,7 +33,6 @@ export type TKmipOperationServiceFactory = ReturnType<typeof kmipOperationServic
 export const kmipOperationServiceFactory = ({
   kmsService,
   kmsDAL,
-  projectDAL,
   kmipClientDAL,
   permissionService
 }: TKmipOperationServiceFactoryDep) => {
@@ -470,8 +467,6 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const project = await projectDAL.findById(projectId);
-
     const kmsKey = await kmsService.importKeyMaterial({
       name,
       key: Buffer.from(key, "base64"),
@@ -479,7 +474,7 @@ export const kmipOperationServiceFactory = ({
       isReserved: false,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
-      orgId: project.orgId,
+      orgId: actorOrgId,
       kmipMetadata
     });
 

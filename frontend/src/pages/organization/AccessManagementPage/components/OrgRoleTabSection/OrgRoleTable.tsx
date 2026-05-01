@@ -21,41 +21,41 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableAlertTitle,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -211,10 +211,10 @@ export const OrgRoleTable = () => {
     <>
       {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
       {isProPlan && customRoles?.length > 0 && (
-        <UnstableAlert variant="warning" className="mb-4">
+        <Alert variant="warning" className="mb-4">
           <TriangleAlertIcon />
-          <UnstableAlertTitle>Custom roles are moving to Enterprise plans</UnstableAlertTitle>
-          <UnstableAlertDescription>
+          <AlertTitle>Custom roles are moving to Enterprise plans</AlertTitle>
+          <AlertDescription>
             <div>
               Custom roles are part of the Infisical Enterprise plan, but were temporarily available
               to Pro users. Creation of new roles will be enforced starting June 1, 2026.
@@ -230,19 +230,19 @@ export const OrgRoleTable = () => {
               </a>{" "}
               to upgrade and retain access to custom roles.
             </div>
-          </UnstableAlertDescription>
-        </UnstableAlert>
+          </AlertDescription>
+        </Alert>
       )}
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Roles
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/organization#roles-and-access-control" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>
+          </CardTitle>
+          <CardDescription>
             Create and manage {isSubOrganization ? "sub-" : ""}organization roles
-          </UnstableCardDescription>
-          <UnstableCardAction>
+          </CardDescription>
+          <CardAction>
             <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
               {(isAllowed) => (
                 <Button
@@ -257,9 +257,9 @@ export const OrgRoleTable = () => {
                 </Button>
               )}
             </OrgPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div>
             <div className="mb-4">
               <InputGroup>
@@ -274,27 +274,24 @@ export const OrgRoleTable = () => {
               </InputGroup>
             </div>
             {!isRolesLoading && !filteredRoles?.length ? (
-              <UnstableEmpty className="border">
-                <UnstableEmptyHeader>
-                  <UnstableEmptyTitle>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>
                     {roles?.length
                       ? `No ${isSubOrganization ? "sub-" : ""}organization roles match search`
                       : "This organization does not have any roles"}
-                  </UnstableEmptyTitle>
-                  <UnstableEmptyDescription>
+                  </EmptyTitle>
+                  <EmptyDescription>
                     {roles?.length ? "Adjust your search criteria." : "Add a role to get started."}
-                  </UnstableEmptyDescription>
-                </UnstableEmptyHeader>
-              </UnstableEmpty>
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <>
-                <UnstableTable>
-                  <UnstableTableHeader>
-                    <UnstableTableRow>
-                      <UnstableTableHead
-                        className="w-1/3"
-                        onClick={() => handleSort(RolesOrderBy.Name)}
-                      >
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Name)}>
                         Name
                         <ChevronDownIcon
                           className={twMerge(
@@ -305,11 +302,8 @@ export const OrgRoleTable = () => {
                             orderBy !== RolesOrderBy.Name && "opacity-30"
                           )}
                         />
-                      </UnstableTableHead>
-                      <UnstableTableHead
-                        className="w-1/3"
-                        onClick={() => handleSort(RolesOrderBy.Slug)}
-                      >
+                      </TableHead>
+                      <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Slug)}>
                         Slug
                         <ChevronDownIcon
                           className={twMerge(
@@ -320,8 +314,8 @@ export const OrgRoleTable = () => {
                             orderBy !== RolesOrderBy.Slug && "opacity-30"
                           )}
                         />
-                      </UnstableTableHead>
-                      <UnstableTableHead onClick={() => handleSort(RolesOrderBy.Type)}>
+                      </TableHead>
+                      <TableHead onClick={() => handleSort(RolesOrderBy.Type)}>
                         Type
                         <ChevronDownIcon
                           className={twMerge(
@@ -332,27 +326,27 @@ export const OrgRoleTable = () => {
                             orderBy !== RolesOrderBy.Type && "opacity-30"
                           )}
                         />
-                      </UnstableTableHead>
-                      <UnstableTableHead className="w-5" />
-                    </UnstableTableRow>
-                  </UnstableTableHeader>
-                  <UnstableTableBody>
+                      </TableHead>
+                      <TableHead className="w-5" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {isRolesLoading &&
                       Array.from({ length: perPage }).map((_, i) => (
-                        <UnstableTableRow key={`skeleton-${i + 1}`}>
-                          <UnstableTableCell>
+                        <TableRow key={`skeleton-${i + 1}`}>
+                          <TableCell>
                             <Skeleton className="h-4 w-full" />
-                          </UnstableTableCell>
-                          <UnstableTableCell>
+                          </TableCell>
+                          <TableCell>
                             <Skeleton className="h-4 w-full" />
-                          </UnstableTableCell>
-                          <UnstableTableCell>
+                          </TableCell>
+                          <TableCell>
                             <Skeleton className="h-4 w-full" />
-                          </UnstableTableCell>
-                          <UnstableTableCell>
+                          </TableCell>
+                          <TableCell>
                             <Skeleton className="h-4 w-4" />
-                          </UnstableTableCell>
-                        </UnstableTableRow>
+                          </TableCell>
+                        </TableRow>
                       ))}
                     {filteredRolesPage.map((role) => {
                       const { id, name, slug } = role;
@@ -363,7 +357,7 @@ export const OrgRoleTable = () => {
                         ? id === currentOrg?.defaultMembershipRole
                         : slug === currentOrg?.defaultMembershipRole;
                       return (
-                        <UnstableTableRow
+                        <TableRow
                           key={`role-list-${id}`}
                           className="cursor-pointer"
                           onClick={() =>
@@ -376,7 +370,7 @@ export const OrgRoleTable = () => {
                             })
                           }
                         >
-                          <UnstableTableCell isTruncatable>
+                          <TableCell isTruncatable>
                             <div className="flex gap-x-1.5">
                               <p className="truncate">{name}</p>
                               {isDefaultOrgRole && (
@@ -391,9 +385,9 @@ export const OrgRoleTable = () => {
                                 </Tooltip>
                               )}
                             </div>
-                          </UnstableTableCell>
-                          <UnstableTableCell isTruncatable>{slug}</UnstableTableCell>
-                          <UnstableTableCell>
+                          </TableCell>
+                          <TableCell isTruncatable>{slug}</TableCell>
+                          <TableCell>
                             <Badge variant="ghost">
                               {isCustomOrgRole(slug) ? (
                                 <>
@@ -407,29 +401,25 @@ export const OrgRoleTable = () => {
                                 </>
                               )}
                             </Badge>
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <UnstableDropdownMenu>
-                              <UnstableDropdownMenuTrigger asChild>
-                                <UnstableIconButton
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
                                   variant="ghost"
                                   size="xs"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <MoreHorizontalIcon />
-                                </UnstableIconButton>
-                              </UnstableDropdownMenuTrigger>
-                              <UnstableDropdownMenuContent
-                                className="min-w-48"
-                                sideOffset={2}
-                                align="end"
-                              >
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                                 <OrgPermissionCan
                                   I={OrgPermissionActions.Edit}
                                   a={OrgPermissionSubjects.Role}
                                 >
                                   {(isAllowed) => (
-                                    <UnstableDropdownMenuItem
+                                    <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         navigate({
@@ -444,7 +434,7 @@ export const OrgRoleTable = () => {
                                     >
                                       {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
                                       {`${isNonMutatable ? "View" : "Edit"} Role`}
-                                    </UnstableDropdownMenuItem>
+                                    </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>
                                 <OrgPermissionCan
@@ -452,7 +442,7 @@ export const OrgRoleTable = () => {
                                   a={OrgPermissionSubjects.Role}
                                 >
                                   {(isAllowed) => (
-                                    <UnstableDropdownMenuItem
+                                    <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("duplicateRole", role);
@@ -461,7 +451,7 @@ export const OrgRoleTable = () => {
                                     >
                                       <CopyIcon />
                                       Duplicate Role
-                                    </UnstableDropdownMenuItem>
+                                    </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>
                                 {!isDefaultOrgRole && (
@@ -473,7 +463,7 @@ export const OrgRoleTable = () => {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <div>
-                                            <UnstableDropdownMenuItem
+                                            <DropdownMenuItem
                                               isDisabled={!isAllowed || isSubOrganization}
                                               onClick={(e) => {
                                                 e.stopPropagation();
@@ -482,7 +472,7 @@ export const OrgRoleTable = () => {
                                             >
                                               <IdCardIcon />
                                               Set as Default Role
-                                            </UnstableDropdownMenuItem>
+                                            </DropdownMenuItem>
                                           </div>
                                         </TooltipTrigger>
                                         {isSubOrganization && (
@@ -503,7 +493,7 @@ export const OrgRoleTable = () => {
                                           a={OrgPermissionSubjects.Role}
                                         >
                                           {(isAllowed) => (
-                                            <UnstableDropdownMenuItem
+                                            <DropdownMenuItem
                                               variant="danger"
                                               onClick={(e) => {
                                                 e.stopPropagation();
@@ -513,7 +503,7 @@ export const OrgRoleTable = () => {
                                             >
                                               <TrashIcon />
                                               Delete Role
-                                            </UnstableDropdownMenuItem>
+                                            </DropdownMenuItem>
                                           )}
                                         </OrgPermissionCan>
                                       </div>
@@ -526,16 +516,16 @@ export const OrgRoleTable = () => {
                                     )}
                                   </Tooltip>
                                 )}
-                              </UnstableDropdownMenuContent>
-                            </UnstableDropdownMenu>
-                          </UnstableTableCell>
-                        </UnstableTableRow>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </UnstableTableBody>
-                </UnstableTable>
+                  </TableBody>
+                </Table>
                 {Boolean(filteredRoles?.length) && (
-                  <UnstablePagination
+                  <Pagination
                     count={filteredRoles!.length}
                     page={page}
                     perPage={perPage}
@@ -546,8 +536,8 @@ export const OrgRoleTable = () => {
               </>
             )}
           </div>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}

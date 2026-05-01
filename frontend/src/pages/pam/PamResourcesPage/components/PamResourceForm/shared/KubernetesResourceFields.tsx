@@ -6,13 +6,13 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 
 export const KubernetesResourceFields = () => {
@@ -29,7 +29,7 @@ export const KubernetesResourceFields = () => {
           <Field>
             <FieldLabel>Kubernetes API URL</FieldLabel>
             <FieldContent>
-              <UnstableInput
+              <Input
                 {...field}
                 isError={Boolean(error)}
                 placeholder="https://kubernetes.example.com:6443"

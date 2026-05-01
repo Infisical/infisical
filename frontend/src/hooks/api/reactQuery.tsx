@@ -220,7 +220,8 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1
+      retry: 1,
+      staleTime: 60_000 // 60s — prevents refetch on every component mount/remount
     }
   }
 });

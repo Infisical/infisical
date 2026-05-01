@@ -25,9 +25,10 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -47,7 +48,6 @@ import {
 } from "./identity-token-auth-types";
 
 type TIdentityTokenAuthServiceFactoryDep = {
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityTokenAuthDAL: Pick<
     TIdentityTokenAuthDALFactory,
     "transaction" | "create" | "findOne" | "updateById" | "delete"
@@ -65,7 +65,6 @@ type TIdentityTokenAuthServiceFactoryDep = {
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
 
 export const identityTokenAuthServiceFactory = ({
-  identityDAL,
   identityTokenAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
@@ -385,7 +384,10 @@ export const identityTokenAuthServiceFactory = ({
         scope: OrganizationActionScope.Any
       });
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.RevokeAuth,
@@ -479,7 +481,10 @@ export const identityTokenAuthServiceFactory = ({
         scope: OrganizationActionScope.Any
       });
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.CreateToken,
@@ -501,10 +506,11 @@ export const identityTokenAuthServiceFactory = ({
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
-    const identity = await identityDAL.findById(identityTokenAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    const { identity } = identityMembershipOrg;
 
-    const org = await orgDAL.findById(identity.orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
+      orgDAL.findById(identity.orgId)
+    );
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
@@ -776,7 +782,10 @@ export const identityTokenAuthServiceFactory = ({
         actorOrgId,
         scope: OrganizationActionScope.Any
       });
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.CreateToken,

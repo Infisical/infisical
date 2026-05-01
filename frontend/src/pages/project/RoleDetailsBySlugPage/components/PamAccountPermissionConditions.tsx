@@ -32,12 +32,22 @@ export const PamAccountPermissionConditions = ({ position = 0, isDisabled }: Pro
         {
           value: "resourceName",
           label: "Resource Name",
-          description: "PAM resource name"
+          description: "Name of the PAM resource this account belongs to"
         },
         {
           value: "resourceType",
           label: "Resource Type",
           description: "PAM resource type (e.g. postgres, mysql, ssh)"
+        },
+        {
+          value: "domainName",
+          label: "Domain Name",
+          description: "Name of the PAM domain this account belongs to"
+        },
+        {
+          value: "domainType",
+          label: "Domain Type",
+          description: "PAM domain type (e.g. active-directory)"
         }
       ]}
     />

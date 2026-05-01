@@ -1,4 +1,5 @@
-import { TPamSessions } from "@app/db/schemas";
+import { TPamSessionEventBatches, TPamSessions } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -25,11 +26,48 @@ export const decryptSessionCommandLogs = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
 };
 
+export const decryptBatches = async (
+  batches: TPamSessionEventBatches[],
+  projectId: string,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
+  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
+
+  const events: (TPamSessionCommandLog | TTerminalEvent)[] = [];
+  for (const batch of batches) {
+    const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
+    const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+    events.push(...batchEvents);
+  }
+  return events;
+};
+
 export const decryptSession = async (
   session: TPamSessions,
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
+  const { encryptedAiInsights } = session;
+
+  let aiInsights: { summary: string; warnings: { text: string; logIndex?: number }[] } | null = null;
+  if (encryptedAiInsights) {
+    try {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      aiInsights = JSON.parse(decryptor({ cipherTextBlob: encryptedAiInsights }).toString()) as {
+        summary: string;
+        warnings: { text: string; logIndex?: number }[];
+      };
+    } catch (err) {
+      logger.warn({ err }, "decryptSession: failed to decrypt aiInsights, falling back to null");
+    }
+  }
+
   return {
     ...session,
     logs: session.encryptedLogsBlob
@@ -38,6 +76,7 @@ export const decryptSession = async (
           encryptedLogs: session.encryptedLogsBlob,
           kmsService
         })
-      : []
+      : [],
+    aiInsights
   } as TPamSanitizedSession;
 };

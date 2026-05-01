@@ -40,6 +40,7 @@ export const useListProjectUserPrivileges = (projectMembershipId: string) => {
           Omit<TProjectUserPrivilege, "permissions"> & {
             permissions: unknown;
             isLinkedToAccessApproval: boolean;
+            policyApproverUserIds: string[];
           }
         >;
       }>("/api/v1/user-project-additional-privilege", { params: { projectMembershipId } });

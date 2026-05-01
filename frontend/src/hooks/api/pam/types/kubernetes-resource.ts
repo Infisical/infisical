@@ -3,7 +3,8 @@ import { TBasePamAccount } from "./base-account";
 import { TBasePamResource } from "./base-resource";
 
 export enum KubernetesAuthMethod {
-  ServiceAccountToken = "service-account-token"
+  ServiceAccountToken = "service-account-token",
+  GatewayKubernetesAuth = "gateway-kubernetes-auth"
 }
 
 export type TKubernetesConnectionDetails = {
@@ -17,7 +18,15 @@ export type TKubernetesServiceAccountTokenCredentials = {
   serviceAccountToken: string;
 };
 
-export type TKubernetesCredentials = TKubernetesServiceAccountTokenCredentials;
+export type TKubernetesGatewayAuthCredentials = {
+  authMethod: KubernetesAuthMethod.GatewayKubernetesAuth;
+  namespace: string;
+  serviceAccountName: string;
+};
+
+export type TKubernetesCredentials =
+  | TKubernetesServiceAccountTokenCredentials
+  | TKubernetesGatewayAuthCredentials;
 
 // Resources
 export type TKubernetesResource = TBasePamResource & {

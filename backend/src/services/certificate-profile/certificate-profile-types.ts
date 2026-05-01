@@ -80,9 +80,12 @@ export type TCertificateProfileUpdate = Omit<
     skipEabBinding?: boolean;
   };
   scepConfig?: {
+    challengeType?: string;
     challengePassword?: string;
     includeCaCertInResponse?: boolean;
     allowCertBasedRenewal?: boolean;
+    dynamicChallengeExpiryMinutes?: number;
+    dynamicChallengeMaxPending?: number;
   };
 };
 
@@ -130,6 +133,10 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     raCertExpiresAt: Date;
     includeCaCertInResponse: boolean;
     allowCertBasedRenewal: boolean;
+    challengeType: string;
+    challengeEndpointUrl?: string;
+    dynamicChallengeExpiryMinutes?: number;
+    dynamicChallengeMaxPending?: number;
   };
 };
 

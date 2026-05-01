@@ -131,12 +131,15 @@ services:
     image: postgres:10.12
     platform: linux/amd64
     container_name: postgres-10.12
+    command: ["postgres", "-c", "password_encryption=scram-sha-256"]
     ports:
       - "5435:5432"
     environment:
       - POSTGRES_DB=postgres-test
       - POSTGRES_USER=postgres-test
       - POSTGRES_PASSWORD=postgres-test
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
     volumes:
       - postgres-data-10.12:/var/lib/postgresql/data
     restart: unless-stopped

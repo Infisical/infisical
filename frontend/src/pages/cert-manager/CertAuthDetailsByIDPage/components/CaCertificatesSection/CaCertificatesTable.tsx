@@ -8,21 +8,21 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Lottie } from "@app/components/v2";
 import {
   Badge,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import { useGetCaCerts } from "@app/hooks/api";
@@ -50,55 +50,47 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
 
   if (!caCerts?.length) {
     return (
-      <UnstableEmpty className="border">
-        <UnstableEmptyHeader>
-          <UnstableEmptyTitle>
-            This CA does not have any CA certificates installed
-          </UnstableEmptyTitle>
-          <UnstableEmptyDescription>
-            Install a CA certificate to get started
-          </UnstableEmptyDescription>
-        </UnstableEmptyHeader>
-      </UnstableEmpty>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>This CA does not have any CA certificates installed</EmptyTitle>
+          <EmptyDescription>Install a CA certificate to get started</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <UnstableTable>
-      <UnstableTableHeader>
-        <UnstableTableRow>
-          <UnstableTableHead>CA Certificate #</UnstableTableHead>
-          <UnstableTableHead>Not Before</UnstableTableHead>
-          <UnstableTableHead>Not After</UnstableTableHead>
-          <UnstableTableHead className="w-5" />
-        </UnstableTableRow>
-      </UnstableTableHeader>
-      <UnstableTableBody>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>CA Certificate #</TableHead>
+          <TableHead>Not Before</TableHead>
+          <TableHead>Not After</TableHead>
+          <TableHead className="w-5" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {caCerts.map((caCert, index) => {
           const isLastItem = index === caCerts.length - 1;
           const caCertObj = new x509.X509Certificate(caCert.certificate);
           return (
-            <UnstableTableRow key={`ca-cert=${caCert.serialNumber}`}>
-              <UnstableTableCell>
+            <TableRow key={`ca-cert=${caCert.serialNumber}`}>
+              <TableCell>
                 <div className="flex items-center gap-x-2">
                   CA Certificate {caCert.version}
                   {isLastItem && <Badge variant="info">Current</Badge>}
                 </div>
-              </UnstableTableCell>
-              <UnstableTableCell>
-                {format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}
-              </UnstableTableCell>
-              <UnstableTableCell>
-                {format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
-                    <UnstableIconButton variant="ghost" size="xs">
+              </TableCell>
+              <TableCell>{format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}</TableCell>
+              <TableCell>{format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}</TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton variant="ghost" size="xs">
                       <EllipsisIcon />
-                    </UnstableIconButton>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
                     <ProjectPermissionCan
                       I={ProjectPermissionCertificateAuthorityActions.Read}
                       a={subject(ProjectPermissionSub.CertificateAuthorities, {
@@ -106,7 +98,7 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                       })}
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -114,7 +106,7 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                           }}
                         >
                           Download CA Certificate
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
                     <ProjectPermissionCan
@@ -124,7 +116,7 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                       })}
                     >
                       {(isAllowed) => (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -132,16 +124,16 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                           }}
                         >
                           Download CA Certificate Chain
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
-              </UnstableTableCell>
-            </UnstableTableRow>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
           );
         })}
-      </UnstableTableBody>
-    </UnstableTable>
+      </TableBody>
+    </Table>
   );
 };

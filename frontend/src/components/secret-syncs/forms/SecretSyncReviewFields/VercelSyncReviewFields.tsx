@@ -19,7 +19,9 @@ export const VercelSyncReviewFields = () => {
   const scope = watch("destinationConfig.scope");
   const teamId = watch("destinationConfig.teamId");
   const targetEnvironments = watch("destinationConfig.targetEnvironments");
+  const applyToAllCustomEnvironments = watch("destinationConfig.applyToAllCustomEnvironments");
   const targetProjects = watch("destinationConfig.targetProjects");
+  const sensitive = watch("destinationConfig.sensitive");
   const connectionId = watch("connection.id");
 
   const { data: teams } = useVercelConnectionListOrganizations(connectionId, undefined, {
@@ -47,11 +49,19 @@ export const VercelSyncReviewFields = () => {
           <GenericFieldLabel label="Scope">Team</GenericFieldLabel>
           <GenericFieldLabel label="Vercel Team">{selectedTeam?.name}</GenericFieldLabel>
           <GenericFieldLabel label="Target Environments">
-            {targetEnvironments?.join(", ")}
+            {targetEnvironments?.length
+              ? targetEnvironments
+                  .map((env: string) => env.charAt(0).toUpperCase() + env.slice(1))
+                  .join(", ")
+              : "None"}
+          </GenericFieldLabel>
+          <GenericFieldLabel label="All Custom Environments">
+            {applyToAllCustomEnvironments ? "Yes" : "No"}
           </GenericFieldLabel>
           <GenericFieldLabel label="Target Projects">
             {selectedProjects?.map((project) => project?.name).join(", ")}
           </GenericFieldLabel>
+          <GenericFieldLabel label="Sensitive">{sensitive ? "Yes" : "No"}</GenericFieldLabel>
         </>
       ) : (
         <>
@@ -61,6 +71,7 @@ export const VercelSyncReviewFields = () => {
           {envId === VercelEnvironmentType.Preview && branchId && (
             <GenericFieldLabel label="Preview Branch">{branchId}</GenericFieldLabel>
           )}
+          <GenericFieldLabel label="Sensitive">{sensitive ? "Yes" : "No"}</GenericFieldLabel>
         </>
       )}
     </>

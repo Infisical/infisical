@@ -8,6 +8,8 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
@@ -55,7 +57,9 @@ export const newOrgMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const identityDetails = await identityDAL.findById(dto.data.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
+      identityDAL.findById(dto.data.identityId)
+    );
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can be invited" });
     }
@@ -69,7 +73,10 @@ export const newOrgMembershipIdentityFactory = ({
       dto.permission.orgId
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(
@@ -111,7 +118,10 @@ export const newOrgMembershipIdentityFactory = ({
       dto.permission.orgId
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(
@@ -134,7 +144,9 @@ export const newOrgMembershipIdentityFactory = ({
       }
     }
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
     }
@@ -154,7 +166,9 @@ export const newOrgMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can do this operation" });
     }

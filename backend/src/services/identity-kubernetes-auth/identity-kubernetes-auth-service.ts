@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import picomatch from "picomatch";
 import RE2 from "re2";
@@ -14,11 +14,14 @@ import {
 } from "@app/db/schemas";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -42,6 +45,9 @@ import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from 
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -86,6 +92,11 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "getPlatformConnectionDetailsByPoolId" | "pickRandomHealthyGateway"
+  >;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
@@ -105,30 +116,41 @@ export const identityKubernetesAuthServiceFactory = ({
   gatewayDAL,
   gatewayV2DAL,
   kmsService,
+  gatewayPoolService,
+  gatewayPoolDAL,
   orgDAL
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
     inputs: {
-      gatewayId: string;
+      gatewayId?: string;
+      gatewayPoolId?: string;
       targetHost?: string;
       targetPort?: number;
       caCert?: string;
+      verifyTlsCertificate?: boolean;
       reviewTokenThroughGateway: boolean;
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
-    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: inputs.gatewayId,
-      targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
-      targetPort: inputs.targetPort ?? 443
-    });
+    const gatewayV2ConnectionDetails = inputs.gatewayPoolId
+      ? await gatewayPoolService.getPlatformConnectionDetailsByPoolId({
+          poolId: inputs.gatewayPoolId,
+          targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
+          targetPort: inputs.targetPort ?? 443
+        })
+      : await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+          gatewayId: inputs.gatewayId!,
+          targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
+          targetPort: inputs.targetPort ?? 443
+        });
 
     if (gatewayV2ConnectionDetails) {
       let httpsAgent: https.Agent | undefined;
       if (!inputs.reviewTokenThroughGateway) {
         httpsAgent = new https.Agent({
-          ca: inputs.caCert,
-          rejectUnauthorized: Boolean(inputs.caCert)
+          ca: inputs.caCert || undefined,
+          rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
+          servername: inputs.targetHost
         });
       }
 
@@ -153,7 +175,7 @@ export const identityKubernetesAuthServiceFactory = ({
       return callbackResult;
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId!);
 
     const callbackResult = await withGatewayProxy(
       async (port, httpsAgent) => {
@@ -173,8 +195,9 @@ export const identityKubernetesAuthServiceFactory = ({
         ...(!inputs.reviewTokenThroughGateway
           ? {
               httpsAgent: new https.Agent({
-                ca: inputs.caCert,
-                rejectUnauthorized: Boolean(inputs.caCert)
+                ca: inputs.caCert || undefined,
+                rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
+                servername: inputs.targetHost
               })
             }
           : {})
@@ -191,7 +214,7 @@ export const identityKubernetesAuthServiceFactory = ({
    */
   const $createGatewayValidationRequest = (
     gatewayId: string,
-    options?: { kubernetesHost?: string; caCert?: string }
+    options?: { kubernetesHost?: string; caCert?: string; verifyTlsCertificate?: boolean }
   ): GatewayRequestExecutor => {
     const useGatewayServiceAccount = !options?.kubernetesHost;
 
@@ -212,7 +235,8 @@ export const identityKubernetesAuthServiceFactory = ({
           reviewTokenThroughGateway: useGatewayServiceAccount,
           targetHost,
           targetPort,
-          caCert: options?.caCert
+          caCert: options?.caCert,
+          verifyTlsCertificate: options?.verifyTlsCertificate
         },
         async (host: string, port: number, httpsAgent?: https.Agent) => {
           const config: AxiosRequestConfig = {
@@ -248,6 +272,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
+  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
+    if (!caCert.length) return false;
+    return storedVerify ?? false;
+  };
+
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
@@ -257,13 +286,17 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityKubernetesAuth.identityId), () =>
+      identityDAL.findById(identityKubernetesAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
       });
 
-    const org = await orgDAL.findById(identity.orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
+      orgDAL.findById(identity.orgId)
+    );
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
@@ -312,7 +345,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const baseUrl = port ? `${host}:${port}` : host;
 
-        const res = await axios
+        const res = await request
           .post<TCreateTokenReviewResponse>(
             `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
             {
@@ -333,8 +366,11 @@ export const identityKubernetesAuthServiceFactory = ({
               signal: AbortSignal.timeout(10000),
               timeout: 10000,
               httpsAgent: new https.Agent({
-                ca: caCert,
-                rejectUnauthorized: Boolean(caCert),
+                ca: caCert || undefined,
+                rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
                 servername
               })
             }
@@ -387,7 +423,7 @@ export const identityKubernetesAuthServiceFactory = ({
           "tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway"
         );
 
-        const res = await axios
+        const res = await request
           .post<TCreateTokenReviewResponse>(
             `${host}:${port}/apis/authentication.k8s.io/v1/tokenreviews`,
             {
@@ -436,15 +472,27 @@ export const identityKubernetesAuthServiceFactory = ({
       let data: TCreateTokenReviewResponse | undefined;
 
       if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
-        if (!identityKubernetesAuth.gatewayId && !identityKubernetesAuth.gatewayV2Id) {
+        if (
+          !identityKubernetesAuth.gatewayId &&
+          !identityKubernetesAuth.gatewayV2Id &&
+          !identityKubernetesAuth.gatewayPoolId
+        ) {
           throw new BadRequestError({
-            message: "Gateway ID is required when token review mode is set to Gateway"
+            message: "Gateway or Gateway Pool is required when token review mode is set to Gateway"
           });
         }
 
         data = await $gatewayProxyWrapper(
           {
-            gatewayId: (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string,
+            gatewayId: identityKubernetesAuth.gatewayPoolId
+              ? undefined
+              : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
+            gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
+            caCert: caCert || undefined,
+            verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+              caCert,
+              identityKubernetesAuth.verifyTlsCertificate
+            ),
             reviewTokenThroughGateway: true
           },
           tokenReviewCallbackThroughGateway
@@ -463,18 +511,30 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const [k8sHost, k8sPort] = kubernetesHost.split(":");
 
-        data =
-          identityKubernetesAuth.gatewayId || identityKubernetesAuth.gatewayV2Id
-            ? await $gatewayProxyWrapper(
-                {
-                  gatewayId: (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string,
-                  targetHost: k8sHost,
-                  targetPort: k8sPort ? Number(k8sPort) : 443,
-                  reviewTokenThroughGateway: false
-                },
-                tokenReviewCallbackRaw
-              )
-            : await tokenReviewCallbackRaw();
+        const hasGateway =
+          identityKubernetesAuth.gatewayId ||
+          identityKubernetesAuth.gatewayV2Id ||
+          identityKubernetesAuth.gatewayPoolId;
+
+        data = hasGateway
+          ? await $gatewayProxyWrapper(
+              {
+                gatewayId: identityKubernetesAuth.gatewayPoolId
+                  ? undefined
+                  : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
+                gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
+                targetHost: k8sHost,
+                targetPort: k8sPort ? Number(k8sPort) : 443,
+                caCert: caCert || undefined,
+                verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
+                reviewTokenThroughGateway: false
+              },
+              tokenReviewCallbackRaw
+            )
+          : await tokenReviewCallbackRaw();
       } else {
         throw new BadRequestError({
           message: `Invalid token review mode: ${identityKubernetesAuth.tokenReviewMode}`
@@ -667,8 +727,8 @@ export const identityKubernetesAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.KUBERNETES_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -682,8 +742,8 @@ export const identityKubernetesAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.KUBERNETES_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -704,8 +764,10 @@ export const identityKubernetesAuthServiceFactory = ({
   const attachKubernetesAuth = async ({
     identityId,
     gatewayId,
+    gatewayPoolId,
     kubernetesHost,
     caCert,
+    verifyTlsCertificate,
     tokenReviewerJwt,
     tokenReviewMode,
     allowedNamespaces,
@@ -791,6 +853,20 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (
+      caCert &&
+      caCert.length > 0 &&
+      verifyTlsCertificate === false &&
+      tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
+    const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
+
     let isGatewayV1 = true;
     if (gatewayId) {
       if (!plan.gateway) {
@@ -834,9 +910,52 @@ export const identityKubernetesAuthServiceFactory = ({
         // API mode through gateway: gateway proxies requests with user's JWT
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId, {
           kubernetesHost,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         logger.info({ gatewayId, kubernetesHost }, "Validating Kubernetes connectivity through gateway");
+        await validateKubernetesHostConnectivity({ gatewayExecutor });
+        if (tokenReviewerJwt) {
+          await validateTokenReviewerPermissions({ gatewayExecutor, tokenReviewerJwt });
+        }
+      }
+    } else if (gatewayPoolId) {
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== identityMembershipOrg.scopeOrgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID ${gatewayPoolId} not found` });
+      }
+
+      // Validate connectivity through a random healthy pool member
+      const validationGateway = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
+        const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id);
+        await validateKubernetesHostConnectivity({ gatewayExecutor });
+        await validateTokenReviewerPermissions({ gatewayExecutor });
+      } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost) {
+        const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id, {
+          kubernetesHost,
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
+        });
         await validateKubernetesHostConnectivity({ gatewayExecutor });
         if (tokenReviewerJwt) {
           await validateTokenReviewerPermissions({ gatewayExecutor, tokenReviewerJwt });
@@ -846,7 +965,8 @@ export const identityKubernetesAuthServiceFactory = ({
       logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for new auth method");
       await validateKubernetesHostConnectivity({
         kubernetesHost,
-        caCert: caCert || undefined
+        caCert: caCert || undefined,
+        verifyTlsCertificate: resolvedVerifyTlsCertificate
       });
 
       if (tokenReviewerJwt) {
@@ -854,7 +974,8 @@ export const identityKubernetesAuthServiceFactory = ({
         await validateTokenReviewerPermissions({
           kubernetesHost,
           tokenReviewerJwt,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
       }
     }
@@ -863,6 +984,16 @@ export const identityKubernetesAuthServiceFactory = ({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
+
+    let resolvedGatewayId: string | null | undefined = null;
+    let resolvedGatewayV2Id: string | null | undefined = null;
+    if (!gatewayPoolId && gatewayId) {
+      if (isGatewayV1) {
+        resolvedGatewayId = gatewayId;
+      } else {
+        resolvedGatewayV2Id = gatewayId;
+      }
+    }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const doc = await identityKubernetesAuthDAL.create(
@@ -876,13 +1007,15 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          gatewayId: isGatewayV1 ? gatewayId : null,
-          gatewayV2Id: isGatewayV1 ? null : gatewayId,
+          gatewayId: resolvedGatewayId,
+          gatewayV2Id: resolvedGatewayV2Id,
+          gatewayPoolId: gatewayPoolId ?? null,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
             : null,
-          encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+          encryptedKubernetesCaCertificate: caCert ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob : null
         },
         tx
       );
@@ -896,12 +1029,14 @@ export const identityKubernetesAuthServiceFactory = ({
     identityId,
     kubernetesHost,
     caCert,
+    verifyTlsCertificate,
     tokenReviewerJwt,
     tokenReviewMode,
     allowedNamespaces,
     allowedNames,
     allowedAudience,
     gatewayId,
+    gatewayPoolId,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -1018,16 +1153,64 @@ export const identityKubernetesAuthServiceFactory = ({
       );
     }
 
+    // Handle gateway pool permission check
+    if (gatewayPoolId) {
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== identityMembershipOrg.scopeOrgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID ${gatewayPoolId} not found` });
+      }
+    }
+
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
-    const shouldUpdateGatewayId = Boolean(gatewayId !== undefined);
-    const gatewayIdValue = isGatewayV1 ? gatewayId : null;
-    const gatewayV2IdValue = isGatewayV1 ? null : gatewayId;
+    const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
+    let gatewayIdValue: string | null | undefined = null;
+    let gatewayV2IdValue: string | null | undefined = null;
+    if (!gatewayPoolId && gatewayId) {
+      if (isGatewayV1) {
+        gatewayIdValue = gatewayId;
+      } else {
+        gatewayV2IdValue = gatewayId;
+      }
+    }
+    let gatewayPoolIdValue: string | null | undefined;
+    if (gatewayPoolId !== undefined) {
+      gatewayPoolIdValue = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      gatewayPoolIdValue = null;
+    } else {
+      gatewayPoolIdValue = undefined;
+    }
 
     const effectiveTokenReviewMode = tokenReviewMode ?? identityKubernetesAuth.tokenReviewMode;
     const effectiveKubernetesHost =
       kubernetesHost !== undefined ? kubernetesHost : identityKubernetesAuth.kubernetesHost;
-    const effectiveGatewayId =
-      gatewayId !== undefined ? gatewayId : (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId);
+    const effectiveGatewayPoolId = gatewayPoolId !== undefined ? gatewayPoolId : identityKubernetesAuth.gatewayPoolId;
+    let effectiveGatewayId: string | null | undefined = null;
+    if (effectiveGatewayPoolId) {
+      effectiveGatewayId = null;
+    } else if (gatewayId !== undefined) {
+      effectiveGatewayId = gatewayId;
+    } else {
+      effectiveGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId;
+    }
 
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -1045,23 +1228,70 @@ export const identityKubernetesAuthServiceFactory = ({
       effectiveCaCert = undefined;
     }
 
-    if (effectiveGatewayId) {
+    // Auto-promote verifyTlsCertificate when the caller is supplying a non-empty
+    // CA in this update without explicitly setting the toggle. Required for
+    // backwards compatibility.
+    let resolvedVerifyTlsCertificate: boolean | undefined;
+    if (verifyTlsCertificate !== undefined) {
+      resolvedVerifyTlsCertificate = verifyTlsCertificate;
+    } else if (caCert !== undefined && caCert.length > 0) {
+      resolvedVerifyTlsCertificate = true;
+    }
+    const effectiveVerifyTlsCertificate =
+      resolvedVerifyTlsCertificate ??
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert ?? "", identityKubernetesAuth.verifyTlsCertificate);
+
+    if (
+      effectiveVerifyTlsCertificate &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !effectiveCaCert
+    ) {
+      throw new BadRequestError({
+        message:
+          "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+      });
+    }
+
+    if (
+      effectiveVerifyTlsCertificate === false &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      effectiveCaCert &&
+      effectiveCaCert.length > 0
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
+    let validationGatewayId: string | null = effectiveGatewayId ?? null;
+    if (!validationGatewayId && effectiveGatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolId);
+      validationGatewayId = picked.id;
+    }
+
+    if (validationGatewayId) {
       if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
-        const gatewayExecutor = $createGatewayValidationRequest(effectiveGatewayId);
+        const gatewayExecutor = $createGatewayValidationRequest(validationGatewayId);
         logger.info(
-          { gatewayId: effectiveGatewayId },
+          { gatewayId: validationGatewayId, gatewayPoolId: effectiveGatewayPoolId },
           "Validating gateway connectivity to Kubernetes for auth method update"
         );
 
         await validateKubernetesHostConnectivity({ gatewayExecutor });
         await validateTokenReviewerPermissions({ gatewayExecutor });
       } else if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && effectiveKubernetesHost) {
-        const gatewayExecutor = $createGatewayValidationRequest(effectiveGatewayId, {
+        const gatewayExecutor = $createGatewayValidationRequest(validationGatewayId, {
           kubernetesHost: effectiveKubernetesHost,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
         logger.info(
-          { gatewayId: effectiveGatewayId, kubernetesHost: effectiveKubernetesHost },
+          {
+            gatewayId: validationGatewayId,
+            gatewayPoolId: effectiveGatewayPoolId,
+            kubernetesHost: effectiveKubernetesHost
+          },
           "Validating Kubernetes connectivity through gateway for auth method update"
         );
 
@@ -1075,7 +1305,8 @@ export const identityKubernetesAuthServiceFactory = ({
         logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
         await validateKubernetesHostConnectivity({
           kubernetesHost,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
       }
 
@@ -1087,7 +1318,8 @@ export const identityKubernetesAuthServiceFactory = ({
         await validateTokenReviewerPermissions({
           kubernetesHost: effectiveKubernetesHost,
           tokenReviewerJwt,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
       }
     }
@@ -1100,6 +1332,8 @@ export const identityKubernetesAuthServiceFactory = ({
       allowedAudience,
       gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
       gatewayV2Id: shouldUpdateGatewayId ? gatewayV2IdValue : undefined,
+      gatewayPoolId: gatewayPoolIdValue,
+      verifyTlsCertificate: resolvedVerifyTlsCertificate,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -1109,7 +1343,9 @@ export const identityKubernetesAuthServiceFactory = ({
     };
 
     if (caCert !== undefined) {
-      updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
+      updateQuery.encryptedKubernetesCaCertificate = caCert
+        ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+        : null;
     }
 
     if (tokenReviewerJwt) {
@@ -1218,6 +1454,7 @@ export const identityKubernetesAuthServiceFactory = ({
       ...identityKubernetesAuth,
       caCert,
       tokenReviewerJwt,
+      verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(caCert, identityKubernetesAuth.verifyTlsCertificate),
       orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
     };
@@ -1280,7 +1517,10 @@ export const identityKubernetesAuthServiceFactory = ({
         actorOrgId,
         scope: OrganizationActionScope.Any
       });
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.RevokeAuth,

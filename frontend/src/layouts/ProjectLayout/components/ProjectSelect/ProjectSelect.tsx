@@ -13,12 +13,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  IconButton,
   Popover,
   PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
-  ProjectIcon,
-  UnstableIconButton
+  ProjectIcon
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -127,9 +127,9 @@ const ProjectSelectInner = () => {
           </Badge>
         </Link>
         <PopoverTrigger asChild>
-          <UnstableIconButton variant="ghost" size="xs" aria-label="switch-project">
+          <IconButton variant="ghost" size="xs" aria-label="switch-project">
             <ChevronsUpDown />
-          </UnstableIconButton>
+          </IconButton>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
           <Command>
@@ -155,7 +155,7 @@ const ProjectSelectInner = () => {
                         {PROJECT_TYPE_NAME[workspace.type]}
                       </span>
                     </div>
-                    <UnstableIconButton
+                    <IconButton
                       variant="ghost"
                       size="xs"
                       aria-label="toggle favorite"
@@ -178,7 +178,7 @@ const ProjectSelectInner = () => {
                             : "text-yellow-600"
                         }
                       />
-                    </UnstableIconButton>
+                    </IconButton>
                   </CommandItem>
                 ))}
               </CommandGroup>

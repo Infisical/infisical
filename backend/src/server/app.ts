@@ -22,6 +22,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -73,7 +75,9 @@ export const main = async ({
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     genReqId: () => `req-${alphaNumericNanoId(14)}`,
-    trustProxy: true,
+    // When TRUSTED_PROXY_CIDRS is configured, only requests from those sources have their
+    // forwarded-IP headers honored. Unset preserves legacy behavior (trust all) for backcompat.
+    trustProxy: appCfg.TRUSTED_PROXY_CIDRS ?? true,
 
     connectionTimeout: 100_000,
     ignoreTrailingSlash: true,
@@ -168,7 +172,8 @@ export const main = async ({
         reqId: req.id,
         log: req.log.child({ reqId: req.id }),
         ip: req.realIp,
-        userAgent: req.headers["user-agent"]
+        userAgent: req.headers["user-agent"],
+        [RequestContextKey.Memoizer]: new RequestMemoizer()
       })
     });
 

@@ -5,6 +5,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -729,7 +731,9 @@ export const pkiAlertV2ServiceFactory = ({
       // Send in-app notifications to project admins
       try {
         const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-        const project = await projectDAL.findById(projectId);
+        const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+          projectDAL.findById(projectId)
+        );
 
         if (project) {
           const projectAdmins = projectMembers.filter((member) =>

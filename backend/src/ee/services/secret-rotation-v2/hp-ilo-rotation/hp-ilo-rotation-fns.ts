@@ -40,7 +40,7 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
 const ILO_PROMPT = "hpiLO->";
 const COMMAND_COMPLETED = "status_tag=COMMAND COMPLETED";
 const COMMAND_FAILED = "COMMAND PROCESSING FAILED";
-const CONNECTION_TIMEOUT = 15000;
+const CONNECTION_TIMEOUT = 45000;
 const MAX_BUFFER_SIZE = 64 * 1024;
 
 const executeIloShell = (conn: Client, command: string): Promise<string> => {

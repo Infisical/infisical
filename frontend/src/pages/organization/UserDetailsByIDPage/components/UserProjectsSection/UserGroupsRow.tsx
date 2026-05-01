@@ -1,13 +1,13 @@
 import { MoreHorizontalIcon } from "lucide-react";
 
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { TGroupWithProjectMemberships } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -19,17 +19,17 @@ type Props = {
 
 export const UserGroupsRow = ({ group, handlePopUpOpen }: Props) => {
   return (
-    <UnstableTableRow key={`user-group-membership-${group.id}`}>
-      <UnstableTableCell>{group.name}</UnstableTableCell>
-      <UnstableTableCell>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger>
-            <UnstableIconButton variant="ghost" size="xs">
+    <TableRow key={`user-group-membership-${group.id}`}>
+      <TableCell>{group.name}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <IconButton variant="ghost" size="xs">
               <MoreHorizontalIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuItem
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
               variant="danger"
               onClick={(e) => {
                 e.stopPropagation();
@@ -40,10 +40,10 @@ export const UserGroupsRow = ({ group, handlePopUpOpen }: Props) => {
               }}
             >
               Unassign from Group
-            </UnstableDropdownMenuItem>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </UnstableTableCell>
-    </UnstableTableRow>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

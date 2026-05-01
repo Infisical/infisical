@@ -6,21 +6,21 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
   Badge,
+  ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
+  IconButton,
   OrgIcon,
   ProjectIcon,
-  SubOrgIcon,
-  UnstableButtonGroup,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  SubOrgIcon
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useTimedReset } from "@app/hooks";
@@ -50,12 +50,12 @@ export const ProjectIdentityDetailsSection = ({
 
   return (
     <>
-      <UnstableCard className="w-full lg:max-w-[24rem]">
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Details</UnstableCardTitle>
-          <UnstableCardDescription>Machine identity details</UnstableCardDescription>
+      <Card className="w-full lg:max-w-[24rem]">
+        <CardHeader className="border-b">
+          <CardTitle>Details</CardTitle>
+          <CardDescription>Machine identity details</CardDescription>
           {!isOrgIdentity && (
-            <UnstableCardAction>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionIdentityActions.Edit}
                 a={subject(ProjectPermissionSub.Identity, {
@@ -63,7 +63,7 @@ export const ProjectIdentityDetailsSection = ({
                 })}
               >
                 {(isAllowed) => (
-                  <UnstableIconButton
+                  <IconButton
                     isDisabled={!isAllowed}
                     onClick={() => {
                       handlePopUpOpen("editIdentity");
@@ -72,13 +72,13 @@ export const ProjectIdentityDetailsSection = ({
                     variant="outline"
                   >
                     <PencilIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 )}
               </ProjectPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Name</DetailLabel>
@@ -89,7 +89,7 @@ export const ProjectIdentityDetailsSection = ({
               <DetailValue className="flex items-center gap-x-1">
                 {identity.id}
                 <Tooltip content="Copy machine identity ID to clipboard">
-                  <UnstableIconButton
+                  <IconButton
                     onClick={() => {
                       navigator.clipboard.writeText(identity.id);
                       setCopyTextId("Copied");
@@ -99,7 +99,7 @@ export const ProjectIdentityDetailsSection = ({
                   >
                     {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                     {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                  </UnstableIconButton>
+                  </IconButton>
                 </Tooltip>
               </DetailValue>
             </Detail>
@@ -124,14 +124,14 @@ export const ProjectIdentityDetailsSection = ({
               <DetailValue className="flex flex-wrap gap-2">
                 {identity?.metadata?.length ? (
                   identity.metadata?.map((el) => (
-                    <UnstableButtonGroup className="min-w-0" key={el.id}>
+                    <ButtonGroup className="min-w-0" key={el.id}>
                       <Badge isTruncatable>
                         <span>{el.key}</span>
                       </Badge>
                       <Badge variant="outline" isTruncatable>
                         <span>{el.value}</span>
                       </Badge>
-                    </UnstableButtonGroup>
+                    </ButtonGroup>
                   ))
                 ) : (
                   <span className="text-muted">—</span>
@@ -183,8 +183,8 @@ export const ProjectIdentityDetailsSection = ({
               </>
             )}
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <Modal
         isOpen={popUp.editIdentity.isOpen}
         onOpenChange={(open) => handlePopUpToggle("editIdentity", open)}

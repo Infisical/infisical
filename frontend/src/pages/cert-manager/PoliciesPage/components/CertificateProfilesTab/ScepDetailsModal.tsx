@@ -4,7 +4,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { downloadFile } from "@app/helpers/download";
 import { useToggle } from "@app/hooks";
-import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
+import {
+  ScepChallengeType,
+  TCertificateProfileWithDetails
+} from "@app/hooks/api/certificateProfiles";
 
 const RESET_COPIED_DELAY = 1 * 1000;
 
@@ -16,6 +19,7 @@ type Props = {
 
 export const ScepDetailsModal = ({ isOpen, onClose, profile }: Props) => {
   const [isUrlCopied, setIsUrlCopied] = useToggle(false);
+  const [isChallengeUrlCopied, setIsChallengeUrlCopied] = useToggle(false);
 
   const { scepConfig } = profile;
   const scepEndpointUrl = scepConfig?.scepEndpointUrl ?? "";
@@ -76,6 +80,35 @@ export const ScepDetailsModal = ({ isOpen, onClose, profile }: Props) => {
             <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
           </IconButton>
         </div>
+
+        {scepConfig.challengeType === ScepChallengeType.DYNAMIC &&
+          scepConfig.challengeEndpointUrl && (
+            <>
+              <FormLabel
+                label="Challenge Endpoint URL"
+                className="mt-4"
+                tooltipText="The authenticated API endpoint to generate dynamic SCEP challenges. Use this URL in your MDM webhook configuration (e.g., JAMF SCEPChallenge)."
+              />
+              <div className="flex gap-2">
+                <Input value={scepConfig.challengeEndpointUrl} isDisabled />
+                <IconButton
+                  ariaLabel="copy"
+                  variant="outline_bg"
+                  colorSchema="secondary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(scepConfig.challengeEndpointUrl!);
+                    setIsChallengeUrlCopied.on();
+                    setTimeout(() => {
+                      setIsChallengeUrlCopied.off();
+                    }, RESET_COPIED_DELAY);
+                  }}
+                  className="w-10"
+                >
+                  <FontAwesomeIcon icon={isChallengeUrlCopied ? faCheck : faCopy} />
+                </IconButton>
+              </div>
+            </>
+          )}
 
         <FormLabel
           label="RA Certificate"

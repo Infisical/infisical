@@ -51,7 +51,8 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
       password: providerInputs.password,
       ...(providerInputs.ca
         ? {
-            ca: providerInputs.ca
+            ca: providerInputs.ca,
+            rejectUnauthorized: providerInputs.sslRejectUnauthorized
           }
         : {})
     });
@@ -148,7 +149,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
+    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
     try {
       for await (const query of queries) {
@@ -182,7 +183,10 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username: entityId, expiration });
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
+        username: entityId,
+        expiration
+      });
       const queries = renewStatement.toString().split(";").filter(Boolean);
       for await (const query of queries) {
         await new Promise((resolve, reject) => {

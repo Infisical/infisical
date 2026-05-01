@@ -14,16 +14,16 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -130,7 +130,13 @@ export const DynamicSecretTableRow = ({
     const isRevoking = dynamicSecret.status === DynamicSecretStatus.Deleting;
 
     return (
-      <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
+      <div
+        className={twMerge(
+          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+          "pointer-events-none opacity-0 transition-all duration-300",
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        )}
+      >
         <ProjectPermissionCan
           I={ProjectPermissionDynamicSecretActions.Lease}
           a={subject(ProjectPermissionSub.DynamicSecrets, {
@@ -142,10 +148,10 @@ export const DynamicSecretTableRow = ({
           {(isAllowed) => (
             <Tooltip>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -153,7 +159,7 @@ export const DynamicSecretTableRow = ({
                   }}
                 >
                   <ListIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>View Leases</TooltipContent>
             </Tooltip>
@@ -170,10 +176,10 @@ export const DynamicSecretTableRow = ({
           {(isAllowed) => (
             <Tooltip>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -181,7 +187,7 @@ export const DynamicSecretTableRow = ({
                   }}
                 >
                   <FileKeyIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Generate Lease</TooltipContent>
             </Tooltip>
@@ -198,10 +204,10 @@ export const DynamicSecretTableRow = ({
           {(isAllowed) => (
             <Tooltip>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -209,7 +215,7 @@ export const DynamicSecretTableRow = ({
                   }}
                 >
                   <EditIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Edit</TooltipContent>
             </Tooltip>
@@ -227,10 +233,10 @@ export const DynamicSecretTableRow = ({
             {(isAllowed) => (
               <Tooltip>
                 <TooltipTrigger>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                     isDisabled={!isAllowed}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -238,7 +244,7 @@ export const DynamicSecretTableRow = ({
                     }}
                   >
                     <XIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>Force Delete</TooltipContent>
               </Tooltip>
@@ -256,10 +262,10 @@ export const DynamicSecretTableRow = ({
           {(isAllowed) => (
             <Tooltip>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -267,7 +273,7 @@ export const DynamicSecretTableRow = ({
                   }}
                 >
                   <TrashIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Delete</TooltipContent>
             </Tooltip>
@@ -279,11 +285,11 @@ export const DynamicSecretTableRow = ({
 
   return (
     <>
-      <UnstableTableRow
+      <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group"
+        className="group hover:z-10"
       >
-        <UnstableTableCell
+        <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -295,8 +301,8 @@ export const DynamicSecretTableRow = ({
           ) : (
             <FingerprintIcon className="text-dynamic-secret" />
           )}
-        </UnstableTableCell>
-        <UnstableTableCell
+        </TableCell>
+        <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-10 z-10 border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -306,13 +312,13 @@ export const DynamicSecretTableRow = ({
           colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvDynamicSecret ? (
-            <div className="flex w-full items-center">
+            <div className="relative flex w-full items-center">
               <span className="truncate">{dynamicSecretName}</span>
               <Badge variant="neutral" className="ml-2">
                 {DYNAMIC_SECRET_PROVIDER_NAMES[singleEnvDynamicSecret.type]}
               </Badge>
               {renderStatusIndicator(singleEnvDynamicSecret)}
-              <div className="ml-auto flex items-center">
+              <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
                 {renderActionButtons(singleEnvDynamicSecret)}
               </div>
             </div>
@@ -338,12 +344,12 @@ export const DynamicSecretTableRow = ({
               )}
             </>
           )}
-        </UnstableTableCell>
+        </TableCell>
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
             if (isExpanded)
               return (
-                <UnstableTableCell
+                <TableCell
                   key={`sec-overview-${slug}-${i + 1}-dynamic-secret`}
                   className="border-b-0 bg-container-hover"
                 />
@@ -358,22 +364,22 @@ export const DynamicSecretTableRow = ({
               />
             );
           })}
-      </UnstableTableRow>
+      </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <UnstableTableRow>
-          <UnstableTableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
+        <TableRow>
+          <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
               className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
             >
-              <UnstableTable containerClassName="border-none rounded-none bg-transparent">
-                <UnstableTableHeader>
-                  <UnstableTableRow>
-                    <UnstableTableHead className="w-full">Environment</UnstableTableHead>
-                    <UnstableTableHead />
-                  </UnstableTableRow>
-                </UnstableTableHeader>
-                <UnstableTableBody>
+              <Table containerClassName="border-none rounded-none bg-transparent">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-full">Environment</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {environments
                     .filter((env) => {
                       const dynamicSecret = getDynamicSecretByName(env.slug, dynamicSecretName);
@@ -383,29 +389,27 @@ export const DynamicSecretTableRow = ({
                       const dynamicSecret = getDynamicSecretByName(slug, dynamicSecretName)!;
 
                       return (
-                        <UnstableTableRow key={slug} className="group relative">
-                          <UnstableTableCell>
-                            <div className="flex w-full flex-wrap items-center">
+                        <TableRow key={slug} className="group relative hover:z-10">
+                          <TableCell colSpan={2}>
+                            <div className="relative flex w-full flex-wrap items-center">
                               <span>{envName}</span>
                               <Badge variant="neutral" className="ml-2">
                                 {DYNAMIC_SECRET_PROVIDER_NAMES[dynamicSecret.type]}
                               </Badge>
                               {renderStatusIndicator(dynamicSecret)}
+                              <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
+                                {renderActionButtons(dynamicSecret)}
+                              </div>
                             </div>
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <div className="flex items-center">
-                              {renderActionButtons(dynamicSecret)}
-                            </div>
-                          </UnstableTableCell>
-                        </UnstableTableRow>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                </UnstableTableBody>
-              </UnstableTable>
+                </TableBody>
+              </Table>
             </div>
-          </UnstableTableCell>
-        </UnstableTableRow>
+          </TableCell>
+        </TableRow>
       )}
     </>
   );

@@ -2,20 +2,21 @@ import { ChevronDownIcon, DownloadIcon, LayersIcon, PlusIcon } from "lucide-reac
 
 import {
   Button,
+  ButtonGroup,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableButtonGroup,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub, useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
-import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration";
+import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration";
+import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { PolicySelectionPopover } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
@@ -44,14 +45,16 @@ export const AddPoliciesButton = ({
   ] as const);
 
   const { hasOrgRole } = useOrgPermission();
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
   const isVaultImportDisabled = isDisabled || !isOrgAdmin;
 
   return (
     <div>
-      <UnstableButtonGroup>
+      <ButtonGroup>
         <PolicySelectionPopover
           type={projectType}
           isOpen={popUp.addPolicy.isOpen}
@@ -70,17 +73,17 @@ export const AddPoliciesButton = ({
             Add Policies
           </Button>
         </PolicySelectionPopover>
-        <UnstableDropdownMenu
+        <DropdownMenu
           open={popUp.addPolicyOptions.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("addPolicyOptions", isOpen)}
         >
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton type="button" variant="outline">
+          <DropdownMenuTrigger asChild>
+            <IconButton type="button" variant="outline">
               <ChevronDownIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuItem
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
               onClick={() => {
                 handlePopUpOpen("applyTemplate");
                 handlePopUpClose("addPolicyOptions");
@@ -89,11 +92,11 @@ export const AddPoliciesButton = ({
             >
               <LayersIcon />
               Add From Template
-            </UnstableDropdownMenuItem>
+            </DropdownMenuItem>
             {hasVaultConnection && (
               <Tooltip open={!isOrgAdmin ? undefined : false}>
                 <TooltipTrigger className="block w-full">
-                  <UnstableDropdownMenuItem
+                  <DropdownMenuItem
                     onClick={() => {
                       handlePopUpOpen("importFromVault");
                       handlePopUpClose("addPolicyOptions");
@@ -102,16 +105,16 @@ export const AddPoliciesButton = ({
                   >
                     <DownloadIcon />
                     Add from HashiCorp Vault
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
                   Only organization admins can import policies from HashiCorp Vault
                 </TooltipContent>
               </Tooltip>
             )}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </UnstableButtonGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ButtonGroup>
       <PolicyTemplateModal
         type={projectType}
         isOpen={popUp.applyTemplate.isOpen}

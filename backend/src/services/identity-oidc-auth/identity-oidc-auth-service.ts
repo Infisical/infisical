@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import axios from "axios";
 import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
@@ -21,6 +20,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -31,6 +31,9 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -84,13 +87,17 @@ export const identityOidcAuthServiceFactory = ({
       throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
     }
 
-    const identity = await identityDAL.findById(identityOidcAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityOidcAuth.identityId), () =>
+      identityDAL.findById(identityOidcAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
       });
 
-    const org = await orgDAL.findById(identity.orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
+      orgDAL.findById(identity.orgId)
+    );
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
@@ -107,13 +114,13 @@ export const identityOidcAuthServiceFactory = ({
         caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
       }
 
-      const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
+      const requestAgent = caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined;
 
       await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
 
       let discoveryDoc: { jwks_uri: string };
       try {
-        const response = await axios.get<{ jwks_uri: string }>(
+        const response = await request.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
           {
             httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
@@ -218,7 +225,7 @@ export const identityOidcAuthServiceFactory = ({
       } else {
         // If kid is not provided, try all available signing keys
         logger.warn(
-          `OIDC login without KID header [identityId=${identityOidcAuth.identityId}] [orgId=${org.id}] [ip=${requestContext.get("ip")}]`
+          `OIDC login without KID header [identityId=${identityOidcAuth.identityId}] [orgId=${org.id}] [ip=${requestContext.get(RequestContextKey.Ip)}]`
         );
 
         let allSigningKeys;
@@ -483,8 +490,8 @@ export const identityOidcAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.OIDC_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -498,8 +505,8 @@ export const identityOidcAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.OIDC_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
       throw error;
@@ -872,7 +879,10 @@ export const identityOidcAuthServiceFactory = ({
         scope: OrganizationActionScope.Any
       });
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.RevokeAuth,

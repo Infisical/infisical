@@ -7,11 +7,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - MCP SDK uses ESM with .js extensions which don't resolve types with moduleResolution: "Node"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import axios from "axios";
+import { isAxiosError } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -30,6 +30,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode, AiMcpServerStatus } from "./ai-mcp-server-enum";
+import { ssrfSafeMcpFetch } from "./ai-mcp-server-fns";
 import { TAiMcpServerToolDALFactory } from "./ai-mcp-server-tool-dal";
 import {
   TAiMcpServerCredentials,
@@ -64,8 +65,6 @@ type TAiMcpServerServiceFactoryDep = {
 
 export type TAiMcpServerServiceFactory = ReturnType<typeof aiMcpServerServiceFactory>;
 
-const OAUTH_SESSION_TTL_SECONDS = 10 * 60; // 10 minutes
-
 // Buffer time before token expiry to trigger refresh (5 minutes)
 const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 
@@ -86,12 +85,12 @@ const refreshOAuthToken = async (
   try {
     // First try: origin-only format
     const originOnlyUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server`;
-    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
+    const { data } = await ssrfSafeGet<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
     serverMetadata = data;
   } catch {
     // Second try: origin + pathname format
     const pathnameUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server${serverUrlObj.pathname !== "/" ? serverUrlObj.pathname : ""}`;
-    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
+    const { data } = await ssrfSafeGet<TOAuthAuthorizationServerMetadata>(pathnameUrl);
     serverMetadata = data;
   }
 
@@ -106,7 +105,7 @@ const refreshOAuthToken = async (
     tokenParams.client_secret = clientSecret;
   }
 
-  const { data: tokenResponse } = await request.post<TOAuthTokenResponse>(
+  const { data: tokenResponse } = await ssrfSafePost<TOAuthTokenResponse>(
     serverMetadata.token_endpoint,
     new URLSearchParams(tokenParams).toString(),
     {
@@ -221,6 +220,7 @@ export const aiMcpServerServiceFactory = ({
         }
 
         const transport = new StreamableHTTPClientTransport(new URL(targetUrl), {
+          fetch: ssrfSafeMcpFetch,
           requestInit: {
             headers: {
               Authorization: `Bearer ${accessToken}`
@@ -441,7 +441,7 @@ export const aiMcpServerServiceFactory = ({
         }
       } catch (err) {
         // Log non-404 errors for debugging, but still fall through
-        if (!axios.isAxiosError(err) || err.response?.status !== 404) {
+        if (!isAxiosError(err) || err.response?.status !== 404) {
           logger.warn(err, "Failed to fetch OAuth authorization server metadata");
         }
       }
@@ -609,7 +609,7 @@ export const aiMcpServerServiceFactory = ({
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpServerOAuth(sessionId),
-      OAUTH_SESSION_TTL_SECONDS,
+      KeyStoreTtls.AiMcpServerOAuthSessionInSeconds,
       JSON.stringify(sessionData)
     );
 
@@ -695,7 +695,7 @@ export const aiMcpServerServiceFactory = ({
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpServerOAuth(sessionId),
-      OAUTH_SESSION_TTL_SECONDS,
+      KeyStoreTtls.AiMcpServerOAuthSessionInSeconds,
       JSON.stringify(updatedSession)
     );
 

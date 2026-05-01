@@ -331,6 +331,67 @@ Infisical supports two methods for connecting to AWS.
                                     Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
                                 </Note>
                             </Accordion>
+                            <Accordion title="AWS ACM Public CA">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
+
+                                **ACM permissions** — `RequestCertificate` cannot be scoped below `"*"` because the certificate ARN does not exist until after the call succeeds:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAcmPublicCaAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:RequestCertificate",
+                                                "acm:DescribeCertificate",
+                                                "acm:ExportCertificate",
+                                                "acm:RenewCertificate",
+                                                "acm:RevokeCertificate",
+                                                "acm:ListCertificates"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                **Route 53 permissions** — scope to the hosted zone(s) used for DNS validation:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowRoute53ForAcmValidation",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "route53:GetHostedZone",
+                                                "route53:ChangeResourceRecordSets"
+                                            ],
+                                            "Resource": "arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                ACM and Route 53 permissions can live on the same IAM principal, or be split across two separate connections in Infisical.
+
+                                <Note>
+                                    **ACM Permissions:**
+                                    - **RequestCertificate**: Requests a new public certificate from ACM
+                                    - **DescribeCertificate**: Retrieves certificate status and DNS validation records
+                                    - **ExportCertificate**: Exports the issued certificate and private key to Infisical
+                                    - **RenewCertificate**: Triggers renewal of an existing certificate
+                                    - **RevokeCertificate**: Revokes a previously issued certificate
+                                    - **ListCertificates**: Used during connection validation
+
+                                    **Route 53 Permissions:**
+                                    - **GetHostedZone**: Validates the hosted zone during CA setup
+                                    - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
+                                </Note>
+                            </Accordion>
                         </AccordionGroup>
                     </Tab>
                 </Tabs>
@@ -660,6 +721,67 @@ Infisical supports two methods for connecting to AWS.
                                     - **RevokeCertificate**: Revokes previously issued certificates
 
                                     Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
+                                </Note>
+                            </Accordion>
+                            <Accordion title="AWS ACM Public CA">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
+
+                                **ACM permissions** — `RequestCertificate` cannot be scoped below `"*"` because the certificate ARN does not exist until after the call succeeds:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAcmPublicCaAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:RequestCertificate",
+                                                "acm:DescribeCertificate",
+                                                "acm:ExportCertificate",
+                                                "acm:RenewCertificate",
+                                                "acm:RevokeCertificate",
+                                                "acm:ListCertificates"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                **Route 53 permissions** — scope to the hosted zone(s) used for DNS validation:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowRoute53ForAcmValidation",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "route53:GetHostedZone",
+                                                "route53:ChangeResourceRecordSets"
+                                            ],
+                                            "Resource": "arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                ACM and Route 53 permissions can live on the same IAM principal, or be split across two separate connections in Infisical.
+
+                                <Note>
+                                    **ACM Permissions:**
+                                    - **RequestCertificate**: Requests a new public certificate from ACM
+                                    - **DescribeCertificate**: Retrieves certificate status and DNS validation records
+                                    - **ExportCertificate**: Exports the issued certificate and private key to Infisical
+                                    - **RenewCertificate**: Triggers renewal of an existing certificate
+                                    - **RevokeCertificate**: Revokes a previously issued certificate
+                                    - **ListCertificates**: Used during connection validation
+
+                                    **Route 53 Permissions:**
+                                    - **GetHostedZone**: Validates the hosted zone during CA setup
+                                    - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
                                 </Note>
                             </Accordion>
                         </AccordionGroup>

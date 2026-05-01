@@ -177,8 +177,6 @@ using the Universal Auth authentication method.
 
 In many automated, cloud-native, or ephemeral environments (such as VMs, containers, or serverless functions), it is often unsafe or impractical to hard-code long-lived credentials for bootstrapping access to secrets management systems. The "secret zero" problem refers to the challenge of securely providing a workload with its initial credential, without manual intervention or static secrets that could be leaked or reused. Periodic tokens in Universal Auth are designed to solve this problem by enabling secure, automated bootstrapping and ongoing access renewal, even in dynamic or short-lived environments.
 
-A common challenge in cloud-native and automated environments is the "secret zero" problem: how to securely bootstrap a workload (such as a VM, container, or serverless function) with its first credential, without hard-coding static secrets or requiring manual intervention.
-
 **Periodic tokens** in Universal Auth solve this by allowing you to issue an access token that can be continuously renewed by your workload before it expires (i.e., a client-initiated rotation mechanism):
 
 - When you set the **Access Token Period** in the Universal Auth configuration, the issued access token can be renewed by your workload for the specified period (in seconds).

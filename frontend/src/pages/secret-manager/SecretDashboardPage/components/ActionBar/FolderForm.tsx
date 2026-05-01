@@ -12,8 +12,8 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  TextArea,
-  UnstableInput
+  Input,
+  TextArea
 } from "@app/components/v3";
 
 type Props = {
@@ -99,7 +99,7 @@ export const FolderForm = ({
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <UnstableInput {...field} placeholder="Type your folder name" />
+              <Input {...field} placeholder="Type your folder name" />
             </FieldContent>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>

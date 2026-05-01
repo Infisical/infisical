@@ -367,7 +367,7 @@ export const CodeSigningGrantsTab = () => {
                             <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
                               {grant.requestId && (
                                 <Link
-                                  to="/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId"
+                                  to="/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId"
                                   params={{
                                     orgId: currentOrg.id,
                                     projectId: currentProject.id,

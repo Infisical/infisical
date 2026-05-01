@@ -199,6 +199,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 .object({
                   type: z.nativeEnum(ApproverType),
                   id: z.string().nullable().optional(),
+                  name: z.string().nullable().optional(),
                   sequence: z.number().nullable().optional(),
                   approvalsRequired: z.number().nullable().optional()
                 })

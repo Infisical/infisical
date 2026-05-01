@@ -26,7 +26,7 @@ import {
 } from "./components";
 
 const ROUTE_ID =
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId" as const;
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals/$approvalRequestId" as const;
 
 const CodeSigningDetailsSection = ({
   requestData,

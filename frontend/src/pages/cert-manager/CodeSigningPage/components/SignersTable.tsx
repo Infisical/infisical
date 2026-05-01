@@ -16,31 +16,31 @@ import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import {
   ProjectPermissionCodeSigningActions,
@@ -98,16 +98,14 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             Signers
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/code-signing" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>
-            Manage signers and control who can sign artifacts.
-          </UnstableCardDescription>
-          <UnstableCardAction>
+          </CardTitle>
+          <CardDescription>Manage signers and control who can sign artifacts.</CardDescription>
+          <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionCodeSigningActions.Create}
               a={ProjectPermissionSub.CodeSigners}
@@ -119,9 +117,9 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 </Button>
               )}
             </ProjectPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div className="mb-4 flex gap-2">
             <InputGroup className="flex-1">
               <InputGroupAddon>
@@ -137,22 +135,22 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
               />
             </InputGroup>
           </div>
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead>Name</UnstableTableHead>
-                <UnstableTableHead>Status</UnstableTableHead>
-                <UnstableTableHead>Certificate CN</UnstableTableHead>
-                <UnstableTableHead>Policy</UnstableTableHead>
-                <UnstableTableHead>Certificate Expiry</UnstableTableHead>
-                <UnstableTableHead>Last Signed</UnstableTableHead>
-                <UnstableTableHead className="w-5" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Certificate CN</TableHead>
+                <TableHead>Policy</TableHead>
+                <TableHead>Certificate Expiry</TableHead>
+                <TableHead>Last Signed</TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {!isLoading &&
                 signers.map((signer) => (
-                  <UnstableTableRow
+                  <TableRow
                     key={signer.id}
                     className="cursor-pointer hover:bg-mineshaft-700"
                     onClick={() =>
@@ -166,36 +164,33 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                       })
                     }
                   >
-                    <UnstableTableCell>{signer.name}</UnstableTableCell>
-                    <UnstableTableCell>
+                    <TableCell>{signer.name}</TableCell>
+                    <TableCell>
                       <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
                         {signerStatusLabels[signer.status] ?? signer.status}
                       </Badge>
-                    </UnstableTableCell>
-                    <UnstableTableCell>{signer.certificateCommonName ?? "-"}</UnstableTableCell>
-                    <UnstableTableCell>{signer.approvalPolicyName ?? "-"}</UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>
+                    <TableCell>{signer.approvalPolicyName ?? "-"}</TableCell>
+                    <TableCell>
                       {signer.certificateNotAfter
                         ? format(new Date(signer.certificateNotAfter), "MMM d, yyyy")
                         : "-"}
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       {signer.lastSignedAt
                         ? format(new Date(signer.lastSignedAt), "MMM d, yyyy HH:mm")
                         : "Never"}
-                    </UnstableTableCell>
-                    <UnstableTableCell>
-                      <UnstableDropdownMenu>
-                        <UnstableDropdownMenuTrigger asChild>
-                          <UnstableIconButton variant="ghost" onClick={(e) => e.stopPropagation()}>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" onClick={(e) => e.stopPropagation()}>
                             <MoreHorizontalIcon />
-                          </UnstableIconButton>
-                        </UnstableDropdownMenuTrigger>
-                        <UnstableDropdownMenuContent
-                          align="end"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <UnstableDropdownMenuItem
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               navigator.clipboard.writeText(signer.id);
@@ -203,19 +198,19 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                           >
                             <ClipboardCopyIcon />
                             Copy ID
-                          </UnstableDropdownMenuItem>
+                          </DropdownMenuItem>
                           <ProjectPermissionCan
                             I={ProjectPermissionCodeSigningActions.Edit}
                             a={ProjectPermissionSub.CodeSigners}
                           >
                             {(isAllowed) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 isDisabled={!isAllowed}
                                 onClick={() => setEditSigner(signer)}
                               >
                                 <PencilIcon />
                                 Edit Signer
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
@@ -223,7 +218,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             a={ProjectPermissionSub.CodeSigners}
                           >
                             {(isAllowed) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 isDisabled={!isAllowed}
                                 onClick={() =>
                                   updateSigner.mutateAsync({
@@ -246,7 +241,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                                     Enable Signer
                                   </>
                                 )}
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
@@ -254,31 +249,31 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             a={ProjectPermissionSub.CodeSigners}
                           >
                             {(isAllowed) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 variant="danger"
                                 isDisabled={!isAllowed}
                                 onClick={() => setDeleteSignerId(signer.id)}
                               >
                                 Delete Signer
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
-                        </UnstableDropdownMenuContent>
-                      </UnstableDropdownMenu>
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 ))}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
           {!isLoading && signers.length === 0 && (
-            <UnstableEmpty>
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>No signers found</UnstableEmptyTitle>
-              </UnstableEmptyHeader>
-            </UnstableEmpty>
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>No signers found</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           )}
           {Boolean(totalCount) && (
-            <UnstablePagination
+            <Pagination
               count={totalCount}
               page={page}
               perPage={perPage}
@@ -286,8 +281,8 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
               onChangePerPage={setPerPage}
             />
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <DeleteActionModal
         isOpen={Boolean(deleteSignerId)}
         deleteKey="delete"

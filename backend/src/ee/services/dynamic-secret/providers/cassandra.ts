@@ -43,7 +43,9 @@ export const CassandraProvider = (): TDynamicProviderFns => {
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
-    const sslOptions = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
+    const sslOptions = providerInputs.ca
+      ? { rejectUnauthorized: providerInputs.sslRejectUnauthorized, ca: providerInputs.ca }
+      : undefined;
     const client = new cassandra.Client({
       sslOptions,
       protocolOptions: {
@@ -146,7 +148,10 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     const { keyspace } = providerInputs;
 
     try {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, keyspace });
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+        username,
+        keyspace
+      });
       const queries = revokeStatement.toString().split(";").filter(Boolean);
       for (const query of queries) {
         // eslint-disable-next-line
@@ -180,7 +185,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         keyspace,
         expiration

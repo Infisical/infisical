@@ -15,6 +15,7 @@ import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
+import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
@@ -32,8 +33,10 @@ import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
+import { DigiCertConnectionForm } from "./DigiCertConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
+import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
@@ -54,6 +57,7 @@ import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
+import { OnaConnectionForm } from "./OnaConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
@@ -65,7 +69,9 @@ import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
+import { TravisCIConnectionForm } from "./TravisCIConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
+import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
@@ -263,16 +269,28 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Anthropic:
+        return <AnthropicConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.VenafiTpp:
+        return <VenafiTppConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureEntraId:
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Doppler:
+        return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Ona:
+        return <OnaConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.DigiCert:
+        return <DigiCertConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.TravisCI:
+        return <TravisCIConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -474,14 +492,28 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Anthropic:
+        return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ExternalInfisical:
         return (
           <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
         );
+      case AppConnection.Doppler:
+        return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Ona:
+        return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.DigiCert:
+        return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.TravisCI:
+        return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Venafi:
+        return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.VenafiTpp:
+        return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

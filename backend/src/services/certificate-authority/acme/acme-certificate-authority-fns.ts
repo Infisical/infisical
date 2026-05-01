@@ -43,8 +43,10 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
+import { throwIfAcmeOrderAborted } from "./acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
 import {
   TAcmeCertificateAuthority,
@@ -54,7 +56,6 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
-import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
@@ -295,7 +296,8 @@ export const orderCertificate = async (
     signatureAlgorithm,
     keyAlgorithm,
     isRenewal,
-    originalCertificateId
+    originalCertificateId,
+    abortSignal
   }: {
     caId: string;
     profileId?: string;
@@ -311,6 +313,7 @@ export const orderCertificate = async (
     keyAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    abortSignal?: AbortSignal;
   },
   deps: TOrderCertificateDeps,
   tx?: Knex
@@ -422,12 +425,13 @@ export const orderCertificate = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53InsertTxtRecord(
-            connection as TAwsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await route53UpsertRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
+            name: recordName,
+            type: "TXT",
+            value: recordValue,
+            ttl: 30,
+            comment: "Set ACME challenge TXT record"
+          });
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -478,12 +482,13 @@ export const orderCertificate = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53DeleteTxtRecord(
-            connection as TAwsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await route53DeleteRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
+            name: recordName,
+            type: "TXT",
+            value: recordValue,
+            ttl: 30,
+            comment: "Delete ACME challenge TXT record"
+          });
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -519,6 +524,8 @@ export const orderCertificate = async (
       }
     }
   });
+
+  throwIfAcmeOrderAborted(abortSignal);
 
   const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
   const certObj = new x509.X509Certificate(leafCert);
@@ -924,7 +931,8 @@ export const AcmeCertificateAuthorityFns = ({
     signatureAlgorithm,
     keyAlgorithm,
     isRenewal,
-    originalCertificateId
+    originalCertificateId,
+    abortSignal
   }: {
     caId: string;
     profileId?: string;
@@ -939,6 +947,7 @@ export const AcmeCertificateAuthorityFns = ({
     keyAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    abortSignal?: AbortSignal;
   }) => {
     return orderCertificate(
       {
@@ -955,7 +964,8 @@ export const AcmeCertificateAuthorityFns = ({
         signatureAlgorithm,
         keyAlgorithm,
         isRenewal,
-        originalCertificateId
+        originalCertificateId,
+        abortSignal
       },
       {
         appConnectionDAL,

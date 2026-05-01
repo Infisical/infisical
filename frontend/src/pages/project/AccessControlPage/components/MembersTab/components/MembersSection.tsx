@@ -5,13 +5,13 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  DocumentationLinkBadge,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -55,14 +55,14 @@ export const MembersSection = () => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             Project Users
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>Invite and manage project users</UnstableCardDescription>
-          <UnstableCardAction>
+          </CardTitle>
+          <CardDescription>Invite and manage project users</CardDescription>
+          <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
               a={ProjectPermissionSub.Member}
@@ -78,12 +78,12 @@ export const MembersSection = () => {
                 </Button>
               )}
             </ProjectPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <MembersTable handlePopUpOpen={handlePopUpOpen} />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}

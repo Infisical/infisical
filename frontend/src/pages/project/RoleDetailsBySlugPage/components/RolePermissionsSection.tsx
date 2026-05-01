@@ -6,7 +6,7 @@ import { SaveIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
-import { Button, UnstableAccordion } from "@app/components/v3";
+import { Accordion, Button } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
@@ -101,7 +101,10 @@ export const renderConditionalComponents = (
       return <PamAccountPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.PamResources) {
+    if (
+      subject === ProjectPermissionSub.PamResources ||
+      subject === ProjectPermissionSub.PamDomains
+    ) {
       return <PamResourcePermissionConditions isDisabled={isDisabled} />;
     }
 
@@ -263,7 +266,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
               {!isPending && !hasPermissions && <PermissionEmptyState />}
               {hasPermissions && (
-                <UnstableAccordion
+                <Accordion
                   type="multiple"
                   value={openPolicies}
                   onValueChange={setOpenPolicies}
@@ -297,7 +300,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                         {renderConditionalComponents(subject, isDisabled)}
                       </GeneralPermissionPolicies>
                     ))}
-                </UnstableAccordion>
+                </Accordion>
               )}
             </div>
           </div>

@@ -12,10 +12,11 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { Badge, UnstableIconButton } from "@app/components/v3";
+import { Badge, IconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
+import { PamDomainType, useGetPamDomainById } from "@app/hooks/api/pamDomain";
 
 type Props = {
   resource: TPamResource;
@@ -37,6 +38,12 @@ export const PamResourceCard = ({
 
   const { id, name, resourceType, projectId } = resource;
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
+
+  const { data: domain } = useGetPamDomainById(
+    PamDomainType.ActiveDirectory,
+    resource.domainId || undefined,
+    { enabled: !!resource.domainId }
+  );
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -86,7 +93,7 @@ export const PamResourceCard = ({
               <HighlightText text={name} highlight={search} />
             </p>
             <div className="flex items-center gap-0.5">
-              <UnstableIconButton
+              <IconButton
                 size="xs"
                 variant="ghost"
                 onClick={(e) => {
@@ -99,16 +106,12 @@ export const PamResourceCard = ({
                   fill={resource.isFavorite ? "currentColor" : "none"}
                   size={14}
                 />
-              </UnstableIconButton>
+              </IconButton>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <UnstableIconButton
-                    size="xs"
-                    variant="ghost"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <IconButton size="xs" variant="ghost" onClick={(e) => e.stopPropagation()}>
                     <EllipsisIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent sideOffset={2} align="end">
                   <DropdownMenuItem
@@ -158,9 +161,10 @@ export const PamResourceCard = ({
               </DropdownMenu>
             </div>
           </div>
-          <Badge variant="neutral" className="mt-1">
-            {resourceTypeName}
-          </Badge>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Badge variant="neutral">{resourceTypeName}</Badge>
+            {domain && <Badge variant="info">{domain.connectionDetails.domain}</Badge>}
+          </div>
         </div>
       </div>
     </div>

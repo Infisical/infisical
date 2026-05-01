@@ -10,11 +10,13 @@ import { CronJob } from "cron";
 import { Knex } from "knex";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -62,9 +64,6 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
-
-const LICENSE_SERVER_CLOUD_PLAN_TTL = 5 * 60; // 5 mins
-const FEATURE_CACHE_KEY = (orgId: string) => `infisical-cloud-plan-${orgId}`;
 
 export const licenseServiceFactory = ({
   orgDAL,
@@ -201,7 +200,7 @@ export const licenseServiceFactory = ({
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = await keyStore.getItem(FEATURE_CACHE_KEY(orgId));
+        const cachedPlan = await keyStore.getItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
         if (cachedPlan) {
           logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
           return JSON.parse(cachedPlan) as TFeatureSet;
@@ -239,8 +238,8 @@ export const licenseServiceFactory = ({
         currentPlan.identitiesUsed = identityUsed;
 
         await keyStore.setItemWithExpiry(
-          FEATURE_CACHE_KEY(org.id),
-          LICENSE_SERVER_CLOUD_PLAN_TTL,
+          KeyStorePrefixes.LicenseCloudPlan(org.id),
+          KeyStoreTtls.LicenseCloudPlanInSeconds,
           JSON.stringify(currentPlan)
         );
 
@@ -252,8 +251,8 @@ export const licenseServiceFactory = ({
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
       await keyStore.setItemWithExpiry(
-        FEATURE_CACHE_KEY(orgId),
-        LICENSE_SERVER_CLOUD_PLAN_TTL,
+        KeyStorePrefixes.LicenseCloudPlan(orgId),
+        KeyStoreTtls.LicenseCloudPlanInSeconds,
         JSON.stringify(onPremFeatures)
       );
       return onPremFeatures;
@@ -264,7 +263,7 @@ export const licenseServiceFactory = ({
   };
 
   const refreshPlan = async (orgId: string) => {
-    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
     if (instanceType === InstanceType.Cloud) {
       await getPlan(orgId);
     }
@@ -307,7 +306,7 @@ export const licenseServiceFactory = ({
           quantityIdentities
         });
       }
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(rootOrgId));
+      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(rootOrgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
@@ -391,7 +390,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -406,7 +405,7 @@ export const licenseServiceFactory = ({
       `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
       { success_url }
     );
-    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
     return { url };
   };
 
@@ -430,7 +429,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: "Organization not found"
@@ -498,7 +497,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -581,7 +580,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -625,7 +624,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -660,7 +659,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -687,7 +686,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -724,7 +723,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -763,7 +762,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -799,7 +798,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -827,7 +826,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -858,7 +857,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -882,7 +881,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -906,7 +905,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -920,7 +919,7 @@ export const licenseServiceFactory = ({
   };
 
   const invalidateGetPlan = async (orgId: string) => {
-    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
   };
 
   const getCustomerId = () => {

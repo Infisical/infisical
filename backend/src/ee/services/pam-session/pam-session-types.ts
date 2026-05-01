@@ -17,3 +17,9 @@ export type TUpdateSessionLogsDTO = {
   sessionId: string;
   logs: (TPamSessionCommandLog | TTerminalEvent | THttpEvent)[];
 };
+
+export type TUploadEventBatchDTO = {
+  sessionId: string;
+  startOffset: number;
+  events: Buffer;
+};

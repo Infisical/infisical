@@ -23,12 +23,30 @@ export const AcmeExternalConfigSchema = z.object({});
 export const AwsPcaExternalConfigSchema = z.object({});
 
 /**
+ * External configuration schema for DigiCert Certificate Authority
+ */
+export const DigiCertExternalConfigSchema = z.object({});
+
+/**
+ * External configuration schema for AWS ACM Public Certificate Authority
+ */
+export const AwsAcmPublicCaExternalConfigSchema = z.object({});
+
+/**
+ * External configuration schema for Venafi TPP Certificate Authority
+ */
+export const VenafiTppExternalConfigSchema = z.object({});
+
+/**
  * Map of CA types to their corresponding external configuration schemas
  */
 export const ExternalConfigSchemaMap = {
   [CaType.AZURE_AD_CS]: AzureAdCsExternalConfigSchema,
   [CaType.ACME]: AcmeExternalConfigSchema,
   [CaType.AWS_PCA]: AwsPcaExternalConfigSchema,
+  [CaType.DIGICERT]: DigiCertExternalConfigSchema,
+  [CaType.AWS_ACM_PUBLIC_CA]: AwsAcmPublicCaExternalConfigSchema,
+  [CaType.VENAFI_TPP]: VenafiTppExternalConfigSchema,
   [CaType.INTERNAL]: z.object({}).optional() // Internal CAs don't use external configs
 } as const;
 
@@ -49,7 +67,15 @@ export const createExternalConfigSchema = (caType?: CaType | null) => {
  * Union type of all possible external configuration schemas
  */
 export const ExternalConfigUnionSchema = z
-  .union([AzureAdCsExternalConfigSchema, AcmeExternalConfigSchema, AwsPcaExternalConfigSchema, z.object({})])
+  .union([
+    AzureAdCsExternalConfigSchema,
+    AcmeExternalConfigSchema,
+    AwsPcaExternalConfigSchema,
+    DigiCertExternalConfigSchema,
+    AwsAcmPublicCaExternalConfigSchema,
+    VenafiTppExternalConfigSchema,
+    z.object({})
+  ])
   .nullable()
   .optional();
 

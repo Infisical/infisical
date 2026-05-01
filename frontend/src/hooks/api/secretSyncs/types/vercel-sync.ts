@@ -25,13 +25,16 @@ export type TVercelSync = TRootSecretSync & {
         branch?: string;
         appName?: string;
         teamId: string;
+        sensitive: boolean;
       }
     | {
         scope: VercelSyncScope.Team;
         teamId: string;
         teamName?: string;
         targetEnvironments: string[];
+        applyToAllCustomEnvironments: boolean;
         targetProjects?: string[];
+        sensitive: boolean;
       };
   connection: {
     app: AppConnection.Vercel;

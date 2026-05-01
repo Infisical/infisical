@@ -2,23 +2,6 @@ import { z } from "zod";
 
 import { OrganizationsSchema } from "@app/db/schemas";
 
-/** Zod schema for API response: org with sub-orgs */
-export const OrgWithSubOrgsSchema = OrganizationsSchema.pick({
-  id: true,
-  name: true,
-  slug: true,
-  createdAt: true
-}).extend({
-  userJoinedAt: z.date().optional().nullable(),
-  subOrganizations: OrganizationsSchema.pick({
-    id: true,
-    name: true,
-    slug: true
-  })
-    .extend({ userJoinedAt: z.date().optional().nullable() })
-    .array()
-});
-
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   id: true,
   name: true,
@@ -51,4 +34,16 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   rootOrgId: true,
   parentOrgId: true,
   secretShareBrandConfig: true
+});
+
+/** Zod schema for API response: root org (full info) with sub-orgs (basic info) */
+export const OrgWithSubOrgsSchema = sanitizedOrganizationSchema.extend({
+  userJoinedAt: z.date().optional().nullable(),
+  subOrganizations: OrganizationsSchema.pick({
+    id: true,
+    name: true,
+    slug: true
+  })
+    .extend({ userJoinedAt: z.date().optional().nullable() })
+    .array()
 });

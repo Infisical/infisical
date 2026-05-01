@@ -6,16 +6,22 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { AwsAcmPublicCaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-schemas";
 import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-schemas";
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { DigiCertCertificateAuthoritySchema } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-schemas";
 import { InternalCertificateAuthoritySchema } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
+import { VenafiTppCertificateAuthoritySchema } from "@app/services/certificate-authority/venafi-tpp/venafi-tpp-certificate-authority-schemas";
 
 const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
   AcmeCertificateAuthoritySchema,
   AzureAdCsCertificateAuthoritySchema,
-  AwsPcaCertificateAuthoritySchema
+  AwsPcaCertificateAuthoritySchema,
+  DigiCertCertificateAuthoritySchema,
+  AwsAcmPublicCaCertificateAuthoritySchema,
+  VenafiTppCertificateAuthoritySchema
 ]);
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
@@ -73,6 +79,30 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
+      const digicertCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId: req.query.projectId,
+          type: CaType.DIGICERT
+        },
+        req.permission
+      );
+
+      const awsAcmPublicCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId: req.query.projectId,
+          type: CaType.AWS_ACM_PUBLIC_CA
+        },
+        req.permission
+      );
+
+      const venafiTppCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId: req.query.projectId,
+          type: CaType.VENAFI_TPP
+        },
+        req.permission
+      );
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.query.projectId,
@@ -83,7 +113,10 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
               ...(azureAdCsCas ?? []).map((ca) => ca.id),
-              ...(awsPcaCas ?? []).map((ca) => ca.id)
+              ...(awsPcaCas ?? []).map((ca) => ca.id),
+              ...(digicertCas ?? []).map((ca) => ca.id),
+              ...(awsAcmPublicCas ?? []).map((ca) => ca.id),
+              ...(venafiTppCas ?? []).map((ca) => ca.id)
             ]
           }
         }
@@ -94,7 +127,10 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           ...(internalCas ?? []),
           ...(acmeCas ?? []),
           ...(azureAdCsCas ?? []),
-          ...(awsPcaCas ?? [])
+          ...(awsPcaCas ?? []),
+          ...(digicertCas ?? []),
+          ...(awsAcmPublicCas ?? []),
+          ...(venafiTppCas ?? [])
         ]
       };
     }

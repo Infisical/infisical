@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, Button, Skeleton, Switch, UnstableInput } from "@app/components/v3";
+import { Badge, Button, Input, Skeleton, Switch } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   useGetCertificateCleanupConfig,
@@ -140,7 +140,7 @@ export const CertificateCleanupTab = () => {
               control={control}
               name="postExpiryRetentionDays"
               render={({ field }) => (
-                <UnstableInput
+                <Input
                   {...field}
                   type="number"
                   className="w-20"

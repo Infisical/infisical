@@ -80,10 +80,11 @@ export type TFeatureSet = {
   pkiEst: boolean;
   pkiAcme: false;
   pkiScep: false;
-  enforceMfa: boolean;
+  enforceMfa: false;
   projectTemplates: false;
   kmip: false;
   gateway: false;
+  gatewayPool: false;
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;

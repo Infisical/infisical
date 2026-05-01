@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  CsvDelimiter,
   parseCsvToMatrix,
   parseDotEnv,
   parseJson,
@@ -12,23 +13,22 @@ import {
 } from "@app/components/utilities/parseSecrets";
 import {
   Button,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { CsvColumnMapDialog } from "./CsvColumnMapDialog";
 import { PasteSecretsDialog } from "./PasteSecretsDialog";
-
-type TParsedEnv = Record<string, { value: string; comments: string[] }>;
+import { TParsedEnv } from "./types";
 
 type Props = {
   onParsedSecrets: (env: TParsedEnv) => void;
@@ -38,7 +38,11 @@ type Props = {
 export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
   const [isDragActive, setDragActive] = useToggle();
   const [isPasteOpen, setIsPasteOpen] = useState(false);
-  const [csvData, setCsvData] = useState<{ headers: string[]; matrix: string[][] } | null>(null);
+  const [csvData, setCsvData] = useState<{
+    headers: string[];
+    matrix: string[][];
+    delimiter: CsvDelimiter;
+  } | null>(null);
 
   const handleParsedSecrets = (env: TParsedEnv) => {
     if (!Object.keys(env).length) {
@@ -78,7 +82,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
           handleParsedSecrets(parseYaml(src));
           break;
         case "text/csv": {
-          const fullMatrix = parseCsvToMatrix(src);
+          const { matrix: fullMatrix, delimiter } = parseCsvToMatrix(src);
           if (!fullMatrix.length) {
             createNotification({
               type: "error",
@@ -86,7 +90,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
             });
             return;
           }
-          setCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1) });
+          setCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1), delimiter });
           return;
         }
         default:
@@ -131,7 +135,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
     <>
       <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
         {(isAllowed) => (
-          <UnstableEmpty
+          <Empty
             className={twMerge(
               "relative border !pb-20 transition-colors duration-75",
               isAllowed && isDragActive && "bg-container-hover"
@@ -141,18 +145,18 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
             onDragOver={handleDrag}
             onDrop={isAllowed ? handleDrop : undefined}
           >
-            <UnstableEmptyHeader>
+            <EmptyHeader>
               <EmptyMedia variant="icon">
                 <UploadIcon />
               </EmptyMedia>
-              <UnstableEmptyTitle>
+              <EmptyTitle>
                 {isDragActive ? "Drop your file here" : "Upload your secrets"}
-              </UnstableEmptyTitle>
-              <UnstableEmptyDescription>
+              </EmptyTitle>
+              <EmptyDescription>
                 Drag and drop your .env, .json, .yml, or .csv files here or click to browse
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-            <UnstableEmptyContent>
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               {isAllowed && (
                 <input
                   type="file"
@@ -186,8 +190,8 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
                   <TooltipContent>Access Denied</TooltipContent>
                 </Tooltip>
               </div>
-            </UnstableEmptyContent>
-          </UnstableEmpty>
+            </EmptyContent>
+          </Empty>
         )}
       </ProjectPermissionCan>
       <PasteSecretsDialog
@@ -204,6 +208,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
           }}
           headers={csvData.headers}
           matrix={csvData.matrix}
+          delimiter={csvData.delimiter}
           onParsedSecrets={(env) => {
             setCsvData(null);
             handleParsedSecrets(env);

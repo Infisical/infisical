@@ -3,17 +3,17 @@ import { ExternalLinkIcon } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle,
-  UnstableAccordion,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger
+  SheetTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -129,14 +129,14 @@ export const GatewayConnectedResourcesDrawer = ({
               </p>
 
               {totalCount > 0 && (
-                <UnstableAccordion type="multiple" defaultValue={defaultOpenSections}>
+                <Accordion type="multiple" defaultValue={defaultOpenSections}>
                   {(resources?.appConnections.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="app-connections">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="app-connections">
+                      <AccordionTrigger>
                         <span className="flex-1">App Connections</span>
                         <Badge variant="neutral">{resources?.appConnections.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.appConnections.map((conn, idx) => (
                           <ResourceRow
                             key={conn.id}
@@ -151,17 +151,17 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.appConnections.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
 
                   {(resources?.dynamicSecrets.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="dynamic-secrets">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="dynamic-secrets">
+                      <AccordionTrigger>
                         <span className="flex-1">Dynamic Secrets</span>
                         <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.dynamicSecrets.map((ds, idx) => (
                           <ResourceRow
                             key={ds.id}
@@ -176,17 +176,17 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.dynamicSecrets.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
 
                   {(resources?.pamResources.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="pam-resources">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="pam-resources">
+                      <AccordionTrigger>
                         <span className="flex-1">PAM Resources</span>
                         <Badge variant="neutral">{resources?.pamResources.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.pamResources.map((res, idx) => (
                           <ResourceRow
                             key={res.id}
@@ -202,17 +202,17 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.pamResources.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
 
                   {(resources?.pamDiscoverySources.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="pam-discovery">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="pam-discovery">
+                      <AccordionTrigger>
                         <span className="flex-1">Discovery Sources</span>
                         <Badge variant="neutral">{resources?.pamDiscoverySources.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.pamDiscoverySources.map((source, idx) => (
                           <ResourceRow
                             key={source.id}
@@ -228,17 +228,17 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.pamDiscoverySources.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
 
                   {(resources?.kubernetesAuths.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="kubernetes-auth">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="kubernetes-auth">
+                      <AccordionTrigger>
                         <span className="flex-1">Kubernetes Auth</span>
                         <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.kubernetesAuths.map((auth, idx) => (
                           <ResourceRow
                             key={auth.id}
@@ -249,17 +249,17 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.kubernetesAuths.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
 
                   {(resources?.mcpServers.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="mcp-servers">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="mcp-servers">
+                      <AccordionTrigger>
                         <span className="flex-1">MCP Servers</span>
                         <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.mcpServers.map((server, idx) => (
                           <ResourceRow
                             key={server.id}
@@ -274,17 +274,17 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.mcpServers.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
 
                   {(resources?.pkiDiscoveryConfigs.length ?? 0) > 0 && (
-                    <UnstableAccordionItem value="pki-discovery">
-                      <UnstableAccordionTrigger>
+                    <AccordionItem value="pki-discovery">
+                      <AccordionTrigger>
                         <span className="flex-1">PKI Discovery</span>
                         <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
-                      </UnstableAccordionTrigger>
-                      <UnstableAccordionContent className="p-0">
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
                         {resources?.pkiDiscoveryConfigs.map((config, idx) => (
                           <ResourceRow
                             key={config.id}
@@ -299,10 +299,10 @@ export const GatewayConnectedResourcesDrawer = ({
                             isLast={idx === (resources?.pkiDiscoveryConfigs.length ?? 0) - 1}
                           />
                         ))}
-                      </UnstableAccordionContent>
-                    </UnstableAccordionItem>
+                      </AccordionContent>
+                    </AccordionItem>
                   )}
-                </UnstableAccordion>
+                </Accordion>
               )}
             </div>
           )}

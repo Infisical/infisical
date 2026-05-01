@@ -30,7 +30,8 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   autoRenewalDaysBeforeExpiry: z.number().nullable().optional(),
   lastRenewalStatus: z.string().nullable().optional(),
   lastRenewalMessage: z.string().nullable().optional(),
-  lastRenewalAt: z.date().nullable().optional()
+  lastRenewalAt: z.date().nullable().optional(),
+  crlDistributionPointUrls: z.string().array().nullable().optional()
 });
 
 export type TInternalCertificateAuthorities = z.infer<typeof InternalCertificateAuthoritiesSchema>;

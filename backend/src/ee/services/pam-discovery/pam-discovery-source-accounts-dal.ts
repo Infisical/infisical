@@ -21,7 +21,8 @@ export const pamDiscoverySourceAccountsDALFactory = (db: TDbClient) => {
       const dbInstance = tx || db.replicaNode();
       const query = dbInstance(TableName.PamDiscoverySourceAccount)
         .join(TableName.PamAccount, `${TableName.PamDiscoverySourceAccount}.accountId`, `${TableName.PamAccount}.id`)
-        .join(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
         .where(`${TableName.PamDiscoverySourceAccount}.discoverySourceId`, discoverySourceId);
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
@@ -30,9 +31,12 @@ export const pamDiscoverySourceAccountsDALFactory = (db: TDbClient) => {
         selectAllTableCols(TableName.PamDiscoverySourceAccount),
         db.ref("name").withSchema(TableName.PamAccount).as("accountName"),
         db.ref("resourceId").withSchema(TableName.PamAccount).as("resourceId"),
+        db.ref("domainId").withSchema(TableName.PamAccount).as("domainId"),
         db.ref("resourceType").withSchema(TableName.PamResource).as("resourceType"),
+        db.ref("domainType").withSchema(TableName.PamDomain).as("domainType"),
         db.ref("internalMetadata").withSchema(TableName.PamAccount).as("internalMetadata"),
-        db.ref("name").withSchema(TableName.PamResource).as("resourceName")
+        db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
+        db.ref("name").withSchema(TableName.PamDomain).as("domainName")
       );
 
       void query.orderBy(`${TableName.PamAccount}.name`, "asc");

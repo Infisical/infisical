@@ -22,44 +22,44 @@ import { Blur } from "@app/components/v2/Blur";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
+  Pagination,
   Popover,
   PopoverContent,
   PopoverTrigger,
   ProjectIcon,
   Skeleton,
   SubOrgIcon,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -222,16 +222,14 @@ export const IdentityTab = withProjectPermission(
 
     return (
       <>
-        <UnstableCard>
-          <UnstableCardHeader>
-            <UnstableCardTitle>
+        <Card>
+          <CardHeader>
+            <CardTitle>
               Project Machine Identities
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
-            </UnstableCardTitle>
-            <UnstableCardDescription>
-              Create and manage project machine identities
-            </UnstableCardDescription>
-            <UnstableCardAction>
+            </CardTitle>
+            <CardDescription>Create and manage project machine identities</CardDescription>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Create}
                 a={ProjectPermissionSub.Identity}
@@ -247,9 +245,9 @@ export const IdentityTab = withProjectPermission(
                   </Button>
                 )}
               </ProjectPermissionCan>
-            </UnstableCardAction>
-          </UnstableCardHeader>
-          <UnstableCardContent>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
             <div>
               <div className="mb-4 flex gap-2">
                 <InputGroup className="flex-1">
@@ -262,16 +260,16 @@ export const IdentityTab = withProjectPermission(
                     placeholder="Search project machine identities by name..."
                   />
                 </InputGroup>
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
-                    <UnstableIconButton variant={isTableFiltered ? "project" : "outline"}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton variant={isTableFiltered ? "project" : "outline"}>
                       <FilterIcon />
-                    </UnstableIconButton>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
-                    <UnstableDropdownMenuLabel>Filter by Project Role</UnstableDropdownMenuLabel>
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Filter by Project Role</DropdownMenuLabel>
                     {projectRoles?.map(({ id, slug, name }) => (
-                      <UnstableDropdownMenuCheckboxItem
+                      <DropdownMenuCheckboxItem
                         key={id}
                         checked={filterRoles.includes(slug)}
                         onClick={(e) => {
@@ -280,32 +278,32 @@ export const IdentityTab = withProjectPermission(
                         }}
                       >
                         {name}
-                      </UnstableDropdownMenuCheckboxItem>
+                      </DropdownMenuCheckboxItem>
                     ))}
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               {!isPending && data && data.totalCount === 0 ? (
-                <UnstableEmpty className="border">
-                  <UnstableEmptyHeader>
-                    <UnstableEmptyTitle>
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "No machine identities match search"
                         : "No machine identities have been added to this project"}
-                    </UnstableEmptyTitle>
-                    <UnstableEmptyDescription>
+                    </EmptyTitle>
+                    <EmptyDescription>
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "Adjust your search or filter criteria."
                         : "Add a machine identity to get started."}
-                    </UnstableEmptyDescription>
-                  </UnstableEmptyHeader>
-                </UnstableEmpty>
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               ) : (
                 <>
-                  <UnstableTable>
-                    <UnstableTableHeader>
-                      <UnstableTableRow>
-                        <UnstableTableHead
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead
                           className="w-1/3"
                           onClick={() => handleSort(ProjectIdentityOrderBy.Name)}
                         >
@@ -319,31 +317,31 @@ export const IdentityTab = withProjectPermission(
                               orderBy !== ProjectIdentityOrderBy.Name && "opacity-30"
                             )}
                           />
-                        </UnstableTableHead>
-                        <UnstableTableHead className="w-1/3">Project Role</UnstableTableHead>
-                        <UnstableTableHead>Managed by</UnstableTableHead>
-                        <UnstableTableHead className="w-5">
+                        </TableHead>
+                        <TableHead className="w-1/3">Project Role</TableHead>
+                        <TableHead>Managed by</TableHead>
+                        <TableHead className="w-5">
                           {isFetching ? <Spinner size="xs" /> : null}
-                        </UnstableTableHead>
-                      </UnstableTableRow>
-                    </UnstableTableHeader>
-                    <UnstableTableBody>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {isPending &&
                         Array.from({ length: 10 }).map((_, i) => (
-                          <UnstableTableRow key={`skeleton-${i + 1}`}>
-                            <UnstableTableCell>
+                          <TableRow key={`skeleton-${i + 1}`}>
+                            <TableCell>
                               <Skeleton className="h-4 w-full" />
-                            </UnstableTableCell>
-                            <UnstableTableCell>
+                            </TableCell>
+                            <TableCell>
                               <Skeleton className="h-4 w-full" />
-                            </UnstableTableCell>
-                            <UnstableTableCell>
+                            </TableCell>
+                            <TableCell>
                               <Skeleton className="h-4 w-full" />
-                            </UnstableTableCell>
-                            <UnstableTableCell>
+                            </TableCell>
+                            <TableCell>
                               <Skeleton className="h-4 w-4" />
-                            </UnstableTableCell>
-                          </UnstableTableRow>
+                            </TableCell>
+                          </TableRow>
                         ))}
                       {!isPending &&
                         data &&
@@ -359,7 +357,7 @@ export const IdentityTab = withProjectPermission(
                             roles
                           } = identityMember;
                           return (
-                            <UnstableTableRow
+                            <TableRow
                               className="group cursor-pointer"
                               key={`st-v3-${id}`}
                               role="button"
@@ -387,8 +385,8 @@ export const IdentityTab = withProjectPermission(
                                 })
                               }
                             >
-                              <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
-                              <UnstableTableCell>
+                              <TableCell isTruncatable>{name}</TableCell>
+                              <TableCell>
                                 <div className="flex items-center gap-1.5">
                                   {roles
                                     .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
@@ -497,8 +495,8 @@ export const IdentityTab = withProjectPermission(
                                     </Popover>
                                   )}
                                 </div>
-                              </UnstableTableCell>
-                              <UnstableTableCell>
+                              </TableCell>
+                              <TableCell>
                                 <Badge
                                   variant={
                                     // eslint-disable-next-line no-nested-ternary
@@ -527,19 +525,19 @@ export const IdentityTab = withProjectPermission(
                                     </>
                                   )}
                                 </Badge>
-                              </UnstableTableCell>
-                              <UnstableTableCell>
-                                <UnstableDropdownMenu>
-                                  <UnstableDropdownMenuTrigger asChild>
-                                    <UnstableIconButton
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <IconButton
                                       variant="ghost"
                                       size="xs"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <MoreHorizontalIcon />
-                                    </UnstableIconButton>
-                                  </UnstableDropdownMenuTrigger>
-                                  <UnstableDropdownMenuContent sideOffset={2} align="end">
+                                    </IconButton>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent sideOffset={2} align="end">
                                     <ProjectPermissionCan
                                       I={ProjectPermissionActions.Delete}
                                       a={subject(ProjectPermissionSub.Identity, {
@@ -547,7 +545,7 @@ export const IdentityTab = withProjectPermission(
                                       })}
                                     >
                                       {(isAllowed) => (
-                                        <UnstableDropdownMenuItem
+                                        <DropdownMenuItem
                                           variant="danger"
                                           isDisabled={!isAllowed}
                                           onClick={(evt) => {
@@ -564,33 +562,33 @@ export const IdentityTab = withProjectPermission(
                                           {identityProjectId
                                             ? "Delete Machine Identity"
                                             : "Remove From Project"}
-                                        </UnstableDropdownMenuItem>
+                                        </DropdownMenuItem>
                                       )}
                                     </ProjectPermissionCan>
-                                  </UnstableDropdownMenuContent>
-                                </UnstableDropdownMenu>
-                              </UnstableTableCell>
-                            </UnstableTableRow>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
                           );
                         })}
                       {!isPending &&
                         data &&
                         data?.totalCount !== 0 &&
                         Array.from(Array(noAccessIdentityCount)).map((_e, i) => (
-                          <UnstableTableRow key={`hid-identity-${i + 1}`}>
-                            <UnstableTableCell>No Access</UnstableTableCell>
-                            <UnstableTableCell colSpan={3}>
+                          <TableRow key={`hid-identity-${i + 1}`}>
+                            <TableCell>No Access</TableCell>
+                            <TableCell colSpan={3}>
                               <Blur
                                 className="w-min"
                                 tooltipText="You do not have permission to view this machine identity."
                               />
-                            </UnstableTableCell>
-                          </UnstableTableRow>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                    </UnstableTableBody>
-                  </UnstableTable>
+                    </TableBody>
+                  </Table>
                   {!isPending && data && totalCount > 0 && (
-                    <UnstablePagination
+                    <Pagination
                       count={totalCount}
                       page={page}
                       perPage={perPage}
@@ -601,8 +599,8 @@ export const IdentityTab = withProjectPermission(
                 </>
               )}
             </div>
-          </UnstableCardContent>
-        </UnstableCard>
+          </CardContent>
+        </Card>
         <Modal
           isOpen={popUp.createIdentity.isOpen}
           onOpenChange={(open) => {

@@ -10,7 +10,7 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
     ),
   placeholder: () => "text-muted text-sm",
   input: () => "text-foreground text-sm",
-  singleValue: () => "truncate pr-2",
+  singleValue: () => "truncate pr-2 text-foreground",
   valueContainer: () =>
     "gap-1 max-h-40 !pointer-events-auto !overflow-y-auto thin-scrollbar flex-wrap",
   multiValue: () => "bg-foreground/10 rounded px-1.5 py-0.5 gap-1 text-xs items-center",
@@ -25,7 +25,7 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
     ),
   dropdownIndicator: () =>
     "opacity-50 p-1 hover:bg-foreground/10 cursor-pointer rounded-md [&>svg]:size-4",
-  indicatorsContainer: () => "gap-1 flex items-center",
+  indicatorsContainer: () => "gap-1 flex items-center text-foreground",
   indicatorSeparator: () => "bg-accent/20",
   clearIndicator: () =>
     "opacity-50 hover:opacity-100 hover:bg-foreground/10 cursor-pointer rounded-md p-1 text-danger [&>svg]:size-4",

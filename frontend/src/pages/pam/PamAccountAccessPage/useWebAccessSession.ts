@@ -18,6 +18,7 @@ type UseWebAccessSessionOptions = {
   resourceName: string;
   accountName: string;
   resourceType: string;
+  reason?: string;
   onSessionEnd?: () => void;
 };
 
@@ -28,6 +29,7 @@ export const useWebAccessSession = ({
   resourceName,
   accountName,
   resourceType,
+  reason,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -45,6 +47,10 @@ export const useWebAccessSession = ({
   const nextPromptRejecterRef = useRef<((reason: Error) => void) | null>(null);
 
   const onSessionEndRef = useRef(onSessionEnd);
+  // Seed with the prop so non-SSH flows (which collect reason via the upfront ReasonGate)
+  // pass it on the first connect; SSH leaves it undefined and uses the inline terminal prompt.
+  const submittedReasonRef = useRef<string | undefined>(reason);
+  const askedOptionalReasonRef = useRef(false);
 
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
@@ -237,13 +243,27 @@ export const useWebAccessSession = ({
     try {
       const { data } = await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { projectId }
+        { projectId, reason: submittedReasonRef.current }
       );
       if (containerEl) {
         containerEl.style.width = "";
         isWidenedRef.current = false;
       }
       if (fitAddonRef.current) fitAddonRef.current.fit();
+
+      if (isSSH && submittedReasonRef.current === undefined && !askedOptionalReasonRef.current) {
+        askedOptionalReasonRef.current = true;
+        const optional = await prompt(
+          "\r\nOptionally provide a reason for this session (press Enter to skip): "
+        );
+        if (optional.trim()) {
+          submittedReasonRef.current = optional.trim();
+          terminal.reset();
+          connect();
+          return;
+        }
+      }
+
       terminal.reset();
       openWebSocket(terminal, data.ticket);
     } catch (err: unknown) {
@@ -329,7 +349,7 @@ export const useWebAccessSession = ({
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
             `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-            { projectId, mfaSessionId }
+            { projectId, mfaSessionId, reason: submittedReasonRef.current }
           );
           openWebSocket(terminal, retryData.ticket);
         } catch {
@@ -378,7 +398,7 @@ export const useWebAccessSession = ({
 
           terminal.write("\r\nApproval request created successfully!\r\n");
 
-          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approval-requests/${approvalData.request.id}`;
+          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalData.request.id}`;
           terminal.write(`View details at: ${approvalUrl}\r\n`);
 
           await prompt("\r\nOnce approved, press Enter to reconnect.");
@@ -395,6 +415,25 @@ export const useWebAccessSession = ({
           terminal.reset();
           connect();
         }
+        return;
+      }
+
+      if (axiosErr?.response?.data?.error === "PAM_REASON_REQUIRED") {
+        terminal.write("\r\nThis account requires a reason for access.\r\n");
+
+        const reasonInput = await prompt("\r\nEnter reason: ");
+
+        if (!reasonInput.trim()) {
+          terminal.write("\r\nA reason is required to continue.\r\n");
+          await prompt("\r\nPress Enter to try again.");
+          terminal.reset();
+          connect();
+          return;
+        }
+
+        submittedReasonRef.current = reasonInput.trim();
+        terminal.reset();
+        connect();
         return;
       }
 

@@ -82,7 +82,7 @@ export const createSshKeyPair = async (keyAlgorithm: SshCertKeyAlgorithm) => {
     if (keyBits !== null) {
       args.push("-b", keyBits);
     }
-    args.push("-f", privateKeyFile, "-N", "");
+    args.push("-f", privateKeyFile, "-N", "", "-C", "Infisical");
 
     // Generate the SSH key pair
     // The "-N ''" sets an empty passphrase

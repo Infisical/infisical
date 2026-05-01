@@ -9,7 +9,11 @@ import { PamResourceType, TWindowsAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { WindowsAccountType } from "@app/hooks/api/pam/types/windows-server-resource";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
@@ -143,6 +147,7 @@ export const WindowsAccountForm = ({ account, onSubmit, closeSheet }: Props) => 
             />
           </div>
           <RequireMfaField />
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

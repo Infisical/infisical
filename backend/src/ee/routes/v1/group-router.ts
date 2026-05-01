@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
+import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema } from "@app/db/schemas";
 import {
   FilterMemberType,
   FilterReturnedMachineIdentities,
@@ -15,6 +15,7 @@ import { CharacterType, characterValidator } from "@app/lib/validator/validate-s
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const GroupIdentityResponseSchema = IdentitiesSchema.pick({
@@ -231,7 +232,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: UsersSchema.pick({
+          users: SanitizedUserSchema.pick({
             email: true,
             username: true,
             firstName: true,
@@ -372,7 +373,13 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
                 id: z.string(),
                 joinedGroupAt: z.date().nullable(),
                 type: z.literal("user"),
-                user: UsersSchema.pick({ id: true, firstName: true, lastName: true, email: true, username: true })
+                user: SanitizedUserSchema.pick({
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  username: true
+                })
               }),
               z.object({
                 id: z.string(),
@@ -482,7 +489,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: z.string().trim().describe(GROUPS.ADD_USER.username)
       }),
       response: {
-        200: UsersSchema.pick({
+        200: SanitizedUserSchema.pick({
           email: true,
           username: true,
           firstName: true,
@@ -556,7 +563,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: z.string().trim().describe(GROUPS.DELETE_USER.username)
       }),
       response: {
-        200: UsersSchema.pick({
+        200: SanitizedUserSchema.pick({
           email: true,
           username: true,
           firstName: true,

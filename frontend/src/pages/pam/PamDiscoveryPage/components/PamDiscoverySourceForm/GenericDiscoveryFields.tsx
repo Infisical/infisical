@@ -8,12 +8,12 @@ import {
   FieldError,
   FieldLabel,
   FilterableSelect,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  UnstableInput
+  SelectValue
 } from "@app/components/v3";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 
@@ -51,7 +51,7 @@ export const GenericDiscoveryFields = () => {
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
               <div className="relative">
-                <UnstableInput
+                <Input
                   {...field}
                   autoFocus
                   isError={Boolean(error)}

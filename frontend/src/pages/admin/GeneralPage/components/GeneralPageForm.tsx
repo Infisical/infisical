@@ -51,9 +51,9 @@ export const GeneralPageForm = () => {
       // eslint-disable-next-line
       signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain,
-      trustSamlEmails: config.trustSamlEmails,
-      trustLdapEmails: config.trustLdapEmails,
-      trustOidcEmails: config.trustOidcEmails,
+      trustSamlEmails: config.trustSamlEmails ?? false,
+      trustLdapEmails: config.trustLdapEmails ?? false,
+      trustOidcEmails: config.trustOidcEmails ?? false,
       defaultAuthOrgId: config.defaultAuthOrgId ?? "",
       authConsentContent: config.authConsentContent ?? "",
       pageFrameContent: config.pageFrameContent ?? ""

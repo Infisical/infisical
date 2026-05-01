@@ -8,6 +8,10 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const SantizedUserSchema = UsersSchema.omit({
+  hashedPassword: true
+});
+
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
@@ -21,7 +25,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       operationId: "getCurrentUserV1",
       response: {
         200: z.object({
-          user: UsersSchema.extend({
+          user: SantizedUserSchema.extend({
             encryptionVersion: z.number()
           })
         })
@@ -44,7 +48,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       operationId: "getDuplicateUserAccounts",
       response: {
         200: z.object({
-          users: UsersSchema.extend({
+          users: SantizedUserSchema.extend({
             isMyAccount: z.boolean(),
             organizations: z.object({ name: z.string(), slug: z.string() }).array()
           }).array()

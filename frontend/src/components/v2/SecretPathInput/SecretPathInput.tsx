@@ -10,7 +10,7 @@ import { useGetFoldersByEnv } from "@app/hooks/api";
 
 import { Input } from "../Input";
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & {
+type BaseProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & {
   value?: string | null;
   isImport?: boolean;
   isVisible?: boolean;
@@ -20,28 +20,29 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & 
   containerClassName?: string;
   onChange?: (arg: string) => void;
   folderNames?: string[];
+  projectId: string;
 };
 
-export const SecretPathInput = ({
+type Props = Omit<BaseProps, "projectId"> & { projectId?: string };
+
+const SecretPathInputBase = ({
   containerClassName,
   onChange,
   environment,
+  projectId,
   value: propValue,
   folderNames: folderNamesProp,
   ...props
-}: Props) => {
+}: BaseProps) => {
   const [inputValue, setInputValue] = useState(propValue ?? "");
   const [secretPath, setSecretPath] = useState("/");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isInputFocused, setIsInputFocus] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [debouncedInputValue] = useDebounce(inputValue, 200);
-
-  const { currentProject } = useProject();
-  const projectId = currentProject?.id || "";
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
-    environments: [environment || currentProject?.environments?.[0].slug || ""],
+    environments: [environment || ""],
     projectId
   });
 
@@ -164,7 +165,7 @@ export const SecretPathInput = ({
                     <div className="flex items-center text-yellow-700">
                       <FontAwesomeIcon icon={faFolder} />
                     </div>
-                    <div className="text-md w-10/12 truncate text-left">{suggestion}</div>
+                    <div className="text-md text-left">{suggestion}</div>
                   </div>
                 </div>
               </div>
@@ -174,4 +175,25 @@ export const SecretPathInput = ({
       </Popover.Portal>
     </Popover.Root>
   );
+};
+
+const SecretPathInputWithProjectContext = ({
+  environment,
+  ...props
+}: Omit<BaseProps, "projectId">) => {
+  const { currentProject } = useProject();
+  return (
+    <SecretPathInputBase
+      projectId={currentProject?.id || ""}
+      environment={environment || currentProject?.environments?.[0].slug}
+      {...props}
+    />
+  );
+};
+
+export const SecretPathInput = ({ projectId, ...props }: Props) => {
+  if (projectId !== undefined) {
+    return <SecretPathInputBase projectId={projectId} {...props} />;
+  }
+  return <SecretPathInputWithProjectContext {...props} />;
 };

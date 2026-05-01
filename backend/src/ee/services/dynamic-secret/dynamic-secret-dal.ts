@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TDynamicSecrets } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -142,7 +143,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (search) {
-            void bd.whereILike(`${TableName.DynamicSecret}.name`, `%${search}%`);
+            void bd.whereILike(`${TableName.DynamicSecret}.name`, `%${sanitizeSqlLikeString(search)}%`);
           }
         })
         .leftJoin(

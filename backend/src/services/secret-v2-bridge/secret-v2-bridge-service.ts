@@ -33,7 +33,7 @@ import {
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -41,6 +41,8 @@ import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordSecretReadMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -144,8 +146,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
-
-const ETAG_TTL = 900; // 15 minutes in seconds
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
 
@@ -345,7 +345,9 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     await scanSecretPolicyViolations(
       projectId,
       secretPath,
@@ -603,7 +605,9 @@ export const secretV2BridgeServiceFactory = ({
     const { secretName, secretValue } = inputSecret;
 
     if (secretValue) {
-      const project = await projectDAL.findById(projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
       await scanSecretPolicyViolations(
         projectId,
         secretPath,
@@ -625,7 +629,7 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         envId: folder.envId,
         secretPath,
-        secrets: [{ key: finalKey, value: secretValue }]
+        secrets: [{ key: finalKey, value: secretValue, secretId }]
       });
     }
 
@@ -1241,7 +1245,7 @@ export const secretV2BridgeServiceFactory = ({
         };
         const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
-        await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+        await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1492,7 +1496,7 @@ export const secretV2BridgeServiceFactory = ({
       }
       const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-      await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+      await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
     }
 
@@ -1566,7 +1570,7 @@ export const secretV2BridgeServiceFactory = ({
     }
     const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-    await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+    await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };
   };
 
@@ -1946,7 +1950,9 @@ export const secretV2BridgeServiceFactory = ({
     if (secrets.length)
       throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     await scanSecretPolicyViolations(
       projectId,
       secretPath,
@@ -2310,7 +2316,9 @@ export const secretV2BridgeServiceFactory = ({
         });
         await $validateSecretReferences(projectId, permission, secretReferences, tx);
 
-        const project = await projectDAL.findById(projectId);
+        const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+          projectDAL.findById(projectId)
+        );
         await scanSecretPolicyViolations(
           projectId,
           secretPath,
@@ -2327,7 +2335,11 @@ export const secretV2BridgeServiceFactory = ({
         const secretsToValidate = [
           ...secretsToUpdate
             .filter((el) => el.secretValue || el.newSecretName)
-            .map((el) => ({ key: el.newSecretName || el.secretKey, value: el.secretValue })),
+            .map((el) => ({
+              key: el.newSecretName || el.secretKey,
+              value: el.secretValue,
+              secretId: secretsToUpdateInDBGroupedByKey[el.secretKey]?.[0]?.id
+            })),
           ...(updateMode === SecretUpdateMode.Upsert
             ? secretsToCreate.map((el) => ({ key: el.secretKey, value: el.secretValue }))
             : [])
@@ -2970,6 +2982,17 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       const destinationSecretsGroupedByKey = groupBy(decryptedDestinationSecrets, (i) => i.key);
+
+      const sourceKeys = decryptedSourceSecrets.map((s) => s.key);
+
+      const conflictingRotationSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isRotatedSecret
+      );
+      if (conflictingRotationSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a secret rotation at the destination: ${conflictingRotationSecretKeys.join(", ")}`
+        });
+      }
 
       const locallyCreatedSecrets = decryptedSourceSecrets
         .filter(({ key }) => !destinationSecretsGroupedByKey[key]?.[0])

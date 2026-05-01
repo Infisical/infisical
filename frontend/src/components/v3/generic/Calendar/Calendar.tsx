@@ -7,7 +7,7 @@ import { type DayButton, DayPicker, getDefaultClassNames, type Locale } from "re
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "../../utils";
-import { iconButtonVariants, UnstableIconButton } from "../IconButton";
+import { IconButton, iconButtonVariants } from "../IconButton";
 
 function CalendarDayButton({
   className,
@@ -24,7 +24,7 @@ function CalendarDayButton({
   }, [modifiers.focused]);
 
   return (
-    <UnstableIconButton
+    <IconButton
       ref={ref}
       variant="ghost"
       size="xs"
@@ -39,7 +39,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 hover:text-foreground data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-foreground data-[range-end=true]:text-background data-[range-end=true]:hover:text-background data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-foreground data-[range-start=true]:text-background data-[range-start=true]:hover:text-background data-[selected-single=true]:bg-foreground data-[selected-single=true]:text-background data-[selected-single=true]:hover:text-background [&>span]:text-xs [&>span]:opacity-70",
+        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 hover:text-foreground data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-foreground data-[range-end=true]:text-background data-[range-end=true]:hover:text-background data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted/[12%] data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-foreground data-[range-start=true]:text-background data-[range-start=true]:hover:text-background data-[selected-single=true]:bg-foreground data-[selected-single=true]:text-background data-[selected-single=true]:hover:text-background [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className
       )}
@@ -59,7 +59,7 @@ function Calendar({
   components,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
-  buttonVariant?: React.ComponentProps<typeof UnstableIconButton>["variant"];
+  buttonVariant?: React.ComponentProps<typeof IconButton>["variant"];
 }) {
   const defaultClassNames = getDefaultClassNames();
 
@@ -67,7 +67,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
+        "group/calendar bg-background p-2 text-foreground [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -136,12 +136,12 @@ function Calendar({
           defaultClassNames.day
         ),
         range_start: cn(
-          "rounded-l-(--cell-radius) bg-muted relative after:bg-muted after:absolute after:inset-y-0 after:w-4 after:right-0 z-0 isolate",
+          "rounded-l-(--cell-radius) bg-muted/[12%] relative after:bg-muted/[12%] after:absolute after:inset-y-0 after:w-4 after:right-0 z-0 isolate",
           defaultClassNames.range_start
         ),
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn(
-          "rounded-r-(--cell-radius) bg-muted relative after:bg-muted after:absolute after:inset-y-0 after:w-4 after:left-0 z-0 isolate",
+          "rounded-r-(--cell-radius) bg-muted/[12%] relative after:bg-muted/[12%] after:absolute after:inset-y-0 after:w-4 after:left-0 z-0 isolate",
           defaultClassNames.range_end
         ),
         today: cn(
@@ -152,7 +152,7 @@ function Calendar({
           "[&_button]:text-accent [&_button]:aria-selected:text-accent",
           defaultClassNames.outside
         ),
-        disabled: cn("[&_button]:text-accent opacity-50", defaultClassNames.disabled),
+        disabled: cn("[&_button]:text-accent", defaultClassNames.disabled),
         hidden: cn("invisible", defaultClassNames.hidden),
         ...classNames
       }}

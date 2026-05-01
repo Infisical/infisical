@@ -12,9 +12,13 @@ import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
   Button,
   FilterableSelect,
+  IconButton,
   Select,
   SelectContent,
   SelectItem,
@@ -22,11 +26,7 @@ import {
   SelectValue,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionGroupActions,
@@ -274,8 +274,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
 
   return (
-    <UnstableAccordionItem value={subject}>
-      <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
+    <AccordionItem value={subject}>
+      <AccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
         <div className="flex flex-1 items-center gap-2 text-left">
           <div className="flex grow flex-col">
             <span className="text-base select-none">{title}</span>
@@ -327,8 +327,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
             </div>
           )}
         </div>
-      </UnstableAccordionTrigger>
-      <UnstableAccordionContent className="!p-0">
+      </AccordionTrigger>
+      <AccordionContent className="!p-0">
         <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-container p-3">
           {fields.map((el, rootIndex) => {
             const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
@@ -394,14 +394,14 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                     {!isDisabled && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <UnstableIconButton
+                          <IconButton
                             aria-label="Remove rule"
                             variant="danger"
                             onClick={() => remove(rootIndex)}
                             isDisabled={isDisabled}
                           >
                             <TrashIcon className="size-4" />
-                          </UnstableIconButton>
+                          </IconButton>
                         </TooltipTrigger>
                         <TooltipContent side="top">Remove Rule</TooltipContent>
                       </Tooltip>
@@ -416,7 +416,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
             );
           })}
         </div>
-      </UnstableAccordionContent>
-    </UnstableAccordionItem>
+      </AccordionContent>
+    </AccordionItem>
   );
 };

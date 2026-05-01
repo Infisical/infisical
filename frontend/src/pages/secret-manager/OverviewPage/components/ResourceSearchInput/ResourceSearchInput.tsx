@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GlobeIcon, SearchIcon, XIcon } from "lucide-react";
 
 import {
+  ButtonGroup,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -10,10 +12,9 @@ import {
   PopoverTrigger,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableButtonGroup,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
+import { useDebounce } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
 
@@ -24,7 +25,7 @@ type Props = Omit<QuickSearchModalProps, "isOpen" | "onClose" | "onOpenChange" |
 };
 
 export const ResourceSearchInput = ({
-  value,
+  value: externalValue,
   onChange,
   className,
   isSingleEnv,
@@ -35,16 +36,42 @@ export const ResourceSearchInput = ({
   const [isOptionHighlighted, setIsOptionHighlighted] = useState(false);
   const deepSearchBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasSearch = Boolean(value.trim());
+
+  // local input state so typing doesn't re-render the whole table
+  const [inputValue, setInputValue] = useState(externalValue);
+  const [debouncedInputValue] = useDebounce(inputValue);
+  const lastEmittedValue = useRef(externalValue);
+
+  useEffect(() => {
+    if (externalValue !== lastEmittedValue.current) {
+      setInputValue(externalValue);
+      lastEmittedValue.current = externalValue;
+    }
+  }, [externalValue]);
+
+  useEffect(() => {
+    if (debouncedInputValue !== lastEmittedValue.current) {
+      lastEmittedValue.current = debouncedInputValue;
+      onChange(debouncedInputValue);
+    }
+  }, [debouncedInputValue, onChange]);
+
+  const handleClear = () => {
+    setInputValue("");
+    lastEmittedValue.current = "";
+    onChange("");
+  };
+
+  const hasSearch = Boolean(inputValue.trim());
 
   return (
     <>
-      <UnstableButtonGroup>
+      <ButtonGroup>
         <Tooltip>
           <TooltipTrigger asChild>
-            <UnstableIconButton variant="outline" onClick={() => setIsOpen(true)}>
+            <IconButton variant="outline" onClick={() => setIsOpen(true)}>
               <SearchIcon />
-            </UnstableIconButton>
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent>Search All Folders</TooltipContent>
         </Tooltip>
@@ -60,9 +87,9 @@ export const ResourceSearchInput = ({
                       ? "Search by secret, folder, tag or metadata..."
                       : "Search by secret or folder name..."
                   }
-                  value={value}
+                  value={inputValue}
                   onChange={(e) => {
-                    onChange(e.target.value);
+                    setInputValue(e.target.value);
                     setIsOptionHighlighted(false);
                   }}
                   onFocus={() => setIsFocused(true)}
@@ -90,9 +117,9 @@ export const ResourceSearchInput = ({
                 />
                 {hasSearch && (
                   <InputGroupAddon align="inline-end">
-                    <UnstableIconButton variant="ghost" size="xs" onClick={() => onChange("")}>
+                    <IconButton variant="ghost" size="xs" onClick={handleClear}>
                       <XIcon />
-                    </UnstableIconButton>
+                    </IconButton>
                   </InputGroupAddon>
                 )}
               </InputGroup>
@@ -115,19 +142,21 @@ export const ResourceSearchInput = ({
               }}
             >
               <GlobeIcon className="size-4 shrink-0 text-muted" />
-              <span className="truncate">Search all folders for &quot;{value.trim()}&quot;</span>
+              <span className="truncate">
+                Search all folders for &quot;{inputValue.trim()}&quot;
+              </span>
             </button>
           </PopoverContent>
         </Popover>
-      </UnstableButtonGroup>
+      </ButtonGroup>
       <QuickSearchModal
         isSingleEnv={isSingleEnv}
         isOpen={isOpen}
         onOpenChange={setIsOpen}
-        initialValue={value}
+        initialValue={inputValue}
         onClose={() => {
           setIsOpen(false);
-          onChange("");
+          handleClear();
         }}
         {...props}
       />

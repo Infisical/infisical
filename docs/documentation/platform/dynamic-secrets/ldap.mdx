@@ -56,6 +56,10 @@ The Infisical LDAP dynamic secret allows you to generate user credentials on dem
           CA certificate to use for TLS in case of a secure connection.
         </ParamField>
 
+        <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+          If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+        </ParamField>
+
         <ParamField path="Credential Type" type="enum">
           The type of LDAP credential - select Dynamic.
         </ParamField>
@@ -195,6 +199,10 @@ The Infisical LDAP dynamic secret allows you to generate user credentials on dem
 
         <ParamField path="CA" type="text">
           CA certificate to use for TLS in case of a secure connection.
+        </ParamField>
+
+        <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+          If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
         </ParamField>
 
         <ParamField path="Credential Type" type="enum">

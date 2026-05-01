@@ -16,13 +16,13 @@ import {
 import {
   Badge,
   Button,
-  DocumentationLinkBadge,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -204,16 +204,16 @@ export const OrgMembersSection = () => {
           </OrgPermissionCan>
         </div>
       </div>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Users
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>
+          </CardTitle>
+          <CardDescription>
             Invite and manage {isSubOrganization ? "sub-" : ""}organization users
-          </UnstableCardDescription>
-          <UnstableCardAction>
+          </CardDescription>
+          <CardAction>
             <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
               {(isAllowed) => (
                 <Button
@@ -233,17 +233,17 @@ export const OrgMembersSection = () => {
                 </Button>
               )}
             </OrgPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <OrgMembersTable
             handlePopUpOpen={handlePopUpOpen}
             setCompleteInviteLinks={setCompleteInviteLinks}
             selectedMemberIds={selectedMemberIds}
             setSelectedMemberIds={setSelectedMemberIds}
           />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <AddOrgMemberModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}

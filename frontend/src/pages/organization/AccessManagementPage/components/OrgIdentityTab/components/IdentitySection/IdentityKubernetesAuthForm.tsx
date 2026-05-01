@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faInfoCircle, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -16,6 +15,7 @@ import {
   Input,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -23,6 +23,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3";
 import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
@@ -30,7 +31,6 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import {
-  gatewaysQueryKeys,
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
@@ -39,8 +39,11 @@ import {
   IdentityKubernetesAuthTokenReviewMode,
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
-import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
-import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
+import {
+  ExternalMigrationProviders,
+  VaultKubernetesAuthRole
+} from "@app/hooks/api/migration/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -54,10 +57,12 @@ const schema = z
     kubernetesHost: z.string().optional().nullable(),
     tokenReviewerJwt: z.string().optional(),
     gatewayId: z.string().optional().nullable(),
+    gatewayPoolId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
     caCert: z.string().optional(),
+    verifyTlsCertificate: z.boolean().default(true),
     accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
       message: "Access Token TTL cannot be greater than 315360000"
     }),
@@ -85,11 +90,41 @@ const schema = z
       });
     }
 
-    if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+    if (
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+      !data.gatewayId &&
+      !data.gatewayPoolId
+    ) {
       ctx.addIssue({
         path: ["gatewayId"],
         code: z.ZodIssueCode.custom,
-        message: "When token review mode is set to Gateway, a gateway must be selected"
+        message:
+          "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+      });
+    }
+
+    if (
+      data.verifyTlsCertificate &&
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !data.caCert?.length
+    ) {
+      ctx.addIssue({
+        path: ["caCert"],
+        code: z.ZodIssueCode.custom,
+        message: "A CA certificate is required when TLS certificate verification is enabled."
+      });
+    }
+
+    if (
+      data.verifyTlsCertificate === false &&
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      data.caCert?.length
+    ) {
+      ctx.addIssue({
+        path: ["verifyTlsCertificate"],
+        code: z.ZodIssueCode.custom,
+        message:
+          "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
       });
     }
   });
@@ -125,8 +160,6 @@ export const IdentityKubernetesAuthForm = ({
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
 
-  const { data: gateways, isPending: isGatewayLoading } = useQuery(gatewaysQueryKeys.list());
-
   const { data } = useGetIdentityKubernetesAuth(identityId ?? "", {
     enabled: isUpdate
   });
@@ -134,7 +167,9 @@ export const IdentityKubernetesAuthForm = ({
   const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
     "importFromVault"
   ] as const);
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
@@ -158,9 +193,10 @@ export const IdentityKubernetesAuthForm = ({
       gatewayId: "",
       allowedAudience: "",
       caCert: "",
+      verifyTlsCertificate: true,
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
-      accessTokenNumUsesLimit: "0",
+      accessTokenNumUsesLimit: "",
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
     }
   });
@@ -181,10 +217,14 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
-        gatewayId: data.gatewayId || null,
+        verifyTlsCertificate: data.verifyTlsCertificate ?? false,
+        gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
+        gatewayPoolId: data.gatewayPoolId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {
@@ -202,9 +242,10 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: "",
         allowedAudience: "",
         caCert: "",
+        verifyTlsCertificate: true,
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
-        accessTokenNumUsesLimit: "0",
+        accessTokenNumUsesLimit: "",
         accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
       });
     }
@@ -302,10 +343,12 @@ export const IdentityKubernetesAuthForm = ({
     allowedNamespaces,
     allowedAudience,
     caCert,
+    verifyTlsCertificate,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     gatewayId,
+    gatewayPoolId,
     tokenReviewMode,
     accessTokenTrustedIps
   }: FormData) => {
@@ -326,12 +369,14 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces,
         allowedAudience,
         caCert,
+        verifyTlsCertificate,
         identityId,
-        gatewayId: gatewayId || null,
+        gatewayId: gatewayPoolId ? null : gatewayId || null,
+        gatewayPoolId: gatewayPoolId || null,
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps
       });
     } else {
@@ -349,12 +394,14 @@ export const IdentityKubernetesAuthForm = ({
         allowedNames: allowedNames || "",
         allowedNamespaces: allowedNamespaces || "",
         allowedAudience: allowedAudience || "",
-        gatewayId: gatewayId || null,
+        gatewayId: gatewayPoolId ? null : gatewayId || null,
+        gatewayPoolId: gatewayPoolId || null,
         caCert: caCert || "",
+        verifyTlsCertificate,
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps
       });
     }
@@ -439,61 +486,46 @@ export const IdentityKubernetesAuthForm = ({
                     control={control}
                     name="gatewayId"
                     defaultValue=""
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Gateway"
-                        isOptional
-                      >
-                        <Tooltip
-                          isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
-                        >
-                          <div>
-                            <Select
-                              isDisabled={!isAllowed}
-                              value={value as string}
-                              onValueChange={(v) => {
-                                if (v !== "") {
-                                  onChange(v);
-                                }
+                    render={({ fieldState: { error } }) => {
+                      const gatewayPoolIdVal = watch("gatewayPoolId");
+                      const gatewayIdVal = watch("gatewayId");
 
-                                if (v === null) {
-                                  setValue(
-                                    "tokenReviewMode",
-                                    IdentityKubernetesAuthTokenReviewMode.Api,
-                                    {
-                                      shouldDirty: true,
-                                      shouldTouch: true
-                                    }
-                                  );
-                                }
-                              }}
-                              className="w-full border border-mineshaft-500"
-                              dropdownContainerClassName="max-w-none"
-                              isLoading={isGatewayLoading}
-                              placeholder="Default: Internet Gateway"
-                              position="popper"
-                            >
-                              <SelectItem
-                                value={null as unknown as string}
-                                onClick={() => {
-                                  onChange(null);
+                      return (
+                        <FormControl
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          label="Gateway"
+                          isOptional
+                        >
+                          <Tooltip
+                            isDisabled={isAllowed}
+                            content="Restricted access. You don't have permission to attach gateways to resources."
+                          >
+                            <div>
+                              <GatewayPicker
+                                value={{
+                                  gatewayId: gatewayIdVal || null,
+                                  gatewayPoolId: gatewayPoolIdVal || null
                                 }}
-                              >
-                                Internet Gateway
-                              </SelectItem>
-                              {gateways?.map((el) => (
-                                <SelectItem value={el.id} key={el.id}>
-                                  {el.name}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </div>
-                        </Tooltip>
-                      </FormControl>
-                    )}
+                                onChange={({ gatewayId: gwId, gatewayPoolId: poolId }) => {
+                                  setValue("gatewayId", gwId, { shouldDirty: true });
+                                  setValue("gatewayPoolId", poolId, { shouldDirty: true });
+                                  if (!gwId && !poolId) {
+                                    setValue(
+                                      "tokenReviewMode",
+                                      IdentityKubernetesAuthTokenReviewMode.Api,
+                                      { shouldDirty: true, shouldTouch: true }
+                                    );
+                                  }
+                                }}
+                                isDisabled={!isAllowed}
+                                className="w-full"
+                              />
+                            </div>
+                          </Tooltip>
+                        </FormControl>
+                      );
+                    }}
                   />
                 )}
               </OrgPermissionCan>
@@ -669,9 +701,9 @@ export const IdentityKubernetesAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
               >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
               </FormControl>
             )}
           />
@@ -693,20 +725,105 @@ export const IdentityKubernetesAuthForm = ({
             )}
           />
           {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
-            <Controller
-              control={control}
-              name="caCert"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="CA Certificate"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
-                >
-                  <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                </FormControl>
-              )}
-            />
+            <>
+              <Controller
+                control={control}
+                name="verifyTlsCertificate"
+                render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  const hasCaCert = Boolean(watch("caCert")?.length);
+                  return (
+                    <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                      <Switch
+                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        id="k8s-verify-tls-certificate"
+                        thumbClassName="bg-mineshaft-800"
+                        isChecked={hasCaCert ? true : value}
+                        onCheckedChange={onChange}
+                        isDisabled={hasCaCert}
+                      >
+                        <p className="w-44 text-sm font-normal text-mineshaft-400">
+                          Verify TLS Certificate
+                          <Tooltip
+                            className="max-w-md"
+                            content={
+                              <div className="flex flex-col gap-2">
+                                {hasCaCert ? (
+                                  <p>
+                                    Verification is always on while a CA certificate is provided. To
+                                    disable verification, clear the CA certificate field below.
+                                  </p>
+                                ) : (
+                                  <>
+                                    <p>
+                                      When enabled, Infisical validates the Kubernetes API
+                                      server&apos;s TLS certificate against the CA certificate
+                                      provided below.
+                                    </p>
+                                    <p>
+                                      Leaving this disabled means any host that responds at the
+                                      configured Kubernetes URL will be trusted, regardless of its
+                                      certificate. The connection is still over HTTPS, but the API
+                                      server&apos;s identity is not verified. Only do this for
+                                      testing or if you cannot supply a CA certificate.
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            }
+                          >
+                            <FontAwesomeIcon
+                              icon={faQuestionCircle}
+                              size="sm"
+                              className="ml-1 text-mineshaft-400"
+                            />
+                          </Tooltip>
+                        </p>
+                      </Switch>
+                    </FormControl>
+                  );
+                }}
+              />
+              <Controller
+                control={control}
+                name="caCert"
+                render={({ field, fieldState: { error } }) => {
+                  const verifyTlsCertificate = watch("verifyTlsCertificate");
+                  return (
+                    <FormControl
+                      label="CA Certificate"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      isRequired={verifyTlsCertificate}
+                      tooltipClassName="max-w-md"
+                      tooltipText={
+                        <div className="flex flex-col gap-2">
+                          <p>
+                            The PEM-encoded CA certificate that issued the Kubernetes API
+                            server&apos;s TLS certificate. Required when TLS certificate
+                            verification is enabled. Providing a CA certificate forces TLS
+                            verification on.
+                          </p>
+                        </div>
+                      }
+                    >
+                      <TextArea
+                        {...field}
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (e.target.value.length > 0 && !verifyTlsCertificate) {
+                            setValue("verifyTlsCertificate", true, {
+                              shouldDirty: true,
+                              shouldValidate: true
+                            });
+                          }
+                        }}
+                      />
+                    </FormControl>
+                  );
+                }}
+              />
+            </>
           )}
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>

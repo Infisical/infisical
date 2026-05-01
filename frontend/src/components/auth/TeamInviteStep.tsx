@@ -5,12 +5,12 @@ import { z } from "zod";
 
 import {
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   FieldError,
-  TextArea,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle
+  TextArea
 } from "@app/components/v3";
 import { useAddUsersToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -75,13 +75,13 @@ export default function TeamInviteStep(): JSX.Element {
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <UnstableCard className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
-        <UnstableCardHeader className="mb-4 gap-2">
-          <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+      <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+        <CardHeader className="mb-4 gap-2">
+          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
             {t("signup.step5-invite-team")}
-          </UnstableCardTitle>
-        </UnstableCardHeader>
-        <UnstableCardContent className="flex flex-col gap-y-4">
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-y-4">
           <div className="w-full">
             <TextArea
               className="min-h-20"
@@ -119,8 +119,8 @@ export default function TeamInviteStep(): JSX.Element {
           >
             {t("signup.step5-skip") ?? "Skip"}
           </Button>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}

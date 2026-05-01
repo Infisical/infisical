@@ -1,5 +1,11 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+
+export enum OrgGroupsOrderBy {
+  Name = "name",
+  Slug = "slug",
+  Role = "role"
+}
 
 export interface TMembershipGroupScopeFactory {
   onCreateMembershipGroupGuard: (arg: TCreateMembershipGroupDTO) => Promise<void>;
@@ -56,8 +62,10 @@ export type TListMembershipGroupDTO = {
   data: {
     limit?: number;
     offset?: number;
-    groupName?: string;
+    search?: string;
     roles?: string[];
+    orderBy?: OrgGroupsOrderBy;
+    orderDirection?: OrderByDirection;
   };
 };
 

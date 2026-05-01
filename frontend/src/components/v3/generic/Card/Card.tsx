@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { cn } from "../../utils";
 
-function UnstableCard({ className, ...props }: React.ComponentProps<"div">) {
+function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
@@ -17,13 +17,14 @@ function UnstableCard({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function UnstableCardHeader({ className, ...props }: React.ComponentProps<"div">) {
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-header"
       className={cn(
         "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-center gap-1",
-        "border-border has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "border-border [.border-b]:pb-4",
+        "has-data-[slot=card-action]:@xs:grid-cols-[1fr_auto]",
         className
       )}
       {...props}
@@ -31,7 +32,7 @@ function UnstableCardHeader({ className, ...props }: React.ComponentProps<"div">
   );
 }
 
-function UnstableCardTitle({ className, ...props }: React.ComponentProps<"div">) {
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
@@ -50,21 +51,25 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function UnstableCardAction({ className, ...props }: React.ComponentProps<"div">) {
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-action"
-      className={cn("col-start-2 row-span-2 row-start-1 self-start justify-self-end", className)}
+      className={cn(
+        "justify-self-start",
+        "@xs:col-start-2 @xs:row-span-2 @xs:row-start-1 @xs:self-start @xs:justify-self-end",
+        className
+      )}
       {...props}
     />
   );
 }
 
-function UnstableCardContent({ className, ...props }: React.ComponentProps<"div">) {
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   return <div data-slot="card-content" className={cn("", className)} {...props} />;
 }
 
-function UnstableCardFooter({ className, ...props }: React.ComponentProps<"div">) {
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-footer"
@@ -74,12 +79,4 @@ function UnstableCardFooter({ className, ...props }: React.ComponentProps<"div">
   );
 }
 
-export {
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  CardDescription as UnstableCardDescription,
-  UnstableCardFooter,
-  UnstableCardHeader,
-  UnstableCardTitle
-};
+export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

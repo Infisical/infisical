@@ -1,9 +1,48 @@
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { KubernetesAuthMethod } from "../pam-resource/kubernetes/kubernetes-resource-enums";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials, TPamResourceInternalMetadata } from "../pam-resource/pam-resource-types";
 import { SSHAuthMethod } from "../pam-resource/ssh/ssh-resource-enums";
+
+type TAccountParentResource = {
+  id: string;
+  name: string;
+  resourceType: string;
+  encryptedRotationAccountCredentials?: Buffer | null;
+};
+
+type TAccountParentDomain = {
+  id: string;
+  name: string;
+  domainType: string;
+};
+
+export const formatAccountParent = ({
+  resource,
+  domain
+}: {
+  resource?: TAccountParentResource | null;
+  domain?: TAccountParentDomain | null;
+}) => ({
+  parentType: resource?.resourceType ?? domain?.domainType ?? "",
+  resource: resource
+    ? {
+        id: resource.id,
+        name: resource.name,
+        resourceType: resource.resourceType,
+        rotationCredentialsConfigured: Boolean(resource.encryptedRotationAccountCredentials)
+      }
+    : null,
+  domain: domain
+    ? {
+        id: domain.id,
+        name: domain.name,
+        domainType: domain.domainType
+      }
+    : null
+});
 
 export const encryptAccountCredentials = async ({
   projectId,
@@ -69,11 +108,16 @@ export const decryptAccountMessage = async ({
 };
 
 // Returns false for account types where all credential fields are already visible in the sanitized view
-export const hasSensitiveCredentials = (resourceType: string, credentials: TPamAccountCredentials): boolean => {
-  if (resourceType === PamResource.AwsIam) return false;
-  if (resourceType === PamResource.Kubernetes) return false;
+export const hasSensitiveCredentials = (parentType: string, credentials: TPamAccountCredentials): boolean => {
+  if (parentType === PamResource.AwsIam) return false;
   if (
-    resourceType === PamResource.SSH &&
+    parentType === PamResource.Kubernetes &&
+    "authMethod" in credentials &&
+    credentials.authMethod === KubernetesAuthMethod.GatewayKubernetesAuth
+  )
+    return false;
+  if (
+    parentType === PamResource.SSH &&
     "authMethod" in credentials &&
     credentials.authMethod === SSHAuthMethod.Certificate
   )
@@ -87,6 +131,7 @@ const hasConfiguredCredentials = (credentials: TPamAccountCredentials): boolean 
   if ("serviceAccountToken" in credentials && credentials.serviceAccountToken) return true;
   if ("targetRoleArn" in credentials && credentials.targetRoleArn) return true;
   if ("authMethod" in credentials && credentials.authMethod === SSHAuthMethod.Certificate) return true;
+  if ("authMethod" in credentials && credentials.authMethod === KubernetesAuthMethod.GatewayKubernetesAuth) return true;
   return false;
 };
 

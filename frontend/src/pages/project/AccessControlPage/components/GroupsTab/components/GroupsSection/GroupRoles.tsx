@@ -17,14 +17,14 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  IconButton,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
@@ -89,14 +89,14 @@ const IdentityTemporaryRoleForm = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <UnstableIconButton
+            <IconButton
               // eslint-disable-next-line no-nested-ternary
               variant={isExpired ? "danger" : isTemporaryFieldValue ? "warning" : "ghost"}
               size="xs"
               onClick={(e) => e.stopPropagation()}
             >
               <ClockIcon />
-            </UnstableIconButton>
+            </IconButton>
           </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent>{isExpired ? "Access Expired" : "Grant Temporary Access"}</TooltipContent>
@@ -132,7 +132,7 @@ const IdentityTemporaryRoleForm = ({
                   </span>
                 }
               >
-                <UnstableInput {...field} isError={Boolean(error?.message)} />
+                <Input {...field} isError={Boolean(error?.message)} />
               </FormControl>
             )}
           />
@@ -508,9 +508,9 @@ export const GroupRoles = ({
       {!isEditDisabled && (
         <Popover open={isEditOpen} onOpenChange={setIsEditOpen}>
           <PopoverTrigger asChild>
-            <UnstableIconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+            <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
               <EditIcon />
-            </UnstableIconButton>
+            </IconButton>
           </PopoverTrigger>
           <PopoverContent side="right" className="w-72 p-0" onClick={(e) => e.stopPropagation()}>
             {isRolesLoading ? (

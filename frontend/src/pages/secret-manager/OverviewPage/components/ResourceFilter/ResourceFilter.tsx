@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  IconButton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { WsTag } from "@app/hooks/api/tags/types";
 import { RowType } from "@app/pages/secret-manager/OverviewPage/OverviewPage";
@@ -64,22 +64,18 @@ export function ResourceFilter({
   const isActive = filterCount > 0 || tagCount > 0;
 
   return (
-    <UnstableDropdownMenu>
-      <UnstableDropdownMenuTrigger className="outline-0">
+    <DropdownMenu>
+      <DropdownMenuTrigger className="outline-0">
         <Tooltip>
           <TooltipTrigger asChild>
-            <UnstableIconButton
-              className="relative"
-              size="md"
-              variant={isActive ? "project" : "outline"}
-            >
+            <IconButton className="relative" size="md" variant={isActive ? "project" : "outline"}>
               <FilterIcon />
-            </UnstableIconButton>
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent>Filter resources</TooltipContent>
         </Tooltip>
-      </UnstableDropdownMenuTrigger>
-      <UnstableDropdownMenuContent align="end">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
         <ResourceFilterMenuContent
           resourceTypes={OVERVIEW_RESOURCE_TYPES}
           resourceTypeFilter={rowTypeFilter}
@@ -89,7 +85,7 @@ export function ResourceFilter({
           onToggleTag={onToggleTag}
           onClearTags={onClearTags}
         />
-      </UnstableDropdownMenuContent>
-    </UnstableDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

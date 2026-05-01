@@ -100,6 +100,11 @@ export const SSHResourceInternalMetadataSchema = z.object({
   caKeyAlgorithm: z.string()
 });
 
+export const SanitizedSSHResourceInternalMetadataSchema = SSHResourceInternalMetadataSchema.pick({
+  caPublicKey: true,
+  caKeyAlgorithm: true
+});
+
 // Accounts
 export const SSHAccountSchema = BasePamAccountSchema.extend({
   credentials: SSHAccountCredentialsSchema
@@ -114,7 +119,7 @@ export const UpdateSSHAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedSSHAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.SSH),
+  parentType: z.literal(PamResource.SSH),
   credentials: z.discriminatedUnion("authMethod", [
     z.object({
       authMethod: z.literal(SSHAuthMethod.Password),

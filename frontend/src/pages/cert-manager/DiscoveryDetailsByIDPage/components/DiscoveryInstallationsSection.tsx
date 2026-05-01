@@ -4,22 +4,22 @@ import { format } from "date-fns";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
@@ -50,43 +50,39 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
   const totalCount = data?.totalCount || 0;
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Installations</UnstableCardTitle>
-        <UnstableCardDescription>
-          Certificate installations discovered by this job
-        </UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent className="p-0">
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Installations</CardTitle>
+        <CardDescription>Certificate installations discovered by this job</CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
         {isPending && (
           <div className="flex h-40 w-full items-center justify-center">
             <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
           </div>
         )}
         {!isPending && installations.length === 0 && (
-          <UnstableEmpty>
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No installations found</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Run a scan to discover certificate installations
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No installations found</EmptyTitle>
+              <EmptyDescription>Run a scan to discover certificate installations</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         {!isPending && installations.length > 0 && (
           <>
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableRow>
-                  <UnstableTableHead>Name</UnstableTableHead>
-                  <UnstableTableHead>Certificate</UnstableTableHead>
-                  <UnstableTableHead>Gateway</UnstableTableHead>
-                  <UnstableTableHead>Last Seen</UnstableTableHead>
-                </UnstableTableRow>
-              </UnstableTableHeader>
-              <UnstableTableBody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Certificate</TableHead>
+                  <TableHead>Gateway</TableHead>
+                  <TableHead>Last Seen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {installations.map((installation) => (
-                  <UnstableTableRow
+                  <TableRow
                     key={installation.id}
                     onClick={() =>
                       navigate({
@@ -99,18 +95,18 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
                       })
                     }
                   >
-                    <UnstableTableCell>{getEndpoint(installation)}</UnstableTableCell>
-                    <UnstableTableCell>{installation.primaryCertName || "N/A"}</UnstableTableCell>
-                    <UnstableTableCell>{getGatewayLabel(installation) || "N/A"}</UnstableTableCell>
-                    <UnstableTableCell>
+                    <TableCell>{getEndpoint(installation)}</TableCell>
+                    <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
+                    <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
+                    <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </UnstableTableBody>
-            </UnstableTable>
+              </TableBody>
+            </Table>
             {Boolean(totalCount) && (
-              <UnstablePagination
+              <Pagination
                 count={totalCount}
                 page={page}
                 perPage={perPage}
@@ -120,7 +116,7 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
             )}
           </>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

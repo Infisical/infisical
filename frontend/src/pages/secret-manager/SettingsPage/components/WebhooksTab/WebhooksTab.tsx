@@ -1,5 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { faInfoCircle, faPlug, faPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEllipsisV,
+  faInfoCircle,
+  faPencil,
+  faPlug,
+  faPlus,
+  faToggleOff,
+  faToggleOn,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -8,16 +17,23 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
+  IconButton,
   Table,
   TableContainer,
   TableSkeleton,
   TBody,
   Td,
+  Th,
   THead,
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -28,8 +44,15 @@ import {
   useTestWebhook,
   useUpdateWebhook
 } from "@app/hooks/api";
+import {
+  TWebhook,
+  WEBHOOK_EVENT_METADATA,
+  WEBHOOK_EVENTS,
+  WebhookEvent
+} from "@app/hooks/api/webhooks/types";
 
 import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
+import { EditWebhookEventsModal } from "./EditWebhookEventsModal";
 
 export const WebhooksTab = withProjectPermission(
   () => {
@@ -39,7 +62,8 @@ export const WebhooksTab = withProjectPermission(
     const projectId = currentProject?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
-      "deleteWebhook"
+      "deleteWebhook",
+      "editWebhook"
     ] as const);
 
     const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(projectId);
@@ -59,8 +83,14 @@ export const WebhooksTab = withProjectPermission(
     const { mutateAsync: deleteWebhook } = useDeleteWebhook();
 
     const handleWebhookCreate = async (data: TFormSchema) => {
+      // eventsFilter is the allowlist of events to trigger on
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => data.enabledEvents[event]).map(
+        (event) => ({ eventName: event })
+      );
+
       await createWebhook({
         ...data,
+        eventsFilter,
         projectId
       });
       handlePopUpClose("addWebhook");
@@ -79,6 +109,27 @@ export const WebhooksTab = withProjectPermission(
       createNotification({
         type: "success",
         text: "Successfully updated webhook"
+      });
+    };
+
+    const handleWebhookEventsUpdate = async (
+      webhookId: string,
+      settings: Record<WebhookEvent, boolean>
+    ) => {
+      // eventsFilter is the allowlist — every checked event goes in.
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => settings[event]).map((event) => ({
+        eventName: event
+      }));
+
+      await updateWebhook({
+        webhookId,
+        projectId,
+        eventsFilter
+      });
+      handlePopUpClose("editWebhook");
+      createNotification({
+        type: "success",
+        text: "Successfully updated webhook events"
       });
     };
 
@@ -131,25 +182,37 @@ export const WebhooksTab = withProjectPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Td>URL</Td>
-                  <Td>Environment</Td>
-                  <Td>Secret Path</Td>
-                  <Td>Status</Td>
-                  <Td className="text-right">Action</Td>
+                  <Th className="w-1/3">URL</Th>
+                  <Th className="w-1/5">Environment</Th>
+                  <Th className="w-1/5">Secret Path</Th>
+                  <Th>
+                    <div className="flex items-center gap-1">
+                      <span>Events</span>
+                      <Tooltip content="Events that are configured to trigger this webhook.">
+                        <FontAwesomeIcon
+                          icon={faInfoCircle}
+                          size="xs"
+                          className="text-mineshaft-400"
+                        />
+                      </Tooltip>
+                    </div>
+                  </Th>
+                  <Th>Status</Th>
+                  <Th />
                 </Tr>
               </THead>
               <TBody>
-                {isWebhooksLoading && <TableSkeleton columns={5} innerKey="webhooks-loading" />}
+                {isWebhooksLoading && <TableSkeleton columns={6} innerKey="webhooks-loading" />}
                 {!isWebhooksLoading && webhooks && webhooks?.length === 0 && (
                   <Tr>
-                    <Td colSpan={5}>
+                    <Td colSpan={6}>
                       <EmptyState title="No webhooks found" icon={faPlug} />
                     </Td>
                   </Tr>
                 )}
                 {!isWebhooksLoading &&
-                  webhooks?.map(
-                    ({
+                  webhooks?.map((webhook) => {
+                    const {
                       id,
                       url,
                       environment,
@@ -158,16 +221,68 @@ export const WebhooksTab = withProjectPermission(
                       isDisabled,
                       updatedAt,
                       lastRunErrorMessage
-                    }) => (
+                    } = webhook;
+
+                    // eventsFilter is the allowlist — empty means every event is enabled.
+                    const filteredSet = new Set(webhook.eventsFilter.map((e) => e.eventName));
+                    const enabledEvents =
+                      webhook.eventsFilter.length === 0
+                        ? [...WEBHOOK_EVENTS]
+                        : WEBHOOK_EVENTS.filter((event) => filteredSet.has(event));
+                    const enabledEventsCount = enabledEvents.length;
+                    const hasEnabledEvents = enabledEventsCount > 0;
+                    const allEventsEnabled = enabledEventsCount === WEBHOOK_EVENTS.length;
+
+                    return (
                       <Tr key={id}>
-                        <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                          {url}
-                          <p className="text-xs text-mineshaft-400">{id}</p>
+                        <Td className="max-w-0">
+                          <Tooltip
+                            className="max-w-2xl"
+                            content={<span className="break-all">{url}</span>}
+                          >
+                            <div>
+                              <p className="truncate">{url}</p>
+                              <p className="truncate text-xs text-mineshaft-400">{id}</p>
+                            </div>
+                          </Tooltip>
                         </Td>
-                        <Td>{environment.slug}</Td>
-                        <Td>{secretPath}</Td>
+                        <Td className="max-w-0">
+                          <p className="truncate">{environment.slug}</p>
+                        </Td>
+                        <Td className="max-w-0">
+                          <p className="truncate">{secretPath}</p>
+                        </Td>
                         <Td>
-                          {!lastStatus ? (
+                          <Tooltip
+                            content={
+                              hasEnabledEvents ? (
+                                <div className="text-xs">
+                                  <p className="mb-1 font-medium">Enabled Events:</p>
+                                  <ul className="list-disc space-y-0.5 pl-4">
+                                    {enabledEvents.map((event) => (
+                                      <li key={event}>{WEBHOOK_EVENT_METADATA[event].label}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : (
+                                "This webhook is not triggered by any events."
+                              )
+                            }
+                          >
+                            <Badge variant="neutral">
+                              {allEventsEnabled && "All Events"}
+                              {!hasEnabledEvents && "No Events"}
+                              {hasEnabledEvents &&
+                                !allEventsEnabled &&
+                                `${enabledEventsCount} Event${enabledEventsCount === 1 ? "" : "s"}`}
+                            </Badge>
+                          </Tooltip>
+                        </Td>
+                        <Td>
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {isDisabled ? (
+                            <Badge variant="neutral">Disabled</Badge>
+                          ) : !lastStatus ? (
                             "-"
                           ) : (
                             <div className="inline-flex w-min items-center rounded-sm bg-mineshaft-600 px-2 py-0.5 text-sm">
@@ -221,50 +336,79 @@ export const WebhooksTab = withProjectPermission(
                                 </Button>
                               )}
                             </ProjectPermissionCan>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Edit}
-                              a={ProjectPermissionSub.Webhooks}
-                            >
-                              {(isAllowed) => (
-                                <Button
-                                  variant="outline_bg"
-                                  size="xs"
-                                  onClick={() => handleWebhookDisable(id, !isDisabled)}
-                                  isDisabled={
-                                    (isUpdateWebhookSubmitting &&
-                                      updateWebhookVars?.webhookId === id) ||
-                                    !isAllowed
-                                  }
-                                  isLoading={
-                                    isUpdateWebhookSubmitting && updateWebhookVars?.webhookId === id
-                                  }
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  ariaLabel="Options"
+                                  colorSchema="secondary"
+                                  className="w-6"
+                                  variant="plain"
                                 >
-                                  {isDisabled ? "Enable" : "Disable"}
-                                </Button>
-                              )}
-                            </ProjectPermissionCan>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Delete}
-                              a={ProjectPermissionSub.Webhooks}
-                            >
-                              {(isAllowed) => (
-                                <Button
-                                  variant="outline_bg"
-                                  className="border-red-800 bg-red-800 hover:border-red-700 hover:bg-red-700"
-                                  colorSchema="danger"
-                                  size="xs"
-                                  isDisabled={!isAllowed}
-                                  onClick={() => handlePopUpOpen("deleteWebhook", id)}
+                                  <FontAwesomeIcon icon={faEllipsisV} />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                sideOffset={2}
+                                align="end"
+                                className="min-w-48 p-1"
+                              >
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={ProjectPermissionSub.Webhooks}
                                 >
-                                  Delete
-                                </Button>
-                              )}
-                            </ProjectPermissionCan>
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("editWebhook", webhook)}
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faPencil} />}
+                                    >
+                                      Edit
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={ProjectPermissionSub.Webhooks}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={() => handleWebhookDisable(id, !isDisabled)}
+                                      isDisabled={
+                                        (isUpdateWebhookSubmitting &&
+                                          updateWebhookVars?.webhookId === id) ||
+                                        !isAllowed
+                                      }
+                                      icon={
+                                        <FontAwesomeIcon
+                                          icon={isDisabled ? faToggleOn : faToggleOff}
+                                        />
+                                      }
+                                    >
+                                      {isDisabled ? "Enable" : "Disable"}
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Delete}
+                                  a={ProjectPermissionSub.Webhooks}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("deleteWebhook", id)}
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faTrash} />}
+                                    >
+                                      Delete
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </Td>
                       </Tr>
-                    )
-                  )}
+                    );
+                  })}
               </TBody>
             </Table>
           </TableContainer>
@@ -282,6 +426,20 @@ export const WebhooksTab = withProjectPermission(
           onChange={(isOpen) => handlePopUpToggle("deleteWebhook", isOpen)}
           onClose={() => handlePopUpClose("deleteWebhook")}
           onDeleteApproved={handleWebhookDelete}
+        />
+        <EditWebhookEventsModal
+          isOpen={popUp.editWebhook.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("editWebhook", isOpen)}
+          webhook={popUp.editWebhook.data as TWebhook | undefined}
+          isSubmitting={
+            isUpdateWebhookSubmitting &&
+            updateWebhookVars?.webhookId === (popUp.editWebhook.data as TWebhook | undefined)?.id
+          }
+          onSave={async (settings) => {
+            const webhookId = (popUp.editWebhook.data as TWebhook | undefined)?.id;
+            if (!webhookId) return;
+            await handleWebhookEventsUpdate(webhookId, settings);
+          }}
         />
       </div>
     );

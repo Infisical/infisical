@@ -18,17 +18,17 @@ import {
 } from "@app/components/v2";
 import {
   Badge,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -222,33 +222,31 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
 
   return (
     <>
-      <UnstableCard className="mt-5 w-full">
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Signing Configuration</UnstableCardTitle>
-          <UnstableCardDescription>
-            How this CA&apos;s certificate is signed
-          </UnstableCardDescription>
+      <Card className="mt-5 w-full">
+        <CardHeader className="border-b">
+          <CardTitle>Signing Configuration</CardTitle>
+          <CardDescription>How this CA&apos;s certificate is signed</CardDescription>
           {(isVenafi || isAdcs) && ca?.name && (
-            <UnstableCardAction>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateAuthorityActions.Edit}
                 a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
               >
                 {(isAllowed) => (
-                  <UnstableIconButton
+                  <IconButton
                     variant="outline"
                     size="xs"
                     isDisabled={!isAllowed}
                     onClick={() => handlePopUpToggle("editSigningConfig", true)}
                   >
                     <PencilIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 )}
               </ProjectPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Signing Method</DetailLabel>
@@ -301,8 +299,8 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
               </>
             )}
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       {isAdcs && (
         <Modal

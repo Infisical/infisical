@@ -11,16 +11,16 @@ import { FormControl, Input, Select, SelectItem, Switch } from "@app/components/
 import {
   Badge,
   Button,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
@@ -291,88 +291,78 @@ export const PamResourceRotationRulesSection = ({ resource }: Props) => {
       )}
 
       {rules.length === 0 && !isFormOpen ? (
-        <UnstableEmpty>
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>No rotation rules configured</UnstableEmptyTitle>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No rotation rules configured</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         rules.length > 0 && (
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead className="w-12">#</UnstableTableHead>
-                <UnstableTableHead>Name</UnstableTableHead>
-                <UnstableTableHead>Pattern</UnstableTableHead>
-                <UnstableTableHead>Status</UnstableTableHead>
-                <UnstableTableHead>Interval</UnstableTableHead>
-                <UnstableTableHead>Created</UnstableTableHead>
-                <UnstableTableHead className="w-28" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">#</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Pattern</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Interval</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-28" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rules.map((rule, index) => (
-                <UnstableTableRow key={rule.id}>
-                  <UnstableTableCell>
+                <TableRow key={rule.id}>
+                  <TableCell>
                     <Badge variant="outline">{rule.priority}</Badge>
-                  </UnstableTableCell>
-                  <UnstableTableCell>{rule.name || "-"}</UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>{rule.name || "-"}</TableCell>
+                  <TableCell>
                     <code className="rounded bg-mineshaft-600 px-1.5 py-0.5 text-xs">
                       {rule.namePattern}
                     </code>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={rule.enabled ? "success" : "neutral"}>
                       {rule.enabled ? "Enabled" : "Disabled"}
                     </Badge>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     {rule.enabled && rule.intervalSeconds
                       ? formatInterval(rule.intervalSeconds)
                       : "-"}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    {format(new Date(rule.createdAt), "MM/dd/yyyy")}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>{format(new Date(rule.createdAt), "MM/dd/yyyy")}</TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-1">
-                      <UnstableIconButton
+                      <IconButton
                         variant="ghost"
                         size="xs"
                         onClick={() => handleMoveUp(index)}
                         isDisabled={index === 0}
                       >
                         <ArrowUpIcon className="size-3.5" />
-                      </UnstableIconButton>
-                      <UnstableIconButton
+                      </IconButton>
+                      <IconButton
                         variant="ghost"
                         size="xs"
                         onClick={() => handleMoveDown(index)}
                         isDisabled={index >= rules.length - 1}
                       >
                         <ArrowDownIcon className="size-3.5" />
-                      </UnstableIconButton>
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => openEditForm(rule)}
-                      >
+                      </IconButton>
+                      <IconButton variant="ghost" size="xs" onClick={() => openEditForm(rule)}>
                         <PencilIcon className="size-3.5" />
-                      </UnstableIconButton>
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => handleDelete(rule.id)}
-                      >
+                      </IconButton>
+                      <IconButton variant="ghost" size="xs" onClick={() => handleDelete(rule.id)}>
                         <TrashIcon className="size-3.5" />
-                      </UnstableIconButton>
+                      </IconButton>
                     </div>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               ))}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
         )
       )}
     </div>

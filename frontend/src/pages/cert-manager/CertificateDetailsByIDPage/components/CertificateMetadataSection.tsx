@@ -10,14 +10,14 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
-  UnstableButtonGroup,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  IconButton
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
@@ -96,11 +96,11 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
 
   if (isLoading) {
     return (
-      <UnstableCard>
-        <UnstableCardContent className="flex items-center justify-center py-8">
+      <Card>
+        <CardContent className="flex items-center justify-center py-8">
           <p className="text-sm text-mineshaft-400">Loading...</p>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -108,13 +108,11 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Metadata</UnstableCardTitle>
-          <UnstableCardDescription>
-            Custom key-value pairs attached to this certificate
-          </UnstableCardDescription>
-          <UnstableCardAction>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Metadata</CardTitle>
+          <CardDescription>Custom key-value pairs attached to this certificate</CardDescription>
+          <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionCertificateActions.Edit}
               a={subject(ProjectPermissionSub.Certificates, {
@@ -126,7 +124,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
               })}
             >
               {(isAllowed) => (
-                <UnstableIconButton
+                <IconButton
                   variant="outline"
                   size="xs"
                   onClick={() => {
@@ -136,27 +134,24 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
                   isDisabled={!isAllowed}
                 >
                   <PencilIcon />
-                </UnstableIconButton>
+                </IconButton>
               )}
             </ProjectPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           {metadata.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {metadata.map((item) =>
                 item.value ? (
-                  <UnstableButtonGroup
-                    className="max-w-full min-w-0"
-                    key={`${item.key}=${item.value}`}
-                  >
+                  <ButtonGroup className="max-w-full min-w-0" key={`${item.key}=${item.value}`}>
                     <Badge isTruncatable className="max-w-[12rem] shrink-0">
                       <span>{item.key}</span>
                     </Badge>
                     <Badge variant="outline" isTruncatable>
                       <span>{item.value}</span>
                     </Badge>
-                  </UnstableButtonGroup>
+                  </ButtonGroup>
                 ) : (
                   <Badge key={item.key} isTruncatable>
                     <span>{item.key}</span>
@@ -167,8 +162,8 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
           ) : (
             <p className="text-sm text-mineshaft-400">No metadata attached to this certificate.</p>
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       <Modal isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
         <ModalContent

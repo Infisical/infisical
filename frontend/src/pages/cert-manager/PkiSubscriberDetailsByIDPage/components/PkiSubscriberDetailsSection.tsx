@@ -59,7 +59,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
       projectId
     },
     {
-      refetchInterval: 5000
+      refetchInterval: 30_000
     }
   );
 

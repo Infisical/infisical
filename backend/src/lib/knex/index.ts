@@ -5,6 +5,7 @@ import { Tables } from "knex/types/tables";
 import { TableName } from "@app/db/schemas";
 
 import { DatabaseError } from "../errors";
+import { sanitizeSqlLikeString } from "../fn";
 import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
 export * from "./connection";
@@ -70,7 +71,7 @@ export const buildFindFilter =
     if ($search) {
       Object.entries($search).forEach(([key, val]) => {
         if (val) {
-          void bd.whereILike(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
+          void bd.whereILike(`${tableName ? `${tableName}.` : ""}${key}`, `%${sanitizeSqlLikeString(val as string)}%`);
         }
       });
     }
@@ -108,7 +109,7 @@ export type TOrmify<Tname extends keyof Tables> = {
   findById: (id: string, tx?: Knex) => Promise<Tables[Tname]["base"]>;
   find: <TCount extends boolean = false, TCountDistinct extends keyof Tables[Tname]["base"] | undefined = undefined>(
     filter: TFindFilter<Tables[Tname]["base"]>,
-    { offset, limit, sort, count, tx, countDistinct }?: TFindOpt<Tables[Tname]["base"], TCount, TCountDistinct>
+    opts?: TFindOpt<Tables[Tname]["base"], TCount, TCountDistinct>
   ) => Promise<TFindReturn<Tname, TCountDistinct extends undefined ? TCount : true>>;
   findOne: (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => Promise<Tables[Tname]["base"]>;
   create: (data: Tables[Tname]["insert"], tx?: Knex) => Promise<Tables[Tname]["base"]>;

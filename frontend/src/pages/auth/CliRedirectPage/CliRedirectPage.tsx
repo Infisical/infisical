@@ -57,7 +57,7 @@ export const CliRedirectPage = () => {
               <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
                 Unable to reach CLI
               </p>
-              <p className="text-light mb-1 text-center text-lg text-mineshaft-400">
+              <p className="text-light mt-2 mb-1 text-center text-lg text-mineshaft-400">
                 Your login was successful but, Infisical couldn&apos;t automatically push your login
                 token to the CLI.
               </p>

@@ -27,7 +27,11 @@ export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.RSA_3072]: "RSA 3072",
   [CertKeyAlgorithm.RSA_4096]: "RSA 4096",
   [CertKeyAlgorithm.ECDSA_P256]: "ECDSA P256",
-  [CertKeyAlgorithm.ECDSA_P384]: "ECDSA P384"
+  [CertKeyAlgorithm.ECDSA_P384]: "ECDSA P384",
+  [CertKeyAlgorithm.ECDSA_P521]: "ECDSA P521",
+  [CertKeyAlgorithm.ML_DSA_44]: "ML-DSA-44",
+  [CertKeyAlgorithm.ML_DSA_65]: "ML-DSA-65",
+  [CertKeyAlgorithm.ML_DSA_87]: "ML-DSA-87"
 };
 
 export const certSignatureAlgorithmToNameMap: Record<string, string> = {
@@ -36,21 +40,40 @@ export const certSignatureAlgorithmToNameMap: Record<string, string> = {
   "RSA-SHA512": "RSA with SHA-512",
   "ECDSA-SHA256": "ECDSA with SHA-256",
   "ECDSA-SHA384": "ECDSA with SHA-384",
-  "ECDSA-SHA512": "ECDSA with SHA-512"
+  "ECDSA-SHA512": "ECDSA with SHA-512",
+  "ML-DSA-44": "ML-DSA-44",
+  "ML-DSA-65": "ML-DSA-65",
+  "ML-DSA-87": "ML-DSA-87"
 };
 
+export const PQC_KEY_ALGORITHMS = [
+  CertKeyAlgorithm.ML_DSA_44,
+  CertKeyAlgorithm.ML_DSA_65,
+  CertKeyAlgorithm.ML_DSA_87
+] as const;
+
+export const NON_PQC_KEY_ALGORITHMS = [
+  CertKeyAlgorithm.RSA_2048,
+  CertKeyAlgorithm.RSA_3072,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384,
+  CertKeyAlgorithm.ECDSA_P521
+] as const;
+
+export const isPqcAlgorithm = (label: string): boolean =>
+  (PQC_KEY_ALGORITHMS as readonly string[]).includes(label);
+
 export const certKeyAlgorithms = [
-  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_2048], value: CertKeyAlgorithm.RSA_2048 },
-  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_3072], value: CertKeyAlgorithm.RSA_3072 },
-  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_4096], value: CertKeyAlgorithm.RSA_4096 },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ECDSA_P256],
-    value: CertKeyAlgorithm.ECDSA_P256
-  },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ECDSA_P384],
-    value: CertKeyAlgorithm.ECDSA_P384
-  }
+  { label: CertKeyAlgorithm.RSA_2048, value: CertKeyAlgorithm.RSA_2048 },
+  { label: CertKeyAlgorithm.RSA_3072, value: CertKeyAlgorithm.RSA_3072 },
+  { label: CertKeyAlgorithm.RSA_4096, value: CertKeyAlgorithm.RSA_4096 },
+  { label: CertKeyAlgorithm.ECDSA_P256, value: CertKeyAlgorithm.ECDSA_P256 },
+  { label: CertKeyAlgorithm.ECDSA_P384, value: CertKeyAlgorithm.ECDSA_P384 },
+  { label: CertKeyAlgorithm.ECDSA_P521, value: CertKeyAlgorithm.ECDSA_P521 },
+  { label: CertKeyAlgorithm.ML_DSA_44, value: CertKeyAlgorithm.ML_DSA_44 },
+  { label: CertKeyAlgorithm.ML_DSA_65, value: CertKeyAlgorithm.ML_DSA_65 },
+  { label: CertKeyAlgorithm.ML_DSA_87, value: CertKeyAlgorithm.ML_DSA_87 }
 ];
 
 export const crlReasonToNameMap: { [K in CrlReason]: string } = {
@@ -114,5 +137,8 @@ export const SIGNATURE_ALGORITHMS_OPTIONS = [
   { value: "RSA-SHA512", label: "RSA-SHA512" },
   { value: "ECDSA-SHA256", label: "ECDSA-SHA256" },
   { value: "ECDSA-SHA384", label: "ECDSA-SHA384" },
-  { value: "ECDSA-SHA512", label: "ECDSA-SHA512" }
+  { value: "ECDSA-SHA512", label: "ECDSA-SHA512" },
+  { value: "ML-DSA-44", label: "ML-DSA-44" },
+  { value: "ML-DSA-65", label: "ML-DSA-65" },
+  { value: "ML-DSA-87", label: "ML-DSA-87" }
 ] as const;

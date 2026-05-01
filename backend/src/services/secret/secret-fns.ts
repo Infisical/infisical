@@ -795,8 +795,7 @@ export const createManySecretsRawFnFactory = ({
     secrets,
     userId
   }: TCreateManySecretsRawFn) => {
-    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-    const project = await projectDAL.findById(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await getBotKeyFn(projectId);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -979,8 +978,7 @@ export const updateManySecretsRawFnFactory = ({
     secrets, // consider accepting instead ciphertext secrets
     userId
   }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
-    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-    const project = await projectDAL.findById(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await getBotKeyFn(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)

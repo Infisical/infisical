@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
 import { EyeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
-import { UnstableAlert, UnstableAlertDescription } from "@app/components/v3/generic/Alert";
+import { Alert, AlertDescription } from "@app/components/v3/generic/Alert";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 
 import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
+import { getColumnIndicator } from "../data-explorer-utils";
 import type { FilterCondition, SortCondition } from "../sql-generation";
 import {
   buildCountQuery,
@@ -27,7 +28,11 @@ type DataExplorerGridProps = {
   tableType?: string;
   schema: string;
   table: string;
-  executeQuery: (sql: string) => Promise<{
+  connectionId: string;
+  executeQuery: (
+    connectionId: string,
+    sql: string
+  ) => Promise<{
     rows: Record<string, unknown>[];
     fields: FieldInfo[];
     rowCount: number | null;
@@ -35,8 +40,7 @@ type DataExplorerGridProps = {
     executionTimeMs: number;
   }>;
   isLoading: boolean;
-  onChangeCountUpdate?: (count: number) => void;
-  onFullRefresh?: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -117,23 +121,6 @@ const SELECT_COLUMN: ColumnDef<RowData> = {
   enableResizing: false
 };
 
-function getColumnIndicator(
-  colName: string,
-  primaryKeys: string[],
-  fkMap: Map<string, ForeignKeyInfo>
-): { type: "pk" | "fk"; tooltip?: string } | undefined {
-  if (primaryKeys.includes(colName)) return { type: "pk" };
-  const fk = fkMap.get(colName);
-  if (fk) {
-    const targetCol = fk.targetColumns[fk.columns.indexOf(colName)] ?? fk.targetColumns[0];
-    return {
-      type: "fk",
-      tooltip: `\u2192 ${fk.targetSchema}.${fk.targetTable}(${targetCol})`
-    };
-  }
-  return undefined;
-}
-
 function buildColumnDefs(
   cols: ColumnInfo[],
   primaryKeys: string[],
@@ -191,10 +178,10 @@ export const DataExplorerGrid = ({
   tableType,
   schema,
   table,
+  connectionId,
   executeQuery,
   isLoading,
-  onChangeCountUpdate,
-  onFullRefresh
+  onRefresh
 }: DataExplorerGridProps) => {
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
@@ -254,8 +241,8 @@ export const DataExplorerGrid = ({
         // sequentially, not in a single transaction), so the count could be off by 1 if
         // another session modifies data between them. Acceptable for a data explorer.
         const [dataResult, countResult] = await Promise.all([
-          executeQuery(selectSql),
-          executeQuery(countSql)
+          executeQuery(connectionId, selectSql),
+          executeQuery(connectionId, countSql)
         ]);
 
         const taggedRows = dataResult.rows.map((row: Record<string, unknown>) => ({
@@ -283,7 +270,7 @@ export const DataExplorerGrid = ({
         setIsDataLoading(false);
       }
     },
-    [tableDetail, schema, table, primaryKeys, executeQuery]
+    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId]
   );
 
   // Fetch data when filters/sorts/pagination change.
@@ -366,10 +353,6 @@ export const DataExplorerGrid = ({
     return count;
   }, [currentData, originalDataByPk, primaryKeys, newRowTempIds, tableColumns]);
 
-  useEffect(() => {
-    onChangeCountUpdate?.(changeCount);
-  }, [changeCount, onChangeCountUpdate]);
-
   const handleAddRecord = useCallback(() => {
     newRowCounterRef.current += 1;
     const tempId = `${ROW_KEY_PREFIX}${newRowCounterRef.current}`;
@@ -417,7 +400,7 @@ export const DataExplorerGrid = ({
       if (deleteStatements.length > 0) {
         try {
           const sql = wrapInTransaction(deleteStatements);
-          await executeQuery(sql);
+          await executeQuery(connectionId, sql);
           createNotification({
             text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
             type: "success"
@@ -440,6 +423,7 @@ export const DataExplorerGrid = ({
       primaryKeys,
       schema,
       table,
+      connectionId,
       executeQuery,
       fetchData,
       offset,
@@ -522,7 +506,7 @@ export const DataExplorerGrid = ({
         return;
       }
 
-      await executeQuery(sql);
+      await executeQuery(connectionId, sql);
       createNotification({
         text: `Saved ${statements.length} change${statements.length !== 1 ? "s" : ""}`,
         type: "success"
@@ -546,6 +530,7 @@ export const DataExplorerGrid = ({
     primaryKeys,
     schema,
     table,
+    connectionId,
     executeQuery,
     fetchData,
     offset,
@@ -658,7 +643,7 @@ export const DataExplorerGrid = ({
     if (deleteStatements.length > 0) {
       try {
         const sql = wrapInTransaction(deleteStatements);
-        await executeQuery(sql);
+        await executeQuery(connectionId, sql);
         createNotification({
           text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
           type: "success"
@@ -679,7 +664,18 @@ export const DataExplorerGrid = ({
     gridRef.current?.resetRowSelection();
     selectedRowsRef.current = [];
     setSelectedRowCount(0);
-  }, [schema, table, primaryKeys, executeQuery, fetchData, offset, pageSize, filters, sorts]);
+  }, [
+    schema,
+    table,
+    primaryKeys,
+    connectionId,
+    executeQuery,
+    fetchData,
+    offset,
+    pageSize,
+    filters,
+    sorts
+  ]);
 
   if (!tableDetail) {
     return (
@@ -713,7 +709,7 @@ export const DataExplorerGrid = ({
         hasPrimaryKey={hasPrimaryKey}
         isDataLoading={isDataLoading}
         onRefresh={async () => {
-          if (onFullRefresh) await onFullRefresh();
+          if (onRefresh) await onRefresh();
           await fetchData(offset, pageSize, filters, sorts);
         }}
         isRefreshing={isDataLoading && hasLoaded}
@@ -721,14 +717,14 @@ export const DataExplorerGrid = ({
 
       {!hasPrimaryKey && (
         <div className="shrink-0 px-3 py-3">
-          <UnstableAlert variant="info" className="py-2">
+          <Alert variant="info" className="py-2">
             <EyeIcon />
-            <UnstableAlertDescription>
+            <AlertDescription>
               {tableType === "view" || tableType === "materialized_view"
                 ? "This view is read-only."
                 : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
-            </UnstableAlertDescription>
-          </UnstableAlert>
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 
