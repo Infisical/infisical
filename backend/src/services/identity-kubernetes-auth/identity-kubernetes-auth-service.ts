@@ -272,9 +272,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
-  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
-    if (!caCert.length) return false;
-    return storedVerify ?? false;
+  const $resolveEffectiveVerifyTlsCertificate = (
+    _caCert: string,
+    storedVerify: boolean | null | undefined
+  ): boolean => {
+    return storedVerify ?? true;
   };
 
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
