@@ -1,32 +1,19 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import {
-  Field,
-  FieldContent,
-  FieldError,
-  FieldLabel,
-  FilterableSelect,
-  Input
-} from "@app/components/v3";
-import { useSubscription } from "@app/context";
-import { gatewaysQueryKeys } from "@app/hooks/api";
-import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
+import { Field, FieldContent, FieldError, FieldLabel, Input } from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { slugSchema } from "@app/lib/schemas";
 
-export const gatewayOptionSchema = z.object({
-  id: z.string().min(1, "Gateway is required"),
-  name: z.string(),
-  // Discriminator. Treated as "gateway" when undefined for backward compatibility with existing forms.
-  kind: z.enum(["gateway", "pool"]).optional()
-});
-
+// Base schema is a ZodObject (no .refine()) so per-resource forms can .extend() it.
+// The "gateway or pool is required" rule is enforced at two layers: the picker's
+// isRequired prop hides the no-gateway choice, and the backend rejects rows with
+// neither set. We deliberately don't refine here because the resulting ZodEffects
+// can't be extended.
 export const genericResourceFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  gateway: gatewayOptionSchema.nullable().refine((val) => val !== null, {
-    message: "Gateway is required"
-  }),
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional(),
   metadata: z
     .object({
       key: z.string().trim().min(1),
@@ -36,53 +23,16 @@ export const genericResourceFieldsSchema = z.object({
     .optional()
 });
 
-type GatewayOption = { id: string; name: string; kind?: "gateway" | "pool" };
-
-// Hydrate a stored row's gatewayId / gatewayPoolId into the form's discriminated picker value.
-// Pool wins when both are set (pool-backed connections always store gatewayId as null, but if
-// the row somehow carries both, treat the pool as authoritative).
-export const hydrateGatewayValue = (entity: {
-  gatewayId?: string | null;
-  gatewayPoolId?: string | null;
-}): GatewayOption | undefined => {
-  if (entity.gatewayPoolId) return { id: entity.gatewayPoolId, name: "", kind: "pool" };
-  if (entity.gatewayId) return { id: entity.gatewayId, name: "", kind: "gateway" };
-  return undefined;
-};
-
 type GenericFormValues = {
   name: string;
-  gateway: GatewayOption | null;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
 };
 
 export const GenericResourceFields = () => {
-  const { subscription } = useSubscription();
-  const showPools = subscription?.gatewayPool;
-
-  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
-  const { data: pools, isPending: isPoolsLoading } = useQuery({
-    ...gatewayPoolsQueryKeys.list(),
-    enabled: Boolean(showPools)
-  });
-
-  const isLoading = isGatewaysLoading || (showPools && isPoolsLoading);
-
-  const v2Gateways = (gateways ?? []).filter((g) => !g.isV1);
-  const gatewayOptions: GatewayOption[] = v2Gateways.map((g) => ({
-    id: g.id,
-    name: g.name,
-    kind: "gateway"
-  }));
-  const poolOptions: GatewayOption[] = (pools ?? []).map((p) => ({
-    id: p.id,
-    name: `Pool: ${p.name}`,
-    kind: "pool"
-  }));
-  const combinedOptions: GatewayOption[] = showPools
-    ? [...poolOptions, ...gatewayOptions]
-    : gatewayOptions;
-
-  const { control } = useFormContext<GenericFormValues>();
+  const { control, watch, setValue } = useFormContext<GenericFormValues>();
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
 
   return (
     <div className="flex flex-col gap-3">
@@ -102,35 +52,27 @@ export const GenericResourceFields = () => {
 
       <Controller
         control={control}
-        name="gateway"
-        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
-          const valueKind = value?.kind ?? "gateway";
-          const selectedOption = value
-            ? (combinedOptions.find(
-                (o) => o.id === value.id && (o.kind ?? "gateway") === valueKind
-              ) ?? value)
-            : value;
-
-          return (
-            <Field>
-              <FieldLabel>Gateway</FieldLabel>
-              <FieldContent>
-                <FilterableSelect
-                  value={selectedOption}
-                  onChange={onChange}
-                  onBlur={onBlur}
-                  options={combinedOptions}
-                  isError={Boolean(error)}
-                  isLoading={Boolean(isLoading)}
-                  placeholder="Select a Gateway..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => `${option.kind ?? "gateway"}:${option.id}`}
-                />
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          );
-        }}
+        name="gatewayId"
+        render={({ fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>Gateway</FieldLabel>
+            <FieldContent>
+              <GatewayPicker
+                isRequired
+                placeholder="Select a Gateway..."
+                value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                  setValue("gatewayId", newGwId, { shouldDirty: true, shouldValidate: true });
+                  setValue("gatewayPoolId", newPoolId, {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  });
+                }}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
       />
     </div>
   );

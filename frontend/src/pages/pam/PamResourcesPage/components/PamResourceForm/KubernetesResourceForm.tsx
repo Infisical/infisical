@@ -6,11 +6,7 @@ import { Button, SheetFooter } from "@app/components/v3";
 import { KubernetesAuthMethod, PamResourceType, TKubernetesResource } from "@app/hooks/api/pam";
 
 import { KubernetesResourceFields } from "./shared/KubernetesResourceFields";
-import {
-  GenericResourceFields,
-  genericResourceFieldsSchema,
-  hydrateGatewayValue
-} from "./GenericResourceFields";
+import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -58,11 +54,13 @@ export const KubernetesResourceForm = ({ resource, onSubmit, closeSheet }: Props
     defaultValues: resource
       ? {
           ...resource,
-          gateway: hydrateGatewayValue(resource)
+          gatewayId: resource.gatewayId ?? null,
+          gatewayPoolId: resource.gatewayPoolId ?? null
         }
       : {
           resourceType: PamResourceType.Kubernetes,
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             url: "",
             sslRejectUnauthorized: true,

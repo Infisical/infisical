@@ -362,8 +362,7 @@ export const pamResourceServiceFactory = ({
 
     // Mutual exclusion: setting one clears the other
     let effectiveGatewayIdAttr: string | null | undefined = resource.gatewayId;
-    let effectiveGatewayPoolIdAttr: string | null | undefined =
-      (resource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
+    let effectiveGatewayPoolIdAttr: string | null | undefined = resource.gatewayPoolId ?? null;
     if (gatewayId !== undefined) {
       effectiveGatewayIdAttr = gatewayId;
       effectiveGatewayPoolIdAttr = null;

@@ -14,11 +14,7 @@ import {
 import { PamResourceType, TSSHResource } from "@app/hooks/api/pam";
 
 import { SshCaSetupSection } from "../../../components/SshCaSetupSection";
-import {
-  GenericResourceFields,
-  genericResourceFieldsSchema,
-  hydrateGatewayValue
-} from "./GenericResourceFields";
+import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -47,11 +43,13 @@ export const SSHResourceForm = ({ resource, onSubmit, closeSheet }: Props) => {
     defaultValues: resource
       ? {
           ...resource,
-          gateway: hydrateGatewayValue(resource)
+          gatewayId: resource.gatewayId ?? null,
+          gatewayPoolId: resource.gatewayPoolId ?? null
         }
       : {
           resourceType: PamResourceType.SSH,
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             host: "",
             port: 22

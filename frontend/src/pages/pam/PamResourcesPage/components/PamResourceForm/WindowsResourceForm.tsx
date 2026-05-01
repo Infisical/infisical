@@ -21,11 +21,7 @@ import {
 import { PamResourceType, TWindowsResource } from "@app/hooks/api/pam";
 import { WindowsProtocol } from "@app/hooks/api/pam/types/windows-server-resource";
 
-import {
-  GenericResourceFields,
-  genericResourceFieldsSchema,
-  hydrateGatewayValue
-} from "./GenericResourceFields";
+import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -67,7 +63,8 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
     defaultValues: resource
       ? {
           ...resource,
-          gateway: hydrateGatewayValue(resource),
+          gatewayId: resource.gatewayId ?? null,
+          gatewayPoolId: resource.gatewayPoolId ?? null,
           domainId: resource.domainId ?? null,
           connectionDetails: {
             ...(resource.connectionDetails as FormData["connectionDetails"]),
@@ -81,7 +78,8 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
         }
       : {
           resourceType: PamResourceType.Windows,
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             protocol: WindowsProtocol.RDP,
             hostname: "",

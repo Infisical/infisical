@@ -19,6 +19,12 @@ type Props = {
   onChange: (value: GatewayPickerValue) => void;
   isDisabled?: boolean;
   className?: string;
+  // When true, removes the "Internet Gateway" option — useful for forms
+  // (PAM resources / domains / discovery) where a gateway or pool is required.
+  // The form is responsible for validating that one is selected; this prop
+  // just hides the "no gateway" choice from the dropdown.
+  isRequired?: boolean;
+  placeholder?: string;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -27,7 +33,14 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 const SectionDivider = () => <div className="my-1 h-px bg-mineshaft-600" />;
 
-export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props) => {
+export const GatewayPicker = ({
+  value,
+  onChange,
+  isDisabled,
+  className,
+  isRequired,
+  placeholder
+}: Props) => {
   const { subscription } = useSubscription();
   const showPools = subscription?.gatewayPool;
 
@@ -39,7 +52,9 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
 
   const isLoading = isGatewaysLoading || (showPools && isPoolsLoading);
 
-  let selectValue = "internet";
+  // When required mode is on and nothing is picked yet, leave selectValue
+  // empty so the placeholder renders. When optional, default to "internet".
+  let selectValue = isRequired ? "" : "internet";
   if (value.gatewayPoolId) {
     selectValue = `pool:${value.gatewayPoolId}`;
   } else if (value.gatewayId) {
@@ -75,17 +90,20 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
       dropdownContainerClassName="max-w-none"
       position="popper"
       side="bottom"
+      placeholder={placeholder}
     >
-      <SelectItem value="internet">
-        <div className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faGlobe} className="size-3.5 text-mineshaft-400" />
-          Internet Gateway
-        </div>
-      </SelectItem>
+      {!isRequired && (
+        <SelectItem value="internet">
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faGlobe} className="size-3.5 text-mineshaft-400" />
+            Internet Gateway
+          </div>
+        </SelectItem>
+      )}
 
       {showPools && pools && pools.length > 0 && (
         <>
-          <SectionDivider />
+          {!isRequired && <SectionDivider />}
           <SectionLabel>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -118,7 +136,7 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
 
       {v2Gateways.length > 0 && (
         <>
-          <SectionDivider />
+          {(!isRequired || (showPools && pools && pools.length > 0)) && <SectionDivider />}
           <SectionLabel>
             <div className="flex items-center gap-2">
               <FontAwesomeIcon icon={faServer} className="size-3" />
