@@ -293,18 +293,10 @@ export const approvalPolicyServiceFactory = ({
 
     const recipientUserIds = [...approverUserIdSet];
 
-    const { grant, idempotent } = await approvalRequestDAL.transaction(async (tx) => {
+    const grant = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
       if (!locked) {
         throw new ForbiddenRequestError({ message: "Request not found" });
-      }
-
-      const existingBreakGlassGrant = await approvalRequestGrantsDAL.findOneForUpdate(
-        { requestId, granteeUserId: actor.id, isBreakGlass: true },
-        tx
-      );
-      if (existingBreakGlassGrant) {
-        return { grant: existingBreakGlassGrant, idempotent: true as const };
       }
 
       if (locked.status !== ApprovalRequestStatus.Pending) {
@@ -345,7 +337,7 @@ export const approvalPolicyServiceFactory = ({
       const durationMs = ms(inputs.accessDuration);
       const expiresAt = new Date(Date.now() + durationMs);
 
-      const newGrant = await approvalRequestGrantsDAL.create(
+      return approvalRequestGrantsDAL.create(
         {
           projectId: request.projectId,
           requestId: request.id,
@@ -359,8 +351,6 @@ export const approvalPolicyServiceFactory = ({
         },
         tx
       );
-
-      return { grant: newGrant, idempotent: false as const };
     });
 
     const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
@@ -375,13 +365,6 @@ export const approvalPolicyServiceFactory = ({
       bypassReason: bypassReason.trim(),
       approverCount: recipientUserIds.length
     };
-
-    // Idempotent retry: a previous call already committed the grant. We still emit the audit
-    // event (compliance — the first call may have died before audit was queued) but skip the
-    // notification fanout so approvers don't receive duplicate alerts on retry.
-    if (idempotent) {
-      return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
-    }
 
     if (recipientUserIds.length === 0) {
       return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
