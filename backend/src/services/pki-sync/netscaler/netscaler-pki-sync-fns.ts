@@ -4,6 +4,7 @@ import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
 import { executeNetScalerOperationWithGateway } from "@app/services/app-connection/netscaler/netscaler-connection-fns";
@@ -40,6 +41,7 @@ type TNetScalerPkiSyncFactoryDeps = {
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 const getNetScalerCredentials = (pkiSync: TPkiSyncWithCredentials): TNetScalerCredentials => {
@@ -299,7 +301,8 @@ const removeNetScalerCertificate = async (
 export const netScalerPkiSyncFactory = ({
   certificateSyncDAL,
   certificateDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TNetScalerPkiSyncFactoryDeps) => {
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
@@ -324,8 +327,17 @@ export const netScalerPkiSyncFactory = ({
     const preserveItemOnRenewal = syncOptions?.preserveItemOnRenewal ?? true;
     const certificateNameSchema = syncOptions?.certificateNameSchema;
 
+    // Resolve effective gateway: directly-attached id, or a freshly-picked healthy pool member.
+    // Pin within this whole sync (single NetScaler session, many requests) for consistency.
+    const effectiveGatewayId = gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: pkiSync.connection.gatewayId,
+          gatewayPoolId: pkiSync.connection.gatewayPoolId
+        })
+      : pkiSync.connection.gatewayId;
+
     return executeNetScalerOperationWithGateway(
-      { gatewayId: pkiSync.connection.gatewayId, credentials },
+      { gatewayId: effectiveGatewayId, credentials },
       gatewayV2Service,
       async (makeRequest) => {
         let uploaded = 0;
@@ -638,8 +650,15 @@ export const netScalerPkiSyncFactory = ({
       return;
     }
 
+    const effectiveGatewayId = gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: pkiSync.connection.gatewayId,
+          gatewayPoolId: pkiSync.connection.gatewayPoolId
+        })
+      : pkiSync.connection.gatewayId;
+
     await executeNetScalerOperationWithGateway(
-      { gatewayId: pkiSync.connection.gatewayId, credentials },
+      { gatewayId: effectiveGatewayId, credentials },
       gatewayV2Service,
       async (makeRequest) => {
         const session = await createNetScalerSession(credentials, makeRequest);

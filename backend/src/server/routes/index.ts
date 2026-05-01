@@ -2401,7 +2401,8 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateSyncDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2498,7 +2499,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     certificateRequestDAL,
     resourceMetadataDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -2582,7 +2584,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -3086,7 +3089,8 @@ export const registerRoutes = async (
     externalMigrationConfigDAL,
     secretService,
     auditLogService,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   // setup the communication with license key server

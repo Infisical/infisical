@@ -6,6 +6,7 @@ import {
   TAuditLogServiceFactory
 } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -79,6 +80,7 @@ type TExternalMigrationServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -90,6 +92,7 @@ export const externalMigrationServiceFactory = ({
   userDAL,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   secretService,
   auditLogService,
   appConnectionService,
@@ -99,7 +102,13 @@ export const externalMigrationServiceFactory = ({
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
 
-    if (connection.gatewayId) {
+    // Resolve effective gateway: directly-attached id, or a freshly-picked healthy pool member.
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+
+    if (effectiveGatewayId) {
       const instanceUrl = await getHCVaultInstanceUrl(connection);
       const url = new URL(instanceUrl);
 
@@ -113,7 +122,7 @@ export const externalMigrationServiceFactory = ({
       const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
 
       const gatewayV2Details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-        gatewayId: connection.gatewayId,
+        gatewayId: effectiveGatewayId,
         targetHost,
         targetPort
       });
@@ -128,7 +137,7 @@ export const externalMigrationServiceFactory = ({
           }
         };
       } else {
-        const gatewayV1Details = await gatewayService.fnGetGatewayClientTlsByGatewayId(connection.gatewayId);
+        const gatewayV1Details = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId);
         if (gatewayV1Details) {
           gatewayDetails = {
             gatewayVersion: GatewayVersion.V1,
