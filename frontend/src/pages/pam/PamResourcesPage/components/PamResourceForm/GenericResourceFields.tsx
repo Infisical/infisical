@@ -10,12 +10,16 @@ import {
   FilterableSelect,
   Input
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { slugSchema } from "@app/lib/schemas";
 
 export const gatewayOptionSchema = z.object({
   id: z.string().min(1, "Gateway is required"),
-  name: z.string()
+  name: z.string(),
+  // Discriminator. Treated as "gateway" when undefined for backward compatibility with existing forms.
+  kind: z.enum(["gateway", "pool"]).optional()
 });
 
 export const genericResourceFieldsSchema = z.object({
@@ -32,13 +36,37 @@ export const genericResourceFieldsSchema = z.object({
     .optional()
 });
 
+type GatewayOption = { id: string; name: string; kind?: "gateway" | "pool" };
+
 type GenericFormValues = {
   name: string;
-  gateway: { id: string; name: string } | null;
+  gateway: GatewayOption | null;
 };
 
 export const GenericResourceFields = () => {
+  const { subscription } = useSubscription();
+  const showPools = subscription?.gatewayPool;
+
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+  const { data: pools, isPending: isPoolsLoading } = useQuery({
+    ...gatewayPoolsQueryKeys.list(),
+    enabled: Boolean(showPools)
+  });
+
+  const isLoading = isGatewaysLoading || (showPools && isPoolsLoading);
+
+  const v2Gateways = (gateways ?? []).filter((g) => !g.isV1);
+  const gatewayOptions: GatewayOption[] = v2Gateways.map((g) => ({
+    id: g.id,
+    name: g.name,
+    kind: "gateway"
+  }));
+  const poolOptions: GatewayOption[] = (pools ?? []).map((p) => ({
+    id: p.id,
+    name: `Pool: ${p.name}`,
+    kind: "pool"
+  }));
+  const combinedOptions: GatewayOption[] = showPools ? [...poolOptions, ...gatewayOptions] : gatewayOptions;
 
   const { control } = useFormContext<GenericFormValues>();
 
@@ -62,8 +90,10 @@ export const GenericResourceFields = () => {
         control={control}
         name="gateway"
         render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
-          const selectedOption =
-            value && gateways ? (gateways.find((g) => g.id === value.id) ?? value) : value;
+          const valueKind = value?.kind ?? "gateway";
+          const selectedOption = value
+            ? (combinedOptions.find((o) => o.id === value.id && (o.kind ?? "gateway") === valueKind) ?? value)
+            : value;
 
           return (
             <Field>
@@ -73,12 +103,12 @@ export const GenericResourceFields = () => {
                   value={selectedOption}
                   onChange={onChange}
                   onBlur={onBlur}
-                  options={gateways}
+                  options={combinedOptions}
                   isError={Boolean(error)}
-                  isLoading={isGatewaysLoading}
+                  isLoading={Boolean(isLoading)}
                   placeholder="Select a Gateway..."
                   getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
+                  getOptionValue={(option) => `${option.kind ?? "gateway"}:${option.id}`}
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

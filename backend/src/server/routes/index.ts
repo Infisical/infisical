@@ -1300,6 +1300,7 @@ export const registerRoutes = async (
 
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamDomainDAL = pamDomainDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
@@ -1475,7 +1476,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     identityKubernetesAuthDAL,
-    pkiDiscoveryConfigDAL
+    pkiDiscoveryConfigDAL,
+    pamDomainDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2858,7 +2860,6 @@ export const registerRoutes = async (
   });
 
   const pamFolderDAL = pamFolderDALFactory(db);
-  const pamDomainDAL = pamDomainDALFactory(db);
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamAccountPolicyDAL = pamAccountPolicyDALFactory(db);
@@ -2901,6 +2902,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2Service,
+    gatewayPoolService,
+    licenseService,
     resourceMetadataDAL
   });
 
@@ -2943,6 +2946,7 @@ export const registerRoutes = async (
     pamAccountPolicyDAL,
     pamResourceRotationRulesDAL,
     gatewayV2Service,
+    gatewayPoolService,
     kmsService,
     pamResourceDAL,
     pamSessionDAL,

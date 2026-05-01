@@ -15,6 +15,7 @@ export const PamDomainsSchema = z.object({
   name: z.string(),
   domainType: z.string(),
   gatewayId: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional(),
   encryptedConnectionDetails: zodBuffer,
   discoveryFingerprint: z.string().nullable().optional(),
   createdAt: z.date(),

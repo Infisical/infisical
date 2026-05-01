@@ -11,6 +11,7 @@ import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
@@ -36,6 +37,7 @@ type TGatewayPoolServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
+  pamDomainDAL: Pick<TPamDomainDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
 };
 
 export type TGatewayPoolServiceFactory = ReturnType<typeof gatewayPoolServiceFactory>;
@@ -48,7 +50,8 @@ export const gatewayPoolServiceFactory = ({
   permissionService,
   licenseService,
   identityKubernetesAuthDAL,
-  pkiDiscoveryConfigDAL
+  pkiDiscoveryConfigDAL,
+  pamDomainDAL
 }: TGatewayPoolServiceFactoryDep) => {
   const $checkPermission = async (actor: OrgServiceActor, action: OrgPermissionGatewayPoolActions) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -103,7 +106,7 @@ export const gatewayPoolServiceFactory = ({
     if (pools.length === 0) return [];
 
     // Add more DAL counts here as pool support expands to other consumers
-    const [k8sAuthCounts, pkiDiscoveryCounts] = await Promise.all([
+    const [k8sAuthCounts, pkiDiscoveryCounts, pamDomainCounts] = await Promise.all([
       Promise.all(
         pools.map((pool) =>
           identityKubernetesAuthDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
@@ -113,11 +116,16 @@ export const gatewayPoolServiceFactory = ({
         pools.map((pool) =>
           pkiDiscoveryConfigDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
         )
+      ),
+      Promise.all(
+        pools.map((pool) =>
+          pamDomainDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
+        )
       )
     ]);
 
     const countMap = new Map<string, number>();
-    for (const { id, count } of [...k8sAuthCounts, ...pkiDiscoveryCounts]) {
+    for (const { id, count } of [...k8sAuthCounts, ...pkiDiscoveryCounts, ...pamDomainCounts]) {
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
 
@@ -284,21 +292,23 @@ export const gatewayPoolServiceFactory = ({
     }
 
     // Add more DAL calls here as pool support expands to other consumers
-    const [kubernetesAuths, pkiDiscoveryConfigs] = await Promise.all([
+    const [kubernetesAuths, pkiDiscoveryConfigs, pamDomains] = await Promise.all([
       identityKubernetesAuthDAL.findByGatewayPoolId(poolId),
-      pkiDiscoveryConfigDAL.findByGatewayPoolId(poolId)
+      pkiDiscoveryConfigDAL.findByGatewayPoolId(poolId),
+      pamDomainDAL.findByGatewayPoolId(poolId)
     ]);
 
-    return { kubernetesAuths, pkiDiscoveryConfigs };
+    return { kubernetesAuths, pkiDiscoveryConfigs, pamDomains };
   };
 
   const getConnectedResourcesCount = async (poolId: string): Promise<number> => {
     // Add more DAL counts here as pool support expands to other consumers
-    const [k8sAuthCount, pkiDiscoveryCount] = await Promise.all([
+    const [k8sAuthCount, pkiDiscoveryCount, pamDomainCount] = await Promise.all([
       identityKubernetesAuthDAL.countByGatewayPoolId(poolId),
-      pkiDiscoveryConfigDAL.countByGatewayPoolId(poolId)
+      pkiDiscoveryConfigDAL.countByGatewayPoolId(poolId),
+      pamDomainDAL.countByGatewayPoolId(poolId)
     ]);
-    return k8sAuthCount + pkiDiscoveryCount;
+    return k8sAuthCount + pkiDiscoveryCount + pamDomainCount;
   };
 
   return {

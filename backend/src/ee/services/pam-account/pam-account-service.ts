@@ -56,6 +56,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES } from "../pam-account-policy/pam-account-policy-constants";
 import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
@@ -109,6 +110,7 @@ type TPamAccountServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
@@ -142,6 +144,7 @@ export const pamAccountServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayPoolService,
   auditLogService,
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
@@ -167,6 +170,7 @@ export const pamAccountServiceFactory = ({
         resourceType: resource.resourceType,
         domainType: null as string | null,
         gatewayId: resource.gatewayId,
+        gatewayPoolId: (resource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null,
         encryptedConnectionDetails: resource.encryptedConnectionDetails,
         encryptedResourceMetadata: resource.encryptedResourceMetadata,
         encryptedRotationAccountCredentials: resource.encryptedRotationAccountCredentials,
@@ -183,12 +187,28 @@ export const pamAccountServiceFactory = ({
       resourceType: null as string | null,
       domainType: domain.domainType,
       gatewayId: domain.gatewayId,
+      gatewayPoolId: (domain as { gatewayPoolId?: string | null }).gatewayPoolId ?? null,
       encryptedConnectionDetails: domain.encryptedConnectionDetails,
       encryptedResourceMetadata: null as Buffer | null,
       encryptedRotationAccountCredentials: null as Buffer | null,
       isResource: false as const,
       raw: domain
     };
+  };
+
+  // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
+  // or a freshly-picked healthy member of the configured pool. Each call picks independently
+  // so per-operation pool selection is randomized.
+  const resolveEffectiveGatewayId = async (parent: {
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  }): Promise<string | null> => {
+    if (parent.gatewayId) return parent.gatewayId;
+    if (parent.gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(parent.gatewayPoolId);
+      return picked.id;
+    }
+    return null;
   };
 
   // Resolve whether the given policy enforces RequireReason at access time.
@@ -237,6 +257,7 @@ export const pamAccountServiceFactory = ({
       })
     );
 
+    const effectiveGatewayId = await resolveEffectiveGatewayId(parent);
     let factory;
     if (parent.isResource) {
       const connectionDetails = await decryptResourceConnectionDetails({
@@ -254,7 +275,7 @@ export const pamAccountServiceFactory = ({
       factory = PAM_RESOURCE_FACTORY_MAP[parent.resourceType as PamResource](
         parent.resourceType as PamResource,
         connectionDetails,
-        parent.gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         parent.projectId,
         resourceInternalMetadata
@@ -268,7 +289,7 @@ export const pamAccountServiceFactory = ({
       factory = PAM_DOMAIN_FACTORY_MAP[parent.domainType as PamDomainType](
         parent.domainType as PamDomainType,
         connectionDetails,
-        parent.gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         parent.projectId
       );
@@ -417,6 +438,7 @@ export const pamAccountServiceFactory = ({
     }
 
     if (credentials !== undefined) {
+      const effectiveGatewayId = await resolveEffectiveGatewayId(parent);
       let factory;
       if (parent.isResource) {
         const connectionDetails = await decryptResourceConnectionDetails({
@@ -434,7 +456,7 @@ export const pamAccountServiceFactory = ({
         factory = PAM_RESOURCE_FACTORY_MAP[parent.resourceType as PamResource](
           parent.resourceType as PamResource,
           connectionDetails,
-          parent.gatewayId,
+          effectiveGatewayId,
           gatewayV2Service,
           account.projectId,
           resourceInternalMetadata
@@ -448,7 +470,7 @@ export const pamAccountServiceFactory = ({
         factory = PAM_DOMAIN_FACTORY_MAP[parent.domainType as PamDomainType](
           parent.domainType as PamDomainType,
           connectionDetails,
-          parent.gatewayId,
+          effectiveGatewayId,
           gatewayV2Service,
           account.projectId
         );

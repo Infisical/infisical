@@ -62,7 +62,11 @@ export const ActiveDirectoryDomainForm = ({ domain, onSubmit, closeSheet }: Prop
     defaultValues: domain
       ? {
           name: domain.name,
-          gateway: domain.gatewayId ? { id: domain.gatewayId, name: "" } : undefined,
+          gateway: domain.gatewayPoolId
+            ? { id: domain.gatewayPoolId, name: "", kind: "pool" as const }
+            : domain.gatewayId
+              ? { id: domain.gatewayId, name: "", kind: "gateway" as const }
+              : undefined,
           connectionDetails: {
             ...domain.connectionDetails,
             useLdaps: domain.connectionDetails.useLdaps ?? false,

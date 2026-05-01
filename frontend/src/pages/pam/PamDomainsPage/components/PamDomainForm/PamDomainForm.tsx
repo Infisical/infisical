@@ -30,18 +30,21 @@ const CreateForm = ({ domainType, closeSheet, projectId }: CreateFormProps) => {
   const onSubmit = async (
     formData: Record<string, unknown> & {
       name: string;
-      gateway?: { id: string; name: string } | null;
+      gateway?: { id: string; name: string; kind: "gateway" | "pool" } | null;
       gatewayId?: string;
+      gatewayPoolId?: string;
       connectionDetails: unknown;
       metadata?: { key: string; value: string }[];
     }
   ) => {
     const { gateway, ...rest } = formData;
+    const isPool = gateway?.kind === "pool";
     const domain = await createPamDomain.mutateAsync({
       ...rest,
       domainType,
       projectId,
-      gatewayId: gateway?.id ?? rest.gatewayId!,
+      gatewayId: isPool ? undefined : (gateway?.id ?? rest.gatewayId),
+      gatewayPoolId: isPool ? gateway?.id : rest.gatewayPoolId,
       connectionDetails: rest.connectionDetails as TPamDomain["connectionDetails"],
       metadata: rest.metadata
     });
@@ -69,18 +72,21 @@ const UpdateForm = ({ domain, closeSheet }: UpdateFormProps) => {
   const onSubmit = async (
     formData: Record<string, unknown> & {
       name?: string;
-      gateway?: { id: string; name: string } | null;
+      gateway?: { id: string; name: string; kind: "gateway" | "pool" } | null;
       gatewayId?: string;
+      gatewayPoolId?: string;
       connectionDetails?: unknown;
       metadata?: { key: string; value: string }[];
     }
   ) => {
     const { gateway, ...rest } = formData;
+    const isPool = gateway?.kind === "pool";
     const updatedDomain = await updatePamDomain.mutateAsync({
       domainId: domain.id,
       domainType: domain.domainType,
       ...rest,
-      gatewayId: gateway?.id ?? rest.gatewayId,
+      gatewayId: isPool ? undefined : (gateway?.id ?? rest.gatewayId),
+      gatewayPoolId: isPool ? gateway?.id : rest.gatewayPoolId,
       connectionDetails: rest.connectionDetails as TPamDomain["connectionDetails"],
       metadata: rest.metadata
     });

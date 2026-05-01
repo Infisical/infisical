@@ -5,7 +5,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPostRotateContext } from "../pam-resource/pam-resource-types";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -21,6 +23,7 @@ export type TPamDomain = {
   name: string;
   domainType: PamDomainType;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   discoveryFingerprint?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +36,7 @@ export type TCreateDomainDTO = {
   name: string;
   domainType: PamDomainType;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   connectionDetails: TPamDomainConnectionDetails;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
@@ -41,6 +45,7 @@ export type TUpdateDomainDTO = {
   domainId: string;
   name?: string;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   connectionDetails?: TPamDomainConnectionDetails;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
@@ -62,9 +67,11 @@ export type TDeleteDomainDTO = {
 export type TPamDomainServiceFactoryDep = {
   pamDomainDAL: TPamDomainDALFactory;
   pamResourceDAL: Pick<TPamResourceDALFactory, "find" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 

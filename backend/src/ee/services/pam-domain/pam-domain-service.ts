@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TPamDomains } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamDomains } from "@app/db/schemas";
+import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -46,8 +47,23 @@ export const pamDomainServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayPoolService,
+  licenseService,
   resourceMetadataDAL
 }: TPamDomainServiceFactoryDep) => {
+  // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
+  // or a freshly-picked healthy member of the configured pool. Returns null if neither is set.
+  const resolveEffectiveGatewayId = async (
+    gatewayId: string | null | undefined,
+    gatewayPoolId: string | null | undefined
+  ): Promise<string | null> => {
+    if (gatewayId) return gatewayId;
+    if (gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      return picked.id;
+    }
+    return null;
+  };
   const getById = async (id: string, domainType: PamDomainType, actor: OrgServiceActor) => {
     const domain = await pamDomainDAL.findById(id);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${id}' not found` });
@@ -86,9 +102,16 @@ export const pamDomainServiceFactory = ({
   };
 
   const create = async (
-    { domainType, connectionDetails, gatewayId, name, projectId, metadata }: TCreateDomainDTO,
+    { domainType, connectionDetails, gatewayId, gatewayPoolId, name, projectId, metadata }: TCreateDomainDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+    if (!gatewayId && !gatewayPoolId) {
+      throw new BadRequestError({ message: "A gateway or gateway pool is required" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -107,6 +130,29 @@ export const pamDomainServiceFactory = ({
       })
     );
 
+    if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+    }
+
     const existingDomain = await pamDomainDAL.findOne({ name, projectId });
     if (existingDomain) {
       throw new BadRequestError({
@@ -114,10 +160,12 @@ export const pamDomainServiceFactory = ({
       });
     }
 
+    const effectiveGatewayId = await resolveEffectiveGatewayId(gatewayId, gatewayPoolId);
+
     const factory = PAM_DOMAIN_FACTORY_MAP[domainType](
       domainType,
       connectionDetails,
-      gatewayId,
+      effectiveGatewayId,
       gatewayV2Service,
       projectId
     );
@@ -135,7 +183,8 @@ export const pamDomainServiceFactory = ({
           {
             domainType,
             encryptedConnectionDetails,
-            gatewayId,
+            gatewayId: gatewayPoolId ? null : gatewayId,
+            gatewayPoolId: gatewayPoolId ?? null,
             name,
             projectId
           },
@@ -171,9 +220,13 @@ export const pamDomainServiceFactory = ({
   };
 
   const updateById = async (
-    { domainId, connectionDetails, name, gatewayId, metadata }: TUpdateDomainDTO,
+    { domainId, connectionDetails, name, gatewayId, gatewayPoolId, metadata }: TUpdateDomainDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const domain = await pamDomainDAL.findById(domainId);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${domainId}' not found` });
 
@@ -209,11 +262,39 @@ export const pamDomainServiceFactory = ({
       );
     }
 
-    const updateDoc: Partial<TPamDomains> = {};
-    const effectiveGatewayId = gatewayId !== undefined ? gatewayId : domain.gatewayId;
+    if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
 
-    if (gatewayId !== undefined) {
-      updateDoc.gatewayId = gatewayId;
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+    }
+
+    const updateDoc: Partial<TPamDomains> = {};
+    // Mutual exclusion: setting one clears the other
+    const effectiveGatewayId =
+      gatewayId !== undefined ? gatewayId : gatewayPoolId !== undefined ? null : domain.gatewayId;
+    const effectiveGatewayPoolId =
+      gatewayPoolId !== undefined ? gatewayPoolId : gatewayId !== undefined ? null : domain.gatewayPoolId;
+
+    if (gatewayId !== undefined || gatewayPoolId !== undefined) {
+      updateDoc.gatewayId = effectiveGatewayId;
+      updateDoc.gatewayPoolId = effectiveGatewayPoolId;
     }
 
     if (name !== undefined) {
@@ -221,10 +302,11 @@ export const pamDomainServiceFactory = ({
     }
 
     if (connectionDetails !== undefined) {
+      const validationGatewayId = await resolveEffectiveGatewayId(effectiveGatewayId, effectiveGatewayPoolId);
       const factory = PAM_DOMAIN_FACTORY_MAP[domain.domainType as PamDomainType](
         domain.domainType as PamDomainType,
         connectionDetails,
-        effectiveGatewayId,
+        validationGatewayId,
         gatewayV2Service,
         domain.projectId
       );
