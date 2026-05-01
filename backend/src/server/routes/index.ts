@@ -1474,7 +1474,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     permissionService,
     licenseService,
-    identityKubernetesAuthDAL
+    identityKubernetesAuthDAL,
+    pkiDiscoveryConfigDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2766,7 +2767,8 @@ export const registerRoutes = async (
     kmsService,
     queueService,
     gatewayV2Service,
-    gatewayV2DAL
+    gatewayV2DAL,
+    gatewayPoolService
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
@@ -2774,6 +2776,8 @@ export const registerRoutes = async (
     pkiDiscoveryScanHistoryDAL,
     permissionService,
     gatewayV2DAL,
+    gatewayPoolService,
+    licenseService,
     queuePkiDiscoveryScan: pkiDiscoveryQueue.queuePkiDiscoveryScan
   });
 

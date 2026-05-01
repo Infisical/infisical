@@ -46,6 +46,7 @@ export type TPkiDiscovery = {
   isAutoScanEnabled: boolean;
   scanIntervalDays: number | null;
   gatewayId: string | null;
+  gatewayPoolId: string | null;
   gatewayName: string | null;
   isActive: boolean;
   lastScanStatus: PkiDiscoveryScanStatus | null;
@@ -144,6 +145,7 @@ export type TCreatePkiDiscoveryDTO = {
   isAutoScanEnabled?: boolean;
   scanIntervalDays?: number;
   gatewayId?: string;
+  gatewayPoolId?: string;
 };
 
 export type TUpdatePkiDiscoveryDTO = {
@@ -154,6 +156,7 @@ export type TUpdatePkiDiscoveryDTO = {
   isAutoScanEnabled?: boolean;
   scanIntervalDays?: number | null;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   isActive?: boolean;
 };
 

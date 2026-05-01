@@ -1,7 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiDiscoveryActions,
@@ -47,6 +53,8 @@ type TPkiDiscoveryServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
 
@@ -71,6 +79,8 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryScanHistoryDAL,
   permissionService,
   gatewayV2DAL,
+  gatewayPoolService,
+  licenseService,
   queuePkiDiscoveryScan
 }: TPkiDiscoveryServiceFactoryDep) => {
   const createDiscovery = async ({
@@ -82,11 +92,16 @@ export const pkiDiscoveryServiceFactory = ({
     isAutoScanEnabled,
     scanIntervalDays,
     gatewayId,
+    gatewayPoolId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TCreatePkiDiscoveryDTO) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -129,6 +144,30 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      // Verify the pool exists in this org and has at least one healthy gateway available
+      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
     }
 
     try {
@@ -140,7 +179,8 @@ export const pkiDiscoveryServiceFactory = ({
         targetConfig,
         isAutoScanEnabled: isAutoScanEnabled ?? false,
         scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
-        gatewayId,
+        gatewayId: gatewayPoolId ? null : gatewayId,
+        gatewayPoolId: gatewayPoolId ?? null,
         isActive: true
       });
 
@@ -164,12 +204,17 @@ export const pkiDiscoveryServiceFactory = ({
     isAutoScanEnabled,
     scanIntervalDays,
     gatewayId,
+    gatewayPoolId,
     isActive,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TUpdatePkiDiscoveryDTO) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const discovery = await pkiDiscoveryConfigDAL.findById(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
@@ -215,7 +260,34 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
     }
+
+    // Mutual exclusion: setting one clears the other
+    const gatewayIdValue = gatewayPoolId ? null : gatewayId;
+    const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
 
     try {
       const updatedDiscovery = await pkiDiscoveryConfigDAL.updateById(discoveryId, {
@@ -224,7 +296,8 @@ export const pkiDiscoveryServiceFactory = ({
         targetConfig,
         isAutoScanEnabled,
         scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
-        gatewayId,
+        gatewayId: gatewayIdValue,
+        gatewayPoolId: gatewayPoolIdValue,
         isActive
       });
 

@@ -17,6 +17,7 @@ export const PkiDiscoveryConfigsSchema = z.object({
   isAutoScanEnabled: z.boolean().default(false),
   scanIntervalDays: z.number().nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().default(true),
   lastScanStatus: z.string().nullable().optional(),
   lastScanJobId: z.string().nullable().optional(),
