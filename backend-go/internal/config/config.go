@@ -525,14 +525,24 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Parse comma-separated host:port lists for Redis Sentinel, Cluster, and Read Replicas.
+	var parseIssues []string
 	if cfg.RedisSentinelHosts != "" {
-		cfg.ParsedRedisSentinelHosts = parseHostPortList(cfg.RedisSentinelHosts)
+		var issues []string
+		cfg.ParsedRedisSentinelHosts, issues = parseHostPortList(cfg.RedisSentinelHosts, "REDIS_SENTINEL_HOSTS")
+		parseIssues = append(parseIssues, issues...)
 	}
 	if cfg.RedisClusterHosts != "" {
-		cfg.ParsedRedisClusterHosts = parseHostPortList(cfg.RedisClusterHosts)
+		var issues []string
+		cfg.ParsedRedisClusterHosts, issues = parseHostPortList(cfg.RedisClusterHosts, "REDIS_CLUSTER_HOSTS")
+		parseIssues = append(parseIssues, issues...)
 	}
 	if cfg.RedisReadReplicas != "" {
-		cfg.ParsedRedisReadReplicas = parseHostPortList(cfg.RedisReadReplicas)
+		var issues []string
+		cfg.ParsedRedisReadReplicas, issues = parseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
+		parseIssues = append(parseIssues, issues...)
+	}
+	if len(parseIssues) > 0 {
+		return nil, &ValidationError{Issues: parseIssues}
 	}
 
 	return &cfg, nil
@@ -549,8 +559,8 @@ func (e *ValidationError) Error() string {
 
 // parseHostPortList parses a comma-separated "host:port" string into []RedisHostPort.
 // Matches the Node.js transform: val.split(",").map(el => { host, port }).
-func parseHostPortList(raw string) []RedisHostPort {
-	var result []RedisHostPort
+// Returns parsing issues for invalid port values.
+func parseHostPortList(raw, envVar string) (result []RedisHostPort, issues []string) {
 	for entry := range strings.SplitSeq(raw, ",") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
@@ -559,11 +569,16 @@ func parseHostPortList(raw string) []RedisHostPort {
 		host, portStr, found := strings.Cut(entry, ":")
 		hp := RedisHostPort{Host: strings.TrimSpace(host)}
 		if found {
-			fmt.Sscanf(strings.TrimSpace(portStr), "%d", &hp.Port)
+			portStr = strings.TrimSpace(portStr)
+			if portStr == "" {
+				issues = append(issues, fmt.Sprintf("%s: empty port in %q", envVar, entry))
+			} else if _, err := fmt.Sscanf(portStr, "%d", &hp.Port); err != nil {
+				issues = append(issues, fmt.Sprintf("%s: invalid port %q in %q", envVar, portStr, entry))
+			}
 		}
 		result = append(result, hp)
 	}
-	return result
+	return
 }
 
 func (c *Config) validate() []string {

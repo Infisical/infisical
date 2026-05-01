@@ -38,4 +38,4 @@ up-dev-sso:
 # Golang commands
 go-generate:
 	cd backend-go && \
-	 go tool goa gen github.com/infisical/api/internal/server/design -o  internal/server/gen
+	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/

@@ -33,6 +33,22 @@ func listSecrets(t *testing.T, actorType permission.ActorType, actorID, orgID st
 	return svc.ListSecretsV4(ctx, payload)
 }
 
+// getSecretByName is a helper that calls GetSecretByNameV4 with the given identity context.
+func getSecretByName(t *testing.T, actorType permission.ActorType, actorID, orgID string, payload *gensecrets.GetSecretByNameV4Payload) (*gensecrets.GetSecretResult, error) {
+	t.Helper()
+
+	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+		AuthMode:   auth.AuthModeIdentityAccessToken,
+		Actor:      actorType,
+		ActorID:    uuid.MustParse(actorID),
+		OrgID:      uuid.MustParse(orgID),
+		AuthMethod: "",
+	})
+
+	svc := newSecretsHandler(t)
+	return svc.GetSecretByNameV4(ctx, payload)
+}
+
 // =============================================================================
 // Identity Role-Based Access Tests
 // =============================================================================
@@ -710,4 +726,103 @@ func TestViewSecretValue_True_ShowsValues(t *testing.T) {
 	require.Len(t, result.Secrets, 1)
 	assert.False(t, result.Secrets[0].SecretValueHidden, "value should not be hidden when viewSecretValue=true")
 	assert.Equal(t, "should-be-visible", result.Secrets[0].SecretValue)
+}
+
+// =============================================================================
+// GetSecretByName Import Permission Tests
+// =============================================================================
+
+func TestGetSecretByName_ImportPermissions(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Setup: Create project with imports and different permission levels
+	proj := nodejs.CreateProject(t, "get-secret-import-perm-test")
+
+	// Create secrets in staging (the import source)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "ANOTHER_STAGING", "another-staging-value", nil)
+
+	// Create a direct secret in dev
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_DIRECT", "dev-direct-value", nil)
+
+	// Create import in dev that imports from staging
+	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+
+	// Create identity with dev-only permission (cannot read staging)
+	devOnlyRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-only-reader", "Dev Only", []infra.Permission{
+		{
+			Subject: "secrets",
+			Action:  []string{"read"},
+			Conditions: map[string]any{
+				"environment": "dev",
+			},
+		},
+	})
+	devOnlyIdentity := nodejs.CreateIdentity(t, "dev-only-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, devOnlyIdentity.ID, infra.Role(devOnlyRole.Slug))
+
+	// Create identity with admin permission (can read all)
+	adminIdentity := nodejs.CreateIdentity(t, "admin-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, adminIdentity.ID, infra.Role("admin"))
+
+	t.Run("direct secret allowed with env-scoped permission", func(t *testing.T) {
+		result, err := getSecretByName(t, permission.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "DEV_DIRECT",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			IncludeImports:  false,
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "DEV_DIRECT", result.Secret.SecretKey)
+		assert.Equal(t, "dev-direct-value", result.Secret.SecretValue)
+	})
+
+	t.Run("imported secret denied without source env permission", func(t *testing.T) {
+		// Request secret via dev, but it's actually in staging
+		// dev-only identity should NOT be able to read it
+		_, err := getSecretByName(t, permission.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "STAGING_SECRET",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			IncludeImports:  true,
+		})
+
+		require.Error(t, err, "should deny access to imported secret when lacking source env permission")
+		assert.Contains(t, err.Error(), "permission")
+	})
+
+	t.Run("imported secret allowed with admin permission", func(t *testing.T) {
+		result, err := getSecretByName(t, permission.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "STAGING_SECRET",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			IncludeImports:  true,
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "STAGING_SECRET", result.Secret.SecretKey)
+		assert.Equal(t, "staging-value", result.Secret.SecretValue)
+		assert.Equal(t, "staging", result.Secret.Environment, "should return actual source environment")
+	})
+
+	t.Run("imported secret not found when includeImports is false", func(t *testing.T) {
+		_, err := getSecretByName(t, permission.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "STAGING_SECRET",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			IncludeImports:  false,
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
 }

@@ -115,6 +115,10 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		return nil, errutil.DatabaseErr("Failed to find secret").WithErrf("GetSecretByName(secretName=%s): %w", opts.SecretName, err)
 	}
 
+	// Track the actual location of the found secret (for permission checks)
+	secretEnv := opts.Environment
+	secretPath := opts.SecretPath
+
 	// If not found in direct folder and includeImports is true, search imports
 	if foundSecret == nil && opts.IncludeImports {
 		importLookup, err := h.secretManagerSvc.SecretImport.LoadProjectImports(ctx, opts.ProjectID)
@@ -134,6 +138,9 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 				}
 				if importedSecret != nil {
 					foundSecret = importedSecret
+					// Use the imported source's env/path for permission checks
+					secretEnv = imp.EnvSlug
+					secretPath = imp.Path
 					break
 				}
 			}
@@ -144,22 +151,22 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		return nil, errutil.NotFound("Secret not found").WithErrf("GetSecretByName: secret with name '%s' not found", opts.SecretName)
 	}
 
-	// Check permissions
+	// Check permissions using the secret's actual location (not the requested location)
 	tagSlugs := make([]string, len(foundSecret.Tags))
 	for i, tag := range foundSecret.Tags {
 		tagSlugs[i] = tag.Slug
 	}
 
-	canDescribe := permission.CanDescribeSecret(permResult.Permission.Ability, opts.Environment, opts.SecretPath, foundSecret.Key, tagSlugs)
+	canDescribe := permission.CanDescribeSecret(permResult.Permission.Ability, secretEnv, secretPath, foundSecret.Key, tagSlugs)
 	if !canDescribe {
-		return nil, errutil.Forbidden("You do not have permission to access this secret").WithErrf("getSecretByNameCore(secretName=%s, env=%s, path=%s): describe denied", opts.SecretName, opts.Environment, opts.SecretPath)
+		return nil, errutil.Forbidden("You do not have permission to access this secret").WithErrf("getSecretByNameCore(secretName=%s, env=%s, path=%s): describe denied", opts.SecretName, secretEnv, secretPath)
 	}
 
-	canReadValue := permission.CanReadSecretValue(permResult.Permission.Ability, opts.Environment, opts.SecretPath, foundSecret.Key, tagSlugs)
+	canReadValue := permission.CanReadSecretValue(permResult.Permission.Ability, secretEnv, secretPath, foundSecret.Key, tagSlugs)
 	valueHidden := !opts.ViewSecretValue || !canReadValue
 
 	if opts.ViewSecretValue && !canReadValue {
-		return nil, errutil.Forbidden("You do not have permission to view this secret value").WithErrf("getSecretByNameCore(secretName=%s, env=%s, path=%s): read value denied", opts.SecretName, opts.Environment, opts.SecretPath)
+		return nil, errutil.Forbidden("You do not have permission to view this secret value").WithErrf("getSecretByNameCore(secretName=%s, env=%s, path=%s): read value denied", opts.SecretName, secretEnv, secretPath)
 	}
 
 	// Decrypt value and comment
@@ -251,11 +258,11 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		}
 	}
 
-	// Build response
+	// Build response using the secret's actual location
 	processed := &processedSecret{
 		Secret:      foundSecret,
-		SecretPath:  opts.SecretPath,
-		Environment: opts.Environment,
+		SecretPath:  secretPath,
+		Environment: secretEnv,
 		Value:       secretValue,
 		Comment:     secretComment,
 		ValueHidden: valueHidden,

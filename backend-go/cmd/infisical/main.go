@@ -45,12 +45,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Connect to database.
+	if err := run(cfg, logger); err != nil {
+		os.Exit(1)
+	}
+}
+
+func run(cfg *config.Config, logger *slog.Logger) error {
 	ctx := context.Background()
+
+	// Connect to database.
 	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, cfg.DBReadReplicas)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to initialize database", slog.Any("error", err))
-		os.Exit(1)
+		return err
 	}
 	defer errutil.DeferErr(ctx, db.Close, "closing database")
 
@@ -61,7 +68,7 @@ func main() {
 	redisClient, err := redisdb.NewClientFromEnvConfig(cfg)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to initialize redis", slog.Any("error", err))
-		return
+		return err
 	}
 	defer errutil.DeferErr(ctx, redisClient.Close, "closing redis")
 
@@ -78,16 +85,17 @@ func main() {
 		KeyStore: ks,
 		Queue:    queueSvc,
 	})
-
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to initialize services", slog.Any("error", err))
-		return
+		return err
 	}
+
 	// Create server.
 	srv := server.NewServer(registry, logger)
 
 	// Create error channel for signal handling and server errors.
-	errc := make(chan error)
+	// Buffered to prevent blocking if multiple senders (signal, queue, HTTP) fire after first receive.
+	errc := make(chan error, 4)
 
 	// Setup interrupt handler.
 	go func() {
@@ -118,4 +126,5 @@ func main() {
 	wg.Wait()
 
 	logger.InfoContext(ctx, "server stopped")
+	return nil
 }
