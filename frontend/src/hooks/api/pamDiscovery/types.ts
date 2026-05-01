@@ -17,6 +17,7 @@ export type TPamDiscoverySource = {
   name: string;
   discoveryType: PamDiscoveryType;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   discoveryConfiguration?: Record<string, unknown>;
   discoveryCredentials?: Record<string, unknown>;
   schedule?: string | null;
@@ -115,7 +116,8 @@ export type TCreatePamDiscoverySourceDTO = {
   projectId: string;
   name: string;
   discoveryType: PamDiscoveryType;
-  gatewayId: string;
+  gatewayId?: string;
+  gatewayPoolId?: string;
   discoveryCredentials: Record<string, unknown>;
   discoveryConfiguration: Record<string, unknown>;
   schedule?: string;
@@ -126,6 +128,7 @@ export type TUpdatePamDiscoverySourceDTO = {
   discoveryType: PamDiscoveryType;
   name?: string;
   gatewayId?: string;
+  gatewayPoolId?: string;
   discoveryCredentials?: Record<string, unknown>;
   discoveryConfiguration?: Record<string, unknown>;
   schedule?: string;

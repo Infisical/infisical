@@ -81,7 +81,11 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
       ? {
           discoveryType: PamDiscoveryType.ActiveDirectory,
           name: source.name,
-          gateway: source.gatewayId ? { id: source.gatewayId, name: "" } : undefined,
+          gateway: source.gatewayPoolId
+            ? { id: source.gatewayPoolId, name: "", kind: "pool" as const }
+            : source.gatewayId
+              ? { id: source.gatewayId, name: "", kind: "gateway" as const }
+              : undefined,
           schedule: source.schedule || "manual",
           discoveryConfiguration: {
             domainFQDN: (source.discoveryConfiguration?.domainFQDN as string) || "",

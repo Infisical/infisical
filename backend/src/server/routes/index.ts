@@ -1478,7 +1478,8 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
     pamDomainDAL,
-    pamResourceDAL
+    pamResourceDAL,
+    pamDiscoverySourceDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -3017,7 +3018,8 @@ export const registerRoutes = async (
     kmsService,
     queueService,
     gatewayV2Service,
-    gatewayV2DAL
+    gatewayV2DAL,
+    gatewayPoolService
   });
 
   const pamDiscoverySourceService = pamDiscoverySourceServiceFactory({
@@ -3033,6 +3035,8 @@ export const registerRoutes = async (
     kmsService,
     gatewayV2DAL,
     gatewayV2Service,
+    gatewayPoolService,
+    licenseService,
     pamDiscoveryQueue
   });
 

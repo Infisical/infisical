@@ -16,8 +16,10 @@ export type TPamDiscoveryConfiguration = TActiveDirectoryDiscoverySourceConfigur
 // Discovery Source DTOs
 export type TCreatePamDiscoverySourceDTO = Pick<
   TPamDiscoverySource,
-  "name" | "projectId" | "discoveryType" | "discoveryConfiguration" | "schedule" | "gatewayId"
+  "name" | "projectId" | "discoveryType" | "discoveryConfiguration" | "schedule"
 > & {
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   discoveryCredentials: TPamDiscoveryCredentials;
 };
 

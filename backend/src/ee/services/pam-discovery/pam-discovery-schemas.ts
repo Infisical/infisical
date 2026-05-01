@@ -33,18 +33,47 @@ export const BasePamDiscoverySourceSchema = PamDiscoverySourcesSchema.omit({
   status: z.nativeEnum(PamDiscoverySourceStatus)
 });
 
-export const BaseCreatePamDiscoverySourceSchema = z.object({
-  projectId: z.string().uuid(),
-  name: slugSchema({ field: "name" }),
-  gatewayId: z.string().uuid(),
-  schedule: z.nativeEnum(PamDiscoverySchedule)
-});
+export const BaseCreatePamDiscoverySourceSchema = z
+  .object({
+    projectId: z.string().uuid(),
+    name: slugSchema({ field: "name" }),
+    gatewayId: z.string().uuid().optional(),
+    gatewayPoolId: z.string().uuid().optional(),
+    schedule: z.nativeEnum(PamDiscoverySchedule)
+  })
+  .superRefine((data, ctx) => {
+    if (data.gatewayId && data.gatewayPoolId) {
+      ctx.addIssue({
+        path: ["gatewayPoolId"],
+        code: z.ZodIssueCode.custom,
+        message: "Cannot specify both a gateway and a gateway pool"
+      });
+    }
+    if (!data.gatewayId && !data.gatewayPoolId) {
+      ctx.addIssue({
+        path: ["gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "A gateway or gateway pool is required"
+      });
+    }
+  });
 
-export const BaseUpdatePamDiscoverySourceSchema = z.object({
-  name: slugSchema({ field: "name" }).optional(),
-  gatewayId: z.string().uuid().optional(),
-  schedule: z.nativeEnum(PamDiscoverySchedule).optional()
-});
+export const BaseUpdatePamDiscoverySourceSchema = z
+  .object({
+    name: slugSchema({ field: "name" }).optional(),
+    gatewayId: z.string().uuid().optional(),
+    gatewayPoolId: z.string().uuid().optional(),
+    schedule: z.nativeEnum(PamDiscoverySchedule).optional()
+  })
+  .superRefine((data, ctx) => {
+    if (data.gatewayId && data.gatewayPoolId) {
+      ctx.addIssue({
+        path: ["gatewayPoolId"],
+        code: z.ZodIssueCode.custom,
+        message: "Cannot specify both a gateway and a gateway pool"
+      });
+    }
+  });
 
 // Discovery Runs
 export const BasePamDiscoverySourceRunSchema = PamDiscoverySourceRunsSchema.omit({

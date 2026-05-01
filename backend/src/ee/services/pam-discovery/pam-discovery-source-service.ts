@@ -2,7 +2,11 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamDiscoverySources } from "@app/db/schemas";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -17,8 +21,10 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceMetadata } from "../pam-resource/pam-resource-fns";
 import { TPamAccountDependenciesDALFactory } from "./pam-account-dependencies-dal";
@@ -82,6 +88,8 @@ type TPamDiscoverySourceServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   pamDiscoveryQueue: Pick<TPamDiscoveryQueueFactory, "queuePamDiscoveryScan">;
 };
 
@@ -100,20 +108,41 @@ export const pamDiscoverySourceServiceFactory = ({
   kmsService,
   gatewayV2DAL,
   gatewayV2Service,
+  gatewayPoolService,
+  licenseService,
   pamDiscoveryQueue
 }: TPamDiscoverySourceServiceFactoryDep) => {
+  const resolveEffectiveGatewayId = async (
+    gatewayId: string | null | undefined,
+    gatewayPoolId: string | null | undefined
+  ): Promise<string> => {
+    if (gatewayId) return gatewayId;
+    if (gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      return picked.id;
+    }
+    throw new BadRequestError({ message: "A gateway or gateway pool is required" });
+  };
   const create = async (
     {
       projectId,
       name,
       discoveryType,
       gatewayId,
+      gatewayPoolId,
       discoveryCredentials,
       discoveryConfiguration,
       schedule
     }: TCreatePamDiscoverySourceDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+    if (!gatewayId && !gatewayPoolId) {
+      throw new BadRequestError({ message: "A gateway or gateway pool is required" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -137,21 +166,37 @@ export const pamDiscoverySourceServiceFactory = ({
       actorOrgId: actor.orgId
     });
 
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionGatewayActions.AttachGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    if (gatewayId) {
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
 
-    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
-    if (!gateway) {
-      throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
+      }
+    } else if (gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
     }
+
+    const validationGatewayId = await resolveEffectiveGatewayId(gatewayId, gatewayPoolId);
 
     const factory = PAM_DISCOVERY_FACTORY_MAP[discoveryType](
       discoveryType,
       discoveryConfiguration,
       discoveryCredentials,
-      gatewayId,
+      validationGatewayId,
       projectId,
       gatewayV2Service
     );
@@ -168,7 +213,8 @@ export const pamDiscoverySourceServiceFactory = ({
         projectId,
         name,
         discoveryType,
-        gatewayId,
+        gatewayId: gatewayPoolId ? null : gatewayId,
+        gatewayPoolId: gatewayPoolId ?? null,
         encryptedDiscoveryCredentials,
         discoveryConfiguration,
         schedule,
@@ -191,12 +237,17 @@ export const pamDiscoverySourceServiceFactory = ({
       discoverySourceId,
       name,
       gatewayId,
+      gatewayPoolId,
       discoveryCredentials,
       discoveryConfiguration,
       schedule
     }: TUpdatePamDiscoverySourceDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const discoverySource = await pamDiscoverySourceDAL.findById(discoverySourceId);
     if (!discoverySource) {
       throw new NotFoundError({ message: `Discovery Source with ID '${discoverySourceId}' not found` });
@@ -238,6 +289,31 @@ export const pamDiscoverySourceServiceFactory = ({
         throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
       }
       updateDoc.gatewayId = gatewayId;
+      updateDoc.gatewayPoolId = null;
+    } else if (gatewayPoolId && gatewayPoolId !== discoverySource.gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      updateDoc.gatewayPoolId = gatewayPoolId;
+      updateDoc.gatewayId = null;
     }
 
     if (name !== undefined) updateDoc.name = name;
@@ -276,8 +352,9 @@ export const pamDiscoverySourceServiceFactory = ({
     }
 
     // Validate if connection details changed
-    if (gatewayId || discoveryConfiguration || discoveryCredentials) {
-      const effectiveGatewayId = gatewayId ?? discoverySource.gatewayId;
+    if (gatewayId || gatewayPoolId || discoveryConfiguration || discoveryCredentials) {
+      const effectiveAttachedGatewayId = gatewayId ?? discoverySource.gatewayId;
+      const effectiveAttachedPoolId = gatewayPoolId ?? discoverySource.gatewayPoolId;
       const effectiveConfiguration = (discoveryConfiguration ??
         discoverySource.discoveryConfiguration) as TPamDiscoveryConfiguration;
 
@@ -290,12 +367,17 @@ export const pamDiscoverySourceServiceFactory = ({
         });
       }
 
-      if (effectiveGatewayId && effectiveCredentials) {
+      const validationGatewayId = await resolveEffectiveGatewayId(
+        effectiveAttachedGatewayId,
+        effectiveAttachedPoolId
+      ).catch(() => null);
+
+      if (validationGatewayId && effectiveCredentials) {
         const factory = PAM_DISCOVERY_FACTORY_MAP[discoverySource.discoveryType as PamDiscoveryType](
           discoverySource.discoveryType as PamDiscoveryType,
           effectiveConfiguration,
           effectiveCredentials,
-          effectiveGatewayId,
+          validationGatewayId,
           discoverySource.projectId,
           gatewayV2Service
         );

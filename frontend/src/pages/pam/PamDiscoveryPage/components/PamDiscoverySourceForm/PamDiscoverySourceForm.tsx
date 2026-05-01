@@ -29,17 +29,19 @@ const CreateForm = ({ discoveryType, closeSheet, projectId }: CreateFormProps) =
 
   const onSubmit = async (formData: {
     name: string;
-    gateway: { id: string; name: string } | null;
+    gateway: { id: string; name: string; kind?: "gateway" | "pool" } | null;
     schedule: string;
     discoveryType: PamDiscoveryType;
     discoveryConfiguration: Record<string, unknown>;
     discoveryCredentials: Record<string, unknown>;
   }) => {
+    const isPool = formData.gateway?.kind === "pool";
     await createPamDiscoverySource.mutateAsync({
       projectId,
       name: formData.name,
       discoveryType: formData.discoveryType,
-      gatewayId: formData.gateway!.id,
+      gatewayId: isPool ? undefined : formData.gateway!.id,
+      gatewayPoolId: isPool ? formData.gateway!.id : undefined,
       discoveryConfiguration: formData.discoveryConfiguration,
       discoveryCredentials: formData.discoveryCredentials,
       schedule: formData.schedule
@@ -65,17 +67,19 @@ const UpdateForm = ({ source, closeSheet }: UpdateFormProps) => {
 
   const onSubmit = async (formData: {
     name: string;
-    gateway: { id: string; name: string } | null;
+    gateway: { id: string; name: string; kind?: "gateway" | "pool" } | null;
     schedule: string;
     discoveryType: PamDiscoveryType;
     discoveryConfiguration: Record<string, unknown>;
     discoveryCredentials: Record<string, unknown>;
   }) => {
+    const isPool = formData.gateway?.kind === "pool";
     await updatePamDiscoverySource.mutateAsync({
       discoverySourceId: source.id,
       discoveryType: formData.discoveryType,
       name: formData.name,
-      gatewayId: formData.gateway!.id,
+      gatewayId: isPool ? undefined : formData.gateway!.id,
+      gatewayPoolId: isPool ? formData.gateway!.id : undefined,
       discoveryConfiguration: formData.discoveryConfiguration,
       discoveryCredentials: formData.discoveryCredentials,
       schedule: formData.schedule
