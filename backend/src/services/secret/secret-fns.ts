@@ -308,24 +308,45 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
         }
 
         if (entities.length > 1) {
-          const secretReferenceEnvironment = entities[0];
-          const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
-          const secretReferenceKey = entities[entities.length - 1];
-
+          // First check if the full interpolation key (including dots) matches a local secret.
+          // This handles secret names that contain dots (e.g. "MY.SECRET") — without this
+          // check, the dot would be misinterpreted as an environment/path separator.
           // eslint-disable-next-line
-          let referenceValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-          if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
+          const localSecretValue = await fetchSecret(environment, secretPath, interpolationKey.trim());
+          if (localSecretValue !== "") {
+            let referenceValue = localSecretValue;
+            if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
+              // eslint-disable-next-line
+              referenceValue = await recursivelyExpandSecret({
+                environment,
+                secretPath,
+                value: referenceValue,
+                depth: depth + 1
+              });
+            }
+            const cacheKey = getCacheUniqueKey(environment, secretPath);
+            secretCache[cacheKey][interpolationKey.trim()] = referenceValue;
+            expandedValue = expandedValue.replaceAll(interpolationSyntax, referenceValue);
+          } else {
+            const secretReferenceEnvironment = entities[0];
+            const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
+            const secretReferenceKey = entities[entities.length - 1];
+
             // eslint-disable-next-line
-            referenceValue = await recursivelyExpandSecret({
-              environment: secretReferenceEnvironment,
-              secretPath: secretReferencePath,
-              value: referenceValue,
-              depth: depth + 1
-            });
+            let referenceValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
+            if (INTERPOLATION_TEST_REGEX.test(referenceValue)) {
+              // eslint-disable-next-line
+              referenceValue = await recursivelyExpandSecret({
+                environment: secretReferenceEnvironment,
+                secretPath: secretReferencePath,
+                value: referenceValue,
+                depth: depth + 1
+              });
+            }
+            const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+            secretCache[cacheKey][secretReferenceKey] = referenceValue;
+            expandedValue = expandedValue.replaceAll(interpolationSyntax, referenceValue);
           }
-          const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
-          secretCache[cacheKey][secretReferenceKey] = referenceValue;
-          expandedValue = expandedValue.replaceAll(interpolationSyntax, referenceValue);
         }
       }
     }

@@ -46,7 +46,19 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
         secretKey: secretPathList[secretPathList.length - 1]
       };
     });
-  const localReferences = references.filter((el) => !el.includes("."));
+
+  // Local references are secret keys in the same environment/path (no dots).
+  // Additionally, any dot-containing key is also included as a local reference
+  // candidate because a secret name may legitimately contain dots (e.g. "MY.SECRET").
+  // Without this inclusion, a reference like ${MY.SECRET} would not be tracked as a
+  // local dependency at all. The expansion logic (expandSecretReferencesFactory)
+  // resolves the ambiguity at runtime by checking whether the full dotted key exists
+  // as a local secret before falling back to cross-environment resolution.
+  const localReferences = [
+    ...references.filter((el) => !el.includes(".")),
+    ...references.filter((el) => el.includes("."))
+  ];
+
   return { nestedReferences, localReferences };
 };
 
@@ -192,25 +204,51 @@ export const expandSecretReferencesFactory = ({
             referencedSecretPath = secretPath;
             referencedSecretEnvironmentSlug = environment;
           } else {
-            const secretReferenceEnvironment = entities[0];
-            const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
-            const secretReferenceKey = entities[entities.length - 1];
-
+            // When entities.length > 1, the dot syntax normally means a cross-environment
+            // reference (env.path.KEY). However, secret names may legitimately contain dots
+            // (e.g. "MY.SECRET"). We therefore first check whether the full interpolation key
+            // (dots included) resolves as a local secret in the current environment/path.
+            // If it does, we use that value and skip the cross-environment interpretation.
+            const fullLocalKey = interpolationKey.trim();
             // eslint-disable-next-line no-await-in-loop
-            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
-              throw new ForbiddenRequestError({
-                message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
-              });
+            const localCandidate = await fetchSecret(environment, secretPath, fullLocalKey);
 
-            const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
-            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
-            secretCache[cacheKey][secretReferenceKey] = referedValue;
+            if (localCandidate.value !== "" || localCandidate.tags?.length) {
+              // Resolved as a local secret whose name contains dots.
+              if (!canExpandValue(environment, secretPath, fullLocalKey, localCandidate.tags))
+                throw new ForbiddenRequestError({
+                  message: `You do not have permission to read secret '${fullLocalKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+                });
 
-            referencedSecretValue = referedValue.value;
-            referencedSecretKey = secretReferenceKey;
-            referencedSecretPath = secretReferencePath;
-            referencedSecretEnvironmentSlug = secretReferenceEnvironment;
+              const cacheKey = getCacheUniqueKey(environment, secretPath);
+              if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
+              secretCache[cacheKey][fullLocalKey] = localCandidate;
+
+              referencedSecretValue = localCandidate.value;
+              referencedSecretKey = fullLocalKey;
+              referencedSecretPath = secretPath;
+              referencedSecretEnvironmentSlug = environment;
+            } else {
+              const secretReferenceEnvironment = entities[0];
+              const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
+              const secretReferenceKey = entities[entities.length - 1];
+
+              // eslint-disable-next-line no-await-in-loop
+              const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
+              if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
+                throw new ForbiddenRequestError({
+                  message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+                });
+
+              const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+              if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
+              secretCache[cacheKey][secretReferenceKey] = referedValue;
+
+              referencedSecretValue = referedValue.value;
+              referencedSecretKey = secretReferenceKey;
+              referencedSecretPath = secretReferencePath;
+              referencedSecretEnvironmentSlug = secretReferenceEnvironment;
+            }
           }
 
           const node = {
