@@ -89,12 +89,23 @@ export const GatewayPicker = ({
     (!("lastHealthCheckStatus" in gw) ||
       gw.lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed);
 
+  // For variant="v3" we override the v2 Select item's hover/highlighted state via a
+  // descendant selector. v2 Select uses bg-mineshaft-500 / bg-mineshaft-700 hover,
+  // which clashes with the lighter bg-popover panel; v3 uses bg-foreground/5 instead.
+  const itemHoverV3 =
+    "[&_[data-radix-collection-item]:hover]:bg-foreground/5 [&_[data-radix-collection-item][data-highlighted]]:bg-foreground/5";
+
   return (
     <Select
       value={selectValue}
       onValueChange={handleChange}
       isDisabled={isDisabled}
       isLoading={Boolean(isLoading)}
+      // The v2 Select wraps its trigger in a flex container that's content-sized by
+      // default. Without w-full on the outer wrapper, the trigger's own w-full only
+      // fills *up to* the content size — visibly narrower than v3 Input / v3
+      // FilterableSelect siblings whose width is set on their root element.
+      containerClassName="w-full"
       // Default to w-full because every consumer (PAM forms, App Connection forms,
       // Dynamic Secret forms, K8s identity auth, PKI Discovery) wants the picker
       // to fill its container. Caller can still override with className.
@@ -106,7 +117,12 @@ export const GatewayPicker = ({
         variant === "v3" && "h-9 border-border bg-transparent text-foreground",
         className
       )}
-      dropdownContainerClassName="max-w-none"
+      // v3 dropdown panel uses bg-popover + border-border to match v3 design language
+      // (Field, FilterableSelect menu). Default v2 panel keeps bg-mineshaft-900.
+      dropdownContainerClassName={twMerge(
+        "max-w-none",
+        variant === "v3" && `border-border bg-popover text-foreground ${itemHoverV3}`
+      )}
       position="popper"
       side="bottom"
       placeholder={placeholder}
