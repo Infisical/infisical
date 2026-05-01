@@ -1,6 +1,7 @@
 import { faGlobe, faLayerGroup, faServer } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { twMerge } from "tailwind-merge";
 
 import { Select, SelectItem, Tooltip } from "@app/components/v2";
 import { useSubscription } from "@app/context";
@@ -86,7 +87,10 @@ export const GatewayPicker = ({
       onValueChange={handleChange}
       isDisabled={isDisabled}
       isLoading={Boolean(isLoading)}
-      className={className}
+      // Default to w-full because every consumer (PAM forms, App Connection forms,
+      // Dynamic Secret forms, K8s identity auth, PKI Discovery) wants the picker
+      // to fill its container. Caller can still override with className.
+      className={twMerge("w-full", className)}
       dropdownContainerClassName="max-w-none"
       position="popper"
       side="bottom"
