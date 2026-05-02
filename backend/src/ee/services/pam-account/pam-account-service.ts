@@ -170,7 +170,7 @@ export const pamAccountServiceFactory = ({
         resourceType: resource.resourceType,
         domainType: null as string | null,
         gatewayId: resource.gatewayId,
-        gatewayPoolId: (resource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null,
+        gatewayPoolId: resource.gatewayPoolId ?? null,
         encryptedConnectionDetails: resource.encryptedConnectionDetails,
         encryptedResourceMetadata: resource.encryptedResourceMetadata,
         encryptedRotationAccountCredentials: resource.encryptedRotationAccountCredentials,
@@ -1238,9 +1238,15 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId!);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    if (resource.gatewayId) {
+    // Use the session's effective gateway (already resolved by the pam-session DAL via
+    // COALESCE(session.gatewayId, resource.gatewayId)) for authorization, not
+    // resource.gatewayId. For pool-backed resources resource.gatewayId is null, but the
+    // session row carries the pool member that was pinned at session-start — the calling
+    // gateway must match THAT one. Reading from resource.gatewayId here would silently
+    // skip authorization for pool-backed sessions.
+    if (session.gatewayId) {
       const authorized =
-        actor.type === ActorType.GATEWAY ? resource.gatewayId === actor.id : resource.gatewayIdentityId === actor.id;
+        actor.type === ActorType.GATEWAY ? session.gatewayId === actor.id : session.gatewayIdentityId === actor.id;
       if (!authorized) {
         throw new ForbiddenRequestError({
           message: "Gateway does not have access to fetch the PAM session credentials"
