@@ -1,5 +1,9 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+
+export enum IdentityOrderBy {
+  Name = "name"
+}
 
 export interface TMembershipIdentityScopeFactory {
   onCreateMembershipIdentityGuard: (arg: TCreateMembershipIdentityDTO) => Promise<void>;
@@ -58,6 +62,8 @@ export type TListMembershipIdentityDTO = {
     offset?: number;
     identityName?: string;
     roles?: string[];
+    orderBy?: IdentityOrderBy;
+    orderDirection?: OrderByDirection;
   };
 };
 

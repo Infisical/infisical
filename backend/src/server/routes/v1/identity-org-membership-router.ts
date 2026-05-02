@@ -4,9 +4,11 @@ import { AccessScope, IdentitiesSchema, MembershipRolesSchema, TemporaryPermissi
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORG_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { IdentityOrderBy } from "@app/services/membership-identity/membership-identity-types";
 
 const sanitizedOrgIdentityMembershipSchema = z.object({
   id: z.string().uuid(),
@@ -294,7 +296,9 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
           .string()
           .transform((val) => val.split(",").map((role) => role.trim()))
           .describe(ORG_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.roles)
-          .optional()
+          .optional(),
+        orderBy: z.nativeEnum(IdentityOrderBy).default(IdentityOrderBy.Name).optional(),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC).optional()
       }),
       response: {
         200: z.object({
@@ -335,7 +339,9 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
           offset: req.query.offset,
           limit: req.query.limit,
           identityName: req.query.identityName,
-          roles: req.query.roles
+          roles: req.query.roles,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection
         }
       });
 

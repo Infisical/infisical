@@ -6,8 +6,10 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
+import { OrderByDirection } from "@app/lib/types";
 
 import { buildAuthMethods } from "../identity/identity-fns";
+import { IdentityOrderBy } from "./membership-identity-types";
 
 export type TMembershipIdentityDALFactory = ReturnType<typeof membershipIdentityDALFactory>;
 
@@ -20,6 +22,8 @@ type TFindIdentityArg = {
     identityId: string;
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
+    orderBy: IdentityOrderBy;
+    orderDirection: OrderByDirection;
   }>;
 };
 
@@ -237,7 +241,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
+        .select(`${TableName.Membership}.id`)
+        .groupBy(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where((qb) => {
           if (filter.identityId) {
@@ -273,6 +278,11 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         );
       }
 
+      if (filter.orderBy === IdentityOrderBy.Name) {
+        void paginatedIdentitys.groupBy(`${TableName.Identity}.name`);
+        void paginatedIdentitys.orderBy(`${TableName.Identity}.name`, filter.orderDirection);
+      }
+
       const countQuery = await (tx || db.replicaNode())
         .count("* as total")
         .from(paginatedIdentitys.clone().as("distinctMemberships"));
@@ -280,12 +290,11 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
       if (filter.limit) void paginatedIdentitys.limit(filter.limit);
       if (filter.offset) void paginatedIdentitys.offset(filter.offset);
 
-      const docs = await (tx || db.replicaNode())(TableName.Membership)
+      const query = (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .whereIn(`${TableName.Membership}.id`, paginatedIdentitys)
         .select(selectAllTableCols(TableName.Membership))
@@ -313,6 +322,12 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("createdAt").withSchema(TableName.MembershipRole).as("membershipRoleCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt")
         );
+
+      if (filter.orderBy === IdentityOrderBy.Name) {
+        void query.orderByRaw(`lower(${TableName.Identity}.name) ${filter.orderDirection}`);
+      }
+
+      const docs = await query;
 
       const data = sqlNestRelationships({
         data: docs,
