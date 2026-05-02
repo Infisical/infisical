@@ -101,11 +101,15 @@ export const GatewayPicker = ({
       onValueChange={handleChange}
       isDisabled={isDisabled}
       isLoading={Boolean(isLoading)}
-      // The v2 Select wraps its trigger in a flex container that's content-sized by
-      // default. Without w-full on the outer wrapper, the trigger's own w-full only
-      // fills *up to* the content size — visibly narrower than v3 Input / v3
-      // FilterableSelect siblings whose width is set on their root element.
-      containerClassName="w-full"
+      // Make the v2 Select's outer flex wrapper `display: contents` so the Trigger
+      // button becomes a direct flex item of FieldContent (the actual form column).
+      // With w-full on the wrapper, the Trigger was 100% of the wrapper, but the
+      // wrapper itself was not always taking the same width as a sibling Input —
+      // FieldContent's stretch alignment treats the Input as a direct child but the
+      // picker wrapper as an opaque box, leaving it slightly narrower. `contents`
+      // dissolves the wrapper from the layout tree, putting the Trigger on equal
+      // footing with Input and FilterableSelect.
+      containerClassName="contents"
       // Default to w-full because every consumer (PAM forms, App Connection forms,
       // Dynamic Secret forms, K8s identity auth, PKI Discovery) wants the picker
       // to fill its container. Caller can still override with className.
