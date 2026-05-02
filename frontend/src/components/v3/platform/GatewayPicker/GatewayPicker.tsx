@@ -117,7 +117,7 @@ export const GatewayPicker = ({
       // and darker border so the picker visually matches v3 Input / FilterableSelect
       // siblings in v3 form layouts.
       className={twMerge(
-        "flex w-full",
+        "w-full",
         variant === "v3" && "h-9 border-border bg-transparent text-foreground",
         className
       )}
