@@ -3,7 +3,12 @@ import { AccessScope, AccessScopeData, IdentitiesSchema, TableName } from "@app/
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
+import { OrderByDirection } from "@app/lib/types";
+import { TIdentityV2DALFactory } from "@app/services/identity-v2/identity-dal";
+
 import { buildAuthMethods } from "../identity/identity-fns";
+import { IdentityOrderBy } from "./identity-types";
+
 
 export type TIdentityV2DALFactory = ReturnType<typeof identityV2DALFactory>;
 
@@ -132,7 +137,13 @@ export const identityV2DALFactory = (db: TDbClient) => {
 
   const listIdentities = async (
     scopeData: AccessScopeData,
-    filter: { limit?: number; offset?: number; search?: string } = {}
+    filter: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+      orderBy?: IdentityOrderBy;
+      orderDirection?: OrderByDirection;
+    } = {}
   ) => {
     const baseQuery = db
       .replicaNode()(TableName.Identity)
@@ -145,12 +156,32 @@ export const identityV2DALFactory = (db: TDbClient) => {
         }
       });
 
-    if (filter.search)
+    if (filter.search) {
       void baseQuery.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(filter.search)}%`);
+    }
 
-    const countQuery = baseQuery.clone().count(`${TableName.Identity}.id as count`).first<{ count: string }>();
+    const [countResult] = (await baseQuery.clone().count(`${TableName.Identity}.id as count`)) as [
+      { count: string | number }?
+    ];
+    const totalCount = Number(countResult?.count ?? 0);
 
-    const dataQuery = baseQuery
+    const dir = filter.orderDirection === OrderByDirection.DESC ? "DESC" : "ASC";
+    const orderBy = filter.orderBy || IdentityOrderBy.CreatedAt;
+    
+    const paginatedIdentities = await baseQuery
+      .clone()
+      .clearSelect()
+      .select(`${TableName.Identity}.id`)
+      .orderBy(orderBy, dir)
+      .limit(filter.limit || 20)
+      .offset(filter.offset || 0);
+      
+    const dataQuery = db
+      .replicaNode()(TableName.Identity)
+      .whereIn(
+        `${TableName.Identity}.id`,
+        paginatedIdentities.map(({ id }) => id)
+      )
       .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
         void queryBuilder.on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`);
       })
@@ -159,12 +190,10 @@ export const identityV2DALFactory = (db: TDbClient) => {
         db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
         db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
         db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
-      );
+      )
+      .orderBy(orderBy, dir);
 
-    if (filter.limit) void dataQuery.limit(filter.limit);
-    if (filter.offset) void dataQuery.offset(filter.offset || 0);
-
-    const [countResult, docs] = await Promise.all([countQuery, dataQuery]);
+    const docs = await dataQuery;
 
     const formattedDoc = sqlNestRelationships({
       data: docs,
@@ -183,7 +212,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
       ]
     });
 
-    return { docs: formattedDoc, count: Number(countResult?.count ?? 0) };
+    return { docs: formattedDoc, count: totalCount };
   };
 
   return { ...orm, listIdentities, getIdentityById };

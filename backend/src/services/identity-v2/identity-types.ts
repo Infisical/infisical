@@ -10,10 +10,18 @@ export interface TIdentityV2Factory {
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };
 }
 
+
 export enum IdentityOrderBy {
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
+}
+
+export enum OrgIdentityOrderBy {
   Name = "name",
   Role = "role"
 }
+
 
 export type TCreateIdentityV2DTO = {
   permission: OrgServiceActor;

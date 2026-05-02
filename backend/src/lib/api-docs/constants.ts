@@ -193,7 +193,9 @@ export const IDENTITIES = {
     orgId: "The ID of the organization to list identities.",
     search: "The text string that identity names will be filtered by.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
-    limit: "The number of identities to return."
+    limit: "The number of identities to return.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
   },
   SEARCH: {
     search: {
