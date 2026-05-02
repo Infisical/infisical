@@ -647,7 +647,9 @@ export const groupServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     search,
-    filter
+    filter,
+    orderBy,
+    orderDirection
   }: TListGroupUsersDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -677,7 +679,9 @@ export const groupServiceFactory = ({
       limit,
       username,
       search,
-      filter
+      filter,
+      orderBy,
+      orderDirection
     });
 
     return { users: members, totalCount };
@@ -692,7 +696,9 @@ export const groupServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     search,
-    filter
+    filter,
+    orderBy,
+    orderDirection
   }: TListGroupMachineIdentitiesDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -721,7 +727,9 @@ export const groupServiceFactory = ({
       offset,
       limit,
       search,
-      filter
+      filter,
+      orderBy,
+      orderDirection
     });
 
     return { machineIdentities, totalCount };

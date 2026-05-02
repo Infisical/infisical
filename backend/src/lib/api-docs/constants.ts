@@ -115,7 +115,10 @@ export const GROUPS = {
     search: "The text string that user email or name will be filtered by.",
     projectId: "The ID of the project the group belongs to.",
     filterUsers:
-      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
+      "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization.",
+    orderBy: "The column to order users by.",
+    orderDirection: "The direction to order users in."
+
   },
   LIST_MACHINE_IDENTITIES: {
     id: "The ID of the group to list identities for.",
@@ -123,7 +126,10 @@ export const GROUPS = {
     limit: "The number of identities to return.",
     search: "The text string that machine identity name will be filtered by.",
     filterMachineIdentities:
-      "Whether to filter the list of returned identities. 'assignedMachineIdentities' will only return identities assigned to the group, 'nonAssignedMachineIdentities' will only return identities not assigned to the group, undefined will return all identities in the organization."
+      "Whether to filter the list of returned identities. 'assignedMachineIdentities' will only return identities assigned to the group, 'nonAssignedMachineIdentities' will only return identities not assigned to the group, undefined will return all identities in the organization.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
+
   },
   LIST_MEMBERS: {
     id: "The ID of the group to list members for.",

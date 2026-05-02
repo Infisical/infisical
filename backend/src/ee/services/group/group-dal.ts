@@ -121,6 +121,9 @@ export const groupDALFactory = (db: TDbClient) => {
     username?: string;
     search?: string;
     filter?: FilterReturnedUsers;
+    orderBy?: GroupMembersOrderBy;
+    orderDirection?: OrderByDirection;
+
   }) => {
     try {
       const query = db
@@ -148,8 +151,12 @@ export const groupDALFactory = (db: TDbClient) => {
           db.raw(`count(*) OVER() as total_count`)
         )
         .where({ isGhost: false })
-        .offset(offset)
-        .orderBy("firstName", "asc");
+        .offset(offset);
+
+      if (orderBy) {
+        void query.orderBy(orderBy, orderDirection === OrderByDirection.ASC ? "asc" : "desc");
+      }
+
 
       if (limit) {
         void query.limit(limit);
@@ -216,6 +223,9 @@ export const groupDALFactory = (db: TDbClient) => {
     limit?: number;
     search?: string;
     filter?: FilterReturnedMachineIdentities;
+    orderBy?: GroupMembersOrderBy;
+    orderDirection?: OrderByDirection;
+
   }) => {
     try {
       const query = db
@@ -240,8 +250,11 @@ export const groupDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
           db.raw(`count(*) OVER() as total_count`)
         )
-        .offset(offset)
-        .orderBy("name", "asc");
+        .offset(offset);
+
+      if (orderBy) {
+        void query.orderBy(orderBy, orderDirection === OrderByDirection.ASC ? "asc" : "desc");
+      }
 
       if (limit) {
         void query.limit(limit);

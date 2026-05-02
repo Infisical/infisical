@@ -228,7 +228,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           )
           .optional()
           .describe(GROUPS.LIST_USERS.search),
-        filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
+        filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers),
+        orderBy: z.nativeEnum(GroupMembersOrderBy).optional().describe(GROUPS.LIST_USERS.orderBy),
+        orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_USERS.orderDirection)
       }),
       response: {
         200: z.object({
@@ -290,7 +292,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         filter: z
           .nativeEnum(FilterReturnedMachineIdentities)
           .optional()
-          .describe(GROUPS.LIST_MACHINE_IDENTITIES.filterMachineIdentities)
+          .describe(GROUPS.LIST_MACHINE_IDENTITIES.filterMachineIdentities),
+        orderBy: z.nativeEnum(GroupMembersOrderBy).optional().describe(GROUPS.LIST_MACHINE_IDENTITIES.orderBy),
+        orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_MACHINE_IDENTITIES.orderDirection)
       }),
       response: {
         200: z.object({

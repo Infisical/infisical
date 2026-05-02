@@ -43,6 +43,9 @@ export type TListGroupUsersDTO = {
   username?: string;
   search?: string;
   filter?: FilterReturnedUsers;
+  orderBy?: GroupMembersOrderBy;
+  orderDirection?: OrderByDirection;
+
 } & TGenericPermission;
 
 export type TListGroupMachineIdentitiesDTO = {
@@ -51,6 +54,9 @@ export type TListGroupMachineIdentitiesDTO = {
   limit: number;
   search?: string;
   filter?: FilterReturnedMachineIdentities;
+  orderBy?: GroupMembersOrderBy;
+  orderDirection?: OrderByDirection;
+
 } & TGenericPermission;
 
 export type TListGroupMembersDTO = {
