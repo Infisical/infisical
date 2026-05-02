@@ -883,7 +883,9 @@ export const ORG_IDENTITY_MEMBERSHIP = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
     limit: "The number of identity memberships to return.",
     identityName: "",
-    roles: "The role slugs to filter identity memberships by."
+    roles: "The role slugs to filter identity memberships by.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in."
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     identityId: "The ID of the machine identity to get the membership for."
@@ -1160,7 +1162,9 @@ export const PROJECT_IDENTITY_MEMBERSHIP = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
     limit: "The number of identity memberships to return.",
     identityName: "The text string that identity membership names will be filtered by.",
-    roles: "The role slugs to filter identity memberships by."
+    roles: "The role slugs to filter identity memberships by.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in."
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     projectId: "The ID of the project to get the identity membership for.",

@@ -6,8 +6,10 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
+import { OrderByDirection } from "@app/lib/types";
 
 import { buildAuthMethods } from "../identity/identity-fns";
+import { IdentityMembershipOrderBy } from "./membership-identity-types";
 
 export type TMembershipIdentityDALFactory = ReturnType<typeof membershipIdentityDALFactory>;
 
@@ -20,6 +22,8 @@ type TFindIdentityArg = {
     identityId: string;
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
+    orderBy: IdentityMembershipOrderBy;
+    orderDirection: OrderByDirection;
   }>;
 };
 
@@ -232,12 +236,11 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
 
   const findIdentities = async ({ scopeData, tx, filter }: TFindIdentityArg) => {
     try {
-      const paginatedIdentitys = (tx || db.replicaNode())(TableName.Membership)
+      const baseFilterQuery = (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where((qb) => {
           if (filter.identityId) {
@@ -255,7 +258,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
 
       if (filter.name || filter.role) {
         buildKnexFilterForSearchResource(
-          paginatedIdentitys,
+          baseFilterQuery,
           {
             ...(filter.name && { name: filter.name }),
             ...(filter.role && { role: filter.role })
@@ -273,10 +276,22 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         );
       }
 
-      const countQuery = await (tx || db.replicaNode())
-        .count("* as total")
-        .from(paginatedIdentitys.clone().as("distinctMemberships"));
+      const [countResult] = (await baseFilterQuery.clone().countDistinct(`${TableName.Membership}.id as count`)) as [
+        { count: string | number }?
+      ];
+      const totalCount = Number(countResult?.count ?? 0);
 
+      const dir = filter.orderDirection === OrderByDirection.DESC ? "DESC" : "ASC";
+      // identity name is the only sortable column today; fall through to it for any unknown value
+      const orderByRaw = `LOWER("${TableName.Identity}"."name") ${dir}`;
+
+      const paginatedIdentitys = baseFilterQuery
+        .clone()
+        .clearSelect()
+        .select(`${TableName.Membership}.id`)
+        .groupBy(`${TableName.Membership}.id`, `${TableName.Identity}.name`)
+        .orderByRaw(orderByRaw)
+        .orderBy(`${TableName.Membership}.id`, "asc");
       if (filter.limit) void paginatedIdentitys.limit(filter.limit);
       if (filter.offset) void paginatedIdentitys.offset(filter.offset);
 
@@ -285,9 +300,10 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .whereIn(`${TableName.Membership}.id`, paginatedIdentitys)
+        .orderByRaw(orderByRaw)
+        .orderBy(`${TableName.Membership}.id`, "asc")
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
@@ -367,7 +383,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((countQuery?.[0] as unknown as { total: number })?.total ?? 0) };
+      return { data, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindIdentity" });
     }
