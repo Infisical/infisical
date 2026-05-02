@@ -266,6 +266,7 @@ export const externalMigrationServiceFactory = ({
     mappingType,
     vaultUrl,
     gatewayId,
+    gatewayPoolId,
     actor,
     actorId,
     actorOrgId,
@@ -286,13 +287,21 @@ export const externalMigrationServiceFactory = ({
 
     const user = await userDAL.findById(actorId);
 
+    // Resolve effective gateway: directly-attached id, or a freshly-picked
+    // healthy pool member. Direct-import vault flow takes either flag, but
+    // the underlying vaultApi.collectVaultData only sees a concrete gatewayId.
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId,
+      gatewayPoolId
+    });
+
     const vaultData = await importVaultDataFn(
       {
         vaultAccessToken,
         vaultNamespace,
         vaultUrl,
         mappingType,
-        gatewayId,
+        gatewayId: effectiveGatewayId ?? undefined,
         orgId: actorOrgId
       },
       {
