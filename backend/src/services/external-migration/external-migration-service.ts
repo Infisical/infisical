@@ -394,7 +394,11 @@ export const externalMigrationServiceFactory = ({
       gatewayId: connection.gatewayId,
       gatewayPoolId: connection.gatewayPoolId
     });
-    const sanitizedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null } as typeof connection;
+    const sanitizedConnection = {
+      ...connection,
+      gatewayId: effectiveGatewayId,
+      gatewayPoolId: null
+    } as typeof connection;
 
     try {
       await getHCVaultPolicyNames(namespace, sanitizedConnection, gatewayService, gatewayV2Service, gatewayDetails);

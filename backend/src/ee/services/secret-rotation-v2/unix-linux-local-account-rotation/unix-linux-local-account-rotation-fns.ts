@@ -334,10 +334,15 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     // Attempt 1: Direct SSH login with target credentials
     let directSshError: string | undefined;
     try {
-      await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-        const client = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
-        client.destroy();
-      }, gatewayPoolService);
+      await executeWithPotentialGateway(
+        verifyConfig,
+        gatewayV2Service,
+        async (targetHost, targetPort) => {
+          const client = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
+          client.destroy();
+        },
+        gatewayPoolService
+      );
       return; // Direct SSH worked
     } catch (error) {
       directSshError = (error as Error).message;
@@ -359,14 +364,19 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     } as TSshConnectionConfig;
 
     try {
-      await executeWithPotentialGateway(appConnConfig, gatewayV2Service, async (targetHost, targetPort) => {
-        const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
-        try {
-          await verifySuLogin(client, targetUsername, targetPassword);
-        } finally {
-          client.destroy();
-        }
-      }, gatewayPoolService);
+      await executeWithPotentialGateway(
+        appConnConfig,
+        gatewayV2Service,
+        async (targetHost, targetPort) => {
+          const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
+          try {
+            await verifySuLogin(client, targetUsername, targetPassword);
+          } finally {
+            client.destroy();
+          }
+        },
+        gatewayPoolService
+      );
     } catch (suError) {
       throw new Error(
         `Failed to verify credentials. Direct SSH login failed: ${directSshError}. Fallback su verification also failed: ${(suError as Error).message}`
@@ -413,25 +423,30 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       } as TSshConnectionConfig;
     }
 
-    await executeWithPotentialGateway(connectConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      const client = await getSshConnectionClient(connectConfig, targetHost, targetPort);
+    await executeWithPotentialGateway(
+      connectConfig,
+      gatewayV2Service,
+      async (targetHost, targetPort) => {
+        const client = await getSshConnectionClient(connectConfig, targetHost, targetPort);
 
-      try {
-        if (isSelfRotation && currentPassword) {
-          // Self rotation: user changes their own password using passwd command
-          await changeSelfPassword(client, currentPassword, newPassword);
-        } else {
-          // Managed rotation: admin changes user's password using passwd (with sudo if specified)
-          const appConnectionPassword =
-            connection.method === SshConnectionMethod.Password
-              ? (connection.credentials as { password: string }).password
-              : undefined;
-          await changeManagedPassword(client, username, newPassword, shouldUseSudo, appConnectionPassword);
+        try {
+          if (isSelfRotation && currentPassword) {
+            // Self rotation: user changes their own password using passwd command
+            await changeSelfPassword(client, currentPassword, newPassword);
+          } else {
+            // Managed rotation: admin changes user's password using passwd (with sudo if specified)
+            const appConnectionPassword =
+              connection.method === SshConnectionMethod.Password
+                ? (connection.credentials as { password: string }).password
+                : undefined;
+            await changeManagedPassword(client, username, newPassword, shouldUseSudo, appConnectionPassword);
+          }
+        } finally {
+          client.destroy();
         }
-      } finally {
-        client.destroy();
-      }
-    }, gatewayPoolService);
+      },
+      gatewayPoolService
+    );
 
     // Verify the new credentials work
     await $verifyCredentials(username, newPassword);

@@ -47,9 +47,14 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       }
     };
 
-    await executeSmbWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
-    }, gatewayPoolService);
+    await executeSmbWithPotentialGateway(
+      verifyConfig,
+      gatewayV2Service,
+      async (targetHost, targetPort) => {
+        await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
+      },
+      gatewayPoolService
+    );
   };
 
   // Main password rotation logic
@@ -101,15 +106,20 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       connectConfig.credentials.domain = undefined;
     }
 
-    await executeSmbWithPotentialGateway(connectConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      const configWithProxiedHost: SmbRpcConfig = {
-        ...smbConfig,
-        host: targetHost,
-        port: targetPort
-      };
+    await executeSmbWithPotentialGateway(
+      connectConfig,
+      gatewayV2Service,
+      async (targetHost, targetPort) => {
+        const configWithProxiedHost: SmbRpcConfig = {
+          ...smbConfig,
+          host: targetHost,
+          port: targetPort
+        };
 
-      await changeWindowsPassword(configWithProxiedHost, username, newPassword);
-    }, gatewayPoolService);
+        await changeWindowsPassword(configWithProxiedHost, username, newPassword);
+      },
+      gatewayPoolService
+    );
 
     await $verifyCredentials(username, newPassword);
 
