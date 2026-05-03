@@ -229,6 +229,8 @@ export enum TableName {
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
   PamSessionEventBatch = "pam_session_event_batches",
+  PamSessionEventChunk = "pam_session_event_chunks",
+  PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
   PamDiscoverySourceResource = "pam_discovery_source_resources",

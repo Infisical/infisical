@@ -108,6 +108,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.CircleCI:
     case SecretSync.AzureEntraIdScim:
     case SecretSync.ExternalInfisical:
+    case SecretSync.Devin:
     case SecretSync.Ona:
     case SecretSync.TravisCI:
       AdditionalSyncOptionsFieldsComponent = null;

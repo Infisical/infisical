@@ -75,7 +75,9 @@ export const identityOciAuthServiceFactory = ({
       throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
     }
 
-    const identity = await identityDAL.findById(identityOciAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityOciAuth.identityId), () =>
+      identityDAL.findById(identityOciAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

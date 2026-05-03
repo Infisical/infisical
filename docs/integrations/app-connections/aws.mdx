@@ -394,6 +394,88 @@ Infisical supports two methods for connecting to AWS.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
+                    <Tab title="PAM Session Recording">
+                        <AccordionGroup>
+                            <Accordion title="AWS S3 Bucket">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to store and play back PAM session recordings in your S3 bucket. Replace `your-pam-recordings-bucket` with the bucket name you configure in **Project Settings → Session Recording**.
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowPamRecordingBucketAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:PutObject",
+                                                "s3:GetObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/*"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingBucketTest",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:ListBucket"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingConnectionTestCleanup",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:DeleteObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/.test/*"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                If you scoped the recording config to a key prefix (for example `pam/prod`), update all three `Resource` ARNs to include the prefix:
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/*"
+                                ```
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/.test/*"
+                                ```
+
+                                <Note>
+                                    **S3 Permissions:**
+                                    - **PutObject**: Lets the gateway upload encrypted recording chunks via presigned PUT URLs. Also used by the connection test to write a probe object under `{prefix}/.test/{uuid}`.
+                                    - **GetObject**: Lets the browser fetch encrypted chunks during playback via presigned GET URLs. Decryption happens locally in the browser; Infisical only ever sees ciphertext.
+                                    - **ListBucket**: Required by `HeadBucket`, which Infisical calls during the connection test to confirm the bucket exists and the credentials can reach it.
+                                    - **DeleteObject** (scoped to `.test/*`): Used **only** to clean up the probe object after the connection test. Infisical never deletes recording chunks. Your bucket lifecycle policy owns retention. When using a key prefix, the test object is written under `{prefix}/.test/`, so the `DeleteObject` resource must include the prefix.
+                                </Note>
+
+                                <Note>
+                                    Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
+                                </Note>
+
+                                #### Bucket CORS Configuration
+
+                                During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
+
+                                Open the bucket in the AWS console, go to **Permissions → Cross-origin resource sharing (CORS)**, and add:
+
+                                ```json
+                                [
+                                    {
+                                        "AllowedHeaders": ["*"],
+                                        "AllowedMethods": ["GET"],
+                                        "AllowedOrigins": ["https://app.infisical.com"],
+                                        "ExposeHeaders": [],
+                                        "MaxAgeSeconds": 3600
+                                    }
+                                ]
+                                ```
+
+                                Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
                 </Tabs>
             </Step>
 
@@ -783,6 +865,88 @@ Infisical supports two methods for connecting to AWS.
                                     - **GetHostedZone**: Validates the hosted zone during CA setup
                                     - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
                                 </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="PAM Session Recording">
+                        <AccordionGroup>
+                            <Accordion title="AWS S3 Bucket">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to store and play back PAM session recordings in your S3 bucket. Replace `your-pam-recordings-bucket` with the bucket name you configure in **Project Settings → Session Recording**.
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowPamRecordingBucketAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:PutObject",
+                                                "s3:GetObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/*"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingBucketTest",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:ListBucket"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingConnectionTestCleanup",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:DeleteObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/.test/*"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                If you scoped the recording config to a key prefix (for example `pam/prod`), update all three `Resource` ARNs to include the prefix:
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/*"
+                                ```
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/.test/*"
+                                ```
+
+                                <Note>
+                                    **S3 Permissions:**
+                                    - **PutObject**: Lets the gateway upload encrypted recording chunks via presigned PUT URLs. Also used by the connection test to write a probe object under `{prefix}/.test/{uuid}`.
+                                    - **GetObject**: Lets the browser fetch encrypted chunks during playback via presigned GET URLs. Decryption happens locally in the browser; Infisical only ever sees ciphertext.
+                                    - **ListBucket**: Required by `HeadBucket`, which Infisical calls during the connection test to confirm the bucket exists and the credentials can reach it.
+                                    - **DeleteObject** (scoped to `.test/*`): Used **only** to clean up the probe object after the connection test. Infisical never deletes recording chunks. Your bucket lifecycle policy owns retention. When using a key prefix, the test object is written under `{prefix}/.test/`, so the `DeleteObject` resource must include the prefix.
+                                </Note>
+
+                                <Note>
+                                    Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
+                                </Note>
+
+                                #### Bucket CORS Configuration
+
+                                During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
+
+                                Open the bucket in the AWS console, go to **Permissions → Cross-origin resource sharing (CORS)**, and add:
+
+                                ```json
+                                [
+                                    {
+                                        "AllowedHeaders": ["*"],
+                                        "AllowedMethods": ["GET"],
+                                        "AllowedOrigins": ["https://app.infisical.com"],
+                                        "ExposeHeaders": [],
+                                        "MaxAgeSeconds": 3600
+                                    }
+                                ]
+                                ```
+
+                                Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>

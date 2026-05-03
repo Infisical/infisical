@@ -117,7 +117,9 @@ export const identityAwsAuthServiceFactory = ({
       throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
     }
 
-    const identity = await identityDAL.findById(identityAwsAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityAwsAuth.identityId), () =>
+      identityDAL.findById(identityAwsAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

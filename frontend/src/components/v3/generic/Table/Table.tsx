@@ -52,7 +52,11 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn("border-t border-border font-medium [&>tr]:last:border-b-0", className)}
+      className={cn(
+        "border-t border-border bg-foreground/[0.03] font-medium",
+        "[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0",
+        className
+      )}
       {...props}
     />
   );
@@ -118,7 +122,10 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   return (
     <caption
       data-slot="table-caption"
-      className={cn("text-muted-foreground mt-4 text-sm", className)}
+      className={cn(
+        "border-t border-border bg-foreground/[0.03] px-3 py-2 text-left text-xs text-muted",
+        className
+      )}
       {...props}
     />
   );

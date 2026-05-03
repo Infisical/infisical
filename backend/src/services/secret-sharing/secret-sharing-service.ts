@@ -237,7 +237,9 @@ export const secretSharingServiceFactory = ({
 
         displayUsername = user.username;
       } else if (actor === ActorType.IDENTITY) {
-        const identity = await identityDAL.findById(actorId);
+        const identity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+          identityDAL.findById(actorId)
+        );
 
         if (!identity) {
           throw new NotFoundError({ message: `Identity with ID '${actorId}' not found` });

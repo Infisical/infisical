@@ -122,7 +122,6 @@ export type TPamSession = {
   endedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  logs: TPamSessionLog[];
   gatewayIdentityId?: string | null;
   gatewayId?: string | null;
   aiInsightsStatus?: string | null;

@@ -715,6 +715,11 @@ import {
 import { TPamDomains, TPamDomainsInsert, TPamDomainsUpdate } from "@app/db/schemas/pam-domains";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import {
+  TPamProjectRecordingConfigs,
+  TPamProjectRecordingConfigsInsert,
+  TPamProjectRecordingConfigsUpdate
+} from "@app/db/schemas/pam-project-recording-configs";
+import {
   TPamResourceFavorites,
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
@@ -730,6 +735,11 @@ import {
   TPamSessionEventBatchesInsert,
   TPamSessionEventBatchesUpdate
 } from "@app/db/schemas/pam-session-event-batches";
+import {
+  TPamSessionEventChunks,
+  TPamSessionEventChunksInsert,
+  TPamSessionEventChunksUpdate
+} from "@app/db/schemas/pam-session-event-chunks";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
@@ -1621,6 +1631,16 @@ declare module "knex/types/tables" {
       TPamSessionEventBatches,
       TPamSessionEventBatchesInsert,
       TPamSessionEventBatchesUpdate
+    >;
+    [TableName.PamSessionEventChunk]: KnexOriginal.CompositeTableType<
+      TPamSessionEventChunks,
+      TPamSessionEventChunksInsert,
+      TPamSessionEventChunksUpdate
+    >;
+    [TableName.PamProjectRecordingConfig]: KnexOriginal.CompositeTableType<
+      TPamProjectRecordingConfigs,
+      TPamProjectRecordingConfigsInsert,
+      TPamProjectRecordingConfigsUpdate
     >;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
       TPamDiscoverySources,

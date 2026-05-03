@@ -295,6 +295,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_POLICY_GET]: "Get PAM Account Policy",
   [EventType.PAM_ACCOUNT_READ_CREDENTIALS]: "Read PAM Account Credentials",
   [EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED]: "Create PAM Web Access Session Ticket",
+  [EventType.PAM_SESSION_CHUNK_UPLOAD]: "PAM Session Chunk Upload",
+  [EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID]: "PAM Session Upload Token Invalid",
+  [EventType.PAM_RECORDING_CONFIG_UPDATE]: "Update PAM Recording Config",
+  [EventType.PAM_RECORDING_CONFIG_DELETE]: "Delete PAM Recording Config",
+  [EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED]:
+    "PAM Recording Bucket Connection Test Failed",
   [EventType.PAM_RESOURCE_LIST]: "List PAM Resources",
   [EventType.PAM_RESOURCE_GET]: "Get PAM Resource",
   [EventType.PAM_RESOURCE_CREATE]: "Create PAM Resource",
@@ -477,7 +483,12 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_RESOURCE_ROTATION_RULE_CREATE,
     EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE,
     EventType.PAM_RESOURCE_ROTATION_RULE_DELETE,
-    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER
+    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER,
+    EventType.PAM_SESSION_CHUNK_UPLOAD,
+    EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
+    EventType.PAM_RECORDING_CONFIG_UPDATE,
+    EventType.PAM_RECORDING_CONFIG_DELETE,
+    EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED
   ],
   [ProjectType.AI]: [
     ...sharedProjectEvents,

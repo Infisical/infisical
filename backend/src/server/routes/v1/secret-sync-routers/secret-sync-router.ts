@@ -39,6 +39,7 @@ import {
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
+import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
 import {
   DigitalOceanAppPlatformSyncListItemSchema,
   DigitalOceanAppPlatformSyncSchema
@@ -107,6 +108,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   CircleCISyncSchema,
   AzureEntraIdScimSyncSchema,
   ExternalInfisicalSyncSchema,
+  DevinSyncSchema,
   OnaSyncSchema,
   TravisCISyncSchema
 ]);
@@ -149,6 +151,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   CircleCISyncListItemSchema,
   AzureEntraIdScimSyncListItemSchema,
   ExternalInfisicalSyncListItemSchema,
+  DevinSyncListItemSchema,
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema
 ]);

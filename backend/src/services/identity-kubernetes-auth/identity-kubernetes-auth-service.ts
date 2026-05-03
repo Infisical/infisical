@@ -286,7 +286,9 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityKubernetesAuth.identityId), () =>
+      identityDAL.findById(identityKubernetesAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

@@ -86,7 +86,9 @@ export const identityJwtAuthServiceFactory = ({
       throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
     }
 
-    const identity = await identityDAL.findById(identityJwtAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityJwtAuth.identityId), () =>
+      identityDAL.findById(identityJwtAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

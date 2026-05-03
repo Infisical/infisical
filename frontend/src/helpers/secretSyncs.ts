@@ -145,6 +145,10 @@ export const SECRET_SYNC_MAP: Record<
     name: "Infisical",
     image: "Infisical.png"
   },
+  [SecretSync.Devin]: {
+    name: "Devin",
+    image: "Devin.png"
+  },
   [SecretSync.Ona]: {
     name: "Ona",
     image: "Ona.png",
@@ -194,6 +198,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CircleCI]: AppConnection.CircleCI,
   [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
   [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical,
+  [SecretSync.Devin]: AppConnection.Devin,
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI
 };

@@ -41,9 +41,12 @@ import {
   registerPamDomainRouter
 } from "./pam-domain-routers";
 import { registerPamFolderRouter } from "./pam-folder-router";
+import { registerPamInsightsRouter } from "./pam-insights-router";
+import { registerPamRecordingConfigRouter } from "./pam-recording-config-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
+import { registerPamSessionChunkRouter } from "./pam-session-chunk-router";
 import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
 import { registerPkiAcmeRouter } from "./pki-acme-router";
@@ -121,6 +124,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
+  await server.register(registerPamInsightsRouter, { prefix: "/insights/pam" });
 
   await server.register(
     async (pkiRouter) => {
@@ -208,7 +212,14 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pamRouter) => {
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
-      await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
+      await pamRouter.register(
+        async (sessionRouter) => {
+          await sessionRouter.register(registerPamSessionRouter);
+          await sessionRouter.register(registerPamSessionChunkRouter);
+        },
+        { prefix: "/sessions" }
+      );
+      await pamRouter.register(registerPamRecordingConfigRouter);
       await pamRouter.register(registerPamAccountPolicyRouter, { prefix: "/account-policies" });
       await pamRouter.register(
         async (pamDomainRouter) => {

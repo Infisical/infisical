@@ -369,7 +369,9 @@ export const permissionServiceFactory = ({
       const userDetails = await userDAL.findById(actorId);
       username = userDetails?.username ?? "";
     } else {
-      const identityDetails = await identityDAL.findById(actorId);
+      const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+        identityDAL.findById(actorId)
+      );
       username = identityDetails?.name ?? "";
     }
 

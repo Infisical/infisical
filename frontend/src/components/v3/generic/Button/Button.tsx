@@ -3,7 +3,7 @@ import { forwardRef } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
-import { Lottie } from "@app/components/v2";
+import { Lottie } from "@app/components/v2/Lottie";
 import { cn } from "@app/components/v3/utils";
 
 const buttonVariants = cva(

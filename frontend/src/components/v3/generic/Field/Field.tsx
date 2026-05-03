@@ -90,15 +90,39 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function FieldLabel({ className, ...props }: React.ComponentProps<typeof Label>) {
+const fieldLabelVariants = cva(
+  cn(
+    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border text-xs leading-snug text-accent transition-colors duration-75 group-data-[disabled=true]/field:opacity-50",
+    "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
+    "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-container/25 has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
+    "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col"
+  ),
+  {
+    variants: {
+      variant: {
+        default: "has-[[data-state=checked]]:bg-container!", // uses base styling
+        project:
+          "has-[[data-state=checked]]:border-project/30 has-[[data-state=checked]]:bg-project/5!",
+        org: "has-[[data-state=checked]]:border-org/30 has-[[data-state=checked]]:bg-org/5!",
+        "sub-org":
+          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+
+function FieldLabel({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<typeof Label> & VariantProps<typeof fieldLabelVariants>) {
   return (
     <Label
       data-slot="field-label"
-      className={cn(
-        "group/field-label peer/field-label flex w-fit items-center gap-1.5 text-xs leading-snug text-accent group-data-[disabled=true]/field:opacity-50 has-data-checked:border-primary/30 has-data-checked:bg-primary/5 has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border dark:has-data-checked:border-primary/20 dark:has-data-checked:bg-primary/10 [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
-        "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
-        className
-      )}
+      className={cn(fieldLabelVariants({ variant }), className)}
       {...props}
     />
   );

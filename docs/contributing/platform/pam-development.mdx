@@ -108,6 +108,43 @@ For all available flags, see the [Gateway CLI Reference](/cli/commands/gateway).
 | Relay | `go run main.go relay start --name=local-relay --token=<token> --domain=http://localhost:8080 --host=host.docker.internal` |
 | Gateway | `go run main.go gateway start --token=<token> --domain=http://localhost:8080 --target-relay-name=local-relay --name=local-gateway --pam-session-recording-path=$(pwd)/session` |
 
+## Seed Test Resources
+
+Once your relay and gateway are up, you still need actual databases and SSH servers to point PAM at. Spinning those up by hand — running each container, creating users, then clicking through the UI to register every resource and account — is the slow part of any PAM dev loop.
+
+The [`dev/pam`](https://github.com/infisical/cli/tree/main/dev/pam) dev stack in the Infisical CLI repo does both in one shot: it boots the resources you pick in `.env`, pre-seeded with users and sample data, then registers each one as a PAM resource + account in your local Infisical against the gateway you just started.
+
+```env
+ENABLE_POSTGRES=true
+ENABLE_MYSQL=false
+ENABLE_MSSQL=false
+ENABLE_MONGODB=false
+ENABLE_REDIS=true
+ENABLE_SSH_PASSWORD=false
+ENABLE_SSH_KEY=false
+```
+
+After `make up`, you get a connection table along with the CLI command and web access URL for each resource — no need to dig through the Infisical UI to grab them, just copy and use:
+
+```
+PAM dev stack — connection details:
+
+resource              host       port   user       password       extras
+postgres              127.0.0.1  55432  infisical  Infisical@123  db=infisical
+redis                 127.0.0.1  55479  infisical  Infisical@123
+
+Access snippets:
+postgres (local01-2026-04-25-postgres / local01-2026-04-25-postgres-account)
+  CLI:  go run main.go pam db access --resource ... --account ... --duration 1h
+  Web:  http://localhost:8080/organizations/<org>/projects/pam/<project>/resources/postgres/<rid>/accounts/<aid>/access
+```
+
+Useful for faster development and reviews, reproducing issues, and testing across multiple resource types.
+
+See the [`dev/pam` README](https://github.com/infisical/cli/blob/main/dev/pam/README.md) for setup, env vars, and the full list of make targets.
+
+You're not locked into this stack — PAM works against anything reachable from the gateway, so you can also point it at your own containers or cloud-hosted resources (DigitalOcean, AWS, etc.) when you need to test against something closer to production.
+
 ## Troubleshooting
 
 <AccordionGroup>

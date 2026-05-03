@@ -11,6 +11,7 @@
 .react-colorful__hue {
   height: 10px !important;
   border-radius: 5px !important;
+  margin: 0 8px 8px !important;
 }
 
 .react-colorful__saturation-pointer,

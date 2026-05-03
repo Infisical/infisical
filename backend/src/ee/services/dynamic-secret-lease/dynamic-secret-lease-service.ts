@@ -12,6 +12,8 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -149,7 +151,9 @@ export const dynamicSecretLeaseServiceFactory = ({
           identity.name = extractEmailUsername(user.username);
         }
       } else if (actor === ActorType.IDENTITY) {
-        const machineIdentity = await identityDAL.findById(actorId);
+        const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+          identityDAL.findById(actorId)
+        );
         if (machineIdentity) {
           identity.name = machineIdentity.name;
         }

@@ -72,6 +72,7 @@ cli/infisical-merge
 cli/test/infisical-merge
 /backend/binary
 backend/bdd/.bdd-infisical-bootstrap-result.json
+upgrade-impact/.local-output/
 
 /npm/bin
 __pycache__

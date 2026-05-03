@@ -14,6 +14,8 @@ import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-ac
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
@@ -672,7 +674,9 @@ export const certificateV3ServiceFactory = ({
         };
       }
     } else if (actor === ActorType.IDENTITY) {
-      const identity = await identityDAL.findById(actorId);
+      const identity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+        identityDAL.findById(actorId)
+      );
       if (identity) {
         return {
           requesterName: identity.name || "Machine Identity",

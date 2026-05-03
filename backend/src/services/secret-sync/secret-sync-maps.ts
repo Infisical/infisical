@@ -40,6 +40,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.CircleCI]: "CircleCI",
   [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM",
   [SecretSync.ExternalInfisical]: "Infisical",
+  [SecretSync.Devin]: "Devin",
   [SecretSync.Ona]: "Ona",
   [SecretSync.TravisCI]: "Travis CI"
 };
@@ -82,6 +83,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CircleCI]: AppConnection.CircleCI,
   [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
   [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical,
+  [SecretSync.Devin]: AppConnection.Devin,
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI
 };
@@ -124,6 +126,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.CircleCI]: SecretSyncPlanType.Regular,
   [SecretSync.AzureEntraIdScim]: SecretSyncPlanType.Regular,
   [SecretSync.ExternalInfisical]: SecretSyncPlanType.Regular,
+  [SecretSync.Devin]: SecretSyncPlanType.Regular,
   [SecretSync.Ona]: SecretSyncPlanType.Regular,
   [SecretSync.TravisCI]: SecretSyncPlanType.Regular
 };
@@ -175,6 +178,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.CircleCI]: [],
   [SecretSync.AzureEntraIdScim]: [],
   [SecretSync.ExternalInfisical]: [],
+  [SecretSync.Devin]: [],
   [SecretSync.Ona]: ["projectName"],
   [SecretSync.TravisCI]: ["repositorySlug"]
 };
@@ -243,6 +247,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.CircleCI]: defaultDuplicateCheck,
   [SecretSync.AzureEntraIdScim]: defaultDuplicateCheck,
   [SecretSync.ExternalInfisical]: defaultDuplicateCheck,
+  [SecretSync.Devin]: defaultDuplicateCheck,
   [SecretSync.Ona]: defaultDuplicateCheck,
   [SecretSync.TravisCI]: defaultDuplicateCheck
 };

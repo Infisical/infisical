@@ -79,7 +79,9 @@ export const identityAliCloudAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityAliCloudAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityAliCloudAuth.identityId), () =>
+      identityDAL.findById(identityAliCloudAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

@@ -57,7 +57,9 @@ export const newOrgMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const identityDetails = await identityDAL.findById(dto.data.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
+      identityDAL.findById(dto.data.identityId)
+    );
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can be invited" });
     }
@@ -142,7 +144,9 @@ export const newOrgMembershipIdentityFactory = ({
       }
     }
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
     }
@@ -162,7 +166,9 @@ export const newOrgMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can do this operation" });
     }

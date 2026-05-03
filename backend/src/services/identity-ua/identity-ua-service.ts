@@ -93,7 +93,9 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityUa.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityUa.identityId), () =>
+      identityDAL.findById(identityUa.identityId)
+    );
     const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
       orgDAL.findById(identity.orgId)
     );

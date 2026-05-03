@@ -65,6 +65,9 @@ type TPamResourceServiceFactoryDep = {
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  pamProjectRecordingConfigDAL: {
+    findByProjectId: (projectId: string) => Promise<unknown>;
+  };
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -79,7 +82,8 @@ export const pamResourceServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   resourceMetadataDAL,
-  appConnectionDAL
+  appConnectionDAL,
+  pamProjectRecordingConfigDAL
 }: TPamResourceServiceFactoryDep) => {
   const assertDomainInProject = async (domainId: string, projectId: string) => {
     const domain = await pamDomainDAL.findById(domainId);
@@ -211,6 +215,17 @@ export const pamResourceServiceFactory = ({
 
     if (domainId) {
       await assertDomainInProject(domainId, projectId);
+    }
+
+    // Windows (RDP) recordings are too large for Postgres-backed storage; require an external bucket
+    if (resourceType === PamResource.Windows) {
+      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(projectId);
+      if (!recordingConfig) {
+        throw new BadRequestError({
+          message:
+            "Windows resources require an external session recording configuration. Configure session recording in project settings before creating a Windows resource."
+        });
+      }
     }
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });

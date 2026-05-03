@@ -71,7 +71,9 @@ export const identityGcpAuthServiceFactory = ({
       throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
     }
 
-    const identity = await identityDAL.findById(identityGcpAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityGcpAuth.identityId), () =>
+      identityDAL.findById(identityGcpAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

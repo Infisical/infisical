@@ -75,7 +75,9 @@ export const newProjectMembershipIdentityFactory = ({
     if (!orgMembership)
       throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
 
-    const identityDetails = await identityDAL.findById(dto.data.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
+      identityDAL.findById(dto.data.identityId)
+    );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
     }
@@ -133,7 +135,9 @@ export const newProjectMembershipIdentityFactory = ({
       subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.projectId && identityDetails.projectId !== scope.value) {
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
     }
@@ -190,7 +194,9 @@ export const newProjectMembershipIdentityFactory = ({
       subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
-    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
+      identityDAL.findById(dto.selector.identityId)
+    );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to delete project membership for a project scoped identity" });
     }

@@ -124,6 +124,7 @@
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/dbt",
+                      "integrations/app-connections/devin",
                       "integrations/app-connections/digicert",
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/doppler",
@@ -592,6 +593,7 @@
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
+                      "integrations/secret-syncs/devin",
                       "integrations/secret-syncs/digital-ocean-app-platform",
                       "integrations/secret-syncs/flyio",
                       "integrations/secret-syncs/gcp-secret-manager",
@@ -913,6 +915,7 @@
                   "documentation/platform/pam/product-reference/account-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/external-storage",
                   "documentation/platform/pam/product-reference/ai-session-insights",
                   "documentation/platform/pam/product-reference/credential-rotation",
                   "documentation/platform/pam/product-reference/view-credentials",
@@ -1460,6 +1463,18 @@
                       "api-reference/endpoints/app-connections/dbt/create",
                       "api-reference/endpoints/app-connections/dbt/update",
                       "api-reference/endpoints/app-connections/dbt/delete"
+                    ]
+                  },
+                  {
+                    "group": "Devin",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/devin/list",
+                      "api-reference/endpoints/app-connections/devin/available",
+                      "api-reference/endpoints/app-connections/devin/get-by-id",
+                      "api-reference/endpoints/app-connections/devin/get-by-name",
+                      "api-reference/endpoints/app-connections/devin/create",
+                      "api-reference/endpoints/app-connections/devin/update",
+                      "api-reference/endpoints/app-connections/devin/delete"
                     ]
                   },
                   {
@@ -2630,6 +2645,19 @@
                       "api-reference/endpoints/secret-syncs/databricks/delete",
                       "api-reference/endpoints/secret-syncs/databricks/sync-secrets",
                       "api-reference/endpoints/secret-syncs/databricks/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Devin",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/devin/list",
+                      "api-reference/endpoints/secret-syncs/devin/get-by-id",
+                      "api-reference/endpoints/secret-syncs/devin/get-by-name",
+                      "api-reference/endpoints/secret-syncs/devin/create",
+                      "api-reference/endpoints/secret-syncs/devin/update",
+                      "api-reference/endpoints/secret-syncs/devin/delete",
+                      "api-reference/endpoints/secret-syncs/devin/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/devin/remove-secrets"
                     ]
                   },
                   {
