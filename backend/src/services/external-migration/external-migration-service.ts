@@ -207,9 +207,19 @@ export const externalMigrationServiceFactory = ({
       projectId: null
     });
 
+    const connectionGatewayId = migrationConfig.connection.gatewayId as string | null | undefined;
+    const connectionGatewayPoolId = migrationConfig.connection.gatewayPoolId as string | null | undefined;
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connectionGatewayId,
+      gatewayPoolId: connectionGatewayPoolId
+    });
+
     return {
       ...migrationConfig.connection,
-      credentials
+      credentials,
+      gatewayId: effectiveGatewayId,
+      gatewayPoolId: null
     } as THCVaultConnection;
   };
 
@@ -288,6 +298,10 @@ export const externalMigrationServiceFactory = ({
     }
 
     const user = await userDAL.findById(actorId);
+
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
 
     let effectiveGatewayId: string | null = gatewayId ?? null;
     if (gatewayPoolId) {

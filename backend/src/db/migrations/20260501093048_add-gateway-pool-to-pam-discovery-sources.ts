@@ -24,8 +24,4 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("gatewayPoolId");
     });
   }
-
-  await knex.schema.alterTable(TableName.PamDiscoverySource, (t) => {
-    t.uuid("gatewayId").notNullable().alter();
-  });
 }

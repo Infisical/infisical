@@ -498,12 +498,8 @@ export const appConnectionServiceFactory = ({
 
     let validationGatewayId: string | null | undefined = gatewayId;
     if (gatewayPoolId) {
-      try {
-        const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-        validationGatewayId = picked.id;
-      } catch {
-        validationGatewayId = null;
-      }
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      validationGatewayId = picked.id;
     }
 
     await enterpriseAppCheck(
@@ -704,12 +700,8 @@ export const appConnectionServiceFactory = ({
 
     let validationGatewayId: string | null | undefined = effectiveGatewayIdForUpdate;
     if (effectiveGatewayPoolIdForUpdate) {
-      try {
-        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
-        validationGatewayId = picked.id;
-      } catch {
-        validationGatewayId = null;
-      }
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
+      validationGatewayId = picked.id;
     }
 
     // prevent updating credentials or management status if platform managed

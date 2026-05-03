@@ -340,6 +340,12 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    // Clear opposite gateway field when the user explicitly sets one
+    if (inputs && typeof inputs === "object") {
+      if ("gatewayId" in inputs && inputs.gatewayId) (newInput as Record<string, unknown>).gatewayPoolId = null;
+      else if ("gatewayPoolId" in inputs && inputs.gatewayPoolId)
+        (newInput as Record<string, unknown>).gatewayId = null;
+    }
     const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
 
