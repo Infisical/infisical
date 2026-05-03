@@ -244,15 +244,19 @@ export const pamDomainServiceFactory = ({
     }
 
     const updateDoc: Partial<TPamDomains> = {};
-    // Mutual exclusion: setting one clears the other
+    // Mutual exclusion: setting one clears the other.
+    // The frontend sends both fields (one set, one null). API users may send only one.
     let effectiveGatewayId: string | null | undefined = domain.gatewayId;
     let effectiveGatewayPoolId: string | null | undefined = domain.gatewayPoolId;
-    if (gatewayId !== undefined) {
+    if (gatewayId !== undefined && gatewayPoolId !== undefined) {
       effectiveGatewayId = gatewayId;
-      effectiveGatewayPoolId = null;
-    } else if (gatewayPoolId !== undefined) {
-      effectiveGatewayId = null;
       effectiveGatewayPoolId = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      effectiveGatewayId = gatewayId;
+      effectiveGatewayPoolId = gatewayId !== null ? null : undefined;
+    } else if (gatewayPoolId !== undefined) {
+      effectiveGatewayPoolId = gatewayPoolId;
+      effectiveGatewayId = gatewayPoolId !== null ? null : undefined;
     }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {

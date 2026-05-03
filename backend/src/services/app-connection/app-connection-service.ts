@@ -674,14 +674,18 @@ export const appConnectionServiceFactory = ({
     }
 
     // Mutual exclusion: when one is being set, clear the other.
+    // The frontend sends both fields (one set, one null). API users may send only one.
     let gatewayIdValue: string | null | undefined;
     let gatewayPoolIdValue: string | null | undefined;
-    if (gatewayId !== undefined) {
+    if (gatewayId !== undefined && gatewayPoolId !== undefined) {
+      gatewayIdValue = gatewayId;
+      gatewayPoolIdValue = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
       gatewayIdValue = gatewayId;
       gatewayPoolIdValue = gatewayId !== null ? null : undefined;
     } else if (gatewayPoolId !== undefined) {
-      gatewayIdValue = gatewayPoolId !== null ? null : undefined;
       gatewayPoolIdValue = gatewayPoolId;
+      gatewayIdValue = gatewayPoolId !== null ? null : undefined;
     }
 
     // For validation, resolve the effective gateway: directly-attached, or a fresh pool member.

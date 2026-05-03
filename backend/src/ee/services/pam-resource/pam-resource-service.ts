@@ -353,15 +353,19 @@ export const pamResourceServiceFactory = ({
 
     const updateDoc: Partial<TPamResources> = {};
 
-    // Mutual exclusion: setting one clears the other
+    // Mutual exclusion: setting one clears the other.
+    // The frontend sends both fields (one set, one null). API users may send only one.
     let effectiveGatewayIdAttr: string | null | undefined = resource.gatewayId;
     let effectiveGatewayPoolIdAttr: string | null | undefined = resource.gatewayPoolId ?? null;
-    if (gatewayId !== undefined) {
+    if (gatewayId !== undefined && gatewayPoolId !== undefined) {
       effectiveGatewayIdAttr = gatewayId;
-      effectiveGatewayPoolIdAttr = null;
-    } else if (gatewayPoolId !== undefined) {
-      effectiveGatewayIdAttr = null;
       effectiveGatewayPoolIdAttr = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      effectiveGatewayIdAttr = gatewayId;
+      effectiveGatewayPoolIdAttr = gatewayId !== null ? null : undefined;
+    } else if (gatewayPoolId !== undefined) {
+      effectiveGatewayPoolIdAttr = gatewayPoolId;
+      effectiveGatewayIdAttr = gatewayPoolId !== null ? null : undefined;
     }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {
