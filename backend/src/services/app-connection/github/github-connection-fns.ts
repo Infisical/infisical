@@ -210,7 +210,6 @@ export const getGitHubAppAuthToken = async (
   const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
   const { installationId } = appConnection.credentials;
 
-  // Resolve effective gatewayId for pool-backed connections; direct connections pass through.
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
     gatewayId: appConnection.gatewayId,
     gatewayPoolId: appConnection.gatewayPoolId
@@ -290,7 +289,6 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   initialUrlObj.searchParams.set("per_page", "100");
 
   const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
-  // Resolve once and pin for the whole pagination pass — all pages hit the same gateway.
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
     gatewayId: appConnection.gatewayId,
     gatewayPoolId: appConnection.gatewayPoolId
@@ -531,9 +529,6 @@ export const validateGitHubConnectionCredentials = async (
 ) => {
   const { credentials, method } = config;
 
-  // At validation time the caller (app-connection-service create/update) already resolved any
-  // gatewayPoolId to a concrete gatewayId via gatewayPoolService.resolveAttachableGatewayFromPool.
-  // So config.gatewayId is the effective gatewayId here — no pool resolution needed.
   const apiBaseUrl = await getGitHubInstanceApiUrl(config);
   const gatewayConnectionDetails = config.gatewayId
     ? await getGitHubGatewayConnectionDetails(config.gatewayId, apiBaseUrl, gatewayV2Service)

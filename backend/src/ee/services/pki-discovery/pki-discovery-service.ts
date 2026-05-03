@@ -138,9 +138,6 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
     } else if (gatewayPoolId) {
-      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
-      // Centralized to avoid the cross-org-attach gap that drifted in earlier when each consumer
-      // assembled these checks by hand.
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,
@@ -246,7 +243,6 @@ export const pkiDiscoveryServiceFactory = ({
       });
     }
 
-    // Mutual exclusion: setting one clears the other
     const gatewayIdValue = gatewayPoolId ? null : gatewayId;
     const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
 

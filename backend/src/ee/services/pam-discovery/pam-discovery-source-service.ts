@@ -162,7 +162,6 @@ export const pamDiscoverySourceServiceFactory = ({
         throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
       }
     } else if (gatewayPoolId) {
-      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,

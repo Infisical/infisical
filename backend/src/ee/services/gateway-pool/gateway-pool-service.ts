@@ -322,20 +322,7 @@ export const gatewayPoolServiceFactory = ({
     });
   };
 
-  // Centralized "consumer wants to attach this pool" entry point.
-  //
-  // Bundles every check that must pass before a consumer (K8s auth, app
-  // connection, dynamic secret, PAM resource/domain/discovery, etc.) is
-  // allowed to use a pool — including the org-ownership check that previously
-  // got missed when the pattern was copy-pasted across consumers.
-  //
-  //   1. Enterprise license has gatewayPool feature
-  //   2. Actor has AttachGatewayPools RBAC on the pool's org
-  //   3. Pool exists AND belongs to the given org (cross-org safety)
-  //
-  // Does NOT require a healthy member — matches direct-gateway behavior where
-  // a down gateway can still be attached. Health is checked at runtime or
-  // during optional connection validation, not at configuration time.
+  // Enforce license + RBAC + pool-belongs-to-org before a consumer attaches a pool. Does NOT require a healthy member.
   const resolveAttachableGatewayFromPool = async ({
     poolId,
     orgId,
@@ -366,12 +353,7 @@ export const gatewayPoolServiceFactory = ({
     }
   };
 
-  // Resolve a concrete gatewayId from EITHER a directly-attached gateway OR a
-  // gateway pool. Use at runtime sites that have already validated org-scope
-  // (e.g. the row was just loaded from the consumer's own table). Returns
-  // null when neither is set, so callers requiring a gateway should branch on
-  // that explicitly. Picks a fresh healthy member each call — caller decides
-  // whether to pin the picked id (e.g. on a session row) or pick again per op.
+  // Return gatewayId directly, or pick a random healthy pool member. Null when neither is set.
   const resolveEffectiveGatewayId = async ({
     gatewayId,
     gatewayPoolId

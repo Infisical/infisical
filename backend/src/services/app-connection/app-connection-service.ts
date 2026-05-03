@@ -494,9 +494,6 @@ export const appConnectionServiceFactory = ({
       });
     }
 
-    // For validation, try to pick a healthy pool member. If the pool is temporarily
-    // unhealthy, skip validation — matches direct-gateway behavior where a down
-    // gateway still allows the connection to be saved.
     let validationGatewayId: string | null | undefined = gatewayId;
     if (gatewayPoolId) {
       try {
@@ -673,8 +670,7 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    // Mutual exclusion: when one is being set, clear the other.
-    // The frontend sends both fields (one set, one null). API users may send only one.
+    // Mutual exclusion: setting one clears the other.
     let gatewayIdValue: string | null | undefined;
     let gatewayPoolIdValue: string | null | undefined;
     if (gatewayId !== undefined && gatewayPoolId !== undefined) {
@@ -688,12 +684,10 @@ export const appConnectionServiceFactory = ({
       gatewayIdValue = gatewayPoolId !== null ? null : undefined;
     }
 
-    // For validation, resolve the effective gateway: directly-attached, or a fresh pool member.
     const effectiveGatewayIdForUpdate = gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
     const effectiveGatewayPoolIdForUpdate =
       gatewayPoolIdValue !== undefined ? gatewayPoolIdValue : appConnection.gatewayPoolId;
 
-    // For new pool attachments, enforce license + RBAC + pool-belongs-to-org.
     if (effectiveGatewayPoolIdForUpdate) {
       const isNewPoolAttachment =
         gatewayPoolId !== undefined && gatewayPoolId !== appConnection.gatewayPoolId && gatewayPoolId !== null;
@@ -706,8 +700,6 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    // Try to pick a healthy pool member for validation. If the pool is temporarily
-    // unhealthy, skip validation — matches direct-gateway behavior.
     let validationGatewayId: string | null | undefined = effectiveGatewayIdForUpdate;
     if (effectiveGatewayPoolIdForUpdate) {
       try {

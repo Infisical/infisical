@@ -27,8 +27,6 @@ export const executeSmbWithPotentialGateway = async <T>(
 ): Promise<T> => {
   const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
 
-  // Pool-backed connection requires gatewayPoolService — fail loud instead of silently routing
-  // around the gateway when the caller hasn't been wired for pools yet.
   if (gatewayPoolId && !gatewayPoolService) {
     throw new BadRequestError({
       message: "Pool-backed connections require gatewayPoolService at the call site"

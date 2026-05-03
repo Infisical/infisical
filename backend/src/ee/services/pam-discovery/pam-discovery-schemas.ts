@@ -33,8 +33,7 @@ export const BasePamDiscoverySourceSchema = PamDiscoverySourcesSchema.omit({
   status: z.nativeEnum(PamDiscoverySourceStatus)
 });
 
-// Base schemas stay extendable — no .superRefine here. Mutual exclusion + required-on-create
-// rules are enforced at the service layer (see pam-discovery-source-service.ts create/updateById).
+// No .superRefine — would turn into ZodEffects and break .extend() in per-type schemas.
 export const BaseCreatePamDiscoverySourceSchema = z.object({
   projectId: z.string().uuid(),
   name: slugSchema({ field: "name" }),

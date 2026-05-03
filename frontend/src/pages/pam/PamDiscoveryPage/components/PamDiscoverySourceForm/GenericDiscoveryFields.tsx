@@ -15,9 +15,7 @@ import {
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 
-// Base schema is a ZodObject (no .refine()) so per-type discovery forms can .extend() it.
-// The "gateway or pool is required" rule is enforced by the picker's isRequired prop
-// (no Internet Gateway choice) and by backend validation.
+// No .refine() — would turn into ZodEffects and break .extend() in per-type discovery forms.
 export const genericDiscoveryFieldsSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
   gatewayId: z.string().nullable().optional(),

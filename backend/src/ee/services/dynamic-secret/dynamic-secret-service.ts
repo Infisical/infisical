@@ -152,8 +152,6 @@ export const dynamicSecretServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
 
-    // Mutual exclusion is best-effort enforced at the schema layer for K8s; for the SQL family
-    // it's enforced here so we don't silently prefer one over the other.
     if (
       inputs &&
       typeof inputs === "object" &&
@@ -169,7 +167,6 @@ export const dynamicSecretServiceFactory = ({
     let selectedGatewayPoolId: string | null = null;
     if (inputs && typeof inputs === "object" && "gatewayPoolId" in inputs && inputs.gatewayPoolId) {
       const gatewayPoolId = inputs.gatewayPoolId as string;
-      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,

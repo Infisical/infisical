@@ -23,8 +23,6 @@ export const hcVaultConnectionService = (
 ) => {
   const listMounts = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.HCVault, connectionId, actor);
-    // Resolve effective gateway once for this listing pass — pool-backed connections
-    // get a freshly-picked healthy member, direct connections pass through.
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: appConnection.gatewayId,
       gatewayPoolId: appConnection.gatewayPoolId

@@ -105,7 +105,6 @@ export const externalMigrationServiceFactory = ({
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
 
-    // Resolve effective gateway: directly-attached id, or a freshly-picked healthy pool member.
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: connection.gatewayId,
       gatewayPoolId: connection.gatewayPoolId

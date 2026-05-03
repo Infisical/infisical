@@ -327,8 +327,6 @@ export const netScalerPkiSyncFactory = ({
     const preserveItemOnRenewal = syncOptions?.preserveItemOnRenewal ?? true;
     const certificateNameSchema = syncOptions?.certificateNameSchema;
 
-    // Resolve effective gateway: directly-attached id, or a freshly-picked healthy pool member.
-    // Pin within this whole sync (single NetScaler session, many requests) for consistency.
     const effectiveGatewayId = gatewayPoolService
       ? await gatewayPoolService.resolveEffectiveGatewayId({
           gatewayId: pkiSync.connection.gatewayId,

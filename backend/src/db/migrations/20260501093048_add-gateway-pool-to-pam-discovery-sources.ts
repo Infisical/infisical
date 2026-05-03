@@ -3,10 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  // gatewayId was originally NOT NULL on this table because every discovery
-  // source needed a directly-attached gateway. We're loosening that to NULL
-  // so a row can instead reference a gateway pool. Application-level
-  // validation enforces "exactly one of {gatewayId, gatewayPoolId}".
+  // Loosen gatewayId to nullable so a row can reference a gateway pool instead.
   await knex.schema.alterTable(TableName.PamDiscoverySource, (t) => {
     t.uuid("gatewayId").nullable().alter();
   });

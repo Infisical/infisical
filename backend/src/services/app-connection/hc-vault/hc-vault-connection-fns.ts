@@ -139,8 +139,6 @@ export const requestWithHCVaultGateway = async <T>(
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId: directGatewayId, gatewayPoolId } = appConnection;
 
-  // Pool-backed connection requires gatewayPoolService — fail loud instead of
-  // silently routing around the gateway when the caller hasn't been wired for pools.
   if (gatewayPoolId && !gatewayPoolService) {
     throw new BadRequestError({
       message: "Pool-backed connections require gatewayPoolService at the call site"

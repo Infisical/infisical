@@ -213,9 +213,6 @@ export const hpIloRotationFactory: TRotationFactory<
     if (username === connection.credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    // Resolve effective gateway once per rotation: directly-attached, or a freshly-picked healthy
-    // pool member. We pin within a single rotation so all sub-steps (target rotate / admin rotate /
-    // verify) hit the same gateway — important if any step needs continuity with the previous one.
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: connection.gatewayId,
       gatewayPoolId: connection.gatewayPoolId

@@ -52,9 +52,7 @@ const CoreCreatePamResourceSchema = z.object({
   metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
-// Base schemas stay extendable (no .superRefine here — that would turn them into ZodEffects
-// and break per-type schemas that .extend() these). Mutual exclusion + required-on-create
-// rules are enforced at the service layer (see pam-resource-service.ts create/updateById).
+// No .superRefine — would turn into ZodEffects and break .extend() in per-type schemas.
 export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
   gatewayId: z.string().uuid().optional(),
   gatewayPoolId: z.string().uuid().optional()

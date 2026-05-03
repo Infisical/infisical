@@ -172,8 +172,6 @@ export const HCVaultSyncFns = {
       destinationConfig: { mount, path },
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
-    // Resolve effective gateway once for the whole sync — all helpers see the
-    // resolved id; pool-backed connections get a freshly-picked healthy member.
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: rawConnection.gatewayId,
       gatewayPoolId: rawConnection.gatewayPoolId

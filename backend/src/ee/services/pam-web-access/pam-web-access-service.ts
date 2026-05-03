@@ -470,10 +470,6 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Web access is not supported for this resource type" });
       }
 
-      // Resolve effective gateway: directly-attached id or a freshly-picked healthy
-      // pool member. Pin the resolved id to the session row so termination, audit,
-      // and any subsequent gateway-bound work hit the same gateway end-to-end (mirrors
-      // the SSH/CLI session path in pam-account-service).
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: resource.gatewayId,
         gatewayPoolId: resource.gatewayPoolId

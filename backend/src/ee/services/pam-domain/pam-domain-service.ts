@@ -49,8 +49,6 @@ export const pamDomainServiceFactory = ({
   gatewayPoolService,
   resourceMetadataDAL
 }: TPamDomainServiceFactoryDep) => {
-  // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
-  // or a freshly-picked healthy member of the configured pool. Returns null if neither is set.
   const getById = async (id: string, domainType: PamDomainType, actor: OrgServiceActor) => {
     const domain = await pamDomainDAL.findById(id);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${id}' not found` });
@@ -118,7 +116,6 @@ export const pamDomainServiceFactory = ({
     );
 
     if (gatewayPoolId) {
-      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,
@@ -245,7 +242,6 @@ export const pamDomainServiceFactory = ({
 
     const updateDoc: Partial<TPamDomains> = {};
     // Mutual exclusion: setting one clears the other.
-    // The frontend sends both fields (one set, one null). API users may send only one.
     let effectiveGatewayId: string | null | undefined = domain.gatewayId;
     let effectiveGatewayPoolId: string | null | undefined = domain.gatewayPoolId;
     if (gatewayId !== undefined && gatewayPoolId !== undefined) {

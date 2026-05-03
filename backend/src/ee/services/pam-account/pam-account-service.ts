@@ -890,9 +890,6 @@ export const pamAccountServiceFactory = ({
 
     const decryptedResource = await decryptResource(resource, account.projectId, kmsService);
     const { connectionDetails, resourceType } = decryptedResource;
-    // Resolve effective gatewayId once at session-start: directly-attached, or a fresh healthy member of the pool.
-    // This single picked gateway is then PINNED to the session row so all subsequent ops
-    // within the session (handshake, command relay, termination) hit the same gateway.
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: decryptedResource.gatewayId,
       gatewayPoolId: decryptedResource.gatewayPoolId
@@ -970,10 +967,7 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
 
-    // For gateway-based resources (Postgres, MySQL, SSH), create session first.
-    // Pin the resolved gatewayId on the session so the rest of the session lifecycle
-    // (handshake, command relay, termination, audit) hits this same gateway — even
-    // if the underlying resource is pool-backed and the next pick would differ.
+    // Pin resolved gatewayId on the session so the entire lifecycle uses the same gateway.
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -1222,12 +1216,8 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId!);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    // Use the session's effective gateway (already resolved by the pam-session DAL via
-    // COALESCE(session.gatewayId, resource.gatewayId)) for authorization, not
-    // resource.gatewayId. For pool-backed resources resource.gatewayId is null, but the
-    // session row carries the pool member that was pinned at session-start — the calling
-    // gateway must match THAT one. Reading from resource.gatewayId here would silently
-    // skip authorization for pool-backed sessions.
+    // Authorize against session.gatewayId (COALESCE'd from session + resource), not resource.gatewayId.
+    // For pool-backed resources resource.gatewayId is null; the session carries the pinned member.
     if (session.gatewayId) {
       const authorized =
         actor.type === ActorType.GATEWAY ? session.gatewayId === actor.id : session.gatewayIdentityId === actor.id;

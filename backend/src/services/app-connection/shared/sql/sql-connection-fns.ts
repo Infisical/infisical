@@ -150,10 +150,6 @@ export const executeWithPotentialGateway = async <T>(
 ): Promise<T> => {
   const { credentials, app, gatewayId: directGatewayId, gatewayPoolId } = config;
 
-  // Pool-backed connection requires gatewayPoolService — without it we'd fall through to the
-  // non-gateway path and try to reach the target host directly, bypassing the gateway. Fail
-  // loud instead of silent unsafe routing. Callers wired before pool support landed don't pass
-  // gatewayPoolService, but their connections also don't have gatewayPoolId, so they're fine.
   if (gatewayPoolId && !gatewayPoolService) {
     throw new BadRequestError({
       message: "Pool-backed connections require gatewayPoolService at the call site"

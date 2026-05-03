@@ -5,11 +5,7 @@ import { Field, FieldContent, FieldError, FieldLabel, Input } from "@app/compone
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { slugSchema } from "@app/lib/schemas";
 
-// Base schema is a ZodObject (no .refine()) so per-resource forms can .extend() it.
-// The "gateway or pool is required" rule is enforced at two layers: the picker's
-// isRequired prop hides the no-gateway choice, and the backend rejects rows with
-// neither set. We deliberately don't refine here because the resulting ZodEffects
-// can't be extended.
+// No .refine() — would turn into ZodEffects and break .extend() in per-resource forms.
 export const genericResourceFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   gatewayId: z.string().nullable().optional(),

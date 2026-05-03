@@ -202,7 +202,6 @@ export const pamResourceServiceFactory = ({
     );
 
     if (gatewayPoolId) {
-      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,
@@ -354,7 +353,6 @@ export const pamResourceServiceFactory = ({
     const updateDoc: Partial<TPamResources> = {};
 
     // Mutual exclusion: setting one clears the other.
-    // The frontend sends both fields (one set, one null). API users may send only one.
     let effectiveGatewayIdAttr: string | null | undefined = resource.gatewayId;
     let effectiveGatewayPoolIdAttr: string | null | undefined = resource.gatewayPoolId ?? null;
     if (gatewayId !== undefined && gatewayPoolId !== undefined) {
@@ -373,7 +371,6 @@ export const pamResourceServiceFactory = ({
       updateDoc.gatewayPoolId = effectiveGatewayPoolIdAttr;
     }
 
-    // Used for connection-validation factory below
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: effectiveGatewayIdAttr,
       gatewayPoolId: effectiveGatewayPoolIdAttr

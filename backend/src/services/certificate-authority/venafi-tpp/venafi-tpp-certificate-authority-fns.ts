@@ -151,7 +151,6 @@ const getVenafiTppConnection = async (
     password: string;
   };
 
-  // Resolve effective gateway: directly-attached id, or a freshly-picked healthy pool member.
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
     gatewayId: appConnection.gatewayId,
     gatewayPoolId: appConnection.gatewayPoolId
