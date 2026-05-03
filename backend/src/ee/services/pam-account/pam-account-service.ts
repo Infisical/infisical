@@ -1229,16 +1229,15 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId!);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    // Authorize against session.gatewayId (COALESCE'd from session + resource), not resource.gatewayId.
-    // For pool-backed resources resource.gatewayId is null; the session carries the pinned member.
-    if (session.gatewayId) {
-      const authorized =
-        actor.type === ActorType.GATEWAY ? session.gatewayId === actor.id : session.gatewayIdentityId === actor.id;
-      if (!authorized) {
-        throw new ForbiddenRequestError({
-          message: "Gateway does not have access to fetch the PAM session credentials"
-        });
-      }
+    if (!session.gatewayId) {
+      throw new BadRequestError({ message: "Session has no associated gateway" });
+    }
+    const authorized =
+      actor.type === ActorType.GATEWAY ? session.gatewayId === actor.id : session.gatewayIdentityId === actor.id;
+    if (!authorized) {
+      throw new ForbiddenRequestError({
+        message: "Gateway does not have access to fetch the PAM session credentials"
+      });
     }
 
     const decryptedAccount = await decryptAccount(account, session.projectId, kmsService);

@@ -5,7 +5,8 @@ import { z } from "zod";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { GatewayProxyProtocol, withGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -211,7 +212,7 @@ export const VerticaProvider = ({
 
     if (gatewayV2ConnectionDetails) {
       return withGatewayV2Proxy(
-        async (port) => {
+        async (port: number) => {
           await gatewayCallback("localhost", port);
         },
         {

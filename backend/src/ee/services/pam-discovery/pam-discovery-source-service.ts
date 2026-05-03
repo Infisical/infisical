@@ -318,8 +318,8 @@ export const pamDiscoverySourceServiceFactory = ({
 
     // Validate if connection details changed
     if (gatewayId || gatewayPoolId || discoveryConfiguration || discoveryCredentials) {
-      const effectiveAttachedGatewayId = gatewayId ?? discoverySource.gatewayId;
-      const effectiveAttachedPoolId = gatewayPoolId ?? discoverySource.gatewayPoolId;
+      const effectiveAttachedGatewayId = updateDoc.gatewayId !== undefined ? updateDoc.gatewayId : discoverySource.gatewayId;
+      const effectiveAttachedPoolId = updateDoc.gatewayPoolId !== undefined ? updateDoc.gatewayPoolId : discoverySource.gatewayPoolId;
       const effectiveConfiguration = (discoveryConfiguration ??
         discoverySource.discoveryConfiguration) as TPamDiscoveryConfiguration;
 
