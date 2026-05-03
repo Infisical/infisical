@@ -69,8 +69,8 @@ const formSchema = z
             (val) => !val.includes(","),
             "Namespace must be a single value, not a comma-separated list"
           ),
-        gatewayId: z.string().optional(),
-        gatewayPoolId: z.string().optional(),
+        gatewayId: z.string().optional().nullable(),
+        gatewayPoolId: z.string().optional().nullable(),
         audiences: z.array(z.string().trim().min(1)),
         authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
       }),
@@ -89,8 +89,8 @@ const formSchema = z
             const namespaces = val.split(",").map((ns) => ns.trim());
             return namespaces.length > 0 && namespaces.every((ns) => ns.length > 0);
           }, "Must be a valid comma-separated list of namespace values"),
-        gatewayId: z.string().optional(),
-        gatewayPoolId: z.string().optional(),
+        gatewayId: z.string().optional().nullable(),
+        gatewayPoolId: z.string().optional().nullable(),
         audiences: z.array(z.string().trim().min(1)),
         roleType: z.nativeEnum(RoleType),
         role: z.string().trim().min(1),
@@ -304,10 +304,10 @@ export const EditDynamicSecretKubernetesForm = ({
                                   gatewayPoolId: inputsGatewayPoolId ?? null
                                 }}
                                 onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                                  setValue("inputs.gatewayId", newGwId ?? undefined, {
+                                  setValue("inputs.gatewayId", newGwId ?? null, {
                                     shouldDirty: true
                                   });
-                                  setValue("inputs.gatewayPoolId", newPoolId ?? undefined, {
+                                  setValue("inputs.gatewayPoolId", newPoolId ?? null, {
                                     shouldDirty: true
                                   });
                                 }}

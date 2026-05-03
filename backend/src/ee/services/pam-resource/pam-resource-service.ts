@@ -59,7 +59,10 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -78,19 +81,6 @@ export const pamResourceServiceFactory = ({
   resourceMetadataDAL,
   appConnectionDAL
 }: TPamResourceServiceFactoryDep) => {
-  // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
-  // or a freshly-picked healthy member of the configured pool.
-  const resolveEffectiveGatewayId = async (
-    gatewayId: string | null | undefined,
-    gatewayPoolId: string | null | undefined
-  ): Promise<string | null> => {
-    if (gatewayId) return gatewayId;
-    if (gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-      return picked.id;
-    }
-    return null;
-  };
   const assertDomainInProject = async (domainId: string, projectId: string) => {
     const domain = await pamDomainDAL.findById(domainId);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${domainId}' not found` });
@@ -221,7 +211,7 @@ export const pamResourceServiceFactory = ({
       await assertDomainInProject(domainId, projectId);
     }
 
-    const effectiveGatewayId = await resolveEffectiveGatewayId(gatewayId, gatewayPoolId);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
 
     const factory = PAM_RESOURCE_FACTORY_MAP[resourceType](
       resourceType,
@@ -377,7 +367,10 @@ export const pamResourceServiceFactory = ({
     }
 
     // Used for connection-validation factory below
-    const effectiveGatewayId = await resolveEffectiveGatewayId(effectiveGatewayIdAttr, effectiveGatewayPoolIdAttr);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: effectiveGatewayIdAttr,
+      gatewayPoolId: effectiveGatewayPoolIdAttr
+    });
 
     if (name !== undefined) {
       updateDoc.name = name;

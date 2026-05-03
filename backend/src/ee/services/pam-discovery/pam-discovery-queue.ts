@@ -36,7 +36,7 @@ type TPamDiscoveryQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TPamDiscoveryQueueFactory = ReturnType<typeof pamDiscoveryQueueFactory>;
@@ -82,12 +82,10 @@ export const pamDiscoveryQueueFactory = ({
 
           const configuration = discoverySource.discoveryConfiguration as TPamDiscoveryConfiguration;
 
-          // Resolve effective gateway: directly-attached gateway, or a freshly-picked healthy member of the pool.
-          let effectiveGatewayId = discoverySource.gatewayId;
-          if (!effectiveGatewayId && discoverySource.gatewayPoolId) {
-            const picked = await gatewayPoolService.pickRandomHealthyGateway(discoverySource.gatewayPoolId);
-            effectiveGatewayId = picked.id;
-          }
+          const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+            gatewayId: discoverySource.gatewayId,
+            gatewayPoolId: discoverySource.gatewayPoolId
+          });
           if (!effectiveGatewayId) {
             logger.error(
               { discoverySourceId, triggeredBy },

@@ -29,7 +29,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TPkiDiscoveryQueueFactory = ReturnType<typeof pkiDiscoveryQueueFactory>;

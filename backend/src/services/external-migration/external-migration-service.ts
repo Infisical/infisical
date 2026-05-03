@@ -82,7 +82,7 @@ type TExternalMigrationServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickRandomHealthyGateway"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -290,20 +290,14 @@ export const externalMigrationServiceFactory = ({
 
     const user = await userDAL.findById(actorId);
 
-    // Resolve effective gateway: directly-attached id, or a freshly-picked
-    // healthy pool member. Direct-import vault flow takes either flag, but
-    // the underlying vaultApi.collectVaultData only sees a concrete gatewayId.
-    // For pools, route through resolveAttachableGatewayFromPool so the request
-    // passes the same license + AttachGatewayPools RBAC + pool-belongs-to-org
-    // checks every other consumer applies — without this, an org admin could
-    // pass a foreign org's pool UUID and the runtime call would still work.
     let effectiveGatewayId: string | null = gatewayId ?? null;
     if (gatewayPoolId) {
-      const picked = await gatewayPoolService.resolveAttachableGatewayFromPool({
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,
         actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
       effectiveGatewayId = picked.id;
     }
 

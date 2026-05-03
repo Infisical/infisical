@@ -51,17 +51,6 @@ export const pamDomainServiceFactory = ({
 }: TPamDomainServiceFactoryDep) => {
   // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
   // or a freshly-picked healthy member of the configured pool. Returns null if neither is set.
-  const resolveEffectiveGatewayId = async (
-    gatewayId: string | null | undefined,
-    gatewayPoolId: string | null | undefined
-  ): Promise<string | null> => {
-    if (gatewayId) return gatewayId;
-    if (gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-      return picked.id;
-    }
-    return null;
-  };
   const getById = async (id: string, domainType: PamDomainType, actor: OrgServiceActor) => {
     const domain = await pamDomainDAL.findById(id);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${id}' not found` });
@@ -144,7 +133,7 @@ export const pamDomainServiceFactory = ({
       });
     }
 
-    const effectiveGatewayId = await resolveEffectiveGatewayId(gatewayId, gatewayPoolId);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
 
     const factory = PAM_DOMAIN_FACTORY_MAP[domainType](
       domainType,
@@ -276,7 +265,10 @@ export const pamDomainServiceFactory = ({
     }
 
     if (connectionDetails !== undefined) {
-      const validationGatewayId = await resolveEffectiveGatewayId(effectiveGatewayId, effectiveGatewayPoolId);
+      const validationGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: effectiveGatewayId,
+        gatewayPoolId: effectiveGatewayPoolId
+      });
       const factory = PAM_DOMAIN_FACTORY_MAP[domain.domainType as PamDomainType](
         domain.domainType as PamDomainType,
         connectionDetails,

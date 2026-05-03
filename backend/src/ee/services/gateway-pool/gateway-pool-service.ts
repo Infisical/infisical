@@ -332,12 +332,10 @@ export const gatewayPoolServiceFactory = ({
   //   1. Enterprise license has gatewayPool feature
   //   2. Actor has AttachGatewayPools RBAC on the pool's org
   //   3. Pool exists AND belongs to the given org (cross-org safety)
-  //   4. Pool has at least one healthy member
   //
-  // Returns the picked healthy gateway, ready to be passed to
-  // gatewayV2Service.getPlatformConnectionDetailsByGatewayId or stored on a
-  // session row for pinning. Use this instead of stitching the four checks by
-  // hand at every consumer site.
+  // Does NOT require a healthy member — matches direct-gateway behavior where
+  // a down gateway can still be attached. Health is checked at runtime or
+  // during optional connection validation, not at configuration time.
   const resolveAttachableGatewayFromPool = async ({
     poolId,
     orgId,
@@ -366,8 +364,6 @@ export const gatewayPoolServiceFactory = ({
     if (!pool || pool.orgId !== orgId) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
-
-    return pickRandomHealthyGateway(poolId);
   };
 
   // Resolve a concrete gatewayId from EITHER a directly-attached gateway OR a

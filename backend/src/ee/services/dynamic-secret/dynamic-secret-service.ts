@@ -46,7 +46,7 @@ type TDynamicSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 

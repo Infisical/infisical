@@ -48,7 +48,7 @@ type TPkiDiscoveryServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
 

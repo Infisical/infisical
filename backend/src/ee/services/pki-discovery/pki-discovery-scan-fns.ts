@@ -63,7 +63,7 @@ type TExecuteScanDeps = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
-  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
@@ -127,13 +127,12 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
     });
     scanHistoryId = scanHistory.id;
 
-    // Resolve effective gateway: either the directly-attached one, or a random healthy member of the configured pool.
-    // We resolve once at scan start so every target in this scan uses the same gateway — keeps location fingerprints stable.
-    let effectiveGatewayId: string | null = discoveryConfig.gatewayId ?? null;
-    if (!effectiveGatewayId && discoveryConfig.gatewayPoolId && gatewayPoolService) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(discoveryConfig.gatewayPoolId);
-      effectiveGatewayId = picked.id;
-    }
+    const effectiveGatewayId = gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: discoveryConfig.gatewayId,
+          gatewayPoolId: discoveryConfig.gatewayPoolId
+        })
+      : (discoveryConfig.gatewayId ?? null);
 
     let gatewayName: string | undefined;
     if (effectiveGatewayId && deps.gatewayV2DAL) {

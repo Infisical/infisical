@@ -133,19 +133,10 @@ const generateUsername = (usernameTemplate?: string | null) => {
 
 type TVerticaProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const VerticaProvider = ({ gatewayService, gatewayPoolService }: TVerticaProviderDTO): TDynamicProviderFns => {
-  const $resolveGatewayId = async (providerInputs: { gatewayId?: string | null; gatewayPoolId?: string | null }) => {
-    if (providerInputs.gatewayId) return providerInputs.gatewayId;
-    if (providerInputs.gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(providerInputs.gatewayPoolId);
-      return picked.id;
-    }
-    return null;
-  };
-
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretVerticaSchema.parseAsync(inputs);
 
@@ -205,7 +196,7 @@ export const VerticaProvider = ({ gatewayService, gatewayPoolService }: TVertica
     providerInputs: z.infer<typeof DynamicSecretVerticaSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
-    const effectiveGatewayId = await $resolveGatewayId(providerInputs);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(providerInputs);
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId as string);
     await withGatewayProxy(
       async (port) => {

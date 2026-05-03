@@ -115,7 +115,7 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
 type TSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const SqlDatabaseProvider = ({
@@ -123,15 +123,6 @@ export const SqlDatabaseProvider = ({
   gatewayV2Service,
   gatewayPoolService
 }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
-  // Resolve a concrete gatewayId for runtime use: directly-attached, or a freshly-picked healthy member of the pool.
-  const $resolveGatewayId = async (providerInputs: { gatewayId?: string | null; gatewayPoolId?: string | null }) => {
-    if (providerInputs.gatewayId) return providerInputs.gatewayId;
-    if (providerInputs.gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(providerInputs.gatewayPoolId);
-      return picked.id;
-    }
-    return null;
-  };
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
@@ -218,7 +209,7 @@ export const SqlDatabaseProvider = ({
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
-    const effectiveGatewayId = await $resolveGatewayId(providerInputs);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(providerInputs);
     const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId: effectiveGatewayId as string,
       targetHost: providerInputs.host,

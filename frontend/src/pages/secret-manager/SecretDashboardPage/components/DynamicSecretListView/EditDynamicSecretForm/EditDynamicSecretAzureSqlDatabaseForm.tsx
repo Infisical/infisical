@@ -67,8 +67,8 @@ const formSchema = z.object({
       ca: z.string().optional(),
       sslEnabled: z.boolean().optional(),
       sslRejectUnauthorized: z.boolean().optional(),
-      gatewayId: z.string().optional(),
-      gatewayPoolId: z.string().optional()
+      gatewayId: z.string().optional().nullable(),
+      gatewayPoolId: z.string().optional().nullable()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -264,10 +264,10 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                             gatewayPoolId: inputsGatewayPoolId ?? null
                           }}
                           onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                            setValue("inputs.gatewayId", newGwId ?? undefined, {
+                            setValue("inputs.gatewayId", newGwId ?? null, {
                               shouldDirty: true
                             });
-                            setValue("inputs.gatewayPoolId", newPoolId ?? undefined, {
+                            setValue("inputs.gatewayPoolId", newPoolId ?? null, {
                               shouldDirty: true
                             });
                           }}

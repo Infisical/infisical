@@ -486,18 +486,26 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    // For validation, resolve gatewayPoolId to a concrete gatewayId via the centralized helper
-    // (license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists).
-    // The stored row keeps gatewayPoolId; runtime consumers re-resolve a fresh member per use.
-    const validationGatewayId = gatewayPoolId
-      ? (
-          await gatewayPoolService.resolveAttachableGatewayFromPool({
-            poolId: gatewayPoolId,
-            orgId: actor.orgId,
-            actor
-          })
-        ).id
-      : gatewayId;
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actor.orgId,
+        actor
+      });
+    }
+
+    // For validation, try to pick a healthy pool member. If the pool is temporarily
+    // unhealthy, skip validation — matches direct-gateway behavior where a down
+    // gateway still allows the connection to be saved.
+    let validationGatewayId: string | null | undefined = gatewayId;
+    if (gatewayPoolId) {
+      try {
+        const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+        validationGatewayId = picked.id;
+      } catch {
+        validationGatewayId = null;
+      }
+    }
 
     await enterpriseAppCheck(
       licenseService,
@@ -677,25 +685,33 @@ export const appConnectionServiceFactory = ({
     }
 
     // For validation, resolve the effective gateway: directly-attached, or a fresh pool member.
-    // For pool changes, the centralized helper enforces license + RBAC + pool-belongs-to-org.
-    // For unchanged pools (re-validation only), pickRandomHealthyGateway is sufficient since the row
-    // was already validated when first attached.
     const effectiveGatewayIdForUpdate = gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
     const effectiveGatewayPoolIdForUpdate =
       gatewayPoolIdValue !== undefined ? gatewayPoolIdValue : appConnection.gatewayPoolId;
 
-    let validationGatewayId: string | null | undefined = effectiveGatewayIdForUpdate;
+    // For new pool attachments, enforce license + RBAC + pool-belongs-to-org.
     if (effectiveGatewayPoolIdForUpdate) {
       const isNewPoolAttachment =
         gatewayPoolId !== undefined && gatewayPoolId !== appConnection.gatewayPoolId && gatewayPoolId !== null;
-      const picked = isNewPoolAttachment
-        ? await gatewayPoolService.resolveAttachableGatewayFromPool({
-            poolId: effectiveGatewayPoolIdForUpdate,
-            orgId: actor.orgId,
-            actor
-          })
-        : await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
-      validationGatewayId = picked.id;
+      if (isNewPoolAttachment) {
+        await gatewayPoolService.resolveAttachableGatewayFromPool({
+          poolId: effectiveGatewayPoolIdForUpdate,
+          orgId: actor.orgId,
+          actor
+        });
+      }
+    }
+
+    // Try to pick a healthy pool member for validation. If the pool is temporarily
+    // unhealthy, skip validation — matches direct-gateway behavior.
+    let validationGatewayId: string | null | undefined = effectiveGatewayIdForUpdate;
+    if (effectiveGatewayPoolIdForUpdate) {
+      try {
+        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
+        validationGatewayId = picked.id;
+      } catch {
+        validationGatewayId = null;
+      }
     }
 
     // prevent updating credentials or management status if platform managed

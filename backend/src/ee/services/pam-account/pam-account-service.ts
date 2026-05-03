@@ -110,7 +110,7 @@ type TPamAccountServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
@@ -187,28 +187,13 @@ export const pamAccountServiceFactory = ({
       resourceType: null as string | null,
       domainType: domain.domainType,
       gatewayId: domain.gatewayId,
-      gatewayPoolId: (domain as { gatewayPoolId?: string | null }).gatewayPoolId ?? null,
+      gatewayPoolId: domain.gatewayPoolId ?? null,
       encryptedConnectionDetails: domain.encryptedConnectionDetails,
       encryptedResourceMetadata: null as Buffer | null,
       encryptedRotationAccountCredentials: null as Buffer | null,
       isResource: false as const,
       raw: domain
     };
-  };
-
-  // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
-  // or a freshly-picked healthy member of the configured pool. Each call picks independently
-  // so per-operation pool selection is randomized.
-  const resolveEffectiveGatewayId = async (parent: {
-    gatewayId?: string | null;
-    gatewayPoolId?: string | null;
-  }): Promise<string | null> => {
-    if (parent.gatewayId) return parent.gatewayId;
-    if (parent.gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(parent.gatewayPoolId);
-      return picked.id;
-    }
-    return null;
   };
 
   // Resolve whether the given policy enforces RequireReason at access time.
@@ -257,7 +242,7 @@ export const pamAccountServiceFactory = ({
       })
     );
 
-    const effectiveGatewayId = await resolveEffectiveGatewayId(parent);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(parent);
     let factory;
     if (parent.isResource) {
       const connectionDetails = await decryptResourceConnectionDetails({
@@ -438,7 +423,7 @@ export const pamAccountServiceFactory = ({
     }
 
     if (credentials !== undefined) {
-      const effectiveGatewayId = await resolveEffectiveGatewayId(parent);
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(parent);
       let factory;
       if (parent.isResource) {
         const connectionDetails = await decryptResourceConnectionDetails({
@@ -908,10 +893,9 @@ export const pamAccountServiceFactory = ({
     // Resolve effective gatewayId once at session-start: directly-attached, or a fresh healthy member of the pool.
     // This single picked gateway is then PINNED to the session row so all subsequent ops
     // within the session (handshake, command relay, termination) hit the same gateway.
-    const sessionResourceGatewayPoolId = (decryptedResource as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
-    const gatewayId = await resolveEffectiveGatewayId({
+    const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: decryptedResource.gatewayId,
-      gatewayPoolId: sessionResourceGatewayPoolId
+      gatewayPoolId: decryptedResource.gatewayPoolId
     });
 
     // Temporarily disable access to Windows Server
@@ -1445,8 +1429,13 @@ export const pamAccountServiceFactory = ({
       logResourceType = resource.resourceType;
 
       const decrypted = await decryptResource(resource, account.projectId, kmsService);
-      const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = decrypted;
-      const rotationGatewayPoolId = (decrypted as { gatewayPoolId?: string | null }).gatewayPoolId ?? null;
+      const {
+        connectionDetails,
+        rotationAccountCredentials,
+        gatewayId,
+        gatewayPoolId: rotationGatewayPoolId,
+        resourceType
+      } = decrypted;
       if (!rotationAccountCredentials) {
         logger.warn(
           `[Rotation] Decrypted rotation credentials missing for account [accountId=${account.id}], releasing lock`
@@ -1488,7 +1477,10 @@ export const pamAccountServiceFactory = ({
         return;
       }
 
-      const effectiveGatewayId = await resolveEffectiveGatewayId({ gatewayId, gatewayPoolId: rotationGatewayPoolId });
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId,
+        gatewayPoolId: rotationGatewayPoolId
+      });
       const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
         resourceType as PamResource,
         connectionDetails,

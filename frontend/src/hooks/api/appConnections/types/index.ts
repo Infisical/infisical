@@ -203,13 +203,19 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
+  | "gatewayPoolId"
   | "projectId"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
     TAppConnection,
-    "name" | "credentials" | "description" | "isPlatformManagedCredentials" | "gatewayId"
+    | "name"
+    | "credentials"
+    | "description"
+    | "isPlatformManagedCredentials"
+    | "gatewayId"
+    | "gatewayPoolId"
   >
 > & {
   connectionId: string;

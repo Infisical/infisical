@@ -83,7 +83,10 @@ type TPamDiscoverySourceServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
+  >;
   pamDiscoveryQueue: Pick<TPamDiscoveryQueueFactory, "queuePamDiscoveryScan">;
 };
 
@@ -105,17 +108,6 @@ export const pamDiscoverySourceServiceFactory = ({
   gatewayPoolService,
   pamDiscoveryQueue
 }: TPamDiscoverySourceServiceFactoryDep) => {
-  const resolveEffectiveGatewayId = async (
-    gatewayId: string | null | undefined,
-    gatewayPoolId: string | null | undefined
-  ): Promise<string> => {
-    if (gatewayId) return gatewayId;
-    if (gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-      return picked.id;
-    }
-    throw new BadRequestError({ message: "A gateway or gateway pool is required" });
-  };
   const create = async (
     {
       projectId,
@@ -178,7 +170,8 @@ export const pamDiscoverySourceServiceFactory = ({
       });
     }
 
-    const validationGatewayId = await resolveEffectiveGatewayId(gatewayId, gatewayPoolId);
+    const validationGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
+    if (!validationGatewayId) throw new BadRequestError({ message: "A gateway or gateway pool is required" });
 
     const factory = PAM_DISCOVERY_FACTORY_MAP[discoveryType](
       discoveryType,
@@ -340,10 +333,10 @@ export const pamDiscoverySourceServiceFactory = ({
         });
       }
 
-      const validationGatewayId = await resolveEffectiveGatewayId(
-        effectiveAttachedGatewayId,
-        effectiveAttachedPoolId
-      ).catch(() => null);
+      const validationGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: effectiveAttachedGatewayId,
+        gatewayPoolId: effectiveAttachedPoolId
+      });
 
       if (validationGatewayId && effectiveCredentials) {
         const factory = PAM_DISCOVERY_FACTORY_MAP[discoverySource.discoveryType as PamDiscoveryType](

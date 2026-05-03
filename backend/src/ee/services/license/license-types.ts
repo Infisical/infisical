@@ -37,7 +37,7 @@ export type TFeatureSet = {
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: number;
-  dynamicSecret: boolean;
+  dynamicSecret: false;
   memberLimit: null;
   membersUsed: number;
   identityLimit: null;
@@ -68,7 +68,7 @@ export type TFeatureSet = {
   trial_end: null;
   has_used_trial: true;
   secretApproval: false;
-  secretRotation: boolean;
+  secretRotation: false;
   caCrl: false;
   instanceUserManagement: false;
   externalKms: false;
@@ -83,8 +83,8 @@ export type TFeatureSet = {
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;
-  gateway: boolean;
-  gatewayPool: boolean;
+  gateway: false;
+  gatewayPool: false;
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
