@@ -15,14 +15,14 @@ export const PamDiscoverySourcesSchema = z.object({
   name: z.string(),
   discoveryType: z.string(),
   gatewayId: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
   encryptedDiscoveryCredentials: zodBuffer,
   discoveryConfiguration: z.unknown(),
   schedule: z.string().default("manual"),
   lastRunAt: z.date().nullable().optional(),
   status: z.string().default("active"),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TPamDiscoverySources = z.infer<typeof PamDiscoverySourcesSchema>;

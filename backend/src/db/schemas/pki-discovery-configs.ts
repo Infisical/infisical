@@ -17,14 +17,14 @@ export const PkiDiscoveryConfigsSchema = z.object({
   isAutoScanEnabled: z.boolean().default(false),
   scanIntervalDays: z.number().nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().default(true),
   lastScanStatus: z.string().nullable().optional(),
   lastScanJobId: z.string().nullable().optional(),
   lastScanMessage: z.string().nullable().optional(),
   lastScannedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiDiscoveryConfigs = z.infer<typeof PkiDiscoveryConfigsSchema>;

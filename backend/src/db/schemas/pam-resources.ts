@@ -14,7 +14,6 @@ export const PamResourcesSchema = z.object({
   projectId: z.string(),
   name: z.string(),
   gatewayId: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
   resourceType: z.string(),
   encryptedConnectionDetails: zodBuffer,
   createdAt: z.date(),
@@ -23,7 +22,8 @@ export const PamResourcesSchema = z.object({
   encryptedResourceMetadata: zodBuffer.nullable().optional(),
   discoveryFingerprint: z.string().nullable().optional(),
   domainId: z.string().uuid().nullable().optional(),
-  encryptedSessionSummaryConfig: zodBuffer.nullable().optional()
+  encryptedSessionSummaryConfig: zodBuffer.nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TPamResources = z.infer<typeof PamResourcesSchema>;
