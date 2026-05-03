@@ -316,28 +316,13 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   } = parameters;
   const shouldUseSudo = Boolean(useSudo);
 
-  // Resolve effective gateway once per factory invocation: directly-attached, or a freshly-picked
-  // healthy pool member. We pin within a single rotation so all sub-steps (verify / connect / rotate)
-  // hit the same gateway, and we do it lazily on first need to avoid an unnecessary pool pick when
-  // the factory builds something other than a rotation request.
-  let cachedEffectiveGatewayId: string | null | undefined;
-  const $effectiveGatewayId = async (): Promise<string | null> => {
-    if (cachedEffectiveGatewayId !== undefined) return cachedEffectiveGatewayId;
-    cachedEffectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: connection.gatewayId,
-      gatewayPoolId: connection.gatewayPoolId
-    });
-    return cachedEffectiveGatewayId;
-  };
-
-  // Helper to verify SSH credentials work
-  // Tries direct SSH first, then falls back to su via app connection
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
     const verifyConfig: TSshConnectionConfig = {
       method: SshConnectionMethod.Password,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: await $effectiveGatewayId(),
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId,
       credentials: {
         host: connection.credentials.host,
         port: connection.credentials.port,
@@ -352,7 +337,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
         const client = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
         client.destroy();
-      });
+      }, gatewayPoolService);
       return; // Direct SSH worked
     } catch (error) {
       directSshError = (error as Error).message;
@@ -368,7 +353,8 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       method: connection.method,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: await $effectiveGatewayId(),
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId,
       credentials: connection.credentials
     } as TSshConnectionConfig;
 
@@ -380,7 +366,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
         } finally {
           client.destroy();
         }
-      });
+      }, gatewayPoolService);
     } catch (suError) {
       throw new Error(
         `Failed to verify credentials. Direct SSH login failed: ${directSshError}. Fallback su verification also failed: ${(suError as Error).message}`
@@ -406,7 +392,8 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
         method: SshConnectionMethod.Password,
         app: connection.app,
         orgId: connection.orgId,
-        gatewayId: await $effectiveGatewayId(),
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId,
         credentials: {
           host: credentials.host,
           port: credentials.port,
@@ -420,7 +407,8 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
         method: connection.method,
         app: connection.app,
         orgId: connection.orgId,
-        gatewayId: await $effectiveGatewayId(),
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId,
         credentials: connection.credentials
       } as TSshConnectionConfig;
     }
@@ -443,7 +431,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       } finally {
         client.destroy();
       }
-    });
+    }, gatewayPoolService);
 
     // Verify the new credentials work
     await $verifyCredentials(username, newPassword);

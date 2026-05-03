@@ -29,20 +29,6 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
 
-  // Resolve effective gateway lazily on first need, then pin within this factory invocation.
-  let cachedEffectiveGatewayId: string | null | undefined;
-  const $effectiveGatewayId = async (): Promise<string | null> => {
-    if (cachedEffectiveGatewayId !== undefined) return cachedEffectiveGatewayId;
-    cachedEffectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: connection.gatewayId,
-      gatewayPoolId: connection.gatewayPoolId
-    });
-    return cachedEffectiveGatewayId;
-  };
-
-  // Helper to verify Windows credentials work via SMB
-  // Note: We don't pass the domain when verifying the rotated account because it's a local account,
-  // not a domain account. The domain is only used for the app connection (admin) credentials.
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
     const { credentials } = connection;
 
@@ -50,7 +36,8 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       method: SmbConnectionMethod.Credentials,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: await $effectiveGatewayId(),
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId,
       credentials: {
         host: credentials.host,
         port: credentials.port,
@@ -61,9 +48,8 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     };
 
     await executeSmbWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      // Verify without domain - local accounts don't belong to a domain
       await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
-    });
+    }, gatewayPoolService);
   };
 
   // Main password rotation logic
@@ -97,7 +83,8 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       method: connection.method,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: await $effectiveGatewayId(),
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId,
       credentials: {
         host: credentials.host,
         port: credentials.port,
@@ -122,7 +109,7 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       };
 
       await changeWindowsPassword(configWithProxiedHost, username, newPassword);
-    });
+    }, gatewayPoolService);
 
     await $verifyCredentials(username, newPassword);
 
