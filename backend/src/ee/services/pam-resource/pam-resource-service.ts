@@ -179,6 +179,9 @@ export const pamResourceServiceFactory = ({
     if (gatewayId && gatewayPoolId) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
     }
+    if (resourceType !== PamResource.AwsIam && !gatewayId && !gatewayPoolId) {
+      throw new BadRequestError({ message: "A gateway or gateway pool is required for this resource type" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
