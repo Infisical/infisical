@@ -60,7 +60,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Totp]: TotpProvider(),
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
   [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService, gatewayPoolService }),
+  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),

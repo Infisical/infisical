@@ -390,19 +390,24 @@ export const externalMigrationServiceFactory = ({
     }
 
     const gatewayDetails = await getGatewayDetails(connection);
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    const sanitizedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null } as typeof connection;
 
     try {
-      await getHCVaultPolicyNames(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
+      await getHCVaultPolicyNames(namespace, sanitizedConnection, gatewayService, gatewayV2Service, gatewayDetails);
       await getHCVaultAuthMounts(
         namespace,
         HCVaultAuthType.Kubernetes,
-        connection,
+        sanitizedConnection,
         gatewayService,
         gatewayV2Service,
         gatewayDetails
       );
 
-      await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
+      await listHCVaultMounts(sanitizedConnection, gatewayService, gatewayV2Service);
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to establish namespace configuration. ${error instanceof Error ? error.message : "Unknown error"}`

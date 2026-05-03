@@ -5,13 +5,14 @@ import { z } from "zod";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { GatewayProxyProtocol, withGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretVerticaSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
 
@@ -133,10 +134,15 @@ const generateUsername = (usernameTemplate?: string | null) => {
 
 type TVerticaProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-export const VerticaProvider = ({ gatewayService, gatewayPoolService }: TVerticaProviderDTO): TDynamicProviderFns => {
+export const VerticaProvider = ({
+  gatewayService,
+  gatewayV2Service,
+  gatewayPoolService
+}: TVerticaProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretVerticaSchema.parseAsync(inputs);
 
@@ -197,6 +203,26 @@ export const VerticaProvider = ({ gatewayService, gatewayPoolService }: TVertica
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(providerInputs);
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: effectiveGatewayId as string,
+      targetHost: providerInputs.host,
+      targetPort: providerInputs.port
+    });
+
+    if (gatewayV2ConnectionDetails) {
+      return withGatewayV2Proxy(
+        async (port) => {
+          await gatewayCallback("localhost", port);
+        },
+        {
+          relayHost: gatewayV2ConnectionDetails.relayHost,
+          gateway: gatewayV2ConnectionDetails.gateway,
+          relay: gatewayV2ConnectionDetails.relay,
+          protocol: GatewayProxyProtocol.Tcp
+        }
+      );
+    }
+
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId as string);
     await withGatewayProxy(
       async (port) => {
