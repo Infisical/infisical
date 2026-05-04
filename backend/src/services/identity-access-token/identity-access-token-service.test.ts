@@ -12,11 +12,13 @@ import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 const MAX_AGE = 7_776_000;
 const AUTH_SECRET = "test-auth-secret";
 const NOW_SECONDS = 1_700_000_000;
+const ENFORCED_AT = new Date("2026-05-04T00:00:00.000Z");
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({
     AUTH_SECRET,
-    MAX_MACHINE_IDENTITY_TOKEN_AGE: MAX_AGE
+    MAX_MACHINE_IDENTITY_TOKEN_AGE: MAX_AGE,
+    LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT: ENFORCED_AT
   })
 }));
 
@@ -515,6 +517,31 @@ describe("identityAccessTokenServiceFactory", () => {
     });
   });
 
+  test("renews no-exp legacy tokens with old iat during the deployment grace window", async () => {
+    const { service } = createService({ tokenRow: createLegacyTokenRow() });
+    const legacyToken = signLegacyUniversalAuthAccessToken(
+      { iat: NOW_SECONDS - MAX_AGE - 1 },
+      { expiresIn: undefined }
+    );
+
+    const renewed = await service.renewAccessToken({ accessToken: legacyToken });
+    const renewedClaims = verifyAccessTokenJwt(renewed.accessToken);
+
+    expect(renewedClaims).toMatchObject({
+      jti: "legacy-token-id",
+      identityId: "identity-id",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+    });
+  });
+
+  test("rejects no-exp legacy renewal after deployment plus MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
+    const { service } = createService({ tokenRow: createLegacyTokenRow() });
+    const legacyToken = signLegacyUniversalAuthAccessToken({}, { expiresIn: undefined });
+    vi.setSystemTime(new Date(ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1));
+
+    await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow("exceeded max age");
+  });
+
   test("rejects legacy renewal when the PG row is missing", async () => {
     const { service } = createService({ tokenRow: null });
     const legacyToken = signLegacyUniversalAuthAccessToken();
@@ -548,7 +575,7 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow("has reached its max TTL");
   });
 
-  test("rejects legacy JWTs without exp after MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
+  test("allows legacy JWTs without exp until deployment plus MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
     const { service } = createService();
 
     await expect(
@@ -556,6 +583,15 @@ describe("identityAccessTokenServiceFactory", () => {
         createTokenClaims({ exp: undefined, iat: NOW_SECONDS - MAX_AGE - 1 }),
         "10.0.0.1"
       )
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("rejects legacy JWTs without exp after deployment plus MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
+    const { service } = createService();
+    vi.setSystemTime(new Date(ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1));
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ exp: undefined, iat: NOW_SECONDS }), "10.0.0.1")
     ).rejects.toThrow("exceeded max age");
   });
 
