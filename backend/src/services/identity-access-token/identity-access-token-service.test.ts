@@ -5,7 +5,11 @@ import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
-import { signIdentityAccessToken, verifyAccessTokenJwt } from "./identity-access-token-fns";
+import {
+  LEGACY_TOKEN_GRACE_DEADLINE,
+  signIdentityAccessToken,
+  verifyAccessTokenJwt
+} from "./identity-access-token-fns";
 import { identityAccessTokenServiceFactory } from "./identity-access-token-service";
 import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 
@@ -548,8 +552,21 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow("has reached its max TTL");
   });
 
-  test("rejects legacy JWTs without exp after MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
+  test("accepts legacy JWTs without exp during the grace window even when iat is older than MAX_AGE", async () => {
     const { service } = createService();
+    vi.setSystemTime(LEGACY_TOKEN_GRACE_DEADLINE);
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(
+        createTokenClaims({ exp: undefined, iat: NOW_SECONDS - MAX_AGE - 1 }),
+        "10.0.0.1"
+      )
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("rejects legacy JWTs without exp after the grace window expires", async () => {
+    const { service } = createService();
+    vi.setSystemTime(new Date(LEGACY_TOKEN_GRACE_DEADLINE.getTime() + (MAX_AGE + 1) * 1000));
 
     await expect(
       service.fnValidateIdentityAccessTokenFast(

@@ -17,6 +17,7 @@ import {
   computeIssuedTtl,
   hasFullRenewClaims,
   hasNonWildcardTrustedIps,
+  LEGACY_TOKEN_GRACE_DEADLINE,
   parseUsesRemaining,
   resolveTtlInputs,
   signIdentityAccessToken,
@@ -257,10 +258,15 @@ export const identityAccessTokenServiceFactory = ({
       : await loadLegacyTokenSource(token);
 
     // Legacy tokens (pre-redesign) were signed without `expiresIn` so the JWT
-    // has no `exp`. For those, enforce the `iat + MAX_AGE` ceiling here.
-    // New tokens always have `exp`; jwt.verify already rejected expired ones.
+    // has no `exp`. Anchor the cutoff at LEGACY_TOKEN_GRACE_DEADLINE rather
+    // than `iat` so customers get a full MAX_AGE rotation window from the
+    // redesign deploy. New tokens always have `exp`; jwt.verify already
+    // rejected expired ones.
     const issuedAtMs = token.iat * 1000;
-    if (typeof token.exp !== "number" && Date.now() > issuedAtMs + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000) {
+    if (
+      typeof token.exp !== "number" &&
+      Date.now() > LEGACY_TOKEN_GRACE_DEADLINE.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000
+    ) {
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 
@@ -336,10 +342,14 @@ export const identityAccessTokenServiceFactory = ({
     const appCfg = getConfig();
     const decodedToken = assertMinimalRenewClaims(verifyAccessTokenJwt(accessToken));
 
-    // Single-JWT max age. New-format validation enforces this on the hot path
-    // via the same check; mirror it here so legacy JWTs (which were signed
-    // with arbitrarily long expiresIn) can't renew themselves indefinitely.
-    if (decodedToken.iat * 1000 + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000 < Date.now()) {
+    // Single-JWT max age. New tokens have `exp` and jwt.verify already
+    // rejected them when expired; this branch only catches legacy JWTs
+    // signed without `expiresIn` so they can't renew themselves indefinitely.
+    // Anchor at LEGACY_TOKEN_GRACE_DEADLINE — see fnValidateIdentityAccessTokenFast.
+    if (
+      typeof decodedToken.exp !== "number" &&
+      Date.now() > LEGACY_TOKEN_GRACE_DEADLINE.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000
+    ) {
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 

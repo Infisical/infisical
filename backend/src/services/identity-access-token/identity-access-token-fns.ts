@@ -15,6 +15,14 @@ import {
   TSignIdentityAccessTokenOutput
 } from "./identity-access-token-types";
 
+// Anchor for the no-`exp` legacy-token age cutoff. Pre-redesign JWTs were
+// signed without `expiresIn`, so `iat + MAX_MACHINE_IDENTITY_TOKEN_AGE`
+// would reject any token issued more than MAX_AGE before this redesign
+// shipped — a hard break for customers still using long-lived tokens. We
+// anchor the cutoff at the deployment date instead so every legacy token
+// gets a full MAX_AGE grace window from now to be rotated.
+export const LEGACY_TOKEN_GRACE_DEADLINE = new Date("2026-05-04T15:00:00Z");
+
 export const hasNonWildcardTrustedIps = (trustedIps: TIp[] | null | undefined): boolean => {
   if (!trustedIps || trustedIps.length === 0) {
     return false;
