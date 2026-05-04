@@ -179,12 +179,18 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
                   CharacterType.Colon,
                   CharacterType.Period,
                   CharacterType.ForwardSlash,
-                  CharacterType.Hyphen
+                  CharacterType.Hyphen,
+                  // RFC 3986 §3.2.2 — IPv6 addresses in URLs must be wrapped in
+                  // square brackets, e.g. `https://[::1]:6443` or
+                  // `https://[fe80::1]:6443`. Without these, IPv6-only Kubernetes
+                  // clusters cannot be configured (#6095).
+                  CharacterType.OpenBracket,
+                  CharacterType.CloseBracket
                 ])(val);
               },
               {
                 message:
-                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, forward slashes, and square brackets (for IPv6)."
               }
             ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
@@ -355,12 +361,18 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
                   CharacterType.Colon,
                   CharacterType.Period,
                   CharacterType.ForwardSlash,
-                  CharacterType.Hyphen
+                  CharacterType.Hyphen,
+                  // RFC 3986 §3.2.2 — IPv6 addresses in URLs must be wrapped in
+                  // square brackets, e.g. `https://[::1]:6443` or
+                  // `https://[fe80::1]:6443`. Without these, IPv6-only Kubernetes
+                  // clusters cannot be configured (#6095).
+                  CharacterType.OpenBracket,
+                  CharacterType.CloseBracket
                 ])(val);
               },
               {
                 message:
-                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, forward slashes, and square brackets (for IPv6)."
               }
             ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),

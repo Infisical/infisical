@@ -21,14 +21,21 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
   }
 
+  // URL.hostname keeps the surrounding brackets for IPv6 literals (RFC 3986 §3.2.2),
+  // e.g. `https://[::1]:6443` → hostname `"[::1]"`. `isIP` doesn't accept the
+  // bracketed form, so strip them before the IP check (#6095).
+  const rawHostname = validUrl.hostname;
+  const hostname =
+    rawHostname.startsWith("[") && rawHostname.endsWith("]") ? rawHostname.slice(1, -1) : rawHostname;
+
   const inputHostIps: string[] = [];
-  if (isIP(validUrl.hostname)) {
-    inputHostIps.push(validUrl.hostname);
+  if (isIP(hostname)) {
+    inputHostIps.push(hostname);
   } else {
-    if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
+    if (hostname === "localhost" || hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const entries = await dns.lookup(validUrl.hostname, { all: true });
+    const entries = await dns.lookup(hostname, { all: true });
 
     if (!entries || entries.length === 0) {
       throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
