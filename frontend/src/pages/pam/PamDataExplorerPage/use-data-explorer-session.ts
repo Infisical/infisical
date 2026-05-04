@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ms from "ms";
 
 import { apiRequest } from "@app/config/request";
-import { DEFAULT_ACCESS_DURATION } from "../constants";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 
+import { DEFAULT_ACCESS_DURATION } from "../constants";
 import type {
   DataExplorerClientMessage,
   DataExplorerServerMessage,
