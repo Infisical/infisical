@@ -1,0 +1,50 @@
+name: Skyramp Testbot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.actor != 'skyramp-testbot[bot]' }}
+
+jobs:
+  testbot:
+    # Only run for pull_request events or issue_comment on PRs mentioning @skyramp-testbot
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@skyramp-testbot'))
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+
+    steps:
+      # Generate a GitHub App installation token to retrigger CI workflows on push
+      # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        with:
+          app-id: ${{ secrets.SKYRAMP_TESTBOT_APP_ID }}
+          private-key: ${{ secrets.SKYRAMP_TESTBOT_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: skyramp/testbot@bfaa88528a744ef6653a70eb51980b69d333b93b # v0.8.1
+        with:
+          skyrampLicenseFile: ${{ secrets.SKYRAMP_LICENSE_FILE }}
+          anthropicApiKey: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
+          githubToken: ${{ steps.app-token.outputs.token }}
+          authTokenCommand: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
+          targetSetupCommand: 'wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example && docker compose -f docker-compose.prod.yml up -d'
+          targetReadyCheckCommand: 'curl -sf http://localhost:80/api/status'
+          targetReadyCheckTimeout: '180'
+          targetTeardownCommand: 'docker compose -f docker-compose.prod.yml down -v'
+          testDirectory: 'backend/tests'
