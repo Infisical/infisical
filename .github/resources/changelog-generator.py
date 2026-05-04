@@ -177,7 +177,7 @@ Using the provided list of merged PRs, categorize them under these headers (in t
 Rules:
 1. Every entry MUST be written in imperative mood, starting with a present tense verb (e.g. "Add", "Fix", "Remove", "Refactor", "Update", "Improve", "Support", "Document").
 2. Every entry MUST be self-describing as if no category heading exists. Instead of "Support of CentOS", write "Support CentOS". Instead of "Document the read() method" write "Document the read() method".
-3. Each entry should be a single bullet point referencing the PR: `- Description (#PR_NUMBER)`
+3. Each entry should be a single bullet point with the full PR URL at the end: `- Description (https://github.com/Infisical/infisical/pull/PR_NUMBER)`
 4. REMOVE non-interesting maintenance changes that are NOT useful to users. This includes: dependency version bumps, CI/CD pipeline config tweaks, minor typo fixes, build script changes, test-only changes.
 5. Do NOT remove: refactorings, changes to supported runtime environments, code style changes that use new language features, new or updated documentation.
 6. Stay consistent in phrasing across all entries.
