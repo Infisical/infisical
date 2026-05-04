@@ -1,0 +1,87 @@
+---
+title: "Salesforce Connection"
+description: "Learn how to configure a Salesforce Connection for Infisical."
+---
+
+Infisical supports the OAuth 2.0 [Client Credentials](https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5) flow to connect with your Salesforce org.
+
+## Configure a Connected App in Salesforce
+
+<Steps>
+    <Step title="Create a Connected App">
+        In Salesforce Setup, search for **App Manager** and click **New Connected App**. Choose **Create a Connected App** and provide a name, API name, and contact email.
+    </Step>
+    <Step title="Enable OAuth Settings">
+        Under **API (Enable OAuth Settings)**:
+        - Check **Enable OAuth Settings**.
+        - Provide a callback URL (any valid HTTPS URL — it is not used for the Client Credentials flow).
+        - Add the OAuth scopes your integration requires (typically **Manage user data via APIs (api)** and **Perform requests at any time (refresh_token, offline_access)**).
+        - Check **Enable Client Credentials Flow**.
+
+        Save the Connected App. It may take a few minutes for the new app to become available.
+    </Step>
+    <Step title="Configure the Run-As User">
+        Open the Connected App's **Manage** page and click **Edit Policies**. Under **Client Credentials Flow**, select a **Run As** user. The token issued via Client Credentials will execute API calls as this user.
+    </Step>
+    <Step title="Copy the Consumer Key and Consumer Secret">
+        Back on the Connected App's detail page, click **Manage Consumer Details** to reveal the **Consumer Key** and **Consumer Secret**. Save both for the next section.
+    </Step>
+    <Step title="Identify Your My Domain URL">
+        In Salesforce Setup, search for **My Domain**. Copy the **Current My Domain URL** (e.g. `my-org.my.salesforce.com`). This is your instance URL.
+    </Step>
+</Steps>
+
+## Setup Salesforce Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **App Connections** in your organization or project.
+
+        2. Select the **Salesforce Connection** option.
+
+        3. Enter your **Instance URL**, **Consumer Key**, and **Consumer Secret** from the previous section, then click **Connect to Salesforce**.
+
+        4. Your **Salesforce Connection** is now available for use.
+    </Tab>
+    <Tab title="API">
+        To create a Salesforce Connection, make an API request to the [Create Salesforce
+        Connection](/api-reference/endpoints/app-connections/salesforce/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/app-connections/salesforce \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-salesforce-connection",
+            "method": "client-credentials",
+            "credentials": {
+                "instanceUrl": "my-org.my.salesforce.com",
+                "consumerKey": "...",
+                "consumerSecret": "..."
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "appConnection": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-salesforce-connection",
+                "version": 1,
+                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2026-05-04T05:31:56Z",
+                "updatedAt": "2026-05-04T05:31:56Z",
+                "app": "salesforce",
+                "method": "client-credentials",
+                "credentials": {
+                    "instanceUrl": "my-org.my.salesforce.com"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

@@ -157,6 +157,7 @@
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
+                      "integrations/app-connections/salesforce",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
@@ -1823,6 +1824,18 @@
                       "api-reference/endpoints/app-connections/render/create",
                       "api-reference/endpoints/app-connections/render/update",
                       "api-reference/endpoints/app-connections/render/delete"
+                    ]
+                  },
+                  {
+                    "group": "Salesforce",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/salesforce/list",
+                      "api-reference/endpoints/app-connections/salesforce/available",
+                      "api-reference/endpoints/app-connections/salesforce/get-by-id",
+                      "api-reference/endpoints/app-connections/salesforce/get-by-name",
+                      "api-reference/endpoints/app-connections/salesforce/create",
+                      "api-reference/endpoints/app-connections/salesforce/update",
+                      "api-reference/endpoints/app-connections/salesforce/delete"
                     ]
                   },
                   {
