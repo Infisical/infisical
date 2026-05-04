@@ -17,6 +17,7 @@ import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotati
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
+import { salesforceOauthCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials/salesforce-oauth-credentials-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   calculateNextRotationAt,
@@ -186,7 +187,9 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.SalesforceOauthCredentials]:
+    salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({

@@ -13,6 +13,7 @@ import { OpenRouterApiKeyRotationSchema } from "@app/ee/services/secret-rotation
 import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
+import { SalesforceOauthCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials";
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
@@ -38,5 +39,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   WindowsLocalAccountRotationSchema,
   OpenRouterApiKeyRotationSchema,
   HpIloRotationSchema,
-  SupabaseApiKeyRotationSchema
+  SupabaseApiKeyRotationSchema,
+  SalesforceOauthCredentialsRotationSchema
 ]);

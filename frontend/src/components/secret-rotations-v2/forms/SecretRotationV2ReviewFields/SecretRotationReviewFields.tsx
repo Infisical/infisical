@@ -16,6 +16,7 @@ import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFi
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
 import { OpenRouterApiKeyRotationReviewFields } from "./OpenRouterApiKeyRotationReviewFields";
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
+import { SalesforceOauthCredentialsRotationReviewFields } from "./SalesforceOauthCredentialsRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 import { SupabaseApiKeyRotationReviewFields } from "./SupabaseApiKeyRotationReviewFields";
 import { UnixLinuxLocalAccountRotationReviewFields } from "./UnixLinuxLocalAccountRotationReviewFields";
@@ -40,7 +41,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationReviewFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
-  [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields
+  [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
+  [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

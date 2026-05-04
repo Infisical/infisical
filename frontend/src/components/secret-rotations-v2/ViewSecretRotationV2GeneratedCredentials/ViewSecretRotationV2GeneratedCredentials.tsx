@@ -28,6 +28,7 @@ import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGenera
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
+import { ViewSalesforceOauthCredentialsRotationGeneratedCredentials } from "./ViewSalesforceOauthCredentialsRotationGeneratedCredentials";
 import { ViewSupabaseApiKeyRotationGeneratedCredentials } from "./ViewSupabaseApiKeyRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
@@ -168,6 +169,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.SupabaseApiKey:
       Component = (
         <ViewSupabaseApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.SalesforceOauthCredentials:
+      Component = (
+        <ViewSalesforceOauthCredentialsRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

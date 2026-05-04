@@ -32,3 +32,17 @@ export type TSalesforceTokenResponse = {
   signature?: string;
   scope?: string;
 };
+
+export type TSalesforceOauthApp = {
+  identifier: string;
+  developerName: string;
+};
+
+export type TSalesforceOauthUsageResponse = {
+  apps: Array<{
+    identifier: string;
+    developerName: string;
+  }>;
+  currentPageUrl: string;
+  nextPageUrl?: string | null;
+};

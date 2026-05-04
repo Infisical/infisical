@@ -3295,6 +3295,10 @@ export const SecretRotations = {
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
+    },
+    SALESFORCE_OAUTH_CREDENTIALS: {
+      appId: "The identifier of the Salesforce External Client App to rotate the consumer secret for.",
+      appName: "The developer name of the Salesforce External Client App to rotate the consumer secret for."
     }
   },
   SECRETS_MAPPING: {
@@ -3358,6 +3362,10 @@ export const SecretRotations = {
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
+    },
+    SALESFORCE_OAUTH_CREDENTIALS: {
+      consumerKey: "The name of the secret that the rotated Salesforce consumer key will be mapped to.",
+      consumerSecret: "The name of the secret that the rotated Salesforce consumer secret will be mapped to."
     }
   }
 };

@@ -107,6 +107,13 @@ import {
   TRedisCredentialsRotationListItem,
   TRedisCredentialsRotationWithConnection
 } from "./redis-credentials/redis-credentials-rotation-types";
+import {
+  TSalesforceOauthCredentialsRotation,
+  TSalesforceOauthCredentialsRotationGeneratedCredentials,
+  TSalesforceOauthCredentialsRotationInput,
+  TSalesforceOauthCredentialsRotationListItem,
+  TSalesforceOauthCredentialsRotationWithConnection
+} from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 import {
@@ -149,7 +156,8 @@ export type TSecretRotationV2 =
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
   | THpIloRotation
-  | TSupabaseApiKeyRotation;
+  | TSupabaseApiKeyRotation
+  | TSalesforceOauthCredentialsRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -169,7 +177,8 @@ export type TSecretRotationV2WithConnection =
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
   | THpIloRotationWithConnection
-  | TSupabaseApiKeyRotationWithConnection;
+  | TSupabaseApiKeyRotationWithConnection
+  | TSalesforceOauthCredentialsRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -185,7 +194,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
-  | TSupabaseApiKeyRotationGeneratedCredentials;
+  | TSupabaseApiKeyRotationGeneratedCredentials
+  | TSalesforceOauthCredentialsRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -205,7 +215,8 @@ export type TSecretRotationV2Input =
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
   | THpIloRotationInput
-  | TSupabaseApiKeyRotationInput;
+  | TSupabaseApiKeyRotationInput
+  | TSalesforceOauthCredentialsRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -225,7 +236,8 @@ export type TSecretRotationV2ListItem =
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
   | THpIloRotationListItem
-  | TSupabaseApiKeyRotationListItem;
+  | TSupabaseApiKeyRotationListItem
+  | TSalesforceOauthCredentialsRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
