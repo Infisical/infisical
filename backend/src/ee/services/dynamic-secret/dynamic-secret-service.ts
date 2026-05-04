@@ -377,9 +377,9 @@ export const dynamicSecretServiceFactory = ({
       }
     );
 
-    let selectedGatewayId: string | null = null;
-    let selectedGatewayPoolId: string | null = null;
-    let isGatewayV1 = true;
+    let selectedGatewayId: string | null = dynamicSecretCfg.gatewayId ?? dynamicSecretCfg.gatewayV2Id ?? null;
+    let selectedGatewayPoolId: string | null = dynamicSecretCfg.gatewayPoolId ?? null;
+    let isGatewayV1 = Boolean(dynamicSecretCfg.gatewayId);
     const hasGatewayFieldInInput =
       inputs && typeof inputs === "object" && ("gatewayId" in inputs || "gatewayPoolId" in inputs);
     if (

@@ -316,8 +316,10 @@ export const pamDiscoverySourceServiceFactory = ({
       });
     }
 
-    // Validate if connection details changed
-    if (gatewayId || gatewayPoolId || discoveryConfiguration || discoveryCredentials) {
+    const hasGatewayChange = updateDoc.gatewayId !== undefined || updateDoc.gatewayPoolId !== undefined;
+    const hasConfigChange = discoveryConfiguration !== undefined;
+    const hasCredentialChange = finalCredentials !== undefined;
+    if (hasGatewayChange || hasConfigChange || hasCredentialChange) {
       const effectiveAttachedGatewayId =
         updateDoc.gatewayId !== undefined ? updateDoc.gatewayId : discoverySource.gatewayId;
       const effectiveAttachedPoolId =
