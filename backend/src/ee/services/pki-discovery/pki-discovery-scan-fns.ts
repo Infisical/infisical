@@ -327,7 +327,8 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
           deps,
           kmsEncryptor,
           effectiveGatewayId ?? undefined,
-          gatewayName
+          gatewayName,
+          discoveryConfig.gatewayPoolId ?? effectiveGatewayId ?? undefined
         );
 
         if (processedCertIds.installationId) {
@@ -372,7 +373,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
         const domainFingerprint = computeLocationFingerprint(
           PkiInstallationLocationType.Network,
           domainLocationDetails,
-          effectiveGatewayId ?? undefined
+          discoveryConfig.gatewayPoolId ?? effectiveGatewayId ?? undefined
         );
 
         const domainInstallationId = await deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
@@ -542,7 +543,8 @@ const processEndpointResult = async (
   deps: TExecuteScanDeps,
   kmsEncryptor: TKmsEncryptor,
   gatewayId?: string,
-  gatewayName?: string
+  gatewayName?: string,
+  fingerprintGatewayKey?: string
 ): Promise<{ installationId?: string; certificateIds: string[]; sniHostname?: string }> => {
   const {
     pkiCertificateInstallationDAL,
@@ -580,7 +582,7 @@ const processEndpointResult = async (
   const locationFingerprint = computeLocationFingerprint(
     PkiInstallationLocationType.Network,
     locationDetails,
-    gatewayId
+    fingerprintGatewayKey ?? gatewayId
   );
 
   const displayName = ipAddress || result.host;
