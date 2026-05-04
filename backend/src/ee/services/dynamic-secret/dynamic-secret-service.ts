@@ -351,10 +351,9 @@ export const dynamicSecretServiceFactory = ({
     ) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
     }
-    // Clear opposite gateway field when the user explicitly sets one
     if (inputs && typeof inputs === "object") {
-      if ("gatewayId" in inputs) (newInput as Record<string, unknown>).gatewayPoolId = undefined;
-      else if ("gatewayPoolId" in inputs) (newInput as Record<string, unknown>).gatewayId = undefined;
+      if ((inputs as Record<string, unknown>).gatewayId) (newInput as Record<string, unknown>).gatewayPoolId = undefined;
+      else if ((inputs as Record<string, unknown>).gatewayPoolId) (newInput as Record<string, unknown>).gatewayId = undefined;
     }
     const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
@@ -379,6 +378,8 @@ export const dynamicSecretServiceFactory = ({
     let selectedGatewayId: string | null = null;
     let selectedGatewayPoolId: string | null = null;
     let isGatewayV1 = true;
+    const hasGatewayFieldInInput =
+      inputs && typeof inputs === "object" && ("gatewayId" in inputs || "gatewayPoolId" in inputs);
     if (
       inputs &&
       typeof inputs === "object" &&
@@ -444,9 +445,13 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : null,
-          gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : null,
-          gatewayPoolId: selectedGatewayPoolId,
+          ...(hasGatewayFieldInInput
+            ? {
+                gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : null,
+                gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : null,
+                gatewayPoolId: selectedGatewayPoolId
+              }
+            : {}),
           usernameTemplate
         },
         tx
