@@ -191,6 +191,11 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import {
+  getSalesforceConnectionListItem,
+  SalesforceConnectionMethod,
+  validateSalesforceConnectionCredentials
+} from "./salesforce";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
@@ -319,7 +324,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNetScalerConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
-    getTravisCIConnectionListItem()
+    getTravisCIConnectionListItem(),
+    getSalesforceConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -480,7 +486,8 @@ export const validateAppConnectionCredentials = async (
         deps.identityUaDAL
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Salesforce]: validateSalesforceConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -551,6 +558,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case FlyioConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
+    case SalesforceConnectionMethod.ClientCredentials:
       return "Client Credentials";
     case HCVaultConnectionMethod.AppRole:
       return "App Role";
@@ -696,7 +704,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
-  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Salesforce]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

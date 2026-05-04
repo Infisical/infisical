@@ -71,6 +71,7 @@ import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-con
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
@@ -173,7 +174,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
-  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" }
+  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
+  [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -238,6 +240,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NetlifyConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
+    case SalesforceConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
     case HCVaultConnectionMethod.AppRole:
       return { name: "App Role", icon: faUser };

@@ -158,6 +158,10 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import {
+  SalesforceConnectionListItemSchema,
+  SanitizedSalesforceConnectionSchema
+} from "@app/services/app-connection/salesforce";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
@@ -252,7 +256,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
-  ...SanitizedTravisCIConnectionSchema.options
+  ...SanitizedTravisCIConnectionSchema.options,
+  ...SanitizedSalesforceConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -317,7 +322,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DevinConnectionListItemSchema,
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
-  TravisCIConnectionListItemSchema
+  TravisCIConnectionListItemSchema,
+  SalesforceConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -2642,6 +2642,11 @@ export const AppConnections = {
       clientSecret: "Your Auth0 application's Client Secret.",
       audience: "The unique identifier of the target API you want to access."
     },
+    SALESFORCE_CONNECTION: {
+      instanceUrl: "The instance URL of the Salesforce org to connect to.",
+      consumerKey: "The Consumer Key of your Salesforce External App.",
+      consumerSecret: "The Consumer Secret of your Salesforce External App."
+    },
     SQL_CONNECTION: {
       host: "The hostname of the database server.",
       port: "The port number of the database.",

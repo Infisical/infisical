@@ -137,6 +137,7 @@ import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
@@ -235,7 +236,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
-  [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema
+  [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
+  [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

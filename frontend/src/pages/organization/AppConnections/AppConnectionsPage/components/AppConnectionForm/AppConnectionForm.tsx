@@ -65,6 +65,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
@@ -294,6 +295,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DigiCertConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Salesforce:
+        return <SalesforceConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -515,6 +518,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Salesforce:
+        return <SalesforceConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

@@ -300,6 +300,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TSalesforceConnection,
+  TSalesforceConnectionConfig,
+  TSalesforceConnectionInput,
+  TValidateSalesforceConnectionCredentialsSchema
+} from "./salesforce";
+import {
   TSmbConnection,
   TSmbConnectionConfig,
   TSmbConnectionInput,
@@ -429,6 +435,7 @@ export type TAppConnection = { id: string } & (
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
+  | TSalesforceConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -502,6 +509,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnaConnectionInput
   | TDigiCertConnectionInput
   | TTravisCIConnectionInput
+  | TSalesforceConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -603,7 +611,8 @@ export type TAppConnectionConfig =
   | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
-  | TTravisCIConnectionConfig;
+  | TTravisCIConnectionConfig
+  | TSalesforceConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -667,7 +676,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
-  | TValidateTravisCIConnectionCredentialsSchema;
+  | TValidateTravisCIConnectionCredentialsSchema
+  | TValidateSalesforceConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

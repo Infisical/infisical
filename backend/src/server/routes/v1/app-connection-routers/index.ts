@@ -51,6 +51,7 @@ import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
@@ -128,5 +129,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Devin]: registerDevinConnectionRouter,
     [AppConnection.Ona]: registerOnaConnectionRouter,
     [AppConnection.DigiCert]: registerDigiCertConnectionRouter,
-    [AppConnection.TravisCI]: registerTravisCIConnectionRouter
+    [AppConnection.TravisCI]: registerTravisCIConnectionRouter,
+    [AppConnection.Salesforce]: registerSalesforceConnectionRouter
   };
