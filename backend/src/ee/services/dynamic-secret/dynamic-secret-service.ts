@@ -352,8 +352,10 @@ export const dynamicSecretServiceFactory = ({
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
     }
     if (inputs && typeof inputs === "object") {
-      if ((inputs as Record<string, unknown>).gatewayId) (newInput as Record<string, unknown>).gatewayPoolId = undefined;
-      else if ((inputs as Record<string, unknown>).gatewayPoolId) (newInput as Record<string, unknown>).gatewayId = undefined;
+      if ((inputs as Record<string, unknown>).gatewayId)
+        (newInput as Record<string, unknown>).gatewayPoolId = undefined;
+      else if ((inputs as Record<string, unknown>).gatewayPoolId)
+        (newInput as Record<string, unknown>).gatewayId = undefined;
     }
     const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
