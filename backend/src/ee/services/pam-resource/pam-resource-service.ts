@@ -357,7 +357,7 @@ export const pamResourceServiceFactory = ({
       );
     }
 
-    if (gatewayPoolId) {
+    if (gatewayPoolId && gatewayPoolId !== resource.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,

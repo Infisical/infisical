@@ -340,11 +340,21 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    // Mutual exclusion: reject if both gateway fields are set
+    if (
+      inputs &&
+      typeof inputs === "object" &&
+      "gatewayId" in inputs &&
+      inputs.gatewayId &&
+      "gatewayPoolId" in inputs &&
+      inputs.gatewayPoolId
+    ) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
     // Clear opposite gateway field when the user explicitly sets one
     if (inputs && typeof inputs === "object") {
-      if ("gatewayId" in inputs && inputs.gatewayId) (newInput as Record<string, unknown>).gatewayPoolId = null;
-      else if ("gatewayPoolId" in inputs && inputs.gatewayPoolId)
-        (newInput as Record<string, unknown>).gatewayId = null;
+      if ("gatewayId" in inputs) (newInput as Record<string, unknown>).gatewayPoolId = undefined;
+      else if ("gatewayPoolId" in inputs) (newInput as Record<string, unknown>).gatewayId = undefined;
     }
     const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
@@ -366,27 +376,17 @@ export const dynamicSecretServiceFactory = ({
       }
     );
 
-    if (
-      updatedInput &&
-      typeof updatedInput === "object" &&
-      "gatewayId" in updatedInput &&
-      updatedInput.gatewayId &&
-      "gatewayPoolId" in updatedInput &&
-      updatedInput.gatewayPoolId
-    ) {
-      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
-    }
-
     let selectedGatewayId: string | null = null;
     let selectedGatewayPoolId: string | null = null;
     let isGatewayV1 = true;
     if (
-      updatedInput &&
-      typeof updatedInput === "object" &&
-      "gatewayPoolId" in updatedInput &&
-      updatedInput?.gatewayPoolId
+      inputs &&
+      typeof inputs === "object" &&
+      "gatewayPoolId" in inputs &&
+      inputs.gatewayPoolId &&
+      inputs.gatewayPoolId !== (decryptedStoredInput as Record<string, unknown>).gatewayPoolId
     ) {
-      const gatewayPoolId = updatedInput.gatewayPoolId as string;
+      const { gatewayPoolId } = inputs;
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,

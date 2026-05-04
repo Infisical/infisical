@@ -235,7 +235,7 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
-    } else if (gatewayPoolId) {
+    } else if (gatewayPoolId && gatewayPoolId !== discovery.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,

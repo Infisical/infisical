@@ -232,7 +232,7 @@ export const pamDomainServiceFactory = ({
       );
     }
 
-    if (gatewayPoolId) {
+    if (gatewayPoolId && gatewayPoolId !== domain.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,
