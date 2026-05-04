@@ -402,6 +402,7 @@ export const dynamicSecretServiceFactory = ({
       "gatewayId" in updatedInput &&
       updatedInput?.gatewayId
     ) {
+      selectedGatewayPoolId = null;
       const gatewayId = updatedInput.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
