@@ -18,6 +18,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3/generic/Badge";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 
 type Props = {
@@ -61,10 +62,20 @@ export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gateway
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         className="max-w-2xl"
-        title={`Start command for ${gatewayName}`}
-        subTitle="Run the following command on the host where you want to deploy the gateway. The host must have AWS credentials whose principal matches your allowlist."
+        title={`Deploy command for ${gatewayName}`}
+        subTitle="Run the following command on the host where you want to deploy the gateway."
         bodyClassName="overflow-visible"
       >
+        <div className="mb-4">
+          <div className="mb-0.5 flex items-center gap-2">
+            <FormLabel label="Auth Method" className="mb-0 text-foreground" />
+            <Badge variant="info">AWS Auth</Badge>
+          </div>
+          <p className="mt-1 text-xs text-mineshaft-400">
+            The host must have AWS credentials whose principal matches your allowlist. To use a
+            different auth method, update it in the gateway settings.
+          </p>
+        </div>
         <FormControl
           label="Relay"
           tooltipText="The relay this gateway should connect through. Auto Select picks one server-side at connect time."

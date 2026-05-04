@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -77,7 +78,8 @@ export const GatewayDeploySection = ({
                     isDisabled={!isAllowed || isMinting}
                     onClick={handleClick}
                   >
-                    Show start command
+                    <RocketIcon className="size-4" />
+                    Show deploy command
                   </Button>
                 );
               }}

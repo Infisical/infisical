@@ -18,6 +18,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3/generic/Badge";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 
 type Props = {
@@ -66,10 +67,20 @@ export const EnrollmentTokenDialog = ({
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         className="max-w-2xl"
-        title={`Start command for ${gatewayName}`}
-        subTitle="Run the following command on the machine where you want to deploy the gateway. The enrollment token expires in 1 hour and can only be used once."
+        title={`Deploy command for ${gatewayName}`}
+        subTitle="Run the following command on the machine where you want to deploy the gateway."
         bodyClassName="overflow-visible"
       >
+        <div className="mb-4">
+          <div className="mb-0.5 flex items-center gap-2">
+            <FormLabel label="Auth Method" className="mb-0 text-foreground" />
+            <Badge variant="info">Token Auth</Badge>
+          </div>
+          <p className="mt-1 text-xs text-mineshaft-400">
+            The enrollment token expires in 1 hour and can only be used once. To use a different
+            auth method, update it in the gateway settings.
+          </p>
+        </div>
         <FormControl
           label="Relay"
           tooltipText="The relay this gateway should connect through. Auto Select picks one server-side at connect time."
