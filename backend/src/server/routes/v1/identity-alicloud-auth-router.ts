@@ -40,8 +40,13 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           .describe(ALICLOUD_AUTH.LOGIN.Version),
         AccessKeyId: z
           .string()
-          .refine((val) => new RE2("^[A-Za-z0-9]+$").test(val), {
-            message: "AccessKeyId must be alphanumeric"
+          // Standard Alibaba Cloud AccessKeyIds are alphanumeric (e.g.
+          // "LTAI4FaiEqQ7uvYPEXj4Aa3w"), but STS-issued temporary credentials
+          // use a "STS." prefix (e.g. "STS.NUgYrLnoC63mHtFkUL5MeF8r"). The
+          // dot in the STS prefix was previously rejected by the alphanumeric-
+          // only regex, breaking every STS-based login (#4937).
+          .refine((val) => new RE2("^(STS\\.)?[A-Za-z0-9]+$").test(val), {
+            message: "AccessKeyId must be alphanumeric, optionally prefixed with 'STS.' for STS credentials"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
         organizationSlug: slugSchema().optional().describe(ALICLOUD_AUTH.LOGIN.organizationSlug),
