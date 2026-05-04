@@ -386,11 +386,6 @@ export const pamResourceServiceFactory = ({
       updateDoc.gatewayPoolId = effectiveGatewayPoolIdAttr;
     }
 
-    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: effectiveGatewayIdAttr,
-      gatewayPoolId: effectiveGatewayPoolIdAttr
-    });
-
     if (name !== undefined) {
       updateDoc.name = name;
     }
@@ -400,6 +395,14 @@ export const pamResourceServiceFactory = ({
         await assertDomainInProject(domainId, resource.projectId);
       }
       updateDoc.domainId = domainId;
+    }
+
+    let effectiveGatewayId: string | null | undefined;
+    if (connectionDetails !== undefined || rotationAccountCredentials !== undefined) {
+      effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: effectiveGatewayIdAttr,
+        gatewayPoolId: effectiveGatewayPoolIdAttr
+      });
     }
 
     if (connectionDetails !== undefined) {

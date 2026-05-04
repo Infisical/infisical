@@ -698,12 +698,6 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    let validationGatewayId: string | null | undefined = effectiveGatewayIdForUpdate;
-    if (effectiveGatewayPoolIdForUpdate) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
-      validationGatewayId = picked.id;
-    }
-
     // prevent updating credentials or management status if platform managed
     if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {
       throw new BadRequestError({
@@ -712,10 +706,16 @@ export const appConnectionServiceFactory = ({
     }
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
+    let validationGatewayId: string | null | undefined;
 
     const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
 
     if (credentials) {
+      validationGatewayId = effectiveGatewayIdForUpdate;
+      if (effectiveGatewayPoolIdForUpdate) {
+        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
+        validationGatewayId = picked.id;
+      }
       if (
         !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
           method,
