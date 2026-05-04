@@ -56,7 +56,7 @@ type TPkiSyncQueueFactoryDep = {
     "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "incrementBy" | "setExpiry">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectDAL: TProjectDALFactory;
@@ -118,6 +118,12 @@ export const pkiSyncQueueFactory = ({
     unit: "1"
   });
 
+  // The counter expiry acts as a safety net so a stuck counter (e.g. process
+  // killed between increment and decrement) self-heals after the worst-case
+  // job lifetime. Refreshed on every increment to give an active connection a
+  // sliding window.
+  const CONCURRENCY_COUNTER_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000;
+
   const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
     const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
 
@@ -131,30 +137,29 @@ export const pkiSyncQueueFactory = ({
   };
 
   const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
+    // Use the atomic Redis INCRBY to avoid a TOCTOU race between read and
+    // write that previously caused the counter to drift and stay stuck above
+    // the limit under concurrent load (#5563). The expiry must be set
+    // separately because INCRBY does not preserve or set TTL — refreshing it
+    // on every increment also gives long-running active connections a sliding
+    // window so the counter cannot expire mid-flight.
+    await keyStore.incrementBy(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId), 1);
+    await keyStore.setExpiry(
       KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
+      CONCURRENCY_COUNTER_TTL_SECONDS
     );
   };
 
   const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
+    // Atomic decrement — same rationale as increment. INCRBY -1 may transiently
+    // go below 0 if increments and decrements race; the safety-net TTL ensures
+    // the counter eventually self-corrects. We still refresh the TTL on
+    // decrement so a counter that is non-zero after this call retains its
+    // expiry guarantee.
+    await keyStore.incrementBy(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId), -1);
+    await keyStore.setExpiry(
       KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
+      CONCURRENCY_COUNTER_TTL_SECONDS
     );
   };
 
