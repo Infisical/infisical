@@ -24,6 +24,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { copyToClipboard } from "@app/helpers/clipboard";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
@@ -173,7 +174,11 @@ export const SecretEditRow = ({
     try {
       const { data } = await refetchSecretValue();
 
-      await window.navigator.clipboard.writeText(data?.valueOverride ?? data?.value ?? "");
+      const succeeded = await copyToClipboard(data?.valueOverride ?? data?.value ?? "");
+      if (!succeeded) {
+        createNotification({ type: "error", text: "Failed to copy to clipboard" });
+        return;
+      }
       createNotification({ type: "success", text: "Copied secret to clipboard" });
     } catch (e) {
       console.error(e);

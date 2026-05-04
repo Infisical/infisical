@@ -63,6 +63,7 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { copyToClipboard } from "@app/helpers/clipboard";
 import { usePopUp, useTimedReset, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
@@ -636,11 +637,17 @@ export const SecretEditTableRow = ({
 
   const handleCopySharedToClipboard = async () => {
     try {
+      let value: string;
       if (isPendingCreate) {
-        await window.navigator.clipboard.writeText((watchedValue as string) ?? "");
+        value = (watchedValue as string) ?? "";
       } else {
         const { data } = await refetchSharedValue();
-        await window.navigator.clipboard.writeText(data?.value ?? "");
+        value = data?.value ?? "";
+      }
+      const succeeded = await copyToClipboard(value);
+      if (!succeeded) {
+        createNotification({ type: "error", text: "Failed to copy to clipboard" });
+        return;
       }
       setIsCopied(true);
       createNotification({ type: "success", text: "Copied secret to clipboard" });

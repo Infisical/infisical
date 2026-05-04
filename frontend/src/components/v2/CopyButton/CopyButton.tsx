@@ -2,6 +2,7 @@ import { faCheck, faCopy, IconDefinition } from "@fortawesome/free-solid-svg-ico
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { copyToClipboard } from "@app/helpers/clipboard";
 import { useTimedReset } from "@app/hooks";
 
 import { IconButton } from "../IconButton";
@@ -29,8 +30,8 @@ export const CopyButton = ({
   });
 
   async function handleCopyText() {
-    setCopyText("Copied");
-    navigator.clipboard.writeText(value);
+    const succeeded = await copyToClipboard(value);
+    setCopyText(succeeded ? "Copied" : "Copy failed");
   }
 
   return (
