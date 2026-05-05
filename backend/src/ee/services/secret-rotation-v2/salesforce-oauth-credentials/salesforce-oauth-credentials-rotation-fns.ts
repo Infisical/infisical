@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { Connection as JsforceConnection } from "jsforce";
 
 import {
   TRotationFactory,
@@ -28,7 +29,7 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
 > = (secretRotation) => {
   const {
     connection,
-    parameters: { appId },
+    parameters: { appId, appName },
     secretsMapping
   } = secretRotation;
 
@@ -136,11 +137,37 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
     TSalesforceOauthCredentialsRotationGeneratedCredentials
   > = async (credentialsToRevoke, callback) => {
     logger.info({ credentialsToRevoke }, "Revoking Salesforce OAuth credentials");
-    await Promise.all(
-      credentialsToRevoke
-        .filter((credential) => credential.stagedCredentialUrl)
-        .map((credential) => $deleteStagedCredential(credential.stagedCredentialUrl))
-    );
+
+    // Disable OAuth on the External Client App via the SOAP Metadata API. This invalidates
+    // every consumer key/secret pair on the app — including ones Infisical was managing —
+    // without leaving stale credentials behind, which DELETE on the staged-credentials URL
+    // does not reliably guarantee for the currently-active credential.
+    const { accessToken, instanceUrl } = await getSalesforceConnectionAccessToken(connection.credentials);
+
+    const conn = new JsforceConnection({
+      instanceUrl,
+      accessToken,
+      version: SALESFORCE_API_VERSION.replace(/^v/, "")
+    });
+
+    // policy name is the app name with _plcy suffix
+    const fullName = `${appName}_plcy`;
+
+    logger.info({ appName }, "Disabling OAuth on Salesforce External Client App");
+    const result = await conn.metadata.update("ExtlClntAppConfigurablePolicies", [
+      {
+        fullName,
+        externalClientApplication: appName,
+        isOauthPluginEnabled: false
+      }
+    ]);
+
+    if (result.length === 0 || result[0].success === false) {
+      throw new BadRequestError({
+        message: `Failed to disable OAuth on Salesforce External Client App "${appName}": unknown error`
+      });
+    }
+    await conn.logout();
 
     return callback();
   };
