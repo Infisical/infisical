@@ -56,7 +56,6 @@ export type SettableAuthMethodInput =
 export type TGatewayEnrollmentToken = {
   token: string;
   expiresAt: string;
-  ttl: number;
 };
 
 export type TGatewayConnectedAppConnection = {

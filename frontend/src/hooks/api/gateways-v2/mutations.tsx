@@ -91,7 +91,7 @@ export const useMintGatewayToken = () => {
   return useMutation({
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
       const { data } = await apiRequest.post<TGatewayEnrollmentToken>(
-        `/api/v3/gateways/${gatewayId}/token`
+        `/api/v3/gateways/${gatewayId}/token-auth/generate-enrollment-token`
       );
       return data;
     },

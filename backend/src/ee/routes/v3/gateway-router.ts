@@ -240,11 +240,10 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     }
   });
 
-  // ─── POST /:gatewayId/token ──────────────────────────────────────────────
-  // Mint / rotate the token-method enrollment token. Replaces any prior unused token.
+  // ─── POST /:gatewayId/token-auth/generate-enrollment-token ────────────────
   server.route({
     method: "POST",
-    url: "/:gatewayId/token",
+    url: "/:gatewayId/token-auth/generate-enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "mintGatewayEnrollmentToken",
@@ -253,8 +252,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           token: z.string(),
-          expiresAt: z.date(),
-          ttl: z.number()
+          expiresAt: z.date()
         })
       }
     },
@@ -274,7 +272,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { token: result.token, expiresAt: result.expiresAt, ttl: result.ttl };
+      return { token: result.token, expiresAt: result.expiresAt };
     }
   });
 
