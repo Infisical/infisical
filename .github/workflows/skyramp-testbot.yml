@@ -43,8 +43,30 @@ jobs:
           anthropicApiKey: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
           githubToken: ${{ steps.app-token.outputs.token }}
           authTokenCommand: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
-          targetSetupCommand: 'wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example && docker compose -f docker-compose.prod.yml up -d'
-          targetReadyCheckCommand: 'curl -sf http://localhost:80/api/status'
-          targetReadyCheckTimeout: '180'
-          targetTeardownCommand: 'docker compose -f docker-compose.prod.yml down -v'
+          targetSetupCommand: |
+            set -ex
+            cat > .env << 'ENVEOF'
+            DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+            REDIS_URL=redis://redis:6379
+            AUTH_SECRET=at-least-32-characters-long-secret-for-testing-purposes
+            ENCRYPTION_KEY=p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=
+            NODE_ENV=development
+            TELEMETRY_ENABLED=false
+            SITE_URL=http://localhost:4000
+            ENVEOF
+            docker compose -f docker-compose.dev.yml up -d --build backend
+            docker compose -f docker-compose.dev.yml ps
+          targetReadyCheckCommand: 'curl -sf http://localhost:4000/api/status'
+          targetReadyCheckTimeout: '600'
+          targetReadyCheckDiagnosticsCommand: |
+            echo "=== Backend container logs ==="
+            docker compose -f docker-compose.dev.yml logs backend --tail 200
+            echo ""
+            echo "=== All services status ==="
+            docker compose -f docker-compose.dev.yml ps
+            echo ""
+            echo "=== Port 4000 status ==="
+            ss -tlnp 2>/dev/null | grep 4000 || lsof -i :4000 2>/dev/null || echo "Port 4000 not bound"
+          targetTeardownCommand: |
+            docker compose -f docker-compose.dev.yml down -v
           testDirectory: 'backend/tests'
