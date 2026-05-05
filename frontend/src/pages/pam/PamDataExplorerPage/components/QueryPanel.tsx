@@ -6,7 +6,7 @@ import { cn } from "@app/components/v3/utils";
 import type { FieldInfo } from "../data-explorer-types";
 import { copyData, exportData } from "../data-export";
 import type { QueryTab } from "../use-query-tabs";
-import { ExportPopover } from "./ExportPopover";
+import { ExportDropdown } from "./ExportDropdown";
 import { QueryResultsTable } from "./QueryResultsTable";
 import { QueryToolbar } from "./QueryToolbar";
 import { SqlEditor } from "./SqlEditor";
@@ -183,7 +183,7 @@ export function QueryPanel({
                 {result.executionTimeMs}ms
               </span>
               {result.rows.length > 0 && (
-                <ExportPopover
+                <ExportDropdown
                   showLabel
                   onExport={(fmt) =>
                     exportData(

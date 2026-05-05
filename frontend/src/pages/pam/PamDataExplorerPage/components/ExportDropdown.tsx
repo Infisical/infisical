@@ -18,7 +18,7 @@ type Props = {
   showLabel?: boolean;
 };
 
-export function ExportPopover({ onExport, onCopy, disabled, showLabel }: Props) {
+export function ExportDropdown({ onExport, onCopy, disabled, showLabel }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

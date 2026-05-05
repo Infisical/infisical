@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/gene
 import type { ColumnInfo } from "../data-explorer-types";
 import type { ExportFormat } from "../data-export";
 import type { FilterCondition, SortCondition } from "../sql-generation";
-import { ExportPopover } from "./ExportPopover";
+import { ExportDropdown } from "./ExportDropdown";
 import { FilterPopover } from "./FilterPopover";
 import { SortPopover } from "./SortPopover";
 
@@ -171,7 +171,7 @@ export const DataExplorerToolbar = ({
         </Button>
 
         {/* Export */}
-        <ExportPopover onExport={onExport} onCopy={onCopy} disabled={!hasData} />
+        <ExportDropdown onExport={onExport} onCopy={onCopy} disabled={!hasData} />
 
         {/* Refresh */}
         <Button
