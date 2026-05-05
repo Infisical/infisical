@@ -157,12 +157,14 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
                 </AlertDescription>
               </Alert>
             )}
-            <Detail>
-              <DetailLabel>Method</DetailLabel>
-              <DetailValue>
-                <AuthMethodBadge method={authMethod.method} />
-              </DetailValue>
-            </Detail>
+            {!isIdentityGateway && (
+              <Detail>
+                <DetailLabel>Method</DetailLabel>
+                <DetailValue>
+                  <AuthMethodBadge method={authMethod.method} />
+                </DetailValue>
+              </Detail>
+            )}
             <ViewGatewayAuth authMethod={authMethod} />
           </DetailGroup>
         </CardContent>

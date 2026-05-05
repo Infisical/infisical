@@ -1,4 +1,8 @@
+import { Link } from "@tanstack/react-router";
+import { ExternalLinkIcon } from "lucide-react";
+
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { GatewayIdentityAuthConfig } from "@app/hooks/api/gateways-v2/types";
 
 type Props = {
@@ -6,24 +10,25 @@ type Props = {
 };
 
 export const ViewGatewayIdentityAuthContent = ({ config }: Props) => {
+  const { currentOrg } = useOrganization();
+
   return (
-    <div className="grid grid-cols-1 gap-x-4 gap-y-2 md:grid-cols-2">
-      <Detail className="md:col-span-2">
-        <DetailLabel>Identity</DetailLabel>
-        <DetailValue>
-          {config.identityName ? (
-            <p className="break-words">{config.identityName}</p>
-          ) : (
-            <p className="text-muted">Identity has been deleted</p>
-          )}
-        </DetailValue>
-      </Detail>
-      <Detail className="md:col-span-2">
-        <DetailLabel>Identity ID</DetailLabel>
-        <DetailValue>
-          <p className="font-mono text-xs break-words">{config.identityId || "—"}</p>
-        </DetailValue>
-      </Detail>
-    </div>
+    <Detail>
+      <DetailLabel>Machine Identity</DetailLabel>
+      <DetailValue>
+        {config.identityName ? (
+          <Link
+            to="/organizations/$orgId/identities/$identityId"
+            params={{ orgId: currentOrg.id, identityId: config.identityId }}
+            className="inline-flex items-center gap-1 underline"
+          >
+            {config.identityName}
+            <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+          </Link>
+        ) : (
+          <span className="text-muted">Identity has been deleted</span>
+        )}
+      </DetailValue>
+    </Detail>
   );
 };
