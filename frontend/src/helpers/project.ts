@@ -61,10 +61,18 @@ export const projectTypeToUrlSlug = (type: ProjectType): string => {
   return type;
 };
 
+const VALID_PROJECT_SLUGS = new Set<string>([
+  "secret-management",
+  ProjectType.CertificateManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
 export const urlSlugToProjectType = (slug: string): ProjectType | null => {
+  if (!VALID_PROJECT_SLUGS.has(slug)) return null;
   if (slug === "secret-management") return ProjectType.SecretManager;
-  const match = Object.values(ProjectType).find((t) => t === slug);
-  return match ?? null;
+  return slug as ProjectType;
 };
 
 export const getProjectBaseURL = (type: ProjectType) => {

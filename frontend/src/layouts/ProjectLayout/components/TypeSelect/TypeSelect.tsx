@@ -121,13 +121,15 @@ const TypeSelectInner = ({
                 {PRODUCT_TYPES.map((type) => {
                   const isCertManager = type === ProjectType.CertificateManager;
                   const count = projectCountsByType[type] || 0;
+                  const isCmDisabled = isCertManager && !certManagerInstance?.activeProjectId;
 
                   return (
                     <CommandItem
                       key={type}
                       value={getProjectTitle(type)}
-                      onSelect={() => handleSelectType(type)}
-                      className="gap-2"
+                      disabled={isCmDisabled}
+                      onSelect={() => !isCmDisabled && handleSelectType(type)}
+                      className={`gap-2 ${isCmDisabled ? "cursor-not-allowed opacity-40" : ""}`}
                     >
                       <Check className={currentType === type ? "opacity-100" : "opacity-0"} />
                       <Lottie className="h-4 w-4 shrink-0" icon={getProjectLottieIcon(type)} />
