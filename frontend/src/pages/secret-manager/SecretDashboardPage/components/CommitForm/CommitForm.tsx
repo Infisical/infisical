@@ -435,9 +435,9 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
 
   const referenceCount =
     change.resourceType === "secret" &&
-    change.type === PendingAction.Update &&
-    change.newSecretName &&
-    change.secretKey !== change.newSecretName
+      change.type === PendingAction.Update &&
+      change.newSecretName &&
+      change.secretKey !== change.newSecretName
       ? referenceCountMap[change.secretKey] || 0
       : 0;
 
@@ -623,7 +623,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </Badge>
             </SheetTitle>
             <SheetDescription>
-              Write a commit message and review the changes you&apos;re about to save.
+              Write a commit message and review the changes you're about to save.
             </SheetDescription>
           </SheetHeader>
 
