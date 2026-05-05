@@ -69,9 +69,9 @@ import {
   useAttachPkiApplicationProfiles,
   useDetachPkiApplicationProfile
 } from "@app/hooks/api/pkiApplications";
+import { PkiApplicationModal } from "@app/pages/cert-manager/ApplicationsPage/components/PkiApplicationModal";
 import { PoliciesTable } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PoliciesTable";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
-import { PkiApplicationModal } from "@app/pages/cert-manager/ApplicationsPage/components/PkiApplicationModal";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
 import { PkiAlertV2Row } from "@app/views/PkiAlertsV2Page/components/PkiAlertV2Row";
