@@ -27,7 +27,6 @@ import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProject,
   useProjectPermission
 } from "@app/context";
 import { useGetPkiSubscriberCertificates } from "@app/hooks/api";
@@ -45,8 +44,6 @@ type Props = {
 const PER_PAGE_INIT = 25;
 
 export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen }: Props) => {
-  const { currentProject } = useProject();
-  const projectId = currentProject.id;
   const { permission } = useProjectPermission();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
@@ -54,7 +51,6 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
   const { data, isPending } = useGetPkiSubscriberCertificates(
     {
       subscriberName,
-      projectId,
       offset: (page - 1) * perPage,
       limit: perPage
     },
@@ -64,7 +60,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
   );
 
   // Fetch CA data to determine capabilities
-  const { data: caData } = useListCasByProjectId(currentProject.id);
+  const { data: caData } = useListCasByProjectId();
 
   // Create mapping from caId to CA type for capability checking
   const caCapabilityMap = useMemo(() => {

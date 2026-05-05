@@ -12,6 +12,7 @@ import {
   useProject
 } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
 import { DiscoveryJobsTab, InstallationsTab } from "./components";
 
@@ -42,7 +43,7 @@ export const DiscoveryPage = () => {
           }
           description="Discover and track SSL/TLS certificates across your infrastructure."
         />
-        <div>
+        <CertManagerAdminOnly>
           {activeTab === "jobs" && (
             <ProjectPermissionCan
               renderGuardBanner
@@ -61,7 +62,7 @@ export const DiscoveryPage = () => {
               <InstallationsTab projectId={currentProject?.id || ""} />
             </ProjectPermissionCan>
           )}
-        </div>
+        </CertManagerAdminOnly>
       </div>
     </div>
   );

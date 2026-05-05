@@ -30,7 +30,6 @@ import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
-  useProject,
   useProjectPermission
 } from "@app/context";
 import { CaStatus, CaType, useListExternalCasByProjectId } from "@app/hooks/api";
@@ -54,9 +53,8 @@ type Props = {
 };
 
 export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
-  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { data, isPending } = useListExternalCasByProjectId(currentProject.id);
+  const { data, isPending } = useListExternalCasByProjectId();
 
   return (
     <div>

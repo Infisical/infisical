@@ -33,7 +33,6 @@ export const ProfileList = ({
   const { currentProject } = useProject();
 
   const { data, isLoading } = useListCertificateProfiles({
-    projectId: currentProject?.id || "",
     limit: 100,
     offset: 0,
     includeConfigs: true

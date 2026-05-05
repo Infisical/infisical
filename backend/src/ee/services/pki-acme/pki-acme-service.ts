@@ -54,6 +54,7 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -114,7 +115,11 @@ type TPkiAcmeServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
-    "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
+    | "findByProjectIdAndAccountId"
+    | "findByProfileIdAndPublicKeyThumbprintAndAlg"
+    | "findApplicationProfileId"
+    | "findApplicationIdByJunctionId"
+    | "create"
   >;
   acmeOrderDAL: Pick<
     TPkiAcmeOrderDALFactory,
@@ -148,6 +153,7 @@ type TPkiAcmeServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOne">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -172,7 +178,8 @@ export const pkiAcmeServiceFactory = ({
   auditLogService,
   approvalPolicyDAL,
   approvalPolicyService,
-  certificateRequestDAL
+  certificateRequestDAL,
+  pkiApplicationProfileDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -419,12 +426,12 @@ export const pkiAcmeServiceFactory = ({
     });
   };
 
-  const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
+  const getAcmeDirectory = async (profileId: string, applicationId?: string): Promise<TGetAcmeDirectoryResponse> => {
     const profile = await validateAcmeProfile(profileId);
     const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
     return {
       newNonce: buildUrl(profile.id, "/new-nonce"),
-      newAccount: buildUrl(profile.id, "/new-account"),
+      newAccount: buildUrl(profile.id, "/new-account", applicationId),
       newOrder: buildUrl(profile.id, "/new-order"),
       meta: {
         externalAccountRequired: !skipEabBinding
@@ -446,12 +453,14 @@ export const pkiAcmeServiceFactory = ({
    * -------------------------------------------------------------- */
   const createAcmeAccount = async ({
     profileId,
+    applicationId,
     alg,
     jwk,
     payload: { onlyReturnExisting, contact, externalAccountBinding },
     auditLogInfo
   }: {
     profileId: string;
+    applicationId?: string;
     alg: string;
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
@@ -586,9 +595,13 @@ export const pkiAcmeServiceFactory = ({
       }
     }
 
-    // TODO: handle unique constraint violation error, should be very very rare
+    const applicationProfileId = applicationId
+      ? ((await pkiApplicationProfileDAL.findOne(applicationId, profile.id))?.id ?? null)
+      : null;
+
     const newAccount = await acmeAccountDAL.create({
       profileId: profile.id,
+      applicationProfileId,
       alg,
       publicKey: jwk,
       publicKeyThumbprint,
@@ -843,7 +856,8 @@ export const pkiAcmeServiceFactory = ({
     certificateRequest,
     profile,
     ca,
-    tx
+    tx,
+    applicationId
   }: {
     caType: CaType;
     accountId: string;
@@ -859,6 +873,7 @@ export const pkiAcmeServiceFactory = ({
     profile: TCertificateProfileWithConfigs;
     ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
     tx?: Knex;
+    applicationId?: string;
   }): Promise<{ certificateId?: string; certIssuanceJobData?: TIssueCertificateFromProfileJobData }> => {
     if (caType === CaType.INTERNAL) {
       const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
@@ -883,7 +898,8 @@ export const pkiAcmeServiceFactory = ({
             }
           : // ttl is not used if notAfter is provided
             ({ ttl: "0d" } as const),
-        enrollmentType: EnrollmentType.ACME
+        enrollmentType: EnrollmentType.ACME,
+        applicationId
       });
       if ("certificateId" in result) {
         return {
@@ -1070,6 +1086,13 @@ export const pkiAcmeServiceFactory = ({
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
 
+        const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
+        const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
+          ?.applicationProfileId;
+        const accountApplicationId = accountApplicationProfileId
+          ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
+          : null;
+
         const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
           ApprovalPolicyType.CertRequest
         );
@@ -1077,7 +1100,8 @@ export const pkiAcmeServiceFactory = ({
           approvalPolicyDAL as TApprovalPolicyDALFactory,
           profile.projectId,
           {
-            profileName: profile.slug
+            profileName: profile.slug,
+            applicationId: accountApplicationId ?? undefined
           }
         )) as TCertRequestPolicy | null;
 
@@ -1241,7 +1265,8 @@ export const pkiAcmeServiceFactory = ({
             certificateRequest,
             profile,
             ca,
-            tx
+            tx,
+            applicationId: accountApplicationId ?? undefined
           });
           await acmeOrderDAL.updateById(
             orderId,

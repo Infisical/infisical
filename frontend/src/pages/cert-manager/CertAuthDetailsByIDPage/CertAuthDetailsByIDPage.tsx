@@ -70,7 +70,6 @@ const Page = () => {
 
     await deleteCa({
       id: data.id,
-      projectId: currentProject.id,
       type: CaType.INTERNAL
     });
 

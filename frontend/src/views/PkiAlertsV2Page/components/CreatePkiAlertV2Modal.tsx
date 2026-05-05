@@ -31,6 +31,7 @@ interface Props {
   onOpenChange: (isOpen: boolean) => void;
   alertToEdit?: TPkiAlertV2;
   alertId?: string;
+  applicationId?: string;
 }
 
 type TFormData = TCreatePkiAlertV2;
@@ -60,7 +61,21 @@ const TABS_WITHOUT_PREVIEW: TFormTab[] = [
   { name: "Review", key: "review", fields: [] }
 ];
 
-const hasPreviewTab = (eventType?: PkiAlertEventTypeV2): boolean => {
+const TABS_APPLICATION_SCOPED: TFormTab[] = [
+  {
+    name: "Details",
+    key: "basicInfo",
+    fields: ["eventType", "name", "description", "alertBefore", "notificationConfig"]
+  },
+  { name: "Channels", key: "channels", fields: ["channels"] },
+  { name: "Review", key: "review", fields: [] }
+];
+
+const hasPreviewTab = (
+  eventType: PkiAlertEventTypeV2 | undefined,
+  applicationScoped: boolean
+): boolean => {
+  if (applicationScoped) return false;
   return (
     !eventType ||
     eventType === PkiAlertEventTypeV2.EXPIRATION ||
@@ -69,18 +84,30 @@ const hasPreviewTab = (eventType?: PkiAlertEventTypeV2): boolean => {
   );
 };
 
-const getFormTabs = (eventType?: PkiAlertEventTypeV2): TFormTab[] => {
-  if (hasPreviewTab(eventType)) {
-    return TABS_WITH_PREVIEW;
-  }
+const getFormTabs = (
+  eventType: PkiAlertEventTypeV2 | undefined,
+  applicationScoped: boolean
+): TFormTab[] => {
+  if (applicationScoped) return TABS_APPLICATION_SCOPED;
+  if (hasPreviewTab(eventType, false)) return TABS_WITH_PREVIEW;
   return TABS_WITHOUT_PREVIEW;
 };
 
-const getChannelsTabIndex = (eventType?: PkiAlertEventTypeV2): number => {
-  return hasPreviewTab(eventType) ? 3 : 2;
+const getChannelsTabIndex = (
+  eventType: PkiAlertEventTypeV2 | undefined,
+  applicationScoped: boolean
+): number => {
+  if (applicationScoped) return 1;
+  return hasPreviewTab(eventType, false) ? 3 : 2;
 };
 
-export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
+export const CreatePkiAlertV2Modal = ({
+  isOpen,
+  onOpenChange,
+  alertToEdit,
+  alertId,
+  applicationId
+}: Props) => {
   const { currentProject } = useProject();
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   const [expandedChannel, setExpandedChannel] = useState<string | undefined>(undefined);
@@ -96,7 +123,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   const formMethods = useForm<TFormData>({
     resolver: zodResolver(isEditing ? updatePkiAlertV2Schema : createPkiAlertV2Schema),
     defaultValues: {
-      projectId: currentProject?.id || "",
       name: "",
       description: "",
       eventType: PkiAlertEventTypeV2.EXPIRATION,
@@ -118,8 +144,9 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   } = formMethods;
 
   const watchedEventType = watch("eventType");
-  const formTabs = getFormTabs(watchedEventType);
-  const channelsTabIndex = getChannelsTabIndex(watchedEventType);
+  const applicationScoped = !!applicationId;
+  const formTabs = getFormTabs(watchedEventType, applicationScoped);
+  const channelsTabIndex = getChannelsTabIndex(watchedEventType, applicationScoped);
 
   useEffect(() => {
     if (selectedTabIndex >= formTabs.length) {
@@ -140,7 +167,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   React.useEffect(() => {
     if (editingAlert && isEditing) {
       reset({
-        projectId: currentProject?.id || "",
         name: editingAlert.name,
         description: editingAlert.description || "",
         eventType: editingAlert.eventType,
@@ -175,7 +201,6 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       });
     } else if (!isEditing) {
       reset({
-        projectId: currentProject?.id || "",
         name: "",
         description: "",
         eventType: PkiAlertEventTypeV2.EXPIRATION,
@@ -240,7 +265,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       } else {
         await createAlert({
           ...processedData,
-          projectId: currentProject.id
+          ...(applicationId && { applicationId })
         });
       }
 
@@ -317,7 +342,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         <form
           className={twMerge(
             "flex flex-col",
-            hasPreviewTab(watchedEventType) ? "min-h-[60vh]" : "min-h-[40vh]",
+            hasPreviewTab(watchedEventType, applicationScoped) ? "min-h-[60vh]" : "min-h-[40vh]",
             isFinalStep && "max-h-[70vh] overflow-y-auto"
           )}
         >
@@ -349,7 +374,8 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                   <CreatePkiAlertV2FormSteps
                     expandedChannel={expandedChannel}
                     setExpandedChannel={setExpandedChannel}
-                    showPreview={hasPreviewTab(watchedEventType)}
+                    showPreview={hasPreviewTab(watchedEventType, applicationScoped)}
+                    showFilters={!applicationScoped}
                   />
                 </Tab.Panels>
               </Tab.Group>

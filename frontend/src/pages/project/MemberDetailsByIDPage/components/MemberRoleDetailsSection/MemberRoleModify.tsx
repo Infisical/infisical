@@ -73,8 +73,11 @@ type Props = {
 
 export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) => {
   const { subscription } = useSubscription();
-  const { projectId } = useProject();
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
+  const { projectId, currentProject } = useProject();
+  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
+    projectId,
+    currentProject?.type
+  );
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionMemberActions.Edit,
@@ -181,6 +184,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
 
     await updateMembershipRole.mutateAsync({
       projectId,
+      projectType: currentProject?.type,
       membershipId: projectMember.id,
       roles: sanitizedRoles
     });

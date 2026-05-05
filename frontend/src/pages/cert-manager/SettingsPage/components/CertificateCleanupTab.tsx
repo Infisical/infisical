@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Badge, Button, Input, Skeleton, Switch } from "@app/components/v3";
-import { useProject } from "@app/context";
 import {
   useGetCertificateCleanupConfig,
   useUpdateCertificateCleanupConfig
@@ -21,10 +20,7 @@ const formSchema = z.object({
 type TFormData = z.infer<typeof formSchema>;
 
 export const CertificateCleanupTab = () => {
-  const { currentProject } = useProject();
-  const projectId = currentProject?.id || "";
-
-  const { data: config, isLoading } = useGetCertificateCleanupConfig(projectId);
+  const { data: config, isLoading } = useGetCertificateCleanupConfig();
   const updateConfig = useUpdateCertificateCleanupConfig();
 
   const {
@@ -57,7 +53,6 @@ export const CertificateCleanupTab = () => {
   const onSubmit = async (data: TFormData) => {
     try {
       await updateConfig.mutateAsync({
-        projectId,
         ...data
       });
       createNotification({

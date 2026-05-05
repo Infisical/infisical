@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
-import { ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
+import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 
 const secretsToBeAdded = [
   {
@@ -97,6 +97,31 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.AI]: "Agent Sentinel"
   };
   return titleConvert[type];
+};
+
+export const collapseCertManagerProjects = (
+  projects: Project[],
+  activeCertManagerProjectId: string | null
+): Project[] => {
+  const certManagerProjects = projects.filter((p) => p.type === ProjectType.CertificateManager);
+  if (certManagerProjects.length <= 1) return projects;
+
+  const others = projects.filter((p) => p.type !== ProjectType.CertificateManager);
+  const display =
+    certManagerProjects.find((p) => p.id === activeCertManagerProjectId) ?? certManagerProjects[0];
+  const otherCount = certManagerProjects.length - 1;
+
+  return [
+    ...others,
+    {
+      ...display,
+      name: "Certificate Manager",
+      description:
+        otherCount > 0
+          ? `Active: ${display.name} · ${otherCount} other instance${otherCount === 1 ? "" : "s"}`
+          : display.name
+    }
+  ];
 };
 
 export const getProjectLottieIcon = (type: ProjectType) => {

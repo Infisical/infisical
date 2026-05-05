@@ -64,8 +64,7 @@ export const CertificatesSection = ({
     if (!currentProject?.slug) return;
 
     await deleteCert({
-      id,
-      projectId: currentProject.id
+      id
     });
 
     createNotification({
@@ -103,7 +102,6 @@ export const CertificatesSection = ({
       try {
         await downloadCertPkcs12({
           certificateId,
-          projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias
         });

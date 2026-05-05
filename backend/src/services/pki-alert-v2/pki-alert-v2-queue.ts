@@ -70,6 +70,7 @@ export const pkiAlertV2QueueServiceFactory = ({
       alertBefore: string;
       filters: TPkiFilterRule[];
       notificationConfig?: TNotificationConfig | null;
+      applicationId?: string | null;
     },
     projectId: string
   ): Promise<{ shouldNotify: boolean; certificateIds: string[] }> => {
@@ -81,7 +82,8 @@ export const pkiAlertV2QueueServiceFactory = ({
       const result = await pkiAlertV2DAL.findMatchingCertificates(projectId, alert.filters, {
         limit: 1000,
         alertBefore: parseTimeToPostgresInterval(alert.alertBefore),
-        showCurrentMatches: true
+        showCurrentMatches: true,
+        ...(alert.applicationId ? { applicationId: alert.applicationId } : {})
       });
 
       if (result.certificates.length === 0) {
@@ -145,7 +147,8 @@ export const pkiAlertV2QueueServiceFactory = ({
             eventType: alert.eventType,
             alertBefore: alert.alertBefore ?? "",
             filters: (alert.filters ?? []) as TPkiFilterRule[],
-            notificationConfig: alert.notificationConfig as TNotificationConfig | null
+            notificationConfig: alert.notificationConfig as TNotificationConfig | null,
+            applicationId: alert.applicationId ?? null
           },
           projectId
         );

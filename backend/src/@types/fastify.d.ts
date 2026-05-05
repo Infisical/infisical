@@ -131,6 +131,11 @@ import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
+import { TCertManagerInstanceServiceFactory } from "@app/services/pki-application/cert-manager-instance-service";
+import { TCertManagerProjectResolverFactory } from "@app/services/pki-application/cert-manager-project-resolver";
+import { TPkiApplicationEnrollmentServiceFactory } from "@app/services/pki-application/pki-application-enrollment-service";
+import { TPkiApplicationMembershipServiceFactory } from "@app/services/pki-application/pki-application-membership-service";
+import { TPkiApplicationServiceFactory } from "@app/services/pki-application/pki-application-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
@@ -249,6 +254,7 @@ declare module "fastify" {
       name: string;
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
+    certManagerProjectId: string;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -321,6 +327,11 @@ declare module "fastify" {
       certificateTemplate: TCertificateTemplateServiceFactory;
       certificatePolicy: TCertificatePolicyServiceFactory;
       certificateProfile: TCertificateProfileServiceFactory;
+      pkiApplication: TPkiApplicationServiceFactory;
+      pkiApplicationMembership: TPkiApplicationMembershipServiceFactory;
+      pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
+      certManagerProjectResolver: TCertManagerProjectResolverFactory;
+      certManagerInstance: TCertManagerInstanceServiceFactory;
       sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
       sshCertificateTemplate: TSshCertificateTemplateServiceFactory;
       sshHost: TSshHostServiceFactory;

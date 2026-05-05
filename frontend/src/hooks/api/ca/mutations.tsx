@@ -35,16 +35,16 @@ export const useUpdateCa = () => {
 
       return data;
     },
-    onSuccess: ({ projectId, type }, { id }) => {
+    onSuccess: ({ type }, { id }) => {
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+        queryKey: caKeys.listCasByTypeAndProjectId(type)
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.getCaById(id)
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
-        queryKey: caKeys.listExternalCasByProjectId(projectId)
+        queryKey: caKeys.listExternalCasByProjectId()
       });
     }
   });
@@ -60,13 +60,13 @@ export const useCreateCa = () => {
       );
       return data;
     },
-    onSuccess: (_, { type, projectId }) => {
+    onSuccess: (_, { type }) => {
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+        queryKey: caKeys.listCasByTypeAndProjectId(type)
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
-        queryKey: caKeys.listExternalCasByProjectId(projectId)
+        queryKey: caKeys.listExternalCasByProjectId()
       });
     }
   });
@@ -81,13 +81,13 @@ export const useDeleteCa = () => {
       );
       return data;
     },
-    onSuccess: (_, { type, projectId }) => {
+    onSuccess: (_, { type }) => {
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+        queryKey: caKeys.listCasByTypeAndProjectId(type)
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
-        queryKey: caKeys.listExternalCasByProjectId(projectId)
+        queryKey: caKeys.listExternalCasByProjectId()
       });
     }
   });
@@ -106,7 +106,7 @@ export const useSignIntermediate = () => {
   });
 };
 
-export const useImportCaCertificate = (projectId: string) => {
+export const useImportCaCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TImportCaCertificateResponse, object, TImportCaCertificateDTO>({
     mutationFn: async ({ caId, ...body }) => {
@@ -117,12 +117,11 @@ export const useImportCaCertificate = (projectId: string) => {
       return data;
     },
     onSuccess: (_, { caId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, projectId)
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
     }
   });
@@ -139,15 +138,15 @@ export const useCreateCertificate = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
+        queryKey: projectKeys.allProjectCertificates()
       });
     }
   });
 };
 
-export const useCreateCertificateV3 = (options?: { projectId?: string }) => {
+export const useCreateCertificateV3 = () => {
   const queryClient = useQueryClient();
   return useMutation<TCreateCertificateV3Response, object, TCreateCertificateV3DTO>({
     mutationFn: async (body) => {
@@ -157,16 +156,10 @@ export const useCreateCertificateV3 = (options?: { projectId?: string }) => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
+        queryKey: projectKeys.allProjectCertificates()
       });
-
-      if (options?.projectId) {
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.forProjectCertificates(options.projectId)
-        });
-      }
 
       queryClient.invalidateQueries({
         queryKey: ["certificate-profiles"]
@@ -185,9 +178,9 @@ export const useOrderCertificateWithProfile = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
+        queryKey: projectKeys.allProjectCertificates()
       });
     }
   });
@@ -203,8 +196,7 @@ export const useRenewCa = () => {
       );
       return data;
     },
-    onSuccess: ({ projectId }, { caId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
+    onSuccess: (_, { caId }) => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
@@ -214,7 +206,7 @@ export const useRenewCa = () => {
   });
 };
 
-export const useInstallCaCertificateVenafi = (projectId: string) => {
+export const useInstallCaCertificateVenafi = () => {
   const queryClient = useQueryClient();
   return useMutation<
     { message: string; caId: string },
@@ -231,18 +223,17 @@ export const useInstallCaCertificateVenafi = (projectId: string) => {
     onSuccess: (_, { caId }) => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, projectId)
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
     }
   });
 };
 
-export const useInstallCaCertificateAdcs = (projectId: string) => {
+export const useInstallCaCertificateAdcs = () => {
   const queryClient = useQueryClient();
   return useMutation<
     { message: string; caId: string },
@@ -259,12 +250,11 @@ export const useInstallCaCertificateAdcs = (projectId: string) => {
     onSuccess: (_, { caId }) => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, projectId)
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
     }
   });
@@ -380,7 +370,7 @@ export const useGenerateCaCertificate = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCsr(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, "")
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
     }
   });

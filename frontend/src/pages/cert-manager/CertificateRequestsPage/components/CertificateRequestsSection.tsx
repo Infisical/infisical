@@ -24,11 +24,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub,
-  useProject
-} from "@app/context";
+import { ProjectPermissionCertificateProfileActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
@@ -57,8 +53,6 @@ type Props = {
 };
 
 export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Props) => {
-  const { currentProject } = useProject();
-
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateRequestFilters>({});
@@ -80,7 +74,6 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   }, [debouncedSearch]);
 
   const { data: profilesData } = useListCertificateProfiles({
-    projectId: currentProject?.id ?? "",
     limit: 100
   });
 
@@ -97,7 +90,6 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
 
   const queryParams: TListCertificateRequestsParams = useMemo(
     () => ({
-      projectSlug: currentProject?.slug || "",
       offset: (currentPage - 1) * perPage,
       limit: perPage,
       sortBy: "createdAt",
@@ -108,7 +100,6 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
       ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
     }),
     [
-      currentProject?.slug,
       currentPage,
       perPage,
       debouncedSearch,

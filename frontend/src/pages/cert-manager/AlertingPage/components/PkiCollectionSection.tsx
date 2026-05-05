@@ -25,8 +25,7 @@ export const PkiCollectionSection = () => {
     if (!projectId) return;
 
     await deletePkiCollection({
-      collectionId,
-      projectId
+      collectionId
     });
 
     createNotification({

@@ -40,16 +40,18 @@ type Props = {
     popUpName: keyof UsePopUpState<["policy", "deletePolicy"]>,
     data?: { policyId: string; policy?: TApprovalPolicy }
   ) => void;
+  applicationId?: string;
 };
 
-export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
+export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
-      projectId
+      projectId,
+      applicationId
     })
   );
 
@@ -84,7 +86,14 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
               return (
                 <Tr key={policy.id} className="group">
                   <Td>
-                    <div className="text-sm font-medium text-mineshaft-100">{policy.name}</div>
+                    <div className="flex items-center gap-x-2">
+                      <span className="text-sm font-medium text-mineshaft-100">{policy.name}</span>
+                      {!policy.applicationId && (
+                        <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-[10px] tracking-wide text-mineshaft-200 uppercase">
+                          Legacy
+                        </span>
+                      )}
+                    </div>
                   </Td>
                   <Td>
                     <div className="flex flex-wrap items-center gap-1">

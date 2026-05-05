@@ -76,7 +76,6 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
       try {
         await updateMetadata({
           certificateId,
-          projectId: currentProject.id,
           metadata: formData.metadata || []
         });
         createNotification({

@@ -71,11 +71,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
     chainPem,
     collectionId
   }: FormData) => {
-    if (!currentProject?.slug) return;
-
     const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
-      projectSlug: currentProject.slug,
-
       certificatePem,
       privateKeyPem,
       chainPem,

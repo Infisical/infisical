@@ -435,6 +435,30 @@ export enum EventType {
   DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
   GET_CERTIFICATE_PROFILE = "get-certificate-profile",
   LIST_CERTIFICATE_PROFILES = "list-certificate-profiles",
+  CREATE_PKI_APPLICATION = "create-pki-application",
+  UPDATE_PKI_APPLICATION = "update-pki-application",
+  DELETE_PKI_APPLICATION = "delete-pki-application",
+  GET_PKI_APPLICATION = "get-pki-application",
+  LIST_PKI_APPLICATIONS = "list-pki-applications",
+  ATTACH_PKI_APPLICATION_PROFILES = "attach-pki-application-profiles",
+  DETACH_PKI_APPLICATION_PROFILE = "detach-pki-application-profile",
+  ADD_PKI_APPLICATION_MEMBER = "add-pki-application-member",
+  UPDATE_PKI_APPLICATION_MEMBER_ROLE = "update-pki-application-member-role",
+  REMOVE_PKI_APPLICATION_MEMBER = "remove-pki-application-member",
+  LIST_PKI_APPLICATION_MEMBERS = "list-pki-application-members",
+  GET_PKI_APPLICATION_ENROLLMENT = "get-pki-application-enrollment",
+  SET_PKI_APPLICATION_API_ENROLLMENT = "set-pki-application-api-enrollment",
+  CLEAR_PKI_APPLICATION_API_ENROLLMENT = "clear-pki-application-api-enrollment",
+  SET_PKI_APPLICATION_EST_ENROLLMENT = "set-pki-application-est-enrollment",
+  CLEAR_PKI_APPLICATION_EST_ENROLLMENT = "clear-pki-application-est-enrollment",
+  SET_PKI_APPLICATION_ACME_ENROLLMENT = "set-pki-application-acme-enrollment",
+  CLEAR_PKI_APPLICATION_ACME_ENROLLMENT = "clear-pki-application-acme-enrollment",
+  REVEAL_PKI_APPLICATION_ACME_EAB_SECRET = "reveal-pki-application-acme-eab-secret",
+  ROTATE_PKI_APPLICATION_ACME_EAB_SECRET = "rotate-pki-application-acme-eab-secret",
+  SET_PKI_APPLICATION_SCEP_ENROLLMENT = "set-pki-application-scep-enrollment",
+  CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT = "clear-pki-application-scep-enrollment",
+  GET_CERT_MANAGER_INSTANCE_STATE = "get-cert-manager-instance-state",
+  SET_CERT_MANAGER_ACTIVE_PROJECT = "set-cert-manager-active-project",
   ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
@@ -2993,6 +3017,7 @@ interface CreatePkiAlert {
   metadata: {
     pkiAlertId: string;
     pkiCollectionId?: string;
+    applicationId?: string;
     name: string;
     alertBefore?: string;
     eventType: PkiAlertEventType;
@@ -3003,6 +3028,7 @@ interface GetPkiAlert {
   type: EventType.GET_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
+    applicationId?: string;
   };
 }
 
@@ -3011,6 +3037,7 @@ interface UpdatePkiAlert {
   metadata: {
     pkiAlertId: string;
     pkiCollectionId?: string;
+    applicationId?: string;
     name?: string;
     alertBefore?: string;
     eventType?: PkiAlertEventType;
@@ -3021,6 +3048,7 @@ interface DeletePkiAlert {
   type: EventType.DELETE_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
+    applicationId?: string;
   };
 }
 
@@ -3434,6 +3462,211 @@ interface DeleteCertificateProfile {
   metadata: {
     certificateProfileId: string;
     name: string;
+  };
+}
+
+interface CreatePkiApplication {
+  type: EventType.CREATE_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    slug: string;
+    name: string;
+    profileIds?: string[];
+  };
+}
+
+interface UpdatePkiApplication {
+  type: EventType.UPDATE_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    slug: string;
+  };
+}
+
+interface DeletePkiApplication {
+  type: EventType.DELETE_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    slug: string;
+  };
+}
+
+interface GetPkiApplication {
+  type: EventType.GET_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    slug: string;
+  };
+}
+
+interface ListPkiApplications {
+  type: EventType.LIST_PKI_APPLICATIONS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface AttachPkiApplicationProfiles {
+  type: EventType.ATTACH_PKI_APPLICATION_PROFILES;
+  metadata: {
+    applicationId: string;
+    profileIds: string[];
+  };
+}
+
+interface DetachPkiApplicationProfile {
+  type: EventType.DETACH_PKI_APPLICATION_PROFILE;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface AddPkiApplicationMember {
+  type: EventType.ADD_PKI_APPLICATION_MEMBER;
+  metadata: {
+    applicationId: string;
+    membershipId: string;
+    userId?: string;
+    identityId?: string;
+    groupId?: string;
+    role: string;
+  };
+}
+
+interface UpdatePkiApplicationMemberRole {
+  type: EventType.UPDATE_PKI_APPLICATION_MEMBER_ROLE;
+  metadata: {
+    applicationId: string;
+    membershipId: string;
+    role: string;
+  };
+}
+
+interface RemovePkiApplicationMember {
+  type: EventType.REMOVE_PKI_APPLICATION_MEMBER;
+  metadata: {
+    applicationId: string;
+    membershipId: string;
+  };
+}
+
+interface ListPkiApplicationMembers {
+  type: EventType.LIST_PKI_APPLICATION_MEMBERS;
+  metadata: {
+    applicationId: string;
+  };
+}
+
+interface GetPkiApplicationEnrollment {
+  type: EventType.GET_PKI_APPLICATION_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationApiEnrollment {
+  type: EventType.SET_PKI_APPLICATION_API_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    autoRenew: boolean;
+    renewBeforeDays: number | null;
+  };
+}
+
+interface ClearPkiApplicationApiEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationEstEnrollment {
+  type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    disableBootstrapCaValidation: boolean;
+  };
+}
+
+interface ClearPkiApplicationEstEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationAcmeEnrollment {
+  type: EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    skipDnsOwnershipVerification: boolean;
+    skipEabBinding: boolean;
+  };
+}
+
+interface ClearPkiApplicationAcmeEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface RevealPkiApplicationAcmeEabSecret {
+  type: EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface RotatePkiApplicationAcmeEabSecret {
+  type: EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationScepEnrollment {
+  type: EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    challengeType: string;
+  };
+}
+
+interface ClearPkiApplicationScepEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface GetCertManagerInstanceState {
+  type: EventType.GET_CERT_MANAGER_INSTANCE_STATE;
+  metadata: {
+    activeProjectId: string | null;
+    projectCount: number;
+    isMultiInstance: boolean;
+  };
+}
+
+interface SetCertManagerActiveProject {
+  type: EventType.SET_CERT_MANAGER_ACTIVE_PROJECT;
+  metadata: {
+    activeProjectId: string;
+    previousActiveProjectId: string | null;
+    projectName: string;
   };
 }
 
@@ -3927,6 +4160,7 @@ interface GetPkiSyncEvent {
   metadata: {
     destination: string;
     syncId: string;
+    applicationId?: string;
   };
 }
 
@@ -3946,6 +4180,7 @@ interface CreatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     destination: string;
+    applicationId?: string;
   };
 }
 
@@ -3954,6 +4189,7 @@ interface UpdatePkiSyncEvent {
   metadata: {
     pkiSyncId: string;
     name: string;
+    applicationId?: string;
   };
 }
 
@@ -3963,6 +4199,7 @@ interface DeletePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     destination: string;
+    applicationId?: string;
   };
 }
 
@@ -6534,6 +6771,30 @@ export type Event =
   | CreateCertificateProfile
   | UpdateCertificateProfile
   | DeleteCertificateProfile
+  | CreatePkiApplication
+  | UpdatePkiApplication
+  | DeletePkiApplication
+  | GetPkiApplication
+  | ListPkiApplications
+  | AttachPkiApplicationProfiles
+  | DetachPkiApplicationProfile
+  | AddPkiApplicationMember
+  | UpdatePkiApplicationMemberRole
+  | RemovePkiApplicationMember
+  | ListPkiApplicationMembers
+  | GetPkiApplicationEnrollment
+  | SetPkiApplicationApiEnrollment
+  | ClearPkiApplicationApiEnrollment
+  | SetPkiApplicationEstEnrollment
+  | ClearPkiApplicationEstEnrollment
+  | SetPkiApplicationAcmeEnrollment
+  | ClearPkiApplicationAcmeEnrollment
+  | RevealPkiApplicationAcmeEabSecret
+  | RotatePkiApplicationAcmeEabSecret
+  | SetPkiApplicationScepEnrollment
+  | ClearPkiApplicationScepEnrollment
+  | GetCertManagerInstanceState
+  | SetCertManagerActiveProject
   | GetCertificateProfile
   | ListCertificateProfiles
   | GetCertificateProfileLatestActiveBundle

@@ -56,7 +56,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL, currentProject.id);
+  const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL);
   const cas = data as TInternalCertificateAuthority[];
 
   return (

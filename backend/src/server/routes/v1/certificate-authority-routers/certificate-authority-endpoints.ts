@@ -25,7 +25,7 @@ export const registerCertificateAuthorityEndpoints = <
   server: FastifyZodProvider;
   createSchema: z.ZodType<{
     name: string;
-    projectId: string;
+    projectId?: string;
     status: CaStatus;
     configuration: I["configuration"];
   }>;
@@ -49,18 +49,13 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `list${caTypeNameForOpId}CertificateAuthoritiesV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
-      querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required")
-      }),
       response: {
         200: responseSchema.array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        query: { projectId }
-      } = req;
+      const projectId = req.certManagerProjectId;
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },
@@ -141,8 +136,9 @@ export const registerCertificateAuthorityEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const body = req.body as { projectId?: string };
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
-        { ...req.body, type: caType },
+        { ...req.body, projectId: body.projectId ?? req.certManagerProjectId, type: caType },
         req.permission
       )) as T;
 

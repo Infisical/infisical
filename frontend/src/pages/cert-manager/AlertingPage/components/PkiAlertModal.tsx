@@ -128,7 +128,6 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
         alertId: alert.id,
         pkiCollectionId,
         name,
-        projectId,
         alertBeforeDays,
         emails: emailArray
       });
@@ -136,7 +135,6 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
       // create
       await createPkiAlert({
         name,
-        projectId,
         pkiCollectionId,
         alertBeforeDays,
         emails: emailArray

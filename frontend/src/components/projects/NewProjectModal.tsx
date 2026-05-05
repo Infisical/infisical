@@ -66,10 +66,6 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretManager
   },
   {
-    label: "Certificate Manager",
-    value: ProjectType.CertificateManager
-  },
-  {
     label: "KMS",
     value: ProjectType.KMS
   },

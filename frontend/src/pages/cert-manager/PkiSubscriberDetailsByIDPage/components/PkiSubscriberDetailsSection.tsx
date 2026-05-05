@@ -16,7 +16,6 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProject,
   useProjectPermission
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -44,8 +43,6 @@ type TCertificateDetails = {
 };
 
 export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }: Props) => {
-  const { currentProject } = useProject();
-  const projectId = currentProject.id;
   const { permission } = useProjectPermission();
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,8 +52,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
 
   const { data: pkiSubscriber } = useGetPkiSubscriber(
     {
-      subscriberName,
-      projectId
+      subscriberName
     },
     {
       refetchInterval: 30_000
@@ -71,7 +67,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
 
   const onIssuePkiSubscriberCert = async () => {
     if (pkiSubscriber?.supportsImmediateCertIssuance) {
-      const response = await issuePkiSubscriberCert({ subscriberName, projectId });
+      const response = await issuePkiSubscriberCert({ subscriberName });
 
       setCertificateDetails({
         serialNumber: response.serialNumber,
@@ -87,7 +83,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
         type: "success"
       });
     } else {
-      await orderPkiSubscriberCert({ subscriberName, projectId });
+      await orderPkiSubscriberCert({ subscriberName });
 
       createNotification({
         text: "Successfully ordered certificate. It will be issued after CA processing which could take a few minutes.",

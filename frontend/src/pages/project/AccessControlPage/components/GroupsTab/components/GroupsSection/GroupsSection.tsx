@@ -22,6 +22,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
@@ -29,6 +30,8 @@ import { GroupTable } from "./GroupsTable";
 export const GroupsSection = () => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Cert Manager" : "Project";
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
 
@@ -52,11 +55,12 @@ export const GroupsSection = () => {
   const onRemoveGroupSubmit = async (groupId: string) => {
     await deleteMutateAsync({
       groupId,
-      projectId: currentProject?.id || ""
+      projectId: currentProject?.id || "",
+      projectType: currentProject?.type
     });
 
     createNotification({
-      text: "Successfully removed identity from project",
+      text: `Successfully removed group from ${productLabel.toLowerCase()}`,
       type: "success"
     });
 
@@ -68,10 +72,10 @@ export const GroupsSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Project Groups
+            {`${productLabel} Groups`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
           </CardTitle>
-          <CardDescription>Add and manage project groups</CardDescription>
+          <CardDescription>{`Add and manage ${productLabel.toLowerCase()} groups`}</CardDescription>
           <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
@@ -84,7 +88,7 @@ export const GroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  Add Group to Project
+                  {`Add Group to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -99,7 +103,7 @@ export const GroupsSection = () => {
         isOpen={popUp.deleteGroup.isOpen}
         title={`Are you sure you want to remove the group ${
           (popUp?.deleteGroup?.data as { name: string })?.name || ""
-        } from the project?`}
+        } from the ${productLabel.toLowerCase()}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

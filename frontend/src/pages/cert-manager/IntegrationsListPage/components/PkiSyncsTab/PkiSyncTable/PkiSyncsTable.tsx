@@ -82,6 +82,7 @@ const getSyncStatusOrderValue = (syncStatus: PkiSyncStatus | null) => {
 
 type Props = {
   pkiSyncs: TPkiSync[];
+  applicationName?: string;
 };
 
 const STATUS_ICON_MAP = {
@@ -91,7 +92,7 @@ const STATUS_ICON_MAP = {
   [PkiSyncStatus.Running]: { icon: faRotate, className: "text-yellow", name: "Syncing" }
 };
 
-export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
+export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteSync",
     "importCertificates",
@@ -399,6 +400,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
                 onTriggerImportCertificates={handleTriggerImportCertificates}
                 onTriggerRemoveCertificates={handleTriggerRemoveCertificates}
                 onToggleEnable={handleToggleEnableSync}
+                applicationName={applicationName}
               />
             ))}
           </TBody>

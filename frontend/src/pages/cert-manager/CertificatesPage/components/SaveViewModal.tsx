@@ -20,18 +20,11 @@ import { type FilterRule, filtersToSearchParams } from "./inventory-types";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  projectId: string;
   filters: FilterRule[];
   onViewCreated?: (viewId: string, filters: TInventoryViewFilters) => void;
 };
 
-export const SaveViewModal = ({
-  isOpen,
-  onOpenChange,
-  projectId,
-  filters,
-  onViewCreated
-}: Props) => {
+export const SaveViewModal = ({ isOpen, onOpenChange, filters, onViewCreated }: Props) => {
   const [name, setName] = useState("");
   const [isShared, setIsShared] = useState(false);
   const { mutateAsync: createView, isPending } = useCreateCertificateInventoryView();
@@ -41,7 +34,6 @@ export const SaveViewModal = ({
 
     const apiFilters = filtersToSearchParams(filters);
     const result = await createView({
-      projectId,
       name: name.trim(),
       filters: apiFilters,
       isShared

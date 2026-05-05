@@ -158,4 +158,86 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       return res.send(result.challenge);
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/applications/:applicationId/profiles/:profileId/pkiclient.exe",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({
+        applicationId: z.string().uuid(),
+        profileId: z.string().uuid()
+      }),
+      querystring: z.object({
+        operation: z.string(),
+        message: z.string().optional()
+      })
+    },
+    handler: async (req, res) => {
+      const { applicationId, profileId } = req.params;
+      const { operation, message: messageBase64 } = req.query;
+
+      switch (operation) {
+        case "GetCACaps": {
+          const caps = await server.services.pkiScep.getCaCaps({ profileId, applicationId });
+          void res.header("Content-Type", "text/plain");
+          return caps;
+        }
+        case "GetCACert": {
+          const certBundle = await server.services.pkiScep.getCaCert({ profileId, applicationId });
+          void res.header("Content-Type", "application/x-x509-ca-ra-cert");
+          return res.send(certBundle);
+        }
+        case "PKIOperation": {
+          if (!messageBase64) {
+            throw new BadRequestError({ message: "Missing message parameter for PKIOperation" });
+          }
+          const messageBuffer = Buffer.from(messageBase64, "base64");
+          const clientIp = req.ip || "unknown";
+          const response = await server.services.pkiScep.handlePkiOperation({
+            profileId,
+            applicationId,
+            message: messageBuffer,
+            clientIp
+          });
+          void res.header("Content-Type", "application/x-pki-message");
+          return res.send(response);
+        }
+        default:
+          throw new BadRequestError({ message: `Unsupported SCEP operation: ${operation}` });
+      }
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/applications/:applicationId/profiles/:profileId/pkiclient.exe",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({
+        applicationId: z.string().uuid(),
+        profileId: z.string().uuid()
+      }),
+      querystring: z.object({ operation: z.string().optional() })
+    },
+    handler: async (req, res) => {
+      const { applicationId, profileId } = req.params;
+      const clientIp = req.ip || "unknown";
+      const body = req.body as Buffer;
+
+      if (!body || body.length === 0) {
+        throw new BadRequestError({ message: "Empty PKIOperation request body" });
+      }
+
+      const response = await server.services.pkiScep.handlePkiOperation({
+        profileId,
+        applicationId,
+        message: body,
+        clientIp
+      });
+
+      void res.header("Content-Type", "application/x-pki-message");
+      return res.send(response);
+    }
+  });
 };

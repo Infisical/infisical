@@ -4,10 +4,12 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
+import { OrgCertManagerTab } from "../OrgCertManagerTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
@@ -25,7 +27,10 @@ export const OrgTabGroup = () => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+
+  const hasMultipleCertManagerInstances = (certManagerInstance?.projects.length ?? 0) >= 2;
 
   const tabs = [
     { name: "General", key: "tab-org-general", component: OrgGeneralTab },
@@ -72,6 +77,12 @@ export const OrgTabGroup = () => {
       name: "Product Enforcements",
       key: "product-enforcements",
       component: OrgProductSettingsTab
+    },
+    {
+      name: "Certificate Manager",
+      key: "cert-manager",
+      component: OrgCertManagerTab,
+      isHidden: !hasMultipleCertManagerInstances
     },
     {
       name: "Sub Organizations",

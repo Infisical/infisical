@@ -34,7 +34,7 @@ export const CaSection = () => {
   const onRemoveCaSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
-    await deleteCa({ id, projectId: currentProject.id, type: CaType.INTERNAL });
+    await deleteCa({ id, type: CaType.INTERNAL });
 
     createNotification({
       text: "Successfully deleted CA",

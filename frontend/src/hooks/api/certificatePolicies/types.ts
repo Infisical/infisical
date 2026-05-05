@@ -77,7 +77,6 @@ export type TCertificatePolicy = {
 };
 
 export type TCreateCertificatePolicyDTO = {
-  projectId: string;
   name: string;
   description?: string;
   subject?: TCertificatePolicyRule["subject"];
@@ -107,7 +106,6 @@ export type TDeleteCertificatePolicyDTO = {
 };
 
 export type TListCertificatePoliciesDTO = {
-  projectId: string;
   limit?: number;
   offset?: number;
 };

@@ -1,36 +1,28 @@
+import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
-  BookCheck,
-  FileCheck,
+  Boxes,
   FileKey,
   FileText,
-  Key,
+  GitCompare,
+  Inbox,
   LayoutDashboard,
-  Monitor,
   PenTool,
-  Plug,
   Search,
   Settings,
   Shield,
   ShieldCheck
 } from "lucide-react";
 
-import { SidebarCollapsibleGroup, SidebarMenu } from "@app/components/v3";
-import { useProject, useSubscription } from "@app/context";
-import {
-  useListWorkspaceCertificateTemplates,
-  useListWorkspacePkiSubscribers
-} from "@app/hooks/api";
+import { SidebarCollapsibleGroup } from "@app/components/v3";
+import { useProject, useProjectPermission } from "@app/context";
+import { useListWorkspacePkiAlerts } from "@app/hooks/api";
+import { approvalPolicyQuery, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
+import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
-import { ProjectNavLink, ProjectNavList } from "./ProjectNavLink";
-import {
-  CERT_APPROVALS_SUBMENU,
-  CERT_CERTIFICATES_SUBMENU,
-  CERT_DISCOVERY_SUBMENU,
-  CERT_INTEGRATIONS_SUBMENU,
-  CERT_SETTINGS_SUBMENU,
-  PROJECT_ACCESS_CONTROL_SUBMENU
-} from "./submenus";
+import { ProjectNavList } from "./ProjectNavLink";
+import { CERT_MANAGER_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const CertManagerNav = ({
@@ -38,59 +30,41 @@ export const CertManagerNav = ({
 }: {
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
+  const { hasProjectRole } = useProjectPermission();
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
-  const { data: subscribers = [] } = useListWorkspacePkiSubscribers(currentProject?.id || "");
-  const { data: templatesData } = useListWorkspaceCertificateTemplates({
-    projectId: currentProject?.id || ""
+  const isCertManagerAdmin = hasProjectRole("admin");
+  const projectId = currentProject?.id ?? "";
+
+  const { data: v2AlertsData } = useGetPkiAlertsV2(
+    {},
+    { enabled: isCertManagerAdmin && Boolean(projectId) }
+  );
+  const { data: v1AlertsData } = useListWorkspacePkiAlerts({
+    projectId: isCertManagerAdmin ? projectId : ""
   });
-  const templates = templatesData?.certificateTemplates || [];
+  const { data: syncs } = useListPkiSyncs(projectId, {
+    enabled: isCertManagerAdmin && Boolean(projectId)
+  });
+  const { data: policies } = useQuery({
+    ...approvalPolicyQuery.list({ projectId, policyType: ApprovalPolicyType.CertRequest }),
+    enabled: isCertManagerAdmin && Boolean(projectId)
+  });
 
-  const dashboardItem: NavItem = {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    pathSuffix: "overview"
-  };
+  const hasLegacyAlerts =
+    Boolean(v2AlertsData?.alerts?.some((a) => !a.applicationId)) ||
+    Boolean(v1AlertsData?.alerts?.length);
+  const hasLegacySyncs = Boolean(syncs?.some((s) => !s.applicationId));
+  const hasLegacyPolicies = Boolean(policies?.some((p) => !p.applicationId));
+  const hasAnyLegacy = hasLegacyAlerts || hasLegacySyncs || hasLegacyPolicies;
 
-  const certInfraItems: NavItem[] = [
-    {
-      label: "Certificate Authorities",
-      icon: ShieldCheck,
-      pathSuffix: "certificate-authorities",
-      activeMatch: /\/ca\//
-    },
-    {
-      label: "Certificates",
-      icon: FileKey,
-      pathSuffix: "policies",
-      submenu: CERT_CERTIFICATES_SUBMENU
-    },
-    {
-      label: "Discovery",
-      icon: Search,
-      pathSuffix: "discovery",
-      activeMatch: /\/discovery/,
-      submenu: CERT_DISCOVERY_SUBMENU
-    },
-    { label: "Alerting", icon: Bell, pathSuffix: "alerting" },
-    {
-      label: "Approvals",
-      icon: BookCheck,
-      pathSuffix: "approvals",
-      submenu: CERT_APPROVALS_SUBMENU
-    },
-    {
-      label: "Subscribers (Legacy)",
-      icon: Monitor,
-      pathSuffix: "subscribers",
-      hidden: !(subscription.pkiLegacyTemplates || subscribers.length > 0)
-    },
-    {
-      label: "Certificate Templates (Legacy)",
-      icon: FileKey,
-      pathSuffix: "certificate-templates",
-      hidden: !(subscription.pkiLegacyTemplates || templates.length > 0)
-    }
+  const overviewItems: NavItem[] = [
+    { label: "Dashboard", icon: LayoutDashboard, pathSuffix: "overview" },
+    { label: "Inventory", icon: FileKey, pathSuffix: "inventory" },
+    { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery/ }
+  ];
+
+  const applicationItems: NavItem[] = [
+    { label: "Applications", icon: Boxes, pathSuffix: "applications" }
   ];
 
   const codeSigningItems: NavItem[] = [
@@ -98,69 +72,75 @@ export const CertManagerNav = ({
       label: "Signers",
       icon: PenTool,
       pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/,
-      search: { selectedTab: "signers" },
-      isDefaultSearch: true
-    },
-    {
-      label: "Signing Requests",
-      icon: FileCheck,
-      pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/,
-      search: { selectedTab: "signing-requests" }
-    },
-    {
-      label: "Signing Policies",
-      icon: Shield,
-      pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/,
-      search: { selectedTab: "signing-policies" }
-    },
-    {
-      label: "Grants",
-      icon: Key,
-      pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/,
-      search: { selectedTab: "grants" }
+      activeMatch: /\/code-signing/
     }
   ];
 
-  const generalItems: NavItem[] = [
+  const workflowItems: NavItem[] = [{ label: "Requests", icon: Inbox, pathSuffix: "requests" }];
+
+  const complianceItems: NavItem[] = [
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
+  ];
+
+  const legacyItems: NavItem[] = [
+    { label: "Alerts", icon: Bell, pathSuffix: "alerting", hidden: !hasLegacyAlerts },
     {
-      label: "Integrations",
-      icon: Plug,
-      pathSuffix: "integrations",
-      submenu: CERT_INTEGRATIONS_SUBMENU
+      label: "Approval Policies",
+      icon: ShieldCheck,
+      pathSuffix: "approvals",
+      search: { legacy: "true", selectedTab: "policies" },
+      hidden: !hasLegacyPolicies
     },
     {
-      label: "Access Control",
+      label: "Certificate Syncs",
+      icon: GitCompare,
+      pathSuffix: "integrations",
+      search: { legacy: "true", selectedTab: "pki-syncs" },
+      hidden: !hasLegacySyncs
+    }
+  ];
+
+  const configurationItems: NavItem[] = [
+    {
+      label: "Access",
       icon: Shield,
       pathSuffix: "access-management",
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      submenu: PROJECT_ACCESS_CONTROL_SUBMENU
+      submenu: CERT_MANAGER_ACCESS_CONTROL_SUBMENU
     },
-    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     {
       label: "Settings",
       icon: Settings,
-      pathSuffix: "settings",
-      submenu: CERT_SETTINGS_SUBMENU
+      pathSuffix: "settings"
     }
   ];
 
   return (
     <>
-      <SidebarMenu>
-        <ProjectNavLink item={dashboardItem} />
-      </SidebarMenu>
-      <SidebarCollapsibleGroup label="Certificate Infrastructure">
-        <ProjectNavList items={certInfraItems} onSubmenuOpen={onSubmenuOpen} />
+      {isCertManagerAdmin ? (
+        <SidebarCollapsibleGroup label="General">
+          <ProjectNavList items={overviewItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      ) : null}
+      <SidebarCollapsibleGroup label="Applications">
+        <ProjectNavList items={applicationItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
       <SidebarCollapsibleGroup label="Code Signing">
         <ProjectNavList items={codeSigningItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
-      <SidebarCollapsibleGroup label="General">
-        <ProjectNavList items={generalItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Workflows">
+        <ProjectNavList items={workflowItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+      <SidebarCollapsibleGroup label="Compliance">
+        <ProjectNavList items={complianceItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+      {isCertManagerAdmin && hasAnyLegacy ? (
+        <SidebarCollapsibleGroup label="Legacy">
+          <ProjectNavList items={legacyItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      ) : null}
+      <SidebarCollapsibleGroup label="Configuration">
+        <ProjectNavList items={configurationItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
     </>
   );

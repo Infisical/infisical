@@ -122,7 +122,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
@@ -278,12 +278,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     crlDistributionPointUrls,
     ...dto
   }: TCreateCaDTO) => {
-    let projectId: string;
+    const { projectId } = dto;
     if (!dto.isInternal) {
-      const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actorOrgId);
-      if (!project) throw new NotFoundError({ message: `Project with slug '${dto.projectSlug}' not found` });
-      projectId = project.id;
-
       const { permission } = await permissionService.getProjectPermission({
         actor: dto.actor,
         actorId: dto.actorId,
@@ -297,8 +293,6 @@ export const internalCertificateAuthorityServiceFactory = ({
         ProjectPermissionCertificateAuthorityActions.Create,
         subject(ProjectPermissionSub.CertificateAuthorities, { name: commonName })
       );
-    } else {
-      projectId = dto.projectId;
     }
 
     if (keyAlgorithm.startsWith("SLH-DSA")) {

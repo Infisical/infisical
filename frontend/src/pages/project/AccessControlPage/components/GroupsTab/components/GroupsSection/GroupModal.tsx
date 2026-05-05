@@ -13,6 +13,7 @@ import {
   useGetProjectRoles,
   useListWorkspaceGroups
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -36,9 +37,12 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: groups } = useGetOrganizationGroups(orgId);
-  const { data: groupMemberships } = useListWorkspaceGroups(currentProject?.id || "");
+  const { data: groupMemberships } = useListWorkspaceGroups(
+    currentProject?.id || "",
+    currentProject?.type
+  );
 
-  const { data: roles } = useGetProjectRoles(currentProject?.id || "");
+  const { data: roles } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 
@@ -64,6 +68,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ group, role }: FormData) => {
     await addGroupToWorkspaceMutateAsync({
       projectId: currentProject?.id || "",
+      projectType: currentProject?.type,
       groupId: group.id,
       role: role.slug || undefined
     });
@@ -148,12 +153,16 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
 };
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Cert Manager" : "Project";
+
   return (
     <Modal
       isOpen={popUp?.group?.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("group", isOpen)}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Add Group to Project">
+      <ModalContent bodyClassName="overflow-visible" title={`Add Group to ${productLabel}`}>
         <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>

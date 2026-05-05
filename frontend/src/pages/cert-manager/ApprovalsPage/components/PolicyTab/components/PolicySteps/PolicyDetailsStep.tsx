@@ -3,8 +3,8 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TtlFormLabel } from "@app/components/features";
 import { Checkbox, FilterableSelect, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 
 import { TPolicyForm } from "../PolicySchema";
 
@@ -13,22 +13,29 @@ type ProfileOption = {
   value: string;
 };
 
-export const PolicyDetailsStep = () => {
-  const { control } = useFormContext<TPolicyForm>();
-  const { currentProject } = useProject();
+type Props = {
+  applicationId?: string;
+};
 
-  const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({
-    projectId: currentProject?.id || ""
-  });
+export const PolicyDetailsStep = ({ applicationId }: Props) => {
+  const { control } = useFormContext<TPolicyForm>();
+
+  const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({});
+  const { data: appProfiles = [], isPending: isAppProfilesLoading } = useListPkiApplicationProfiles(
+    applicationId ?? ""
+  );
 
   const profileOptions: ProfileOption[] = useMemo(() => {
+    if (applicationId) {
+      return appProfiles.map((p) => ({ label: p.profileSlug, value: p.profileSlug }));
+    }
     return (
       profilesData?.certificateProfiles?.map((profile) => ({
         label: profile.slug,
         value: profile.slug
       })) || []
     );
-  }, [profilesData?.certificateProfiles]);
+  }, [applicationId, appProfiles, profilesData?.certificateProfiles]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,7 +97,7 @@ export const PolicyDetailsStep = () => {
           >
             <FilterableSelect
               isMulti
-              isLoading={isProfilesLoading}
+              isLoading={applicationId ? isAppProfilesLoading : isProfilesLoading}
               options={profileOptions}
               value={profileField.value.map((slug) => ({ label: slug, value: slug }))}
               onChange={(selected) => {

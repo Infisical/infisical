@@ -1,0 +1,481 @@
+import { ForbiddenError } from "@casl/ability";
+
+import { ActionProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionApplicationActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionApplicationActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
+
+import { TMembershipDALFactory } from "../membership/membership-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TPkiApplicationDALFactory } from "./pki-application-dal";
+import { TPkiApplicationProfileDALFactory } from "./pki-application-profile-dal";
+import {
+  TAttachProfilesDTO,
+  TCreatePkiApplicationDTO,
+  TDeletePkiApplicationDTO,
+  TDetachProfileDTO,
+  TGetPkiApplicationBySlugDTO,
+  TGetPkiApplicationDTO,
+  TListApplicationProfilesDTO,
+  TListPkiApplicationsDTO,
+  TUpdatePkiApplicationDTO
+} from "./pki-application-types";
+
+type TPkiApplicationServiceFactoryDep = {
+  pkiApplicationDAL: Pick<
+    TPkiApplicationDALFactory,
+    | "create"
+    | "findById"
+    | "updateById"
+    | "deleteById"
+    | "transaction"
+    | "findBySlugAndProjectId"
+    | "findByProjectId"
+    | "countByProjectId"
+  >;
+  pkiApplicationProfileDAL: Pick<
+    TPkiApplicationProfileDALFactory,
+    | "insertMany"
+    | "delete"
+    | "findByApplicationId"
+    | "findOne"
+    | "findProfilesInProject"
+    | "findOtherJunctionsForProfiles"
+  >;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+};
+
+export type TPkiApplicationServiceFactory = ReturnType<typeof pkiApplicationServiceFactory>;
+
+export const pkiApplicationServiceFactory = ({
+  pkiApplicationDAL,
+  pkiApplicationProfileDAL,
+  membershipDAL,
+  membershipRoleDAL,
+  permissionService
+}: TPkiApplicationServiceFactoryDep) => {
+  const $loadProjectPermission = (
+    projectId: string,
+    ctx: {
+      actor: TCreatePkiApplicationDTO["actor"];
+      actorId: string;
+      actorAuthMethod: TCreatePkiApplicationDTO["actorAuthMethod"];
+      actorOrgId?: string;
+    }
+  ) =>
+    permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+  const $loadResourcePermission = (
+    applicationId: string,
+    projectId: string,
+    ctx: {
+      actor: TCreatePkiApplicationDTO["actor"];
+      actorId: string;
+      actorAuthMethod: TCreatePkiApplicationDTO["actorAuthMethod"];
+      actorOrgId?: string;
+    }
+  ) =>
+    permissionService.getResourcePermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: applicationId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId
+    });
+
+  const createApplication = async ({
+    name,
+    slug,
+    description,
+    profileIds,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreatePkiApplicationDTO) => {
+    const { permission } = await $loadProjectPermission(projectId, { actor, actorId, actorAuthMethod, actorOrgId });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApplicationActions.Create,
+      ProjectPermissionSub.Application
+    );
+
+    const existing = await pkiApplicationDAL.findBySlugAndProjectId(slug, projectId);
+    if (existing) {
+      throw new BadRequestError({ message: `An application with slug '${slug}' already exists in this project.` });
+    }
+
+    if (profileIds && profileIds.length > 0) {
+      const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
+      if (profilesInProject.length !== profileIds.length) {
+        throw new BadRequestError({
+          message: "One or more profileIds do not belong to this project."
+        });
+      }
+    }
+
+    return pkiApplicationDAL.transaction(async (tx) => {
+      const application = await pkiApplicationDAL.create(
+        { projectId, name, slug, description: description ?? null },
+        tx
+      );
+
+      if (profileIds && profileIds.length > 0) {
+        await pkiApplicationProfileDAL.insertMany(
+          profileIds.map((profileId) => ({ applicationId: application.id, profileId })),
+          tx
+        );
+      }
+
+      return application;
+    });
+  };
+
+  const getApplicationById = async ({
+    applicationId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetPkiApplicationDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Read,
+      ResourcePermissionSub.Application
+    );
+
+    return application;
+  };
+
+  const getApplicationBySlug = async ({
+    slug,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetPkiApplicationBySlugDTO) => {
+    const application = await pkiApplicationDAL.findBySlugAndProjectId(slug, projectId);
+    if (!application) {
+      throw new NotFoundError({ message: `Application with slug '${slug}' not found in this project.` });
+    }
+
+    const { permission } = await $loadResourcePermission(application.id, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Read,
+      ResourcePermissionSub.Application
+    );
+
+    return application;
+  };
+
+  const listApplications = async ({
+    search,
+    limit,
+    offset,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListPkiApplicationsDTO) => {
+    const { permission } = await $loadProjectPermission(projectId, { actor, actorId, actorAuthMethod, actorOrgId });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApplicationActions.List,
+      ProjectPermissionSub.Application
+    );
+
+    const isProjectAdmin = permission.can(ProjectPermissionApplicationActions.Create, ProjectPermissionSub.Application);
+
+    if (isProjectAdmin) {
+      const applications = await pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset });
+      const total = await pkiApplicationDAL.countByProjectId(projectId, search);
+      return { applications, total };
+    }
+
+    const memberships = await membershipDAL.find({
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      ...(actor === ActorType.USER ? { actorUserId: actorId } : { actorIdentityId: actorId })
+    });
+
+    const allowedIds = Array.from(
+      new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+    );
+
+    if (allowedIds.length === 0) {
+      return { applications: [], total: 0 };
+    }
+
+    const applications = await pkiApplicationDAL.findByProjectId(projectId, {
+      search,
+      limit,
+      offset,
+      applicationIds: allowedIds
+    });
+    const total = await pkiApplicationDAL.countByProjectId(projectId, search, undefined, allowedIds);
+    return { applications, total };
+  };
+
+  const updateApplication = async ({
+    applicationId,
+    name,
+    slug,
+    description,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdatePkiApplicationDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Edit,
+      ResourcePermissionSub.Application
+    );
+
+    if (slug && slug !== application.slug) {
+      const collision = await pkiApplicationDAL.findBySlugAndProjectId(slug, projectId);
+      if (collision) {
+        throw new BadRequestError({ message: `An application with slug '${slug}' already exists in this project.` });
+      }
+    }
+
+    return pkiApplicationDAL.updateById(applicationId, {
+      ...(name !== undefined && { name }),
+      ...(slug !== undefined && { slug }),
+      ...(description !== undefined && { description })
+    });
+  };
+
+  const deleteApplication = async ({
+    applicationId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeletePkiApplicationDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Delete,
+      ResourcePermissionSub.Application
+    );
+
+    await pkiApplicationDAL.transaction(async (tx) => {
+      const orphans = await membershipDAL.find(
+        {
+          scope: RESOURCE_SCOPE,
+          scopeResourceType: ResourceType.CertificateApplication,
+          scopeResourceId: applicationId
+        },
+        { tx }
+      );
+      if (orphans.length > 0) {
+        const ids = orphans.map((m) => m.id);
+        await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
+        await membershipDAL.delete({ $in: { id: ids } }, tx);
+      }
+      await pkiApplicationDAL.deleteById(applicationId, tx);
+    });
+
+    return application;
+  };
+
+  const listApplicationProfiles = async ({
+    applicationId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListApplicationProfilesDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Read,
+      ResourcePermissionSub.Application
+    );
+
+    const profiles = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
+    return profiles;
+  };
+
+  const attachProfiles = async ({
+    applicationId,
+    profileIds,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAttachProfilesDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.AttachProfile,
+      ResourcePermissionSub.Application
+    );
+
+    const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
+    if (profilesInProject.length !== profileIds.length) {
+      throw new BadRequestError({ message: "One or more profileIds do not belong to this project." });
+    }
+
+    return pkiApplicationDAL.transaction(async (tx) => {
+      const conflicts = await pkiApplicationProfileDAL.findOtherJunctionsForProfiles(profileIds, applicationId, tx);
+      if (conflicts.length > 0) {
+        const profilesByOtherApp = Array.from(new Set(conflicts.map((c) => c.profileId)));
+        throw new BadRequestError({
+          message:
+            `Profile(s) [${profilesByOtherApp.join(", ")}] are already attached to a different ` +
+            `Application. Each Profile can belong to one Application at a time — detach it first.`
+        });
+      }
+
+      const existing = await pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
+      const existingProfileIds = new Set(existing.map((row) => row.profileId));
+      const toAttach = profileIds.filter((id) => !existingProfileIds.has(id));
+
+      if (toAttach.length > 0) {
+        await pkiApplicationProfileDAL.insertMany(
+          toAttach.map((profileId) => ({ applicationId, profileId })),
+          tx
+        );
+      }
+
+      return pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
+    });
+  };
+
+  const detachProfile = async ({
+    applicationId,
+    profileId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDetachProfileDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.DetachProfile,
+      ResourcePermissionSub.Application
+    );
+
+    const link = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+    if (!link) {
+      throw new NotFoundError({
+        message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+      });
+    }
+
+    await pkiApplicationProfileDAL.delete({ applicationId, profileId });
+    return { applicationId, profileId };
+  };
+
+  return {
+    createApplication,
+    getApplicationById,
+    getApplicationBySlug,
+    listApplications,
+    updateApplication,
+    deleteApplication,
+    listApplicationProfiles,
+    attachProfiles,
+    detachProfile
+  };
+};

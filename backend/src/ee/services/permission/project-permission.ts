@@ -149,6 +149,12 @@ export enum ProjectPermissionCertificateProfileActions {
   RotateAcmeEabSecret = "rotate-acme-eab-secret"
 }
 
+export enum ProjectPermissionApplicationActions {
+  Read = "read",
+  List = "list",
+  Create = "create"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -369,6 +375,7 @@ export enum ProjectPermissionSub {
   PamInsights = "pam-insights",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
+  Application = "certificate-application",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   McpEndpoints = "mcp-endpoints",
@@ -518,6 +525,10 @@ export type CertificateSubjectFields = {
 };
 
 export type CertificateProfileSubjectFields = {
+  slug: string;
+};
+
+export type ApplicationSubjectFields = {
   slug: string;
 };
 
@@ -710,6 +721,10 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.CertificateProfiles
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> & CertificateProfileSubjectFields)
       )
+    ]
+  | [
+      ProjectPermissionApplicationActions,
+      ProjectPermissionSub.Application | (ForcedSubject<ProjectPermissionSub.Application> & ApplicationSubjectFields)
     ]
   | [
       ProjectPermissionCertificatePolicyActions,

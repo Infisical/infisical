@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EditPkiSyncModal } from "@app/components/pki-syncs";
@@ -28,6 +28,9 @@ import {
 const PageContent = () => {
   const navigate = useNavigate();
   const { syncId, projectId, orgId } = useParams({
+    from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
+  });
+  const { applicationName } = useSearch({
     from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
   });
 
@@ -76,6 +79,13 @@ const PageContent = () => {
             type="submit"
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
+              if (applicationName) {
+                navigate({
+                  to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never,
+                  search: { selectedTab: "syncs" } as never
+                } as never);
+                return;
+              }
               navigate({
                 to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
                 params: {
@@ -88,7 +98,7 @@ const PageContent = () => {
               });
             }}
           >
-            PKI Syncs
+            {applicationName || "PKI Syncs"}
           </Button>
           <div className="mb-6 flex w-full items-center gap-3">
             <img

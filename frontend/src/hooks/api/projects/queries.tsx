@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { groupMembershipsBase, userMembershipsBase } from "@app/hooks/api/certManagerAccess";
 
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
@@ -382,14 +383,18 @@ export const useGetWorkspaceUsers = (
   });
 };
 
-export const useGetWorkspaceUserDetails = (projectId: string, membershipId: string) => {
+export const useGetWorkspaceUserDetails = (
+  projectId: string,
+  membershipId: string,
+  projectType?: string
+) => {
   return useQuery({
     queryKey: projectKeys.getProjectUserDetails(projectId, membershipId),
     queryFn: async () => {
       const {
         data: { membership }
       } = await apiRequest.get<{ membership: TWorkspaceUser }>(
-        `/api/v1/projects/${projectId}/memberships/${membershipId}`
+        `${userMembershipsBase(projectType, projectId)}/${membershipId}`
       );
       return membership;
     },
@@ -403,15 +408,17 @@ export const useDeleteUserFromWorkspace = () => {
   return useMutation({
     mutationFn: async ({
       usernames,
-      projectId
+      projectId,
+      projectType
     }: {
       projectId: string;
+      projectType?: string;
       usernames: string[];
       orgId: string;
     }) => {
       const {
         data: { deletedMembership }
-      } = await apiRequest.delete(`/api/v1/projects/${projectId}/memberships`, {
+      } = await apiRequest.delete(userMembershipsBase(projectType, projectId), {
         data: { usernames }
       });
       return deletedMembership;
@@ -428,11 +435,16 @@ export const useDeleteUserFromWorkspace = () => {
 export const useUpdateUserWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ membershipId, roles, projectId }: TUpdateWorkspaceUserRoleDTO) => {
+    mutationFn: async ({
+      membershipId,
+      roles,
+      projectId,
+      projectType
+    }: TUpdateWorkspaceUserRoleDTO) => {
       const {
         data: { membership }
       } = await apiRequest.patch<{ membership: { projectId: string } }>(
-        `/api/v1/projects/${projectId}/memberships/${membershipId}`,
+        `${userMembershipsBase(projectType, projectId)}/${membershipId}`,
         {
           roles
         }
@@ -448,7 +460,11 @@ export const useUpdateUserWorkspaceRole = () => {
   });
 };
 
-export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId: string) => {
+export const useGetWorkspaceGroupMembershipDetails = (
+  projectId: string,
+  groupId: string,
+  projectType?: string
+) => {
   return useQuery({
     enabled: Boolean(projectId && groupId),
     queryKey: projectKeys.getProjectGroupMembershipDetails(projectId, groupId),
@@ -456,21 +472,21 @@ export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId
       const {
         data: { groupMembership }
       } = await apiRequest.get<{ groupMembership: TGroupMembership }>(
-        `/api/v1/projects/${projectId}/memberships/groups/${groupId}`
+        `${groupMembershipsBase(projectType, projectId)}/${groupId}`
       );
       return groupMembership;
     }
   });
 };
 
-export const useListWorkspaceGroups = (projectId: string) => {
+export const useListWorkspaceGroups = (projectId: string, projectType?: string) => {
   return useQuery({
     queryKey: projectKeys.getProjectGroupMemberships(projectId),
     queryFn: async () => {
       const {
         data: { groupMemberships }
       } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
-        `/api/v1/projects/${projectId}/memberships/groups`
+        groupMembershipsBase(projectType, projectId)
       );
       return groupMemberships;
     },

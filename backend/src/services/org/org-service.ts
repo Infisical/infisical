@@ -46,8 +46,10 @@ import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTo
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
+import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { bootstrapCertManagerProject } from "../pki-application/cert-manager-project-bootstrap";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -92,6 +94,7 @@ type TOrgServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipUserDAL: TMembershipUserDALFactory;
+  membershipDAL: TMembershipDALFactory;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
     "findProjectMembershipsByUserId" | "findProjectMembershipsByUserIds"
@@ -149,6 +152,7 @@ export const orgServiceFactory = ({
   reminderService,
   membershipRoleDAL,
   membershipUserDAL,
+  membershipDAL,
   userGroupMembershipDAL,
   additionalPrivilegeDAL
 }: TOrgServiceFactoryDep) => {
@@ -675,6 +679,15 @@ export const orgServiceFactory = ({
           tx
         );
       }
+
+      await bootstrapCertManagerProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
 
       return org;
     };

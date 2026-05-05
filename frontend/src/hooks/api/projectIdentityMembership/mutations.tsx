@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { identitiesKeys, projectKeys } from "@app/hooks/api";
+import { identityMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { projectIdentityQuery } from "@app/hooks/api/projectIdentity";
 
 import {
@@ -14,11 +15,16 @@ import {
 export const useCreateProjectIdentityMembership = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ identityId, projectId, role }: TCreateProjectIdentityMembershipDTO) => {
+    mutationFn: async ({
+      identityId,
+      projectId,
+      projectType,
+      role
+    }: TCreateProjectIdentityMembershipDTO) => {
       const {
         data: { identityMembership }
       } = await apiRequest.post<{ identityMembership: TProjectIdentityMembership }>(
-        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`,
+        `${identityMembershipsBase(projectType, projectId)}/${identityId}`,
         {
           role
         }
@@ -43,13 +49,14 @@ export const useUpdateProjectIdentityMembership = () => {
   return useMutation({
     mutationFn: async ({
       projectId,
+      projectType,
       identityId,
       ...updates
     }: TUpdateProjectIdentityMembershipDTO) => {
       const {
         data: { identityMembership }
       } = await apiRequest.patch<{ identityMembership: TProjectIdentityMembership }>(
-        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`,
+        `${identityMembershipsBase(projectType, projectId)}/${identityId}`,
         updates
       );
       return identityMembership;
@@ -72,11 +79,15 @@ export const useUpdateProjectIdentityMembership = () => {
 export const useDeleteProjectIdentityMembership = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ identityId, projectId }: TDeleteProjectIdentityMembershipDTO) => {
+    mutationFn: async ({
+      identityId,
+      projectId,
+      projectType
+    }: TDeleteProjectIdentityMembershipDTO) => {
       const {
         data: { identityMembership }
       } = await apiRequest.delete<{ identityMembership: TProjectIdentityMembership }>(
-        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`
+        `${identityMembershipsBase(projectType, projectId)}/${identityId}`
       );
       return identityMembership;
     },

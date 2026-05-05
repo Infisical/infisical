@@ -20,9 +20,6 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       operationId: "getCertificateCleanupConfig",
       description: "Get certificate cleanup configuration for a project",
       tags: [ApiDocsTags.PkiCertificates],
-      querystring: z.object({
-        projectId: z.string().trim().describe("Project ID")
-      }),
       response: {
         200: z.object({
           config: CertificateCleanupConfigsSchema.omit({ id: true }).nullable()
@@ -31,7 +28,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const config = await server.services.certificateCleanup.getConfig({
-        projectId: req.query.projectId,
+        projectId: req.certManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -54,7 +51,6 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       description: "Create or update certificate cleanup configuration for a project",
       tags: [ApiDocsTags.PkiCertificates],
       body: z.object({
-        projectId: z.string().trim().describe("Project ID"),
         isEnabled: z.boolean().optional().describe("Enable cleanup"),
         postExpiryRetentionDays: z
           .number()
@@ -73,7 +69,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const config = await server.services.certificateCleanup.updateConfig({
-        projectId: req.body.projectId,
+        projectId: req.certManagerProjectId,
         isEnabled: req.body.isEnabled,
         postExpiryRetentionDays: req.body.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: req.body.skipCertsWithActiveSyncs,
@@ -85,11 +81,11 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.certManagerProjectId,
         event: {
           type: EventType.UPDATE_CERTIFICATE_CLEANUP_CONFIG,
           metadata: {
-            projectId: req.body.projectId,
+            projectId: req.certManagerProjectId,
             isEnabled: config.isEnabled,
             postExpiryRetentionDays: config.postExpiryRetentionDays,
             skipCertsWithActiveSyncs: config.skipCertsWithActiveSyncs

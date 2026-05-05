@@ -65,6 +65,7 @@ export interface TCreatePolicyDTO {
   constraints: TApprovalPolicy["constraints"]["constraints"];
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  applicationId?: string | null;
 }
 
 export interface TUpdatePolicyDTO {
@@ -74,6 +75,7 @@ export interface TUpdatePolicyDTO {
   constraints?: TApprovalPolicy["constraints"]["constraints"];
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  applicationId?: string | null;
 }
 
 // Request DTOs

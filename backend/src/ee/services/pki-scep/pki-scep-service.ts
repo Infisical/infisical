@@ -34,6 +34,7 @@ import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -76,6 +77,7 @@ type TPkiScepServiceFactoryDep = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOne">;
 };
 
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
@@ -101,9 +103,10 @@ export const pkiScepServiceFactory = ({
   certificateRequestService,
   certificateIssuanceQueue,
   auditLogService,
-  permissionService
+  permissionService,
+  pkiApplicationProfileDAL
 }: TPkiScepServiceFactoryDep) => {
-  const loadScepContext = async (profileId: string) => {
+  const loadScepContext = async (profileId: string, applicationId?: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
@@ -113,7 +116,20 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "Profile is not configured for SCEP enrollment" });
     }
 
-    if (!profile.scepConfigId) {
+    let resolvedScepConfigId: string | null = profile.scepConfigId ?? null;
+    if (applicationId && pkiApplicationProfileDAL) {
+      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      if (!junction) {
+        throw new NotFoundError({
+          message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+        });
+      }
+      if (junction.scepConfigId) {
+        resolvedScepConfigId = junction.scepConfigId;
+      }
+    }
+
+    if (!resolvedScepConfigId) {
       throw new BadRequestError({ message: "SCEP enrollment not configured for this profile" });
     }
 
@@ -127,7 +143,7 @@ export const pkiScepServiceFactory = ({
     }
     const caType: CaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
-    const scepConfig = await scepEnrollmentConfigDAL.findById(profile.scepConfigId);
+    const scepConfig = await scepEnrollmentConfigDAL.findById(resolvedScepConfigId);
     if (!scepConfig) {
       throw new NotFoundError({ message: "SCEP configuration not found" });
     }
@@ -158,10 +174,19 @@ export const pkiScepServiceFactory = ({
     return { profile, scepConfig, project, ca, caType, raPrivateKeyDer, raCertDer } as const;
   };
 
-  const getCaCaps = async ({ profileId }: TGetCaCapsDTO): Promise<string> => {
+  const getCaCaps = async ({ profileId, applicationId }: TGetCaCapsDTO): Promise<string> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile || profile.enrollmentType !== EnrollmentType.SCEP) {
       throw new NotFoundError({ message: "SCEP profile not found" });
+    }
+
+    if (applicationId && pkiApplicationProfileDAL) {
+      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      if (!junction) {
+        throw new NotFoundError({
+          message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+        });
+      }
     }
 
     return getScepCapabilities({
@@ -169,8 +194,8 @@ export const pkiScepServiceFactory = ({
     });
   };
 
-  const getCaCert = async ({ profileId }: TGetCaCertDTO): Promise<Buffer> => {
-    const { scepConfig, ca, caType } = await loadScepContext(profileId);
+  const getCaCert = async ({ profileId, applicationId }: TGetCaCertDTO): Promise<Buffer> => {
+    const { scepConfig, ca, caType } = await loadScepContext(profileId, applicationId);
 
     const raCert = new x509.X509Certificate(scepConfig.raCertificate);
     const rawCerts: ArrayBuffer[] = [raCert.rawData];
@@ -220,8 +245,16 @@ export const pkiScepServiceFactory = ({
     return { ttl };
   };
 
-  const handlePkiOperation = async ({ profileId, message, clientIp }: THandlePkiOperationDTO): Promise<Buffer> => {
-    const { profile, scepConfig, project, caType, raPrivateKeyDer, raCertDer } = await loadScepContext(profileId);
+  const handlePkiOperation = async ({
+    profileId,
+    message,
+    clientIp,
+    applicationId
+  }: THandlePkiOperationDTO): Promise<Buffer> => {
+    const { profile, scepConfig, project, caType, raPrivateKeyDer, raCertDer } = await loadScepContext(
+      profileId,
+      applicationId
+    );
 
     const parsed = parseScepMessage(message, raPrivateKeyDer);
 
@@ -236,7 +269,8 @@ export const pkiScepServiceFactory = ({
           raPrivateKeyDer,
           raCertDer,
           parsed,
-          clientIp
+          clientIp,
+          applicationId
         });
 
       case ScepMessageType.RenewalReq:
@@ -249,7 +283,8 @@ export const pkiScepServiceFactory = ({
           raPrivateKeyDer,
           raCertDer,
           parsed,
-          clientIp
+          clientIp,
+          applicationId
         });
 
       case ScepMessageType.GetCertInitial:
@@ -274,7 +309,8 @@ export const pkiScepServiceFactory = ({
     raPrivateKeyDer,
     raCertDer,
     parsed,
-    clientIp
+    clientIp,
+    applicationId
   }: {
     profile: TScepContext["profile"];
     scepConfig: TScepContext["scepConfig"];
@@ -284,6 +320,7 @@ export const pkiScepServiceFactory = ({
     raCertDer: Buffer;
     parsed: TParsedScepMessage;
     clientIp: string;
+    applicationId?: string;
   }): Promise<Buffer> => {
     if (!parsed.csr) {
       throw new BadRequestError({ message: "No CSR found in SCEP enrollment request" });
@@ -398,7 +435,8 @@ export const pkiScepServiceFactory = ({
       caType,
       parsed,
       csrPem,
-      ttl
+      ttl,
+      applicationId
     });
 
     const auditMetadata = {
@@ -461,7 +499,8 @@ export const pkiScepServiceFactory = ({
     raPrivateKeyDer,
     raCertDer,
     parsed,
-    clientIp
+    clientIp,
+    applicationId
   }: {
     profile: TScepContext["profile"];
     scepConfig: TScepContext["scepConfig"];
@@ -471,6 +510,7 @@ export const pkiScepServiceFactory = ({
     raCertDer: Buffer;
     parsed: TParsedScepMessage;
     clientIp: string;
+    applicationId?: string;
   }): Promise<Buffer> => {
     if (!scepConfig.allowCertBasedRenewal) {
       return buildCertRepFailure({
@@ -537,7 +577,8 @@ export const pkiScepServiceFactory = ({
       caType,
       parsed,
       csrPem,
-      ttl
+      ttl,
+      applicationId
     });
 
     const auditMetadata = {
@@ -603,7 +644,8 @@ export const pkiScepServiceFactory = ({
     caType,
     parsed,
     csrPem,
-    ttl
+    ttl,
+    applicationId
   }: {
     profile: TScepContext["profile"];
     project: TScepContext["project"];
@@ -611,6 +653,7 @@ export const pkiScepServiceFactory = ({
     parsed: TParsedScepMessage;
     csrPem: string;
     ttl: string;
+    applicationId?: string;
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
@@ -622,7 +665,8 @@ export const pkiScepServiceFactory = ({
         profileId: profile.id,
         csr: csrPem,
         validity: { ttl },
-        enrollmentType: EnrollmentType.SCEP
+        enrollmentType: EnrollmentType.SCEP,
+        applicationId
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -638,7 +682,8 @@ export const pkiScepServiceFactory = ({
             signerCertDer: parsed.signerCertDer,
             certificateRequestId: result.certificateRequestId,
             clientCipherOid: parsed.clientCipherOid || null,
-            expiresAt
+            expiresAt,
+            applicationId: applicationId ?? null
           });
         }
 
@@ -735,7 +780,8 @@ export const pkiScepServiceFactory = ({
         signerCertDer: parsed.signerCertDer,
         certificateRequestId: newCertRequest.id,
         clientCipherOid: parsed.clientCipherOid || null,
-        expiresAt
+        expiresAt,
+        applicationId: applicationId ?? null
       });
     }
 

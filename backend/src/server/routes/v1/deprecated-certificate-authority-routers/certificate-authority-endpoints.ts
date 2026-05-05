@@ -25,13 +25,13 @@ export const registerCertificateAuthorityEndpoints = <
   server: FastifyZodProvider;
   createSchema: z.ZodType<{
     name: string;
-    projectId: string;
+    projectId?: string;
     status: CaStatus;
     configuration: I["configuration"];
     enableDirectIssuance: boolean;
   }>;
   updateSchema: z.ZodType<{
-    projectId: string;
+    projectId?: string;
     name?: string;
     status?: CaStatus;
     configuration?: I["configuration"];
@@ -48,18 +48,13 @@ export const registerCertificateAuthorityEndpoints = <
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
-      querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required")
-      }),
       response: {
         200: responseSchema.array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        query: { projectId }
-      } = req;
+      const projectId = req.certManagerProjectId;
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },
@@ -93,9 +88,6 @@ export const registerCertificateAuthorityEndpoints = <
       params: z.object({
         caName: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().uuid()
-      }),
       response: {
         200: responseSchema
       }
@@ -103,7 +95,7 @@ export const registerCertificateAuthorityEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { caName } = req.params;
-      const { projectId } = req.query;
+      const projectId = req.certManagerProjectId;
 
       const certificateAuthority =
         (await server.services.certificateAuthority.findCertificateAuthorityByNameAndProjectId(
@@ -143,8 +135,9 @@ export const registerCertificateAuthorityEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const body = req.body as { projectId?: string };
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
-        { ...req.body, type: caType },
+        { ...req.body, projectId: body.projectId ?? req.certManagerProjectId, type: caType },
         req.permission
       )) as T;
 
@@ -184,10 +177,11 @@ export const registerCertificateAuthorityEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { caName } = req.params;
-
+      const body = req.body as { projectId?: string };
       const certificateAuthority = (await server.services.certificateAuthority.deprecatedUpdateCertificateAuthority(
         {
           ...req.body,
+          projectId: body.projectId ?? req.certManagerProjectId,
           type: caType,
           caName
         },
@@ -223,9 +217,6 @@ export const registerCertificateAuthorityEndpoints = <
       params: z.object({
         caName: z.string()
       }),
-      body: z.object({
-        projectId: z.string().uuid()
-      }),
       response: {
         200: responseSchema
       }
@@ -233,7 +224,7 @@ export const registerCertificateAuthorityEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { caName } = req.params;
-      const { projectId } = req.body;
+      const projectId = req.certManagerProjectId;
 
       const certificateAuthority = (await server.services.certificateAuthority.deprecatedDeleteCertificateAuthority(
         { caName, type: caType, projectId },

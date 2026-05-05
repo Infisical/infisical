@@ -1,3 +1,5 @@
+import { blockCertManagerProjectAccess } from "@app/server/plugins/block-cert-manager-project-access";
+import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
   registerAppConnectionRouter
@@ -11,6 +13,8 @@ import { registerAdminRouter } from "./admin-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
+import { registerCertManagerAccessRouter } from "./cert-manager-access-router";
+import { registerCertManagerInstanceRouter } from "./cert-manager-instance-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerGeneralCertificateAuthorityRouter } from "./certificate-authority-routers/general-certificate-authority-router";
@@ -62,6 +66,7 @@ import { registerOrganizationMembershipsRouter } from "./organization-membership
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
+import { registerPkiApplicationRouter } from "./pki-application-router";
 import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
@@ -151,8 +156,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
+      await projectRouter.register(blockCertManagerProjectAccess);
       await projectRouter.register(registerProjectRouter);
-      await projectRouter.register(registerCertificateInventoryViewRouter);
       await projectRouter.register(registerProjectMembershipRouter);
       await projectRouter.register(registerProjectIdentityRouter);
       await projectRouter.register(registerProjectEnvRouter);
@@ -166,6 +171,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (membershipsRouter) => {
+      await membershipsRouter.register(blockCertManagerProjectAccess);
       await membershipsRouter.register(registerIdentityProjectMembershipRouter);
       await membershipsRouter.register(registerProjectGroupMembershipsRouter);
     },
@@ -174,6 +180,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (pkiRouter) => {
+      await pkiRouter.register(injectCertManagerProjectId);
+
       await pkiRouter.register(
         async (caRouter) => {
           for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
@@ -195,8 +203,12 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         { prefix: "/certificate-profiles" }
       );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(registerPkiApplicationRouter, { prefix: "/applications" });
+      await pkiRouter.register(registerCertManagerInstanceRouter);
       await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
       await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
+      await pkiRouter.register(registerCertificateInventoryViewRouter, { prefix: "/certificate-inventory-views" });
+      await pkiRouter.register(registerCertManagerAccessRouter, { prefix: "/access" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);
@@ -219,6 +231,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   // DO NOT EXTEND THEM ANYMORE!!!
   await server.register(
     async (pkiRouter) => {
+      await pkiRouter.register(injectCertManagerProjectId);
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(
         async (caRouter) => {

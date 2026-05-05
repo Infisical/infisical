@@ -66,6 +66,7 @@ export type TApprovalPolicy = {
   };
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  applicationId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -82,6 +83,7 @@ export type TCreateApprovalPolicyDTO = {
     | CodeSigningPolicyConstraints;
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  applicationId?: string;
 };
 
 export type TUpdateApprovalPolicyDTO = {
@@ -109,6 +111,7 @@ export type TGetApprovalPolicyByIdDTO = {
 export type TListApprovalPoliciesDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
+  applicationId?: string;
 };
 
 export type TDeleteApprovalPolicyDTO = {

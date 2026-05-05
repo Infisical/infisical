@@ -125,6 +125,12 @@ export enum OrgPermissionEmailDomainActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionCertManagerActions {
+  Read = "read",
+  ManageInstance = "manage-instance",
+  ManageSettings = "manage-settings"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
@@ -153,7 +159,8 @@ export enum OrgPermissionSubjects {
   Relay = "relay",
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
-  EmailDomains = "email-domains"
+  EmailDomains = "email-domains",
+  CertManager = "certificate-manager"
 }
 
 export type AppConnectionSubjectFields = {
@@ -194,7 +201,8 @@ export type OrgPermissionSet =
   | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
-  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -357,6 +365,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.CertManager).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionCertManagerActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -514,6 +528,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionEmailDomainActions.VerifyDomain, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionEmailDomainActions.Delete, OrgPermissionSubjects.EmailDomains);
 
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
+
   return rules;
 };
 
@@ -566,6 +584,8 @@ const buildMemberPermission = () => {
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
 
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
+
   return rules;
 };
 
@@ -577,3 +597,33 @@ const buildNoAccessPermission = () => {
 };
 
 export const orgNoAccessPermissions = buildNoAccessPermission();
+
+const buildCertManagerAdminPermission = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionAppConnectionActions.Read, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
+
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
+
+  return rules;
+};
+export const orgCertManagerAdminPermissions = buildCertManagerAdminPermission();
+
+const buildCertManagerGuestPermission = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
+  return rules;
+};
+export const orgCertManagerGuestPermissions = buildCertManagerGuestPermission();

@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ProjectMembershipRole,
+  ResourceType,
+  TApprovalPolicies,
+  TApprovalRequests
+} from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -9,6 +15,10 @@ import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionApprovalPolicyActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
@@ -62,7 +72,10 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   notificationService: TNotificationServiceFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
+  >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   certificateApprovalService: TCertificateApprovalService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
@@ -88,6 +101,39 @@ export const approvalPolicyServiceFactory = ({
   const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
     notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
 
+  const $assertCanManagePolicy = async (
+    projectId: string,
+    applicationId: string | null | undefined,
+    actor: OrgServiceActor,
+    resourceAction: ResourcePermissionApprovalPolicyActions
+  ) => {
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    if (hasRole(ProjectMembershipRole.Admin)) return;
+
+    if (!applicationId) {
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    const { permission } = await permissionService.getResourcePermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: applicationId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.ApprovalPolicies);
+  };
+
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     const uniqueUserIds = [...new Set(userIds)];
     if (uniqueUserIds.length === 0) return;
@@ -106,23 +152,20 @@ export const approvalPolicyServiceFactory = ({
 
   const create = async (
     policyType: ApprovalPolicyType,
-    { projectId, name, maxRequestTtl, conditions, constraints, steps, bypassForMachineIdentities }: TCreatePolicyDTO,
+    {
+      projectId,
+      name,
+      maxRequestTtl,
+      conditions,
+      constraints,
+      steps,
+      bypassForMachineIdentities,
+      applicationId
+    }: TCreatePolicyDTO,
     actor: OrgServiceActor
   ) => {
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId,
-      actionProjectType: ActionProjectType.Any
-    });
+    await $assertCanManagePolicy(projectId, applicationId, actor, ResourcePermissionApprovalPolicyActions.Create);
 
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
-    }
-
-    // Verify all users are part of project
     const approverUserIds = steps
       .flatMap((step) => step.approvers ?? [])
       .filter((approver) => approver.type === ApproverType.User)
@@ -139,7 +182,8 @@ export const approvalPolicyServiceFactory = ({
           conditions: { version: 1, conditions },
           constraints: { version: 1, constraints },
           type: policyType,
-          bypassForMachineIdentities: bypassForMachineIdentities ?? false
+          bypassForMachineIdentities: bypassForMachineIdentities ?? false,
+          applicationId: applicationId ?? null
         },
         tx
       );
@@ -183,7 +227,12 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  const list = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
+  const list = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    actor: OrgServiceActor,
+    options?: { applicationId?: string | null }
+  ) => {
     const { hasRole } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -197,7 +246,9 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
-    const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId);
+    const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId, {
+      applicationId: options?.applicationId
+    });
 
     return { policies };
   };
@@ -208,18 +259,12 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Policy not found" });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: policy.projectId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
-    }
+    await $assertCanManagePolicy(
+      policy.projectId,
+      policy.applicationId,
+      actor,
+      ResourcePermissionApprovalPolicyActions.Read
+    );
 
     const steps = await approvalPolicyDAL.findStepsByPolicyId(policyId);
 
@@ -228,7 +273,15 @@ export const approvalPolicyServiceFactory = ({
 
   const updateById = async (
     policyId: string,
-    { name, maxRequestTtl, conditions, constraints, steps, bypassForMachineIdentities }: TUpdatePolicyDTO,
+    {
+      name,
+      maxRequestTtl,
+      conditions,
+      constraints,
+      steps,
+      bypassForMachineIdentities,
+      applicationId
+    }: TUpdatePolicyDTO,
     actor: OrgServiceActor
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
@@ -236,17 +289,15 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Policy not found" });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: policy.projectId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    const targetAppId = applicationId !== undefined ? applicationId : policy.applicationId;
+    await $assertCanManagePolicy(
+      policy.projectId,
+      policy.applicationId,
+      actor,
+      ResourcePermissionApprovalPolicyActions.Edit
+    );
+    if (applicationId !== undefined && applicationId !== policy.applicationId) {
+      await $assertCanManagePolicy(policy.projectId, targetAppId, actor, ResourcePermissionApprovalPolicyActions.Edit);
     }
 
     if (steps !== undefined) {
@@ -279,6 +330,10 @@ export const approvalPolicyServiceFactory = ({
 
       if (bypassForMachineIdentities !== undefined) {
         updateDoc.bypassForMachineIdentities = bypassForMachineIdentities;
+      }
+
+      if (applicationId !== undefined) {
+        updateDoc.applicationId = applicationId;
       }
 
       const updated = await approvalPolicyDAL.updateById(policyId, updateDoc, tx);
@@ -332,18 +387,12 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Policy not found" });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: policy.projectId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
-    }
+    await $assertCanManagePolicy(
+      policy.projectId,
+      policy.applicationId,
+      actor,
+      ResourcePermissionApprovalPolicyActions.Delete
+    );
 
     await approvalPolicyDAL.deleteById(policyId);
 
@@ -379,7 +428,8 @@ export const approvalPolicyServiceFactory = ({
         requesterUserId,
         machineIdentityId,
         requesterName,
-        requesterEmail
+        requesterEmail,
+        applicationId: policy.applicationId ?? null
       },
       {
         approvalRequestDAL,
@@ -743,7 +793,12 @@ export const approvalPolicyServiceFactory = ({
     return { request: { ...finalRequest, steps: finalSteps } };
   };
 
-  const listRequests = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
+  const listRequests = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    actor: OrgServiceActor,
+    options?: { applicationId?: string | null }
+  ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -758,7 +813,9 @@ export const approvalPolicyServiceFactory = ({
       ProjectPermissionSub.ApprovalRequests
     );
 
-    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
+    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId, {
+      applicationId: options?.applicationId
+    });
 
     // If user has read permission, return all requests
     if (hasReadPermission) {
@@ -899,10 +956,35 @@ export const approvalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
+    const allowedAtProject = permission.can(
       ProjectPermissionApprovalRequestGrantActions.Revoke,
       ProjectPermissionSub.ApprovalRequestGrants
     );
+
+    if (!allowedAtProject) {
+      const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
+      const requestApplicationId = (request as { applicationId?: string | null } | null)?.applicationId ?? null;
+      if (requestApplicationId) {
+        const { permission: resourcePerm } = await permissionService.getResourcePermission({
+          actor: actor.type,
+          actorId: actor.id,
+          projectId: grant.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: requestApplicationId,
+          actorAuthMethod: actor.authMethod,
+          actorOrgId: actor.orgId
+        });
+        ForbiddenError.from(resourcePerm).throwUnlessCan(
+          ProjectPermissionApprovalRequestGrantActions.Revoke,
+          ResourcePermissionSub.ApprovalRequestGrants
+        );
+      } else {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionApprovalRequestGrantActions.Revoke,
+          ProjectPermissionSub.ApprovalRequestGrants
+        );
+      }
+    }
 
     if (grant.status !== ApprovalRequestGrantStatus.Active) {
       throw new BadRequestError({ message: "Grant is not active" });

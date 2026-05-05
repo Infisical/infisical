@@ -45,7 +45,6 @@ export type TListInventoryViewsResponse = {
 };
 
 export type TCreateInventoryViewDTO = {
-  projectId: string;
   name: string;
   filters: TInventoryViewFilters;
   columns?: string[];
@@ -53,7 +52,6 @@ export type TCreateInventoryViewDTO = {
 };
 
 export type TUpdateInventoryViewDTO = {
-  projectId: string;
   viewId: string;
   name?: string;
   filters?: TInventoryViewFilters;
@@ -62,6 +60,5 @@ export type TUpdateInventoryViewDTO = {
 };
 
 export type TDeleteInventoryViewDTO = {
-  projectId: string;
   viewId: string;
 };

@@ -70,18 +70,14 @@ export type TCertificateByIdResponse = {
 
 export type TDeleteCertDTO = {
   id: string;
-  projectId: string;
 };
 
 export type TRevokeCertDTO = {
-  projectId: string;
   id: string;
   revocationReason: string;
 };
 
 export type TImportCertificateDTO = {
-  projectSlug: string;
-
   certificatePem: string;
   privateKeyPem: string;
   chainPem: string;
@@ -116,20 +112,16 @@ export type TUpdateRenewalConfigDTO = {
   certificateId: string;
   renewBeforeDays?: number;
   enableAutoRenewal?: boolean;
-  projectSlug: string;
 };
 
 export type TDownloadPkcs12DTO = {
   certificateId: string;
-  projectSlug: string;
   password: string;
   alias: string;
 };
 
 export type TUnifiedCertificateIssuanceDTO = {
-  projectSlug: string;
   profileId: string;
-  projectId: string;
   csr?: string;
   attributes?: {
     commonName?: string | null;
@@ -204,7 +196,6 @@ export type TCertificateRequestDetails = {
 
 export type TUpdateCertificateDTO = {
   certificateId: string;
-  projectId: string;
   metadata: Array<{ key: string; value: string }>;
 };
 
@@ -234,7 +225,6 @@ export type TListCertificateRequestsResponse = {
 };
 
 export type TListCertificateRequestsParams = {
-  projectSlug: string;
   offset?: number;
   limit?: number;
   search?: string;

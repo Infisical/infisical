@@ -1,0 +1,175 @@
+export type TPkiApplication = {
+  id: string;
+  projectId: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TPkiApplicationListItem = TPkiApplication & {
+  profileCount: number;
+  memberCount: number;
+  certificateCount: number;
+};
+
+export type TPkiApplicationProfile = {
+  applicationId: string;
+  profileId: string;
+  profileSlug: string;
+  profileDescription?: string | null;
+  estConfigId?: string | null;
+  apiConfigId?: string | null;
+  acmeConfigId?: string | null;
+  scepConfigId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TPkiApplicationMemberDetails = {
+  name: string | null;
+  email?: string | null;
+  username?: string | null;
+  authMethod?: string | null;
+  slug?: string | null;
+};
+
+export type TPkiApplicationMember = {
+  membershipId: string;
+  applicationId: string;
+  actorUserId?: string | null;
+  actorIdentityId?: string | null;
+  actorGroupId?: string | null;
+  role: string;
+  customRoleId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  details?: TPkiApplicationMemberDetails | null;
+};
+
+export type ScepChallengeType = "static" | "dynamic";
+
+export type TPkiApplicationEnrollmentState = {
+  applicationId: string;
+  profileId: string;
+  api: { id: string; autoRenew: boolean; renewBeforeDays: number | null } | null;
+  est: { id: string; disableBootstrapCaValidation: boolean } | null;
+  acme: {
+    id: string;
+    skipDnsOwnershipVerification: boolean;
+    skipEabBinding: boolean;
+  } | null;
+  scep: {
+    id: string;
+    challengeType: ScepChallengeType;
+    includeCaCertInResponse: boolean;
+    allowCertBasedRenewal: boolean;
+    dynamicChallengeExpiryMinutes: number | null;
+    dynamicChallengeMaxPending: number | null;
+  } | null;
+  estConfigured: boolean;
+  acmeConfigured: boolean;
+  scepConfigured: boolean;
+};
+
+export type TCreatePkiApplicationDTO = {
+  name: string;
+  slug: string;
+  description?: string;
+  profileIds?: string[];
+};
+
+export type TUpdatePkiApplicationDTO = {
+  applicationId: string;
+  name?: string;
+  slug?: string;
+  description?: string | null;
+};
+
+export type TDeletePkiApplicationDTO = {
+  applicationId: string;
+};
+
+export type TAttachPkiApplicationProfilesDTO = {
+  applicationId: string;
+  profileIds: string[];
+};
+
+export type TDetachPkiApplicationProfileDTO = {
+  applicationId: string;
+  profileId: string;
+};
+
+export type TAddPkiApplicationMemberDTO = {
+  applicationId: string;
+  userId?: string;
+  identityId?: string;
+  groupId?: string;
+  role: string;
+};
+
+export type TUpdatePkiApplicationMemberRoleDTO = {
+  applicationId: string;
+  membershipId: string;
+  role: string;
+};
+
+export type TRemovePkiApplicationMemberDTO = {
+  applicationId: string;
+  membershipId: string;
+};
+
+export type TListPkiApplicationsResponse = {
+  applications: TPkiApplicationListItem[];
+  total: number;
+};
+
+export type TPkiApplicationResponse = {
+  application: TPkiApplication;
+};
+
+export type TSetApiEnrollmentDTO = {
+  applicationId: string;
+  profileId: string;
+  autoRenew: boolean;
+  renewBeforeDays?: number;
+};
+
+export type TClearEnrollmentMethodDTO = {
+  applicationId: string;
+  profileId: string;
+};
+
+export type TSetEstEnrollmentDTO = {
+  applicationId: string;
+  profileId: string;
+  passphrase: string;
+  disableBootstrapCaValidation?: boolean;
+  caChain?: string;
+};
+
+export type TSetAcmeEnrollmentDTO = {
+  applicationId: string;
+  profileId: string;
+  skipDnsOwnershipVerification?: boolean;
+  skipEabBinding?: boolean;
+};
+
+export type TRevealAcmeEabSecretResponse = {
+  applicationId: string;
+  profileId: string;
+  eabKid: string;
+  eabSecret: string;
+};
+
+export type TSetScepEnrollmentDTO = {
+  applicationId: string;
+  profileId: string;
+  challengeType?: ScepChallengeType;
+  challengePassword?: string;
+  includeCaCertInResponse?: boolean;
+  allowCertBasedRenewal?: boolean;
+  dynamicChallengeExpiryMinutes?: number;
+  dynamicChallengeMaxPending?: number;
+};

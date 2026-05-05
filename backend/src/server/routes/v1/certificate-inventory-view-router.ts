@@ -42,7 +42,7 @@ const ColumnsSchema = z.array(z.enum(ValidColumns)).max(20);
 export const registerCertificateInventoryViewRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/:projectId/certificate-inventory-views",
+    url: "/",
     config: {
       rateLimit: readLimit
     },
@@ -51,9 +51,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       operationId: "listCertificateInventoryViews",
       tags: [ApiDocsTags.PkiCertificates],
       description: "List system and custom certificate inventory views for a project.",
-      params: z.object({
-        projectId: z.string().trim()
-      }),
       response: {
         200: z.object({
           systemViews: z.array(
@@ -87,7 +84,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.certificateInventoryView.listViews({
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
@@ -98,7 +95,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
 
   server.route({
     method: "POST",
-    url: "/:projectId/certificate-inventory-views",
+    url: "/",
     config: {
       rateLimit: writeLimit
     },
@@ -107,9 +104,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       operationId: "createCertificateInventoryView",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Create a custom certificate inventory view.",
-      params: z.object({
-        projectId: z.string().trim()
-      }),
       body: z.object({
         name: z.string().trim().min(1).max(255),
         filters: InventoryViewFiltersSchema.default({}),
@@ -125,7 +119,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.createView({
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         name: req.body.name,
         filters: req.body.filters,
         columns: req.body.columns,
@@ -137,7 +131,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         event: {
           type: EventType.CREATE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {
@@ -155,7 +149,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
 
   server.route({
     method: "PATCH",
-    url: "/:projectId/certificate-inventory-views/:viewId",
+    url: "/:viewId",
     config: {
       rateLimit: writeLimit
     },
@@ -165,7 +159,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "Update a custom certificate inventory view.",
       params: z.object({
-        projectId: z.string().trim(),
         viewId: z.string().uuid()
       }),
       body: z.object({
@@ -184,7 +177,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.updateView({
         viewId: req.params.viewId,
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         name: req.body.name,
         filters: req.body.filters,
         columns: req.body.columns,
@@ -196,7 +189,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         event: {
           type: EventType.UPDATE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {
@@ -214,7 +207,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
 
   server.route({
     method: "DELETE",
-    url: "/:projectId/certificate-inventory-views/:viewId",
+    url: "/:viewId",
     config: {
       rateLimit: writeLimit
     },
@@ -224,7 +217,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "Delete a custom certificate inventory view.",
       params: z.object({
-        projectId: z.string().trim(),
         viewId: z.string().uuid()
       }),
       response: {
@@ -237,7 +229,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.deleteView({
         viewId: req.params.viewId,
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
@@ -245,7 +237,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.projectId,
+        projectId: req.certManagerProjectId,
         event: {
           type: EventType.DELETE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {

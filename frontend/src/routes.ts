@@ -277,6 +277,7 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
     index("cert-manager/DashboardPage/route-index.tsx"),
     route("/overview", "cert-manager/DashboardPage/route.tsx"),
     route("/policies", "cert-manager/PoliciesPage/route.tsx"),
+    route("/inventory", "cert-manager/InventoryPage/route.tsx"),
     route("/subscribers", [
       index("cert-manager/PkiSubscribersPage/route.tsx"),
       route("/$subscriberName", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")
@@ -289,6 +290,12 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       route("/installations/$installationId", "cert-manager/InstallationDetailsByIDPage/route.tsx")
     ]),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
+    route("/applications", [
+      index("cert-manager/ApplicationsPage/route.tsx"),
+      route("/$applicationName", "cert-manager/ApplicationDetailsByIDPage/route.tsx")
+    ]),
+    route("/requests", "cert-manager/RequestsPage/route.tsx"),
+    route("/cert-manager-access", "cert-manager/CertManagerAccessPage/route.tsx"),
     route("/code-signing", [
       index("cert-manager/CodeSigningPage/route.tsx"),
       route("/$signerId", "cert-manager/SignerDetailPage/route.tsx")

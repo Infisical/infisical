@@ -38,14 +38,19 @@ const Page = () => {
   };
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={currentProject.type}
-          title="Project Access Control"
-          description="Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
+          title={isCertManager ? "Cert Manager Access Control" : "Project Access Control"}
+          description={
+            isCertManager
+              ? "Manage fine-grained access for users, groups, roles, and machine identities within your Cert Manager."
+              : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
+          }
         >
           <Link
             to="/organizations/$orgId/access-management"

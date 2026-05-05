@@ -31,7 +31,7 @@ import {
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
@@ -69,11 +69,13 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Cert Manager" : "Project";
 
   const { data: members } = useGetWorkspaceUsers(projectId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
-  const { data: roles } = useGetProjectRoles(currentProject?.id || "");
+  const { data: roles } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(projectPermission),
@@ -160,6 +162,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           usernames: [...inviteeEmails, ...newInvitees],
           orgId,
           projectId: currentProject.id,
+          projectType: currentProject.type,
           roleSlugs: projectRoleSlugs.map((role) => role.slug)
         });
       }
@@ -235,7 +238,11 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     >
       <ModalContent
         bodyClassName="overflow-visible"
-        title={t("section.members.add-dialog.add-member-to-project") as string}
+        title={
+          isCertManager
+            ? "Add Members to Cert Manager"
+            : (t("section.members.add-dialog.add-member-to-project") as string)
+        }
         subTitle={t("section.members.add-dialog.user-will-email")}
       >
         <form onSubmit={handleSubmit(onAddMembers)}>
@@ -248,7 +255,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   className="w-full"
                   isError={!!errors.orgMemberships?.length}
                   errorText={errors.orgMemberships?.[0]?.message}
-                  label="Invite users to project"
+                  label={`Invite users to ${productLabel.toLowerCase()}`}
                   helperText={
                     canInviteNewMembers
                       ? "You can invite new users to your organization by typing out their email address"

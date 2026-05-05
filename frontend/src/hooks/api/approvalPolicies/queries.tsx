@@ -28,7 +28,8 @@ export const approvalPolicyQuery = {
           policies: TApprovalPolicy[];
         }>(`/api/v1/approval-policies/${params.policyType}`, {
           params: {
-            projectId: params.projectId
+            projectId: params.projectId,
+            ...(params.applicationId && { applicationId: params.applicationId })
           }
         });
         return data.policies;

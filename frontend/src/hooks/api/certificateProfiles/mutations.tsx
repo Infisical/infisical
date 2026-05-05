@@ -20,9 +20,9 @@ export const useCreateCertificateProfile = () => {
       }>("/api/v1/cert-manager/certificate-profiles", data);
       return response.certificateProfile;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.list({ projectId })
+        queryKey: ["certificate-profiles", "list"]
       });
     }
   });
@@ -38,9 +38,9 @@ export const useUpdateCertificateProfile = () => {
       }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`, data);
       return response.certificateProfile;
     },
-    onSuccess: (profile, { profileId }) => {
+    onSuccess: (_, { profileId }) => {
       queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.list({ projectId: profile.projectId })
+        queryKey: ["certificate-profiles", "list"]
       });
       queryClient.invalidateQueries({
         queryKey: certificateProfileKeys.getById(profileId)
@@ -59,9 +59,9 @@ export const useDeleteCertificateProfile = () => {
       }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`);
       return response.certificateProfile;
     },
-    onSuccess: (profile, { profileId }) => {
+    onSuccess: (_, { profileId }) => {
       queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.list({ projectId: profile.projectId })
+        queryKey: ["certificate-profiles", "list"]
       });
       queryClient.removeQueries({
         queryKey: certificateProfileKeys.getById(profileId)

@@ -46,7 +46,6 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
-    projectId: currentProject?.id || "",
     limit: 100,
     offset: 0
   });

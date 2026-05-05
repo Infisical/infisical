@@ -25,7 +25,6 @@ import { EnrollmentType } from "@app/services/certificate-profile/certificate-pr
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
-import { ProjectFilterType } from "@app/services/project/project-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { booleanSchema } from "../sanitizedSchemas";
@@ -506,7 +505,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       operationId: "listCertificateRequests",
       tags: [ApiDocsTags.PkiCertificates],
       querystring: z.object({
-        projectSlug: z.string().min(1).trim(),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().trim().optional(),
@@ -553,24 +551,14 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const project = await server.services.project.getAProject({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        filter: {
-          type: ProjectFilterType.SLUG,
-          slug: req.query.projectSlug,
-          orgId: req.permission.orgId
-        }
-      });
+      const projectId = req.certManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: project.id,
+        projectId,
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
@@ -584,7 +572,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: project.id,
+        projectId,
         event: {
           type: EventType.LIST_CERTIFICATE_REQUESTS,
           metadata: {
@@ -629,7 +617,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Search and filter certificate requests.",
       body: z.object({
-        projectSlug: z.string().min(1).trim(),
         offset: z.number().min(0).default(0),
         limit: z.number().min(1).max(100).default(20),
         search: z.string().trim().optional(),
@@ -680,25 +667,14 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { metadata, ...filters } = req.body;
-
-      const project = await server.services.project.getAProject({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        filter: {
-          type: ProjectFilterType.SLUG,
-          slug: filters.projectSlug,
-          orgId: req.permission.orgId
-        }
-      });
+      const projectId = req.certManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: project.id,
+        projectId,
         offset: filters.offset,
         limit: filters.limit,
         search: filters.search,
@@ -713,7 +689,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: project.id,
+        projectId,
         event: {
           type: EventType.LIST_CERTIFICATE_REQUESTS,
           metadata: {
@@ -1472,8 +1448,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Import certificate",
       body: z.object({
-        projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
-
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
@@ -1497,6 +1471,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
+          projectId: req.certManagerProjectId,
           ...req.body
         });
 

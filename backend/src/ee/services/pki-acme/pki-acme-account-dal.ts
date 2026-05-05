@@ -34,9 +34,35 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findApplicationProfileId = async (applicationId: string, profileId: string, tx?: Knex) => {
+    try {
+      const row = await (tx || db.replicaNode())(TableName.PkiApplicationProfile)
+        .where({ applicationId, profileId })
+        .select("id")
+        .first();
+      return row?.id ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find application profile junction id" });
+    }
+  };
+
+  const findApplicationIdByJunctionId = async (junctionId: string, tx?: Knex) => {
+    try {
+      const row = await (tx || db.replicaNode())(TableName.PkiApplicationProfile)
+        .where({ id: junctionId })
+        .select("applicationId")
+        .first();
+      return row?.applicationId ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find application id by junction id" });
+    }
+  };
+
   return {
     ...pkiAcmeAccountOrm,
     findByProjectIdAndAccountId,
-    findByProfileIdAndPublicKeyThumbprintAndAlg
+    findByProfileIdAndPublicKeyThumbprintAndAlg,
+    findApplicationProfileId,
+    findApplicationIdByJunctionId
   };
 };

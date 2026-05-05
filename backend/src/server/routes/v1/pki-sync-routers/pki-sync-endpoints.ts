@@ -21,7 +21,8 @@ export const registerSyncPkiEndpoints = ({
   server: FastifyZodProvider;
   createSchema: z.ZodType<{
     name: string;
-    projectId: string;
+    projectId?: string;
+    applicationId?: string;
     connectionId: string;
     destinationConfig: Record<string, unknown>;
     syncOptions?: Record<string, unknown>;
@@ -62,18 +63,13 @@ export const registerSyncPkiEndpoints = ({
       ...(enableOperationId ? { operationId: `list${destinationNameForOpId}PkiSyncs` } : {}),
       tags: [ApiDocsTags.PkiSyncs],
       description: `List the ${destinationName} PKI Syncs for the specified project.`,
-      querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required")
-      }),
       response: {
         200: z.object({ pkiSyncs: responseSchema.array() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        query: { projectId }
-      } = req;
+      const projectId = req.certManagerProjectId;
 
       const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId }, req.permission);
 
@@ -150,7 +146,10 @@ export const registerSyncPkiEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const pkiSync = await server.services.pkiSync.createPkiSync({ ...req.body, destination }, req.permission);
+      const pkiSync = await server.services.pkiSync.createPkiSync(
+        { ...req.body, projectId: req.body.projectId ?? req.certManagerProjectId, destination },
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

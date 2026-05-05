@@ -7,6 +7,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { bootstrapCertManagerProject } from "@app/services/pki-application/cert-manager-project-bootstrap";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
@@ -22,6 +24,7 @@ type TSubOrgServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -31,7 +34,8 @@ export const subOrgServiceFactory = ({
   permissionService,
   licenseService,
   membershipDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  projectDAL
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -88,6 +92,17 @@ export const subOrgServiceFactory = ({
         },
         tx
       );
+
+      await bootstrapCertManagerProject(
+        {
+          orgId: org.id,
+          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
+          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
       return org;
     });
 

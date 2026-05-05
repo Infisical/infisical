@@ -96,6 +96,7 @@ import { TCertificateRequestDALFactory } from "../certificate-request/certificat
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
@@ -158,6 +159,7 @@ type TCertificateV3ServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findByProfileId" | "findAllByProfileId">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -655,11 +657,43 @@ export const certificateV3ServiceFactory = ({
   identityDAL,
   approvalPolicyService,
   resourceMetadataDAL,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  pkiApplicationProfileDAL
 }: TCertificateV3ServiceFactoryDep) => {
-  /**
-   * Resolves requester name and email based on actor type
-   */
+  const $resolveApplicationIdForProfile = async (
+    profile: {
+      id: string;
+      apiConfigId?: string | null;
+      estConfigId?: string | null;
+      acmeConfigId?: string | null;
+      scepConfigId?: string | null;
+    },
+    explicit: string | undefined
+  ): Promise<string | undefined> => {
+    const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
+
+    if (explicit) {
+      if (junctions.length > 0 && !junctions.some((j) => j.applicationId === explicit)) {
+        throw new BadRequestError({
+          message: "This profile is not attached to the specified Application."
+        });
+      }
+      return explicit;
+    }
+
+    const hasProfileLevelEnrollment = Boolean(
+      profile.apiConfigId || profile.estConfigId || profile.acmeConfigId || profile.scepConfigId
+    );
+    if (!hasProfileLevelEnrollment) {
+      throw new BadRequestError({
+        message:
+          "This profile must be issued through a Cert Manager Application. Attach it to an Application and issue from there."
+      });
+    }
+
+    return undefined;
+  };
+
   const resolveRequesterInfo = async (
     actor: ActorType,
     actorId: string,
@@ -692,9 +726,6 @@ export const certificateV3ServiceFactory = ({
     return { requesterName: "Unknown Client", requesterEmail: "" };
   };
 
-  /**
-   * Checks if actor should bypass approval based on machine identity flag
-   */
   const shouldBypassApproval = (actor: ActorType, policy: TCertRequestPolicy | null): boolean => {
     return actor === ActorType.IDENTITY && policy?.bypassForMachineIdentities === true;
   };
@@ -707,7 +738,8 @@ export const certificateV3ServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    removeRootsFromChain
+    removeRootsFromChain,
+    applicationId: explicitApplicationId
   }: TIssueCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -722,12 +754,15 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId);
+
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
       approvalPolicyDAL as TApprovalPolicyDALFactory,
       profile.projectId,
       {
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId
       }
     )) as TCertRequestPolicy | null;
 
@@ -1030,6 +1065,10 @@ export const certificateV3ServiceFactory = ({
           );
         }
 
+        if (applicationId) {
+          await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
+        }
+
         return { ...processResult, certificateRequestId: certRequestResult.id };
       });
 
@@ -1160,9 +1199,14 @@ export const certificateV3ServiceFactory = ({
         new Date(certificateRecord.notAfter)
       );
 
-      const updateData: { profileId: string; renewBeforeDays?: number } = { profileId };
+      const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+        profileId
+      };
       if (finalRenewBeforeDays !== undefined) {
         updateData.renewBeforeDays = finalRenewBeforeDays;
+      }
+      if (applicationId) {
+        updateData.applicationId = applicationId;
       }
       await certificateDAL.updateById(certificateRecord.id, updateData, tx);
 
@@ -1274,7 +1318,8 @@ export const certificateV3ServiceFactory = ({
     enrollmentType,
     metadata,
     removeRootsFromChain,
-    basicConstraints
+    basicConstraints,
+    applicationId: explicitApplicationId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1288,6 +1333,7 @@ export const certificateV3ServiceFactory = ({
       requiredEnrollmentType: enrollmentType,
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId);
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1364,7 +1410,8 @@ export const certificateV3ServiceFactory = ({
       approvalPolicyDAL as TApprovalPolicyDALFactory,
       profile.projectId,
       {
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId
       }
     )) as TCertRequestPolicy | null;
 
@@ -1556,9 +1603,14 @@ export const certificateV3ServiceFactory = ({
           new Date(signedCertRecord.notAfter)
         );
 
-        const updateData: { profileId: string; renewBeforeDays?: number } = { profileId };
+        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          profileId
+        };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (applicationId) {
+          updateData.applicationId = applicationId;
         }
         await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
 
@@ -1643,7 +1695,8 @@ export const certificateV3ServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    applicationId: explicitApplicationId
   }: TOrderCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1657,6 +1710,7 @@ export const certificateV3ServiceFactory = ({
       requiredEnrollmentType: EnrollmentType.API,
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId);
 
     let certificateRequest: TCertificateRequest;
     let extractedKeyAlgorithm: string | undefined;
@@ -1749,7 +1803,8 @@ export const certificateV3ServiceFactory = ({
       approvalPolicyDAL as TApprovalPolicyDALFactory,
       profile.projectId,
       {
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId
       }
     )) as TCertRequestPolicy | null;
 

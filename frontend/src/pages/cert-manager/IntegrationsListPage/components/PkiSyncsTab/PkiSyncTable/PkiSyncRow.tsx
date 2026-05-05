@@ -54,6 +54,7 @@ type Props = {
   onTriggerImportCertificates: (pkiSync: TPkiSync) => void;
   onTriggerRemoveCertificates: (pkiSync: TPkiSync) => void;
   onToggleEnable: (pkiSync: TPkiSync) => void;
+  applicationName?: string;
 };
 
 export const PkiSyncRow = ({
@@ -62,7 +63,8 @@ export const PkiSyncRow = ({
   onTriggerSyncCertificates,
   onTriggerImportCertificates,
   onTriggerRemoveCertificates,
-  onToggleEnable
+  onToggleEnable,
+  applicationName
 }: Props) => {
   const navigate = useNavigate();
   const {
@@ -74,7 +76,8 @@ export const PkiSyncRow = ({
     description,
     syncStatus,
     isAutoSyncEnabled,
-    projectId
+    projectId,
+    applicationId
   } = pkiSync;
 
   const destinationName = PKI_SYNC_MAP[destination].name;
@@ -136,7 +139,8 @@ export const PkiSyncRow = ({
                   syncId: id,
                   projectId,
                   orgId: currentOrg.id
-                }
+                },
+                search: applicationName ? { applicationName } : undefined
               });
             }}
             className={twMerge(
@@ -165,6 +169,11 @@ export const PkiSyncRow = ({
                         className="ml-1 text-mineshaft-400"
                       />
                     </Tooltip>
+                  )}
+                  {!applicationId && (
+                    <span className="ml-2 rounded bg-mineshaft-600 px-2 py-0.5 text-[10px] tracking-wide text-mineshaft-200 uppercase">
+                      Legacy
+                    </span>
                   )}
                 </div>
                 <p className="truncate text-xs leading-4 text-bunker-300">

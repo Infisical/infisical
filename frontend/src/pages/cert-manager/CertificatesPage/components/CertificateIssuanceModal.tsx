@@ -147,7 +147,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const { data: cert } = useGetCert(sanitizedSerialNumber);
 
   const { data: profilesData } = useListCertificateProfiles({
-    projectId: currentProject?.id || "",
     enrollmentType: EnrollmentType.API,
     includeConfigs: true
   });
@@ -313,8 +312,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           const metadataEntries = formData.metadata?.filter((m) => m.key);
           const response = await issueCertificate({
             profileId: formProfileId,
-            projectSlug: currentProject.slug,
-            projectId: currentProject.id,
             csr: formData.csr,
             attributes: { ttl },
             ...(metadataEntries?.length && { metadata: metadataEntries })
@@ -338,8 +335,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         const managedMetadataEntries = formMetadata?.filter((m) => m.key);
         const request: any = {
           profileId: formProfileId,
-          projectSlug: currentProject.slug,
-          projectId: currentProject.id,
           attributes: {
             ttl,
             signatureAlgorithm: signatureAlgorithm || "",

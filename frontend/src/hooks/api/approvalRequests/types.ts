@@ -96,6 +96,7 @@ export type TApprovalRequest = {
   id: string;
   projectId: string;
   policyId: string;
+  applicationId?: string | null;
   type: ApprovalPolicyType;
   status: ApprovalRequestStatus;
   requesterId: string;

@@ -10,7 +10,7 @@ import { CertificateSyncStatus } from "@app/services/certificate-sync/certificat
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
-const PkiSyncSchema = z.object({
+export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable().optional(),
@@ -19,6 +19,7 @@ const PkiSyncSchema = z.object({
   destinationConfig: z.record(z.unknown()),
   syncOptions: z.record(z.unknown()),
   projectId: z.string().uuid(),
+  applicationId: z.string().uuid().nullable().optional(),
   subscriberId: z.string().uuid().nullable().optional(),
   connectionId: z.string().uuid(),
   createdAt: z.date(),
@@ -138,7 +139,6 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all the PKI Syncs for the specified project.",
       querystring: z.object({
-        projectId: z.string().trim().min(1),
         certificateId: z.string().uuid().optional()
       }),
       response: {
@@ -148,9 +148,10 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        query: { projectId, certificateId },
+        query: { certificateId },
         permission
       } = req;
+      const projectId = req.certManagerProjectId;
 
       const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId, certificateId }, permission);
 

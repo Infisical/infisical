@@ -30,7 +30,7 @@ export const ExternalCaSection = () => {
   const onRemoveCaSubmit = async (id: string, type: CaType) => {
     if (!currentProject?.id) return;
 
-    await deleteCa({ id, type, projectId: currentProject.id });
+    await deleteCa({ id, type });
 
     createNotification({
       text: "Successfully deleted CA",

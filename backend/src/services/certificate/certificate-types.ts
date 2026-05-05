@@ -139,7 +139,7 @@ export type TGetCertBodyDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TImportCertDTO = {
-  projectSlug: string;
+  projectId: string;
 
   friendlyName?: string;
   pkiCollectionId?: string;

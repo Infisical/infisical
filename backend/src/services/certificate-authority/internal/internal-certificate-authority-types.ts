@@ -53,7 +53,7 @@ export type TCreateCaDTO =
     }
   | ({
       isInternal: false;
-      projectSlug: string;
+      projectId: string;
       type: InternalCaType;
       friendlyName?: string;
       name?: string;

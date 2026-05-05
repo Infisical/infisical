@@ -250,12 +250,11 @@ export const CertificatesTable = ({
   );
 
   const { data: profilesData } = useListCertificateProfiles({
-    projectId: currentProject?.id ?? "",
     limit: 100
   });
 
-  const { data: caData } = useListCasByProjectId(currentProject?.id ?? "");
-  const { data: viewsData } = useListCertificateInventoryViews(currentProject?.id ?? "");
+  const { data: caData } = useListCasByProjectId();
+  const { data: viewsData } = useListCertificateInventoryViews();
   const { mutateAsync: deleteView } = useDeleteCertificateInventoryView();
   const { mutateAsync: updateView } = useUpdateCertificateInventoryView();
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
@@ -341,7 +340,6 @@ export const CertificatesTable = ({
     try {
       await updateRenewalConfig({
         certificateId,
-        projectSlug: currentProject.slug,
         enableAutoRenewal: false
       });
       createNotification({
@@ -556,7 +554,7 @@ export const CertificatesTable = ({
   const handleDeleteView = async (viewId: string) => {
     if (!currentProject?.id) return;
     try {
-      await deleteView({ projectId: currentProject.id, viewId });
+      await deleteView({ viewId });
       createNotification({ text: "View deleted", type: "success" });
       if (activeViewId === viewId) {
         handleClearAllFilters();
@@ -569,7 +567,7 @@ export const CertificatesTable = ({
   const handleToggleShare = async (viewId: string, isShared: boolean) => {
     if (!currentProject?.id) return;
     try {
-      await updateView({ projectId: currentProject.id, viewId, isShared });
+      await updateView({ viewId, isShared });
       createNotification({
         text: isShared ? "View shared with team" : "View made personal",
         type: "success"
@@ -1304,7 +1302,6 @@ export const CertificatesTable = ({
       <SaveViewModal
         isOpen={isSaveViewOpen}
         onOpenChange={setIsSaveViewOpen}
-        projectId={currentProject?.id ?? ""}
         filters={pendingFilters.length > 0 ? pendingFilters : appliedFilters}
         onViewCreated={(viewId, viewFilters) => {
           handleSelectView(viewId, viewFilters);

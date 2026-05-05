@@ -10,7 +10,8 @@ import {
 } from "../approval-policy-schemas";
 
 export const CertRequestPolicyInputsSchema = z.object({
-  profileName: z.string()
+  profileName: z.string(),
+  applicationId: z.string().uuid().optional()
 });
 
 export const CertRequestPolicyConditionsSchema = z
@@ -73,12 +74,14 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
   conditions: CertRequestPolicyConditionsSchema,
   constraints: CertRequestPolicyConstraintsSchema.optional()
     .default({})
-    .transform((val) => val ?? {})
+    .transform((val) => val ?? {}),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  constraints: CertRequestPolicyConstraintsSchema.optional()
+  constraints: CertRequestPolicyConstraintsSchema.optional(),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export const CertRequestRequestSchema = BaseApprovalRequestSchema.extend({

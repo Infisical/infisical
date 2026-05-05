@@ -73,7 +73,7 @@ const Page = () => {
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
-  const { data: caData } = useListCasByProjectId(currentProject?.id ?? "");
+  const { data: caData } = useListCasByProjectId();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteCertificate",
@@ -93,8 +93,7 @@ const Page = () => {
     if (!currentProject?.id || !certificate) return;
 
     await deleteCert({
-      id: certificate.id,
-      projectId: currentProject.id
+      id: certificate.id
     });
 
     createNotification({
@@ -104,7 +103,7 @@ const Page = () => {
 
     handlePopUpClose("deleteCertificate");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
       params: {
         orgId: currentOrg.id,
         projectId
@@ -139,7 +138,6 @@ const Page = () => {
       try {
         await downloadCertPkcs12({
           certificateId: certId,
-          projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias
         });
@@ -175,11 +173,10 @@ const Page = () => {
     !caType || caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
 
   const handleDisableAutoRenewal = async () => {
-    if (!currentProject?.slug || !certificate) return;
+    if (!certificate) return;
 
     await updateRenewalConfig({
       certificateId: certificate.id,
-      projectSlug: currentProject.slug,
       enableAutoRenewal: false
     });
 
@@ -206,7 +203,7 @@ const Page = () => {
             isAllowed ? (
               <div className="mx-auto mb-6 w-full max-w-8xl">
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
                   params={{
                     orgId: currentOrg.id,
                     projectId

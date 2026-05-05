@@ -100,6 +100,7 @@ export const MemberRoleDetailsSection = ({
     const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
     await updateUserWorkspaceRole({
       projectId,
+      projectType: currentProject?.type,
       roles: updatedRoles.map(
         ({
           role,

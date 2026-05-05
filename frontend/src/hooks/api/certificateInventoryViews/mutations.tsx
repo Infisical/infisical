@@ -14,21 +14,15 @@ export const useCreateCertificateInventoryView = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      name,
-      filters,
-      columns,
-      isShared
-    }: TCreateInventoryViewDTO) => {
+    mutationFn: async ({ name, filters, columns, isShared }: TCreateInventoryViewDTO) => {
       const { data } = await apiRequest.post<{ view: TCertificateInventoryView }>(
-        `/api/v1/projects/${projectId}/certificate-inventory-views`,
+        "/api/v1/cert-manager/certificate-inventory-views",
         { name, filters, columns, isShared }
       );
       return data.view;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list(projectId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list() });
     }
   });
 };
@@ -37,22 +31,15 @@ export const useUpdateCertificateInventoryView = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      viewId,
-      name,
-      filters,
-      columns,
-      isShared
-    }: TUpdateInventoryViewDTO) => {
+    mutationFn: async ({ viewId, name, filters, columns, isShared }: TUpdateInventoryViewDTO) => {
       const { data } = await apiRequest.patch<{ view: TCertificateInventoryView }>(
-        `/api/v1/projects/${projectId}/certificate-inventory-views/${viewId}`,
+        `/api/v1/cert-manager/certificate-inventory-views/${viewId}`,
         { name, filters, columns, isShared }
       );
       return data.view;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list(projectId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list() });
     }
   });
 };
@@ -61,14 +48,14 @@ export const useDeleteCertificateInventoryView = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, viewId }: TDeleteInventoryViewDTO) => {
+    mutationFn: async ({ viewId }: TDeleteInventoryViewDTO) => {
       const { data } = await apiRequest.delete<{ view: TCertificateInventoryView }>(
-        `/api/v1/projects/${projectId}/certificate-inventory-views/${viewId}`
+        `/api/v1/cert-manager/certificate-inventory-views/${viewId}`
       );
       return data.view;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list(projectId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list() });
     }
   });
 };

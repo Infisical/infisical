@@ -55,7 +55,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
 
   const isUpdate = Boolean(identity);
 
-  const { data: roles } = useGetProjectRoles(currentProject.id);
+  const { data: roles } = useGetProjectRoles(currentProject.id, currentProject.type);
 
   const { mutateAsync: createMutateAsync } = useCreateProjectIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
@@ -109,7 +109,8 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           await updateMembershipMutateAsync({
             roles: [{ role: role.slug }],
             identityId: createdId,
-            projectId: currentProject.id
+            projectId: currentProject.id,
+            projectType: currentProject.type
           });
         }
 

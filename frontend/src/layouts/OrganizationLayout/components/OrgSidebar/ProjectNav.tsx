@@ -19,7 +19,6 @@ import {
   CERT_CERTIFICATES_SUBMENU,
   CERT_DISCOVERY_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
-  CERT_SETTINGS_SUBMENU,
   INTEGRATIONS_SUBMENU,
   MCP_SUBMENU,
   PAM_APPROVALS_SUBMENU,
@@ -52,8 +51,12 @@ const PROJECT_NAV_COMPONENT: Record<
 export const ProjectNav = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const { pathname } = useLocation();
+  const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
+  const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
+  const hasApplicationContext = Boolean(
+    (locationSearch as { applicationName?: string })?.applicationName
+  );
   const { submenu: smApprovalsSubmenu, pendingRequestsCount: smPendingCount } =
     useApprovalSubmenu();
   const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
@@ -75,6 +78,7 @@ export const ProjectNav = () => {
   const isOnCertApprovals = isCertManager && pathname.includes("/approvals");
 
   const getInitialProjectSubmenu = (): Submenu | null => {
+    if (isLegacyView || hasApplicationContext) return null;
     if (isOnAccessControl)
       return currentProject.type === ProjectType.SecretManager
         ? SECRET_MANAGER_ACCESS_CONTROL_SUBMENU
@@ -84,7 +88,6 @@ export const ProjectNav = () => {
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
-    if (isOnProjectSettings && isCertManager) return CERT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.PAM) return PAM_SETTINGS_SUBMENU;

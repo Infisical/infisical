@@ -108,6 +108,15 @@ const ProjectSelectInner = () => {
     window.location.assign(urlInstance);
   };
 
+  if (currentWorkspace.type === ProjectType.CertificateManager) {
+    return (
+      <div className="mr-2 flex min-w-16 items-center gap-2 pr-1 pl-1 text-sm text-white">
+        <ProjectIcon className="size-[14px] shrink-0 text-project" />
+        <span className="truncate">Certificate Manager</span>
+      </div>
+    );
+  }
+
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
       <Popover open={open} onOpenChange={setOpen}>

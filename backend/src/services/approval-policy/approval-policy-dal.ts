@@ -61,12 +61,24 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectId = async (policyType: ApprovalPolicyType, projectId: string) => {
+  const findByProjectId = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    options?: { applicationId?: string | null }
+  ) => {
     try {
       const dbInstance = db.replicaNode();
-      const policies = await dbInstance(TableName.ApprovalPolicies)
+      const baseQuery = dbInstance(TableName.ApprovalPolicies)
         .where({ type: policyType, projectId })
         .orderBy("id", "asc");
+
+      if (options?.applicationId === null) {
+        void baseQuery.whereNull("applicationId");
+      } else if (typeof options?.applicationId === "string") {
+        void baseQuery.where({ applicationId: options.applicationId });
+      }
+
+      const policies = await baseQuery;
 
       if (!policies.length) {
         return [];

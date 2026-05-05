@@ -23,6 +23,7 @@ import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 type Props = {
   popUp: UsePopUpState<["policy"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["policy"]>, state?: boolean) => void;
+  applicationId?: string;
 };
 
 const FORM_STEPS: { name: string; key: string; fields: (keyof TPolicyForm)[] }[] = [
@@ -35,7 +36,7 @@ const FORM_STEPS: { name: string; key: string; fields: (keyof TPolicyForm)[] }[]
   { name: "Review", key: "review", fields: [] }
 ];
 
-export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) => {
   const { currentProject } = useProject();
   const isOpen = popUp?.policy?.isOpen;
   const policyData = popUp?.policy?.data as
@@ -120,6 +121,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         await createPolicy({
           policyType: ApprovalPolicyType.CertRequest,
           projectId: currentProject.id,
+          ...(applicationId && { applicationId }),
           ...data
         });
         createNotification({
@@ -214,7 +216,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
               </Tab.List>
               <Tab.Panels>
                 <Tab.Panel>
-                  <PolicyDetailsStep />
+                  <PolicyDetailsStep applicationId={applicationId} />
                 </Tab.Panel>
                 <Tab.Panel>
                   <PolicyApprovalSteps />

@@ -18,7 +18,11 @@ export const BaseCertificateAuthoritySchema = CertificateAuthoritiesSchema.pick(
 export const GenericCreateCertificateAuthorityFieldsSchema = (type: CaType) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(CertificateAuthorities.CREATE(type).name),
-    projectId: z.string().uuid("Project ID must be valid").describe(CertificateAuthorities.CREATE(type).projectId),
+    projectId: z
+      .string()
+      .uuid("Project ID must be valid")
+      .optional()
+      .describe(CertificateAuthorities.CREATE(type).projectId),
     status: z.nativeEnum(CaStatus).describe(CertificateAuthorities.CREATE(type).status)
   });
 

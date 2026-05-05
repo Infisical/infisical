@@ -54,16 +54,19 @@ export interface TParsedScepMessage {
 
 export type TGetCaCapsDTO = {
   profileId: string;
+  applicationId?: string;
 };
 
 export type TGetCaCertDTO = {
   profileId: string;
+  applicationId?: string;
 };
 
 export type THandlePkiOperationDTO = {
   profileId: string;
   message: Buffer;
   clientIp: string;
+  applicationId?: string;
 };
 
 export type TGenerateDynamicChallengeDTO = {

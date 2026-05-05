@@ -22,6 +22,7 @@ import {
   SubOrgIcon
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 
 import {
   getOrgSettingsSubmenu,
@@ -37,8 +38,10 @@ import type { OrgNavItem, Submenu } from "./types";
 const OrgNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
   const { currentOrg, isRootOrganization, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
   const { pathname } = useLocation();
   const orgId = currentOrg.id;
+  const hasMultipleCertManagerInstances = (certManagerInstance?.projects.length ?? 0) >= 2;
 
   const items: OrgNavItem[] = [
     {
@@ -99,7 +102,8 @@ const OrgNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }
       isActive: pathname.startsWith(`/organizations/${orgId}/settings`),
       submenu: getOrgSettingsSubmenu({
         isSubOrganization,
-        hasSubOrganization: Boolean(subscription?.subOrganization)
+        hasSubOrganization: Boolean(subscription?.subOrganization),
+        hasMultipleCertManagerInstances
       })
     }
   ];
@@ -147,9 +151,11 @@ const OrgNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }
 export const OrgNavWrapper = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const orgId = currentOrg.id;
+  const hasMultipleCertManagerInstances = (certManagerInstance?.projects.length ?? 0) >= 2;
 
   const isOnAccessControl =
     pathname.startsWith(`/organizations/${orgId}/access-management`) ||
@@ -163,7 +169,8 @@ export const OrgNavWrapper = () => {
     if (isOnSettings)
       return getOrgSettingsSubmenu({
         isSubOrganization,
-        hasSubOrganization: Boolean(subscription?.subOrganization)
+        hasSubOrganization: Boolean(subscription?.subOrganization),
+        hasMultipleCertManagerInstances
       });
     if (isOnSecretSharing) return getSecretSharingSubmenu({ isSubOrganization });
     if (isOnNetworking) return NETWORKING_SUBMENU;

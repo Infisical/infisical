@@ -5,7 +5,7 @@ import { z } from "zod";
 import { SettingsPage } from "./SettingsPage";
 
 const settingsPageSearchSchema = z.object({
-  selectedTab: z.string().optional().default("general")
+  selectedTab: z.string().optional().default("certificate-authorities")
 });
 
 export const Route = createFileRoute(

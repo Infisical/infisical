@@ -59,7 +59,7 @@ export const Page = () => {
   } = useUser();
 
   const { data: membershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetWorkspaceUserDetails(projectId, membershipId);
+    useGetWorkspaceUserDetails(projectId, membershipId, currentProject?.type);
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const assumePrivileges = useAssumeProjectPrivileges();
@@ -99,6 +99,7 @@ export const Page = () => {
 
     await removeUserFromWorkspace({
       projectId,
+      projectType: currentProject?.type,
       usernames: [membershipDetails?.user?.username],
       orgId: currentOrg.id
     });

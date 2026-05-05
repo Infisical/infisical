@@ -27,7 +27,6 @@ import {
   Shield,
   ShieldCheck,
   ShieldUser,
-  Trash2,
   User,
   Users,
   Video
@@ -83,6 +82,24 @@ export const SECRET_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
   ]
 };
 
+export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
+  title: "Access Control",
+  pathSuffix: "access-management",
+  defaultTab: "members",
+  activeMatch: /\/members\/|\/groups\/|\/identities\/|\/roles\//,
+  items: [
+    { label: "Users", icon: User, tab: "members", activeMatch: /\/members\// },
+    { label: "Groups", icon: Users, tab: "groups", activeMatch: /\/groups\// },
+    {
+      label: "Machine Identities",
+      icon: HardDrive,
+      tab: "identities",
+      activeMatch: /\/identities\//
+    },
+    { label: "Roles", icon: IdCardLanyard, tab: "roles", activeMatch: /\/roles\// }
+  ]
+};
+
 export const SM_SETTINGS_SUBMENU: Submenu = {
   title: "Settings",
   pathSuffix: "settings",
@@ -112,10 +129,12 @@ export const INTEGRATIONS_SUBMENU: Submenu = {
 
 export const getOrgSettingsSubmenu = ({
   isSubOrganization,
-  hasSubOrganization
+  hasSubOrganization,
+  hasMultipleCertManagerInstances
 }: {
   isSubOrganization: boolean;
   hasSubOrganization: boolean;
+  hasMultipleCertManagerInstances: boolean;
 }): Submenu => ({
   title: "Settings",
   pathSuffix: "settings",
@@ -135,6 +154,9 @@ export const getOrgSettingsSubmenu = ({
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
     { label: "Product Enforcements", icon: ClipboardList, tab: "product-enforcements" },
+    ...(hasMultipleCertManagerInstances
+      ? [{ label: "Certificate Manager", icon: ShieldCheck, tab: "cert-manager" }]
+      : []),
     ...(!isSubOrganization && hasSubOrganization
       ? [{ label: "Sub Organizations", icon: SubOrgIcon, tab: "tab-sub-organizations" }]
       : [])
@@ -197,16 +219,6 @@ export const CERT_APPROVALS_SUBMENU: Submenu = {
   items: [
     { label: "Requests", icon: FileCheck, tab: "requests" },
     { label: "Policies", icon: Shield, tab: "policies" }
-  ]
-};
-
-export const CERT_SETTINGS_SUBMENU: Submenu = {
-  title: "Settings",
-  pathSuffix: "settings",
-  defaultTab: "general",
-  items: [
-    { label: "General", icon: Cog, tab: "general" },
-    { label: "Certificate Cleanup", icon: Trash2, tab: "certificate-cleanup" }
   ]
 };
 

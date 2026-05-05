@@ -39,6 +39,8 @@ export * from "./organization";
 export * from "./orgIdentity";
 export * from "./orgIdentityMembership";
 export * from "./pkiAlerts";
+export * from "./pkiAlertsV2";
+export * from "./pkiApplications";
 export * from "./pkiCollections";
 export * from "./pkiDiscovery";
 export * from "./pkiSubscriber";

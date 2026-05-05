@@ -39,6 +39,7 @@ import {
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -145,7 +146,7 @@ const validateExternalConfigs = async (
   validateTemplateByExternalCaType(externalCa.type as CaType, externalConfigs);
 };
 
-const generateAndEncryptAcmeEabSecret = async (
+export const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
@@ -175,7 +176,7 @@ const generateAndEncryptAcmeEabSecret = async (
   }
 };
 
-const validateAndEncryptPemCaChain = async (
+export const validateAndEncryptPemCaChain = async (
   caChain: string,
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
@@ -212,7 +213,7 @@ const validateAndEncryptPemCaChain = async (
   }
 };
 
-const decryptCaChain = async (
+export const decryptCaChain = async (
   encryptedCaChain: Buffer,
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey">,
@@ -266,6 +267,7 @@ type TCertificateProfileServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOne">;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -309,7 +311,8 @@ export const certificateProfileServiceFactory = ({
   permissionService,
   kmsService,
   projectDAL,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  pkiApplicationProfileDAL
 }: TCertificateProfileServiceFactoryDep) => {
   const createProfile = async ({
     actor,
@@ -399,28 +402,12 @@ export const certificateProfileServiceFactory = ({
       externalCertificateAuthorityDAL
     );
 
-    // Validate enrollment configuration requirements
-    if (data.enrollmentType === EnrollmentType.EST && !data.estConfig) {
-      throw new ForbiddenRequestError({
-        message: "EST enrollment requires EST configuration"
-      });
-    }
-    if (data.enrollmentType === EnrollmentType.API && !data.apiConfig) {
-      throw new ForbiddenRequestError({
-        message: "API enrollment requires API configuration"
-      });
-    }
     if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
       if (data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification) {
         throw new ForbiddenRequestError({
           message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
         });
       }
-    }
-    if (data.enrollmentType === EnrollmentType.SCEP && !data.scepConfig) {
-      throw new ForbiddenRequestError({
-        message: "SCEP enrollment requires SCEP configuration"
-      });
     }
 
     // Perform crypto operations before the transaction to avoid holding DB connections
@@ -1320,6 +1307,7 @@ export const certificateProfileServiceFactory = ({
     params:
       | {
           profileId: string;
+          applicationId?: string;
           isInternal: true;
         }
       | {
@@ -1328,10 +1316,11 @@ export const certificateProfileServiceFactory = ({
           actorAuthMethod: ActorAuthMethod;
           actorOrgId: string | undefined;
           profileId: string;
+          applicationId?: string;
           isInternal?: false;
         }
   ) => {
-    const { profileId, isInternal = false } = params;
+    const { profileId, applicationId, isInternal = false } = params;
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
@@ -1366,6 +1355,31 @@ export const certificateProfileServiceFactory = ({
       throw new ForbiddenRequestError({
         message: "Profile is not configured for EST enrollment"
       });
+    }
+
+    if (applicationId && pkiApplicationProfileDAL) {
+      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      if (!junction) {
+        throw new NotFoundError({
+          message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+        });
+      }
+      if (!junction.estConfigId) {
+        throw new NotFoundError({
+          message: "EST configuration not found for this Application/Profile pair."
+        });
+      }
+      const estConfig = await estEnrollmentConfigDAL.findById(junction.estConfigId);
+      if (!estConfig) {
+        throw new NotFoundError({ message: "EST configuration not found." });
+      }
+      return {
+        orgId: profile.projectId,
+        isEnabled: true,
+        caChain: estConfig.encryptedCaChain ?? null,
+        disableBootstrapCertValidation: estConfig.disableBootstrapCaValidation ?? false,
+        hashedPassphrase: estConfig.hashedPassphrase
+      };
     }
 
     if (!profile.estConfig) {

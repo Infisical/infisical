@@ -85,6 +85,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     notAfterTo?: Date;
     notBeforeFrom?: Date;
     notBeforeTo?: Date;
+    applicationId?: string;
   };
 
   const applyInventoryFilters = (
@@ -220,6 +221,10 @@ export const certificateDALFactory = (db: TDbClient) => {
 
     if (filters.notBeforeTo) {
       q = q.andWhere(`${TableName.Certificate}.notBefore`, "<=", filters.notBeforeTo);
+    }
+
+    if (filters.applicationId) {
+      q = q.andWhere(`${TableName.Certificate}.applicationId`, filters.applicationId);
     }
 
     return q;

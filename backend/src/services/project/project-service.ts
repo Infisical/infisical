@@ -1230,6 +1230,7 @@ export const projectServiceFactory = ({
     notAfterTo,
     notBeforeFrom,
     notBeforeTo,
+    applicationId,
     sortBy,
     sortOrder,
     actorId,
@@ -1277,7 +1278,8 @@ export const projectServiceFactory = ({
       ...(notAfterFrom && { notAfterFrom }),
       ...(notAfterTo && { notAfterTo }),
       ...(notBeforeFrom && { notBeforeFrom }),
-      ...(notBeforeTo && { notBeforeTo })
+      ...(notBeforeTo && { notBeforeTo }),
+      ...(applicationId && { applicationId })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
@@ -1329,7 +1331,8 @@ export const projectServiceFactory = ({
       ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
       ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
       ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
-      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo })
+      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo }),
+      ...(regularFilters.applicationId && { applicationId: regularFilters.applicationId })
     };
 
     const count = forPkiSync

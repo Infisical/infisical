@@ -242,20 +242,56 @@ export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
 export const UpdatePkiAlertV2Schema = BasePkiAlertV2Schema.partial();
 export type TUpdatePkiAlertV2 = z.infer<typeof UpdatePkiAlertV2Schema>;
 
+export const PkiAlertV2ResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  eventType: z.nativeEnum(PkiAlertEventType),
+  alertBefore: z.string().optional(),
+  filters: z.array(PkiFilterRuleSchema),
+  enabled: z.boolean(),
+  projectId: z.string(),
+  applicationId: z.string().uuid().nullable().optional(),
+  notificationConfig: NotificationConfigSchema.nullable(),
+  channels: z.array(
+    z.object({
+      id: z.string().uuid(),
+      channelType: z.nativeEnum(PkiAlertChannelType),
+      config: z.record(z.any()),
+      enabled: z.boolean(),
+      createdAt: z.date(),
+      updatedAt: z.date()
+    })
+  ),
+  lastRun: z
+    .object({
+      timestamp: z.date(),
+      status: z.nativeEnum(PkiAlertRunStatus),
+      error: z.string().nullable()
+    })
+    .nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
 export type TCreateAlertV2DTO = TGenericPermission & {
   projectId: string;
+  applicationId?: string;
 } & TCreatePkiAlertV2;
 
 export type TUpdateAlertV2DTO = TGenericPermission & {
   alertId: string;
+  applicationId?: string;
 } & TUpdatePkiAlertV2;
 
 export type TGetAlertV2DTO = TGenericPermission & {
   alertId: string;
+  applicationId?: string;
 };
 
 export type TDeleteAlertV2DTO = TGenericPermission & {
   alertId: string;
+  applicationId?: string;
 };
 
 export type TListAlertsV2DTO = TGenericPermission & {
@@ -265,6 +301,7 @@ export type TListAlertsV2DTO = TGenericPermission & {
   enabled?: boolean;
   limit?: number;
   offset?: number;
+  applicationId?: string | null;
 };
 
 export type TListMatchingCertificatesDTO = TGenericPermission & {
