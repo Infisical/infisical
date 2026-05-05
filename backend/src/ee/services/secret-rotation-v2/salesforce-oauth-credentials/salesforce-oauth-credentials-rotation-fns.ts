@@ -82,11 +82,6 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
           "Cannot rotate the consumer secret of the External Client App that this Salesforce connection authenticates with. Choose a different app or use a separate Salesforce connection."
       });
     }
-    if (consumersData.consumers.length > 1) {
-      logger.warn(
-        `Salesforce app [appId=${appId}] has ${consumersData.consumers.length} consumers; rotating the first one only — assign each consumer to its own External Client App if all need rotation`
-      );
-    }
 
     const { data: stagedData } = await request.request<TSalesforceStagedCredentialsResponse>({
       method: "POST",
@@ -152,17 +147,14 @@ export const salesforceOauthCredentialsRotationFactory: TRotationFactory<
 
     // policy name is the app name with _plcy suffix
     const fullName = `${appName}_plcy`;
+    const result = await conn.metadata.update("ExtlClntAppConfigurablePolicies", {
+      fullName,
+      externalClientApplication: appName,
+      isOauthPluginEnabled: false
+    });
 
-    logger.info({ appName }, "Disabling OAuth on Salesforce External Client App");
-    const result = await conn.metadata.update("ExtlClntAppConfigurablePolicies", [
-      {
-        fullName,
-        externalClientApplication: appName,
-        isOauthPluginEnabled: false
-      }
-    ]);
-
-    if (result.length === 0 || result[0].success === false) {
+    if (!result.success || result.errors.length > 0) {
+      logger.error({ result }, "Failed to disable OAuth on Salesforce External Client App");
       throw new BadRequestError({
         message: `Failed to disable OAuth on Salesforce External Client App "${appName}": unknown error`
       });

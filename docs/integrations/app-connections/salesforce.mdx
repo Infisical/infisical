@@ -21,8 +21,8 @@ Infisical supports the OAuth 2.0 [Client Credentials](https://help.salesforce.co
     <Step title="Enable OAuth Settings">
         Under **API (Enable OAuth Settings)**:
         - Check **Enable OAuth**.
-        - Provide a callback URL (any valid HTTPS URL — it is not used for the Client Credentials flow).
-        - Add the OAuth scopes your integration requires (for secret rotation, you must select **Manage user data via APIs (api)** and **Full access (full)**).
+        - Provide a callback URL (this is not used for the Client Credentials flow).
+        - Add the OAuth scopes your integration requires. For secret rotation, you must select **Manage user data via APIs (api)** and **Full access (full)**.
         - Check **Enable Client Credentials Flow** and **Enable Token Exchange Flow** (along with the sub-option **Require secret for Token Exchange Flow**).
 
         ![OAuth Scopes and Flow Enablement](/images/app-connections/salesforce/oauth-scopes.png)
