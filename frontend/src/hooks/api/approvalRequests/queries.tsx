@@ -28,7 +28,8 @@ export const approvalRequestQuery = {
           requests: TApprovalRequest[];
         }>(`/api/v1/approval-policies/${params.policyType}/requests`, {
           params: {
-            projectId: params.projectId
+            projectId: params.projectId,
+            ...(params.applicationId ? { applicationId: params.applicationId } : {})
           }
         });
         return data.requests;

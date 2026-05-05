@@ -25,18 +25,18 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
-  useGetWorkspaceUsers,
-  useListProjectIdentityMemberships,
-  useListWorkspaceGroups
-} from "@app/hooks/api";
+  useGetIdentityMembershipOrgs,
+  useGetOrganizationGroups
+} from "@app/hooks/api/organization";
 import { TPkiApplicationMember, useAddPkiApplicationMember } from "@app/hooks/api/pkiApplications";
+import { useGetOrgUsers } from "@app/hooks/api/users";
 
 type ActorType = "user" | "identity" | "group";
 
 type Props = {
   applicationId: string;
-  projectId: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   existingMembers: TPkiApplicationMember[];
@@ -50,20 +50,23 @@ const PLACEHOLDER: Record<ActorType, string> = {
 
 export const AddApplicationMemberModal = ({
   applicationId,
-  projectId,
   isOpen,
   onOpenChange,
   existingMembers
 }: Props) => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id ?? "";
   const [type, setType] = useState<ActorType>("user");
   const [search, setSearch] = useState("");
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
   const [role, setRole] = useState("operator");
   const addMember = useAddPkiApplicationMember();
 
-  const usersQuery = useGetWorkspaceUsers(projectId);
-  const identitiesQuery = useListProjectIdentityMemberships({ projectId, limit: 100 });
-  const groupsQuery = useListWorkspaceGroups(projectId);
+  // Cert Manager projects don't use project-level memberships, so eligible
+  // members are scoped to the organization rather than the project.
+  const usersQuery = useGetOrgUsers(orgId);
+  const identitiesQuery = useGetIdentityMembershipOrgs({ organizationId: orgId, limit: 100 });
+  const groupsQuery = useGetOrganizationGroups(orgId);
 
   const taken = useMemo(() => {
     const set = new Set<string>();
@@ -113,11 +116,11 @@ export const AddApplicationMemberModal = ({
 
     const groups = groupsQuery.data ?? [];
     return groups
-      .filter((gm) => !taken.has(`group:${gm.group.id}`))
-      .map((gm) => ({
-        id: gm.group.id,
-        primary: gm.group.name,
-        secondary: gm.group.slug
+      .filter((g) => !taken.has(`group:${g.id}`))
+      .map((g) => ({
+        id: g.id,
+        primary: g.name,
+        secondary: g.slug
       }))
       .filter(
         (i) =>

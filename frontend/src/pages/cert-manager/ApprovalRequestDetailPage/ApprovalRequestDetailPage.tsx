@@ -95,7 +95,7 @@ const CodeSigningDetailsSection = ({
 
 const PageContent = () => {
   const { approvalRequestId } = useParams({ from: ROUTE_ID });
-  const { policyType } = useSearch({ from: ROUTE_ID });
+  const { policyType, applicationName, from } = useSearch({ from: ROUTE_ID });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { user: currentUser } = useUser();
@@ -127,6 +127,19 @@ const PageContent = () => {
             text: "Successfully cancelled request",
             type: "success"
           });
+          if (applicationName) {
+            navigate({
+              to: `/organizations/${currentProject.orgId}/projects/cert-manager/${currentProject.id}/applications/${applicationName}` as never,
+              search: { selectedTab: "requests" } as never
+            } as never);
+            return;
+          }
+          if (from === "root-requests") {
+            navigate({
+              to: `/organizations/${currentProject.orgId}/projects/cert-manager/${currentProject.id}/requests` as never
+            } as never);
+            return;
+          }
           navigate({
             to: isCodeSigning
               ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
@@ -240,22 +253,60 @@ const PageContent = () => {
     return <CertificateDetailsSection request={request} />;
   };
 
+  const renderBackLink = () => {
+    const linkClass =
+      "mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400 hover:text-mineshaft-200";
+
+    if (applicationName) {
+      return (
+        <Link
+          to={
+            `/organizations/${currentOrg.id}/projects/cert-manager/${currentProject.id}/applications/${applicationName}` as never
+          }
+          search={{ selectedTab: "requests" } as never}
+          className={linkClass}
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          {applicationName}
+        </Link>
+      );
+    }
+
+    if (from === "root-requests") {
+      return (
+        <Link
+          to={
+            `/organizations/${currentOrg.id}/projects/cert-manager/${currentProject.id}/requests` as never
+          }
+          className={linkClass}
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          Requests
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        to={
+          isCodeSigning
+            ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
+            : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+        }
+        params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+        search={isCodeSigning ? { tab: "approvals" } : { section: "certificates" }}
+        className={linkClass}
+      >
+        <FontAwesomeIcon icon={faChevronLeft} />
+        {isCodeSigning ? "Signing Requests" : "Approvals List"}
+      </Link>
+    );
+  };
+
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Link
-          to={
-            isCodeSigning
-              ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-              : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
-          }
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-          search={isCodeSigning ? { tab: "approvals" } : { section: "certificates" }}
-          className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400 hover:text-mineshaft-200"
-        >
-          <FontAwesomeIcon icon={faChevronLeft} />
-          {isCodeSigning ? "Signing Requests" : "Approvals List"}
-        </Link>
+        {renderBackLink()}
 
         <div className="mb-6 flex items-start justify-between">
           <div>{renderTitle()}</div>

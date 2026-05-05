@@ -283,7 +283,19 @@ export const RequestsPage = () => {
                                   };
 
                                   return (
-                                    <TableRow key={r.id}>
+                                    <TableRow
+                                      key={r.id}
+                                      className="cursor-pointer"
+                                      onClick={() =>
+                                        navigate({
+                                          to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
+                                          search: {
+                                            policyType: ApprovalPolicyType.CertRequest,
+                                            from: "root-requests"
+                                          } as never
+                                        } as never)
+                                      }
+                                    >
                                       <TableCell isTruncatable className="font-mono">
                                         {cn}
                                       </TableCell>
@@ -295,6 +307,7 @@ export const RequestsPage = () => {
                                               `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
                                             }
                                             className="text-foreground hover:text-project"
+                                            onClick={(e) => e.stopPropagation()}
                                           >
                                             {app.name}
                                           </Link>

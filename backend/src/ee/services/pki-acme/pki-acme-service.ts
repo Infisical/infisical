@@ -53,6 +53,7 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -154,6 +155,7 @@ type TPkiAcmeServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOne">;
+  acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -179,7 +181,8 @@ export const pkiAcmeServiceFactory = ({
   approvalPolicyDAL,
   approvalPolicyService,
   certificateRequestDAL,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  acmeEnrollmentConfigDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -469,6 +472,13 @@ export const pkiAcmeServiceFactory = ({
     const profile = await validateAcmeProfile(profileId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
 
+    const junctionRow = applicationId ? await pkiApplicationProfileDAL.findOne(applicationId, profile.id) : null;
+    const junctionAcmeConfig = junctionRow?.acmeConfigId
+      ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
+      : null;
+    const effectiveAcmeConfig = applicationId ? junctionAcmeConfig : (profile.acmeConfig ?? null);
+    const expectedEabKid = applicationId ? junctionAcmeConfig?.id : profile.id;
+
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
       profileId,
       alg,
@@ -483,17 +493,17 @@ export const pkiAcmeServiceFactory = ({
         body: {
           status: "valid",
           contact: existingAccount.emails,
-          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`, applicationId)
         },
         headers: {
-          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
-          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`, applicationId),
+          Link: `<${buildUrl(profile.id, "/directory", applicationId)}>;rel="index"`
         }
       };
     }
 
     // Check if EAB is required for this profile (EAB is required by default unless skipEabBinding is true)
-    const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+    const skipEabBinding = effectiveAcmeConfig?.skipEabBinding ?? false;
 
     // Note: We only check EAB for the new account request. This is a very special case for cert-manager.
     // There's a bug in their ACME client implementation, they don't take the account KID value they have
@@ -534,16 +544,19 @@ export const pkiAcmeServiceFactory = ({
         body: {
           status: "valid",
           contact: existingAccount.emails,
-          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`, applicationId)
         },
         headers: {
-          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
-          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`, applicationId),
+          Link: `<${buildUrl(profile.id, "/directory", applicationId)}>;rel="index"`
         }
       };
     }
 
     if (externalAccountBinding && !skipEabBinding) {
+      if (!effectiveAcmeConfig?.encryptedEabSecret) {
+        throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
+      }
       const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
         projectId: profile.projectId,
         projectDAL,
@@ -552,7 +565,7 @@ export const pkiAcmeServiceFactory = ({
       const kmsDecryptor = await kmsService.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
-      const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
+      const eabSecret = await kmsDecryptor({ cipherTextBlob: effectiveAcmeConfig.encryptedEabSecret });
       const { eabPayload, eabProtectedHeader } = await (async () => {
         try {
           const result = await flattenedVerify(externalAccountBinding, eabSecret);
@@ -572,14 +585,14 @@ export const pkiAcmeServiceFactory = ({
           message: "Invalid algorithm for external account binding JWS payload"
         });
       }
-      // Make sure the KID in the EAB payload matches the profile ID
-      if (eabKid !== profile.id) {
+      // Make sure the KID in the EAB payload matches the expected scope (profile or junction)
+      if (eabKid !== expectedEabKid) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding KID mismatch" });
       }
 
       // Make sure the URL matches the expected URL
       const url = eabProtectedHeader!.url!;
-      if (url !== buildUrl(profile.id, "/new-account")) {
+      if (url !== buildUrl(profile.id, "/new-account", applicationId)) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding URL mismatch" });
       }
 

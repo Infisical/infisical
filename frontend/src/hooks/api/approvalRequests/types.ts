@@ -129,6 +129,7 @@ export type TGetApprovalRequestByIdDTO = {
 export type TListApprovalRequestsDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
+  applicationId?: string;
 };
 
 export type TApproveApprovalRequestDTO = {

@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import {
   ActionProjectType,
   ProjectMembershipRole,
+  RESOURCE_SCOPE,
   ResourceType,
   TApprovalPolicies,
   TApprovalRequests
@@ -27,6 +28,7 @@ import { TCertificateRequestDALFactory } from "@app/services/certificate-request
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 
+import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import {
   TApprovalPolicyDALFactory,
@@ -77,6 +79,7 @@ type TApprovalPolicyServiceFactoryDep = {
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
   certificateApprovalService: TCertificateApprovalService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
 };
@@ -95,6 +98,7 @@ export const approvalPolicyServiceFactory = ({
   notificationService,
   permissionService,
   projectMembershipDAL,
+  membershipDAL,
   certificateApprovalService,
   certificateRequestDAL
 }: TApprovalPolicyServiceFactoryDep) => {
@@ -150,6 +154,38 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
+  const $verifyApplicationApproverMembership = async (
+    approvers: { type: ApproverType; id: string }[],
+    projectId: string,
+    applicationId: string
+  ) => {
+    const userIds = [...new Set(approvers.filter((a) => a.type === ApproverType.User).map((a) => a.id))];
+    const groupIds = [...new Set(approvers.filter((a) => a.type === ApproverType.Group).map((a) => a.id))];
+    if (userIds.length === 0 && groupIds.length === 0) return;
+
+    const memberships = await membershipDAL.find({
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      scopeResourceId: applicationId
+    });
+
+    const memberUserIds = new Set(memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id)));
+    const memberGroupIds = new Set(memberships.map((m) => m.actorGroupId).filter((id): id is string => Boolean(id)));
+
+    const usersNotInApp = userIds.filter((id) => !memberUserIds.has(id));
+    const groupsNotInApp = groupIds.filter((id) => !memberGroupIds.has(id));
+
+    if (usersNotInApp.length > 0 || groupsNotInApp.length > 0) {
+      const parts: string[] = [];
+      if (usersNotInApp.length > 0) parts.push(`users: ${usersNotInApp.join(", ")}`);
+      if (groupsNotInApp.length > 0) parts.push(`groups: ${groupsNotInApp.join(", ")}`);
+      throw new BadRequestError({
+        message: `Approvers must be members of the Application. Not in Application — ${parts.join("; ")}`
+      });
+    }
+  };
+
   const create = async (
     policyType: ApprovalPolicyType,
     {
@@ -166,11 +202,15 @@ export const approvalPolicyServiceFactory = ({
   ) => {
     await $assertCanManagePolicy(projectId, applicationId, actor, ResourcePermissionApprovalPolicyActions.Create);
 
-    const approverUserIds = steps
-      .flatMap((step) => step.approvers ?? [])
-      .filter((approver) => approver.type === ApproverType.User)
-      .map((approver) => approver.id);
-    await $verifyProjectUserMembership(approverUserIds, actor.orgId, projectId);
+    const allApprovers = steps.flatMap((step) => step.approvers ?? []);
+    if (applicationId) {
+      await $verifyApplicationApproverMembership(allApprovers, projectId, applicationId);
+    } else {
+      const approverUserIds = allApprovers
+        .filter((approver) => approver.type === ApproverType.User)
+        .map((approver) => approver.id);
+      await $verifyProjectUserMembership(approverUserIds, actor.orgId, projectId);
+    }
 
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
       const newPolicy = await approvalPolicyDAL.create(
@@ -301,12 +341,15 @@ export const approvalPolicyServiceFactory = ({
     }
 
     if (steps !== undefined) {
-      // Verify all users are part of project
-      const approverUserIds = steps
-        .flatMap((step) => step.approvers ?? [])
-        .filter((approver) => approver.type === ApproverType.User)
-        .map((approver) => approver.id);
-      await $verifyProjectUserMembership(approverUserIds, actor.orgId, policy.projectId);
+      const allApprovers = steps.flatMap((step) => step.approvers ?? []);
+      if (targetAppId) {
+        await $verifyApplicationApproverMembership(allApprovers, policy.projectId, targetAppId);
+      } else {
+        const approverUserIds = allApprovers
+          .filter((approver) => approver.type === ApproverType.User)
+          .map((approver) => approver.id);
+        await $verifyProjectUserMembership(approverUserIds, actor.orgId, policy.projectId);
+      }
     }
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {

@@ -2658,6 +2658,7 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     permissionService,
     projectMembershipDAL,
+    membershipDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
@@ -2784,7 +2785,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalPolicyService,
     certificateRequestDAL,
-    pkiApplicationProfileDAL
+    pkiApplicationProfileDAL,
+    acmeEnrollmentConfigDAL
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({

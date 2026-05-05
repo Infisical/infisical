@@ -101,7 +101,10 @@ export const ApplicationDetailsByIDPage = () => {
                 />
               </TabPanel>
               <TabPanel value="requests">
-                <ApplicationRequestsTab profiles={profiles} />
+                <ApplicationRequestsTab
+                  applicationId={application.id}
+                  applicationName={application.name}
+                />
               </TabPanel>
               <TabPanel value="syncs">
                 <ApplicationSyncsTab
@@ -111,11 +114,7 @@ export const ApplicationDetailsByIDPage = () => {
                 />
               </TabPanel>
               <TabPanel value="members">
-                <ApplicationMembersTab
-                  members={members}
-                  applicationId={application.id}
-                  projectId={projectId ?? ""}
-                />
+                <ApplicationMembersTab members={members} applicationId={application.id} />
               </TabPanel>
               <TabPanel value="settings">
                 <ApplicationSettingsTab application={application} profiles={profiles} />

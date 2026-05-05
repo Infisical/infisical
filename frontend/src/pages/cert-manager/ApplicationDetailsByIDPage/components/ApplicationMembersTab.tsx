@@ -45,7 +45,6 @@ import { AddApplicationMemberModal } from "./AddApplicationMemberModal";
 type Props = {
   members: TPkiApplicationMember[];
   applicationId: string;
-  projectId: string;
 };
 
 type ActorType = "user" | "identity" | "group";
@@ -72,7 +71,7 @@ const displaySecondary = (m: TPkiApplicationMember): string | null => {
   return null;
 };
 
-export const ApplicationMembersTab = ({ members, applicationId, projectId }: Props) => {
+export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
   const updateRole = useUpdatePkiApplicationMemberRole();
   const removeMember = useRemovePkiApplicationMember();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -189,7 +188,6 @@ export const ApplicationMembersTab = ({ members, applicationId, projectId }: Pro
 
       <AddApplicationMemberModal
         applicationId={applicationId}
-        projectId={projectId}
         isOpen={isAddOpen}
         onOpenChange={setIsAddOpen}
         existingMembers={members}
