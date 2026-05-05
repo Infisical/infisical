@@ -13,8 +13,8 @@ import {
   faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { CheckIcon } from "lucide-react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { CheckIcon, ChevronLeftIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -39,6 +39,7 @@ import {
 } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import {
+  getProjectDescription,
   getProjectHomePage,
   getProjectLottieIcon,
   getProjectTitle,
@@ -98,7 +99,6 @@ const ProjectTypeContent = ({
   projectType: ProjectType;
   orgId: string;
 }) => {
-  const navigate = useNavigate();
   const { subscription } = useSubscription();
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
@@ -134,24 +134,23 @@ const ProjectTypeContent = ({
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="flex items-center gap-2 px-6 pt-6 text-sm">
-        <button
-          type="button"
-          className="text-mineshaft-300 transition-colors hover:text-mineshaft-100"
-          onClick={() =>
-            navigate({
-              to: "/organizations/$orgId/projects",
-              params: { orgId }
-            })
-          }
-        >
-          Overview
-        </button>
-        <span className="text-mineshaft-500">/</span>
-        <span className="text-mineshaft-100">{typeTitle}</span>
-      </div>
-      <div className="px-6 pt-4 pb-2">
-        <h1 className="text-2xl font-medium text-white">{typeTitle}</h1>
+      <Link
+        to="/organizations/$orgId/projects"
+        params={{ orgId }}
+        className="mb-4 flex w-fit items-center gap-x-1 px-6 pt-6 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+      >
+        <ChevronLeftIcon size={16} />
+        Overview
+      </Link>
+      <div className="mb-10 px-6">
+        <h1 className="flex items-center text-2xl font-medium text-white underline decoration-project/90 underline-offset-4">
+          <Lottie
+            icon={getProjectLottieIcon(projectType)}
+            className="mr-3 mb-1 inline-block h-[26px] w-[26px]"
+          />
+          {typeTitle}
+        </h1>
+        <div className="mt-1.5 text-mineshaft-300">{getProjectDescription(projectType)}</div>
       </div>
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectsForType
