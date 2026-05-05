@@ -98,7 +98,7 @@ export const ProjectCategoryOverview = () => {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !isDisabled) handleTileClick(type);
             }}
-            className={`group relative h-auto cursor-pointer overflow-hidden transition-all duration-100 before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:bg-mineshaft-400 before:transition-colors before:content-[''] hover:bg-card/80 hover:before:bg-primary ${
+            className={`group relative h-auto cursor-pointer overflow-hidden p-7 transition-all duration-100 before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:bg-mineshaft-400 before:transition-colors before:content-[''] hover:bg-card/80 hover:before:bg-primary ${
               isDisabled ? "cursor-not-allowed opacity-40" : ""
             }`}
           >

@@ -4,7 +4,6 @@ import { Helmet } from "react-helmet";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDownAZ,
-  faArrowLeft,
   faArrowUpZA,
   faBorderAll,
   faList,
@@ -135,10 +134,10 @@ const ProjectTypeContent = ({
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mb-4 flex items-center gap-3 px-6 pt-6">
+      <div className="flex items-center gap-2 px-6 pt-6 text-sm">
         <button
           type="button"
-          className="flex items-center gap-2 text-sm text-mineshaft-300 transition-colors hover:text-mineshaft-100"
+          className="text-mineshaft-300 transition-colors hover:text-mineshaft-100"
           onClick={() =>
             navigate({
               to: "/organizations/$orgId/projects",
@@ -146,14 +145,13 @@ const ProjectTypeContent = ({
             })
           }
         >
-          <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
           Overview
         </button>
         <span className="text-mineshaft-500">/</span>
-        <div className="flex items-center gap-2">
-          <Lottie icon={getProjectLottieIcon(projectType)} className="h-5 w-5" />
-          <span className="text-lg font-semibold text-mineshaft-100">{typeTitle}</span>
-        </div>
+        <span className="text-mineshaft-100">{typeTitle}</span>
+      </div>
+      <div className="px-6 pt-4 pb-2">
+        <h1 className="text-2xl font-medium text-white">{typeTitle}</h1>
       </div>
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectsForType
