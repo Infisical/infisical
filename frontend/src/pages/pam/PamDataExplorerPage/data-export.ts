@@ -1,8 +1,13 @@
 export type ExportFormat = "csv" | "json";
 
+const FORMULA_PREFIXES = new Set(["=", "+", "-", "@"]);
+
 function escapeCsvField(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const str = typeof value === "object" ? JSON.stringify(value) : String(value);
+  let str = typeof value === "object" ? JSON.stringify(value) : String(value);
+  if (FORMULA_PREFIXES.has(str.charAt(0))) {
+    str = `'${str}`;
+  }
   if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
