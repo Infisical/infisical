@@ -33,7 +33,11 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectHomePage, getProjectLottieIcon } from "@app/helpers/project";
+import {
+  getProjectDescription,
+  getProjectHomePage,
+  getProjectLottieIcon
+} from "@app/helpers/project";
 import { useCreateWorkspace, useGetExternalKmsList, useGetUserProjects } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -56,9 +60,10 @@ type TAddProjectFormData = z.infer<typeof formSchema>;
 interface NewProjectModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  projectType?: ProjectType;
 }
 
-type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
+type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange" | "projectType">;
 
 const PROJECT_TYPE_MENU_ITEMS = [
   {
@@ -83,7 +88,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
   }
 ];
 
-const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
+const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProjectFormProps) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -107,7 +112,8 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       kmsKeyId: INTERNAL_KMS_KEY_ID,
-      template: InfisicalProjectTemplate.Default
+      template: InfisicalProjectTemplate.Default,
+      ...(fixedProjectType ? { type: fixedProjectType } : {})
     }
   });
 
@@ -177,42 +183,45 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
             </FormControl>
           )}
         />
-        <Controller
-          control={control}
-          name="type"
-          defaultValue={ProjectType.SecretManager}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Project Type"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              className="flex-1"
-            >
-              <div className="mt-2 grid grid-cols-3 gap-3">
-                {PROJECT_TYPE_MENU_ITEMS.map((el) => (
-                  <div
-                    key={el.value}
-                    className={twMerge(
-                      "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
-                      field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
-                    )}
-                    onClick={() => field.onChange(el.value)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        field.onChange(el.value);
-                      }
-                    }}
-                  >
-                    <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
-                    <div className="text-center text-xs">{el.label}</div>
-                  </div>
-                ))}
-              </div>
-            </FormControl>
-          )}
-        />
+        {!fixedProjectType && (
+          <Controller
+            control={control}
+            name="type"
+            defaultValue={ProjectType.SecretManager}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Project Type"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                className="flex-1"
+              >
+                <div className="mt-2 grid grid-cols-3 gap-3">
+                  {PROJECT_TYPE_MENU_ITEMS.map((el) => (
+                    <div
+                      key={el.value}
+                      className={twMerge(
+                        "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
+                        field.value === el.value &&
+                          "border-primary-400 bg-mineshaft-600 opacity-100"
+                      )}
+                      onClick={() => field.onChange(el.value)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          field.onChange(el.value);
+                        }
+                      }}
+                    >
+                      <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
+                      <div className="text-center text-xs">{el.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </FormControl>
+            )}
+          />
+        )}
         <Controller
           control={control}
           name="description"
@@ -339,14 +348,21 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   );
 };
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
+export const NewProjectModal: FC<NewProjectModalProps> = ({
+  isOpen,
+  onOpenChange,
+  projectType
+}) => {
+  const title = "Create a new project";
+
+  const subTitle = projectType
+    ? getProjectDescription(projectType)
+    : "This project will contain your secrets and configurations.";
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Create a new project"
-        subTitle="This project will contain your secrets and configurations."
-      >
-        <NewProjectForm onOpenChange={onOpenChange} />
+      <ModalContent title={title} subTitle={subTitle}>
+        <NewProjectForm onOpenChange={onOpenChange} projectType={projectType} />
       </ModalContent>
     </Modal>
   );
