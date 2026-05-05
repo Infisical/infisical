@@ -42,7 +42,16 @@ jobs:
           skyrampLicenseFile: ${{ secrets.SKYRAMP_LICENSE_FILE }}
           anthropicApiKey: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
           githubToken: ${{ steps.app-token.outputs.token }}
-          authTokenCommand: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
+          # Bootstrap a fresh super-admin in the freshly-spawned Infisical instance and
+          # echo the returned access token. The token is signed by this CI run's
+          # AUTH_SECRET, so it only works against this run's API (which is what TestBot
+          # hits at localhost:4000). Static cloud/local tokens cannot work here because
+          # every CI run spawns a fresh DB + AUTH_SECRET.
+          authTokenCommand: |
+            curl -sS -X POST http://localhost:4000/api/v1/admin/signup \
+              -H "Content-Type: application/json" \
+              -d '{"email":"testbot@skyramp.test","password":"Testbot1234!","firstName":"TestBot","lastName":"Skyramp"}' \
+              | jq -r .token
           targetSetupCommand: |
             set -ex
             cat > .env << 'ENVEOF'
