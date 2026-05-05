@@ -123,6 +123,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           profileId: z.string().uuid(),
+          applicationId: z.string().uuid().optional(),
           csr: z
             .string()
             .trim()
@@ -243,6 +244,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           profileId: requestBody.profileId,
+          applicationId: requestBody.applicationId,
           certificateOrder: certificateOrderObject,
           metadata,
           removeRootsFromChain: requestBody.removeRootsFromChain
@@ -277,6 +279,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           profileId: requestBody.profileId,
+          applicationId: requestBody.applicationId,
           csr,
           validity: { ttl: attributes?.ttl || "" },
           notBefore: attributes?.notBefore ? new Date(attributes.notBefore) : undefined,
@@ -345,6 +348,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         profileId: requestBody.profileId,
+        applicationId: requestBody.applicationId,
         certificateRequest: mappedCertificateRequest,
         metadata,
         removeRootsFromChain: requestBody.removeRootsFromChain

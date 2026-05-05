@@ -119,8 +119,8 @@ export const RequestsPage = () => {
 
   const { data: apps = [] } = useListPkiApplications();
   const appById = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; slug: string }>();
-    apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name, slug: a.slug }));
+    const map = new Map<string, { id: string; name: string }>();
+    apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
     return map;
   }, [apps]);
 
@@ -292,11 +292,11 @@ export const RequestsPage = () => {
                                         {app ? (
                                           <Link
                                             to={
-                                              `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.slug}` as never
+                                              `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
                                             }
                                             className="text-foreground hover:text-project"
                                           >
-                                            {app.slug}
+                                            {app.name}
                                           </Link>
                                         ) : (
                                           <span className="text-accent">—</span>

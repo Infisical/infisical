@@ -12,12 +12,12 @@ export type TPkiApplicationDALFactory = ReturnType<typeof pkiApplicationDALFacto
 export const pkiApplicationDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiApplication);
 
-  const findBySlugAndProjectId = async (slug: string, projectId: string, tx?: Knex) => {
+  const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
     try {
-      const row = await (tx || db.replicaNode())(TableName.PkiApplication).where({ slug, projectId }).first();
+      const row = await (tx || db.replicaNode())(TableName.PkiApplication).where({ name, projectId }).first();
       return row;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find pki application by slug and project id" });
+      throw new DatabaseError({ error, name: "Find pki application by name and project id" });
     }
   };
 
@@ -68,7 +68,6 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplication}.id`,
           `${TableName.PkiApplication}.projectId`,
           `${TableName.PkiApplication}.name`,
-          `${TableName.PkiApplication}.slug`,
           `${TableName.PkiApplication}.description`,
           `${TableName.PkiApplication}.createdAt`,
           `${TableName.PkiApplication}.updatedAt`,
@@ -84,7 +83,6 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
         query = query.where((qb) => {
           void qb
             .whereILike(`${TableName.PkiApplication}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.PkiApplication}.slug`, `%${search}%`)
             .orWhereILike(`${TableName.PkiApplication}.description`, `%${search}%`);
         });
       }
@@ -110,10 +108,7 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
       let query = (tx || db.replicaNode())(TableName.PkiApplication).where({ projectId });
       if (search) {
         query = query.where((qb) => {
-          void qb
-            .whereILike("name", `%${search}%`)
-            .orWhereILike("slug", `%${search}%`)
-            .orWhereILike("description", `%${search}%`);
+          void qb.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
       }
       if (applicationIds) {
@@ -128,7 +123,7 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
-    findBySlugAndProjectId,
+    findByNameAndProjectId,
     findByProjectId,
     countByProjectId
   };

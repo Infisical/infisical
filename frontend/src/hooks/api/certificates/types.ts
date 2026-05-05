@@ -122,6 +122,7 @@ export type TDownloadPkcs12DTO = {
 
 export type TUnifiedCertificateIssuanceDTO = {
   profileId: string;
+  applicationId?: string;
   csr?: string;
   attributes?: {
     commonName?: string | null;

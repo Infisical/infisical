@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
-  useGetPkiApplicationBySlug,
+  useGetPkiApplicationByName,
   useListPkiApplicationMembers,
   useListPkiApplicationProfiles
 } from "@app/hooks/api/pkiApplications";
@@ -26,7 +26,7 @@ export const ApplicationDetailsByIDPage = () => {
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
 
-  const { data: application, isPending } = useGetPkiApplicationBySlug(applicationName ?? "");
+  const { data: application, isPending } = useGetPkiApplicationByName(applicationName ?? "");
   const { data: profiles = [] } = useListPkiApplicationProfiles(application?.id ?? "");
   const { data: members = [] } = useListPkiApplicationMembers(application?.id ?? "");
 
@@ -62,7 +62,7 @@ export const ApplicationDetailsByIDPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${application.slug}`,
+                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${application.name}`,
                   search: { selectedTab: v } as never
                 } as never)
               }
@@ -106,7 +106,7 @@ export const ApplicationDetailsByIDPage = () => {
               <TabPanel value="syncs">
                 <ApplicationSyncsTab
                   applicationId={application.id}
-                  applicationName={application.slug}
+                  applicationName={application.name}
                   projectId={projectId ?? ""}
                 />
               </TabPanel>

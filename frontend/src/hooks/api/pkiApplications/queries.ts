@@ -15,7 +15,7 @@ export const pkiApplicationKeys = {
   all: ["pki-applications"] as const,
   list: (search?: string) => [...pkiApplicationKeys.all, "list", { search }] as const,
   byId: (applicationId: string) => [...pkiApplicationKeys.all, "by-id", { applicationId }] as const,
-  bySlug: (slug: string) => [...pkiApplicationKeys.all, "by-slug", { slug }] as const,
+  byName: (name: string) => [...pkiApplicationKeys.all, "by-name", { name }] as const,
   profiles: (applicationId: string) =>
     [...pkiApplicationKeys.all, "profiles", { applicationId }] as const,
   members: (applicationId: string) =>
@@ -75,27 +75,27 @@ export const useGetPkiApplication = (
     ...options
   });
 
-export const useGetPkiApplicationBySlug = (
-  slug: string,
+export const useGetPkiApplicationByName = (
+  name: string,
   options?: Omit<
     UseQueryOptions<
       { application: TPkiApplication },
       unknown,
       TPkiApplication,
-      ReturnType<typeof pkiApplicationKeys.bySlug>
+      ReturnType<typeof pkiApplicationKeys.byName>
     >,
     "queryKey" | "queryFn"
   >
 ) =>
   useQuery({
-    queryKey: pkiApplicationKeys.bySlug(slug),
+    queryKey: pkiApplicationKeys.byName(name),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ application: TPkiApplication }>(
-        `${BASE_URL}/slug/${slug}`
+        `${BASE_URL}/by-name/${name}`
       );
       return data;
     },
-    enabled: Boolean(slug),
+    enabled: Boolean(name),
     select: (data) => data.application,
     ...options
   });

@@ -77,14 +77,12 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
         await update.mutateAsync({
           applicationId: editing.id,
           name: data.name,
-          slug: data.name,
           description: data.description?.length ? data.description : null
         });
         createNotification({ type: "success", text: "Application updated" });
       } else {
         await create.mutateAsync({
           name: data.name,
-          slug: data.name,
           description: data.description
         });
         createNotification({ type: "success", text: "Application created" });

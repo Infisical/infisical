@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { MoreHorizontalIcon, PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
+import {
+  FilePlusIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SettingsIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -64,6 +71,8 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { PoliciesTable } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PoliciesTable";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
+import { PkiApplicationModal } from "@app/pages/cert-manager/ApplicationsPage/components/PkiApplicationModal";
+import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
 import { PkiAlertV2Row } from "@app/views/PkiAlertsV2Page/components/PkiAlertV2Row";
 import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
@@ -95,6 +104,17 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     "policy",
     "deletePolicy"
   ] as const);
+  const {
+    popUp: issuePopUp,
+    handlePopUpOpen: handleIssuePopUpOpen,
+    handlePopUpToggle: handleIssuePopUpToggle
+  } = usePopUp(["issueCertificate"] as const);
+  const {
+    popUp: editPopUp,
+    handlePopUpOpen: handleEditPopUpOpen,
+    handlePopUpToggle: handleEditPopUpToggle
+  } = usePopUp(["application"] as const);
+  const [profileToIssue, setProfileToIssue] = useState<TPkiApplicationProfile | null>(null);
   const deletePolicy = useDeleteApprovalPolicy();
 
   const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
@@ -200,21 +220,29 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <CardHeader>
           <CardTitle>General</CardTitle>
           <CardDescription>Edit core metadata for this Application.</CardDescription>
+          <CardAction>
+            <IconButton
+              variant="ghost"
+              size="xs"
+              onClick={() => handleEditPopUpOpen("application", application)}
+              aria-label="Edit application"
+            >
+              <PencilIcon />
+            </IconButton>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
             <div>
               <dt className="text-xs text-accent">Name</dt>
-              <dd className="text-foreground">{application.name}</dd>
+              <dd className="font-mono text-foreground">{application.name}</dd>
             </div>
-            <div>
-              <dt className="text-xs text-accent">Slug</dt>
-              <dd className="font-mono text-foreground">{application.slug}</dd>
-            </div>
-            <div className="col-span-full">
-              <dt className="text-xs text-accent">Description</dt>
-              <dd className="text-foreground">{application.description ?? "—"}</dd>
-            </div>
+            {application.description?.length ? (
+              <div className="col-span-full">
+                <dt className="text-xs text-accent">Description</dt>
+                <dd className="text-foreground">{application.description}</dd>
+              </div>
+            ) : null}
           </dl>
         </CardContent>
       </Card>
@@ -288,6 +316,17 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                               <SettingsIcon />
                               Configure method
                             </DropdownMenuItem>
+                            {p.apiConfigId ? (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setProfileToIssue(p);
+                                  handleIssuePopUpOpen("issueCertificate");
+                                }}
+                              >
+                                <FilePlusIcon />
+                                Request Certificate
+                              </DropdownMenuItem>
+                            ) : null}
                             <DropdownMenuItem
                               variant="danger"
                               onClick={() => setProfileToDetach(p)}
@@ -484,6 +523,18 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         applicationId={application.id}
         profile={profileToConfigure}
       />
+
+      <CertificateIssuanceModal
+        popUp={issuePopUp}
+        handlePopUpToggle={(name, state) => {
+          handleIssuePopUpToggle(name, state);
+          if (state === false) setProfileToIssue(null);
+        }}
+        profileId={profileToIssue?.profileId}
+        applicationId={application.id}
+      />
+
+      <PkiApplicationModal popUp={editPopUp} handlePopUpToggle={handleEditPopUpToggle} />
     </div>
   );
 };

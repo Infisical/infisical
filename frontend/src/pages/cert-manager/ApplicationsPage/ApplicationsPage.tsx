@@ -88,7 +88,7 @@ export const ApplicationsPage = () => {
               className="cursor-pointer"
               onClick={() =>
                 navigate({
-                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${app.slug}` as never
+                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${app.name}` as never
                 } as never)
               }
             >

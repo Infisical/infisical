@@ -4,7 +4,6 @@ export type TPkiApplicationListItem = {
   id: string;
   projectId: string;
   name: string;
-  slug: string;
   description?: string | null;
   profileCount: number;
   memberCount: number;
@@ -28,7 +27,6 @@ export type TPkiApplicationProfile = {
 
 export type TCreatePkiApplicationDTO = {
   name: string;
-  slug: string;
   description?: string;
   profileIds?: string[];
 } & TProjectPermission;
@@ -36,7 +34,6 @@ export type TCreatePkiApplicationDTO = {
 export type TUpdatePkiApplicationDTO = {
   applicationId: string;
   name?: string;
-  slug?: string;
   description?: string | null;
 } & TProjectPermission;
 
@@ -44,8 +41,8 @@ export type TGetPkiApplicationDTO = {
   applicationId: string;
 } & TProjectPermission;
 
-export type TGetPkiApplicationBySlugDTO = {
-  slug: string;
+export type TGetPkiApplicationByNameDTO = {
+  name: string;
 } & TProjectPermission;
 
 export type TListPkiApplicationsDTO = {

@@ -3469,7 +3469,6 @@ interface CreatePkiApplication {
   type: EventType.CREATE_PKI_APPLICATION;
   metadata: {
     applicationId: string;
-    slug: string;
     name: string;
     profileIds?: string[];
   };
@@ -3479,7 +3478,7 @@ interface UpdatePkiApplication {
   type: EventType.UPDATE_PKI_APPLICATION;
   metadata: {
     applicationId: string;
-    slug: string;
+    name: string;
   };
 }
 
@@ -3487,7 +3486,7 @@ interface DeletePkiApplication {
   type: EventType.DELETE_PKI_APPLICATION;
   metadata: {
     applicationId: string;
-    slug: string;
+    name: string;
   };
 }
 
@@ -3495,7 +3494,7 @@ interface GetPkiApplication {
   type: EventType.GET_PKI_APPLICATION;
   metadata: {
     applicationId: string;
-    slug: string;
+    name: string;
   };
 }
 

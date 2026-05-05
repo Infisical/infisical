@@ -88,26 +88,12 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findOtherJunctionsForProfiles = async (profileIds: string[], excludeApplicationId: string, tx?: Knex) => {
-    try {
-      if (profileIds.length === 0) return [];
-      const rows = await (tx || db.replicaNode())(TableName.PkiApplicationProfile)
-        .whereIn("profileId", profileIds)
-        .whereNot({ applicationId: excludeApplicationId })
-        .select("profileId", "applicationId");
-      return rows as { profileId: string; applicationId: string }[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find other junctions for profiles" });
-    }
-  };
-
   return {
     ...orm,
     findAllByProfileId,
     findByApplicationId,
     findOne,
     findProfilesInProject,
-    findOtherJunctionsForProfiles,
     findByProfileId
   };
 };

@@ -22,7 +22,7 @@ import {
   TCreatePkiApplicationDTO,
   TDeletePkiApplicationDTO,
   TDetachProfileDTO,
-  TGetPkiApplicationBySlugDTO,
+  TGetPkiApplicationByNameDTO,
   TGetPkiApplicationDTO,
   TListApplicationProfilesDTO,
   TListPkiApplicationsDTO,
@@ -37,18 +37,13 @@ type TPkiApplicationServiceFactoryDep = {
     | "updateById"
     | "deleteById"
     | "transaction"
-    | "findBySlugAndProjectId"
+    | "findByNameAndProjectId"
     | "findByProjectId"
     | "countByProjectId"
   >;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
-    | "insertMany"
-    | "delete"
-    | "findByApplicationId"
-    | "findOne"
-    | "findProfilesInProject"
-    | "findOtherJunctionsForProfiles"
+    "insertMany" | "delete" | "findByApplicationId" | "findOne" | "findProfilesInProject"
   >;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
@@ -104,7 +99,6 @@ export const pkiApplicationServiceFactory = ({
 
   const createApplication = async ({
     name,
-    slug,
     description,
     profileIds,
     projectId,
@@ -120,9 +114,9 @@ export const pkiApplicationServiceFactory = ({
       ProjectPermissionSub.Application
     );
 
-    const existing = await pkiApplicationDAL.findBySlugAndProjectId(slug, projectId);
+    const existing = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
     if (existing) {
-      throw new BadRequestError({ message: `An application with slug '${slug}' already exists in this project.` });
+      throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
     }
 
     if (profileIds && profileIds.length > 0) {
@@ -135,10 +129,7 @@ export const pkiApplicationServiceFactory = ({
     }
 
     return pkiApplicationDAL.transaction(async (tx) => {
-      const application = await pkiApplicationDAL.create(
-        { projectId, name, slug, description: description ?? null },
-        tx
-      );
+      const application = await pkiApplicationDAL.create({ projectId, name, description: description ?? null }, tx);
 
       if (profileIds && profileIds.length > 0) {
         await pkiApplicationProfileDAL.insertMany(
@@ -179,17 +170,17 @@ export const pkiApplicationServiceFactory = ({
     return application;
   };
 
-  const getApplicationBySlug = async ({
-    slug,
+  const getApplicationByName = async ({
+    name,
     projectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TGetPkiApplicationBySlugDTO) => {
-    const application = await pkiApplicationDAL.findBySlugAndProjectId(slug, projectId);
+  }: TGetPkiApplicationByNameDTO) => {
+    const application = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
     if (!application) {
-      throw new NotFoundError({ message: `Application with slug '${slug}' not found in this project.` });
+      throw new NotFoundError({ message: `Application with name '${name}' not found in this project.` });
     }
 
     const { permission } = await $loadResourcePermission(application.id, projectId, {
@@ -260,7 +251,6 @@ export const pkiApplicationServiceFactory = ({
   const updateApplication = async ({
     applicationId,
     name,
-    slug,
     description,
     projectId,
     actor,
@@ -285,16 +275,15 @@ export const pkiApplicationServiceFactory = ({
       ResourcePermissionSub.Application
     );
 
-    if (slug && slug !== application.slug) {
-      const collision = await pkiApplicationDAL.findBySlugAndProjectId(slug, projectId);
+    if (name && name !== application.name) {
+      const collision = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
       if (collision) {
-        throw new BadRequestError({ message: `An application with slug '${slug}' already exists in this project.` });
+        throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
       }
     }
 
     return pkiApplicationDAL.updateById(applicationId, {
       ...(name !== undefined && { name }),
-      ...(slug !== undefined && { slug }),
       ...(description !== undefined && { description })
     });
   };
@@ -405,16 +394,6 @@ export const pkiApplicationServiceFactory = ({
     }
 
     return pkiApplicationDAL.transaction(async (tx) => {
-      const conflicts = await pkiApplicationProfileDAL.findOtherJunctionsForProfiles(profileIds, applicationId, tx);
-      if (conflicts.length > 0) {
-        const profilesByOtherApp = Array.from(new Set(conflicts.map((c) => c.profileId)));
-        throw new BadRequestError({
-          message:
-            `Profile(s) [${profilesByOtherApp.join(", ")}] are already attached to a different ` +
-            `Application. Each Profile can belong to one Application at a time — detach it first.`
-        });
-      }
-
       const existing = await pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
       const existingProfileIds = new Set(existing.map((row) => row.profileId));
       const toAttach = profileIds.filter((id) => !existingProfileIds.has(id));
@@ -470,7 +449,7 @@ export const pkiApplicationServiceFactory = ({
   return {
     createApplication,
     getApplicationById,
-    getApplicationBySlug,
+    getApplicationByName,
     listApplications,
     updateApplication,
     deleteApplication,

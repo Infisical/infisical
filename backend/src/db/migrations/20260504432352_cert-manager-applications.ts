@@ -18,10 +18,9 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.index("projectId");
       t.string("name", 64).notNullable();
-      t.string("slug", 64).notNullable();
       t.string("description", 256);
       t.timestamps(true, true, true);
-      t.unique(["slug", "projectId"]);
+      t.unique(["name", "projectId"]);
     });
     await createOnUpdateTrigger(knex, TableName.PkiApplication);
   }

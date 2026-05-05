@@ -2,7 +2,6 @@ export type TPkiApplication = {
   id: string;
   projectId: string;
   name: string;
-  slug: string;
   description?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -75,7 +74,6 @@ export type TPkiApplicationEnrollmentState = {
 
 export type TCreatePkiApplicationDTO = {
   name: string;
-  slug: string;
   description?: string;
   profileIds?: string[];
 };
@@ -83,7 +81,6 @@ export type TCreatePkiApplicationDTO = {
 export type TUpdatePkiApplicationDTO = {
   applicationId: string;
   name?: string;
-  slug?: string;
   description?: string | null;
 };
 

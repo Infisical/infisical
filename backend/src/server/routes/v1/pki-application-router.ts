@@ -17,8 +17,8 @@ import { registerPkiApplicationSyncRoutes } from "./pki-application-sync-router"
 
 export { ApplicationProfileSchema };
 
-const APPLICATION_SLUG_REGEX = new RE2("^[a-z0-9-]+$");
-const APPLICATION_SLUG_MESSAGE = "Slug must contain only lowercase letters, numbers, and hyphens";
+const APPLICATION_NAME_REGEX = new RE2("^[a-z0-9-]+$");
+const APPLICATION_NAME_MESSAGE = "Name must contain only lowercase letters, numbers, and hyphens";
 
 const ApplicationListItemSchema = PkiApplicationsSchema.extend({
   profileCount: z.number().int().nonnegative(),
@@ -37,8 +37,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       description: "Create a Cert Manager application.",
       tags: [ApiDocsTags.PkiApplications],
       body: z.object({
-        name: z.string().trim().min(1).max(64),
-        slug: z.string().trim().min(1).max(64).regex(APPLICATION_SLUG_REGEX, APPLICATION_SLUG_MESSAGE),
+        name: z.string().trim().min(1).max(64).regex(APPLICATION_NAME_REGEX, APPLICATION_NAME_MESSAGE),
         description: z.string().max(256).optional(),
         profileIds: z.array(z.string().uuid()).optional()
       }),
@@ -55,7 +54,6 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId,
         projectId: req.certManagerProjectId,
         name: req.body.name,
-        slug: req.body.slug,
         description: req.body.description,
         profileIds: req.body.profileIds
       });
@@ -67,7 +65,6 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
           type: EventType.CREATE_PKI_APPLICATION,
           metadata: {
             applicationId: application.id,
-            slug: application.slug,
             name: application.name,
             profileIds: req.body.profileIds
           }
@@ -153,7 +150,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         projectId: req.certManagerProjectId,
         event: {
           type: EventType.GET_PKI_APPLICATION,
-          metadata: { applicationId: application.id, slug: application.slug }
+          metadata: { applicationId: application.id, name: application.name }
         }
       });
 
@@ -163,25 +160,25 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "GET",
-    url: "/slug/:slug",
+    url: "/by-name/:name",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
-      operationId: "getPkiApplicationBySlug",
-      description: "Get a Cert Manager application by slug.",
+      operationId: "getPkiApplicationByName",
+      description: "Get a Cert Manager application by name.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ slug: z.string().regex(APPLICATION_SLUG_REGEX, APPLICATION_SLUG_MESSAGE) }),
+      params: z.object({ name: z.string().regex(APPLICATION_NAME_REGEX, APPLICATION_NAME_MESSAGE) }),
       response: { 200: z.object({ application: PkiApplicationsSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const application = await server.services.pkiApplication.getApplicationBySlug({
+      const application = await server.services.pkiApplication.getApplicationByName({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.certManagerProjectId,
-        slug: req.params.slug
+        name: req.params.name
       });
 
       await server.services.auditLog.createAuditLog({
@@ -189,7 +186,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         projectId: req.certManagerProjectId,
         event: {
           type: EventType.GET_PKI_APPLICATION,
-          metadata: { applicationId: application.id, slug: application.slug }
+          metadata: { applicationId: application.id, name: application.name }
         }
       });
 
@@ -209,12 +206,11 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       params: ApplicationIdParamsSchema,
       body: z
         .object({
-          name: z.string().trim().min(1).max(64).optional(),
-          slug: z.string().trim().min(1).max(64).regex(APPLICATION_SLUG_REGEX, APPLICATION_SLUG_MESSAGE).optional(),
+          name: z.string().trim().min(1).max(64).regex(APPLICATION_NAME_REGEX, APPLICATION_NAME_MESSAGE).optional(),
           description: z.string().max(256).nullable().optional()
         })
-        .refine((d) => d.name !== undefined || d.slug !== undefined || d.description !== undefined, {
-          message: "At least one of name, slug, or description must be provided."
+        .refine((d) => d.name !== undefined || d.description !== undefined, {
+          message: "At least one of name or description must be provided."
         }),
       response: { 200: z.object({ application: PkiApplicationsSchema }) }
     },
@@ -228,7 +224,6 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         projectId: req.certManagerProjectId,
         applicationId: req.params.applicationId,
         name: req.body.name,
-        slug: req.body.slug,
         description: req.body.description
       });
 
@@ -237,7 +232,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         projectId: req.certManagerProjectId,
         event: {
           type: EventType.UPDATE_PKI_APPLICATION,
-          metadata: { applicationId: application.id, slug: application.slug }
+          metadata: { applicationId: application.id, name: application.name }
         }
       });
 
@@ -273,7 +268,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         projectId: req.certManagerProjectId,
         event: {
           type: EventType.DELETE_PKI_APPLICATION,
-          metadata: { applicationId: application.id, slug: application.slug }
+          metadata: { applicationId: application.id, name: application.name }
         }
       });
 

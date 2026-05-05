@@ -133,9 +133,15 @@ type Props = {
     state?: boolean
   ) => void;
   profileId?: string;
+  applicationId?: string;
 };
 
-export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }: Props) => {
+export const CertificateIssuanceModal = ({
+  popUp,
+  handlePopUpToggle,
+  profileId,
+  applicationId
+}: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
@@ -312,6 +318,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           const metadataEntries = formData.metadata?.filter((m) => m.key);
           const response = await issueCertificate({
             profileId: formProfileId,
+            ...(applicationId && { applicationId }),
             csr: formData.csr,
             attributes: { ttl },
             ...(metadataEntries?.length && { metadata: metadataEntries })
@@ -335,6 +342,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         const managedMetadataEntries = formMetadata?.filter((m) => m.key);
         const request: any = {
           profileId: formProfileId,
+          ...(applicationId && { applicationId }),
           attributes: {
             ttl,
             signatureAlgorithm: signatureAlgorithm || "",
