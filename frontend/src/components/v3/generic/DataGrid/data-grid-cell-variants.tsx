@@ -209,8 +209,8 @@ export function ShortTextCell<TData>({
           onInput={onInput}
           suppressContentEditableWarning
           className={cn("size-full outline-none", {
-            "overflow-hidden": !isEditing,
-            "no-scrollbar overflow-x-auto": isEditing,
+            "overflow-hidden": !isEditing && !(isFocused && readOnly),
+            "no-scrollbar overflow-x-auto": isEditing || (isFocused && readOnly),
             "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden": isEditing
           })}
         >
