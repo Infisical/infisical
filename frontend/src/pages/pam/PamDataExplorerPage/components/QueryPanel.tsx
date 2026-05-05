@@ -184,6 +184,7 @@ export function QueryPanel({
               </span>
               {result.rows.length > 0 && (
                 <ExportPopover
+                  showLabel
                   onExport={(fmt) =>
                     exportData(
                       result.rows,
