@@ -100,7 +100,8 @@ const orgGatewayPermissionSchema = z
     [OrgGatewayPermissionActions.EditGateways]: z.boolean().optional(),
     [OrgGatewayPermissionActions.DeleteGateways]: z.boolean().optional(),
     [OrgGatewayPermissionActions.CreateGateways]: z.boolean().optional(),
-    [OrgGatewayPermissionActions.AttachGateways]: z.boolean().optional()
+    [OrgGatewayPermissionActions.AttachGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.RevokeGatewayAccess]: z.boolean().optional()
   })
   .optional();
 

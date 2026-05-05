@@ -69,10 +69,12 @@ import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
+import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
+import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
@@ -171,11 +173,13 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
+  [AppConnection.OVH]: { name: "OVH Cloud", image: "OVH.png" },
   [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
   [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
-  [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" }
+  [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
+  [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -232,6 +236,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case SnowflakeConnectionMethod.UsernameAndToken:
+      return { name: "Username & Token", icon: faKey };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
@@ -288,6 +294,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case OVHConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

@@ -161,9 +161,6 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
-  TGatewayEnrollmentTokens,
-  TGatewayEnrollmentTokensInsert,
-  TGatewayEnrollmentTokensUpdate,
   TGatewayPoolMemberships,
   TGatewayPoolMembershipsInsert,
   TGatewayPoolMembershipsUpdate,
@@ -443,9 +440,18 @@ import {
   TRelays,
   TRelaysInsert,
   TRelaysUpdate,
+  TResourceAuthMethods,
+  TResourceAuthMethodsInsert,
+  TResourceAuthMethodsUpdate,
+  TResourceAwsAuths,
+  TResourceAwsAuthsInsert,
+  TResourceAwsAuthsUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
+  TResourceTokenAuths,
+  TResourceTokenAuthsInsert,
+  TResourceTokenAuthsUpdate,
   TRoles,
   TRolesInsert,
   TRolesUpdate,
@@ -1591,10 +1597,20 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
-    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
-      TGatewayEnrollmentTokens,
-      TGatewayEnrollmentTokensInsert,
-      TGatewayEnrollmentTokensUpdate
+    [TableName.ResourceTokenAuth]: KnexOriginal.CompositeTableType<
+      TResourceTokenAuths,
+      TResourceTokenAuthsInsert,
+      TResourceTokenAuthsUpdate
+    >;
+    [TableName.ResourceAuthMethod]: KnexOriginal.CompositeTableType<
+      TResourceAuthMethods,
+      TResourceAuthMethodsInsert,
+      TResourceAuthMethodsUpdate
+    >;
+    [TableName.ResourceAwsAuth]: KnexOriginal.CompositeTableType<
+      TResourceAwsAuths,
+      TResourceAwsAuthsInsert,
+      TResourceAwsAuthsUpdate
     >;
     [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
     [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<

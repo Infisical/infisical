@@ -71,7 +71,8 @@ export enum OrgPermissionGatewayActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  RevokeGatewayAccess = "revoke-gateway-access"
 }
 
 export enum OrgPermissionGatewayPoolActions {
@@ -471,6 +472,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.RevokeGatewayAccess, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionGatewayPoolActions.ListGatewayPools, OrgPermissionSubjects.GatewayPool);
   can(OrgPermissionGatewayPoolActions.CreateGatewayPools, OrgPermissionSubjects.GatewayPool);

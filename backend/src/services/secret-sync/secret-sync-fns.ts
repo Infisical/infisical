@@ -71,10 +71,12 @@ import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
 import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
+import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
@@ -121,9 +123,11 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
   [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION,
   [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION,
+  [SecretSync.OVH]: OVH_SYNC_LIST_OPTION,
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
-  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION
+  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -384,12 +388,16 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.OVH:
+        return OvhSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Devin:
         return DevinSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Ona:
         return OnaSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Snowflake:
+        return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -530,6 +538,9 @@ export const SecretSyncFns = {
       case SecretSync.ExternalInfisical:
         secretMap = await ExternalInfisicalSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.OVH:
+        secretMap = await OvhSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Devin:
         secretMap = await DevinSyncFns.getSecrets(secretSync);
         break;
@@ -538,6 +549,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.TravisCI:
         secretMap = await TravisCISyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Snowflake:
+        secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -648,12 +662,16 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.OVH:
+        return OvhSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Devin:
         return DevinSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Ona:
         return OnaSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Snowflake:
+        return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

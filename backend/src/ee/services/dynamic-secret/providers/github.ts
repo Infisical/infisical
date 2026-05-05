@@ -1,11 +1,11 @@
 import { isAxiosError } from "axios";
 import jwt from "jsonwebtoken";
 
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { safeRequest } from "@app/lib/validator";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { DynamicSecretGithubSchema, TDynamicProviderFns } from "./models";
@@ -57,7 +57,7 @@ export const GithubProvider = (): TDynamicProviderFns => {
     const tokenUrl = `${IntegrationUrls.GITHUB_API_URL}/app/installations/${String(installationId)}/access_tokens`;
 
     try {
-      const response = await request.post<GitHubInstallationTokenResponse>(tokenUrl, undefined, {
+      const response = await safeRequest.post<GitHubInstallationTokenResponse>(tokenUrl, undefined, {
         headers: {
           Authorization: `Bearer ${appJwt}`,
           Accept: "application/vnd.github.v3+json",

@@ -3,11 +3,10 @@ import crypto from "node:crypto";
 import RE2 from "re2";
 
 import { TDynamicSecrets } from "@app/db/schemas";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator/validate-url";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { DynamicSecretCouchbaseSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
@@ -156,10 +155,8 @@ const couchbaseApiRequest = async (
   apiKey: string,
   data?: unknown
 ): Promise<CouchbaseUserResponse> => {
-  await blockLocalAndPrivateIpAddresses(url);
-
   try {
-    const response = await request({
+    const response = await safeRequest.request({
       method: method.toLowerCase() as "get" | "post" | "put" | "delete",
       url,
       headers: {
@@ -167,8 +164,7 @@ const couchbaseApiRequest = async (
         "Content-Type": "application/json"
       },
       data: data || undefined,
-      timeout: 30000,
-      maxRedirects: 0
+      timeout: 30000
     });
 
     return response.data as CouchbaseUserResponse;

@@ -245,6 +245,9 @@ const envSchema = z
         .default("90d")
         .transform((val) => Math.floor(ms(val) / 1000))
     ),
+    LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT: zpStr(
+      z.coerce.date().default(new Date("2026-05-04T00:00:00.000Z"))
+    ),
     // Oauth
     CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),

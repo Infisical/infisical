@@ -1,8 +1,7 @@
 import { RawAxiosRequestHeaders } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
 import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
@@ -14,14 +13,12 @@ export const CriblProviderFactory = () => {
   }) => {
     const { url, token } = credentials;
 
-    await blockLocalAndPrivateIpAddresses(url);
-
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     };
 
-    await request
+    await safeRequest
       .post(url, JSON.stringify({ ping: "ok" }), {
         headers: streamHeaders,
         timeout: AUDIT_LOG_STREAM_TIMEOUT
@@ -36,14 +33,12 @@ export const CriblProviderFactory = () => {
   const streamLog: TLogStreamFactoryStreamLog<TCriblProviderCredentials> = async ({ credentials, auditLog }) => {
     const { url, token } = credentials;
 
-    await blockLocalAndPrivateIpAddresses(url);
-
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     };
 
-    await request.post(url, JSON.stringify(auditLog), {
+    await safeRequest.post(url, JSON.stringify(auditLog), {
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_TIMEOUT
     });

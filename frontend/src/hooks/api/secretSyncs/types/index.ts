@@ -32,8 +32,10 @@ import { TNorthflankSync } from "./northflank-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOnaSync } from "./ona-sync";
+import { TOvhSync } from "./ovh-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
+import { TSnowflakeSync } from "./snowflake-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
@@ -90,9 +92,11 @@ export type TSecretSync =
   | TCircleCISync
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
+  | TOvhSync
   | TDevinSync
   | TOnaSync
-  | TTravisCISync;
+  | TTravisCISync
+  | TSnowflakeSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

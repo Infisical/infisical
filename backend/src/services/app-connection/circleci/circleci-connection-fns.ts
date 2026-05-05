@@ -1,8 +1,7 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { CircleCIConnectionMethod } from "./circleci-connection-enums";
@@ -42,7 +41,6 @@ export const getCircleCIApiUrl = async (config: {
   }
 
   const baseUrl = `https://${hostname}`;
-  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   const apiUrl = `${baseUrl}/api`;
 
@@ -64,7 +62,7 @@ export const validateCircleCIConnectionCredentials = async (config: TCircleCICon
     const apiUrl = await getCircleCIApiUrl(config);
 
     // Validate the API token by calling the /me endpoint
-    await request.get(`${apiUrl}/v2/me`, {
+    await safeRequest.get(`${apiUrl}/v2/me`, {
       headers: {
         "Circle-Token": credentials.apiToken
       }
@@ -93,7 +91,7 @@ export const listCircleCIOrganizations = async (
     const apiUrl = await getCircleCIApiUrl(appConnection);
 
     // Fetch organizations the user has access to (same as legacy integration)
-    const { data: collaborations } = await request.get<TCircleCICollaboration[]>(`${apiUrl}/v2/me/collaborations`, {
+    const { data: collaborations } = await safeRequest.get<TCircleCICollaboration[]>(`${apiUrl}/v2/me/collaborations`, {
       headers: {
         "Circle-Token": apiToken,
         "Accept-Encoding": "application/json"
@@ -101,7 +99,7 @@ export const listCircleCIOrganizations = async (
     });
 
     // Fetch all followed projects using the v1.1 API (same as legacy integration)
-    const { data: allProjects } = await request.get<TCircleCIProjectV1Response[]>(`${apiUrl}/v1.1/projects`, {
+    const { data: allProjects } = await safeRequest.get<TCircleCIProjectV1Response[]>(`${apiUrl}/v1.1/projects`, {
       headers: {
         "Circle-Token": apiToken,
         "Accept-Encoding": "application/json"

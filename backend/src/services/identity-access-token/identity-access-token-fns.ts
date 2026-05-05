@@ -87,6 +87,18 @@ export const assertRevocableClaims = assertMinimalRenewClaims as (
   decoded: TIdentityAccessTokenJwtPayload
 ) => TRevocableClaims;
 
+export const hasLegacyTokenWithoutExpExceededMaxAge = ({
+  exp,
+  enforcedAt,
+  maxAgeSeconds,
+  nowMs = Date.now()
+}: {
+  exp?: number;
+  enforcedAt: Date;
+  maxAgeSeconds: number;
+  nowMs?: number;
+}) => typeof exp !== "number" && nowMs > enforcedAt.getTime() + maxAgeSeconds * 1000;
+
 // Compute the TTL (seconds) to sign the JWT with.
 //
 // Three caps:

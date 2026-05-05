@@ -47,12 +47,14 @@ import { TOktaConnection } from "./okta-connection";
 import { TOnaConnection } from "./ona-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
+import { TOvhConnection } from "./ovh-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
+import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -109,12 +111,14 @@ export * from "./okta-connection";
 export * from "./ona-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
+export * from "./ovh-connection";
 export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
+export * from "./snowflake-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -185,11 +189,13 @@ export type TAppConnection =
   | TExternalInfisicalConnection
   | TNetScalerConnection
   | TDopplerConnection
+  | TOvhConnection
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
-  | TSalesforceConnection;
+  | TSalesforceConnection
+  | TSnowflakeConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

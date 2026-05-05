@@ -1,12 +1,15 @@
 /* eslint-disable no-await-in-loop */
-import { AxiosError, AxiosRequestConfig } from "axios";
+import { AxiosError } from "axios";
 import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
-import { executeNetScalerOperationWithGateway } from "@app/services/app-connection/netscaler/netscaler-connection-fns";
+import {
+  executeNetScalerOperationWithGateway,
+  TNetScalerRequestConfig
+} from "@app/services/app-connection/netscaler/netscaler-connection-fns";
 import { TNetScalerConnection } from "@app/services/app-connection/netscaler/netscaler-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
@@ -19,7 +22,7 @@ import { TNetScalerPkiSyncConfig } from "./netscaler-pki-sync-types";
 
 type TNetScalerCredentials = TNetScalerConnection["credentials"];
 
-type TRequestFn = <R>(requestCfg: AxiosRequestConfig) => Promise<R>;
+type TRequestFn = <R>(requestCfg: TNetScalerRequestConfig) => Promise<R>;
 
 type TNetScalerSession = {
   baseUrl: string;

@@ -12,12 +12,14 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-types";
+
+export type TGitHubGatewayRequestConfig = AxiosRequestConfig & { url: string };
 
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
@@ -73,17 +75,17 @@ export const requestWithGitHubGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: AxiosRequestConfig,
+  requestConfig: TGitHubGatewayRequestConfig,
   gatewayConnectionDetails?: Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>>
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
-    return httpRequest.request(requestConfig);
+    return safeRequest.request<T>(requestConfig);
   }
 
-  const url = new URL(requestConfig.url as string);
+  const url = new URL(requestConfig.url);
 
   await blockLocalAndPrivateIpAddresses(url.toString());
 

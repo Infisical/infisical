@@ -105,7 +105,10 @@ export enum PostHogEventTypes {
   PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
   PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
   PamRotationRuleCreated = "PAM Rotation Rule Created",
-  PamRotationRuleDeleted = "PAM Rotation Rule Deleted"
+  PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
+
+  ResourceAuthMethodLogin = "Resource Auth Method Login",
+  ResourceAuthMethodUpdated = "Resource Auth Method Updated"
 }
 
 export type TSecretModifiedEvent = {
@@ -822,6 +825,16 @@ export type TPamRotationRuleDeletedEvent = {
   };
 };
 
+export type TResourceAuthMethodEvent = {
+  event: PostHogEventTypes.ResourceAuthMethodLogin | PostHogEventTypes.ResourceAuthMethodUpdated;
+  properties: {
+    resourceType: "gateway";
+    resourceId: string;
+    orgId: string;
+    method: "aws" | "token";
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -892,4 +905,5 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TPamDiscoveryEvent
   | TPamRotationRuleCreatedEvent
   | TPamRotationRuleDeletedEvent
+  | TResourceAuthMethodEvent
 );

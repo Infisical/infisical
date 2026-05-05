@@ -1,3 +1,4 @@
+import http from "node:http";
 import https from "node:https";
 
 import axios, { AxiosInstance, isAxiosError } from "axios";
@@ -9,7 +10,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 
 import { InfisicalImportData, KvVersion, VaultMappingType } from "../external-migration-types";
 
@@ -31,7 +32,12 @@ const vaultFactory = (
       targetHostname: string;
       targetPort: number;
     },
-    gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent, hostHeader?: string) => Promise<T>
+    gatewayCallback: (
+      host: string,
+      port: number,
+      agents?: { httpsAgent?: https.Agent; httpAgent?: http.Agent },
+      hostHeader?: string
+    ) => Promise<T>
   ): Promise<T> => {
     const { gatewayId, targetProtocol, targetHostname, targetPort } = inputs;
 
@@ -46,7 +52,7 @@ const vaultFactory = (
       const httpsAgent = isHttps ? new https.Agent({ servername: targetHostname }) : undefined;
 
       return withGatewayV2Proxy(
-        async (port) => gatewayCallback(`${targetProtocol}://localhost`, port, httpsAgent, targetHostname),
+        async (port) => gatewayCallback(`${targetProtocol}://localhost`, port, { httpsAgent }, targetHostname),
         {
           protocol: GatewayProxyProtocol.Tcp,
           relayHost: gatewayV2Details.relayHost,
@@ -58,7 +64,7 @@ const vaultFactory = (
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
 
-    return withGatewayProxy(async (port, httpsAgent) => gatewayCallback("http://localhost", port, httpsAgent), {
+    return withGatewayProxy(async (port, httpsAgent) => gatewayCallback("http://localhost", port, { httpsAgent }), {
       protocol: GatewayProxyProtocol.Http,
       targetHost: `${targetProtocol}://${targetHostname}`,
       targetPort,
@@ -229,7 +235,12 @@ const vaultFactory = (
     accessToken: string;
     gatewayId?: string;
   }): Promise<VaultData[]> {
-    const getData = async (host: string, port?: number, httpsAgent?: https.Agent, hostHeader?: string) => {
+    const getData = async (
+      host: string,
+      port?: number,
+      agents?: { httpsAgent?: https.Agent; httpAgent?: http.Agent },
+      hostHeader?: string
+    ) => {
       const allData: VaultData[] = [];
 
       const request = axios.create({
@@ -240,7 +251,8 @@ const vaultFactory = (
           ...(hostHeader ? { Host: hostHeader } : {})
         },
         maxRedirects: 0,
-        httpsAgent
+        httpsAgent: agents?.httpsAgent,
+        httpAgent: agents?.httpAgent
       });
 
       // Get all mounts in this namespace
@@ -309,8 +321,12 @@ const vaultFactory = (
         getData
       );
     } else {
-      await blockLocalAndPrivateIpAddresses(baseUrl);
-      data = await getData(baseUrl);
+      const pinnedAgent = await buildSsrfSafeAgent(baseUrl, { rejectUnauthorized: true });
+      const isHttps = new URL(baseUrl).protocol === "https:";
+      const agents = isHttps
+        ? { httpsAgent: pinnedAgent as https.Agent | undefined }
+        : { httpAgent: pinnedAgent as http.Agent | undefined };
+      data = await getData(baseUrl, undefined, agents);
     }
 
     return data;
