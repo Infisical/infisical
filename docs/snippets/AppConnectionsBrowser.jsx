@@ -461,6 +461,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Travis CI to pull secrets from Infisical.",
       category: "CI/CD",
+    },
+    {
+      name: "Gitea",
+      slug: "gitea",
+      path: "/integrations/app-connections/gitea",
+      description:
+        "Learn how to connect Gitea to push secrets from Infisical.",
+      category: "Source Control",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

@@ -46,6 +46,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "Azure Entra ID SCIM", "slug": "azure-entra-id-scim", "path": "/integrations/secret-syncs/azure-entra-id-scim", "description": "Learn how to sync SCIM provisioning tokens from Infisical to Azure Entra ID.", "category": "Identity & Auth"},
     {"name": "Infisical", "slug": "external-infisical", "path": "/integrations/secret-syncs/external-infisical", "description": "Learn how to sync secrets from one Infisical instance to another.", "category": "Security"},
     {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
+    {"name": "Gitea", "slug": "gitea", "path": "/integrations/secret-syncs/gitea", "description": "Learn how to sync secrets from Infisical to Gitea repository Action Secrets.", "category": "Source Control"},
 
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

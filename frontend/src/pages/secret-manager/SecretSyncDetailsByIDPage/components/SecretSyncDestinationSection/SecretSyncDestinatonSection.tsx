@@ -47,6 +47,7 @@ import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { TravisCISyncDestinationSection } from "./TravisCISyncDestinationSection";
+import { GiteaSyncDestinationSection } from "./GiteaSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
@@ -186,6 +187,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.TravisCI:
       DestinationComponents = <TravisCISyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Gitea:
+      DestinationComponents = <GiteaSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

@@ -83,6 +83,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Devin:
     case SecretSync.Ona:
     case SecretSync.TravisCI:
+    case SecretSync.Gitea:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

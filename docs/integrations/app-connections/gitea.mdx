@@ -1,0 +1,99 @@
+---
+title: "Gitea Connection"
+description: "Learn how to configure a Gitea Connection for Infisical."
+---
+
+Infisical supports connecting to [Gitea](https://about.gitea.com/) self-hosted instances using a personal access token.
+
+<Note>
+  The access token must belong to a user with sufficient permissions to manage Gitea Actions secrets on the repositories you plan to sync with Infisical. The `write:repository` scope is required.
+</Note>
+
+## Create a Gitea Access Token
+
+<Steps>
+  <Step title="Sign in to your Gitea instance and open Settings">
+    Click your profile avatar in the top-right corner, then select **Settings**.
+  </Step>
+  <Step title="Generate a new access token">
+    In **Settings → Applications → Manage Access Tokens**, click **Generate New Token**.
+
+    Give the token a recognizable name and select the **`write:repository`** scope. Click **Generate Token** and copy the token value.
+
+    <Note>
+      Treat this token like a password — it grants write access to repositories you administer. Store it somewhere safe; Infisical will encrypt it at rest once the connection is created.
+    </Note>
+  </Step>
+</Steps>
+
+## Create a Gitea Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, open the **Integrations** tab in the target project and select **App Connections**.
+      </Step>
+      <Step title="Select Gitea Connection">
+        Click **+ Add Connection** and choose **Gitea Connection** from the list.
+      </Step>
+      <Step title="Fill out the Gitea Connection form">
+        Complete the form by providing:
+        - A descriptive **Name** for the connection
+        - An optional **Description**
+        - The **Instance URL** of your Gitea server (e.g. `https://gitea.example.com`)
+        - The **Access Token** you copied from Gitea
+      </Step>
+      <Step title="Connection created">
+        After submitting, your **Gitea Connection** is ready to be used by Secret Syncs and other Infisical features.
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a Gitea Connection via API, send a request to the [Create Gitea Connection](/api-reference/endpoints/app-connections/gitea/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/gitea \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-gitea-connection",
+                "method": "api-token",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "instanceUrl": "https://gitea.example.com",
+                    "accessToken": "[ACCESS TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+          "name": "my-gitea-connection",
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2026-05-06T19:46:34.831Z",
+          "updatedAt": "2026-05-06T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "example-credentials-hash",
+          "app": "gitea",
+          "method": "api-token",
+          "credentials": {
+              "instanceUrl": "https://gitea.example.com"
+          }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>

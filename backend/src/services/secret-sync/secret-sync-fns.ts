@@ -61,6 +61,7 @@ import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from ".
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
+import { GITEA_SYNC_LIST_OPTION, GiteaSyncFns } from "./gitea";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
@@ -123,7 +124,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION,
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
-  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION
+  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
+  [SecretSync.Gitea]: GITEA_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -390,6 +392,8 @@ export const SecretSyncFns = {
         return OnaSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Gitea:
+        return GiteaSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -539,6 +543,9 @@ export const SecretSyncFns = {
       case SecretSync.TravisCI:
         secretMap = await TravisCISyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Gitea:
+        secretMap = await GiteaSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -654,6 +661,8 @@ export const SecretSyncFns = {
         return OnaSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Gitea:
+        return GiteaSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

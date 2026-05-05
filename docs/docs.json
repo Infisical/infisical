@@ -161,6 +161,7 @@
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/travis-ci",
+                      "integrations/app-connections/gitea",
                       "integrations/app-connections/venafi",
                       "integrations/app-connections/venafi-tpp",
                       "integrations/app-connections/vercel",
@@ -615,6 +616,7 @@
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
                       "integrations/secret-syncs/travis-ci",
+                      "integrations/secret-syncs/gitea",
                       "integrations/secret-syncs/vercel",
                       "integrations/secret-syncs/windmill",
                       "integrations/secret-syncs/zabbix"

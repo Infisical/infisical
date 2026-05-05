@@ -97,6 +97,7 @@ import {
 } from "@app/services/app-connection/external-infisical";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
+import { GiteaConnectionListItemSchema, SanitizedGiteaConnectionSchema } from "@app/services/app-connection/gitea";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
   GitHubRadarConnectionListItemSchema,
@@ -252,7 +253,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
-  ...SanitizedTravisCIConnectionSchema.options
+  ...SanitizedTravisCIConnectionSchema.options,
+  ...SanitizedGiteaConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -317,7 +319,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DevinConnectionListItemSchema,
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
-  TravisCIConnectionListItemSchema
+  TravisCIConnectionListItemSchema,
+  GiteaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

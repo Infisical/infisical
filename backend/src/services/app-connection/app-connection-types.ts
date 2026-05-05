@@ -179,6 +179,12 @@ import {
   TValidateGcpConnectionCredentialsSchema
 } from "./gcp";
 import {
+  TGiteaConnection,
+  TGiteaConnectionConfig,
+  TGiteaConnectionInput,
+  TValidateGiteaConnectionCredentialsSchema
+} from "./gitea";
+import {
   TGitHubConnection,
   TGitHubConnectionConfig,
   TGitHubConnectionInput,
@@ -429,6 +435,7 @@ export type TAppConnection = { id: string } & (
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
+  | TGiteaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -502,6 +509,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnaConnectionInput
   | TDigiCertConnectionInput
   | TTravisCIConnectionInput
+  | TGiteaConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -603,7 +611,8 @@ export type TAppConnectionConfig =
   | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
-  | TTravisCIConnectionConfig;
+  | TTravisCIConnectionConfig
+  | TGiteaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -667,7 +676,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
-  | TValidateTravisCIConnectionCredentialsSchema;
+  | TValidateTravisCIConnectionCredentialsSchema
+  | TValidateGiteaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

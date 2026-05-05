@@ -20,6 +20,7 @@ import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-ap
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
+import { GiteaSyncDestinationSchema } from "./gitea-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
 import { GitlabSyncDestinationSchema } from "./gitlab-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
@@ -81,7 +82,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   ExternalInfisicalSyncDestinationSchema,
   DevinSyncDestinationSchema,
   OnaSyncDestinationSchema,
-  TravisCISyncDestinationSchema
+  TravisCISyncDestinationSchema,
+  GiteaSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

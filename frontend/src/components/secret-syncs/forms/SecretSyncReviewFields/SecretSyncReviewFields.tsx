@@ -35,6 +35,7 @@ import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatfo
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
 import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
+import { GiteaSyncReviewFields } from "./GiteaSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
@@ -209,6 +210,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.TravisCI:
       DestinationFieldsComponent = <TravisCISyncReviewFields />;
+      break;
+    case SecretSync.Gitea:
+      DestinationFieldsComponent = <GiteaSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

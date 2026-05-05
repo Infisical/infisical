@@ -50,6 +50,7 @@ import {
 } from "@app/services/secret-sync/external-infisical";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
+import { GiteaSyncListItemSchema, GiteaSyncSchema } from "@app/services/secret-sync/gitea";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
@@ -110,7 +111,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   ExternalInfisicalSyncSchema,
   DevinSyncSchema,
   OnaSyncSchema,
-  TravisCISyncSchema
+  TravisCISyncSchema,
+  GiteaSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -153,7 +155,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ExternalInfisicalSyncListItemSchema,
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
-  TravisCISyncListItemSchema
+  TravisCISyncListItemSchema,
+  GiteaSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

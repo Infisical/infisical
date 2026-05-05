@@ -126,6 +126,7 @@ import {
 } from "./external-infisical";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
+import { TGiteaSync, TGiteaSyncInput, TGiteaSyncListItem, TGiteaSyncWithCredentials } from "./gitea";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
   THCVaultSync,
@@ -233,7 +234,8 @@ export type TSecretSync =
   | TExternalInfisicalSync
   | TDevinSync
   | TOnaSync
-  | TTravisCISync;
+  | TTravisCISync
+  | TGiteaSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -275,7 +277,8 @@ export type TSecretSyncWithCredentials =
   | TExternalInfisicalSyncWithCredentials
   | TDevinSyncWithCredentials
   | TOnaSyncWithCredentials
-  | TTravisCISyncWithCredentials;
+  | TTravisCISyncWithCredentials
+  | TGiteaSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -317,7 +320,8 @@ export type TSecretSyncInput =
   | TExternalInfisicalSyncInput
   | TDevinSyncInput
   | TOnaSyncInput
-  | TTravisCISyncInput;
+  | TTravisCISyncInput
+  | TGiteaSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -359,7 +363,8 @@ export type TSecretSyncListItem =
   | TExternalInfisicalSyncListItem
   | TDevinSyncListItem
   | TOnaSyncListItem
-  | TTravisCISyncListItem;
+  | TTravisCISyncListItem
+  | TGiteaSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

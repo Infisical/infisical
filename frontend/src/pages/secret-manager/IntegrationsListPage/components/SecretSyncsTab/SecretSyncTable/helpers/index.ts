@@ -253,6 +253,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         ? `Branch - ${destinationConfig.branch}`
         : "Repository";
       break;
+    case SecretSync.Gitea:
+      primaryText = `${destinationConfig.owner}/${destinationConfig.repo}`;
+      secondaryText = "Repository";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

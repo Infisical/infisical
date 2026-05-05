@@ -38,7 +38,8 @@ export enum SecretSync {
   ExternalInfisical = "external-infisical",
   Devin = "devin",
   Ona = "ona",
-  TravisCI = "travis-ci"
+  TravisCI = "travis-ci",
+  Gitea = "gitea"
 }
 
 export enum SecretSyncStatus {

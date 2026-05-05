@@ -57,6 +57,7 @@ import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TTravisCIConnection } from "./travis-ci-connection";
+import { TGiteaConnection } from "./gitea-connection";
 import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -118,6 +119,7 @@ export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./travis-ci-connection";
+export * from "./gitea-connection";
 export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
@@ -186,7 +188,8 @@ export type TAppConnection =
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
-  | TTravisCIConnection;
+  | TTravisCIConnection
+  | TGiteaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

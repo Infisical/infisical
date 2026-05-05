@@ -2668,6 +2668,10 @@ export const AppConnections = {
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."
     },
+    GITEA: {
+      instanceUrl: "The Gitea instance URL to connect with (e.g. https://gitea.example.com).",
+      accessToken: "The access token used to authenticate with Gitea."
+    },
     CAMUNDA: {
       clientId: "The client ID used to authenticate with Camunda.",
       clientSecret: "The client secret used to authenticate with Camunda."
@@ -3135,6 +3139,11 @@ export const SecretSyncs = {
       repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
       branch:
         "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
+    },
+    GITEA: {
+      scope: "The Gitea sync scope. Currently only repository-level Action Secrets are supported.",
+      owner: "The Gitea repository owner (user or organization).",
+      repo: "The Gitea repository name."
     }
   }
 };

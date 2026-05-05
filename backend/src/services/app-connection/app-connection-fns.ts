@@ -133,6 +133,7 @@ import {
 } from "./external-infisical";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
+import { getGiteaConnectionListItem, GiteaConnectionMethod, validateGiteaConnectionCredentials } from "./gitea";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
 import {
   getGitHubRadarConnectionListItem,
@@ -319,7 +320,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNetScalerConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
-    getTravisCIConnectionListItem()
+    getTravisCIConnectionListItem(),
+    getGiteaConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -474,6 +476,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Gitea]: validateGiteaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
@@ -530,6 +533,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
+    case GiteaConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -696,7 +700,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
-  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Gitea]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

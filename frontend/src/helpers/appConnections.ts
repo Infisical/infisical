@@ -75,6 +75,7 @@ import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-con
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
+import { GiteaConnectionMethod } from "@app/hooks/api/appConnections/types/gitea-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 
@@ -173,7 +174,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
-  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" }
+  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
+  [AppConnection.Gitea]: { name: "Gitea", image: "Gitea.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -218,6 +220,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
+    case GiteaConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
