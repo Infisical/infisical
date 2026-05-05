@@ -77,13 +77,20 @@ export const ProjectTypePage = () => {
   const { data: certManagerInstance } = useCertManagerInstanceState();
 
   useEffect(() => {
-    if (projectType === ProjectType.CertificateManager && certManagerInstance?.activeProjectId) {
-      navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-        params: { orgId, projectId: certManagerInstance.activeProjectId }
-      });
+    if (projectType === ProjectType.CertificateManager) {
+      if (certManagerInstance?.activeProjectId) {
+        navigate({
+          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
+          params: { orgId, projectId: certManagerInstance.activeProjectId }
+        });
+      } else if (certManagerInstance && !certManagerInstance.activeProjectId) {
+        navigate({
+          to: "/organizations/$orgId/projects",
+          params: { orgId }
+        });
+      }
     }
-  }, [projectType, certManagerInstance?.activeProjectId, orgId, navigate]);
+  }, [projectType, certManagerInstance, orgId, navigate]);
 
   if (projectType === ProjectType.CertificateManager) {
     return null;
@@ -129,7 +136,7 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
@@ -137,16 +144,16 @@ const ProjectTypeContent = ({
       <Link
         to="/organizations/$orgId/projects"
         params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 px-6 pt-6 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
       >
         <ChevronLeftIcon size={16} />
         Overview
       </Link>
-      <div className="mb-10 px-6">
+      <div className="mb-10">
         <h1 className="flex items-center text-2xl font-medium text-white underline decoration-project/90 underline-offset-4">
           <Lottie
             icon={getProjectLottieIcon(projectType)}
-            className="mr-3 mb-1 inline-block h-[26px] w-[26px]"
+            className="mr-3 h-[26px] w-[26px] shrink-0"
           />
           {typeTitle}
         </h1>
@@ -453,7 +460,7 @@ const MyProjectsForType = ({
   const isWorkspaceEmpty = !isProjectViewLoading && workspaces.length === 0;
 
   return (
-    <div className="px-6">
+    <div>
       <Toolbar
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
@@ -565,7 +572,7 @@ const AllProjectsForType = ({
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
 
   return (
-    <div className="px-6">
+    <div>
       <Toolbar
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
