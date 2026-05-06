@@ -3,9 +3,11 @@ import { z } from "zod";
 import { AccessScope, IdentitiesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { IdentityOrderBy } from "@app/services/identity-v2/identity-types";
 
 const metadataSchema = z.object({
   key: z.string().trim().min(1, "Metadata key cannot be empty"),
@@ -288,7 +290,17 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(IDENTITIES.LIST.offset).optional(),
         limit: z.coerce.number().min(1).max(1000).default(20).describe(IDENTITIES.LIST.limit).optional(),
-        search: z.string().trim().describe(IDENTITIES.LIST.search).optional()
+        search: z.string().trim().describe(IDENTITIES.LIST.search).optional(),
+        orderBy: z
+          .nativeEnum(IdentityOrderBy)
+          .default(IdentityOrderBy.Name)
+          .describe("The field to sort identities by.")
+          .optional(),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe("The sort direction (asc or desc).")
+          .optional()
       }),
       response: {
         200: z.object({
@@ -308,7 +320,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
         data: {
           offset: req.query.offset,
           limit: req.query.limit,
-          search: req.query.search
+          search: req.query.search,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection
         }
       });
 
