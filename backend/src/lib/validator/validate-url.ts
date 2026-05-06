@@ -311,7 +311,6 @@ const buildAgentCacheKey = (
     opts.keepAlive ?? "",
     opts.rejectUnauthorized ?? "",
     opts.servername ?? "",
-    opts.checkServerIdentity ? "custom-cs-id" : "",
     caKey
   ].join("|");
 };
@@ -360,6 +359,12 @@ const buildPinnedAgent = (
   // If we don't have a pinned IP set AND there's no other agent customization,
   // fall through to Axios's default agent. This is the dev-mode/private-ip path.
   if (!validated && !hasAgentCustomization(opts)) return undefined;
+
+  // Function-valued agent options can't be reliably fingerprinted in the cache key.
+  // Skip the cache entirely when any such option is supplied and construct a fresh agent.
+  if (opts.checkServerIdentity) {
+    return constructAgent(validated, protocol, opts);
+  }
 
   const cacheKey = buildAgentCacheKey(validated, protocol, opts);
   const cached = agentCache.get(cacheKey);
