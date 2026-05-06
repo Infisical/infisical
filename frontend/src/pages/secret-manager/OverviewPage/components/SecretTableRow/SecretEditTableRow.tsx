@@ -117,6 +117,7 @@ type Props = {
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   onAddOverride?: () => void;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   isEmpty?: boolean;
   importedSecret?:
     | {
@@ -162,6 +163,7 @@ export const SecretEditTableRow = ({
   isVisible,
   secretId,
   isRotatedSecret,
+  isHoneyTokenSecret,
   importedBy,
   importedSecret,
   isEmpty,
@@ -190,6 +192,8 @@ export const SecretEditTableRow = ({
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const batchStore = useBatchStoreApi();
+
+  const isManagedSecret = isRotatedSecret || isHoneyTokenSecret;
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
@@ -829,7 +833,7 @@ export const SecretEditTableRow = ({
   const isReadOnly =
     isPendingDelete ||
     isImportedSecret ||
-    isRotatedSecret ||
+    isManagedSecret ||
     isFetchingSharedValue ||
     isErrorFetchingSharedValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
@@ -863,7 +867,7 @@ export const SecretEditTableRow = ({
       render={({ field, fieldState: { error } }) => (
         <Input
           autoComplete="off"
-          isReadOnly={isPendingDelete || isImportedSecret || isRotatedSecret || !canEditSecretValue}
+          isReadOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
           autoCapitalization={currentProject?.autoCapitalization}
           variant="plain"
           placeholder={error?.message || "Secret name"}
@@ -906,7 +910,7 @@ export const SecretEditTableRow = ({
             </TooltipTrigger>
             <TooltipContent>
               You do not have access to view the current value
-              {canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}
+              {canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}
             </TooltipContent>
           </Tooltip>
         )}
@@ -949,7 +953,7 @@ export const SecretEditTableRow = ({
                 environment={environment}
                 isImport={isImportedSecret}
                 defaultValue={secretValueHidden ? "" : undefined}
-                canEditButNotView={secretValueHidden}
+                canEditButNotView={secretValueHidden && !isManagedSecret}
                 onFocus={() => setIsFieldFocused.on()}
                 containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
                 onBlur={() => {
@@ -1116,7 +1120,7 @@ export const SecretEditTableRow = ({
                 isDisabled={
                   isPendingDelete ||
                   isImportedSecret ||
-                  isRotatedSecret ||
+                  isManagedSecret ||
                   (isCreatable ? !canCreate : !canEditSecretValue)
                 }
                 onClick={() => {
@@ -1135,11 +1139,13 @@ export const SecretEditTableRow = ({
             <TooltipContent>
               {isImportedSecret
                 ? "Cannot Edit Imported Secret"
-                : isRotatedSecret
-                  ? "Cannot Edit Rotated Secret"
-                  : (isCreatable ? !canCreate : !canEditSecretValue)
-                    ? "Access Denied"
-                    : `${isCreatable ? "Add" : "Edit"} Value`}
+                : isHoneyTokenSecret
+                  ? "Cannot Edit Honey Token Secret"
+                  : isRotatedSecret
+                    ? "Cannot Edit Rotated Secret"
+                    : (isCreatable ? !canCreate : !canEditSecretValue)
+                      ? "Access Denied"
+                      : `${isCreatable ? "Add" : "Edit"} Value`}
             </TooltipContent>
           </Tooltip>
           <Tooltip disableHoverableContent>
@@ -1590,7 +1596,7 @@ export const SecretEditTableRow = ({
                 >
                   {(isAllowed) => (
                     <Tooltip
-                      open={isRotatedSecret || isImportedSecret || isCreatable ? undefined : false}
+                      open={isManagedSecret || isImportedSecret || isCreatable ? undefined : false}
                       disableHoverableContent
                     >
                       <TooltipTrigger className="block w-full">
@@ -1600,7 +1606,7 @@ export const SecretEditTableRow = ({
                             isCreatable ||
                             isDeleting ||
                             !isAllowed ||
-                            isRotatedSecret ||
+                            isManagedSecret ||
                             isImportedSecret
                           }
                           variant="danger"
@@ -1610,13 +1616,15 @@ export const SecretEditTableRow = ({
                         </DropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
-                        {isRotatedSecret
-                          ? "Cannot Delete Rotated Secret"
-                          : isImportedSecret
-                            ? "Cannot Delete Imported Secret"
-                            : isCreatable
-                              ? "No Secret to Delete"
-                              : "Delete"}
+                        {isHoneyTokenSecret
+                          ? "Cannot Delete Honey Token Secret"
+                          : isRotatedSecret
+                            ? "Cannot Delete Rotated Secret"
+                            : isImportedSecret
+                              ? "Cannot Delete Imported Secret"
+                              : isCreatable
+                                ? "No Secret to Delete"
+                                : "Delete"}
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -1661,7 +1669,7 @@ export const SecretEditTableRow = ({
               secretKey={secretName}
               environment={environment}
               secretPath={secretPath}
-              isRotatedSecret={isRotatedSecret ?? false}
+              isRotatedSecret={isManagedSecret ?? false}
               canReadValue={canReadSecretValue}
             />
           )}

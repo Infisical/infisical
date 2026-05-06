@@ -16,10 +16,12 @@ export type TInventoryViewFilters = {
 
 export type TListInventoryViewsDTO = {
   projectId: string;
+  applicationId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateInventoryViewDTO = {
   projectId: string;
+  applicationId?: string;
   name: string;
   filters: TInventoryViewFilters;
   columns?: string[];

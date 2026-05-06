@@ -173,7 +173,7 @@ export const HCVaultSyncFns = {
 
     const { namespace } = connection.credentials;
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const instanceUrl = getHCVaultInstanceUrl(connection);
 
     // Get mount details to determine KV version
     const { version: mountVersion } = await getKvMountVersion({
@@ -268,7 +268,7 @@ export const HCVaultSyncFns = {
 
     const { namespace } = connection.credentials;
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const instanceUrl = getHCVaultInstanceUrl(connection);
 
     // Get mount details to determine KV version
     const { version: mountVersion } = await getKvMountVersion({
@@ -337,7 +337,7 @@ export const HCVaultSyncFns = {
 
     const { namespace } = connection.credentials;
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const instanceUrl = getHCVaultInstanceUrl(connection);
 
     // Get mount details to determine KV version
     const { version: mountVersion } = await getKvMountVersion({

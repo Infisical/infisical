@@ -11,7 +11,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -19,16 +18,16 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -49,10 +48,14 @@ type TIdentityAzureAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+  >;
 };
 
 export type TIdentityAzureAuthServiceFactory = ReturnType<typeof identityAzureAuthServiceFactory>;
@@ -64,7 +67,8 @@ export const identityAzureAuthServiceFactory = ({
   identityAccessTokenDAL,
   permissionService,
   licenseService,
-  orgDAL
+  orgDAL,
+  identityAccessTokenService
 }: TIdentityAzureAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: azureJwt, organizationSlug }: TLoginAzureAuthDTO) => {
     const appCfg = getConfig();
@@ -158,7 +162,7 @@ export const identityAzureAuthServiceFactory = ({
         }
       }
 
-      const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
+      await identityAzureAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -178,36 +182,28 @@ export const identityAzureAuthServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityAzureAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityAzureAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AZURE_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
       });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityAzureAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identityAzureAuth.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.AZURE_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityAzureAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityAzureAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityAzureAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: Number(identityAzureAuth.accessTokenPeriod) || 0,
+        accessTokenTrustedIps: identityAzureAuth.accessTokenTrustedIps as TIp[]
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -578,6 +574,12 @@ export const identityAzureAuthServiceFactory = ({
 
       return { ...deletedAzureAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+
     return revokedIdentityAzureAuth;
   };
 

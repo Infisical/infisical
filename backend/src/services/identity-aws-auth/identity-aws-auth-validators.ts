@@ -12,7 +12,7 @@ const arnRegex = new RE2(
 export const validateAccountIds = z
   .string()
   .trim()
-  .max(2048)
+  .max(4096)
   .default("")
   // Custom validation to ensure each part is a 12-digit number
   .refine(

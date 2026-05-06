@@ -78,7 +78,7 @@ export const MembersSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <UserPlusIcon />
-                  {`Add Users to ${productLabel}`}
+                  {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>

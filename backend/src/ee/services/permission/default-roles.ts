@@ -16,6 +16,7 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
@@ -411,6 +412,18 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionHoneyTokenActions.Read,
+      ProjectPermissionHoneyTokenActions.ReadCredentials,
+      ProjectPermissionHoneyTokenActions.Create,
+      ProjectPermissionHoneyTokenActions.Edit,
+      ProjectPermissionHoneyTokenActions.Reset,
+      ProjectPermissionHoneyTokenActions.Revoke
+    ],
+    ProjectPermissionSub.HoneyTokens
+  );
+
+  can(
+    [
       ProjectPermissionPamAccountActions.Access,
       ProjectPermissionPamAccountActions.Read,
       ProjectPermissionPamAccountActions.Create,
@@ -574,6 +587,8 @@ const buildMemberPermissionRules = () => {
     ],
     ProjectPermissionSub.ServiceTokens
   );
+
+  can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
   can(
     [
@@ -785,6 +800,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);

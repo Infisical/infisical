@@ -27,7 +27,7 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
-import { createDistinguishedName, parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
+import { createDistinguishedName, extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -50,7 +50,7 @@ vi.mock("@peculiar/x509", async (importOriginal) => {
 });
 
 vi.mock("../certificate-authority/certificate-authority-fns", () => ({
-  parseDistinguishedName: vi.fn().mockReturnValue({
+  extractDnParts: vi.fn().mockReturnValue({
     commonName: "test.example.com"
   }),
   createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com")
@@ -124,7 +124,7 @@ describe("CertificateV3Service", () => {
       issueCertFromCa: vi.fn()
     };
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission"> = {
+  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
         throwUnlessCan: vi.fn(),
@@ -133,6 +133,18 @@ describe("CertificateV3Service", () => {
         relevantRuleFor: vi.fn(),
         rules: []
       }
+    }),
+    getResourcePermission: vi.fn().mockResolvedValue({
+      permission: {
+        throwUnlessCan: vi.fn(),
+        can: vi.fn().mockReturnValue(true),
+        cannot: vi.fn().mockReturnValue(false),
+        relevantRuleFor: vi.fn(),
+        rules: []
+      },
+      memberships: [],
+      hasRole: vi.fn().mockReturnValue(false),
+      isImplicitAdmin: false
     })
   };
 
@@ -179,7 +191,7 @@ describe("CertificateV3Service", () => {
       signatureAlgorithm: "RSA-SHA256" as any
     });
 
-    vi.mocked(parseDistinguishedName).mockReturnValue({
+    vi.mocked(extractDnParts).mockReturnValue({
       commonName: "test.example.com"
     });
     vi.mocked(createDistinguishedName).mockReturnValue("CN=test.example.com");

@@ -16,6 +16,7 @@ export * from "./Dialog";
 export * from "./Dropdown";
 export * from "./Empty";
 export * from "./Field";
+export * from "./HoverCard";
 export * from "./IconButton";
 export * from "./Input";
 export * from "./InputGroup";

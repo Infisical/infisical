@@ -14,15 +14,21 @@ export const useCreateCertificateInventoryView = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ name, filters, columns, isShared }: TCreateInventoryViewDTO) => {
+    mutationFn: async ({
+      name,
+      filters,
+      columns,
+      isShared,
+      applicationId
+    }: TCreateInventoryViewDTO) => {
       const { data } = await apiRequest.post<{ view: TCertificateInventoryView }>(
         "/api/v1/cert-manager/certificate-inventory-views",
-        { name, filters, columns, isShared }
+        { name, filters, columns, isShared, ...(applicationId && { applicationId }) }
       );
       return data.view;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list() });
+      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.all });
     }
   });
 };
@@ -39,7 +45,7 @@ export const useUpdateCertificateInventoryView = () => {
       return data.view;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list() });
+      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.all });
     }
   });
 };
@@ -55,7 +61,7 @@ export const useDeleteCertificateInventoryView = () => {
       return data.view;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.list() });
+      queryClient.invalidateQueries({ queryKey: certificateInventoryViewKeys.all });
     }
   });
 };

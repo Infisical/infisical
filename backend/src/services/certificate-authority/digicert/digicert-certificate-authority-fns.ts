@@ -36,7 +36,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { keyAlgorithmToAlgCfg, parseDistinguishedName } from "../certificate-authority-fns";
+import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import {
@@ -156,7 +156,7 @@ const parseTtlToDays = (ttl: string): number => {
 };
 
 const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
-  const subject = parseDistinguishedName(certObj.subject);
+  const subject = extractDnParts(certObj.subjectName);
   const commonName = subject.commonName ?? "";
 
   const sanExt = certObj.getExtension("2.5.29.17");

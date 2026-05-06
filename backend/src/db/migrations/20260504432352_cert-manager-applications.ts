@@ -1,7 +1,89 @@
+import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
+
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
+const ACCESS_SCOPE_PROJECT = "project";
+const ACCESS_SCOPE_ORGANIZATION = "organization";
+const PROJECT_TYPE_CERT_MANAGER = "cert-manager";
+const PROJECT_VERSION_V3 = 3;
+const PROJECT_MEMBERSHIP_ROLE_ADMIN = "admin";
+const ORG_MEMBERSHIP_ROLE_ADMIN = "admin";
+const ORG_MEMBERSHIP_ROLE_OWNER = "owner";
+const PIT_VERSION_LIMIT_DEFAULT = 10;
+
+const BACKFILL_CHUNK_SIZE = 8;
+
+const backfillOrgCertManagerProject = async (knex: Knex, orgId: string) => {
+  await knex.transaction(async (tx) => {
+    const slug = slugify(`cert-manager-${alphaNumericNanoId(4)}`);
+
+    const [{ id: projectId }] = (await tx(TableName.Project)
+      .insert({
+        name: "Certificate Manager",
+        slug,
+        type: PROJECT_TYPE_CERT_MANAGER,
+        orgId,
+        version: PROJECT_VERSION_V3,
+        pitVersionLimit: PIT_VERSION_LIMIT_DEFAULT
+      })
+      .returning("id")) as Array<{ id: string }>;
+
+    // Promote every existing org admin / owner to project admin so they can manage the new project.
+    const orgAdminMemberships = (await tx(TableName.Membership)
+      .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+      .where(`${TableName.Membership}.scope`, ACCESS_SCOPE_ORGANIZATION)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
+      .whereNotNull(`${TableName.Membership}.actorUserId`)
+      .whereIn(`${TableName.MembershipRole}.role`, [ORG_MEMBERSHIP_ROLE_ADMIN, ORG_MEMBERSHIP_ROLE_OWNER])
+      .distinct(`${TableName.Membership}.actorUserId as actorUserId`)) as Array<{ actorUserId: string }>;
+
+    if (orgAdminMemberships.length === 0) return;
+
+    const insertedMemberships = (await tx(TableName.Membership)
+      .insert(
+        orgAdminMemberships.map((m) => ({
+          scope: ACCESS_SCOPE_PROJECT,
+          scopeOrgId: orgId,
+          scopeProjectId: projectId,
+          actorUserId: m.actorUserId,
+          isActive: true
+        }))
+      )
+      .returning("id")) as Array<{ id: string }>;
+
+    await tx(TableName.MembershipRole).insert(
+      insertedMemberships.map(({ id: membershipId }) => ({
+        membershipId,
+        role: PROJECT_MEMBERSHIP_ROLE_ADMIN
+      }))
+    );
+  });
+};
+
+const backfillCertManagerProjectsForExistingOrgs = async (knex: Knex) => {
+  const orgsMissingCertManager = (await knex(TableName.Organization)
+    .leftJoin(TableName.Project, function joinProject() {
+      this.on(`${TableName.Project}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+        `${TableName.Project}.type`,
+        "=",
+        knex.raw("?", [PROJECT_TYPE_CERT_MANAGER])
+      );
+    })
+    .whereNull(`${TableName.Project}.id`)
+    .select(`${TableName.Organization}.id`)) as Array<{ id: string }>;
+
+  // Process orgs in chunks so the DB pool isn't saturated. Each chunk runs its
+  // org transactions in parallel; chunks themselves run sequentially.
+  for (let i = 0; i < orgsMissingCertManager.length; i += BACKFILL_CHUNK_SIZE) {
+    const chunk = orgsMissingCertManager.slice(i, i + BACKFILL_CHUNK_SIZE);
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(chunk.map(({ id }) => backfillOrgCertManagerProject(knex, id)));
+  }
+};
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.Organization, "defaultCertManagerProjectId"))) {
@@ -139,9 +221,47 @@ export async function up(knex: Knex): Promise<void> {
       t.index("applicationId");
     });
   }
+
+  if (!(await knex.schema.hasColumn(TableName.CertificateInventoryView, "applicationId"))) {
+    await knex.schema.alterTable(TableName.CertificateInventoryView, (t) => {
+      t.uuid("applicationId").nullable();
+      t.foreign("applicationId").references("id").inTable(TableName.PkiApplication).onDelete("CASCADE");
+      t.index(["projectId", "applicationId"]);
+    });
+
+    await knex.raw(`DROP INDEX IF EXISTS "cert_inv_view_personal_unique"`);
+    await knex.raw(`DROP INDEX IF EXISTS "cert_inv_view_shared_unique"`);
+
+    await knex.raw(
+      `CREATE UNIQUE INDEX "cert_inv_view_personal_unique" ON "${TableName.CertificateInventoryView}" ("projectId", COALESCE("applicationId"::text, ''), "name", "createdByUserId") WHERE "isShared" = false`
+    );
+    await knex.raw(
+      `CREATE UNIQUE INDEX "cert_inv_view_shared_unique" ON "${TableName.CertificateInventoryView}" ("projectId", COALESCE("applicationId"::text, ''), "name") WHERE "isShared" = true`
+    );
+  }
+
+  await backfillCertManagerProjectsForExistingOrgs(knex);
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasColumn(TableName.CertificateInventoryView, "applicationId")) {
+    await knex.raw(`DROP INDEX IF EXISTS "cert_inv_view_personal_unique"`);
+    await knex.raw(`DROP INDEX IF EXISTS "cert_inv_view_shared_unique"`);
+
+    await knex.schema.alterTable(TableName.CertificateInventoryView, (t) => {
+      t.dropForeign(["applicationId"]);
+      t.dropIndex(["projectId", "applicationId"]);
+      t.dropColumn("applicationId");
+    });
+
+    await knex.raw(
+      `CREATE UNIQUE INDEX "cert_inv_view_personal_unique" ON "${TableName.CertificateInventoryView}" ("projectId", "name", "createdByUserId") WHERE "isShared" = false`
+    );
+    await knex.raw(
+      `CREATE UNIQUE INDEX "cert_inv_view_shared_unique" ON "${TableName.CertificateInventoryView}" ("projectId", "name") WHERE "isShared" = true`
+    );
+  }
+
   if (await knex.schema.hasColumn(TableName.PkiScepTransaction, "applicationId")) {
     await knex.schema.alterTable(TableName.PkiScepTransaction, (t) => {
       t.dropForeign(["applicationId"]);

@@ -4,17 +4,11 @@ import { z } from "zod";
 
 import { ApplicationDetailsByIDPage } from "./ApplicationDetailsByIDPage";
 
-const ApplicationTabSchema = z.enum([
-  "overview",
-  "certificates",
-  "requests",
-  "syncs",
-  "members",
-  "settings"
-]);
+const ApplicationTabSchema = z.enum(["certificates", "requests", "syncs", "members", "settings"]);
 
 const SearchSchema = z.object({
-  selectedTab: ApplicationTabSchema.optional()
+  selectedTab: ApplicationTabSchema.optional(),
+  search: z.string().optional()
 });
 
 export const Route = createFileRoute(
@@ -22,7 +16,7 @@ export const Route = createFileRoute(
 )({
   component: ApplicationDetailsByIDPage,
   validateSearch: zodValidator(SearchSchema),
-  search: { middlewares: [stripSearchParams({ selectedTab: "overview" })] },
+  search: { middlewares: [stripSearchParams({ selectedTab: "certificates" })] },
   beforeLoad: ({ context }) => ({
     breadcrumbs: [...context.breadcrumbs, { label: "Applications" }, { label: "Application" }]
   })

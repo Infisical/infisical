@@ -24,10 +24,17 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     profileId: string,
     alg: string,
     publicKeyThumbprint: string,
+    applicationProfileId: string | null,
     tx?: Knex
   ) => {
     try {
-      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId, alg, publicKeyThumbprint }).first();
+      let query = (tx || db)(TableName.PkiAcmeAccount).where({ profileId, alg, publicKeyThumbprint });
+      if (applicationProfileId === null) {
+        query = query.whereNull("applicationProfileId");
+      } else {
+        query = query.where({ applicationProfileId });
+      }
+      const account = await query.first();
       return account || null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI ACME account by profile id, public key thumbprint and alg" });

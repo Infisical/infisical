@@ -47,6 +47,7 @@ import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import {
   canModifyByGrantConditions,
@@ -125,12 +126,13 @@ export const IdentityRoleDetailsSection = ({
   };
 
   const hasRoles = Boolean(identityMembershipDetails?.roles.length);
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Project Roles</CardTitle>
+          <CardTitle>{isCertManager ? "Cert Manager Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this machine identity</CardDescription>
           {hasRoles && (
             <CardAction>

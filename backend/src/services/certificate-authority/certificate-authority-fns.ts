@@ -25,49 +25,56 @@ export const createSerialNumber = () => {
   return randomBytes.toString("hex");
 };
 
+/**
+ * Create an RFC 4514 Distinguished Name string from parts.
+ * Uses x509 library's Name class to handle all escaping automatically.
+ */
 export const createDistinguishedName = (parts: TDNParts) => {
-  const dnParts = [];
-  if (parts.country) dnParts.push(`C=${parts.country}`);
-  if (parts.organization) dnParts.push(`O=${parts.organization}`);
-  if (parts.ou) dnParts.push(`OU=${parts.ou}`);
-  if (parts.province) dnParts.push(`ST=${parts.province}`);
-  if (parts.commonName) dnParts.push(`CN=${parts.commonName}`);
-  if (parts.locality) dnParts.push(`L=${parts.locality}`);
-  return dnParts.join(", ");
+  // Build JSON array for x509.Name - the library handles all RFC 4514 escaping
+  const jsonName: Array<{ [type: string]: string[] }> = [];
+  if (parts.country) jsonName.push({ C: [parts.country] });
+  if (parts.organization) jsonName.push({ O: [parts.organization] });
+  if (parts.ou) jsonName.push({ OU: [parts.ou] });
+  if (parts.province) jsonName.push({ ST: [parts.province] });
+  if (parts.commonName) jsonName.push({ CN: [parts.commonName] });
+  if (parts.locality) jsonName.push({ L: [parts.locality] });
+
+  // Create Name object from JSON and convert to properly escaped string
+  const name = new x509.Name(jsonName);
+  return name.toString();
 };
 
+/**
+ * Helper to get the last value of a DN attribute from an x509 Name object.
+ * Returns the last value for backward compatibility with the old parsing behavior
+ * which used loop assignment (last occurrence wins for multi-valued attributes).
+ */
+const getNameField = (name: x509.Name, field: string): string | undefined => {
+  const values = name.getField(field);
+  return values.length > 0 ? values[values.length - 1] : undefined;
+};
+
+/**
+ * Extract DN parts directly from an x509 Name object.
+ * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
+ */
+export const extractDnParts = (name: x509.Name): TDNParts => ({
+  country: getNameField(name, "C"),
+  organization: getNameField(name, "O"),
+  ou: getNameField(name, "OU"),
+  province: getNameField(name, "ST"),
+  commonName: getNameField(name, "CN"),
+  locality: getNameField(name, "L")
+});
+
+/**
+ * Parse a DN string into its component parts.
+ * Prefer using extractDnParts() with the x509 Name object when available.
+ */
 export const parseDistinguishedName = (dn: string): TDNParts => {
-  const parts: TDNParts = {};
-  const dnParts = dn.split(/,\s*/);
-
-  for (const part of dnParts) {
-    const [key, value] = part.split("=");
-    switch (key.toUpperCase()) {
-      case "C":
-        parts.country = value;
-        break;
-      case "O":
-        parts.organization = value;
-        break;
-      case "OU":
-        parts.ou = value;
-        break;
-      case "ST":
-        parts.province = value;
-        break;
-      case "CN":
-        parts.commonName = value;
-        break;
-      case "L":
-        parts.locality = value;
-        break;
-      default:
-        // Ignore unrecognized keys
-        break;
-    }
-  }
-
-  return parts;
+  // Use the x509 library's Name class to parse the DN string - it handles all RFC 4514 escaping
+  const name = new x509.Name(dn);
+  return extractDnParts(name);
 };
 
 /**
@@ -89,7 +96,7 @@ export const validateImportedCertificate = (
 ) => {
   const mismatches: string[] = [];
 
-  const certDn = parseDistinguishedName(certObj.subject);
+  const certDn = extractDnParts(certObj.subjectName);
 
   const dnFieldChecks: { label: string; expected: string; actual: string | undefined }[] = [
     { label: "Common Name (CN)", expected: caConfig.commonName, actual: certDn.commonName },

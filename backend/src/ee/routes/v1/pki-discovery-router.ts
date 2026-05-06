@@ -20,8 +20,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 const NetworkTargetConfigSchema = z
   .object({
-    ipRanges: z.array(z.string()).optional(),
-    domains: z.array(z.string()).optional(),
+    ipRanges: z.array(z.string().max(64)).optional(),
+    domains: z.array(z.string().max(253)).optional(),
     ports: z.string().default(DEFAULT_TLS_PORTS)
   })
   .refine((data) => (data.ipRanges && data.ipRanges.length > 0) || (data.domains && data.domains.length > 0), {

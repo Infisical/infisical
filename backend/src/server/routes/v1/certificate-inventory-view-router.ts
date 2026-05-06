@@ -51,6 +51,9 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       operationId: "listCertificateInventoryViews",
       tags: [ApiDocsTags.PkiCertificates],
       description: "List system and custom certificate inventory views for a project.",
+      querystring: z.object({
+        applicationId: z.string().uuid().optional()
+      }),
       response: {
         200: z.object({
           systemViews: z.array(
@@ -85,6 +88,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     handler: async (req) => {
       return server.services.certificateInventoryView.listViews({
         projectId: req.certManagerProjectId,
+        applicationId: req.query.applicationId,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
@@ -108,7 +112,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         name: z.string().trim().min(1).max(255),
         filters: InventoryViewFiltersSchema.default({}),
         columns: ColumnsSchema.optional(),
-        isShared: z.boolean().default(false).optional()
+        isShared: z.boolean().default(false).optional(),
+        applicationId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -120,6 +125,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.createView({
         projectId: req.certManagerProjectId,
+        applicationId: req.body.applicationId,
         name: req.body.name,
         filters: req.body.filters,
         columns: req.body.columns,

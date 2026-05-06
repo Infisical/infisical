@@ -28,9 +28,10 @@ import {
 type Props = {
   request: TCertificateRequestListItem;
   onViewCertificates?: (certificateId: string) => void;
+  applicationName?: string;
 };
 
-export const CertificateRequestRow = ({ request, onViewCertificates }: Props) => {
+export const CertificateRequestRow = ({ request, onViewCertificates, applicationName }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { mutateAsync: triggerValidation, isPending: isTriggering } =
@@ -96,6 +97,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
                   projectId: currentProject.id,
                   approvalRequestId
                 }}
+                search={applicationName ? { applicationName } : undefined}
               >
                 Pending Approval
                 <ExternalLinkIcon />

@@ -94,6 +94,8 @@ export const PamAccessAccountModal = ({
         return base("ssh");
       case PamResourceType.Kubernetes:
         return base("kubernetes");
+      case PamResourceType.Windows:
+        return base("rdp");
       default:
         return "";
     }

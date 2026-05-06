@@ -47,6 +47,7 @@ import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { canModifyByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
@@ -132,12 +133,13 @@ export const MemberRoleDetailsSection = ({
   };
 
   const hasRoles = Boolean(membershipDetails?.roles.length);
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Project Roles</CardTitle>
+          <CardTitle>{isCertManager ? "Cert Manager Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>

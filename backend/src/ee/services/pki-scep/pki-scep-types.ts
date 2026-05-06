@@ -71,6 +71,7 @@ export type THandlePkiOperationDTO = {
 
 export type TGenerateDynamicChallengeDTO = {
   profileId: string;
+  applicationId?: string;
   actor: ActorType;
   actorId: string;
   actorAuthMethod: ActorAuthMethod;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -24,6 +24,8 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import { useAddIdentityJwtAuth, useUpdateIdentityJwtAuth } from "@app/hooks/api";
 import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 import { useGetIdentityJwtAuth } from "@app/hooks/api/identities/queries";
@@ -32,62 +34,60 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
 
-const commonSchema = z.object({
-  accessTokenTrustedIps: z
-    .array(
+const buildSchema = (maxAccessTokenTTL: number) => {
+  const common = z.object({
+    accessTokenTrustedIps: z
+      .array(
+        z.object({
+          ipAddress: z.string().max(50)
+        })
+      )
+      .min(1),
+    accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+    accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+    accessTokenNumUsesLimit: z.string(),
+    boundIssuer: z.string().trim().default(""),
+    boundAudiences: z.string().optional().default(""),
+    boundClaims: z.array(
       z.object({
-        ipAddress: z.string().max(50)
+        key: z.string(),
+        value: z.string()
       })
-    )
-    .min(1),
-  accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
-    message: "Access Token TTL cannot be greater than 315360000"
-  }),
-  accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
-    message: "Access Token Max TTL cannot be greater than 315360000"
-  }),
-  accessTokenNumUsesLimit: z.string(),
-  boundIssuer: z.string().trim().default(""),
-  boundAudiences: z.string().optional().default(""),
-  boundClaims: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string()
-    })
-  ),
-  boundSubject: z.string().optional().default("")
-});
+    ),
+    boundSubject: z.string().optional().default("")
+  });
 
-const schema = z.discriminatedUnion("configurationType", [
-  z
-    .object({
-      configurationType: z.literal(IdentityJwtConfigurationType.JWKS),
-      jwksUrl: z.string().trim().url(),
-      jwksCaCert: z.string().trim().default(""),
-      publicKeys: z
-        .object({
-          value: z.string()
-        })
-        .array()
-        .optional()
-    })
-    .merge(commonSchema),
-  z
-    .object({
-      configurationType: z.literal(IdentityJwtConfigurationType.STATIC),
-      jwksUrl: z.string().trim().optional(),
-      jwksCaCert: z.string().trim().optional().default(""),
-      publicKeys: z
-        .object({
-          value: z.string().min(1)
-        })
-        .array()
-        .min(1)
-    })
-    .merge(commonSchema)
-]);
+  return z.discriminatedUnion("configurationType", [
+    z
+      .object({
+        configurationType: z.literal(IdentityJwtConfigurationType.JWKS),
+        jwksUrl: z.string().trim().url(),
+        jwksCaCert: z.string().trim().default(""),
+        publicKeys: z
+          .object({
+            value: z.string()
+          })
+          .array()
+          .optional()
+      })
+      .merge(common),
+    z
+      .object({
+        configurationType: z.literal(IdentityJwtConfigurationType.STATIC),
+        jwksUrl: z.string().trim().optional(),
+        jwksCaCert: z.string().trim().optional().default(""),
+        publicKeys: z
+          .object({
+            value: z.string().min(1)
+          })
+          .array()
+          .min(1)
+      })
+      .merge(common)
+  ]);
+};
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -100,13 +100,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentityJwtAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -122,6 +124,8 @@ export const IdentityJwtAuthForm = ({
     enabled: isUpdate
   });
 
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+
   const {
     watch,
     control,
@@ -130,7 +134,7 @@ export const IdentityJwtAuthForm = ({
     setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
@@ -554,8 +558,9 @@ export const IdentityJwtAuthForm = ({
                 label="Access Token TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -568,8 +573,9 @@ export const IdentityJwtAuthForm = ({
                 label="Access Token Max TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />

@@ -439,7 +439,8 @@ export const certificateServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: cert.id,
         projectId: ca.projectId,
-        eventType: PkiAlertEventType.REVOCATION
+        eventType: PkiAlertEventType.REVOCATION,
+        applicationId: cert.applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI revocation alert event");

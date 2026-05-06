@@ -3,8 +3,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useCreateEmailDomain } from "@app/hooks/api";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
+import { TEmailDomain, useCreateEmailDomain } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addDomainFormSchema = z.object({
@@ -24,9 +36,15 @@ type Props = {
   popUp: UsePopUpState<["addDomain"]>;
   handlePopUpClose: (popUpName: keyof UsePopUpState<["addDomain"]>) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["addDomain"]>, state?: boolean) => void;
+  onCreated?: (emailDomain: TEmailDomain) => void;
 };
 
-export const AddEmailDomainModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
+export const AddEmailDomainModal = ({
+  popUp,
+  handlePopUpClose,
+  handlePopUpToggle,
+  onCreated
+}: Props) => {
   const { control, handleSubmit, reset } = useForm<TAddDomainForm>({
     resolver: zodResolver(addDomainFormSchema)
   });
@@ -35,13 +53,14 @@ export const AddEmailDomainModal = ({ popUp, handlePopUpClose, handlePopUpToggle
 
   const onFormSubmit = async ({ domain }: TAddDomainForm) => {
     try {
-      await createEmailDomain({ domain });
+      const emailDomain = await createEmailDomain({ domain });
       createNotification({
         text: "Email domain added. Follow the DNS verification steps to complete setup.",
         type: "success"
       });
       handlePopUpClose("addDomain");
       reset();
+      onCreated?.(emailDomain);
     } catch (error) {
       createNotification({
         text: (error as Error)?.message || "Failed to add email domain",
@@ -51,39 +70,41 @@ export const AddEmailDomainModal = ({ popUp, handlePopUpClose, handlePopUpToggle
   };
 
   return (
-    <Modal
-      isOpen={popUp?.addDomain?.isOpen}
+    <Dialog
+      open={popUp?.addDomain?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addDomain", isOpen);
         reset();
       }}
     >
-      <ModalContent title="Add Email Domain" subTitle="Add a domain to verify ownership via DNS.">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add email domain</DialogTitle>
+          <DialogDescription>Add a domain to verify ownership via DNS.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
           <Controller
             control={control}
             defaultValue=""
             name="domain"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Domain" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="company.com" />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="domain">Domain</FieldLabel>
+                <Input id="domain" placeholder="company.com" isError={Boolean(error)} {...field} />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div className="mt-8 flex items-center space-x-4">
-            <Button size="sm" type="submit" isLoading={isPending} isDisabled={isPending}>
-              Add Domain
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpClose("addDomain")}
-            >
+          <DialogFooter>
+            <Button variant="ghost" type="button" onClick={() => handlePopUpClose("addDomain")}>
               Cancel
             </Button>
-          </div>
+            <Button variant="org" type="submit" isPending={isPending} isDisabled={isPending}>
+              Add Domain
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

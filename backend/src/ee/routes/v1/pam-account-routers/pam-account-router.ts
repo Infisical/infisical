@@ -549,7 +549,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH)
+          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH, Windows/RDP)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),

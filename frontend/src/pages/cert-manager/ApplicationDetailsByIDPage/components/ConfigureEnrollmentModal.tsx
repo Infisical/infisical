@@ -1,22 +1,10 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  FormControl,
-  FormLabel,
-  IconButton,
-  Input,
-  Spinner,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs,
-  TextArea
-} from "@app/components/v2";
+import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -25,12 +13,22 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Switch,
+  TextArea
 } from "@app/components/v3";
+import { downloadFile } from "@app/helpers/download";
 import { useToggle } from "@app/hooks";
 import { useGetPkiApplicationEnrollment } from "@app/hooks/api/pkiApplications";
 import {
@@ -59,17 +57,24 @@ type Props = {
 const errorText = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
 
-const CopyableField = ({ label, value }: { label: string; value: string }) => {
+const CopyableField = ({
+  label,
+  value,
+  helper
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+}) => {
   const [copied, setCopied] = useToggle(false);
   return (
     <div>
-      <FormLabel label={label} />
+      <FieldLabel>{label}</FieldLabel>
       <div className="flex gap-2">
         <Input value={value} disabled />
         <IconButton
-          ariaLabel={`copy ${label}`}
-          variant="outline_bg"
-          colorSchema="secondary"
+          aria-label={`copy ${label}`}
+          variant="outline"
           className="w-10"
           onClick={() => {
             navigator.clipboard.writeText(value);
@@ -80,6 +85,7 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
           <FontAwesomeIcon icon={copied ? faCheck : faCopy} />
         </IconButton>
       </div>
+      {helper ? <p className="mt-1 text-xs text-mineshaft-400">{helper}</p> : null}
     </div>
   );
 };
@@ -153,12 +159,12 @@ const ApiPanel = ({
         render={({ field }) => (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <FormLabel label="Auto-renew" />
+              <FieldLabel>Auto-renew</FieldLabel>
               <p className="text-xs text-mineshaft-400">
                 Automatically renew certificates issued via this profile before they expire.
               </p>
             </div>
-            <Switch id="api-auto-renew" isChecked={field.value} onCheckedChange={field.onChange} />
+            <Switch id="api-auto-renew" checked={field.value} onCheckedChange={field.onChange} />
           </div>
         )}
       />
@@ -168,23 +174,24 @@ const ApiPanel = ({
           name="renewBeforeDays"
           rules={{ min: 1, max: 365 }}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Renew before (days)"
-              isError={Boolean(error)}
-              errorText="Must be between 1 and 365"
-              helperText="How many days before expiry to trigger renewal."
-            >
-              <Input
-                type="number"
-                min={1}
-                max={365}
-                value={field.value ?? ""}
-                onChange={(e) =>
-                  field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                }
-                placeholder="30"
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Renew before (days)</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={field.value ?? ""}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  placeholder="30"
+                  isError={Boolean(error)}
+                />
+              </FieldContent>
+              {error ? <FieldError>Must be between 1 and 365</FieldError> : null}
+              <FieldDescription>How many days before expiry to trigger renewal.</FieldDescription>
+            </Field>
           )}
         />
       )}
@@ -213,7 +220,7 @@ const EstPanel = ({
   applicationId: string;
   profileId: string;
   enabled: boolean;
-  initial: { disableBootstrapCaValidation: boolean } | null;
+  initial: { disableBootstrapCaValidation: boolean; estEndpointUrl: string } | null;
 }) => {
   const setMutation = useSetPkiApplicationEstEnrollment();
   const clearMutation = useClearPkiApplicationEstEnrollment();
@@ -265,30 +272,42 @@ const EstPanel = ({
       <p className="text-sm text-mineshaft-300">
         EST clients will authenticate to this profile with the passphrase below.
       </p>
+      {enabled && initial?.estEndpointUrl ? (
+        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+          <CopyableField
+            label="EST endpoint base URL"
+            value={initial.estEndpointUrl}
+            helper="Append /simpleenroll, /simplereenroll, or /cacerts depending on the operation."
+          />
+        </div>
+      ) : null}
       <Controller
         control={control}
         name="passphrase"
         rules={{ required: !enabled, minLength: 8 }}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={enabled ? "New passphrase (leave blank to keep current)" : "Passphrase"}
-            isError={Boolean(error)}
-            errorText="Minimum 8 characters"
-          >
-            <Input type="password" {...field} placeholder="••••••••" />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              {enabled ? "New passphrase (leave blank to keep current)" : "Passphrase"}
+            </FieldLabel>
+            <FieldContent>
+              <Input type="password" {...field} placeholder="••••••••" isError={Boolean(error)} />
+            </FieldContent>
+            {error ? <FieldError>Minimum 8 characters</FieldError> : null}
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="caChain"
         render={({ field }) => (
-          <FormControl
-            label="CA chain (optional)"
-            helperText="PEM-encoded chain returned by the EST endpoint."
-          >
-            <TextArea {...field} rows={3} placeholder="-----BEGIN CERTIFICATE-----..." />
-          </FormControl>
+          <Field>
+            <FieldLabel>CA chain (optional)</FieldLabel>
+            <FieldContent>
+              <TextArea {...field} rows={3} placeholder="-----BEGIN CERTIFICATE-----..." />
+            </FieldContent>
+            <FieldDescription>PEM-encoded chain returned by the EST endpoint.</FieldDescription>
+          </Field>
         )}
       />
       <Controller
@@ -297,14 +316,14 @@ const EstPanel = ({
         render={({ field }) => (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <FormLabel label="Disable bootstrap CA validation" />
+              <FieldLabel>Disable bootstrap CA validation</FieldLabel>
               <p className="text-xs text-mineshaft-400">
                 Allow EST clients to skip server certificate validation during enrollment.
               </p>
             </div>
             <Switch
               id="est-disable-bootstrap"
-              isChecked={field.value}
+              checked={field.value}
               onCheckedChange={field.onChange}
             />
           </div>
@@ -335,7 +354,11 @@ const AcmePanel = ({
   applicationId: string;
   profileId: string;
   enabled: boolean;
-  initial: { skipDnsOwnershipVerification: boolean; skipEabBinding: boolean } | null;
+  initial: {
+    skipDnsOwnershipVerification: boolean;
+    skipEabBinding: boolean;
+    directoryUrl: string;
+  } | null;
 }) => {
   const setMutation = useSetPkiApplicationAcmeEnrollment();
   const clearMutation = useClearPkiApplicationAcmeEnrollment();
@@ -415,6 +438,11 @@ const AcmePanel = ({
       <p className="text-sm text-mineshaft-300">
         ACME clients use the EAB credentials below to register an account against this profile.
       </p>
+      {enabled && initial?.directoryUrl ? (
+        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+          <CopyableField label="ACME directory URL" value={initial.directoryUrl} />
+        </div>
+      ) : null}
       <p className="text-xs text-mineshaft-400">
         Pick at most one of the two options below — they are mutually exclusive.
       </p>
@@ -424,19 +452,19 @@ const AcmePanel = ({
         render={({ field }) => (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <FormLabel label="Skip DNS ownership verification" />
+              <FieldLabel>Skip DNS ownership verification</FieldLabel>
               <p className="text-xs text-mineshaft-400">
                 Skip DNS-01 / HTTP-01 challenge enforcement. Use only inside trusted networks.
               </p>
             </div>
             <Switch
               id="acme-skip-dns"
-              isChecked={field.value}
+              checked={field.value}
               onCheckedChange={(v) => {
                 field.onChange(v);
                 if (v) setValue("skipEabBinding", false);
               }}
-              isDisabled={skipEab}
+              disabled={skipEab}
             />
           </div>
         )}
@@ -447,19 +475,19 @@ const AcmePanel = ({
         render={({ field }) => (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <FormLabel label="Skip EAB binding" />
+              <FieldLabel>Skip EAB binding</FieldLabel>
               <p className="text-xs text-mineshaft-400">
                 Allow accounts to register without an EAB key. Recommended off in production.
               </p>
             </div>
             <Switch
               id="acme-skip-eab"
-              isChecked={field.value}
+              checked={field.value}
               onCheckedChange={(v) => {
                 field.onChange(v);
                 if (v) setValue("skipDnsOwnershipVerification", false);
               }}
-              isDisabled={skipDns}
+              disabled={skipDns}
             />
           </div>
         )}
@@ -497,11 +525,13 @@ const AcmePanel = ({
 const ScepPanel = ({
   applicationId,
   profileId,
+  profileSlug,
   enabled,
   initial
 }: {
   applicationId: string;
   profileId: string;
+  profileSlug: string;
   enabled: boolean;
   initial: {
     challengeType: ScepChallengeType;
@@ -509,6 +539,10 @@ const ScepPanel = ({
     allowCertBasedRenewal: boolean;
     dynamicChallengeExpiryMinutes: number | null;
     dynamicChallengeMaxPending: number | null;
+    scepEndpointUrl: string;
+    challengeEndpointUrl: string | null;
+    raCertificatePem: string;
+    raCertExpiresAt: string;
   } | null;
 }) => {
   const setMutation = useSetPkiApplicationScepEnrollment();
@@ -572,27 +606,79 @@ const ScepPanel = ({
     }
   };
 
+  const raCertExpiresAtLabel = initial?.raCertExpiresAt
+    ? new Date(initial.raCertExpiresAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      })
+    : null;
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-mineshaft-300">
         SCEP clients enroll by presenting a challenge password. Use static for shared passwords,
         dynamic for one-time per-client challenges.
       </p>
+      {enabled && initial ? (
+        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+          <CopyableField
+            label="SCEP endpoint URL"
+            value={initial.scepEndpointUrl}
+            helper="Configure your MDM or SCEP client to point at this URL."
+          />
+          {initial.challengeType === "dynamic" && initial.challengeEndpointUrl ? (
+            <CopyableField
+              label="Challenge endpoint URL"
+              value={initial.challengeEndpointUrl}
+              helper="Authenticated POST endpoint to mint a one-time challenge (e.g., the JAMF SCEPChallenge webhook)."
+            />
+          ) : null}
+          {initial.raCertificatePem ? (
+            <div>
+              <FieldLabel>RA certificate</FieldLabel>
+              <div className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
+                <p className="text-xs text-mineshaft-400">
+                  Expires: {raCertExpiresAtLabel ?? "Unknown"}
+                </p>
+                <IconButton
+                  aria-label="download RA certificate"
+                  variant="outline"
+                  onClick={() =>
+                    downloadFile(
+                      initial.raCertificatePem,
+                      `${profileSlug}-ra-cert.pem`,
+                      "application/x-pem-file"
+                    )
+                  }
+                  className="flex w-auto items-center gap-2 px-3"
+                >
+                  <FontAwesomeIcon icon={faDownload} />
+                  <span className="text-sm">Download PEM</span>
+                </IconButton>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <Controller
         control={control}
         name="challengeType"
         render={({ field }) => (
-          <FormControl label="Challenge type">
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="static">Static password</SelectItem>
-                <SelectItem value="dynamic">Dynamic (per-client)</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>Challenge type</FieldLabel>
+            <FieldContent>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="static">Static password</SelectItem>
+                  <SelectItem value="dynamic">Dynamic (per-client)</SelectItem>
+                </SelectContent>
+              </Select>
+            </FieldContent>
+          </Field>
         )}
       />
       {challengeType === "static" && (
@@ -601,17 +687,17 @@ const ScepPanel = ({
           name="challengePassword"
           rules={{ required: !enabled }}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label={
-                enabled
+            <Field>
+              <FieldLabel>
+                {enabled
                   ? "New challenge password (leave blank to keep current)"
-                  : "Challenge password"
-              }
-              isError={Boolean(error)}
-              errorText="Required"
-            >
-              <Input type="password" {...field} placeholder="••••••••" />
-            </FormControl>
+                  : "Challenge password"}
+              </FieldLabel>
+              <FieldContent>
+                <Input type="password" {...field} placeholder="••••••••" isError={Boolean(error)} />
+              </FieldContent>
+              {error ? <FieldError>Required</FieldError> : null}
+            </Field>
           )}
         />
       )}
@@ -621,34 +707,40 @@ const ScepPanel = ({
             control={control}
             name="dynamicChallengeExpiryMinutes"
             render={({ field }) => (
-              <FormControl label="Challenge expiry (minutes)">
-                <Input
-                  type="number"
-                  min={5}
-                  max={1440}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                  }
-                />
-              </FormControl>
+              <Field>
+                <FieldLabel>Challenge expiry (minutes)</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="number"
+                    min={5}
+                    max={1440}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                    }
+                  />
+                </FieldContent>
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="dynamicChallengeMaxPending"
             render={({ field }) => (
-              <FormControl label="Max pending challenges">
-                <Input
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                  }
-                />
-              </FormControl>
+              <Field>
+                <FieldLabel>Max pending challenges</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                    }
+                  />
+                </FieldContent>
+              </Field>
             )}
           />
         </div>
@@ -659,12 +751,12 @@ const ScepPanel = ({
         render={({ field }) => (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <FormLabel label="Include CA cert in response" />
+              <FieldLabel>Include CA cert in response</FieldLabel>
               <p className="text-xs text-mineshaft-400">
                 Return the issuing CA certificate inline alongside the issued cert.
               </p>
             </div>
-            <Switch id="scep-include-ca" isChecked={field.value} onCheckedChange={field.onChange} />
+            <Switch id="scep-include-ca" checked={field.value} onCheckedChange={field.onChange} />
           </div>
         )}
       />
@@ -674,16 +766,12 @@ const ScepPanel = ({
         render={({ field }) => (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <FormLabel label="Allow cert-based renewal" />
+              <FieldLabel>Allow cert-based renewal</FieldLabel>
               <p className="text-xs text-mineshaft-400">
                 Let clients renew using their existing certificate as authentication.
               </p>
             </div>
-            <Switch
-              id="scep-cert-renewal"
-              isChecked={field.value}
-              onCheckedChange={field.onChange}
-            />
+            <Switch id="scep-cert-renewal" checked={field.value} onCheckedChange={field.onChange} />
           </div>
         )}
       />
@@ -715,7 +803,7 @@ export const ConfigureEnrollmentModal = ({
       <DialogContent className="max-w-2xl overflow-visible">
         <DialogHeader>
           <DialogTitle>
-            Configure issuance · <span className="font-mono">{profile?.profileSlug ?? ""}</span>
+            Configure enrollment: <span className="font-mono">{profile?.profileSlug ?? ""}</span>
           </DialogTitle>
           <DialogDescription>
             Enable an enrollment method to allow clients to request certificates from this Profile
@@ -733,25 +821,25 @@ export const ConfigureEnrollmentModal = ({
               <Tab value="api">
                 <span className="inline-flex items-center gap-2">
                   API
-                  {data?.api ? <Badge variant="success">on</Badge> : null}
+                  {data?.api ? <Badge variant="success">active</Badge> : null}
                 </span>
               </Tab>
               <Tab value="est">
                 <span className="inline-flex items-center gap-2">
                   EST
-                  {data?.estConfigured ? <Badge variant="success">on</Badge> : null}
+                  {data?.estConfigured ? <Badge variant="success">active</Badge> : null}
                 </span>
               </Tab>
               <Tab value="acme">
                 <span className="inline-flex items-center gap-2">
                   ACME
-                  {data?.acmeConfigured ? <Badge variant="success">on</Badge> : null}
+                  {data?.acmeConfigured ? <Badge variant="success">active</Badge> : null}
                 </span>
               </Tab>
               <Tab value="scep">
                 <span className="inline-flex items-center gap-2">
                   SCEP
-                  {data?.scepConfigured ? <Badge variant="success">on</Badge> : null}
+                  {data?.scepConfigured ? <Badge variant="success">active</Badge> : null}
                 </span>
               </Tab>
             </TabList>
@@ -783,6 +871,7 @@ export const ConfigureEnrollmentModal = ({
               <ScepPanel
                 applicationId={applicationId}
                 profileId={profileId}
+                profileSlug={profile?.profileSlug ?? ""}
                 enabled={Boolean(data?.scepConfigured)}
                 initial={data?.scep ?? null}
               />

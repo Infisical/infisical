@@ -43,7 +43,13 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEyeSlash,
+  faKey,
+  faRotate,
+  faShieldHalved,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { format } from "date-fns";
 import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
@@ -152,7 +158,8 @@ export const SecretItem = memo(
       valueOverride: originalSecret.valueOverride ?? secretValueData?.valueOverride
     };
 
-    const { isRotatedSecret } = secret;
+    const { isRotatedSecret, isHoneyTokenSecret } = secret;
+    const isManagedSecret = isRotatedSecret || isHoneyTokenSecret;
 
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
     const isAutoSavingRef = useRef(false);
@@ -312,7 +319,7 @@ export const SecretItem = memo(
 
     const isReadOnlySecret =
       isReadOnly ||
-      isRotatedSecret ||
+      isManagedSecret ||
       (isPending && pendingAction === PendingAction.Delete) ||
       isLoadingSecretValue;
 
@@ -411,7 +418,7 @@ export const SecretItem = memo(
           className={twMerge(
             "border-b border-mineshaft-600 bg-mineshaft-800 shadow-none hover:bg-mineshaft-700",
             isDirty && "border-primary-400/50",
-            isRotatedSecret && "bg-mineshaft-700/60",
+            isManagedSecret && "bg-mineshaft-700/60",
             isPending && "bg-mineshaft-700/60",
             pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
             pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
@@ -426,13 +433,16 @@ export const SecretItem = memo(
                 isPending && "ml-[-2px]"
               )}
             >
-              {secret.isRotatedSecret ? (
+              {isManagedSecret ? (
                 <div className="relative">
                   <FontAwesomeIcon icon={faKey} size="xs" className={twMerge("ml-3 h-3.5 w-3.5")} />
                   <FontAwesomeIcon
-                    icon={faRotate}
+                    icon={isHoneyTokenSecret ? faShieldHalved : faRotate}
                     size="xs"
-                    className="absolute -right-[0.2rem] -bottom-[0.05rem] text-mineshaft-400"
+                    className={twMerge(
+                      "absolute -right-[0.2rem] -bottom-[0.05rem]",
+                      isHoneyTokenSecret ? "text-yellow" : "text-mineshaft-400"
+                    )}
                   />
                 </div>
               ) : (
@@ -460,7 +470,7 @@ export const SecretItem = memo(
                 render={({ field, fieldState: { error } }) => (
                   <Input
                     autoComplete="off"
-                    isReadOnly={isReadOnly || isRotatedSecret}
+                    isReadOnly={isReadOnly || isManagedSecret}
                     autoCapitalization={currentProject?.autoCapitalization}
                     variant="plain"
                     isDisabled={isOverridden}
@@ -504,7 +514,7 @@ export const SecretItem = memo(
             >
               {secretValueHidden && !getFieldState("value").isDirty && (
                 <Tooltip
-                  content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
+                  content={`You do not have access to view the current value${canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}`}
                 >
                   <FontAwesomeIcon className="pr-2" size="sm" icon={faEyeSlash} />
                 </Tooltip>
@@ -544,7 +554,9 @@ export const SecretItem = memo(
                       isReadOnly={isReadOnlySecret}
                       key="secret-value"
                       isVisible={isVisible && (!secretValueHidden || isPending)}
-                      canEditButNotView={secretValueHidden && !isOverridden && !isPending}
+                      canEditButNotView={
+                        secretValueHidden && !isOverridden && !isPending && !isManagedSecret
+                      }
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
@@ -733,7 +745,7 @@ export const SecretItem = memo(
                     {(isAllowed) => (
                       <IconButton
                         ariaLabel="override-value"
-                        isDisabled={!isAllowed || isRotatedSecret}
+                        isDisabled={!isAllowed || isManagedSecret}
                         variant="plain"
                         size="sm"
                         onClick={handleOverrideClick}
@@ -744,8 +756,8 @@ export const SecretItem = memo(
                       >
                         <Tooltip
                           content={
-                            isRotatedSecret
-                              ? "Unavailable for rotated secrets"
+                            isManagedSecret
+                              ? `Unavailable for ${isHoneyTokenSecret ? "honey token" : "rotated"} secrets`
                               : `${isOverridden ? "Remove" : "Add"} Override`
                           }
                         >
@@ -1010,9 +1022,11 @@ export const SecretItem = memo(
                       allowedLabel={
                         isOverridden
                           ? "Unavailable with override"
-                          : isRotatedSecret
-                            ? "Cannot Delete Rotated Secret"
-                            : "Delete"
+                          : isHoneyTokenSecret
+                            ? "Cannot Delete Honey Token Secret"
+                            : isRotatedSecret
+                              ? "Cannot Delete Rotated Secret"
+                              : "Delete"
                       }
                     >
                       {(isAllowed) => (
@@ -1023,7 +1037,7 @@ export const SecretItem = memo(
                           size="md"
                           className="p-0 opacity-0 group-hover:opacity-100"
                           onClick={() => onDeleteSecret(secret)}
-                          isDisabled={!isAllowed || isRotatedSecret || isOverridden}
+                          isDisabled={!isAllowed || isManagedSecret || isOverridden}
                         >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Trash}

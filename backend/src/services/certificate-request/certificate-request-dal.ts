@@ -126,13 +126,24 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      applicationId?: string;
       metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateRequests[]> => {
     try {
-      const { offset = 0, limit = 20, search, status, fromDate, toDate, profileIds, metadataFilter } = options;
+      const {
+        offset = 0,
+        limit = 20,
+        search,
+        status,
+        fromDate,
+        toDate,
+        profileIds,
+        applicationId,
+        metadataFilter
+      } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -144,6 +155,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
 
       if (profileIds && profileIds.length > 0) {
         query = query.whereIn(`${TableName.CertificateRequests}.profileId`, profileIds);
+      }
+
+      if (applicationId) {
+        query = query.whereIn(
+          `${TableName.CertificateRequests}.profileId`,
+          (tx || db)(TableName.PkiApplicationProfile).select("profileId").where("applicationId", applicationId)
+        );
       }
 
       if (search) {
@@ -200,13 +218,14 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      applicationId?: string;
       metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
-      const { search, status, fromDate, toDate, profileIds, metadataFilter } = options;
+      const { search, status, fromDate, toDate, profileIds, applicationId, metadataFilter } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -217,6 +236,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .where(`${TableName.CertificateRequests}.projectId`, projectId);
       if (profileIds && profileIds.length > 0) {
         query = query.whereIn(`${TableName.CertificateRequests}.profileId`, profileIds);
+      }
+
+      if (applicationId) {
+        query = query.whereIn(
+          `${TableName.CertificateRequests}.profileId`,
+          (tx || db)(TableName.PkiApplicationProfile).select("profileId").where("applicationId", applicationId)
+        );
       }
 
       if (search) {
@@ -271,6 +297,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      applicationId?: string;
       sortBy?: string;
       sortOrder?: "asc" | "desc";
       metadataFilter?: Array<{ key: string; value?: string }>;
@@ -287,6 +314,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         fromDate,
         toDate,
         profileIds,
+        applicationId,
         sortBy = "createdAt",
         sortOrder = "desc",
         metadataFilter
@@ -306,6 +334,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
 
       if (profileIds && profileIds.length > 0) {
         query = query.whereIn(`${TableName.CertificateRequests}.profileId`, profileIds);
+      }
+
+      if (applicationId) {
+        query = query.whereIn(
+          `${TableName.CertificateRequests}.profileId`,
+          (tx || db)(TableName.PkiApplicationProfile).select("profileId").where("applicationId", applicationId)
+        );
       }
 
       query = query

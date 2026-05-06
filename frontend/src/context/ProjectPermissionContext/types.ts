@@ -297,6 +297,15 @@ export enum ProjectPermissionMcpEndpointActions {
   Connect = "connect"
 }
 
+export enum ProjectPermissionHoneyTokenActions {
+  Read = "read",
+  ReadCredentials = "read-credentials",
+  Create = "create",
+  Edit = "edit",
+  Reset = "reset",
+  Revoke = "revoke"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -451,6 +460,7 @@ export enum ProjectPermissionSub {
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
+  HoneyTokens = "honey-tokens",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   Insights = "insights"
@@ -745,6 +755,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
+  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
   | [
       ProjectPermissionMcpEndpointActions,
       (

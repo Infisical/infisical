@@ -6,6 +6,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityV2DALFactory } from "./identity-dal";
@@ -26,6 +27,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeAllTokensForIdentity">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
@@ -38,6 +40,7 @@ export const identityV2ServiceFactory = ({
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
+  identityAccessTokenService,
   keyStore
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
@@ -205,6 +208,10 @@ export const identityV2ServiceFactory = ({
     if (existingIdentity.hasDeleteProtection) {
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }
+
+    // Set the identity-wide PG revocation epoch before removing the row so
+    // any JWT issued for this identity (with iat < now) is rejected.
+    await identityAccessTokenService.revokeAllTokensForIdentity(dto.selector.identityId);
 
     const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);
 

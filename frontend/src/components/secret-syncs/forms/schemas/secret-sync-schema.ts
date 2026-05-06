@@ -15,6 +15,7 @@ import { CircleCISyncDestinationSchema } from "./circleci-sync-destination-schem
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
+import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
@@ -30,8 +31,10 @@ import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-s
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
 import { OnaSyncDestinationSchema } from "./ona-sync-destination-schema";
+import { OvhSyncDestinationSchema } from "./ovh-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
+import { SnowflakeSyncDestinationSchema } from "./snowflake-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
@@ -78,8 +81,11 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   CircleCISyncDestinationSchema,
   AzureEntraIdScimSyncDestinationSchema,
   ExternalInfisicalSyncDestinationSchema,
+  OvhSyncDestinationSchema,
+  DevinSyncDestinationSchema,
   OnaSyncDestinationSchema,
-  TravisCISyncDestinationSchema
+  TravisCISyncDestinationSchema,
+  SnowflakeSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

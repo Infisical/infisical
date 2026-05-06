@@ -1,8 +1,7 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 
 import { AppConnection } from "../app-connection-enums";
@@ -41,7 +40,7 @@ export const getExternalInfisicalAccessToken = async (credentials: {
 }): Promise<string> => {
   const { instanceUrl, machineIdentityClientId, machineIdentityClientSecret } = credentials;
 
-  const { data } = await request.post<{ accessToken: string; expiresIn: number; tokenType: string }>(
+  const { data } = await safeRequest.post<{ accessToken: string; expiresIn: number; tokenType: string }>(
     `${instanceUrl}/api/v1/auth/universal-auth/login`,
     {
       clientId: machineIdentityClientId,
@@ -57,8 +56,6 @@ export const validateExternalInfisicalConnectionCredentials = async (
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">
 ) => {
   const { credentials: inputCredentials } = config;
-
-  await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
 
   const localIdentity = await identityUaDAL.findOne({
     clientId: inputCredentials.machineIdentityClientId
@@ -88,7 +85,6 @@ export const validateExternalInfisicalConnectionCredentials = async (
 };
 
 const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
-  await blockLocalAndPrivateIpAddresses(connection.credentials.instanceUrl);
   const token = await getExternalInfisicalAccessToken(connection.credentials);
   return { Authorization: `Bearer ${token}` };
 };
@@ -99,7 +95,7 @@ export const listProjects = async (connection: TExternalInfisicalConnection): Pr
   const baseUrl = getBaseUrl(connection);
   const headers = await getAuthHeaders(connection);
   try {
-    const { data } = await request.get<{
+    const { data } = await safeRequest.get<{
       projects: Array<{
         id: string;
         name: string;
@@ -133,7 +129,7 @@ export const getEnvironmentFolderTree = async (
   const baseUrl = getBaseUrl(connection);
   const headers = await getAuthHeaders(connection);
   try {
-    const { data } = await request.get<TRemoteEnvironmentFolderTree>(
+    const { data } = await safeRequest.get<TRemoteEnvironmentFolderTree>(
       `${baseUrl}/api/v1/projects/${projectId}/environment-folder-tree`,
       { headers }
     );

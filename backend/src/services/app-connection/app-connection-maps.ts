@@ -59,9 +59,12 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
   [AppConnection.Anthropic]: "Anthropic",
+  [AppConnection.OVH]: "OVH",
+  [AppConnection.Devin]: "Devin",
   [AppConnection.Ona]: "Ona",
   [AppConnection.DigiCert]: "DigiCert",
-  [AppConnection.TravisCI]: "Travis CI"
+  [AppConnection.TravisCI]: "Travis CI",
+  [AppConnection.Snowflake]: "Snowflake"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -123,7 +126,10 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
+  [AppConnection.OVH]: AppConnectionPlanType.Regular,
+  [AppConnection.Devin]: AppConnectionPlanType.Regular,
   [AppConnection.Ona]: AppConnectionPlanType.Regular,
   [AppConnection.DigiCert]: AppConnectionPlanType.Regular,
-  [AppConnection.TravisCI]: AppConnectionPlanType.Regular
+  [AppConnection.TravisCI]: AppConnectionPlanType.Regular,
+  [AppConnection.Snowflake]: AppConnectionPlanType.Regular
 };

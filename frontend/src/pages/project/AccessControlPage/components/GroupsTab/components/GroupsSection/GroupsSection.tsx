@@ -88,7 +88,7 @@ export const GroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {`Add Group to ${productLabel}`}
+                  {isCertManager ? "Add Group" : `Add Group to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>

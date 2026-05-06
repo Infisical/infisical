@@ -20,16 +20,16 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -40,7 +40,7 @@ import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-typ
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   identityTlsCertAuthDAL: Pick<
     TIdentityTlsCertAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
@@ -50,6 +50,10 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+  >;
 };
 
 const parseSubjectDetails = (data: string) => {
@@ -71,7 +75,8 @@ export const identityTlsCertAuthServiceFactory = ({
   licenseService,
   permissionService,
   kmsService,
-  orgDAL
+  orgDAL,
+  identityAccessTokenService
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
   const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({
     identityId,
@@ -203,7 +208,7 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       // Generate the token
-      const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
+      await identityTlsCertAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -223,35 +228,29 @@ export const identityTlsCertAuthServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityTlsCertAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
       });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityTlsCertAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identityTlsCertAuth.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityTlsCertAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityTlsCertAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityTlsCertAuth.accessTokenNumUsesLimit),
+        // TLS Cert auth schema has no accessTokenPeriod column.
+        accessTokenPeriod: 0,
+        accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIp[]
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -651,6 +650,12 @@ export const identityTlsCertAuthServiceFactory = ({
 
       return { ...deletedTlsCertAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+
     return revokedIdentityTlsCertAuth;
   };
 

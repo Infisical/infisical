@@ -63,6 +63,8 @@ export const KeyStorePrefixes = {
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
+  IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
+    `identity-token-uses-remaining:${identityId}:${jti}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>

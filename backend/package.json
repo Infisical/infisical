@@ -138,6 +138,7 @@
     "@ai-sdk/anthropic": "^3.0.68",
     "@aws-sdk/client-acm": "^3.1030.0",
     "@aws-sdk/client-acm-pca": "^3.992.0",
+    "@aws-sdk/client-cloudformation": "^3.1038.0",
     "@aws-sdk/client-elastic-load-balancing-v2": "^3.1015.0",
     "@aws-sdk/client-elasticache": "^3.637.0",
     "@aws-sdk/client-iam": "^3.525.0",

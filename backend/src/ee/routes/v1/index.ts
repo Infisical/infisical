@@ -23,6 +23,7 @@ import { registerGatewayPoolRouter } from "./gateway-pool-router";
 import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
+import { registerHoneyTokenRouter } from "./honey-token-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerInsightsRouter } from "./insights-router";
@@ -125,6 +126,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerGatewayPoolRouter, { prefix: "/gateway-pools" });
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
+  await server.register(registerHoneyTokenRouter, { prefix: "/honey-tokens" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
   await server.register(registerPamInsightsRouter, { prefix: "/insights/pam" });

@@ -57,6 +57,7 @@ export const ProjectNav = () => {
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
   );
+  const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const { submenu: smApprovalsSubmenu, pendingRequestsCount: smPendingCount } =
     useApprovalSubmenu();
   const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
@@ -78,7 +79,7 @@ export const ProjectNav = () => {
   const isOnCertApprovals = isCertManager && pathname.includes("/approvals");
 
   const getInitialProjectSubmenu = (): Submenu | null => {
-    if (isLegacyView || hasApplicationContext) return null;
+    if (isLegacyView || hasApplicationContext || isFromRootRequests) return null;
     if (isOnAccessControl)
       return currentProject.type === ProjectType.SecretManager
         ? SECRET_MANAGER_ACCESS_CONTROL_SUBMENU

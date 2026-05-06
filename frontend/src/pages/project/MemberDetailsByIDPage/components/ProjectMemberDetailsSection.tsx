@@ -14,7 +14,9 @@ import {
   DetailValue,
   IconButton
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 type Props = {
@@ -22,6 +24,9 @@ type Props = {
 };
 
 export const ProjectMemberDetailsSection = ({ membership }: Props) => {
+  const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
   const [_copyId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
@@ -95,7 +100,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             </Detail>
           )}
           <Detail>
-            <DetailLabel>Joined project</DetailLabel>
+            <DetailLabel>{isCertManager ? "Joined cert manager" : "Joined project"}</DetailLabel>
             <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>

@@ -118,6 +118,7 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
           fromDate: (params.fromDate || new Date(now - daysInMs)).toISOString(),
           toDate: (params.toDate || new Date(now)).toISOString(),
           ...(params.profileIds?.length && { profileIds: params.profileIds }),
+          ...(params.applicationId && { applicationId: params.applicationId }),
           sortBy: params.sortBy,
           sortOrder: params.sortOrder,
           ...(params.metadataFilter?.length && { metadata: params.metadataFilter })

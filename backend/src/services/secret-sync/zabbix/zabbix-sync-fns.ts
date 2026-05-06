@@ -1,7 +1,6 @@
 import RE2 from "re2";
 
-import { request } from "@app/lib/config/request";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -57,7 +56,7 @@ const listZabbixSecrets = async (apiToken: string, instanceUrl: string, hostId?:
   };
 
   try {
-    const response: ZabbixApiResponse<TZabbixSecret[]> = await request.post(apiUrl, payload, {
+    const response: ZabbixApiResponse<TZabbixSecret[]> = await safeRequest.post(apiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
@@ -104,7 +103,7 @@ const putZabbixSecrets = async (
         };
 
         // eslint-disable-next-line no-await-in-loop
-        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await request.post(apiUrl, updatePayload, {
+        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await safeRequest.post(apiUrl, updatePayload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiToken}`
@@ -135,7 +134,7 @@ const putZabbixSecrets = async (
         };
 
         // eslint-disable-next-line no-await-in-loop
-        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await request.post(apiUrl, createPayload, {
+        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await safeRequest.post(apiUrl, createPayload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiToken}`
@@ -179,7 +178,7 @@ const deleteZabbixSecrets = async (
       id: 1
     };
 
-    const response: ZabbixApiResponse<ZabbixMacroDeleteResponse> = await request.post(apiUrl, payload, {
+    const response: ZabbixApiResponse<ZabbixMacroDeleteResponse> = await safeRequest.post(apiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
@@ -198,7 +197,6 @@ export const ZabbixSyncFns = {
   syncSecrets: async (secretSync: TZabbixSyncWithCredentials, secretMap: TSecretMap) => {
     const { connection, environment, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
-    await blockLocalAndPrivateIpAddresses(instanceUrl);
 
     const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
     let secrets: TZabbixSecret[] = [];
@@ -242,7 +240,6 @@ export const ZabbixSyncFns = {
   removeSecrets: async (secretSync: TZabbixSyncWithCredentials, secretMap: TSecretMap) => {
     const { connection, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
-    await blockLocalAndPrivateIpAddresses(instanceUrl);
 
     const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
 
@@ -265,7 +262,6 @@ export const ZabbixSyncFns = {
   getSecrets: async (secretSync: TZabbixSyncWithCredentials) => {
     const { connection, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
-    await blockLocalAndPrivateIpAddresses(instanceUrl);
     const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
 
     try {

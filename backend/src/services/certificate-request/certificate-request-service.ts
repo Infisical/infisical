@@ -391,6 +391,7 @@ export const certificateRequestServiceFactory = ({
     fromDate,
     toDate,
     profileIds,
+    applicationId,
     sortBy,
     sortOrder,
     metadataFilter
@@ -423,6 +424,7 @@ export const certificateRequestServiceFactory = ({
       fromDate,
       toDate,
       profileIds,
+      applicationId,
       sortBy,
       sortOrder,
       metadataFilter

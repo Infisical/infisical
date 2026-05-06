@@ -53,11 +53,16 @@ export type TPkiApplicationEnrollmentState = {
   applicationId: string;
   profileId: string;
   api: { id: string; autoRenew: boolean; renewBeforeDays: number | null } | null;
-  est: { id: string; disableBootstrapCaValidation: boolean } | null;
+  est: {
+    id: string;
+    disableBootstrapCaValidation: boolean;
+    estEndpointUrl: string;
+  } | null;
   acme: {
     id: string;
     skipDnsOwnershipVerification: boolean;
     skipEabBinding: boolean;
+    directoryUrl: string;
   } | null;
   scep: {
     id: string;
@@ -66,6 +71,10 @@ export type TPkiApplicationEnrollmentState = {
     allowCertBasedRenewal: boolean;
     dynamicChallengeExpiryMinutes: number | null;
     dynamicChallengeMaxPending: number | null;
+    scepEndpointUrl: string;
+    challengeEndpointUrl: string | null;
+    raCertificatePem: string;
+    raCertExpiresAt: string;
   } | null;
   estConfigured: boolean;
   acmeConfigured: boolean;

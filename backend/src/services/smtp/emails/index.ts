@@ -9,6 +9,7 @@ export * from "./ExternalImportFailedTemplate";
 export * from "./ExternalImportStartedTemplate";
 export * from "./ExternalImportSucceededTemplate";
 export * from "./HealthAlertTemplate";
+export * from "./HoneyTokenTriggeredTemplate";
 export * from "./IntegrationSyncFailedTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OAuthPasswordResetTemplate";

@@ -66,6 +66,7 @@ export type TListCertificateRequestsDTO = TProjectPermission & {
   fromDate?: Date;
   toDate?: Date;
   profileIds?: string[];
+  applicationId?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   metadataFilter?: Array<{ key: string; value?: string }>;

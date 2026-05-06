@@ -25,7 +25,6 @@ import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/
 import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { projectCreationLimit, readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -174,13 +173,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.body.type === ProjectType.CertificateManager) {
-        throw new BadRequestError({
-          message:
-            "Cert Manager is a single-instance product per organization and cannot be created via this endpoint. The Cert Manager project is auto-provisioned at organization creation."
-        });
-      }
-
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
         actor: req.permission.type,
