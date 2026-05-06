@@ -15,7 +15,6 @@ export type TOracleAccountCredentials = z.infer<typeof OracleAccountCredentialsS
 export type TProbeOracleTlsArgs = {
   tcpHost: string;
   port: number;
-  /** Real upstream hostname — used as TLS SNI and for cert validation. */
   servername: string;
   caPem: string | undefined;
   rejectUnauthorized: boolean;
