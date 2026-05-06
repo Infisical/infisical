@@ -21,8 +21,8 @@ export function ExportDropdown({ onExport, onCopy, disabled }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="xs" disabled={disabled} className="gap-1" title="Export">
-          <DownloadIcon className="size-3.5" />
+        <Button variant="ghost" size="xs" disabled={disabled} title="Export">
+          <DownloadIcon />
           Export
         </Button>
       </DropdownMenuTrigger>
