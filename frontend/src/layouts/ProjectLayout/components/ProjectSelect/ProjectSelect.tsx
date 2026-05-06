@@ -34,15 +34,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
-const PROJECT_TYPE_NAME: Partial<Record<ProjectType, string>> = {
-  [ProjectType.SecretManager]: "Secrets Management",
-  [ProjectType.CertificateManager]: "Certificate Manager",
-  [ProjectType.SSH]: "SSH",
-  [ProjectType.KMS]: "KMS",
-  [ProjectType.PAM]: "PAM",
-  [ProjectType.SecretScanning]: "Secret Scanning"
-};
-
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
   const { currentProject: currentWorkspace } = useProject();
@@ -79,6 +70,7 @@ const ProjectSelectInner = () => {
 
   const projectsSortedByFav = useMemo(() => {
     const projectOptions = projects
+      .filter((w) => w.type === currentWorkspace.type)
       .map((w) => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
@@ -86,7 +78,7 @@ const ProjectSelectInner = () => {
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
     return projectOptions;
-  }, [projects, projectFavorites]);
+  }, [projects, projectFavorites, currentWorkspace.type]);
 
   const handleSelectProject = (projectId: string) => {
     const workspace = projects.find((p) => p.id === projectId);
@@ -108,12 +100,7 @@ const ProjectSelectInner = () => {
   };
 
   if (currentWorkspace.type === ProjectType.CertificateManager) {
-    return (
-      <div className="mr-2 flex min-w-16 items-center gap-2 pr-1 pl-1 text-sm text-white">
-        <ProjectIcon className="size-[14px] shrink-0 text-project" />
-        <span className="truncate">Certificate Manager</span>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -130,8 +117,8 @@ const ProjectSelectInner = () => {
         >
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
-          <Badge variant="project" className="mb-hidden lg:inline-flex">
-            {(currentWorkspace.type && PROJECT_TYPE_NAME[currentWorkspace.type]) || "Project"}
+          <Badge variant="project" className="hidden lg:inline-flex">
+            Project
           </Badge>
         </Link>
         <PopoverTrigger asChild>
@@ -148,7 +135,7 @@ const ProjectSelectInner = () => {
                 {projectsSortedByFav.map((workspace) => (
                   <CommandItem
                     key={workspace.id}
-                    value={`${workspace.name} ${PROJECT_TYPE_NAME[workspace.type] || workspace.type}`}
+                    value={workspace.name}
                     onSelect={() => handleSelectProject(workspace.id)}
                     className="gap-2"
                   >
@@ -159,8 +146,8 @@ const ProjectSelectInner = () => {
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm">{workspace.name}</span>
-                      <span className="text-[11px] text-muted">
-                        {PROJECT_TYPE_NAME[workspace.type] || workspace.type}
+                      <span className="truncate text-[11px] text-muted">
+                        {workspace.description || "No description"}
                       </span>
                     </div>
                     <IconButton

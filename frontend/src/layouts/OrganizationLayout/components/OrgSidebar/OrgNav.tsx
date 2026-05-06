@@ -48,7 +48,7 @@ const OrgNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }
       label: "Overview",
       icon: isRootOrganization ? OrgIcon : SubOrgIcon,
       to: "/organizations/$orgId/projects",
-      isActive: pathname === `/organizations/${orgId}/projects`
+      isActive: pathname.startsWith(`/organizations/${orgId}/projects`)
     },
     {
       label: "App Connections",

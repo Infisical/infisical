@@ -435,6 +435,7 @@ const pamAccessRoute = route(
 
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
+  route("/projects/$type", "organization/ProjectsPage/ProjectTypePage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),

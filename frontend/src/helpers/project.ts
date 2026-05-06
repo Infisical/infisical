@@ -56,6 +56,25 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   return project;
 };
 
+export const projectTypeToUrlSlug = (type: ProjectType): string => {
+  if (type === ProjectType.SecretManager) return "secret-management";
+  return type;
+};
+
+const VALID_PROJECT_SLUGS = new Set<string>([
+  "secret-management",
+  ProjectType.CertificateManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
+export const urlSlugToProjectType = (slug: string): ProjectType | null => {
+  if (!VALID_PROJECT_SLUGS.has(slug)) return null;
+  if (slug === "secret-management") return ProjectType.SecretManager;
+  return slug as ProjectType;
+};
+
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:
@@ -87,13 +106,29 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
 export const getProjectTitle = (type: ProjectType) => {
   const titleConvert: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]: "Secrets Management",
-    [ProjectType.KMS]: "Key Management",
+    [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM"
   };
   return titleConvert[type] || type;
+};
+
+export const getProjectDescription = (type: ProjectType) => {
+  const descriptions: Partial<Record<ProjectType, string>> = {
+    [ProjectType.SecretManager]:
+      "Centralized secrets across environments — sync, rotation, dynamic credentials, and lifecycle policies.",
+    [ProjectType.CertificateManager]:
+      "Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.",
+    [ProjectType.KMS]:
+      "Key Management — generate, store, and use cryptographic keys. Encrypt, decrypt, sign, and verify against managed CMKs.",
+    [ProjectType.SecretScanning]:
+      "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
+    [ProjectType.PAM]:
+      "Privileged Access Management — just-in-time access, session brokering, and credential vaulting for privileged users and machines."
+  };
+  return descriptions[type] ?? "";
 };
 
 export const collapseCertManagerProjects = (
