@@ -12,14 +12,7 @@ export const getOracleResourceListItem = () => {
   };
 };
 
-/**
- * Verifies an SSL-enabled Oracle resource is reachable and presents a trusted
- * TLS cert, without going through node-oracledb. Used on resource save and
- * account save so the pasted sslCertificate is actually consulted —
- * node-oracledb thin mode can't accept an inline CA, so we do this step
- * ourselves. See sql-resource-factory for the reason account-credential
- * validation on TLS resources is deferred beyond this reachability check.
- */
+// TLS reachability + cert chain check. node-oracledb thin can't accept an inline CA.
 export const probeOracleTls = ({
   tcpHost,
   port,
@@ -44,11 +37,7 @@ export const probeOracleTls = ({
         socket,
         servername,
         ca: caPem || undefined,
-        rejectUnauthorized,
-        // The driver dials localhost (the tunnel) but the cert carries the real
-        // upstream hostname. Chain validation still runs; we just skip the
-        // hostname match since it would always fail here.
-        checkServerIdentity: () => undefined
+        rejectUnauthorized
       });
       tlsSocket.once("secureConnect", () => {
         tlsSocket.end();
