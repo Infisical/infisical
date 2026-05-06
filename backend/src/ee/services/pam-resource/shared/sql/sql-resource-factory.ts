@@ -258,9 +258,7 @@ const makeSqlConnection = (
 
       return {
         validate: async (connectOnly) => {
-          // node-oracledb thin mode can't accept an inline CA, so we can't do
-          // credential validation for TLS Oracle. TLS probe only — verifies
-          // reachability + cert chain. Bad creds surface on first session.
+          // TLS Oracle: probe reachability + cert only (thin mode can't accept inline CA).
           if (sslEnabled) {
             try {
               await probeOracleTls({
