@@ -370,10 +370,13 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     } as TSshConnectionConfig;
 
     try {
-      await executeWithPotentialGateway(appConnConfig, gatewayV2Service, async (targetHost, targetPort) => {
-        const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
-        try {
-          await verifySuLogin(client, targetUsername, targetPassword);
+      await executeWithPotentialGateway(
+        appConnConfig,
+        gatewayV2Service,
+        async (targetHost, targetPort) => {
+          const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
+          try {
+            await verifySuLogin(client, targetUsername, targetPassword);
           } finally {
             client.destroy();
           }
