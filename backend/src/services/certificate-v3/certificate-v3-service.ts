@@ -681,7 +681,7 @@ export const certificateV3ServiceFactory = ({
     const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
 
     if (explicit) {
-      if (junctions.length > 0 && !junctions.some((j) => j.applicationId === explicit)) {
+      if (!junctions.some((j) => j.applicationId === explicit)) {
         throw new BadRequestError({
           message: "This profile is not attached to the specified Application."
         });
@@ -1053,6 +1053,7 @@ export const certificateV3ServiceFactory = ({
           projectId: profile.projectId,
           tx,
           profileId: profile.id,
+          applicationId,
           commonName: certificateRequest.commonName,
           altNames: certificateRequest.altNames,
           keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages),
@@ -1258,6 +1259,7 @@ export const certificateV3ServiceFactory = ({
         tx,
         caId: ca.id,
         profileId: profile.id,
+        applicationId,
         commonName: certificateRequest.commonName,
         altNames: certificateRequest.altNames,
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages),
@@ -1668,6 +1670,7 @@ export const certificateV3ServiceFactory = ({
           tx,
           caId: ca.id,
           profileId: profile.id,
+          applicationId,
           csr,
           commonName: mappedCertificateRequest.commonName,
           altNames: mappedCertificateRequest.subjectAlternativeNames,
@@ -2028,6 +2031,7 @@ export const certificateV3ServiceFactory = ({
         projectId: profile.projectId,
         caId: ca.id,
         profileId: profile.id,
+        applicationId,
         commonName: certificateOrder.commonName || "",
         keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || [],
@@ -2464,6 +2468,7 @@ export const certificateV3ServiceFactory = ({
         tx,
         caId: ca?.id || originalCert.caId || undefined,
         profileId: originalCert.profileId || undefined,
+        applicationId: originalCert.applicationId ?? undefined,
         commonName: originalCert.commonName || undefined,
         altNames: renewalAltNames,
         keyUsages: parseKeyUsages(originalCert.keyUsages),
@@ -2520,6 +2525,7 @@ export const certificateV3ServiceFactory = ({
         actorOrgId,
         projectId: originalCert.projectId,
         profileId: profile?.id,
+        applicationId: originalCert.applicationId ?? undefined,
         caId: ca.id,
         commonName: originalCert.commonName || undefined,
         altNames: structuredAltNames.length > 0 ? structuredAltNames : undefined,

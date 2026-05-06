@@ -222,6 +222,14 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  if (!(await knex.schema.hasColumn(TableName.CertificateRequests, "applicationId"))) {
+    await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
+      t.uuid("applicationId").nullable();
+      t.foreign("applicationId").references("id").inTable(TableName.PkiApplication).onDelete("SET NULL");
+      t.index(["projectId", "applicationId"]);
+    });
+  }
+
   if (!(await knex.schema.hasColumn(TableName.CertificateInventoryView, "applicationId"))) {
     await knex.schema.alterTable(TableName.CertificateInventoryView, (t) => {
       t.uuid("applicationId").nullable();
@@ -244,6 +252,14 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasColumn(TableName.CertificateRequests, "applicationId")) {
+    await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
+      t.dropForeign(["applicationId"]);
+      t.dropIndex(["projectId", "applicationId"]);
+      t.dropColumn("applicationId");
+    });
+  }
+
   if (await knex.schema.hasColumn(TableName.CertificateInventoryView, "applicationId")) {
     await knex.raw(`DROP INDEX IF EXISTS "cert_inv_view_personal_unique"`);
     await knex.raw(`DROP INDEX IF EXISTS "cert_inv_view_shared_unique"`);

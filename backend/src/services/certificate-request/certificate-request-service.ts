@@ -45,6 +45,7 @@ const subjectAlternativeNameSchema = z.object({
 const certificateRequestDataSchema = z
   .object({
     profileId: z.string().uuid().optional(),
+    applicationId: z.string().uuid().optional(),
     caId: z.string().uuid().optional(),
     csr: z.string().min(1).optional(),
     commonName: z.string().max(255).optional(),

@@ -734,6 +734,7 @@ export const pkiScepServiceFactory = ({
       projectId: profile.projectId,
       caId: profile.caId!,
       profileId: profile.id,
+      applicationId,
       commonName: certRequest.commonName ?? "",
       keyUsages: certRequest.keyUsages?.map((u) => u.toString()) ?? [],
       extendedKeyUsages: certRequest.extendedKeyUsages?.map((u) => u.toString()) ?? [],

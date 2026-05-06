@@ -29,6 +29,7 @@ export const certKeys = {
     params.fromDate,
     params.toDate,
     params.profileIds,
+    params.applicationId,
     params.sortBy,
     params.sortOrder,
     params.metadataFilter

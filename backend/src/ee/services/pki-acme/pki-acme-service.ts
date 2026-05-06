@@ -495,11 +495,11 @@ export const pkiAcmeServiceFactory = ({
         body: {
           status: "valid",
           contact: existingAccount.emails,
-          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`, applicationId)
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
         },
         headers: {
-          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`, applicationId),
-          Link: `<${buildUrl(profile.id, "/directory", applicationId)}>;rel="index"`
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
         }
       };
     }
@@ -546,11 +546,11 @@ export const pkiAcmeServiceFactory = ({
         body: {
           status: "valid",
           contact: existingAccount.emails,
-          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`, applicationId)
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
         },
         headers: {
-          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`, applicationId),
-          Link: `<${buildUrl(profile.id, "/directory", applicationId)}>;rel="index"`
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
         }
       };
     }
@@ -965,6 +965,7 @@ export const pkiAcmeServiceFactory = ({
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,
+      applicationId,
       commonName: updatedCertificateRequest.commonName ?? "",
       keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
       extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],

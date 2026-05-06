@@ -11,7 +11,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -45,7 +44,7 @@ type TPkiApplicationServiceFactoryDep = {
     TPkiApplicationProfileDALFactory,
     "insertMany" | "delete" | "findByApplicationId" | "findOne" | "findProfilesInProject"
   >;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "delete">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
@@ -235,11 +234,11 @@ export const pkiApplicationServiceFactory = ({
       return { applications, total };
     }
 
-    const memberships = await membershipDAL.find({
-      scope: RESOURCE_SCOPE,
-      scopeProjectId: projectId,
-      scopeResourceType: ResourceType.CertificateApplication,
-      ...(actor === ActorType.USER ? { actorUserId: actorId } : { actorIdentityId: actorId })
+    const memberships = await membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.CertificateApplication,
+      actorType: actor,
+      actorId
     });
 
     const allowedIds = Array.from(

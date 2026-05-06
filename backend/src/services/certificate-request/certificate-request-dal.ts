@@ -158,10 +158,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (applicationId) {
-        query = query.whereIn(
-          `${TableName.CertificateRequests}.profileId`,
-          (tx || db)(TableName.PkiApplicationProfile).select("profileId").where("applicationId", applicationId)
-        );
+        query = query.where(`${TableName.CertificateRequests}.applicationId`, applicationId);
       }
 
       if (search) {
@@ -239,10 +236,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (applicationId) {
-        query = query.whereIn(
-          `${TableName.CertificateRequests}.profileId`,
-          (tx || db)(TableName.PkiApplicationProfile).select("profileId").where("applicationId", applicationId)
-        );
+        query = query.where(`${TableName.CertificateRequests}.applicationId`, applicationId);
       }
 
       if (search) {
@@ -337,10 +331,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (applicationId) {
-        query = query.whereIn(
-          `${TableName.CertificateRequests}.profileId`,
-          (tx || db)(TableName.PkiApplicationProfile).select("profileId").where("applicationId", applicationId)
-        );
+        query = query.where(`${TableName.CertificateRequests}.applicationId`, applicationId);
       }
 
       query = query
