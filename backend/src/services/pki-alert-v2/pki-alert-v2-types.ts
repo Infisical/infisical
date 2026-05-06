@@ -354,6 +354,7 @@ export type TAlertV2Response = {
   filters: TPkiFilters;
   enabled: boolean;
   projectId: string;
+  applicationId: string | null;
   channels: Array<{
     id: string;
     channelType: PkiAlertChannelType;

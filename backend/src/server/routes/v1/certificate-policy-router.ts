@@ -257,7 +257,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
-        search: z.string().optional()
+        search: z.string().optional(),
+        projectId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -268,22 +269,24 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { projectId: explicitProjectId, ...query } = req.query;
+      const projectId = explicitProjectId ?? req.certManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
-        ...req.query
+        projectId,
+        ...query
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId,
         event: {
           type: EventType.LIST_CERTIFICATE_POLICIES,
           metadata: {
-            projectId: req.certManagerProjectId
+            projectId
           }
         }
       });

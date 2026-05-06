@@ -175,7 +175,8 @@ const validateProfileAndPermissions = async ({
   acmeAccountDAL,
   permissionService,
   requiredEnrollmentType,
-  isInternal = false
+  isInternal = false,
+  applicationId
 }: {
   profileId: string;
   actor?: ActorType;
@@ -184,9 +185,10 @@ const validateProfileAndPermissions = async ({
   actorOrgId?: string;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   requiredEnrollmentType: EnrollmentType;
   isInternal?: boolean;
+  applicationId?: string;
 }) => {
   const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
   if (!profile) {
@@ -229,6 +231,24 @@ const validateProfileAndPermissions = async ({
         message: "SCEP profile mismatch"
       });
     }
+    return profile;
+  }
+
+  if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
+    const { permission } = await permissionService.getResourcePermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: applicationId,
+      actorAuthMethod: actorAuthMethod || null,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.IssueCert,
+      ProjectPermissionSub.CertificateProfiles
+    );
     return profile;
   }
 
@@ -785,7 +805,8 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      applicationId: explicitApplicationId
     });
 
     const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
@@ -1373,7 +1394,8 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
       actor,
@@ -1757,7 +1779,8 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
       actor,

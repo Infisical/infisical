@@ -49,13 +49,16 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `list${caTypeNameForOpId}CertificateAuthoritiesV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
+      querystring: z.object({
+        projectId: z.string().uuid().optional()
+      }),
       response: {
         200: responseSchema.array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.query.projectId ?? req.certManagerProjectId;
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },

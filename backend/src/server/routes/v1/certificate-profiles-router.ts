@@ -274,7 +274,8 @@ export const registerCertificateProfilesRouter = async (
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
-        caId: z.string().uuid().optional()
+        caId: z.string().uuid().optional(),
+        projectId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -344,13 +345,14 @@ export const registerCertificateProfilesRouter = async (
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { projectId: explicitProjectId, ...query } = req.query;
       const { profiles, totalCount } = await server.services.certificateProfile.listProfiles({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
-        ...req.query
+        projectId: explicitProjectId ?? req.certManagerProjectId,
+        ...query
       });
 
       await server.services.auditLog.createAuditLog({
