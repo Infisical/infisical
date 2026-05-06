@@ -258,17 +258,9 @@ const makeSqlConnection = (
 
       return {
         validate: async (connectOnly) => {
-          // TLS-enabled Oracle doesn't go through node-oracledb. Thin mode has no
-          // inline-CA option (only a wallet file that requires a matching cert+key
-          // pair), so we can't feed it the resource's pasted sslCertificate for
-          // actual credential validation. What we CAN do on both resource save
-          // (connectOnly) and account save is run a raw TLS probe against the
-          // tunnel: it verifies the Oracle endpoint is reachable, the cert chain
-          // validates against the pasted CA, and sslRejectUnauthorized is honored.
-          // It does NOT verify credentials — bad creds on a TLS Oracle account
-          // still surface on first session. Credential validation for every DB
-          // type should eventually move to the gateway, where per-connection CA
-          // handling is straightforward — this branch goes away then.
+          // node-oracledb thin mode can't accept an inline CA, so we can't do
+          // credential validation for TLS Oracle. TLS probe only — verifies
+          // reachability + cert chain. Bad creds surface on first session.
           if (sslEnabled) {
             try {
               await probeOracleTls({
