@@ -32,6 +32,8 @@ const backfillOrgCertManagerProject = async (knex: Knex, orgId: string) => {
       })
       .returning("id")) as Array<{ id: string }>;
 
+    await tx(TableName.Organization).where("id", orgId).update({ defaultCertManagerProjectId: projectId });
+
     // Promote every existing org admin / owner to project admin so they can manage the new project.
     const orgAdminMemberships = (await tx(TableName.Membership)
       .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
@@ -64,6 +66,26 @@ const backfillOrgCertManagerProject = async (knex: Knex, orgId: string) => {
   });
 };
 
+const backfillDefaultCertManagerProjectIdForExistingOrgs = async (knex: Knex) => {
+  await knex.raw(
+    `
+    WITH oldest AS (
+      SELECT "orgId", MIN("createdAt") AS oldest_at
+      FROM ?? WHERE type = ? GROUP BY "orgId"
+    ), pick AS (
+      SELECT p.id AS project_id, p."orgId"
+      FROM ?? p
+      JOIN oldest o ON p."orgId" = o."orgId" AND p."createdAt" = o.oldest_at AND p.type = ?
+    )
+    UPDATE ?? AS o
+    SET "defaultCertManagerProjectId" = pick.project_id
+    FROM pick
+    WHERE o.id = pick."orgId" AND o."defaultCertManagerProjectId" IS NULL;
+  `,
+    [TableName.Project, PROJECT_TYPE_CERT_MANAGER, TableName.Project, PROJECT_TYPE_CERT_MANAGER, TableName.Organization]
+  );
+};
+
 const backfillCertManagerProjectsForExistingOrgs = async (knex: Knex) => {
   const orgsMissingCertManager = (await knex(TableName.Organization)
     .leftJoin(TableName.Project, function joinProject() {
@@ -83,6 +105,8 @@ const backfillCertManagerProjectsForExistingOrgs = async (knex: Knex) => {
     // eslint-disable-next-line no-await-in-loop
     await Promise.all(chunk.map(({ id }) => backfillOrgCertManagerProject(knex, id)));
   }
+
+  await backfillDefaultCertManagerProjectIdForExistingOrgs(knex);
 };
 
 export async function up(knex: Knex): Promise<void> {
@@ -337,10 +361,7 @@ export async function down(knex: Knex): Promise<void> {
     // we're rolling back; clean them up before recreating the old check
     // constraint that disallows scope='resource'.
     await knex(TableName.MembershipRole)
-      .whereIn(
-        "membershipId",
-        knex(TableName.Membership).where("scope", "resource").select("id")
-      )
+      .whereIn("membershipId", knex(TableName.Membership).where("scope", "resource").select("id"))
       .delete();
     await knex(TableName.Membership).where("scope", "resource").delete();
 
