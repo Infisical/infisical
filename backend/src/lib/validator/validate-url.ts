@@ -183,7 +183,13 @@ const notFoundError = (hostname: string): NodeJS.ErrnoException => {
   return err;
 };
 
-// v4 by default
+// IPv4 first, IPv6 second. Node's autoSelectFamily / Happy Eyeballs starts
+// with the first entry it gets and stages the rest after a short delay
+// (autoSelectFamilyAttemptTimeout). Returning v4 first means a healthy v4
+// path always wins the race, while a v4-only-broken environment still falls
+// through to v6 within ~250ms. This works for both IPv4-only and IPv6-only egress.
+const sortV4First = (entries: LookupAddress[]): LookupAddress[] => entries.slice().sort((a, b) => a.family - b.family);
+
 const pickPreferredEntry = (entries: LookupAddress[]): LookupAddress =>
   entries.find((e) => e.family === 4) ?? entries[0];
 
@@ -218,7 +224,8 @@ const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
     }
 
     if (opts.all) {
-      (maybeCb as TLookupAllCallback)(null, entries);
+      // Order matters for Happy Eyeballs — v4 first, v6 as fallback.
+      (maybeCb as TLookupAllCallback)(null, sortV4First(entries));
     } else {
       const first = pickPreferredEntry(entries);
       (maybeCb as TLookupOneCallback)(null, first.address, first.family);
@@ -268,21 +275,68 @@ const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
   opts.keepAlive !== undefined ||
   opts.checkServerIdentity !== undefined;
 
-const buildPinnedAgent = (
+/**
+ * Pooled http(s).Agents keyed by their connection signature so back-to-back
+ * calls to the same destination reuse the same TCP+TLS connection instead of
+ * paying a fresh handshake every time.
+ *
+ * Safety: the cache key includes the full validated IP set, so a hostname
+ * whose DNS records change naturally produces a fresh cache entry — old
+ * agents are dereferenced and their sockets idle out per Node defaults.
+ *
+ * Bound: a hard cap protects against pathological growth (e.g. a customer
+ * with thousands of distinct webhook destinations). When the cap is hit,
+ * the cache is cleared wholesale; this is fine because misses just rebuild.
+ */
+const AGENT_CACHE_MAX = 200;
+const agentCache = new Map<string, http.Agent | https.Agent>();
+
+const buildAgentCacheKey = (
   validated: TValidatedHost | undefined,
   protocol: string,
-  opts: TBuildAgentOptions = {}
-): http.Agent | https.Agent | undefined => {
-  // If we don't have a pinned IP set AND there's no other agent customization,
-  // fall through to Axios's default agent. This is the dev-mode/private-ip path.
-  if (!validated && !hasAgentCustomization(opts)) return undefined;
+  opts: TBuildAgentOptions
+): string => {
+  const ipSet = validated
+    ? validated.entries
+        .map((e) => `${e.family}:${e.address}`)
+        .sort()
+        .join(",")
+    : "";
+  const caKey = Array.isArray(opts.ca) ? opts.ca.join("|") : (opts.ca ?? "");
+  return [
+    protocol,
+    validated?.hostname ?? "",
+    ipSet,
+    opts.addressFamily ?? "",
+    opts.keepAlive ?? "",
+    opts.rejectUnauthorized ?? "",
+    opts.servername ?? "",
+    opts.checkServerIdentity ? "custom-cs-id" : "",
+    caKey
+  ].join("|");
+};
 
+const constructAgent = (
+  validated: TValidatedHost | undefined,
+  protocol: string,
+  opts: TBuildAgentOptions
+): http.Agent | https.Agent => {
   const isHttps = protocol === "https:";
   const lookup = validated ? makePinnedLookup(validated.entries) : undefined;
+  // Default to keepAlive: true for cached agents for connection reuse
+  // Callers that need a one-shot agent can override by setting keepAlive explicitly.
   const baseOpts: http.AgentOptions = {
-    keepAlive: opts.keepAlive ?? false,
+    keepAlive: opts.keepAlive ?? true,
+    keepAliveMsecs: 1000,
+    maxSockets: 50,
+    maxFreeSockets: 10,
     family: opts.addressFamily,
-    lookup
+    lookup,
+    // Explicit Happy Eyeballs: races v4 and v6 connections so a healthy
+    // family wins even if the OS resolver / pinned-lookup ordering puts
+    // the broken family first. 250ms is Node's default;
+    autoSelectFamily: true,
+    autoSelectFamilyAttemptTimeout: 250
   };
 
   if (isHttps) {
@@ -296,6 +350,28 @@ const buildPinnedAgent = (
     return new https.Agent(httpsOpts);
   }
   return new http.Agent(baseOpts);
+};
+
+const buildPinnedAgent = (
+  validated: TValidatedHost | undefined,
+  protocol: string,
+  opts: TBuildAgentOptions = {}
+): http.Agent | https.Agent | undefined => {
+  // If we don't have a pinned IP set AND there's no other agent customization,
+  // fall through to Axios's default agent. This is the dev-mode/private-ip path.
+  if (!validated && !hasAgentCustomization(opts)) return undefined;
+
+  const cacheKey = buildAgentCacheKey(validated, protocol, opts);
+  const cached = agentCache.get(cacheKey);
+  if (cached) return cached;
+
+  if (agentCache.size >= AGENT_CACHE_MAX) {
+    agentCache.clear();
+  }
+
+  const agent = constructAgent(validated, protocol, opts);
+  agentCache.set(cacheKey, agent);
+  return agent;
 };
 
 /**

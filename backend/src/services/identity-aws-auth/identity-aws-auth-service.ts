@@ -14,7 +14,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -28,6 +27,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { safeRequest } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -156,7 +156,7 @@ export const identityAwsAuthServiceFactory = ({
             GetCallerIdentityResult: { Account, Arn, UserId }
           }
         }
-      }: { data: TGetCallerIdentityResponse } = await request({
+      }: { data: TGetCallerIdentityResponse } = await safeRequest.request({
         method: iamHttpRequestMethod,
         url,
         headers,
