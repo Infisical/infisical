@@ -37,6 +37,7 @@ export type TGatewayPoolConnectedResources = {
   dynamicSecrets: {
     id: string;
     name: string;
+    type: string;
     folderId: string;
     projectId: string;
     projectName: string;

@@ -55,6 +55,7 @@ export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.Dynamic
     Array<{
       id: string;
       name: string;
+      type: string;
       folderId: string;
       projectId: string;
       projectName: string;
@@ -247,6 +248,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
       .select(
         db.ref("id").withSchema(TableName.DynamicSecret),
         db.ref("name").withSchema(TableName.DynamicSecret),
+        db.ref("type").withSchema(TableName.DynamicSecret),
         db.ref("folderId").withSchema(TableName.DynamicSecret),
         db.ref("projectId").withSchema(TableName.Environment),
         db.ref("name").withSchema(TableName.Project).as("projectName"),

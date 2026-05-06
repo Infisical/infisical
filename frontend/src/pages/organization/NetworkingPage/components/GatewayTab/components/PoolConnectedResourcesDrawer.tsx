@@ -247,7 +247,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                           <ResourceRow
                             key={r.id}
                             name={r.name}
-                            subtitle={`${r.environmentSlug}${r.projectName ? ` · ${r.projectName}` : ""}`}
+                            subtitle={`${r.type} · ${r.environmentSlug}${r.projectName ? ` · ${r.projectName}` : ""}`}
                             isLast={idx === (resources?.dynamicSecrets.length ?? 0) - 1}
                           />
                         ))}
