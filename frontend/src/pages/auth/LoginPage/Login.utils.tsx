@@ -1,9 +1,11 @@
 import { NavigateFn, useNavigate } from "@tanstack/react-router";
 
 import { useServerConfig } from "@app/context";
+import { getLastProject } from "@app/helpers/lastProject";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { userKeys } from "@app/hooks/api/users";
+import { User, UserEnc } from "@app/hooks/api/users/types";
 
 type NavigateUserToOrgParams = {
   navigate: NavigateFn;
@@ -17,6 +19,22 @@ export enum LoginSection {
   OIDC = "oidc"
 }
 
+const getLastProjectId = (organizationId: string): string | null => {
+  const user = queryClient.getQueryData<User & UserEnc>(userKeys.getUser);
+  if (!user?.id) return null;
+  return getLastProject(user.id, organizationId);
+};
+
+const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?: string) => {
+  const lastProjectId = !navigateTo ? getLastProjectId(organizationId) : null;
+
+  navigate({
+    to: navigateTo || ("/organizations/$orgId/projects" as const),
+    params: { orgId: organizationId },
+    search: lastProjectId ? { projectRedirect: lastProjectId } : undefined
+  });
+};
+
 export const navigateUserToOrg = async ({
   navigate,
   organizationId,
@@ -24,25 +42,17 @@ export const navigateUserToOrg = async ({
 }: NavigateUserToOrgParams) => {
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigate({
-      to: navigateTo || "/organizations/$orgId/projects",
-      params: { orgId: organizationId }
-    });
+    navigateToOrg(navigate, organizationId, navigateTo);
     return;
   }
 
   const userOrgs = await fetchOrganizations();
   const nonAuthEnforcedOrgs = userOrgs.filter((org) => !org.authEnforced);
   if (nonAuthEnforcedOrgs.length > 0) {
-    // user is part of at least 1 non-auth enforced org
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigate({
-      to: navigateTo || "/organizations/$orgId/projects",
-      params: { orgId: userOrg }
-    });
+    navigateToOrg(navigate, userOrg, navigateTo);
   } else {
-    // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");
     navigate({ to: "/organizations/none" });
   }

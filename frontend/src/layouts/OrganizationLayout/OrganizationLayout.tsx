@@ -1,10 +1,12 @@
+import { useEffect } from "react";
 import { Outlet, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
 import { SidebarInset, SidebarProvider } from "@app/components/v3";
-import { useServerConfig, useSubscription } from "@app/context";
+import { useOrganization, useServerConfig, useSubscription, useUser } from "@app/context";
+import { setLastProject } from "@app/helpers/lastProject";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
 
@@ -18,11 +20,19 @@ import { SmtpBanner } from "./components/SmtpBanner";
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
+  const { user } = useUser();
+  const { currentOrg } = useOrganization();
   const projectId = useParams({
     strict: false,
     select: (el) => el?.projectId
   });
   const isInsideProject = Boolean(projectId);
+
+  useEffect(() => {
+    if (projectId && user?.id && currentOrg?.id) {
+      setLastProject(user.id, currentOrg.id, projectId);
+    }
+  }, [projectId, user?.id, currentOrg?.id]);
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
