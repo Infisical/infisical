@@ -2,12 +2,49 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 export type THoneyTokenDALFactory = ReturnType<typeof honeyTokenDALFactory>;
 
-export const honeyTokenDALFactory = (db: TDbClient) => {
+export const honeyTokenDALFactory = (
+  db: TDbClient,
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">
+) => {
   const orm = ormify(db, TableName.HoneyToken);
+
+  const findById = async (id: string, tx?: Knex) => {
+    try {
+      const honeyToken = await (tx || db.replicaNode())(TableName.HoneyToken)
+        .where(`${TableName.HoneyToken}.id`, id)
+        .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .select(selectAllTableCols(TableName.HoneyToken))
+        .select(
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug")
+        )
+        .first();
+
+      if (honeyToken) {
+        const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(
+          honeyToken.projectId,
+          [honeyToken.folderId],
+          tx
+        );
+
+        return {
+          ...honeyToken,
+          environment: { id: honeyToken.envId, name: honeyToken.envName, slug: honeyToken.envSlug },
+          folder: { path: folderWithPath?.path ?? "/" }
+        };
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by ID - Honey Token" });
+    }
+  };
 
   const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
     const rows = await (tx || db.replicaNode())(TableName.HoneyToken)
@@ -140,6 +177,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
+    findById,
     findByFolderIds,
     countByFolderIds,
     findOneByTokenIdentifierAndOrgId,

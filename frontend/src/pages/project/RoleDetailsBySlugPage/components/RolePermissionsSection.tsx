@@ -24,6 +24,7 @@ import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionCond
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { GroupPermissionConditions } from "./GroupPermissionConditions";
+import { HoneyTokenPermissionConditions } from "./HoneyTokenPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { MemberPermissionConditions } from "./MemberPermissionConditions";
@@ -130,6 +131,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SecretRotation) {
       return <SecretRotationPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.HoneyTokens) {
+      return <HoneyTokenPermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.Member) {

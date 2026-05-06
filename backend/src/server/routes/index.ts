@@ -676,7 +676,7 @@ export const registerRoutes = async (
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
   const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
-  const honeyTokenDAL = honeyTokenDALFactory(db);
+  const honeyTokenDAL = honeyTokenDALFactory(db, folderDAL);
   const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);

@@ -481,6 +481,11 @@ export type SecretRotationsSubjectFields = {
   connectionId?: string;
 };
 
+export type HoneyTokenSubjectFields = {
+  environment?: string;
+  secretPath?: string;
+};
+
 export type IdentityManagementSubjectFields = {
   identityId?: string;
   assignableRole?: string;
@@ -712,7 +717,10 @@ export type ProjectPermissionSet =
       ProjectPermissionMcpEndpointActions,
       ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
     ]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
+  | [
+      ProjectPermissionHoneyTokenActions,
+      ProjectPermissionSub.HoneyTokens | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
@@ -802,6 +810,24 @@ const SecretRotationConditionSchema = z
         })
         .partial()
     ])
+  })
+  .partial();
+
+
+  const HoneyTokenConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
 
@@ -1994,6 +2020,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: SecretRotationConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.HoneyTokens).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: HoneyTokenConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

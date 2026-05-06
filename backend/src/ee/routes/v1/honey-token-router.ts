@@ -191,7 +191,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { name, description, secretsMapping } = req.body;
-      const { honeyToken, folderInfo } = await server.services.honeyToken.updateHoneyToken(
+      const result = await server.services.honeyToken.updateHoneyToken(
         {
           honeyTokenId: req.params.id,
           name,
@@ -203,20 +203,20 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: honeyToken.projectId,
+        projectId: result.honeyToken.projectId,
         event: {
           type: EventType.UPDATE_HONEY_TOKEN,
           metadata: {
-            honeyTokenId: honeyToken.id,
-            name: honeyToken.name,
-            type: honeyToken.type as HoneyTokenType,
-            environment: folderInfo?.environmentSlug || "",
-            secretPath: folderInfo?.path || ""
+            honeyTokenId: result.honeyToken.id,
+            name: result.honeyToken.name,
+            type: result.honeyToken.type as HoneyTokenType,
+            environment: result.environment,
+            secretPath: result.secretPath
           }
         }
       });
 
-      return { honeyToken };
+      return { honeyToken: result.honeyToken };
     }
   });
 
@@ -270,27 +270,24 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { honeyTokenId, honeyToken, folderInfo } = await server.services.honeyToken.revokeHoneyToken(
-        { honeyTokenId: req.params.id },
-        req.permission
-      );
+      const result = await server.services.honeyToken.revokeHoneyToken({ honeyTokenId: req.params.id }, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: honeyToken.projectId,
+        projectId: result.honeyToken.projectId,
         event: {
           type: EventType.REVOKE_HONEY_TOKEN,
           metadata: {
-            honeyTokenId,
-            name: honeyToken.name,
-            type: honeyToken.type as HoneyTokenType,
-            environment: folderInfo?.environmentSlug || "",
-            secretPath: folderInfo?.path || ""
+            honeyTokenId: result.honeyTokenId,
+            name: result.honeyToken.name,
+            type: result.honeyToken.type as HoneyTokenType,
+            environment: result.environment,
+            secretPath: result.secretPath
           }
         }
       });
 
-      return { honeyTokenId };
+      return { honeyTokenId: result.honeyTokenId };
     }
   });
 

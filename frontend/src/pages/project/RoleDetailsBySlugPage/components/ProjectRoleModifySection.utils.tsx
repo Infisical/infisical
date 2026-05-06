@@ -706,7 +706,12 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ServiceTokens]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.HoneyTokens]: HoneyTokenPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.HoneyTokens]: HoneyTokenPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -908,6 +913,7 @@ type TConditionalFields =
   | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.PamDomains
   | ProjectPermissionSub.McpEndpoints
+  | ProjectPermissionSub.HoneyTokens
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups;
 
@@ -935,6 +941,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PamResources ||
   subject === ProjectPermissionSub.PamDomains ||
   subject === ProjectPermissionSub.McpEndpoints ||
+  subject === ProjectPermissionSub.HoneyTokens ||
   subject === ProjectPermissionSub.Member ||
   subject === ProjectPermissionSub.Groups;
 
@@ -1404,6 +1411,29 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.HoneyTokens) {
+          const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+          const canReadCredentials = action.includes(
+            ProjectPermissionHoneyTokenActions.ReadCredentials
+          );
+          const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+          const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
+          const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
+          const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
+
+          formVal[subject]!.push({
+            [ProjectPermissionHoneyTokenActions.Read]: canRead,
+            [ProjectPermissionHoneyTokenActions.ReadCredentials]: canReadCredentials,
+            [ProjectPermissionHoneyTokenActions.Create]: canCreate,
+            [ProjectPermissionHoneyTokenActions.Edit]: canEdit,
+            [ProjectPermissionHoneyTokenActions.Reset]: canReset,
+            [ProjectPermissionHoneyTokenActions.Revoke]: canRevoke,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -1430,28 +1460,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
           inverted
         });
-        return;
-      }
-
-      if (subject === ProjectPermissionSub.HoneyTokens) {
-        const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
-        const canReadCredentials = action.includes(
-          ProjectPermissionHoneyTokenActions.ReadCredentials
-        );
-        const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-        const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
-        const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
-        const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
-
-        if (!formVal[subject]) formVal[subject] = [{}];
-
-        if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
-        if (canReadCredentials)
-          formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
-        if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
-        if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
-        if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
-        if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
         return;
       }
 
@@ -1729,28 +1737,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionCommitsActions.Read] = true;
       if (canPerformRollback)
         formVal[subject]![0][ProjectPermissionCommitsActions.PerformRollback] = true;
-      return;
-    }
-
-    if (subject === ProjectPermissionSub.HoneyTokens) {
-      const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
-      const canReadCredentials = action.includes(
-        ProjectPermissionHoneyTokenActions.ReadCredentials
-      );
-      const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-      const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
-      const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
-      const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
-      if (canReadCredentials)
-        formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
-      if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
-      if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
       return;
     }
 

@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
@@ -172,6 +172,23 @@ export const honeyTokenServiceFactory = ({
     secretQueueService
   });
 
+  const $getHoneyTokenSubject = (
+    honeyToken: {
+      environment?: { slug: string };
+      folder?: { path: string };
+    },
+    overrides?: { environment?: string; secretPath?: string }
+  ) => {
+    const envSlug = overrides?.environment ?? honeyToken.environment?.slug;
+    const secretPath = overrides?.secretPath ?? honeyToken.folder?.path;
+    const hasAny = envSlug || secretPath;
+    if (!hasAny) return ProjectPermissionSub.HoneyTokens;
+    return subject(ProjectPermissionSub.HoneyTokens, {
+      ...(envSlug && { environment: envSlug }),
+      ...(secretPath && { secretPath })
+    });
+  };
+
   const create = async (
     { projectId, type, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
@@ -186,7 +203,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Create,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, { environment, secretPath })
     );
 
     const providerType = assertSupportedHoneyTokenType(type);
@@ -425,7 +442,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(updatePermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Edit,
-      ProjectPermissionSub.HoneyTokens
+      $getHoneyTokenSubject(honeyToken)
     );
 
     const updatePlan = await licenseService.getPlan(actor.orgId);
@@ -572,20 +589,20 @@ export const honeyTokenServiceFactory = ({
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(honeyToken.folderId);
 
-    const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
-    if (folderInfo && hasSecretsMappingChanges) {
+    if (hasSecretsMappingChanges) {
       await secretQueueService.syncSecrets({
         orgId: actor.orgId,
-        secretPath: folderInfo.path,
+        secretPath: honeyToken.folder?.path ?? "/",
         projectId,
-        environmentSlug: folderInfo.environmentSlug,
+        environmentSlug: honeyToken.environment?.slug ?? "",
         excludeReplication: true
       });
     }
 
     return {
       honeyToken: updated,
-      folderInfo
+      environment: honeyToken.environment?.slug ?? "",
+      secretPath: honeyToken.folder?.path ?? ""
     };
   };
 
@@ -606,7 +623,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(revokePermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Revoke,
-      ProjectPermissionSub.HoneyTokens
+      $getHoneyTokenSubject(honeyToken)
     );
 
     const revokePlan = await licenseService.getPlan(actor.orgId);
@@ -694,18 +711,20 @@ export const honeyTokenServiceFactory = ({
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(honeyToken.folderId);
 
-    const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
-    if (folderInfo) {
-      await secretQueueService.syncSecrets({
-        orgId: actor.orgId,
-        secretPath: folderInfo.path,
-        projectId,
-        environmentSlug: folderInfo.environmentSlug,
-        excludeReplication: true
-      });
-    }
+    await secretQueueService.syncSecrets({
+      orgId: actor.orgId,
+      secretPath: honeyToken.folder?.path ?? "/",
+      projectId,
+      environmentSlug: honeyToken.environment?.slug ?? "",
+      excludeReplication: true
+    });
 
-    return { honeyTokenId, honeyToken, folderInfo };
+    return {
+      honeyTokenId,
+      honeyToken,
+      environment: honeyToken.environment?.slug ?? "",
+      secretPath: honeyToken.folder?.path ?? ""
+    };
   };
 
   const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
@@ -724,7 +743,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(resetPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Reset,
-      ProjectPermissionSub.HoneyTokens
+      $getHoneyTokenSubject(honeyToken)
     );
 
     assertSupportedHoneyTokenType(honeyToken.type);
@@ -765,12 +784,17 @@ export const honeyTokenServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
-    ForbiddenError.from(readPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
+
+    const permissiveCountEnvironments = environments.filter((env) =>
+      readPermission.can(
+        ProjectPermissionHoneyTokenActions.Read,
+        subject(ProjectPermissionSub.HoneyTokens, { environment: env, secretPath })
+      )
     );
 
-    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!permissiveCountEnvironments.length) return 0;
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, permissiveCountEnvironments, secretPath);
     if (!folders.length) return 0;
 
     const folderIds = folders.map((f) => f.id);
@@ -809,7 +833,7 @@ export const honeyTokenServiceFactory = ({
     { projectId, environments, secretPath, search, orderBy, orderDirection, limit, offset }: THoneyTokenListInput,
     actor: OrgServiceActor
   ) => {
-    const { permission: readPermission } = await permissionService.getProjectPermission({
+    const { permission: listPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
@@ -817,16 +841,26 @@ export const honeyTokenServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
-    ForbiddenError.from(readPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
+
+    const permissiveListEnvironments = environments.filter((env) =>
+      listPermission.can(
+        ProjectPermissionHoneyTokenActions.Read,
+        subject(ProjectPermissionSub.HoneyTokens, { environment: env, secretPath })
+      )
     );
 
-    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!permissiveListEnvironments.length) return [];
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, permissiveListEnvironments, secretPath);
     if (!folders.length) return [];
 
     const folderIds = folders.map((f) => f.id);
     let honeyTokens = await honeyTokenDAL.findByFolderIds(folderIds);
+
+    // Filter by per-honey-token permission so environment/secretPath restrictions are enforced.
+    honeyTokens = honeyTokens.filter((ht) =>
+      listPermission.can(ProjectPermissionHoneyTokenActions.Read, $getHoneyTokenSubject(ht))
+    );
 
     if (search) {
       honeyTokens = honeyTokens.filter((ht) => ht.name.toLowerCase().includes(search.toLowerCase()));
@@ -862,7 +896,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(credentialPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.ReadCredentials,
-      ProjectPermissionSub.HoneyTokens
+      $getHoneyTokenSubject(honeyToken)
     );
 
     const type = assertSupportedHoneyTokenType(honeyToken.type);
@@ -1044,19 +1078,14 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(readPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
+      $getHoneyTokenSubject(honeyToken)
     );
-
-    const allInFolder = await honeyTokenDAL.findByFolderIds([honeyToken.folderId]);
-    const match = allInFolder.find((ht) => ht.id === honeyTokenId);
 
     const openEvents = await honeyTokenEventDAL.countByHoneyTokenId(honeyTokenId, honeyToken.lastResetAt ?? undefined);
 
     return {
       honeyToken: {
         ...honeyToken,
-        environment: match?.environment ?? null,
-        folder: match?.folder ?? null,
         openEvents
       }
     };
@@ -1081,7 +1110,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(eventsPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
+      $getHoneyTokenSubject(honeyToken)
     );
 
     const since = honeyToken.lastResetAt ?? undefined;

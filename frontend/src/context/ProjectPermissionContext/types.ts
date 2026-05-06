@@ -359,6 +359,7 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints
+  | ProjectPermissionSub.HoneyTokens
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups;
 
@@ -527,6 +528,11 @@ export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
   connectionId?: string;
+};
+
+export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
 };
 
 export type SshHostSubjectFields = {
@@ -755,7 +761,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
+  | [
+      ProjectPermissionHoneyTokenActions,
+      (
+        | ProjectPermissionSub.HoneyTokens
+        | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+      )
+    ]
   | [
       ProjectPermissionMcpEndpointActions,
       (
