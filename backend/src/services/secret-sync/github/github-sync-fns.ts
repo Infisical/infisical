@@ -263,7 +263,12 @@ export const GithubSyncFns = {
         );
     }
 
-    const { connection } = secretSync;
+    const { connection: rawConnection } = secretSync;
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: rawConnection.gatewayId,
+      gatewayPoolId: rawConnection.gatewayPoolId
+    });
+    const connection = { ...rawConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
     let token: string;
 
     switch (connection.method) {
@@ -277,28 +282,26 @@ export const GithubSyncFns = {
         token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
     }
 
+    const resolvedSync = { ...secretSync, connection };
     const encryptedSecrets = await getEncryptedSecrets(
-      secretSync,
+      resolvedSync,
       gatewayService,
       gatewayV2Service,
       gatewayPoolService
     );
-    const publicKey = await getPublicKey(secretSync, gatewayService, gatewayV2Service, gatewayPoolService, token);
+    const publicKey = await getPublicKey(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token);
 
     await sodium.ready;
     for await (const key of Object.keys(secretMap)) {
-      // convert secret & base64 key to Uint8Array.
       const binaryKey = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
       const binarySecretValue = sodium.from_string(secretMap[key].value);
 
-      // encrypt secret using libsodium
       const encryptedBytes = sodium.crypto_box_seal(binarySecretValue, binaryKey);
 
-      // convert encrypted Uint8Array to base64
       const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
 
       try {
-        await putSecret(secretSync, gatewayService, gatewayV2Service, gatewayPoolService, token, {
+        await putSecret(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token, {
           secret_name: key,
           encrypted_value: encryptedSecretValue,
           key_id: publicKey.key_id
@@ -335,7 +338,13 @@ export const GithubSyncFns = {
   ) => {
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
-    const { connection } = secretSync;
+    const { connection: rawConnection } = secretSync;
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: rawConnection.gatewayId,
+      gatewayPoolId: rawConnection.gatewayPoolId
+    });
+    const connection = { ...rawConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    const resolvedSync = { ...secretSync, connection };
     let token: string;
 
     switch (connection.method) {
@@ -350,7 +359,7 @@ export const GithubSyncFns = {
     }
 
     const encryptedSecrets = await getEncryptedSecrets(
-      secretSync,
+      resolvedSync,
       gatewayService,
       gatewayV2Service,
       gatewayPoolService

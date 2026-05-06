@@ -304,6 +304,15 @@ export const netScalerPkiSyncFactory = ({
   gatewayV2Service,
   gatewayPoolService
 }: TNetScalerPkiSyncFactoryDeps) => {
+  const resolveGateway = async (pkiSync: TPkiSyncWithCredentials) => {
+    return gatewayPoolService
+      ? gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: pkiSync.connection.gatewayId,
+          gatewayPoolId: pkiSync.connection.gatewayPoolId
+        })
+      : (pkiSync.connection.gatewayId ?? null);
+  };
+
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap
@@ -327,12 +336,7 @@ export const netScalerPkiSyncFactory = ({
     const preserveItemOnRenewal = syncOptions?.preserveItemOnRenewal ?? true;
     const certificateNameSchema = syncOptions?.certificateNameSchema;
 
-    const effectiveGatewayId = gatewayPoolService
-      ? await gatewayPoolService.resolveEffectiveGatewayId({
-          gatewayId: pkiSync.connection.gatewayId,
-          gatewayPoolId: pkiSync.connection.gatewayPoolId
-        })
-      : pkiSync.connection.gatewayId;
+    const effectiveGatewayId = await resolveGateway(pkiSync);
 
     return executeNetScalerOperationWithGateway(
       { gatewayId: effectiveGatewayId, credentials },
@@ -648,12 +652,7 @@ export const netScalerPkiSyncFactory = ({
       return;
     }
 
-    const effectiveGatewayId = gatewayPoolService
-      ? await gatewayPoolService.resolveEffectiveGatewayId({
-          gatewayId: pkiSync.connection.gatewayId,
-          gatewayPoolId: pkiSync.connection.gatewayPoolId
-        })
-      : pkiSync.connection.gatewayId;
+    const effectiveGatewayId = await resolveGateway(pkiSync);
 
     await executeNetScalerOperationWithGateway(
       { gatewayId: effectiveGatewayId, credentials },
