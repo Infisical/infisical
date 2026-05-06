@@ -333,6 +333,17 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_group_resource;");
 
   if (await knex.schema.hasColumn(TableName.Membership, "scopeResourceType")) {
+    // Resource-scoped memberships and their roles only exist for the feature
+    // we're rolling back; clean them up before recreating the old check
+    // constraint that disallows scope='resource'.
+    await knex(TableName.MembershipRole)
+      .whereIn(
+        "membershipId",
+        knex(TableName.Membership).where("scope", "resource").select("id")
+      )
+      .delete();
+    await knex(TableName.Membership).where("scope", "resource").delete();
+
     await knex.schema.alterTable(TableName.Membership, (t) => {
       t.dropChecks("scope_matches_id");
       t.check(
