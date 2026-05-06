@@ -150,8 +150,7 @@ export const validateAllowlists = ({
       .map((principalArn) => principalArn.trim())
       .filter((principalArn) => principalArn.length > 0)
       .some((principalArn) => {
-        // Convert wildcard to regex; arnRegex in validators ensures safe input.
-        const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
+        const regex = new RE2(`^${principalArn.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`);
         return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
       });
 
