@@ -16,7 +16,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -24,13 +23,13 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -57,6 +56,10 @@ type TIdentityTokenAuthServiceFactoryDep = {
     TIdentityAccessTokenDALFactory,
     "create" | "find" | "update" | "findById" | "findOne" | "updateById" | "delete"
   >;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity" | "markPerTokenRevocation"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
@@ -68,6 +71,7 @@ export const identityTokenAuthServiceFactory = ({
   identityTokenAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
+  identityAccessTokenService,
   permissionService,
   licenseService,
   orgDAL
@@ -416,6 +420,12 @@ export const identityTokenAuthServiceFactory = ({
 
       return { ...deletedTokenAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+
     return revokedIdentityTokenAuth;
   };
 
@@ -540,7 +550,17 @@ export const identityTokenAuthServiceFactory = ({
       }
     }
 
-    const identityAccessToken = await identityTokenAuthDAL.transaction(async (tx) => {
+    const subOrgDetails =
+      subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+    const tokenScopeOrg = subOrgDetails ?? org;
+    const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+    const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+    // Token Auth is the only auth method that materializes a real PG row at
+    // issuance time — its tokens are admin-managed and listed in the UI, so
+    // we hand the helper a transaction so the row insert and the
+    // membership-update happen atomically.
+    const { accessToken, identityAccessToken } = await identityTokenAuthDAL.transaction(async (tx) => {
       await membershipIdentityDAL.update(
         identity.projectId
           ? {
@@ -557,38 +577,24 @@ export const identityTokenAuthServiceFactory = ({
         { lastLoginAuthMethod: IdentityAuthMethod.TOKEN_AUTH, lastLoginTime: new Date() },
         tx
       );
-      const newToken = await identityAccessTokenDAL.create(
-        {
-          identityId: identityTokenAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityTokenAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityTokenAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityTokenAuth.accessTokenNumUsesLimit,
-          name,
-          authMethod: IdentityAuthMethod.TOKEN_AUTH,
-          subOrganizationId
-        },
-        tx
-      );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityTokenAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
+      return identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identity.id,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.TOKEN_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityTokenAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityTokenAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityTokenAuth.accessTokenNumUsesLimit),
+        // Token Auth schema has no accessTokenPeriod column.
+        accessTokenPeriod: 0,
+        accessTokenTrustedIps: identityTokenAuth.accessTokenTrustedIps as TIp[],
+        persistToPg: { tx, name }
+      });
+    });
 
     return { accessToken, identityTokenAuth, identityAccessToken, identity };
   };
@@ -887,6 +893,25 @@ export const identityTokenAuthServiceFactory = ({
         isAccessTokenRevoked: true
       }
     );
+
+    const appCfg = getConfig();
+    // maxTTL > 0: the latest possible JWT exp is createdAt + maxTTL regardless of MAX_AGE.
+    // A JWT at createdAt + (maxTTL - MAX_AGE) gets a full MAX_AGE-bounded TTL, expiring at
+    // createdAt + maxTTL. Using min(maxTTL, MAX_AGE) clips the marker too early when maxTTL > MAX_AGE.
+    //
+    // maxTTL == 0: no budget cap, so a JWT renewed just before revocation can expire up to MAX_AGE
+    // after the revocation time (revokedAt), not after createdAt.
+    let expiresAt: Date;
+    if (identityAccessToken.accessTokenMaxTTL > 0) {
+      expiresAt = new Date(identityAccessToken.createdAt.getTime() + identityAccessToken.accessTokenMaxTTL * 1000);
+    } else {
+      expiresAt = new Date(Date.now() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000);
+    }
+    await identityAccessTokenService.markPerTokenRevocation({
+      tokenId: identityAccessToken.id,
+      identityId: identityAccessToken.identityId,
+      expiresAt
+    });
 
     return { revokedToken };
   };

@@ -74,6 +74,7 @@ import {
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
 import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
+import { DevinConnectionListItemSchema, SanitizedDevinConnectionSchema } from "@app/services/app-connection/devin";
 import {
   DigiCertConnectionListItemSchema,
   SanitizedDigiCertConnectionSchema
@@ -144,6 +145,7 @@ import {
   OpenRouterConnectionListItemSchema,
   SanitizedOpenRouterConnectionSchema
 } from "@app/services/app-connection/open-router";
+import { OvhConnectionListItemSchema, SanitizedOvhConnectionSchema } from "@app/services/app-connection/ovh";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -158,6 +160,10 @@ import {
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
+import {
+  SanitizedSnowflakeConnectionSchema,
+  SnowflakeConnectionListItemSchema
+} from "@app/services/app-connection/snowflake";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
@@ -242,15 +248,18 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
   ...SanitizedAnthropicConnectionSchema.options,
+  ...SanitizedDevinConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
+  ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
-  ...SanitizedTravisCIConnectionSchema.options
+  ...SanitizedTravisCIConnectionSchema.options,
+  ...SanitizedSnowflakeConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -312,9 +321,12 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
+  OvhConnectionListItemSchema,
+  DevinConnectionListItemSchema,
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
-  TravisCIConnectionListItemSchema
+  TravisCIConnectionListItemSchema,
+  SnowflakeConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

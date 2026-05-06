@@ -277,6 +277,10 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
+    if (type === ProjectType.AI) {
+      throw new BadRequestError({ message: "Agent Sentinel projects are not supported" });
+    }
+
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 

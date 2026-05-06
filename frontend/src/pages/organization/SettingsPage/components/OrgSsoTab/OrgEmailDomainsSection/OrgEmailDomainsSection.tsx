@@ -1,86 +1,112 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Globe, Plus } from "lucide-react";
 
 import { OrgPermissionCan, PermissionDeniedBanner } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSubjects,
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { TEmailDomain } from "@app/hooks/api";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { AddEmailDomainModal } from "./AddEmailDomainModal";
+import { EmailDomainVerificationModal } from "./EmailDomainVerificationModal";
 import { OrgEmailDomainsTable } from "./OrgEmailDomainsTable";
 
-export const OrgEmailDomainsSection = () => {
-  const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "addDomain"
-  ] as const);
+type EmailDomainPopUps = ["addDomain", "verifyDomain"];
+
+type Props = {
+  popUp: UsePopUpState<EmailDomainPopUps>;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<EmailDomainPopUps>, data?: unknown) => void;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<EmailDomainPopUps>) => void;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<EmailDomainPopUps>, state?: boolean) => void;
+};
+
+export const OrgEmailDomainsSection = ({
+  popUp,
+  handlePopUpOpen,
+  handlePopUpClose,
+  handlePopUpToggle
+}: Props) => {
   const { permission } = useOrgPermission();
   const { subscription } = useSubscription();
 
   const hasEmailDomainVerification = Boolean(subscription?.emailDomainVerification);
 
+  const handleVerifyDomain = (emailDomain: TEmailDomain) =>
+    handlePopUpOpen("verifyDomain", emailDomain);
+
+  const renderBody = () => {
+    if (!hasEmailDomainVerification) {
+      return (
+        <div className="rounded-md border border-border bg-container p-6 text-center">
+          <p className="text-sm text-foreground">
+            Your current plan does not include email domain verification.
+          </p>
+          <p className="mt-1 text-xs text-accent">
+            Upgrade your plan to verify email domains for SSO and identity provider enforcement.
+          </p>
+        </div>
+      );
+    }
+
+    if (!permission.can(OrgPermissionEmailDomainActions.Read, OrgPermissionSubjects.EmailDomains)) {
+      return <PermissionDeniedBanner />;
+    }
+
+    return <OrgEmailDomainsTable onVerifyDomain={handleVerifyDomain} />;
+  };
+
   return (
     <>
-      <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <div className="text-xl font-medium text-gray-200">
-              Email Domains
-              <DocumentationLinkBadge
-                className="ml-2"
-                href="https://infisical.com/docs/documentation/platform/email-domain"
-              />
-            </div>
-            <p className="mt-1 mb-2 text-gray-400">
-              Verify ownership of your email domains to use with SSO and identity providers.
-            </p>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Globe className="size-4 text-accent" />
+            Email Domains
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/email-domain" />
+          </CardTitle>
+          <CardDescription>Verified domains for your IDP.</CardDescription>
           {hasEmailDomainVerification && (
-            <OrgPermissionCan
-              I={OrgPermissionEmailDomainActions.Create}
-              a={OrgPermissionSubjects.EmailDomains}
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="secondary"
-                  isDisabled={!isAllowed}
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("addDomain")}
-                >
-                  Add domain
-                </Button>
-              )}
-            </OrgPermissionCan>
+            <CardAction>
+              <OrgPermissionCan
+                I={OrgPermissionEmailDomainActions.Create}
+                a={OrgPermissionSubjects.EmailDomains}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="outline"
+                    isDisabled={!isAllowed}
+                    onClick={() => handlePopUpOpen("addDomain")}
+                  >
+                    <Plus />
+                    Add Domain
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            </CardAction>
           )}
-        </div>
-        {!hasEmailDomainVerification ? (
-          <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center">
-            <p className="text-gray-300">
-              Your current plan does not include email domain verification.
-            </p>
-            <p className="mt-1 text-sm text-gray-500">
-              Upgrade your plan to verify email domains for SSO and identity provider enforcement.
-            </p>
-          </div>
-        ) : (
-          <div>
-            {permission.can(
-              OrgPermissionEmailDomainActions.Read,
-              OrgPermissionSubjects.EmailDomains
-            ) ? (
-              <OrgEmailDomainsTable />
-            ) : (
-              <PermissionDeniedBanner />
-            )}
-          </div>
-        )}
-      </div>
+        </CardHeader>
+        <CardContent>{renderBody()}</CardContent>
+      </Card>
       <AddEmailDomainModal
+        popUp={popUp}
+        handlePopUpClose={handlePopUpClose}
+        handlePopUpToggle={handlePopUpToggle}
+        onCreated={handleVerifyDomain}
+      />
+      <EmailDomainVerificationModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}

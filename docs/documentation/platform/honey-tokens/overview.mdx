@@ -1,0 +1,26 @@
+---
+title: "Honey Tokens"
+sidebarTitle: "Overview"
+description: "Detect unauthorized access to your secrets by planting decoy AWS credentials monitored by Infisical."
+---
+
+Honey tokens are decoy credentials that act as tripwires. When an attacker gains access to your secrets and attempts to use a honey token, Infisical detects the activity and immediately alerts you and your team.
+
+Each honey token is planted alongside your real secrets so it appears genuine. Any attempt to use these credentials triggers an alert and notifies organization admins.
+
+At this time, we only support [AWS IAM](/documentation/platform/honey-tokens/aws/usage) credentials as honey tokens, but we're planning to support more providers in the near future.
+
+## Getting Started
+
+<Steps>
+  <Step title="One-Time Setup">
+    An organization admin goes through a one-time setup process to configure AWS Honey Tokens. This needs to be done once per organization, and this setup process dictates which AWS account and region the honey tokens will be planted in.
+
+    Follow the [Setup Guide](/documentation/platform/honey-tokens/aws/setup) to get started with honey tokens.
+  </Step>
+  <Step title="Create and Manage Tokens">
+    Once setup is complete, any project member with the appropriate permissions can create, monitor, and manage honey tokens across projects.
+
+    Follow the [Usage Guide](/documentation/platform/honey-tokens/aws/usage) to get started with using honey tokens.
+  </Step>
+</Steps>

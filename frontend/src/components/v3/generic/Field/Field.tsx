@@ -94,7 +94,7 @@ const fieldLabelVariants = cva(
   cn(
     "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border text-xs leading-snug text-accent transition-colors duration-75 group-data-[disabled=true]/field:opacity-50",
     "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
-    "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-container/25 has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
+    "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-transparent has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
     "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col"
   ),
   {
@@ -133,7 +133,7 @@ function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="field-label"
       className={cn(
-        "flex w-fit items-center gap-2 text-sm leading-snug font-medium text-foreground group-data-[disabled=true]/field:opacity-50",
+        "flex w-fit items-center gap-2 text-sm leading-snug font-medium text-foreground group-data-[disabled=true]/field:opacity-50 [&>svg]:mb-px [&>svg]:size-3.5 [&>svg]:text-muted",
         className
       )}
       {...props}

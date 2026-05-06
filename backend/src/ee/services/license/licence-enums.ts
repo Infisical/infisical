@@ -15,7 +15,8 @@ export const BillingPlanRows = {
   SecretApproval: { name: "Secret approvals", field: "secretApproval" },
   SecretRotation: { name: "Secret rotation", field: "secretRotation" },
   InstanceUserManagement: { name: "Instance User Management", field: "instanceUserManagement" },
-  ExternalKms: { name: "External KMS", field: "externalKms" }
+  ExternalKms: { name: "External KMS", field: "externalKms" },
+  HoneyTokens: { name: "Honey Tokens", field: "honeyTokens" }
 } as const;
 
 export const BillingPlanTableHead = {

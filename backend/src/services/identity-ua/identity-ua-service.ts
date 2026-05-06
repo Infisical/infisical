@@ -28,10 +28,9 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -54,11 +53,14 @@ type TIdentityUaServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityUaDAL: TIdentityUaDALFactory;
   identityUaClientSecretDAL: TIdentityUaClientSecretDALFactory;
-  identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+  >;
   keyStore: Pick<
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
@@ -75,13 +77,13 @@ type LockoutObject = {
 export const identityUaServiceFactory = ({
   identityUaDAL,
   identityUaClientSecretDAL,
-  identityAccessTokenDAL,
   membershipIdentityDAL,
   permissionService,
   licenseService,
   orgDAL,
   keyStore,
-  identityDAL
+  identityDAL,
+  identityAccessTokenService
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const appCfg = getConfig();
@@ -265,19 +267,6 @@ export const identityUaServiceFactory = ({
         });
       }
 
-      const accessTokenTTLParams =
-        Number(identityUa.accessTokenPeriod) === 0
-          ? {
-              accessTokenTTL: identityUa.accessTokenTTL,
-              accessTokenMaxTTL: identityUa.accessTokenMaxTTL
-            }
-          : {
-              accessTokenTTL: identityUa.accessTokenPeriod,
-              // We set a very large Max TTL for periodic tokens to ensure that clients (even outdated ones) can always renew their token
-              // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
-              accessTokenMaxTTL: 1000000000
-            };
-
       if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
@@ -309,8 +298,8 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-        const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+      await identityUaDAL.transaction(async (tx) => {
+        await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -330,39 +319,29 @@ export const identityUaServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityUa.identityId,
-            isAccessTokenRevoked: false,
-            identityUAClientSecretId: uaClientSecretDoc.id,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityUa.accessTokenNumUsesLimit,
-            accessTokenPeriod: identityUa.accessTokenPeriod,
-            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-            subOrganizationId,
-            ...accessTokenTTLParams
-          },
-          tx
-        );
-
-        return newToken;
       });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityUa.identityId,
-          clientSecretId: validClientSecretInfo.id,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identityUa.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityUa.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityUa.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityUa.accessTokenNumUsesLimit),
+        accessTokenPeriod: Number(identityUa.accessTokenPeriod),
+        accessTokenTrustedIps: identityUa.accessTokenTrustedIps as TIp[],
+        clientSecretId: validClientSecretInfo.id
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -383,7 +362,8 @@ export const identityUaServiceFactory = ({
         validClientSecretInfo,
         identityAccessToken,
         identity,
-        ...accessTokenTTLParams
+        accessTokenTTL: identityAccessToken.accessTokenTTL,
+        accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL
       };
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -794,6 +774,15 @@ export const identityUaServiceFactory = ({
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
+
+    // Revoking the auth method must invalidate any access tokens already
+    // issued via it — without this, leaked tokens keep authenticating up
+    // to MAX_MACHINE_IDENTITY_TOKEN_AGE even after an admin pulled the
+    // method. The marker is identity-wide (matches the existing semantics
+    // of identity deletion) which is acceptable here because detaching an
+    // auth method is a high-trust admin action.
+    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+
     return revokedIdentityUniversalAuth;
   };
 

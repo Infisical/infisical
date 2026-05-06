@@ -19,7 +19,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -27,7 +26,7 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -35,10 +34,10 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -67,11 +66,15 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identitySpiffeAuthDAL: TIdentitySpiffeAuthDALFactory;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+  >;
 };
 
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
@@ -128,7 +131,8 @@ export const identitySpiffeAuthServiceFactory = ({
   licenseService,
   identityAccessTokenDAL,
   kmsService,
-  orgDAL
+  orgDAL,
+  identityAccessTokenService
 }: TIdentitySpiffeAuthServiceFactoryDep) => {
   type TFlattenedTrustBundle = {
     configurationType: string;
@@ -395,7 +399,7 @@ export const identitySpiffeAuthServiceFactory = ({
         }
       }
 
-      const identityAccessToken = await identitySpiffeAuthDAL.transaction(async (tx) => {
+      await identitySpiffeAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -415,38 +419,28 @@ export const identitySpiffeAuthServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identitySpiffeAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identitySpiffeAuth.accessTokenTTL,
-            accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identitySpiffeAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.SPIFFE_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-
-        return newToken;
       });
 
-      let expireyOptions: { expiresIn: number } | undefined;
-      const accessTokenTTL = Number(identityAccessToken.accessTokenTTL);
-      if (accessTokenTTL > 0) {
-        expireyOptions = { expiresIn: accessTokenTTL };
-      }
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identitySpiffeAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        expireyOptions
-      );
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identitySpiffeAuth.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identitySpiffeAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identitySpiffeAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identitySpiffeAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: 0,
+        accessTokenTrustedIps: identitySpiffeAuth.accessTokenTrustedIps as TIp[]
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -923,6 +917,11 @@ export const identitySpiffeAuthServiceFactory = ({
 
       return deletedSpiffeAuth?.[0];
     });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

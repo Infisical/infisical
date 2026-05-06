@@ -233,8 +233,8 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* TODO: Disabled for Windows Server and Active Directory accounts until RDP is implemented */}
-          {!isDomainAccount && account.resource?.resourceType !== PamResourceType.Windows && (
+          {/* AD-joined accounts (domain accounts) still disabled; AD/RDP is a later phase. */}
+          {!isDomainAccount && (
             <ProjectPermissionCan
               I={ProjectPermissionPamAccountActions.Access}
               a={ProjectPermissionSub.PamAccounts}

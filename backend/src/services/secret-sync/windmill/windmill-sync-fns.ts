@@ -1,4 +1,4 @@
-import { request } from "@app/lib/config/request";
+import { safeRequest } from "@app/lib/validator";
 import { getWindmillInstanceUrl } from "@app/services/app-connection/windmill";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -23,7 +23,7 @@ const listWindmillVariables = async ({ instanceUrl, workspace, accessToken, path
 
   while (page) {
     // eslint-disable-next-line no-await-in-loop
-    const { data: variablesPage } = await request.get<TWindmillListVariablesResponse>(
+    const { data: variablesPage } = await safeRequest.get<TWindmillListVariablesResponse>(
       `${instanceUrl}/api/w/${workspace}/variables/list`,
       {
         headers: {
@@ -42,7 +42,7 @@ const listWindmillVariables = async ({ instanceUrl, workspace, accessToken, path
 
       if (variable.is_secret) {
         // eslint-disable-next-line no-await-in-loop
-        const { data: variableValue } = await request.get<string>(
+        const { data: variableValue } = await safeRequest.get<string>(
           `${instanceUrl}/api/w/${workspace}/variables/get_value/${variable.path}`,
           {
             headers: {
@@ -78,7 +78,7 @@ const createWindmillVariable = async ({
   workspace,
   description
 }: TPostWindmillVariable) =>
-  request.post(
+  safeRequest.post(
     `${instanceUrl}/api/w/${workspace}/variables/create`,
     {
       path,
@@ -102,7 +102,7 @@ const updateWindmillVariable = async ({
   workspace,
   description
 }: TPostWindmillVariable) =>
-  request.post(
+  safeRequest.post(
     `${instanceUrl}/api/w/${workspace}/variables/update/${path}`,
     {
       value,
@@ -118,7 +118,7 @@ const updateWindmillVariable = async ({
   );
 
 const deleteWindmillVariable = async ({ path, instanceUrl, accessToken, workspace }: TDeleteWindmillVariable) =>
-  request.delete(`${instanceUrl}/api/w/${workspace}/variables/delete/${path}`, {
+  safeRequest.delete(`${instanceUrl}/api/w/${workspace}/variables/delete/${path}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`
     }
@@ -136,7 +136,7 @@ export const WindmillSyncFns = {
     // url needs to be lowercase
     const workspace = secretSync.destinationConfig.workspace.toLowerCase();
 
-    const instanceUrl = await getWindmillInstanceUrl(connection);
+    const instanceUrl = getWindmillInstanceUrl(connection);
 
     const { accessToken } = connection.credentials;
 
@@ -200,7 +200,7 @@ export const WindmillSyncFns = {
     // url needs to be lowercase
     const workspace = secretSync.destinationConfig.workspace.toLowerCase();
 
-    const instanceUrl = await getWindmillInstanceUrl(connection);
+    const instanceUrl = getWindmillInstanceUrl(connection);
 
     const { accessToken } = connection.credentials;
 
@@ -233,7 +233,7 @@ export const WindmillSyncFns = {
     // url needs to be lowercase
     const workspace = secretSync.destinationConfig.workspace.toLowerCase();
 
-    const instanceUrl = await getWindmillInstanceUrl(connection);
+    const instanceUrl = getWindmillInstanceUrl(connection);
 
     const { accessToken } = connection.credentials;
 

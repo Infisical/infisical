@@ -158,42 +158,46 @@ const Folder: React.FC<FolderProps> = ({
         <CollapsibleContent className="overflow-hidden transition-all duration-300 ease-in-out">
           <div className="relative mt-1">
             <div className="absolute top-0 bottom-0 left-5 w-px bg-mineshaft-600" />
-            {structure.items.map((item) => (
-              <div key={item.id} className="group ml-6 flex items-center rounded-sm px-2 py-1">
-                <div className="mr-2 ml-6">
-                  <FontAwesomeIcon icon={faKey} className="h-3 w-3" />
+            {[...structure.items]
+              .sort((a, b) => (a.secretKey ?? "").localeCompare(b.secretKey ?? ""))
+              .map((item) => (
+                <div key={item.id} className="group ml-6 flex items-center rounded-sm px-2 py-1">
+                  <div className="mr-2 ml-6">
+                    <FontAwesomeIcon icon={faKey} className="h-3 w-3" />
+                  </div>
+                  {!isDisabled && (
+                    <Checkbox
+                      id={`folder-${item.id}`}
+                      isChecked={selectedItemIds.includes(item.id)}
+                      onCheckedChange={(checked) => onItemSelect(item, !!checked)}
+                      isDisabled={isDisabled}
+                    />
+                  )}
+                  <label
+                    htmlFor={item.id}
+                    className="ml-2 flex-1 cursor-pointer truncate"
+                    title={item.secretKey}
+                  >
+                    {item.secretKey}
+                  </label>
                 </div>
-                {!isDisabled && (
-                  <Checkbox
-                    id={`folder-${item.id}`}
-                    isChecked={selectedItemIds.includes(item.id)}
-                    onCheckedChange={(checked) => onItemSelect(item, !!checked)}
-                    isDisabled={isDisabled}
-                  />
-                )}
-                <label
-                  htmlFor={item.id}
-                  className="ml-2 flex-1 cursor-pointer truncate"
-                  title={item.secretKey}
-                >
-                  {item.secretKey}
-                </label>
-              </div>
-            ))}
+              ))}
 
-            {Object.entries(structure.subFolders).map(([subName, subStructure]) => (
-              <Folder
-                key={subName}
-                name={subName}
-                structure={subStructure}
-                path={path ? `${path}/${subName}` : subName}
-                selectedItems={selectedItems}
-                onItemSelect={onItemSelect}
-                onFolderSelect={onFolderSelect}
-                level={level + 1}
-                isDisabled={isDisabled}
-              />
-            ))}
+            {Object.entries(structure.subFolders)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([subName, subStructure]) => (
+                <Folder
+                  key={subName}
+                  name={subName}
+                  structure={subStructure}
+                  path={path ? `${path}/${subName}` : subName}
+                  selectedItems={selectedItems}
+                  onItemSelect={onItemSelect}
+                  onFolderSelect={onFolderSelect}
+                  level={level + 1}
+                  isDisabled={isDisabled}
+                />
+              ))}
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -1,10 +1,9 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { DbtConnectionMethod } from "./dbt-connection-constants";
@@ -33,7 +32,6 @@ export const getDbtUrl = async (config: {
   }
 
   const baseUrl = `https://${hostname}`;
-  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   return baseUrl;
 };
@@ -54,7 +52,7 @@ export const retrieveDbtAccount = async (config: TDbtConnectionConfig) => {
 
   const dbtUrl = await getDbtUrl(config);
 
-  await request.get(`${dbtUrl}/api/v2/accounts/${credentials.accountId}/`, {
+  await safeRequest.get(`${dbtUrl}/api/v2/accounts/${credentials.accountId}/`, {
     headers: {
       Authorization: `Bearer ${credentials.apiToken}`
     }
@@ -91,7 +89,7 @@ export const listDbtProjects = async (config: TDbtConnectionConfig) => {
 
     const dbtUrl = await getDbtUrl(config);
 
-    const res = await request.get<TDbtListProjectsResponse>(
+    const res = await safeRequest.get<TDbtListProjectsResponse>(
       `${dbtUrl}/api/v3/accounts/${credentials.accountId}/projects`,
       {
         headers: {

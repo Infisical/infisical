@@ -16,6 +16,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./Tooltip";
  * with `asChild` to forward the trigger props onto a `Button`, `IconButton`,
  * or any focusable element — keep tooltip content to a single short sentence,
  * and never put interactive controls inside it.
+ *
+ * **Prefer `HoverCard`** when the hint needs rich content — multi-paragraph
+ * descriptions, links, structured metadata about a referenced entity. Tooltip
+ * content disappears the moment the cursor leaves the trigger, so any link or
+ * action inside is fragile; `HoverCard` keeps the panel open as the cursor
+ * moves into it. Reach for `Popover` instead when the user must click to
+ * commit an interaction (forms, pickers, action menus).
  */
 const meta = {
   title: "Generic/Tooltip",

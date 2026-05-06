@@ -1,5 +1,5 @@
-import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getDatabricksConnectionAccessToken } from "@app/services/app-connection/databricks/databricks-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -24,7 +24,7 @@ type TDatabricksSecretSyncFactoryDeps = {
 const DATABRICKS_SCOPE_SECRET_LIMIT = 1000;
 
 const listDatabricksSecrets = async ({ workspaceUrl, scope, accessToken }: TDatabricksListSecretKeys) => {
-  const { data } = await request.get<TDatabricksListSecretKeysResponse>(
+  const { data } = await safeRequest.get<TDatabricksListSecretKeysResponse>(
     `${removeTrailingSlash(workspaceUrl)}/api/2.0/secrets/list`,
     {
       params: {
@@ -41,7 +41,7 @@ const listDatabricksSecrets = async ({ workspaceUrl, scope, accessToken }: TData
   return data.secrets ?? [];
 };
 const putDatabricksSecret = async ({ workspaceUrl, scope, key, value, accessToken }: TDatabricksPutSecret) =>
-  request.post(
+  safeRequest.post(
     `${removeTrailingSlash(workspaceUrl)}/api/2.0/secrets/put`,
     {
       scope,
@@ -57,7 +57,7 @@ const putDatabricksSecret = async ({ workspaceUrl, scope, key, value, accessToke
   );
 
 const deleteDatabricksSecrets = async ({ workspaceUrl, scope, key, accessToken }: TDatabricksDeleteSecret) =>
-  request.post(
+  safeRequest.post(
     `${removeTrailingSlash(workspaceUrl)}/api/2.0/secrets/delete`,
     {
       scope,

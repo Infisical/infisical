@@ -1,6 +1,5 @@
-import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAuth0ConnectionAccessToken } from "@app/services/app-connection/auth0/auth0-connection-fns";
@@ -22,7 +21,6 @@ const listAuth0Clients = async (
   const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, kmsService);
 
   const { audience, clientId: connectionClientId } = appConnection.credentials;
-  await blockLocalAndPrivateIpAddresses(audience);
 
   const clients: TAuth0ListClient[] = [];
   let hasMore = true;
@@ -30,7 +28,7 @@ const listAuth0Clients = async (
 
   while (hasMore) {
     // eslint-disable-next-line no-await-in-loop
-    const { data: clientsPage } = await request.get<TAuth0ListClientsResponse>(`${audience}clients`, {
+    const { data: clientsPage } = await safeRequest.get<TAuth0ListClientsResponse>(`${audience}clients`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"

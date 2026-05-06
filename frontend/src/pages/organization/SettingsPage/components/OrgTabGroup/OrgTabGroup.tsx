@@ -74,8 +74,8 @@ export const OrgTabGroup = () => {
       component: ProjectTemplatesTab
     },
     {
-      name: "Product Enforcements",
-      key: "product-enforcements",
+      name: "Product Settings",
+      key: "product-settings",
       component: OrgProductSettingsTab
     },
     {

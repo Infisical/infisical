@@ -26,7 +26,8 @@ export enum OrgGatewayPermissionActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  RevokeGatewayAccess = "revoke-gateway-access"
 }
 
 export enum OrgGatewayPoolPermissionActions {
@@ -82,7 +83,8 @@ export enum OrgPermissionSubjects {
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
-  CertManager = "certificate-manager"
+  CertManager = "certificate-manager",
+  HoneyTokens = "honey-tokens"
 }
 
 export enum OrgPermissionCertManagerActions {
@@ -96,6 +98,10 @@ export enum OrgPermissionEmailDomainActions {
   Create = "create",
   VerifyDomain = "verify-domain",
   Delete = "delete"
+}
+
+export enum OrgPermissionHoneyTokenActions {
+  Setup = "setup"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -196,6 +202,7 @@ export type OrgPermissionSet =
     ]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
-  | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager];
+  | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

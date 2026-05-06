@@ -1,8 +1,26 @@
-import { faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Copy, Info } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, IconButton, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TEmailDomain, useVerifyEmailDomain } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -48,75 +66,82 @@ export const EmailDomainVerificationModal = ({
   const txtValue = `infisical-domain-verification=${domainData?.verificationCode ?? ""}`;
 
   return (
-    <Modal
-      isOpen={popUp?.verifyDomain?.isOpen}
+    <Dialog
+      open={popUp?.verifyDomain?.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("verifyDomain", isOpen)}
     >
-      <ModalContent
-        title="Verify Email Domain"
-        subTitle={`Add the following DNS TXT record to verify ownership of ${domainData?.domain ?? ""}`}
-      >
+      <DialogContent className="max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Verify Email Domain</DialogTitle>
+          <DialogDescription>
+            Add the following DNS TXT record to verify ownership of {domainData?.domain ?? ""}.
+          </DialogDescription>
+        </DialogHeader>
+
         <div className="space-y-4">
-          <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
-            <div className="mb-3">
-              <p className="mb-1 text-sm font-medium text-gray-400">Record Type</p>
-              <p className="text-sm text-gray-200">TXT</p>
-            </div>
-            <div className="mb-3">
-              <div className="flex items-center justify-between">
-                <p className="mb-1 text-sm font-medium text-gray-400">Record Name</p>
-                <Tooltip content="Copy">
-                  <IconButton
-                    ariaLabel="copy record name"
-                    variant="plain"
-                    size="xs"
-                    onClick={() => handleCopy(domainData?.verificationRecordName ?? "")}
-                  >
-                    <FontAwesomeIcon icon={faCopy} className="text-gray-400" />
-                  </IconButton>
+          <DetailGroup className="rounded-md border border-border bg-card p-4">
+            <Detail>
+              <DetailLabel>Record Type</DetailLabel>
+              <DetailValue>TXT</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel className="flex items-center justify-between">
+                Record Name
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="copy record name"
+                      variant="ghost-muted"
+                      size="xs"
+                      onClick={() => handleCopy(domainData?.verificationRecordName ?? "")}
+                    >
+                      <Copy />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy</TooltipContent>
                 </Tooltip>
-              </div>
-              <code className="block rounded bg-mineshaft-700 px-2 py-1 text-sm break-all text-gray-200">
-                {domainData?.verificationRecordName}
-              </code>
-            </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="mb-1 text-sm font-medium text-gray-400">Record Value</p>
-                <Tooltip content="Copy">
-                  <IconButton
-                    ariaLabel="copy record value"
-                    variant="plain"
-                    size="xs"
-                    onClick={() => handleCopy(txtValue)}
-                  >
-                    <FontAwesomeIcon icon={faCopy} className="text-gray-400" />
-                  </IconButton>
+              </DetailLabel>
+              <DetailValue>{domainData?.verificationRecordName}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel className="flex items-center justify-between">
+                Record Value
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="copy record value"
+                      variant="ghost-muted"
+                      size="xs"
+                      onClick={() => handleCopy(txtValue)}
+                    >
+                      <Copy />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy</TooltipContent>
                 </Tooltip>
-              </div>
-              <code className="block rounded bg-mineshaft-700 px-2 py-1 text-sm break-all text-gray-200">
-                {txtValue}
-              </code>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">
-            DNS changes typically take a few minutes to propagate, but in some cases may take up to
-            48 hours. The verification code expires 7 days after creation.
-          </p>
-          <div className="flex items-center space-x-4">
-            <Button size="sm" onClick={handleVerify} isLoading={isPending} isDisabled={isPending}>
-              Verify Domain
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpClose("verifyDomain")}
-            >
-              Close
-            </Button>
-          </div>
+              </DetailLabel>
+              <DetailValue>{txtValue}</DetailValue>
+            </Detail>
+          </DetailGroup>
+          <Alert variant="warning">
+            <Info />
+            <AlertTitle>DNS changes can take up to 48 hours to propagate</AlertTitle>
+            <AlertDescription>
+              Most updates propagate within minutes. The verification code expires 7 days after
+              creation.
+            </AlertDescription>
+          </Alert>
         </div>
-      </ModalContent>
-    </Modal>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => handlePopUpClose("verifyDomain")}>
+            Close
+          </Button>
+          <Button variant="org" isPending={isPending} onClick={handleVerify}>
+            Verify Domain
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -153,7 +153,7 @@ export const getOrgSettingsSubmenu = ({
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
-    { label: "Product Enforcements", icon: ClipboardList, tab: "product-enforcements" },
+    { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
     ...(hasMultipleCertManagerInstances
       ? [{ label: "Certificate Manager", icon: ShieldCheck, tab: "cert-manager" }]
       : []),

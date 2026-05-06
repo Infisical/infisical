@@ -76,10 +76,6 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "PAM",
     value: ProjectType.PAM
-  },
-  {
-    label: "Agent Sentinel",
-    value: ProjectType.AI
   }
 ];
 

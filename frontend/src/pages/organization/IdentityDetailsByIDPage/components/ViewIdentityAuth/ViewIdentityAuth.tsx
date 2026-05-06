@@ -25,6 +25,7 @@ import {
   ProjectPermissionSub,
   useOrganization
 } from "@app/context";
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { usePopUp } from "@app/hooks";
 import {
   IdentityAuthMethod,
@@ -41,7 +42,8 @@ import {
   useDeleteIdentitySpiffeAuth,
   useDeleteIdentityTlsCertAuth,
   useDeleteIdentityTokenAuth,
-  useDeleteIdentityUniversalAuth
+  useDeleteIdentityUniversalAuth,
+  useFetchServerStatus
 } from "@app/hooks/api";
 import { IdentityAliCloudAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAliCloudAuthForm";
 import { IdentityAwsAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAwsAuthForm";
@@ -143,6 +145,10 @@ export const Content = ({
   const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
   const { mutateAsync: revokeSpiffeAuth } = useDeleteIdentitySpiffeAuth();
   const { mutateAsync: revokeLdapAuth } = useDeleteIdentityLdapAuth();
+
+  const { data: serverStatus } = useFetchServerStatus();
+  const maxAccessTokenTTL =
+    serverStatus?.maxIdentityAccessTokenTTL ?? MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK;
 
   const RemoveAuthMethodMap = {
     [IdentityAuthMethod.KUBERNETES_AUTH]: revokeKubernetesAuth,
@@ -297,6 +303,7 @@ export const Content = ({
             <EditForm
               identityId={identityId}
               isUpdate
+              maxAccessTokenTTL={maxAccessTokenTTL}
               handlePopUpOpen={handlePopUpOpen}
               handlePopUpToggle={handlePopUpToggle}
             />

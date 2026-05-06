@@ -45,7 +45,9 @@ export const SecretSyncsBrowser = () => {
     {"name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools"},
     {"name": "Azure Entra ID SCIM", "slug": "azure-entra-id-scim", "path": "/integrations/secret-syncs/azure-entra-id-scim", "description": "Learn how to sync SCIM provisioning tokens from Infisical to Azure Entra ID.", "category": "Identity & Auth"},
     {"name": "Infisical", "slug": "external-infisical", "path": "/integrations/secret-syncs/external-infisical", "description": "Learn how to sync secrets from one Infisical instance to another.", "category": "Security"},
+    {"name": "OVH", "slug": "ovh", "path": "/integrations/secret-syncs/ovh", "description": "Learn how to sync secrets from Infisical to OVH Secret Manager.", "category": "Cloud Providers"},
     {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
+    {"name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases"},
 
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

@@ -1,7 +1,6 @@
-import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OktaConnectionMethod } from "./okta-connection-enums";
@@ -15,18 +14,16 @@ export const getOktaConnectionListItem = () => {
   };
 };
 
-export const getOktaInstanceUrl = async (config: TOktaConnectionConfig) => {
-  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
-  await blockLocalAndPrivateIpAddresses(instanceUrl);
-  return instanceUrl;
+export const getOktaInstanceUrl = (config: TOktaConnectionConfig) => {
+  return removeTrailingSlash(config.credentials.instanceUrl);
 };
 
 export const validateOktaConnectionCredentials = async (config: TOktaConnectionConfig) => {
   const { apiToken } = config.credentials;
-  const instanceUrl = await getOktaInstanceUrl(config);
+  const instanceUrl = getOktaInstanceUrl(config);
 
   try {
-    await request.get(`${instanceUrl}/api/v1/users/me`, {
+    await safeRequest.get(`${instanceUrl}/api/v1/users/me`, {
       headers: {
         Accept: "application/json",
         Authorization: `SSWS ${apiToken}`
@@ -44,9 +41,9 @@ export const validateOktaConnectionCredentials = async (config: TOktaConnectionC
 
 export const listOktaApps = async (appConnection: TOktaConnection) => {
   const { apiToken } = appConnection.credentials;
-  const instanceUrl = await getOktaInstanceUrl(appConnection);
+  const instanceUrl = getOktaInstanceUrl(appConnection);
 
-  const { data } = await request.get<TOktaApp[]>(`${instanceUrl}/api/v1/apps`, {
+  const { data } = await safeRequest.get<TOktaApp[]>(`${instanceUrl}/api/v1/apps`, {
     headers: {
       Accept: "application/json",
       Authorization: `SSWS ${apiToken}`

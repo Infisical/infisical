@@ -529,8 +529,8 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {/* TODO: Disabled for Windows Server and Active Directory accounts until RDP is implemented */}
-                      {resource.resourceType !== PamResourceType.Windows && !account.domainId && (
+                      {/* AD-joined accounts (account.domainId) still disabled; AD/RDP is a later phase. */}
+                      {!account.domainId && (
                         <ProjectPermissionCan
                           I={ProjectPermissionPamAccountActions.Access}
                           a={ProjectPermissionSub.PamAccounts}

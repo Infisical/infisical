@@ -2,6 +2,7 @@ import {
   FilterIcon,
   FingerprintIcon,
   FolderIcon,
+  HexagonIcon,
   ImportIcon,
   KeyIcon,
   RefreshCwIcon
@@ -38,6 +39,11 @@ const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
     type: "import",
     label: "Secret Imports",
     icon: <ImportIcon className="text-import" />
+  },
+  {
+    type: "honeyToken",
+    label: "Honey Tokens",
+    icon: <HexagonIcon className="text-yellow-700" />
   },
   { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> }
 ];

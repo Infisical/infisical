@@ -16,6 +16,7 @@ import { registerCircleCISyncRouter } from "./circleci-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
+import { registerDevinSyncRouter } from "./devin-sync-router";
 import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-platform-sync-router";
 import { registerExternalInfisicalSyncRouter } from "./external-infisical-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
@@ -30,8 +31,10 @@ import { registerNetlifySyncRouter } from "./netlify-sync-router";
 import { registerNorthflankSyncRouter } from "./northflank-sync-router";
 import { registerOctopusDeploySyncRouter } from "./octopus-deploy-sync-router";
 import { registerOnaSyncRouter } from "./ona-sync-router";
+import { registerOvhSyncRouter } from "./ovh-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
+import { registerSnowflakeSyncRouter } from "./snowflake-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
@@ -80,6 +83,9 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.CircleCI]: registerCircleCISyncRouter,
   [SecretSync.AzureEntraIdScim]: registerAzureEntraIdScimSyncRouter,
   [SecretSync.ExternalInfisical]: registerExternalInfisicalSyncRouter,
+  [SecretSync.OVH]: registerOvhSyncRouter,
+  [SecretSync.Devin]: registerDevinSyncRouter,
   [SecretSync.Ona]: registerOnaSyncRouter,
-  [SecretSync.TravisCI]: registerTravisCISyncRouter
+  [SecretSync.TravisCI]: registerTravisCISyncRouter,
+  [SecretSync.Snowflake]: registerSnowflakeSyncRouter
 };
