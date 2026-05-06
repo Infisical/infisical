@@ -15,22 +15,15 @@ type Props = {
   onExport: (format: ExportFormat) => void;
   onCopy: (format: ExportFormat) => void;
   disabled?: boolean;
-  showLabel?: boolean;
 };
 
-export function ExportDropdown({ onExport, onCopy, disabled, showLabel }: Props) {
+export function ExportDropdown({ onExport, onCopy, disabled }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="xs"
-          disabled={disabled}
-          className={showLabel ? "gap-1" : "size-7 p-0"}
-          title="Export"
-        >
+        <Button variant="ghost" size="xs" disabled={disabled} className="gap-1" title="Export">
           <DownloadIcon className="size-3.5" />
-          {showLabel && "Export"}
+          Export
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

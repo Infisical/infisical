@@ -184,7 +184,6 @@ export function QueryPanel({
               </span>
               {result.rows.length > 0 && (
                 <ExportDropdown
-                  showLabel
                   onExport={(fmt) =>
                     exportData(
                       result.rows,
