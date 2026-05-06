@@ -22,6 +22,8 @@ import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } f
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -37,6 +39,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -122,6 +126,7 @@ type TScimServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const scimServiceFactory = ({
@@ -143,7 +148,8 @@ export const scimServiceFactory = ({
   membershipRoleDAL,
   additionalPrivilegeDAL,
   scimEventsDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -288,7 +294,7 @@ export const scimServiceFactory = ({
     filter,
     orgId
   }) => {
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -395,7 +401,7 @@ export const scimServiceFactory = ({
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!org)
       throw new ScimRequestError({
         detail: "Organization not found",
@@ -426,9 +432,14 @@ export const scimServiceFactory = ({
 
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
 
-    const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
+    const {
+      user: createdUser,
+      orgMembership: createdOrgMembership,
+      isNewUser
+    } = await userDAL.transaction(async (tx) => {
       let user: TUsers | undefined;
       let orgMembership: TMemberships;
+      let newUserCreated = false;
       if (userAlias) {
         user = await userDAL.findById(userAlias.userId, tx);
         const effectiveMembership = await membershipUserDAL.findOne(
@@ -480,6 +491,7 @@ export const scimServiceFactory = ({
             },
             tx
           );
+          newUserCreated = true;
         }
 
         await userAliasDAL.create(
@@ -544,8 +556,21 @@ export const scimServiceFactory = ({
         tx
       );
       await licenseService.updateSubscriptionOrgMemberCount(org.id);
-      return { user, orgMembership };
+      return { user, orgMembership, isNewUser: newUserCreated };
     });
+
+    if (isNewUser) {
+      void telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: createdUser.username ?? "",
+        organizationId: orgId,
+        properties: {
+          username: createdUser.username,
+          email: createdUser.email ?? "",
+          signupMethod: "scim"
+        }
+      });
+    }
 
     if (email) {
       await smtpService.sendMail({
@@ -573,7 +598,7 @@ export const scimServiceFactory = ({
 
   // partial
   const updateScimUser: TScimServiceFactory["updateScimUser"] = async ({ orgMembershipId, orgId, operations }) => {
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!org.orgAuthMethod) {
       throw new ScimRequestError({
         detail: "Neither SAML or OIDC SSO is configured",
@@ -695,7 +720,7 @@ export const scimServiceFactory = ({
     email: unsanitizedEmail,
     externalId
   }) => {
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!org.orgAuthMethod) {
       throw new ScimRequestError({
         detail: "Neither SAML or OIDC SSO is configured",
@@ -867,7 +892,7 @@ export const scimServiceFactory = ({
         message: "Failed to list SCIM groups due to plan restriction. Upgrade plan to list SCIM groups."
       });
 
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
       throw new ScimRequestError({
         detail: "Organization Not Found",
@@ -883,8 +908,8 @@ export const scimServiceFactory = ({
 
     const groups = await groupDAL.findGroups(
       {
-        orgId,
-        ...(filter && parseScimFilter(filter))
+        ...(filter && parseScimFilter(filter)),
+        orgId
       },
       {
         offset: startIndex - 1,
@@ -985,7 +1010,7 @@ export const scimServiceFactory = ({
         message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
       });
 
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     if (!org) {
       throw new ScimRequestError({
@@ -1283,7 +1308,7 @@ export const scimServiceFactory = ({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
 
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
       throw new ScimRequestError({
         detail: "Organization Not Found",
@@ -1324,7 +1349,7 @@ export const scimServiceFactory = ({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
 
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     if (!org) {
       throw new ScimRequestError({
@@ -1392,7 +1417,7 @@ export const scimServiceFactory = ({
         message: "Failed to delete SCIM group due to plan restriction. Upgrade plan to delete SCIM group."
       });
 
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
       throw new ScimRequestError({
         detail: "Organization Not Found",

@@ -2,7 +2,7 @@ import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
@@ -93,7 +93,6 @@ type TSecretReplicationServiceFactoryDep = {
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
-const SECRET_IMPORT_SUCCESS_LOCK = 10;
 
 const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
 const getReplicationKeyLockPrefix = (projectId: string, environmentSlug: string, secretPath: string) =>
@@ -577,7 +576,7 @@ export const secretReplicationServiceFactory = ({
             // this is used to avoid multiple times generating secret approval by failed one
             await keyStore.setItemWithExpiry(
               keystoreReplicationSuccessKey(job.id as string, destinationSecretImport.id),
-              SECRET_IMPORT_SUCCESS_LOCK,
+              KeyStoreTtls.SecretReplicationSuccessInSeconds,
               1,
               KeyStorePrefixes.SecretReplication
             );
@@ -863,7 +862,7 @@ export const secretReplicationServiceFactory = ({
           // this is used to avoid multiple times generating secret approval by failed one
           await keyStore.setItemWithExpiry(
             keystoreReplicationSuccessKey(job.id as string, destinationSecretImport.id),
-            SECRET_IMPORT_SUCCESS_LOCK,
+            KeyStoreTtls.SecretReplicationSuccessInSeconds,
             1,
             KeyStorePrefixes.SecretReplication
           );

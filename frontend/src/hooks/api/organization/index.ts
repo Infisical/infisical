@@ -23,6 +23,7 @@ export {
   useGetOrgPmtMethods,
   useGetOrgTaxIds,
   useGetOrgTrialUrl,
+  useSearchOrganizationGroups,
   useUpdateOrg,
   useUpdateOrgBillingDetails,
   useUpgradePrivilegeSystem

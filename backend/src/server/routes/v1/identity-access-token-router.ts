@@ -28,14 +28,14 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
       }
     },
     handler: async (req) => {
-      const { accessToken, identityAccessToken } = await server.services.identityAccessToken.renewAccessToken({
+      const { accessToken, expiresIn, accessTokenMaxTTL } = await server.services.identityAccessToken.renewAccessToken({
         accessToken: req.body.accessToken
       });
       return {
         accessToken,
         tokenType: "Bearer" as const,
-        expiresIn: identityAccessToken.accessTokenTTL,
-        accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL
+        expiresIn,
+        accessTokenMaxTTL
       };
     }
   });

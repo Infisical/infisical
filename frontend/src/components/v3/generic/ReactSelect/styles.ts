@@ -3,14 +3,16 @@ import { ClassNamesConfig, GroupBase, StylesConfig } from "react-select";
 import { cn } from "../../utils";
 
 export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unknown>> = {
-  control: ({ isFocused }) =>
+  control: ({ isFocused, isDisabled }) =>
     cn(
-      "!min-h-9 w-full cursor-pointer overflow-hidden rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
-      isFocused ? "border-ring ring-[3px] ring-ring/50" : "border-border hover:border-foreground/20"
+      "!min-h-9 w-full cursor-pointer overflow-hidden rounded-md border border-border bg-transparent py-1 pr-1 pl-2 text-sm",
+      isFocused && "border-ring ring-[3px] ring-ring/50",
+      !isFocused && !isDisabled && "hover:border-foreground/20",
+      isDisabled && "pointer-events-none cursor-not-allowed opacity-50"
     ),
   placeholder: () => "text-muted text-sm",
   input: () => "text-foreground text-sm",
-  singleValue: () => "truncate pr-2",
+  singleValue: () => "truncate pr-2 text-foreground",
   valueContainer: () =>
     "gap-1 max-h-40 !pointer-events-auto !overflow-y-auto thin-scrollbar flex-wrap",
   multiValue: () => "bg-foreground/10 rounded px-1.5 py-0.5 gap-1 text-xs items-center",
@@ -25,7 +27,7 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
     ),
   dropdownIndicator: () =>
     "opacity-50 p-1 hover:bg-foreground/10 cursor-pointer rounded-md [&>svg]:size-4",
-  indicatorsContainer: () => "gap-1 flex items-center",
+  indicatorsContainer: () => "gap-1 flex items-center text-foreground",
   indicatorSeparator: () => "bg-accent/20",
   clearIndicator: () =>
     "opacity-50 hover:opacity-100 hover:bg-foreground/10 cursor-pointer rounded-md p-1 text-danger [&>svg]:size-4",
@@ -56,9 +58,9 @@ export const getSelectClassNames = (
   isError?: boolean
 ): ClassNamesConfig<unknown, boolean, GroupBase<unknown>> => ({
   ...selectClassNames,
-  control: ({ isFocused }) =>
+  control: ({ isFocused, isDisabled }) =>
     cn(
-      "!min-h-9 w-full cursor-pointer overflow-hidden rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
+      "!min-h-9 w-full cursor-pointer overflow-hidden rounded-md border border-border bg-transparent py-1 pr-1 pl-2 text-sm",
       // eslint-disable-next-line no-nested-ternary
       isError
         ? isFocused
@@ -66,6 +68,7 @@ export const getSelectClassNames = (
           : "border-danger"
         : isFocused
           ? "border-ring ring-[3px] ring-ring/50"
-          : "border-border hover:border-foreground/20"
+          : !isDisabled && "hover:border-foreground/20",
+      isDisabled && "pointer-events-none cursor-not-allowed opacity-50"
     )
 });

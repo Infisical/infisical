@@ -33,6 +33,8 @@ import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
+import { DevinConnectionForm } from "./DevinConnectionForm";
+import { DigiCertConnectionForm } from "./DigiCertConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { DopplerConnectionForm } from "./DopplerConnectionForm";
@@ -56,19 +58,23 @@ import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
+import { OnaConnectionForm } from "./OnaConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
+import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
+import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { TravisCIConnectionForm } from "./TravisCIConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
+import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
@@ -268,10 +274,14 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Devin:
+        return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.VenafiTpp:
+        return <VenafiTppConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureEntraId:
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
@@ -280,8 +290,16 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.OVH:
+        return <OVHConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Ona:
+        return <OnaConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.DigiCert:
+        return <DigiCertConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Snowflake:
+        return <SnowflakeConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -485,6 +503,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Devin:
+        return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ExternalInfisical:
@@ -495,8 +515,20 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.OVH:
+        return <OVHConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Ona:
+        return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.DigiCert:
+        return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Snowflake:
+        return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Venafi:
+        return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.VenafiTpp:
+        return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

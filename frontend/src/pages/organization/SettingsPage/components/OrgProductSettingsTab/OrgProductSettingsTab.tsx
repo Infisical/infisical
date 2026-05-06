@@ -6,6 +6,8 @@ import { Switch } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 
+import { HoneyTokenSection } from "./HoneyTokenSection";
+
 export const OrgProductSettingsTab = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg } = useUpdateOrg();
@@ -61,6 +63,7 @@ export const OrgProductSettingsTab = () => {
           )}
         </OrgPermissionCan>
       </div>
+      <HoneyTokenSection />
     </div>
   );
 };

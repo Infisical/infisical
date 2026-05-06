@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
+import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 
@@ -41,6 +42,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
@@ -64,6 +66,7 @@ export const IdentityRoleDetailsSection = ({
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -212,7 +215,22 @@ export const IdentityRoleDetailsSection = ({
                     }
 
                     return (
-                      <TableRow key={`user-project-identity-${roleDetails?.id}`}>
+                      <TableRow
+                        key={`user-project-identity-${roleDetails?.id}`}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          navigate({
+                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                            params: {
+                              projectId: currentProject.id,
+                              roleSlug:
+                                roleDetails.role === "custom"
+                                  ? roleDetails.customRoleSlug
+                                  : roleDetails.role
+                            }
+                          })
+                        }
+                      >
                         <TableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
                             ? roleDetails.customRoleName
@@ -239,7 +257,11 @@ export const IdentityRoleDetailsSection = ({
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton size="xs" variant="ghost">
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <EllipsisIcon />
                               </IconButton>
                             </DropdownMenuTrigger>

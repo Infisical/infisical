@@ -149,7 +149,7 @@ const PageContent = () => {
       return;
     }
 
-    const { requiresApproval } = await checkPolicyMatch({
+    const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
@@ -162,7 +162,8 @@ const PageContent = () => {
       handlePopUpOpen("requestAccount", {
         resourceName: account.resource?.name ?? "",
         accountName: account.name,
-        accountAccessed: true
+        accountAccessed: true,
+        accessDurationMax: constraints?.accessDuration.max
       });
       return;
     }
@@ -232,8 +233,8 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* TODO: Disabled for Windows Server and Active Directory accounts until RDP is implemented */}
-          {!isDomainAccount && account.resource?.resourceType !== PamResourceType.Windows && (
+          {/* AD-joined accounts (domain accounts) still disabled; AD/RDP is a later phase. */}
+          {!isDomainAccount && (
             <ProjectPermissionCan
               I={ProjectPermissionPamAccountActions.Access}
               a={ProjectPermissionSub.PamAccounts}
@@ -353,6 +354,7 @@ const PageContent = () => {
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
+        accessDurationMax={popUp.requestAccount.data?.accessDurationMax}
       />
 
       <PamDeleteAccountModal

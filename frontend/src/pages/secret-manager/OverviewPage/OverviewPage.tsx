@@ -24,6 +24,13 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import {
+  CreateHoneyTokenModal,
+  EditHoneyTokenModal,
+  HoneyTokenDetailsDrawer,
+  RevokeHoneyTokenModal,
+  ViewHoneyTokenCredentialsModal
+} from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -140,6 +147,7 @@ import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/ap
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import {
   useGetExternalMigrationConfigs,
   useImportDopplerSecrets,
@@ -173,6 +181,7 @@ import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
+  useHoneyTokenOverview,
   useSecretImportOverview,
   useSecretOverview,
   useSecretRotationOverview
@@ -212,6 +221,7 @@ import {
   EnvironmentSelect,
   FolderBreadcrumb,
   FolderTableRow,
+  HoneyTokenTableRow,
   ResourceCount,
   ResourceFilter,
   ResourceSearchInput,
@@ -231,7 +241,9 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 
 export enum EntryType {
   FOLDER = "folder",
-  SECRET = "secret"
+  SECRET = "secret",
+  SECRET_ROTATION = "secretRotation",
+  HONEY_TOKEN = "honeyToken"
 }
 
 export enum RowType {
@@ -239,7 +251,8 @@ export enum RowType {
   DynamicSecret = "dynamic",
   Secret = "secret",
   SecretRotation = "rotation",
-  SecretImport = "import"
+  SecretImport = "import",
+  HoneyToken = "honeyToken"
 }
 
 type Filter = {
@@ -251,7 +264,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.DynamicSecret]: false,
   [RowType.Secret]: false,
   [RowType.SecretRotation]: false,
-  [RowType.SecretImport]: false
+  [RowType.SecretImport]: false,
+  [RowType.HoneyToken]: false
 };
 
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -272,6 +286,7 @@ const OverviewPageContent = () => {
       search: el.search,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
+      honeyTokenId: el.honeyTokenId,
       filterBy: el.filterBy
     })
   });
@@ -336,9 +351,13 @@ const OverviewPageContent = () => {
     // selectedEntries[name/key][envSlug][resource]
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
+    [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
+    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   }>({
     [EntryType.FOLDER]: {},
-    [EntryType.SECRET]: {}
+    [EntryType.SECRET]: {},
+    [EntryType.SECRET_ROTATION]: {},
+    [EntryType.HONEY_TOKEN]: {}
   });
 
   const {
@@ -363,7 +382,9 @@ const OverviewPageContent = () => {
   const resetSelectedEntries = useCallback(() => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
-      [EntryType.SECRET]: {}
+      [EntryType.SECRET]: {},
+      [EntryType.SECRET_ROTATION]: {},
+      [EntryType.HONEY_TOKEN]: {}
     });
   }, []);
 
@@ -553,6 +574,7 @@ const OverviewPageContent = () => {
       includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
+      includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
       search: searchFilter,
       tags: tagFilter,
       limit,
@@ -566,6 +588,7 @@ const OverviewPageContent = () => {
     folders,
     dynamicSecrets,
     secretRotations,
+    honeyTokens,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -577,6 +600,7 @@ const OverviewPageContent = () => {
     totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
+    totalUniqueHoneyTokensInPage,
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
@@ -618,6 +642,9 @@ const OverviewPageContent = () => {
     getSecretRotationByName,
     getSecretRotationStatusesByName
   } = useSecretRotationOverview(secretRotations);
+
+  const { honeyTokenNames, isHoneyTokenPresentInEnv, getHoneyTokenByName } =
+    useHoneyTokenOverview(honeyTokens);
 
   const { secretImportNames, isSecretImportInEnv, getSecretImportByEnv, getSecretImportsForEnv } =
     useSecretImportOverview(overview?.imports);
@@ -741,6 +768,7 @@ const OverviewPageContent = () => {
     "deleteFolder",
     "addDynamicSecret",
     "addSecretRotation",
+    "addHoneyToken",
     "editSecretRotation",
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
@@ -761,8 +789,22 @@ const OverviewPageContent = () => {
     "requestAccess",
     "importFromVault",
     "importFromDoppler",
-    "confirmDisableBatchMode"
+    "confirmDisableBatchMode",
+    "editHoneyToken",
+    "revokeHoneyToken",
+    "viewHoneyTokenCredentials"
   ] as const);
+
+  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+
+  // Auto-open honey token drawer when linked via notification/email
+  useEffect(() => {
+    console.log("[HoneyTokenDrawer] useEffect fired", { honeyTokenId: routerSearch.honeyTokenId });
+    if (routerSearch.honeyTokenId) {
+      console.log("[HoneyTokenDrawer] setting drawer id to", routerSearch.honeyTokenId);
+      setDetailsDrawerHoneyTokenId(routerSearch.honeyTokenId);
+    }
+  }, [routerSearch.honeyTokenId]);
 
   // Auto-open dynamic secret leases modal when linked via notification/email
   useEffect(() => {
@@ -832,24 +874,30 @@ const OverviewPageContent = () => {
     handlePopUpOpen("addSecretImport");
   };
 
-  const handleVaultImport = async (vaultPath: string, namespace: string) => {
-    const result = await importVaultSecrets({
+  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+    const { status } = await importVaultSecrets({
       projectId,
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPath: vaultPath
+      vaultSecretPaths: vaultPaths
     });
 
-    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
+    if (status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
-        text: "Secret change request created successfully. Awaiting approval."
+        text:
+          vaultPaths.length > 1
+            ? `Secret change request created for ${vaultPaths.length} Vault paths. Awaiting approval.`
+            : "Secret change request created successfully. Awaiting approval."
       });
     } else {
       createNotification({
         type: "success",
-        text: "Successfully imported secrets from HashiCorp Vault"
+        text:
+          vaultPaths.length > 1
+            ? `Successfully imported secrets from ${vaultPaths.length} HashiCorp Vault paths`
+            : "Successfully imported secrets from HashiCorp Vault"
       });
     }
   };
@@ -2082,24 +2130,36 @@ const OverviewPageContent = () => {
   }, []);
 
   const allRowsSelectedOnPage = useMemo(() => {
-    if (!secrets?.length && !folders?.length) return { isChecked: false, isIndeterminate: false };
+    if (
+      !secrets?.length &&
+      !folders?.length &&
+      !secretRotationNames?.length &&
+      !honeyTokenNames?.length
+    )
+      return { isChecked: false, isIndeterminate: false };
 
     if (
       (!secrets?.length ||
         secrets?.every((secret) => selectedEntries[EntryType.SECRET][secret.key])) &&
       (!folders?.length ||
-        folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name]))
+        folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name])) &&
+      (!secretRotationNames?.length ||
+        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name])) &&
+      (!honeyTokenNames?.length ||
+        honeyTokenNames?.every((name) => selectedEntries[EntryType.HONEY_TOKEN][name]))
     )
       return { isChecked: true, isIndeterminate: false };
 
     if (
       secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
-      folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name])
+      folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name]) ||
+      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name]) ||
+      honeyTokenNames?.some((name) => selectedEntries[EntryType.HONEY_TOKEN][name])
     )
       return { isChecked: true, isIndeterminate: true };
 
     return { isChecked: false, isIndeterminate: false };
-  }, [selectedEntries, secrets, folders]);
+  }, [selectedEntries, secrets, folders, secretRotationNames, honeyTokenNames]);
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string) => {
@@ -2112,10 +2172,16 @@ const OverviewPageContent = () => {
       } else {
         newChecks[type][key] = {};
         userAvailableEnvs.forEach((env) => {
-          const resource =
-            type === EntryType.SECRET
-              ? getSecretByKey(env.slug, key)
-              : getFolderByNameAndEnv(key, env.slug);
+          let resource;
+          if (type === EntryType.SECRET) {
+            resource = getSecretByKey(env.slug, key);
+          } else if (type === EntryType.FOLDER) {
+            resource = getFolderByNameAndEnv(key, env.slug);
+          } else if (type === EntryType.HONEY_TOKEN) {
+            resource = getHoneyTokenByName(env.slug, key);
+          } else {
+            resource = getSecretRotationByName(env.slug, key);
+          }
 
           if (resource) newChecks[type][key][env.slug] = resource;
         });
@@ -2123,7 +2189,13 @@ const OverviewPageContent = () => {
 
       setSelectedEntries(newChecks);
     },
-    [selectedEntries, getFolderByNameAndEnv, getSecretByKey]
+    [
+      selectedEntries,
+      getFolderByNameAndEnv,
+      getSecretByKey,
+      getSecretRotationByName,
+      getHoneyTokenByName
+    ]
   );
 
   const toggleSelectAllRows = () => {
@@ -2153,6 +2225,32 @@ const OverviewPageContent = () => {
           const resource = getFolderByNameAndEnv(folder.name, env.slug);
 
           if (resource) newChecks[EntryType.FOLDER][folder.name][env.slug] = resource;
+        }
+      });
+
+      secretRotationNames?.forEach((rotationName) => {
+        if (allRowsSelectedOnPage.isChecked) {
+          delete newChecks[EntryType.SECRET_ROTATION][rotationName];
+        } else {
+          if (!newChecks[EntryType.SECRET_ROTATION][rotationName])
+            newChecks[EntryType.SECRET_ROTATION][rotationName] = {};
+
+          const resource = getSecretRotationByName(env.slug, rotationName);
+
+          if (resource) newChecks[EntryType.SECRET_ROTATION][rotationName][env.slug] = resource;
+        }
+      });
+
+      honeyTokenNames?.forEach((honeyTokenName) => {
+        if (allRowsSelectedOnPage.isChecked) {
+          delete newChecks[EntryType.HONEY_TOKEN][honeyTokenName];
+        } else {
+          if (!newChecks[EntryType.HONEY_TOKEN][honeyTokenName])
+            newChecks[EntryType.HONEY_TOKEN][honeyTokenName] = {};
+
+          const resource = getHoneyTokenByName(env.slug, honeyTokenName);
+
+          if (resource) newChecks[EntryType.HONEY_TOKEN][honeyTokenName][env.slug] = resource;
         }
       });
     });
@@ -2279,6 +2377,7 @@ const OverviewPageContent = () => {
     mergedFolderNamesAndDescriptions.length === 0 &&
     dynamicSecretNames.length === 0 &&
     secretRotationNames.length === 0 &&
+    honeyTokenNames.length === 0 &&
     secretImportNames.length === 0 &&
     !isOverviewLoading;
 
@@ -2465,9 +2564,41 @@ const OverviewPageContent = () => {
                         text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
                       });
                     }}
+                    onAddHoneyToken={async () => {
+                      if (subscription?.honeyTokens) {
+                        try {
+                          const { data } = await apiRequest.get<{ used: number; limit: number }>(
+                            "/api/v1/honey-tokens/limits",
+                            {
+                              params: { projectId }
+                            }
+                          );
+
+                          if (data.used >= data.limit) {
+                            handlePopUpOpen("upgradePlan", {
+                              text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
+                            });
+                            return;
+                          }
+                        } catch {
+                          createNotification({
+                            text: "Failed to check honey token limits. Please try again.",
+                            type: "error"
+                          });
+                          return;
+                        }
+
+                        handlePopUpOpen("addHoneyToken");
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
+                      });
+                    }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
                     isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
                     isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                    isHoneyTokenAvailable
                     isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
@@ -2999,6 +3130,12 @@ const OverviewPageContent = () => {
                               getSecretRotationStatusesByName={getSecretRotationStatusesByName}
                               key={`overview-${secretRotationName}-${index + 1}`}
                               tableWidth={tableWidth}
+                              isSelected={Boolean(
+                                selectedEntries.secretRotation[secretRotationName]
+                              )}
+                              onToggleRotationSelect={() =>
+                                toggleSelectedEntry(EntryType.SECRET_ROTATION, secretRotationName)
+                              }
                               onEdit={(secretRotation) =>
                                 handlePopUpOpen("editSecretRotation", secretRotation)
                               }
@@ -3016,6 +3153,30 @@ const OverviewPageContent = () => {
                               }
                               onDelete={(secretRotation) =>
                                 handlePopUpOpen("deleteSecretRotation", secretRotation)
+                              }
+                            />
+                          ))}
+                          {honeyTokenNames.map((honeyTokenName, index) => (
+                            <HoneyTokenTableRow
+                              honeyTokenName={honeyTokenName}
+                              isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
+                              environments={visibleEnvs}
+                              getHoneyTokenByName={getHoneyTokenByName}
+                              tableWidth={tableWidth}
+                              key={`overview-ht-${honeyTokenName}-${index + 1}`}
+                              isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
+                              onToggleHoneyTokenSelect={() =>
+                                toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
+                              }
+                              onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
+                              onRevoke={(honeyToken) =>
+                                handlePopUpOpen("revokeHoneyToken", honeyToken)
+                              }
+                              onViewCredentials={(honeyToken) =>
+                                handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
+                              }
+                              onViewDetails={(honeyToken) =>
+                                setDetailsDrawerHoneyTokenId(honeyToken.id)
                               }
                             />
                           ))}
@@ -3054,7 +3215,8 @@ const OverviewPageContent = () => {
                                 (totalUniqueDynamicSecretsInPage || 0) -
                                 (totalUniqueSecretsInPage || 0) -
                                 (totalUniqueSecretImportsInPage || 0) -
-                                (totalUniqueSecretRotationsInPage || 0),
+                                (totalUniqueSecretRotationsInPage || 0) -
+                                (totalUniqueHoneyTokensInPage || 0),
                               0
                             )}
                           />
@@ -3314,6 +3476,12 @@ const OverviewPageContent = () => {
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
+      <CreateHoneyTokenModal
+        secretPath={secretPath}
+        environments={userAvailableEnvs}
+        isOpen={popUp.addHoneyToken.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addHoneyToken", isOpen)}
+      />
       <EditSecretRotationV2Modal
         isOpen={popUp.editSecretRotation.isOpen}
         secretRotation={popUp.editSecretRotation.data as TSecretRotationV2}
@@ -3349,6 +3517,32 @@ const OverviewPageContent = () => {
         secretRotation={popUp.deleteSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
       />
+      <EditHoneyTokenModal
+        isOpen={popUp.editHoneyToken.isOpen}
+        honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
+      />
+      <RevokeHoneyTokenModal
+        isOpen={popUp.revokeHoneyToken.isOpen}
+        honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
+      />
+      <ViewHoneyTokenCredentialsModal
+        isOpen={popUp.viewHoneyTokenCredentials.isOpen}
+        honeyToken={popUp.viewHoneyTokenCredentials.data as TDashboardHoneyToken}
+        projectId={projectId}
+        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
+      />
+      <HoneyTokenDetailsDrawer
+        projectId={projectId}
+        honeyTokenId={detailsDrawerHoneyTokenId}
+        onClose={() => {
+          setDetailsDrawerHoneyTokenId(null);
+          if (routerSearch.honeyTokenId) {
+            navigate({ search: (prev) => ({ ...prev, honeyTokenId: undefined }), replace: true });
+          }
+        }}
+      />
       <ImportSecretsModal
         isOpen={popUp.importSecrets.isOpen}
         onOpenChange={(isOpen) => {
@@ -3359,6 +3553,17 @@ const OverviewPageContent = () => {
         projectId={projectId}
         secretPath={secretPath}
         initialParsedSecrets={importParsedSecrets}
+        onComplete={(envSlugs) => {
+          const visibleSlugs = new Set(visibleEnvs.map((e) => e.slug));
+          const allTargetEnvsVisible = envSlugs.every((slug) => visibleSlugs.has(slug));
+
+          if (!allTargetEnvsVisible) {
+            const targetEnvs = userAvailableEnvs.filter((env) => envSlugs.includes(env.slug));
+            if (targetEnvs.length) {
+              setFilteredEnvs(targetEnvs);
+            }
+          }
+        }}
       />
       <ReplicateFolderFromBoard
         isOpen={popUp.replicateFolder.isOpen}

@@ -11,7 +11,7 @@ import { isAxiosError } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -30,6 +30,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode, AiMcpServerStatus } from "./ai-mcp-server-enum";
+import { ssrfSafeMcpFetch } from "./ai-mcp-server-fns";
 import { TAiMcpServerToolDALFactory } from "./ai-mcp-server-tool-dal";
 import {
   TAiMcpServerCredentials,
@@ -63,8 +64,6 @@ type TAiMcpServerServiceFactoryDep = {
 };
 
 export type TAiMcpServerServiceFactory = ReturnType<typeof aiMcpServerServiceFactory>;
-
-const OAUTH_SESSION_TTL_SECONDS = 10 * 60; // 10 minutes
 
 // Buffer time before token expiry to trigger refresh (5 minutes)
 const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
@@ -221,6 +220,7 @@ export const aiMcpServerServiceFactory = ({
         }
 
         const transport = new StreamableHTTPClientTransport(new URL(targetUrl), {
+          fetch: ssrfSafeMcpFetch,
           requestInit: {
             headers: {
               Authorization: `Bearer ${accessToken}`
@@ -609,7 +609,7 @@ export const aiMcpServerServiceFactory = ({
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpServerOAuth(sessionId),
-      OAUTH_SESSION_TTL_SECONDS,
+      KeyStoreTtls.AiMcpServerOAuthSessionInSeconds,
       JSON.stringify(sessionData)
     );
 
@@ -695,7 +695,7 @@ export const aiMcpServerServiceFactory = ({
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpServerOAuth(sessionId),
-      OAUTH_SESSION_TTL_SECONDS,
+      KeyStoreTtls.AiMcpServerOAuthSessionInSeconds,
       JSON.stringify(updatedSession)
     );
 

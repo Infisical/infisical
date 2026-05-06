@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TPkiDiscoveryConfigs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 import { PkiDiscoveryScanStatus } from "./pki-discovery-types";
@@ -51,8 +52,9 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
         .limit(limit);
 
       if (search) {
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         query = query.andWhere((qb) => {
-          void qb.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void qb.whereILike("name", `%${sanitizedSearch}%`).orWhereILike("description", `%${sanitizedSearch}%`);
         });
       }
 
@@ -68,8 +70,9 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
       let query = (tx || db.replicaNode())(TableName.PkiDiscoveryConfig).where({ projectId }).count("id").first();
 
       if (search) {
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         query = query.andWhere((qb) => {
-          void qb.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void qb.whereILike("name", `%${sanitizedSearch}%`).orWhereILike("description", `%${sanitizedSearch}%`);
         });
       }
 

@@ -12,10 +12,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { getDatabricksConnectionAccessToken } from "@app/services/app-connection/databricks/databricks-connection-fns";
 
 const DELAY_MS = 1000;
@@ -44,15 +43,13 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
     const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService);
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
 
-    await blockLocalAndPrivateIpAddresses(workspaceUrl);
-
     const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets`;
 
     const lifetimeSeconds = (rotationInterval * 2 + EXPIRY_PADDING_IN_DAYS) * 24 * 60 * 60;
     const lifetime = `${lifetimeSeconds}s`;
 
     try {
-      const { data } = await request.post<unknown>(
+      const { data } = await safeRequest.post<unknown>(
         endpoint,
         {
           lifetime
@@ -116,12 +113,10 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
     const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService);
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
 
-    await blockLocalAndPrivateIpAddresses(workspaceUrl);
-
     const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets`;
 
     try {
-      const { data } = await request.get<{ secrets: Array<{ id: string; client_secret?: string }> }>(endpoint, {
+      const { data } = await safeRequest.get<{ secrets: Array<{ id: string; client_secret?: string }> }>(endpoint, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
@@ -158,12 +153,10 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
     const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService);
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
 
-    await blockLocalAndPrivateIpAddresses(workspaceUrl);
-
     const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets/${secretId}`;
 
     try {
-      await request.delete(endpoint, {
+      await safeRequest.delete(endpoint, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"

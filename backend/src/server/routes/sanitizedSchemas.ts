@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   CertificateAuthoritiesSchema,
   DynamicSecretsSchema,
+  HoneyTokensSchema,
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   InternalCertificateAuthoritiesSchema,
@@ -264,6 +265,28 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   algorithm: true
 }).extend({
   metadata: ResourceMetadataNonEncryptionSchema.optional()
+});
+
+export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
+  id: true,
+  name: true,
+  description: true,
+  type: true,
+  status: true,
+  projectId: true,
+  folderId: true,
+  secretsMapping: true,
+  createdAt: true,
+  updatedAt: true
+}).extend({
+  environment: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string()
+  }),
+  folder: z.object({
+    path: z.string()
+  })
 });
 
 export const SanitizedProjectSchema = ProjectsSchema.pick({

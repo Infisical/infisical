@@ -337,17 +337,15 @@ const fetchUntilEventTarget = async (
   return { logs: accumulatedLogs, cursor, hasMore };
 };
 
-export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
+export const useGetPamSessionLogs = (sessionId: string, isActive: boolean, enabled: boolean) => {
   const [logs, setLogs] = useState<TPamSessionLogsPage["logs"]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const batchCursorRef = useRef(0);
 
-  // Initial fetch: load up to LOGS_EVENT_PAGE_SIZE events for completed sessions,
-  // or a single batch page for live sessions (polling handles the rest).
   useEffect(() => {
-    if (!sessionId) return undefined;
+    if (!enabled || !sessionId) return undefined;
     let cancelled = false;
 
     const fetchInitial = async () => {
@@ -371,11 +369,10 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, isActive]);
+  }, [sessionId, isActive, enabled]);
 
-  // Live polling: advance cursor every 5s, catches up then tracks new batches
   useEffect(() => {
-    if (!isActive || !sessionId) return undefined;
+    if (!enabled || !isActive || !sessionId) return undefined;
 
     const interval = setInterval(async () => {
       try {
@@ -394,7 +391,7 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
     }, LOGS_POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [sessionId, isActive]);
+  }, [sessionId, isActive, enabled]);
 
   // Load more: fetch the next LOGS_EVENT_PAGE_SIZE events (completed sessions only)
   const loadMore = async () => {

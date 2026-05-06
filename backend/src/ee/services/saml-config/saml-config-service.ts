@@ -16,6 +16,8 @@ import {
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -34,6 +36,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -88,6 +92,7 @@ type TSamlConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -109,7 +114,8 @@ export const samlConfigServiceFactory = ({
   membershipRoleDAL,
   membershipGroupDAL,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -288,7 +294,7 @@ export const samlConfigServiceFactory = ({
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
       });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
@@ -360,7 +366,7 @@ export const samlConfigServiceFactory = ({
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
@@ -536,7 +542,7 @@ export const samlConfigServiceFactory = ({
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     const samlConfig = await samlConfigDAL.findOne({ orgId });
@@ -617,6 +623,7 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      let isNewUser = false;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -635,6 +642,7 @@ export const samlConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         userAlias = await userAliasDAL.create(
@@ -712,6 +720,19 @@ export const samlConfigServiceFactory = ({
 
         return newUser;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          organizationId: orgId,
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: "saml"
+          }
+        });
+      }
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
@@ -726,7 +747,7 @@ export const samlConfigServiceFactory = ({
 
       await smtpService.sendMail({
         template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical confirmation code",
+        subjectLine: `Infisical confirmation code: ${token}`,
         recipients: [user.email],
         substitutions: {
           code: token

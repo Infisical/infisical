@@ -92,7 +92,7 @@ export const authSignupServiceFactory = ({
     await smtpService
       .sendMail({
         template: SmtpTemplates.SignupEmailVerification,
-        subjectLine: "Infisical confirmation code",
+        subjectLine: `Infisical confirmation code: ${token}`,
         recipients: [sanitizedEmail],
         substitutions: {
           code: token
@@ -171,6 +171,7 @@ export const authSignupServiceFactory = ({
     // whether the request is valid. This prevents timing-based user/alias enumeration.
     let authMethod: AuthMethod;
     let organizationId: string | undefined;
+    let isInvitedUser = false;
     if (dto.type === CompleteAccountType.Email) {
       // Determine rejection before hashing, but don't throw yet
       const shouldReject = !user || user.isAccepted || Boolean(decodedToken?.aliasId);
@@ -197,7 +198,7 @@ export const authSignupServiceFactory = ({
           },
           { tx }
         );
-        const isInvitedUser = existingMemberships.length > 0;
+        isInvitedUser = existingMemberships.length > 0;
         if (!isInvitedUser && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
@@ -296,7 +297,8 @@ export const authSignupServiceFactory = ({
       accessToken: tokens.access,
       refreshToken: tokens.refresh,
       authMethod,
-      organizationId
+      organizationId,
+      isInvitedUser
     };
   };
 

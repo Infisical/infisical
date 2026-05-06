@@ -8,9 +8,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { safeRequest } from "@app/lib/validator";
 import { createDbtError, getDbtUrl, retrieveDbtAccount } from "@app/services/app-connection/dbt";
 
 import {
@@ -37,7 +37,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     const instanceUrl = await getDbtUrl(connection);
 
     try {
-      const { data } = await request.post<TCreateDbtServiceTokenResponse>(
+      const { data } = await safeRequest.post<TCreateDbtServiceTokenResponse>(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/`,
         {
           name: tokenName,
@@ -92,7 +92,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     const instanceUrl = await getDbtUrl(connection);
 
     try {
-      const { data } = await request.get<TGetDbtServiceTokenResponse>(
+      const { data } = await safeRequest.get<TGetDbtServiceTokenResponse>(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/${tokenId}`,
         {
           headers: {
@@ -129,7 +129,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     const instanceUrl = await getDbtUrl(connection);
 
     try {
-      await request.delete(
+      await safeRequest.delete(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/${tokenId}`,
         {
           headers: {

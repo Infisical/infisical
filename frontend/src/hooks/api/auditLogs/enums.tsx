@@ -308,6 +308,11 @@ export enum EventType {
   PAM_RESOURCE_ROTATION_RULE_UPDATE = "pam-resource-rotation-rule-update",
   PAM_RESOURCE_ROTATION_RULE_DELETE = "pam-resource-rotation-rule-delete",
   PAM_RESOURCE_ROTATION_RULE_REORDER = "pam-resource-rotation-rule-reorder",
+  PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
+  PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
+  PAM_RECORDING_CONFIG_UPDATE = "pam-recording-config-update",
+  PAM_RECORDING_CONFIG_DELETE = "pam-recording-config-delete",
+  PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED = "pam-recording-bucket-connection-test-failed",
 
   CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
   UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
@@ -318,6 +323,12 @@ export enum EventType {
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
+
+  CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
+  GET_CERTIFICATE_REQUEST = "get-certificate-request",
+  GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
+  LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
+  TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
 
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
@@ -387,5 +398,14 @@ export enum EventType {
   // External Migration
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
-  EXTERNAL_MIGRATION_DELETE = "external-migration-delete"
+  EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+
+  // Gateway
+  GATEWAY_CREATE = "gateway-create",
+  GATEWAY_ENROLL = "gateway-enroll",
+  GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
+  RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
+  RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke"
 }

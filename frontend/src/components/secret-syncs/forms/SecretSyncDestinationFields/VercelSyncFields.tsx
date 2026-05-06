@@ -20,11 +20,13 @@ import {
 
 import { TSecretSyncForm } from "../schemas";
 
-const vercelEnvironments = [
+const standardVercelEnvironments = [
   { name: "Development", slug: "development" },
   { name: "Preview", slug: "preview" },
   { name: "Production", slug: "production" }
 ] as const;
+
+const teamVercelEnvironments = [...standardVercelEnvironments] as const;
 
 export const VercelSyncFields = () => {
   const { control, watch, setValue } = useFormContext<
@@ -71,7 +73,7 @@ export const VercelSyncFields = () => {
   }, [allApps, teamId]);
 
   const environmentOptions = useMemo(() => {
-    return vercelEnvironments
+    return standardVercelEnvironments
       .map((env): { key: string; type: string; name: string } => ({
         key: env.slug,
         type: env.slug,
@@ -132,6 +134,7 @@ export const VercelSyncFields = () => {
                 if (newScope === VercelSyncScope.Team) {
                   setValue("destinationConfig.teamId", "");
                   setValue("destinationConfig.targetEnvironments", []);
+                  setValue("destinationConfig.applyToAllCustomEnvironments", false);
                   setValue("destinationConfig.targetProjects", undefined);
                   setValue("destinationConfig.teamName", "");
                 } else {
@@ -187,13 +190,15 @@ export const VercelSyncFields = () => {
               >
                 <FilterableSelect
                   isMulti
-                  value={vercelEnvironments.filter((env) => (value || []).includes(env.slug))}
+                  value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
                   onChange={(option) =>
                     onChange(
-                      (option as MultiValue<(typeof vercelEnvironments)[number]>).map((o) => o.slug)
+                      (option as MultiValue<(typeof teamVercelEnvironments)[number]>).map(
+                        (o) => o.slug
+                      )
                     )
                   }
-                  options={vercelEnvironments}
+                  options={teamVercelEnvironments}
                   placeholder="Select target environments..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.slug}
@@ -225,6 +230,37 @@ export const VercelSyncFields = () => {
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
                 />
+              </FormControl>
+            )}
+          />
+
+          <Controller
+            name="destinationConfig.applyToAllCustomEnvironments"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <FormControl>
+                <Switch
+                  className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                  id="vercel-sync-all-custom-environments"
+                  thumbClassName="bg-mineshaft-800"
+                  isChecked={Boolean(value)}
+                  onCheckedChange={onChange}
+                >
+                  <p className="w-fit">
+                    Apply to All Custom Environments{" "}
+                    <Tooltip
+                      className="max-w-md"
+                      content={
+                        <span>
+                          When enabled, shared environment variables will be applied to all custom
+                          environments in the Vercel team.
+                        </span>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                    </Tooltip>
+                  </p>
+                </Switch>
               </FormControl>
             )}
           />

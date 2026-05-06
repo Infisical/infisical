@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
@@ -18,7 +19,11 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { CertificateRequestStatus, TCertificateRequestListItem } from "@app/hooks/api/certificates";
+import {
+  CertificateRequestStatus,
+  TCertificateRequestListItem,
+  useTriggerCertificateRequestValidation
+} from "@app/hooks/api/certificates";
 
 type Props = {
   request: TCertificateRequestListItem;
@@ -28,6 +33,32 @@ type Props = {
 export const CertificateRequestRow = ({ request, onViewCertificates }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { mutateAsync: triggerValidation, isPending: isTriggering } =
+    useTriggerCertificateRequestValidation();
+
+  const handleTriggerValidation = async () => {
+    try {
+      const result = await triggerValidation({ requestId: request.id });
+      if (result.status === CertificateRequestStatus.ISSUED) {
+        createNotification({ text: "Certificate issued successfully", type: "success" });
+      } else if (result.status === CertificateRequestStatus.FAILED) {
+        createNotification({
+          text: `Validation failed${result.orderStatus ? ` (${result.orderStatus})` : ""}`,
+          type: "error"
+        });
+      } else {
+        createNotification({
+          text: `Still pending validation${result.orderStatus ? ` (${result.orderStatus})` : ""}`,
+          type: "info"
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: err instanceof Error ? err.message : "Failed to trigger validation",
+        type: "error"
+      });
+    }
+  };
 
   const getStatusBadge = (
     status: string,
@@ -52,6 +83,8 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
         );
       case CertificateRequestStatus.PENDING:
         return <Badge variant="info">Pending Issuance</Badge>;
+      case CertificateRequestStatus.PENDING_VALIDATION:
+        return <Badge variant="warning">Pending Validation</Badge>;
       case CertificateRequestStatus.PENDING_APPROVAL:
         if (approvalRequestId && currentOrg?.id && currentProject?.id) {
           return (
@@ -126,6 +159,28 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
                 className="flex items-center gap-2"
               >
                 View Certificate
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {request.status === CertificateRequestStatus.PENDING_VALIDATION && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild className="rounded-lg">
+              <IconButton
+                variant="plain"
+                ariaLabel="More options"
+                className="h-max bg-transparent p-0"
+              >
+                <FontAwesomeIcon size="lg" icon={faEllipsis} />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={3}>
+              <DropdownMenuItem
+                onClick={handleTriggerValidation}
+                isDisabled={isTriggering}
+                className="flex items-center gap-2"
+              >
+                {isTriggering ? "Triggering…" : "Trigger Validation"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -13,6 +13,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
@@ -69,7 +71,10 @@ export const newProjectMembershipGroupFactory = ({
     const groupDetails = await groupDAL.findById(dto.data.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       scope.value
@@ -122,7 +127,10 @@ export const newProjectMembershipGroupFactory = ({
     const groupDetails = await groupDAL.findById(dto.selector.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       scope.value

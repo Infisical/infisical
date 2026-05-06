@@ -36,7 +36,11 @@ export enum SecretSync {
   CircleCI = "circleci",
   AzureEntraIdScim = "azure-entra-id-scim",
   ExternalInfisical = "external-infisical",
-  TravisCI = "travis-ci"
+  OVH = "ovh",
+  Devin = "devin",
+  Ona = "ona",
+  TravisCI = "travis-ci",
+  Snowflake = "snowflake"
 }
 
 export enum SecretSyncInitialSyncBehavior {

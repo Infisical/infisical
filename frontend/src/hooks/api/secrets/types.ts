@@ -42,6 +42,7 @@ export type SecretV3RawSanitized = {
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
@@ -73,6 +74,7 @@ export type SecretV3Raw = {
   createdAt: string;
   updatedAt: string;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   rotationId?: string;
   secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
@@ -217,6 +219,7 @@ export type TCreateSecretBatchDTO = {
     skipMultilineEncoding?: boolean | null;
     type: SecretType;
     tagIds?: string[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     metadata?: {
       source?: string;
     };
@@ -234,6 +237,7 @@ export type TUpdateSecretBatchDTO = {
     secretComment?: string;
     skipMultilineEncoding?: boolean | null;
     tagIds?: string[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     metadata?: {
       source?: string;
     };

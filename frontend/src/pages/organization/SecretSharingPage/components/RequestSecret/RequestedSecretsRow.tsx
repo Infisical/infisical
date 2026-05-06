@@ -1,10 +1,31 @@
-import { faCopy, faEye, faSpinner, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import {
+  CheckIcon,
+  ClockAlertIcon,
+  Copy,
+  Ellipsis,
+  EyeIcon,
+  GlobeIcon,
+  HourglassIcon,
+  Trash2
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  OrgIcon,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   SecretSharingAccessType,
   TSharedSecret,
@@ -30,106 +51,104 @@ export const RequestedSecretsRow = ({
   }
 
   return (
-    <Tr key={row.id}>
-      <Td>{row.name ? `${row.name}` : "-"}</Td>
-      <Td>
+    <TableRow key={row.id}>
+      <TableCell isTruncatable>{row.name || <span className="text-muted">&mdash;</span>}</TableCell>
+      <TableCell>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <Badge
+                variant={row.accessType === SecretSharingAccessType.Anyone ? "neutral" : "org"}
+              >
+                {row.accessType === SecretSharingAccessType.Anyone ? <GlobeIcon /> : <OrgIcon />}
+                {row.accessType === SecretSharingAccessType.Anyone ? "Anyone" : "Organization"}
+              </Badge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {row.accessType === SecretSharingAccessType.Anyone
+              ? "Anyone can input the secret."
+              : "Only members of the organization can input the secret."}
+          </TooltipContent>
+        </Tooltip>
+      </TableCell>
+      <TableCell>{format(new Date(row.createdAt), "MMM d, yyyy h:mm a")}</TableCell>
+      <TableCell>
+        {row.expiresAt ? (
+          format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")
+        ) : (
+          <span className="text-muted">&mdash;</span>
+        )}
+      </TableCell>
+      <TableCell>
         {isExpired && !row.encryptedSecret ? (
-          <Badge variant="danger">Expired</Badge>
+          <Badge variant="danger">
+            <ClockAlertIcon />
+            Expired
+          </Badge>
         ) : (
           <Badge variant={row.encryptedSecret ? "success" : "warning"}>
+            {row.encryptedSecret ? <CheckIcon /> : <HourglassIcon />}
             {row.encryptedSecret ? "Secret Provided" : "Pending Secret"}
           </Badge>
         )}
-      </Td>
-      <Td>
-        <Tooltip
-          content={
-            row.accessType === SecretSharingAccessType.Anyone
-              ? "Anyone can input the secret."
-              : "Only members of the organization can input the secret."
-          }
-        >
-          <Badge variant="info">
-            {row.accessType === SecretSharingAccessType.Anyone ? "Anyone" : "Organization Members"}
-          </Badge>
-        </Tooltip>
-      </Td>
-      <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
-      <Td>{row.expiresAt ? format(new Date(row.expiresAt), "yyyy-MM-dd - HH:mm a") : "-"}</Td>
-      <Td>
-        <div className="flex items-center gap-2">
-          <Tooltip
-            content={
-              row.encryptedSecret
-                ? "Reveal secret"
-                : "Secret value must be provided before it can be viewed."
-            }
-          >
-            <IconButton
-              isDisabled={!row.encryptedSecret}
-              className={row.encryptedSecret ? "" : "opacity-50"}
-              onClick={async (e) => {
-                e.stopPropagation();
-
-                const secretRequest = await revealSecretValue({
-                  id: row.id
-                });
-
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-x-4">
+          {row.encryptedSecret && (
+            <Button
+              onClick={async () => {
+                const secretRequest = await revealSecretValue({ id: row.id });
                 handlePopUpOpen("revealSecretRequestValue", {
                   secretValue: secretRequest.secretValue,
                   secretRequestName: secretRequest.name
                 });
               }}
-              variant="plain"
-              ariaLabel="reveal"
+              isPending={isPending}
+              variant="ghost"
+              size="xs"
             >
-              <FontAwesomeIcon
-                className={isPending ? "animate-spin" : ""}
-                icon={!isPending ? faEye : faSpinner}
-              />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip content="Copy link">
-            <IconButton
-              isDisabled={Boolean(row.encryptedSecret) || isExpired}
-              className={Boolean(row.encryptedSecret) || isExpired ? "opacity-50" : ""}
-              onClick={async (e) => {
-                e.stopPropagation();
-
-                navigator.clipboard.writeText(
-                  `${window.location.origin}/secret-request/secret/${row.id}`
-                );
-
-                createNotification({
-                  text: "Shared secret link copied to clipboard.",
-                  type: "success"
-                });
-              }}
-              variant="plain"
-              ariaLabel="copy link"
-            >
-              <FontAwesomeIcon icon={faCopy} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip content="Delete">
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePopUpOpen("deleteSecretRequestConfirmation", {
-                  name: "delete",
-                  id: row.id
-                });
-              }}
-              variant="plain"
-              ariaLabel="delete"
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </IconButton>
-          </Tooltip>
+              <EyeIcon /> Reveal Secret
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton className="ml-auto" variant="ghost" size="xs" aria-label="actions">
+                <Ellipsis className="size-4" />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                isDisabled={Boolean(row.encryptedSecret) || isExpired}
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `${window.location.origin}/secret-request/secret/${row.id}`
+                  );
+                  createNotification({
+                    text: "Shared secret link copied to clipboard.",
+                    type: "success"
+                  });
+                }}
+              >
+                <Copy />
+                Copy Link
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="danger"
+                onClick={() =>
+                  handlePopUpOpen("deleteSecretRequestConfirmation", {
+                    name: "delete",
+                    id: row.id
+                  })
+                }
+              >
+                <Trash2 />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

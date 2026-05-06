@@ -17,6 +17,7 @@ import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secr
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
+import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/supabase-api-key";
 import { UnixLinuxLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
@@ -41,7 +42,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
-  HpIloRotationListItemSchema
+  HpIloRotationListItemSchema,
+  SupabaseApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

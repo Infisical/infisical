@@ -23,6 +23,7 @@ import {
   INTEGRATIONS_SUBMENU,
   MCP_SUBMENU,
   PAM_APPROVALS_SUBMENU,
+  PAM_SETTINGS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
@@ -86,6 +87,7 @@ export const ProjectNav = () => {
     if (isOnProjectSettings && isCertManager) return CERT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
+    if (isOnProjectSettings && currentProject.type === ProjectType.PAM) return PAM_SETTINGS_SUBMENU;
     if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertDiscovery) return CERT_DISCOVERY_SUBMENU;

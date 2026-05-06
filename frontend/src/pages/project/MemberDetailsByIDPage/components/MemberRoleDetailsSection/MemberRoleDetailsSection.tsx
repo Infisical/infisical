@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 import picomatch from "picomatch";
@@ -42,6 +43,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
@@ -64,8 +66,9 @@ export const MemberRoleDetailsSection = ({
 }: Props) => {
   const { user } = useUser();
   const userId = user?.id;
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const navigate = useNavigate();
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -217,8 +220,20 @@ export const MemberRoleDetailsSection = ({
 
                     return (
                       <TableRow
-                        className="group h-10"
+                        className="group h-10 cursor-pointer"
                         key={`user-project-identity-${roleDetails?.id}`}
+                        onClick={() =>
+                          navigate({
+                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                            params: {
+                              projectId: currentProject.id,
+                              roleSlug:
+                                roleDetails.role === "custom"
+                                  ? roleDetails.customRoleSlug
+                                  : roleDetails.role
+                            }
+                          })
+                        }
                       >
                         <TableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
@@ -247,7 +262,11 @@ export const MemberRoleDetailsSection = ({
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <IconButton size="xs" variant="ghost">
+                                <IconButton
+                                  size="xs"
+                                  variant="ghost"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <EllipsisIcon />
                                 </IconButton>
                               </DropdownMenuTrigger>

@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -85,8 +85,6 @@ export const gatewayServiceFactory = ({
   };
 
   const getGatewayRelayDetails = async (actorId: string, actorOrgId: string, actorAuthMethod: ActorAuthMethod) => {
-    const TURN_CRED_EXPIRY = 10 * 60; // 10 minutes
-
     const envCfg = getConfig();
     await $validateOrgAccessToGateway(actorOrgId, actorId, actorAuthMethod);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -114,7 +112,7 @@ export const gatewayServiceFactory = ({
       const el = getTurnCredentials(actorId, envCfg.GATEWAY_RELAY_AUTH_SECRET);
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.GatewayIdentityCredential(actorId),
-        TURN_CRED_EXPIRY,
+        KeyStoreTtls.GatewayRelayCredentialInSeconds,
         encryptor({
           plainText: Buffer.from(JSON.stringify({ username: el.username, password: el.password }))
         }).cipherTextBlob.toString("hex")

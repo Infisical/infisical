@@ -1,10 +1,10 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRightIcon } from "lucide-react";
+import { ForwardIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { FormControl, TextArea } from "@app/components/v2";
-import { Button } from "@app/components/v3";
+import { Button, Field, FieldError, FieldLabel, TextArea } from "@app/components/v3";
 import { useSetSecretRequestValue } from "@app/hooks/api";
 
 import { BrandingTheme } from "../../ViewSharedSecretByIDPage/ViewSharedSecretByIDPage";
@@ -45,54 +45,59 @@ export const SecretRequestContainer = ({ brandingTheme, onSuccess, secretRequest
     : undefined;
 
   const inputStyle = brandingTheme
-    ? {
+    ? ({
         backgroundColor: brandingTheme.inputBg,
         color: brandingTheme.textColor,
         "--muted-color": brandingTheme.textMutedColor,
         borderColor: brandingTheme.panelBorder
-      }
+      } as React.CSSProperties)
     : undefined;
 
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div
-          className={`flex flex-col rounded-lg border p-4 ${brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-800"}`}
-          style={panelStyle}
-        >
+        <div className="flex flex-col gap-4" style={panelStyle}>
           <Controller
             control={form.control}
             name="secretValue"
             render={({ field, fieldState: { error } }) => (
-              <div style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                  label="Secret Value"
-                  labelClassName="text-[var(--muted-color)]"
+              <Field style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
+                <FieldLabel
+                  className={brandingTheme ? "text-[var(--muted-color)]" : ""}
+                  style={
+                    brandingTheme
+                      ? ({ "--muted-color": brandingTheme.textMutedColor } as React.CSSProperties)
+                      : undefined
+                  }
                 >
-                  <TextArea
-                    {...field}
-                    rows={10}
-                    reSize="none"
-                    style={inputStyle}
-                    className="border placeholder-[var(--muted-color)]/70 focus:ring-[var(--muted-color)]/50"
-                  />
-                </FormControl>
-              </div>
+                  Secret Value
+                </FieldLabel>
+                <TextArea
+                  {...field}
+                  rows={10}
+                  className={twMerge(
+                    "resize-none",
+                    brandingTheme &&
+                      "border placeholder-[var(--muted-color)]/70 focus-visible:ring-[var(--muted-color)]/50"
+                  )}
+                  style={inputStyle}
+                  aria-invalid={Boolean(error)}
+                />
+                {error && <FieldError>{error.message}</FieldError>}
+              </Field>
             )}
           />
           <Button
             isPending={isPending}
-            isDisabled={isPending}
-            variant="neutral"
-            className="w-full"
+            isDisabled={isPending || !form.formState.isValid}
+            variant="project"
+            isFullWidth
+            size="lg"
             type="submit"
             style={inputStyle}
           >
             Share Secret
-            <ArrowRightIcon />
+            <ForwardIcon />
           </Button>
         </div>
       </form>

@@ -11,14 +11,20 @@ function DetailLabel({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DetailValue({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="detail-value" className={cn("text-sm break-all", className)} {...props} />;
+  return (
+    <div
+      data-slot="detail-value"
+      className={cn("text-sm break-all text-foreground", className)}
+      {...props}
+    />
+  );
 }
 
 function DetailGroupHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="detail-header"
-      className={cn("-mb-1 flex items-center text-sm font-medium", className)}
+      className={cn("-mb-1 flex items-center text-sm font-medium text-foreground", className)}
       {...props}
     />
   );

@@ -1,0 +1,67 @@
+---
+title: "External Storage"
+sidebarTitle: "External Storage"
+description: "Store PAM session recordings in your own S3 bucket for full control over data residency and retention."
+---
+
+By default, Infisical stores session recordings in its managed database. You can instead point recordings at your own Amazon S3 bucket so that encrypted session data stays in infrastructure you control.
+
+## Prerequisites
+
+Before configuring external storage you need an **AWS Connection** set up in your organization. This connection gives Infisical the credentials it needs to write and read objects in your bucket.
+
+If you don't have one yet, follow the [AWS Connection guide](/integrations/app-connections/aws) to create one. The connection's IAM role must have `s3:PutObject`, `s3:GetObject`, and `s3:HeadObject` permissions on the target bucket.
+
+## Configuring the Bucket
+
+<Steps>
+    <Step title="Navigate to PAM project settings">
+        Open your PAM project, go to **Settings**, then select the **Session Recording** tab.
+    </Step>
+    <Step title="Select the AWS connection and fill in bucket details">
+        Choose your AWS Connection from the dropdown, then enter the bucket name, region, and an optional key prefix. The key prefix is useful when multiple projects share the same bucket.
+    </Step>
+    <Step title="Save the configuration">
+        Click **Save**. Infisical will validate that it can reach the bucket with the provided credentials before persisting the configuration.
+    </Step>
+</Steps>
+
+<Warning>
+Changing the bucket or key prefix on a project that already has recordings makes those recordings inaccessible unless you manually migrate the objects. When rotating credentials, keep the same bucket and key prefix.
+</Warning>
+
+## CORS Configuration
+
+During session playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical dashboard origin.
+
+Open the bucket in the AWS console, go to **Permissions > Cross-origin resource sharing (CORS)**, and add:
+
+```json
+[
+    {
+        "AllowedHeaders": ["*"],
+        "AllowedMethods": ["GET"],
+        "AllowedOrigins": ["https://app.infisical.com"],
+        "ExposeHeaders": [],
+        "MaxAgeSeconds": 3600
+    }
+]
+```
+
+Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
+
+If CORS is not configured, the config page will show a warning toast after saving and session playback will fail with a network error in the browser console.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Can I use a bucket in a different AWS account?">
+        Yes, as long as the IAM role in your AWS Connection has cross-account access to the bucket. Configure the bucket policy to allow the role's ARN.
+    </Accordion>
+    <Accordion title="What happens if I disable the external storage configuration?">
+        New sessions will fall back to the managed database. Existing recordings in the bucket remain there but won't be accessible from the dashboard until you reconfigure with the same bucket and key prefix.
+    </Accordion>
+    <Accordion title="Can I share one bucket across multiple projects?">
+        Yes. Use a different key prefix for each project (for example `pam/prod` and `pam/staging`) to keep recordings organized.
+    </Accordion>
+</AccordionGroup>

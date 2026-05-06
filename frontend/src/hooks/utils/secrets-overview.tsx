@@ -226,3 +226,35 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
 
   return { secKeys, getEnvSecretKeyCount };
 };
+
+export const useHoneyTokenOverview = (
+  honeyTokens: DashboardProjectSecretsOverview["honeyTokens"]
+) => {
+  const honeyTokenNames = useMemo(() => {
+    const names = new Set<string>();
+    honeyTokens?.forEach((ht) => {
+      names.add(ht.name);
+    });
+    return [...names];
+  }, [honeyTokens]);
+
+  const isHoneyTokenPresentInEnv = useCallback(
+    (name: string, env: string) => {
+      return Boolean(honeyTokens?.find((ht) => ht.name === name && ht.environment.slug === env));
+    },
+    [honeyTokens]
+  );
+
+  const getHoneyTokenByName = useCallback(
+    (env: string, name: string) => {
+      return honeyTokens?.find((ht) => ht.environment.slug === env && ht.name === name);
+    },
+    [honeyTokens]
+  );
+
+  return {
+    honeyTokenNames,
+    isHoneyTokenPresentInEnv,
+    getHoneyTokenByName
+  };
+};

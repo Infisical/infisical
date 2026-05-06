@@ -18,10 +18,12 @@ This guide covers everything you need to deploy and configure Infisical Gateways
     1. Navigate to **Organization Settings > Networking > Gateways**.
     2. Click **Create Gateway**.
     ![Create Gateway button](/images/platform/gateways/gateway-create-button.png)
-    3. Enter a name for your gateway and select a relay (or use "Auto Select Relay").
+    3. Enter a name for the gateway.
     ![Create Gateway form](/images/platform/gateways/gateway-create-form.png)
-    4. Choose your deployment method (CLI or systemd).
-    5. Copy the generated CLI command. The command includes a one-time enrollment token that expires in 1 hour.
+    4. (Optional) Open the new gateway's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
+        - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the gateway.
+        - **AWS**: the gateway authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
+    5. Click **Show deploy command** in the **Deployment** card. Pick a relay (or "Auto Select Relay") and copy the generated CLI command.
   </Step>
   <Step title="Install the Infisical CLI">
     Make sure the Infisical CLI is installed on the target machine. See the [CLI Installation Guide](/cli/overview) for instructions.
@@ -41,39 +43,65 @@ This guide covers everything you need to deploy and configure Infisical Gateways
   <Step title="Run the CLI Command">
     Run the command you copied from the UI on the target machine. This single command enrolls the gateway and starts it immediately.
 
-    <Tabs>
-      <Tab title="Linux Server (Production)">
-        For production deployments on Linux, install as a systemd service:
-        ```bash
-        sudo infisical gateway systemd install <gateway-name> \
-          --enroll-method=token \
-          --token=<enrollment-token> \
-          --domain=<your-infisical-domain>
-        sudo systemctl start infisical-gateway
-        ```
+    <AccordionGroup>
+      <Accordion title="Token Auth">
+        A one-time enrollment token (1h expiry) bootstraps the gateway.
 
-        <Warning>
-          The systemd install command requires a Linux operating system with root/sudo
-          privileges.
-        </Warning>
-      </Tab>
-      <Tab title="Development & Testing">
-        For development or testing, run directly in the foreground:
-        ```bash
-        infisical gateway start my-gateway \
-          --enroll-method=token \
-          --token=<enrollment-token> \
-          --domain=<your-infisical-domain>
-        ```
-      </Tab>
-    </Tabs>
+        <Tabs>
+          <Tab title="Linux (Production)">
+            ```bash
+            sudo infisical gateway systemd install <gateway-name> \
+              --enroll-method=token \
+              --token=<enrollment-token> \
+              --domain=<your-infisical-domain>
+            sudo systemctl start infisical-gateway
+            ```
+          </Tab>
+          <Tab title="Foreground">
+            ```bash
+            infisical gateway start <gateway-name> \
+              --enroll-method=token \
+              --token=<enrollment-token> \
+              --domain=<your-infisical-domain>
+            ```
+          </Tab>
+        </Tabs>
+      </Accordion>
+      <Accordion title="AWS Auth">
+        The host must have AWS credentials whose principal matches your allowlist. The gateway re-authenticates via STS on every start.
+
+        <Tabs>
+          <Tab title="Linux (Production)">
+            ```bash
+            sudo infisical gateway systemd install <gateway-name> \
+              --enroll-method=aws \
+              --gateway-id=<gateway-id> \
+              --domain=<your-infisical-domain>
+            sudo systemctl start infisical-gateway
+            ```
+          </Tab>
+          <Tab title="Foreground">
+            ```bash
+            infisical gateway start <gateway-name> \
+              --enroll-method=aws \
+              --gateway-id=<gateway-id> \
+              --domain=<your-infisical-domain>
+            ```
+          </Tab>
+        </Tabs>
+      </Accordion>
+    </AccordionGroup>
+
+    <Warning>
+      The systemd install command requires Linux with root/sudo privileges.
+    </Warning>
 
     <Info>
-      The enrollment token can only be used once and expires after 1 hour. If it expires, use the **Re-enroll** option in the gateway's context menu to generate a new one.
+      Token-method enrollment tokens are single-use and expire after 1 hour. If the token expires before deployment, click **Show deploy command** again on the detail page to generate a new one.
     </Info>
 
     <Info>
-      You can safely re-run the same command to restart the gateway. It will detect the token has already been used and skip enrollment automatically.
+      You can safely re-run the same command to restart the gateway. The CLI detects the token has already been used locally and skips enrollment automatically.
     </Info>
   </Step>
   <Step title="Verify Your Gateway Deployment">
@@ -84,13 +112,16 @@ This guide covers everything you need to deploy and configure Infisical Gateways
   </Step>
 </Steps>
 
-### Re-enrollment
+### Managing a gateway
 
-To move a gateway to a different machine or regenerate its credentials:
+From the gateway's detail page (click the gateway row in the list):
 
-1. Click the context menu (three dots) next to the gateway and select **Re-enroll**.
-2. Copy the new CLI command and run it on the new machine.
-3. The existing gateway continues running until the new machine enrolls. Once the new machine connects, the old machine's credentials are automatically revoked. This enables zero-downtime machine migrations.
+- **Show deploy command** — Generates a fresh enrollment token (token method) or re-displays the AWS start command. Clicking this on a token-method gateway does **not** disconnect the running gateway; the next login with the new token rotates credentials atomically.
+- **Edit auth method** — Switch between Token and AWS, or update the AWS allowlists. Existing gateways keep their JWT until they restart and re-authenticate.
+- **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
+- **Options → Delete Gateway** — Permanently removes the gateway.
+
+To migrate a gateway to a different host with zero downtime: click **Show deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
 
 ## Frequently Asked Questions
 
@@ -132,7 +163,9 @@ If the gateway cannot connect to the relay:
 </Accordion>
 
 <Accordion title="How do I troubleshoot authentication failures?">
-Ensure the enrollment token has not expired or already been used. If the gateway was re-enrolled, the old machine's credentials are no longer valid. You can generate a new enrollment token using the **Re-enroll** option in the gateway's context menu.
+For token method: ensure the enrollment token has not expired or already been used. Open the gateway's detail page and click **Show deploy command** to generate a fresh token.
+
+For AWS method: ensure the host has AWS credentials available (instance role, env vars, or shared profile) and the resolved principal/account is in the allowlist on the gateway's detail page.
 </Accordion>
 
 <Accordion title="Where can I find gateway logs?">
@@ -146,16 +179,18 @@ Check gateway logs for detailed error information:
 </Accordion>
 
 <Accordion title="What happens if my enrollment token expires?">
-Enrollment tokens expire after 1 hour. If the token expires before you run the CLI command, click the context menu (three dots) next to the gateway and select **Re-enroll** to generate a new token.
+Enrollment tokens expire after 1 hour. If the token expires before deployment, open the gateway's detail page and click **Show deploy command** to generate a new one.
 </Accordion>
 
 <Accordion title="Where are gateway credentials stored?">
-Each gateway's access token and domain are saved to a config file scoped by gateway name:
+For **token-method** gateways, the access token and domain are saved to a config file scoped by gateway name:
 
 - **Running as root/sudo:** `/etc/infisical/gateways/<name>.conf`
 - **Running as a regular user:** `~/.infisical/gateways/<name>.conf`
 
-This allows multiple gateways to run on the same machine without conflicting. For systemd-based installations, the configuration is at `/etc/infisical/gateway.conf`. All config files are created with restricted permissions (0600) so only the owner can read them.
+For **AWS-method** gateways, no JWT is persisted to disk. The gateway re-authenticates by signing a fresh STS request on every start using the host's AWS credentials. Only the gateway id and domain are stored locally.
+
+For systemd-based installations, the configuration is at `/etc/infisical/gateway.conf`. All config files are created with restricted permissions (0600).
 </Accordion>
 
 <Accordion title="Can I run multiple gateways on the same machine?">

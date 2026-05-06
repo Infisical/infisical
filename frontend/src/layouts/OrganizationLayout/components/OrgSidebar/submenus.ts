@@ -29,7 +29,8 @@ import {
   ShieldUser,
   Trash2,
   User,
-  Users
+  Users,
+  Video
 } from "lucide-react";
 
 import { SubOrgIcon } from "@app/components/v3";
@@ -133,7 +134,7 @@ export const getOrgSettingsSubmenu = ({
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
-    { label: "Product Enforcements", icon: ClipboardList, tab: "product-enforcements" },
+    { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
     ...(!isSubOrganization && hasSubOrganization
       ? [{ label: "Sub Organizations", icon: SubOrgIcon, tab: "tab-sub-organizations" }]
       : [])
@@ -241,6 +242,16 @@ export const PAM_APPROVALS_SUBMENU: Submenu = {
     { label: "Requests", icon: FileCheck, tab: "requests" },
     { label: "Policies", icon: Shield, tab: "policies" },
     { label: "Grants", icon: Key, tab: "grants" }
+  ]
+};
+
+export const PAM_SETTINGS_SUBMENU: Submenu = {
+  title: "Settings",
+  pathSuffix: "settings",
+  defaultTab: "tab-project-general",
+  items: [
+    { label: "General", icon: Cog, tab: "tab-project-general" },
+    { label: "Session Recording", icon: Video, tab: "tab-pam-session-recording" }
   ]
 };
 

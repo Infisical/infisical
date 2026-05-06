@@ -20,7 +20,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -29,16 +28,18 @@ import {
   RateLimitError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -57,7 +58,7 @@ import {
 } from "./identity-ldap-auth-types";
 
 type TIdentityLdapAuthServiceFactoryDep = {
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   identityLdapAuthDAL: Pick<
     TIdentityLdapAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
@@ -73,6 +74,10 @@ type TIdentityLdapAuthServiceFactoryDep = {
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+  >;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -92,7 +97,8 @@ export const identityLdapAuthServiceFactory = ({
   kmsService,
   identityAuthTemplateDAL,
   keyStore,
-  orgDAL
+  orgDAL,
+  identityAccessTokenService
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -165,13 +171,17 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityLdapAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityLdapAuth.identityId), () =>
+      identityDAL.findById(identityLdapAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
       });
 
-    const org = await orgDAL.findById(identity.orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
+      orgDAL.findById(identity.orgId)
+    );
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
@@ -215,7 +225,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     try {
-      const identityAccessToken = await identityLdapAuthDAL.transaction(async (tx) => {
+      await identityLdapAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -235,36 +245,28 @@ export const identityLdapAuthServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityLdapAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityLdapAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.LDAP_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
       });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityLdapAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identityLdapAuth.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.LDAP_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityLdapAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityLdapAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityLdapAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: Number(identityLdapAuth.accessTokenPeriod) || 0,
+        accessTokenTrustedIps: identityLdapAuth.accessTokenTrustedIps as TIp[]
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -831,7 +833,10 @@ export const identityLdapAuthServiceFactory = ({
         scope: OrganizationActionScope.Any
       });
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
+        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
+      );
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.RevokeAuth,
@@ -858,6 +863,12 @@ export const identityLdapAuthServiceFactory = ({
 
       return { ...deletedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
     });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+
     return revokedIdentityLdapAuth;
   };
 
@@ -867,12 +878,14 @@ export const identityLdapAuthServiceFactory = ({
   ): Promise<T> => {
     const usernameSlug = slugify(username.trim().toLowerCase());
 
-    const identity = await identityDAL.findById(identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityId), () =>
+      identityDAL.findById(identityId)
+    );
     const orgId = identity?.orgId ?? null;
 
-    const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
+    const lockoutKey = KeyStorePrefixes.IdentityLockoutState(identityId, IdentityAuthMethod.LDAP_AUTH, usernameSlug);
 
-    const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+    const lockoutRaw = await keyStore.getItem(lockoutKey);
 
     let lockout: LockoutObject | undefined;
     if (lockoutRaw) {
@@ -899,7 +912,7 @@ export const identityLdapAuthServiceFactory = ({
 
       // If auth succeeds, clear any existing lockout
       if (lockout) {
-        await keyStore.deleteItem(LOCKOUT_KEY);
+        await keyStore.deleteItem(lockoutKey);
       }
 
       return result;
@@ -909,14 +922,14 @@ export const identityLdapAuthServiceFactory = ({
         if (identityLdapAuth.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
+            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 500, {
               retryCount: 10,
               retryDelay: 300,
               retryJitter: 100
             });
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
+            const lockoutRawNew = await keyStore.getItem(lockoutKey);
             if (lockoutRawNew) {
               lockout = JSON.parse(lockoutRawNew) as LockoutObject;
             } else {
@@ -939,7 +952,7 @@ export const identityLdapAuthServiceFactory = ({
             }
 
             await keyStore.setItemWithExpiry(
-              LOCKOUT_KEY,
+              lockoutKey,
               lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
               JSON.stringify(lockout)
             );
@@ -1016,7 +1029,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const deleted = await keyStore.deleteItems({
-      pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:*`
+      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.LDAP_AUTH)
     });
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };

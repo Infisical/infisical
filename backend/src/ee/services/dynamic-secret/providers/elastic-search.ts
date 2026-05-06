@@ -30,7 +30,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
         url: new URL(`${providerInputs.host}:${providerInputs.port}`),
         ...(providerInputs.ca && {
           ssl: {
-            rejectUnauthorized: false,
+            rejectUnauthorized: providerInputs.sslRejectUnauthorized,
             ca: providerInputs.ca
           }
         })

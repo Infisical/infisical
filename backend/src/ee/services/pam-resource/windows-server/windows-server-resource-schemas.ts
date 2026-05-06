@@ -121,6 +121,8 @@ export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWit
 });
 
 // Sessions
-export const WindowsSessionCredentialsSchema = WindowsResourceConnectionDetailsSchema.and(
-  WindowsAccountCredentialsSchema
-);
+// Renames `hostname` to `host` so the gateway can dispatch all resource types
+// uniformly on a `host` field.
+export const WindowsSessionCredentialsSchema = WindowsResourceConnectionDetailsSchema.omit({ hostname: true })
+  .extend({ host: z.string().trim().min(1).max(255) })
+  .and(WindowsAccountCredentialsSchema);

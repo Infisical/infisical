@@ -33,7 +33,7 @@ import {
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -146,8 +146,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
-
-const ETAG_TTL = 900; // 15 minutes in seconds
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
 
@@ -545,8 +543,14 @@ export const secretV2BridgeServiceFactory = ({
       });
       if (!sharedSecretToModify)
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
-      if (sharedSecretToModify.isRotatedSecret && inputSecret.newSecretName)
-        throw new BadRequestError({ message: "Cannot update rotated secret name" });
+      if (sharedSecretToModify.isHoneyTokenSecret || sharedSecretToModify.isRotatedSecret) {
+        if (inputSecret.newSecretName || inputSecret.secretValue) {
+          throw new BadRequestError({
+            message: `Cannot update ${sharedSecretToModify.isHoneyTokenSecret ? "honey token" : "rotated"} secret name or value`
+          });
+        }
+      }
+
       secretId = sharedSecretToModify.id;
       secret = sharedSecretToModify;
     }
@@ -832,6 +836,10 @@ export const secretV2BridgeServiceFactory = ({
           })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
+    if (inputSecret.type === SecretType.Shared) {
+      if (secretToDelete.isHoneyTokenSecret)
+        throw new BadRequestError({ message: "Cannot delete honey token secrets" });
+    }
 
     if (secretToDelete.type !== SecretType.Personal)
       ForbiddenError.from(permission).throwUnlessCan(
@@ -1247,7 +1255,7 @@ export const secretV2BridgeServiceFactory = ({
         };
         const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
-        await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+        await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1498,7 +1506,7 @@ export const secretV2BridgeServiceFactory = ({
       }
       const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-      await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+      await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
     }
 
@@ -1572,7 +1580,7 @@ export const secretV2BridgeServiceFactory = ({
     }
     const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-    await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+    await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };
   };
 
@@ -2218,6 +2226,19 @@ export const secretV2BridgeServiceFactory = ({
             })
           );
 
+          if (el.isHoneyTokenSecret) {
+            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
+
+            if (input) {
+              if (input.newSecretName) {
+                delete input.newSecretName;
+              }
+              if (input.secretValue !== undefined) {
+                delete input.secretValue;
+              }
+            }
+          }
+
           if (el.isRotatedSecret) {
             const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
 
@@ -2619,6 +2640,12 @@ export const secretV2BridgeServiceFactory = ({
         })
       );
     });
+    const honeyTokenSecretsToDelete = secretsToDelete.filter((el) => el.isHoneyTokenSecret);
+    if (honeyTokenSecretsToDelete.length) {
+      throw new BadRequestError({
+        message: `Cannot delete honey token secrets: ${honeyTokenSecretsToDelete.map((el) => el.key).join(", ")}`
+      });
+    }
 
     const executeBulkDelete = async (tx: Knex) => {
       const modifiedSecretsInDB = await fnSecretBulkDelete({
@@ -2763,7 +2790,6 @@ export const secretV2BridgeServiceFactory = ({
         sort: [["createdAt", "desc"]]
       }
     });
-
     return secretVersions.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
         permission,
@@ -2905,7 +2931,6 @@ export const secretV2BridgeServiceFactory = ({
         message: `One or more secrets not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
       });
     }
-
     const sourceActions = [
       ProjectPermissionSecretActions.Delete,
       ProjectPermissionSecretActions.ReadValue,
@@ -2916,6 +2941,9 @@ export const secretV2BridgeServiceFactory = ({
     sourceSecrets.forEach((secret) => {
       if (secret.isRotatedSecret) {
         throw new BadRequestError({ message: `Cannot move rotated secret: ${secret.key}` });
+      }
+      if (secret.isHoneyTokenSecret) {
+        throw new BadRequestError({ message: `Cannot move honey token secret: ${secret.key}` });
       }
 
       for (const sourceAction of sourceActions) {
@@ -2984,6 +3012,26 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       const destinationSecretsGroupedByKey = groupBy(decryptedDestinationSecrets, (i) => i.key);
+
+      const sourceKeys = decryptedSourceSecrets.map((s) => s.key);
+
+      const conflictingRotationSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isRotatedSecret
+      );
+      if (conflictingRotationSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a secret rotation at the destination: ${conflictingRotationSecretKeys.join(", ")}`
+        });
+      }
+
+      const conflictingHoneyTokenSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isHoneyTokenSecret
+      );
+      if (conflictingHoneyTokenSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a honey token at the destination: ${conflictingHoneyTokenSecretKeys.join(", ")}`
+        });
+      }
 
       const locallyCreatedSecrets = decryptedSourceSecrets
         .filter(({ key }) => !destinationSecretsGroupedByKey[key]?.[0])

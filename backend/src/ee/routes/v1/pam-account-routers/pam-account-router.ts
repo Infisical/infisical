@@ -558,7 +558,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH)
+          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH, Windows/RDP)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),
@@ -567,6 +567,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Oracle) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Windows) }),
           // AWS IAM (no gateway, returns short-lived STS credentials usable by both CLI and console)
           z.object({
             sessionId: z.string(),

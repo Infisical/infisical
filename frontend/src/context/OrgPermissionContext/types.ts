@@ -26,7 +26,16 @@ export enum OrgGatewayPermissionActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  RevokeGatewayAccess = "revoke-gateway-access"
+}
+
+export enum OrgGatewayPoolPermissionActions {
+  CreateGatewayPools = "create-gateway-pools",
+  ListGatewayPools = "list-gateway-pools",
+  EditGatewayPools = "edit-gateway-pools",
+  DeleteGatewayPools = "delete-gateway-pools",
+  AttachGatewayPools = "attach-gateway-pools"
 }
 
 export enum OrgRelayPermissionActions {
@@ -66,13 +75,15 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  GatewayPool = "gateway-pool",
   Relay = "relay",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
   SubOrganization = "sub-organization",
-  EmailDomains = "email-domains"
+  EmailDomains = "email-domains",
+  HoneyTokens = "honey-tokens"
 }
 
 export enum OrgPermissionEmailDomainActions {
@@ -80,6 +91,10 @@ export enum OrgPermissionEmailDomainActions {
   Create = "create",
   VerifyDomain = "verify-domain",
   Delete = "delete"
+}
+
+export enum OrgPermissionHoneyTokenActions {
+  Setup = "setup"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -168,6 +183,7 @@ export type OrgPermissionSet =
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
+  | [OrgGatewayPoolPermissionActions, OrgPermissionSubjects.GatewayPool]
   | [OrgRelayPermissionActions, OrgPermissionSubjects.Relay]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [
@@ -178,6 +194,7 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
-  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

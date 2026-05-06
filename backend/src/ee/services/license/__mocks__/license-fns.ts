@@ -36,7 +36,11 @@ export const getDefaultOnPremFeatures = () => {
     enterpriseAppConnections: true,
     machineIdentityAuthTemplates: false,
     pkiLegacyTemplates: false,
-    emailDomainVerification: true
+    emailDomainVerification: true,
+    honeyTokens: false,
+    honeyTokenLimit: 0,
+    gatewayPool: false,
+    fips: true
   };
 };
 

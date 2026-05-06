@@ -43,7 +43,9 @@ export const CassandraProvider = (): TDynamicProviderFns => {
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
-    const sslOptions = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
+    const sslOptions = providerInputs.ca
+      ? { rejectUnauthorized: providerInputs.sslRejectUnauthorized, ca: providerInputs.ca }
+      : undefined;
     const client = new cassandra.Client({
       sslOptions,
       protocolOptions: {

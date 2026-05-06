@@ -151,6 +151,15 @@ export const RotationsBrowser = () => {
       category: "AI & LLM",
       rotationType: "Dual-Phase",
     },
+    {
+      name: "Supabase API Key",
+      slug: "supabase-api-key",
+      path: "/documentation/platform/secret-rotation/supabase-api-key",
+      description:
+        "Learn how to automatically rotate Supabase API keys.",
+      category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

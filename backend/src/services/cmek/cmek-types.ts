@@ -61,6 +61,24 @@ export type TCmekBulkGetPrivateKeysDTO = {
   keyIds: string[];
 };
 
+export type TCmekBulkImportKeyEntry = {
+  name: string;
+  algorithm: TCmekKeyEncryptionAlgorithm;
+  keyUsage: KmsKeyUsage;
+  keyMaterial: string;
+};
+
+export type TCmekBulkImportKeysDTO = {
+  projectId: string;
+  keys: TCmekBulkImportKeyEntry[];
+};
+
+export type TCmekBulkImportKeysResult = {
+  keys: { id: string; name: string }[];
+  errors: { name: string; message: string }[];
+  projectId: string;
+};
+
 export type TCmekSignDTO = {
   keyId: string;
   data: string;

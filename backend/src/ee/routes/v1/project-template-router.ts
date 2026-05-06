@@ -17,7 +17,7 @@ const isReservedRoleSlug = (slug: string) =>
   Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
 const isReservedRoleName = (name: string) =>
-  ["custom", "admin", "viewer", "developer", "no access"].includes(name.toLowerCase());
+  ["custom", "admin", "viewer", "member", "no access"].includes(name.toLowerCase());
 
 const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
   roles: z

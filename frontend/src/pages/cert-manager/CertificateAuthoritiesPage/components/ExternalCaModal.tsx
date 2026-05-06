@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +31,12 @@ import {
   TCloudflareZone,
   useCloudflareConnectionListZones
 } from "@app/hooks/api/appConnections/cloudflare";
+import {
+  TDigiCertOrganization,
+  TDigiCertProduct,
+  useDigiCertConnectionListOrganizations,
+  useDigiCertConnectionListProducts
+} from "@app/hooks/api/appConnections/digicert";
 import {
   TDNSMadeEasyZone,
   useDNSMadeEasyConnectionListZones
@@ -125,6 +131,15 @@ const awsPcaConfigurationSchema = z.object({
   region: z.string().min(1, "Region is required")
 });
 
+const digicertConfigurationSchema = z.object({
+  digicertConnection: z.object({
+    id: z.string().min(1, "DigiCert Connection is required"),
+    name: z.string()
+  }),
+  organizationId: z.coerce.number().int().positive("Organization is required"),
+  productNameId: z.string().trim().min(1, "Product is required")
+});
+
 const awsAcmPublicCaConfigurationSchema = z.object({
   awsConnection: z.object({
     id: z.string().min(1, "AWS Connection is required"),
@@ -136,6 +151,14 @@ const awsAcmPublicCaConfigurationSchema = z.object({
   }),
   hostedZoneId: z.string().trim().min(1, "Hosted Zone ID is required"),
   region: z.string().min(1, "Region is required")
+});
+
+const venafiTppConfigurationSchema = z.object({
+  venafiTppConnection: z.object({
+    id: z.string().min(1, "Venafi TPP Connection is required"),
+    name: z.string()
+  }),
+  policyDN: z.string().trim().min(1, "Policy DN is required")
 });
 
 const schema = z.discriminatedUnion("type", [
@@ -152,8 +175,16 @@ const schema = z.discriminatedUnion("type", [
     configuration: awsPcaConfigurationSchema
   }),
   baseSchema.extend({
+    type: z.literal(CaType.DIGICERT),
+    configuration: digicertConfigurationSchema
+  }),
+  baseSchema.extend({
     type: z.literal(CaType.AWS_ACM_PUBLIC_CA),
     configuration: awsAcmPublicCaConfigurationSchema
+  }),
+  baseSchema.extend({
+    type: z.literal(CaType.VENAFI_TPP),
+    configuration: venafiTppConfigurationSchema
   })
 ]);
 
@@ -168,7 +199,9 @@ const caTypes = [
   { label: "ACME", value: CaType.ACME },
   { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS },
   { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA },
-  { label: "AWS ACM Public CA", value: CaType.AWS_ACM_PUBLIC_CA }
+  { label: "AWS ACM Public CA", value: CaType.AWS_ACM_PUBLIC_CA },
+  { label: "DigiCert CertCentral", value: CaType.DIGICERT },
+  { label: "Venafi TPP", value: CaType.VENAFI_TPP }
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
@@ -232,6 +265,20 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             region: ""
           }
         });
+      } else if (initialType === CaType.DIGICERT) {
+        reset({
+          type: CaType.DIGICERT,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: {
+            digicertConnection: {
+              id: "",
+              name: ""
+            },
+            organizationId: 0,
+            productNameId: ""
+          }
+        });
       } else if (initialType === CaType.AWS_ACM_PUBLIC_CA) {
         reset({
           type: CaType.AWS_ACM_PUBLIC_CA,
@@ -248,6 +295,19 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             },
             hostedZoneId: "",
             region: ""
+          }
+        });
+      } else if (initialType === CaType.VENAFI_TPP) {
+        reset({
+          type: CaType.VENAFI_TPP,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: {
+            venafiTppConnection: {
+              id: "",
+              name: ""
+            },
+            policyDN: ""
           }
         });
       } else {
@@ -308,12 +368,28 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   );
 
+  const { data: availableDigiCertConnections, isPending: isDigiCertPending } =
+    useListAvailableAppConnections(AppConnection.DigiCert, currentProject.id, {
+      enabled: caType === CaType.DIGICERT
+    });
+
+  const { data: availableVenafiTppConnections, isPending: isVenafiTppPending } =
+    useListAvailableAppConnections(AppConnection.VenafiTpp, currentProject.id, {
+      enabled: caType === CaType.VENAFI_TPP
+    });
+
   const availableConnections: TAvailableAppConnection[] = useMemo(() => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
     if (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA) {
       return availableAwsConnections || [];
+    }
+    if (caType === CaType.DIGICERT) {
+      return availableDigiCertConnections || [];
+    }
+    if (caType === CaType.VENAFI_TPP) {
+      return availableVenafiTppConnections || [];
     }
     return [
       ...(availableRoute53Connections || []),
@@ -328,7 +404,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availableAzureConnections,
-    availableAwsConnections
+    availableAwsConnections,
+    availableDigiCertConnections,
+    availableVenafiTppConnections
   ]);
 
   const isPending =
@@ -337,7 +415,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     isDNSMadeEasyPending ||
     isAzureDNSPending ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
-    (isAwsPending && (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA));
+    (isAwsPending && (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA)) ||
+    (isDigiCertPending && caType === CaType.DIGICERT) ||
+    (isVenafiTppPending && caType === CaType.VENAFI_TPP);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -421,6 +501,24 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             region: ca.configuration.region
           }
         });
+      } else if (ca.type === CaType.DIGICERT && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            digicertConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            organizationId: ca.configuration.organizationId,
+            productNameId: ca.configuration.productNameId
+          }
+        });
       } else if (ca.type === CaType.AWS_ACM_PUBLIC_CA && availableConnections?.length) {
         const selectedConnection = availableConnections?.find(
           (connection) => connection.id === ca.configuration.appConnectionId
@@ -450,9 +548,41 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             region: ca.configuration.region
           }
         });
+      } else if (ca.type === CaType.VENAFI_TPP && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            venafiTppConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            policyDN: ca.configuration.policyDN
+          }
+        });
       }
     }
   }, [ca, availableConnections, reset, isCaLoading]);
+
+  const digicertConnectionId =
+    caType === CaType.DIGICERT && configuration && "digicertConnection" in configuration
+      ? (configuration.digicertConnection?.id ?? "")
+      : "";
+
+  const { data: digicertOrganizations = [], isPending: isDigiCertOrgsPending } =
+    useDigiCertConnectionListOrganizations(digicertConnectionId, {
+      enabled: caType === CaType.DIGICERT && !!digicertConnectionId
+    });
+
+  const { data: digicertProducts = [], isPending: isDigiCertProductsPending } =
+    useDigiCertConnectionListProducts(digicertConnectionId, {
+      enabled: caType === CaType.DIGICERT && !!digicertConnectionId
+    });
 
   const onFormSubmit = async ({
     type,
@@ -484,12 +614,23 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         certificateAuthorityArn: formConfiguration.certificateAuthorityArn,
         region: formConfiguration.region
       };
+    } else if (type === CaType.DIGICERT && "digicertConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.digicertConnection.id,
+        organizationId: formConfiguration.organizationId,
+        productNameId: formConfiguration.productNameId
+      };
     } else if (type === CaType.AWS_ACM_PUBLIC_CA && "awsConnection" in formConfiguration) {
       configPayload = {
         appConnectionId: formConfiguration.awsConnection.id,
         dnsAppConnectionId: formConfiguration.dnsConnection.id,
         hostedZoneId: formConfiguration.hostedZoneId,
         region: formConfiguration.region
+      };
+    } else if (type === CaType.VENAFI_TPP && "venafiTppConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.venafiTppConnection.id,
+        policyDN: formConfiguration.policyDN
       };
     } else {
       throw new Error("Invalid certificate authority configuration");
@@ -523,6 +664,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
   };
 
+  const modalContainer = useRef<HTMLDivElement>(null);
+
   return (
     <Modal
       isOpen={popUp?.ca?.isOpen}
@@ -531,7 +674,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         handlePopUpToggle("ca", isOpen);
       }}
     >
-      <ModalContent title={`${ca ? "Edit" : "Create"} External CA`}>
+      <ModalContent ref={modalContainer} title={`${ca ? "Edit" : "Create"} External CA`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           {ca && (
             <FormControl label="CA ID">
@@ -906,6 +1049,90 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               />
             </>
           )}
+          {caType === CaType.DIGICERT && (
+            <>
+              <Controller
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="DigiCert App Connection provides the CertCentral API key used to place orders."
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="DigiCert Connection"
+                    isRequired
+                  >
+                    <FilterableSelect
+                      value={value}
+                      onChange={(newValue) => {
+                        onChange(newValue);
+                      }}
+                      isLoading={isPending}
+                      options={availableConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FormControl>
+                )}
+                control={control}
+                name="configuration.digicertConnection"
+              />
+              <Controller
+                control={control}
+                name="configuration.organizationId"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Organization"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                    tooltipText="The validated CertCentral organization that will appear on issued certificates."
+                  >
+                    <FilterableSelect
+                      isLoading={isDigiCertOrgsPending && !!digicertConnectionId}
+                      isDisabled={!digicertConnectionId}
+                      value={digicertOrganizations.find((org) => org.id === value) ?? null}
+                      onChange={(option) => {
+                        onChange((option as SingleValue<TDigiCertOrganization>)?.id ?? 0);
+                      }}
+                      options={digicertOrganizations}
+                      placeholder="Select an organization..."
+                      getOptionLabel={(option) => option.displayName || option.name}
+                      getOptionValue={(option) => String(option.id)}
+                      menuPortalTarget={modalContainer.current}
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="configuration.productNameId"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Product"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired
+                    tooltipText="Products available are account-specific entitlements fetched from CertCentral. Each Infisical CA issues under exactly one product."
+                  >
+                    <FilterableSelect
+                      isLoading={isDigiCertProductsPending && !!digicertConnectionId}
+                      isDisabled={!digicertConnectionId}
+                      value={digicertProducts.find((product) => product.nameId === value) ?? null}
+                      onChange={(option) => {
+                        onChange((option as SingleValue<TDigiCertProduct>)?.nameId ?? "");
+                      }}
+                      options={digicertProducts}
+                      placeholder="Select a product..."
+                      getOptionLabel={(option) => `${option.name} (${option.nameId})`}
+                      getOptionValue={(option) => option.nameId}
+                      menuPortalTarget={modalContainer.current}
+                    />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
           {caType === CaType.AWS_ACM_PUBLIC_CA && (
             <>
               <Controller
@@ -988,6 +1215,51 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isRequired
                   >
                     <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
+          {caType === CaType.VENAFI_TPP && (
+            <>
+              <Controller
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="Venafi TPP App Connection contains the credentials to connect to your Venafi Trust Protection Platform instance."
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="Venafi TPP Connection"
+                  >
+                    <FilterableSelect
+                      value={value}
+                      onChange={(newValue) => {
+                        onChange(newValue);
+                      }}
+                      isLoading={isPending}
+                      options={availableConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FormControl>
+                )}
+                control={control}
+                name="configuration.venafiTppConnection"
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.policyDN"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Policy DN"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                    tooltipText="The policy folder path in Venafi TPP where certificates will be managed (e.g., \VED\Policy\Certificates)."
+                  >
+                    <Input {...field} placeholder="\VED\Policy\Certificates" />
                   </FormControl>
                 )}
               />

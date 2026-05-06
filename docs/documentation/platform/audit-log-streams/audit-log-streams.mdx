@@ -122,7 +122,6 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
                 "userAgentType": "web",
                 "eventType": "get-secrets",
                 "eventMetadata": {},
-                "projectName": "MyProject",
                 "orgId": "00000000-0000-0000-0000-000000000000",
                 "projectId": "00000000-0000-0000-0000-000000000000",
                 "TimeGenerated": "2025-01-01T00:00:00.000Z"
@@ -326,8 +325,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
   "createdAt": "2025-01-15T01:11:25.552Z",
   "updatedAt": "2025-01-15T01:11:25.552Z",
   "orgId": "785649f1-ff4b-4ef9-a40a-9b9878e46e57",
-  "projectId": "09bfcc01-0917-4bea-9c7a-2d320584d5b1",
-  "projectName": "example-project"
+  "projectId": "09bfcc01-0917-4bea-9c7a-2d320584d5b1"
 }
 ```
 
@@ -433,8 +431,4 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
     The `projectId` field will only be present if the event occurred at the project level, not the organization level.
 </ParamField>
 
-<ParamField path="projectName" type="string">
-    The name of the project where the event occurred.
 
-    The `projectName` field will only be present if the event occurred at the project level, not the organization level.
-</ParamField>

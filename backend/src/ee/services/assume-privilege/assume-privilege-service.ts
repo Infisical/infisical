@@ -75,9 +75,11 @@ export const assumePrivilegeServiceFactory = ({
     return { actorType: targetActorType, actorId: targetActorId, projectId, assumePrivilegesToken };
   };
 
-  const verifyAssumePrivilegeToken: TAssumePrivilegeServiceFactory["verifyAssumePrivilegeToken"] = (
+  const verifyAssumePrivilegeToken: TAssumePrivilegeServiceFactory["verifyAssumePrivilegeToken"] = async (
     token,
-    tokenVersionId
+    tokenVersionId,
+    actorAuthMethod,
+    actorOrgId
   ) => {
     const appCfg = getConfig();
     const decodedToken = crypto.jwt().verify(token, appCfg.AUTH_SECRET) as {
@@ -90,6 +92,28 @@ export const assumePrivilegeServiceFactory = ({
     if (decodedToken.tokenVersionId !== tokenVersionId) {
       throw new ForbiddenRequestError({ message: "Invalid token version" });
     }
+
+    const requesterPermission = await permissionService.getProjectPermission({
+      actor: ActorType.USER,
+      actorId: decodedToken.requesterId,
+      projectId: decodedToken.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    if (decodedToken.actorType === ActorType.USER) {
+      ForbiddenError.from(requesterPermission.permission).throwUnlessCan(
+        ProjectPermissionMemberActions.AssumePrivileges,
+        ProjectPermissionSub.Member
+      );
+    } else {
+      ForbiddenError.from(requesterPermission.permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.AssumePrivileges,
+        subject(ProjectPermissionSub.Identity, { identityId: decodedToken.actorId })
+      );
+    }
+
     return decodedToken;
   };
 

@@ -268,7 +268,13 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
             <Field>
               <FieldLabel>Vault Namespace</FieldLabel>
               <FieldContent>
-                <Input type="text" placeholder="" {...field} isError={Boolean(error)} />
+                <Input
+                  type="text"
+                  placeholder="admin"
+                  autoComplete="off"
+                  {...field}
+                  isError={Boolean(error)}
+                />
               </FieldContent>
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -281,7 +287,13 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
             <Field>
               <FieldLabel>Vault Access Token</FieldLabel>
               <FieldContent>
-                <Input type="password" placeholder="" {...field} isError={Boolean(error)} />
+                <Input
+                  type="password"
+                  placeholder="hvs.XXXXXXXXXXXXXXXX"
+                  autoComplete="new-password"
+                  {...field}
+                  isError={Boolean(error)}
+                />
               </FieldContent>
               <FieldError>{error?.message}</FieldError>
             </Field>

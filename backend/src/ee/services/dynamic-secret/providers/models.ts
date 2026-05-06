@@ -86,7 +86,8 @@ export const DynamicSecretRedisDBSchema = z.object({
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
-  ca: z.string().optional()
+  ca: z.string().optional(),
+  sslRejectUnauthorized: z.boolean().default(true)
 });
 
 export const DynamicSecretAwsElastiCacheSchema = z.object({
@@ -96,8 +97,7 @@ export const DynamicSecretAwsElastiCacheSchema = z.object({
 
   region: z.string().trim(),
   creationStatement: z.string().trim(),
-  revocationStatement: z.string().trim(),
-  ca: z.string().optional()
+  revocationStatement: z.string().trim()
 });
 
 export const DynamicSecretElasticSearchSchema = z.object({
@@ -119,7 +119,8 @@ export const DynamicSecretElasticSearchSchema = z.object({
     })
   ]),
 
-  ca: z.string().optional()
+  ca: z.string().optional(),
+  sslRejectUnauthorized: z.boolean().default(true)
 });
 
 export const DynamicSecretRabbitMqSchema = z.object({
@@ -131,6 +132,7 @@ export const DynamicSecretRabbitMqSchema = z.object({
   password: z.string().trim().min(1),
 
   ca: z.string().optional(),
+  sslRejectUnauthorized: z.boolean().default(true),
 
   virtualHost: z.object({
     name: z.string().trim().min(1),
@@ -176,6 +178,7 @@ export const DynamicSecretSqlDBSchema = z.object({
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
   sslEnabled: z.boolean().optional(),
+  sslRejectUnauthorized: z.boolean().default(true),
   gatewayId: z.string().nullable().optional()
 });
 
@@ -224,7 +227,8 @@ export const DynamicSecretCassandraSchema = z.object({
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
-  ca: z.string().optional()
+  ca: z.string().optional(),
+  sslRejectUnauthorized: z.boolean().default(true)
 });
 
 export const DynamicSecretSapAseSchema = z.object({
@@ -329,6 +333,7 @@ export const DynamicSecretMongoDBSchema = z.object({
   password: z.string().min(1).trim(),
   database: z.string().min(1).trim(),
   ca: z.string().trim().optional().nullable(),
+  sslRejectUnauthorized: z.boolean().default(true),
   roles: z
     .string()
     .array()
@@ -346,7 +351,8 @@ export const DynamicSecretSapHanaSchema = z.object({
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
-  ca: z.string().optional()
+  ca: z.string().optional(),
+  sslRejectUnauthorized: z.boolean().default(true)
 });
 
 export const DynamicSecretSnowflakeSchema = z.object({
@@ -402,6 +408,7 @@ export const DynamicSecretAzureSqlDBSchema = z.object({
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
   sslEnabled: z.boolean().optional(),
+  sslRejectUnauthorized: z.boolean().default(true),
   gatewayId: z.string().nullable().optional()
 });
 
@@ -411,6 +418,7 @@ export const LdapSchema = z.union([
     binddn: z.string().trim().min(1),
     bindpass: z.string().trim().min(1),
     ca: z.string().optional(),
+    sslRejectUnauthorized: z.boolean().default(true),
     credentialType: z.literal(LdapCredentialType.Dynamic).optional().default(LdapCredentialType.Dynamic),
     creationLdif: z.string().min(1),
     revocationLdif: z.string().min(1),
@@ -421,6 +429,7 @@ export const LdapSchema = z.union([
     binddn: z.string().trim().min(1),
     bindpass: z.string().trim().min(1),
     ca: z.string().optional(),
+    sslRejectUnauthorized: z.boolean().default(true),
     credentialType: z.literal(LdapCredentialType.Static),
     rotationLdif: z.string().min(1)
   })
@@ -438,6 +447,7 @@ export const DynamicSecretKubernetesSchema = z
       clusterToken: z.string().trim().optional(),
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
+      sslRejectUnauthorized: z.boolean().default(true),
       credentialType: z.literal(KubernetesCredentialType.Static),
       serviceAccountName: z.string().trim().min(1),
       namespace: z
@@ -464,6 +474,7 @@ export const DynamicSecretKubernetesSchema = z
       clusterToken: z.string().trim().optional(),
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
+      sslRejectUnauthorized: z.boolean().default(true),
       credentialType: z.literal(KubernetesCredentialType.Dynamic),
       namespace: z
         .string()

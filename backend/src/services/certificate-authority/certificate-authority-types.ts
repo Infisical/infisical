@@ -13,23 +13,35 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { CaType } from "./certificate-authority-enums";
 import {
+  TCreateDigiCertCertificateAuthorityDTO,
+  TDigiCertCertificateAuthority
+} from "./digicert/digicert-certificate-authority-types";
+import {
   TInternalCertificateAuthority,
   TInternalCertificateAuthorityInput
 } from "./internal/internal-certificate-authority-types";
+import {
+  TCreateVenafiTppCertificateAuthorityDTO,
+  TVenafiTppCertificateAuthority
+} from "./venafi-tpp/venafi-tpp-certificate-authority-types";
 
 export type TCertificateAuthority =
   | TInternalCertificateAuthority
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
   | TAwsPcaCertificateAuthority
-  | TAwsAcmPublicCaCertificateAuthority;
+  | TDigiCertCertificateAuthority
+  | TAwsAcmPublicCaCertificateAuthority
+  | TVenafiTppCertificateAuthority;
 
 export type TCertificateAuthorityInput =
   | TInternalCertificateAuthorityInput
   | TAcmeCertificateAuthorityInput
   | TCreateAzureAdCsCertificateAuthorityDTO
   | TCreateAwsPcaCertificateAuthorityDTO
-  | TCreateAwsAcmPublicCaCertificateAuthorityDTO;
+  | TCreateDigiCertCertificateAuthorityDTO
+  | TCreateAwsAcmPublicCaCertificateAuthorityDTO
+  | TCreateVenafiTppCertificateAuthorityDTO;
 
 export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id" | "enableDirectIssuance">;
 

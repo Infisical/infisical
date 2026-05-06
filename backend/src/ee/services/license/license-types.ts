@@ -84,6 +84,7 @@ export type TFeatureSet = {
   projectTemplates: false;
   kmip: false;
   gateway: false;
+  gatewayPool: false;
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
@@ -94,6 +95,8 @@ export type TFeatureSet = {
   fips: false;
   eventSubscriptions: false;
   secretShareExternalBranding: false;
+  honeyTokens: false;
+  honeyTokenLimit: 0;
 };
 
 export type TOrgPlansTableDTO = {

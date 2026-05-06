@@ -69,6 +69,7 @@ type Props = {
     | "organization-admin-console"
     | "kmip"
     | "gateway"
+    | "gateway-pool"
     | "relay"
     | "secret-share"
     | "billing"
@@ -77,6 +78,7 @@ type Props = {
     | "sub-organization"
     | "sso"
     | "email-domains"
+    | "honey-tokens"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;

@@ -65,29 +65,15 @@ export const isPqcAlgorithm = (label: string): boolean =>
   (PQC_KEY_ALGORITHMS as readonly string[]).includes(label);
 
 export const certKeyAlgorithms = [
-  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_2048], value: CertKeyAlgorithm.RSA_2048 },
-  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_3072], value: CertKeyAlgorithm.RSA_3072 },
-  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_4096], value: CertKeyAlgorithm.RSA_4096 },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ECDSA_P256],
-    value: CertKeyAlgorithm.ECDSA_P256
-  },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ECDSA_P384],
-    value: CertKeyAlgorithm.ECDSA_P384
-  },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ML_DSA_44],
-    value: CertKeyAlgorithm.ML_DSA_44
-  },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ML_DSA_65],
-    value: CertKeyAlgorithm.ML_DSA_65
-  },
-  {
-    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ML_DSA_87],
-    value: CertKeyAlgorithm.ML_DSA_87
-  }
+  { label: CertKeyAlgorithm.RSA_2048, value: CertKeyAlgorithm.RSA_2048 },
+  { label: CertKeyAlgorithm.RSA_3072, value: CertKeyAlgorithm.RSA_3072 },
+  { label: CertKeyAlgorithm.RSA_4096, value: CertKeyAlgorithm.RSA_4096 },
+  { label: CertKeyAlgorithm.ECDSA_P256, value: CertKeyAlgorithm.ECDSA_P256 },
+  { label: CertKeyAlgorithm.ECDSA_P384, value: CertKeyAlgorithm.ECDSA_P384 },
+  { label: CertKeyAlgorithm.ECDSA_P521, value: CertKeyAlgorithm.ECDSA_P521 },
+  { label: CertKeyAlgorithm.ML_DSA_44, value: CertKeyAlgorithm.ML_DSA_44 },
+  { label: CertKeyAlgorithm.ML_DSA_65, value: CertKeyAlgorithm.ML_DSA_65 },
+  { label: CertKeyAlgorithm.ML_DSA_87, value: CertKeyAlgorithm.ML_DSA_87 }
 ];
 
 export const crlReasonToNameMap: { [K in CrlReason]: string } = {

@@ -139,9 +139,7 @@ export const pamSessionServiceFactory = ({
 
     const sessions = await pamSessionDAL.findByProjectId(projectId);
 
-    return {
-      sessions: await Promise.all(sessions.map((session) => decryptSession(session, projectId, kmsService)))
-    };
+    return { sessions };
   };
 
   const updateLogsById = async ({ sessionId, logs }: TUpdateSessionLogsDTO, actor: OrgServiceActor) => {

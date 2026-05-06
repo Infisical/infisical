@@ -30,7 +30,9 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedNamespaces: true,
   allowedNames: true,
   allowedAudience: true,
-  gatewayId: true
+  gatewayId: true,
+  gatewayPoolId: true,
+  verifyTlsCertificate: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -69,6 +71,13 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identityKubernetesAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
@@ -180,6 +189,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               }
             ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
+          verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
@@ -189,6 +199,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
+          gatewayPoolId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -226,11 +237,22 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               message: "When token review mode is set to API, a Kubernetes host must be provided"
             });
           }
-          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+          if (
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+            !data.gatewayId &&
+            !data.gatewayPoolId
+          ) {
             ctx.addIssue({
               path: ["gatewayId"],
               code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway must be selected"
+              message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+            });
+          }
+          if (data.gatewayId && data.gatewayPoolId) {
+            ctx.addIssue({
+              path: ["gatewayPoolId"],
+              code: z.ZodIssueCode.custom,
+              message: "Cannot specify both a gateway and a gateway pool"
             });
           }
 
@@ -239,6 +261,30 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               path: ["accessTokenTTL"],
               code: z.ZodIssueCode.custom,
               message: "Access Token TTL cannot be greater than Access Token Max TTL."
+            });
+          }
+          if (
+            data.verifyTlsCertificate &&
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+            !data.caCert?.length
+          ) {
+            ctx.addIssue({
+              path: ["caCert"],
+              code: z.ZodIssueCode.custom,
+              message:
+                "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+            });
+          }
+          if (
+            data.verifyTlsCertificate === false &&
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+            data.caCert?.length
+          ) {
+            ctx.addIssue({
+              path: ["verifyTlsCertificate"],
+              code: z.ZodIssueCode.custom,
+              message:
+                "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
             });
           }
         }),
@@ -344,6 +390,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               }
             ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
+          verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.UPDATE.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
@@ -353,6 +400,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
+          gatewayPoolId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -386,12 +434,20 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           if (
             data.tokenReviewMode &&
             data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-            !data.gatewayId
+            !data.gatewayId &&
+            !data.gatewayPoolId
           ) {
             ctx.addIssue({
               path: ["gatewayId"],
               code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway must be selected"
+              message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+            });
+          }
+          if (data.gatewayId && data.gatewayPoolId) {
+            ctx.addIssue({
+              path: ["gatewayPoolId"],
+              code: z.ZodIssueCode.custom,
+              message: "Cannot specify both a gateway and a gateway pool"
             });
           }
           if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {

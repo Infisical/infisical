@@ -1,7 +1,6 @@
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -25,19 +24,17 @@ const authorizeAuth0Connection = async ({
   audience
 }: TAuth0ConnectionConfig["credentials"]) => {
   const instanceUrl = domain.startsWith("http") ? domain : `https://${domain}`;
-  await blockLocalAndPrivateIpAddresses(instanceUrl);
 
-  const { data } = await request.request<TAuth0AccessTokenResponse>({
-    method: "POST",
-    url: `${removeTrailingSlash(instanceUrl)}/oauth/token`,
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    data: new URLSearchParams({
+  const { data } = await safeRequest.post<TAuth0AccessTokenResponse>(
+    `${removeTrailingSlash(instanceUrl)}/oauth/token`,
+    new URLSearchParams({
       grant_type: "client_credentials", // this will need to be resolved if we support methods other than client credentials
       client_id: clientId,
       client_secret: clientSecret,
       audience
-    })
-  });
+    }),
+    { headers: { "content-type": "application/x-www-form-urlencoded" } }
+  );
 
   if (data.token_type !== "Bearer") {
     throw new Error(`Unhandled token type: ${data.token_type}`);

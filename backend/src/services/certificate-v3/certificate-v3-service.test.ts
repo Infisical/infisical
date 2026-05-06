@@ -27,7 +27,7 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
-import { createDistinguishedName, parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
+import { createDistinguishedName, extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -50,7 +50,7 @@ vi.mock("@peculiar/x509", async (importOriginal) => {
 });
 
 vi.mock("../certificate-authority/certificate-authority-fns", () => ({
-  parseDistinguishedName: vi.fn().mockReturnValue({
+  extractDnParts: vi.fn().mockReturnValue({
     commonName: "test.example.com"
   }),
   createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com")
@@ -179,7 +179,7 @@ describe("CertificateV3Service", () => {
       signatureAlgorithm: "RSA-SHA256" as any
     });
 
-    vi.mocked(parseDistinguishedName).mockReturnValue({
+    vi.mocked(extractDnParts).mockReturnValue({
       commonName: "test.example.com"
     });
     vi.mocked(createDistinguishedName).mockReturnValue("CN=test.example.com");
@@ -316,7 +316,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-123"
+          caId: "ca-123",
+          crlDistributionPointUrls: []
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -378,7 +379,8 @@ describe("CertificateV3Service", () => {
             notBefore: null,
             notAfter: null,
             activeCaCertId: "cert-123",
-            caId: "ca-123"
+            caId: "ca-123",
+            crlDistributionPointUrls: []
           }
         }
       };
@@ -471,7 +473,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-123"
+          caId: "ca-123",
+          crlDistributionPointUrls: []
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -581,7 +584,8 @@ describe("CertificateV3Service", () => {
             notBefore: null,
             notAfter: null,
             activeCaCertId: "cert-123",
-            caId: "ca-123"
+            caId: "ca-123",
+            crlDistributionPointUrls: []
           }
         }
       };
@@ -745,7 +749,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-123"
+          caId: "ca-123",
+          crlDistributionPointUrls: []
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -787,7 +792,8 @@ describe("CertificateV3Service", () => {
             notBefore: null,
             notAfter: null,
             activeCaCertId: "cert-123",
-            caId: "ca-123"
+            caId: "ca-123",
+            crlDistributionPointUrls: []
           }
         }
       };
@@ -1017,7 +1023,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1179,7 +1186,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1341,7 +1349,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1503,7 +1512,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1730,7 +1740,8 @@ describe("CertificateV3Service", () => {
         maxPathLength: -1,
         activeCaCertId: "cert-123",
         dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
-        serialNumber: "123456789"
+        serialNumber: "123456789",
+        crlDistributionPointUrls: []
       }
     };
 
@@ -2249,6 +2260,51 @@ describe("CertificateV3Service", () => {
           renewBeforeDays: 7
         })
       ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate has already been renewed");
+    });
+
+    it("should reject update with accurate enrollment type when profile is ACME", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedByCertificateId: null,
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.ACME,
+        issuerType: IssuerType.CA,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow(ForbiddenRequestError);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow("Certificate is not eligible for auto-renewal: ACME certificates cannot be auto-renewed");
     });
 
     it("should reject update if renewBeforeDays >= certificate TTL", async () => {

@@ -59,6 +59,7 @@ type Props = {
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   isEmpty?: boolean;
   importedSecret?:
     | {
@@ -94,11 +95,18 @@ export const SecretEditRow = ({
   isVisible,
   secretId,
   isRotatedSecret,
+  isHoneyTokenSecret,
   importedBy,
   importedSecret,
   isEmpty,
   isSecretPresent
 }: Props) => {
+  const isManagedSecret = isRotatedSecret || isHoneyTokenSecret;
+
+  let deleteTooltipContent = "Delete";
+  if (isHoneyTokenSecret) deleteTooltipContent = "Cannot Delete Honey Token Secret";
+  else if (isRotatedSecret) deleteTooltipContent = "Cannot Delete Rotated Secret";
+
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "secretReferenceTree"
@@ -273,7 +281,7 @@ export const SecretEditRow = ({
       />
       {secretValueHidden && !isOverride && (
         <Tooltip
-          content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
+          content={`You do not have access to view the current value${canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}`}
         >
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
@@ -287,7 +295,7 @@ export const SecretEditRow = ({
               {...field}
               isReadOnly={
                 isImportedSecret ||
-                (isRotatedSecret && !isOverride) ||
+                (isManagedSecret && !isOverride) ||
                 isFetchingSecretValue ||
                 isErrorFetchingSecretValue
               }
@@ -305,7 +313,7 @@ export const SecretEditRow = ({
               environment={environment}
               isImport={isImportedSecret}
               defaultValue={secretValueHidden ? "" : undefined}
-              canEditButNotView={secretValueHidden && !isOverride}
+              canEditButNotView={secretValueHidden && !isOverride && !isManagedSecret}
               onFocus={() => setIsFieldFocused.on()}
               onBlur={() => {
                 field.onBlur();
@@ -423,13 +431,13 @@ export const SecretEditRow = ({
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}>
+                  <Tooltip content={deleteTooltipContent}>
                     <IconButton
                       variant="plain"
                       ariaLabel="delete-value"
                       className="h-full"
                       onClick={toggleModal}
-                      isDisabled={isDeleting || !isAllowed || isRotatedSecret}
+                      isDisabled={isDeleting || !isAllowed || isManagedSecret}
                     >
                       <FontAwesomeIcon icon={faTrash} />
                     </IconButton>

@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { OrganizationActionScope, TOrganizations, TSecretSharing } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -10,6 +11,8 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
@@ -234,7 +237,9 @@ export const secretSharingServiceFactory = ({
 
         displayUsername = user.username;
       } else if (actor === ActorType.IDENTITY) {
-        const identity = await identityDAL.findById(actorId);
+        const identity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+          identityDAL.findById(actorId)
+        );
 
         if (!identity) {
           throw new NotFoundError({ message: `Identity with ID '${actorId}' not found` });
@@ -631,17 +636,17 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing) => {
+  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing, tx?: Knex) => {
     const { expiresAfterViews } = sharedSecret;
 
+    let payload: { lastViewedAt: Date; $decr?: { expiresAfterViews: number } } = {
+      lastViewedAt: new Date()
+    };
     if (expiresAfterViews) {
-      // decrement view count if view count expiry set
-      await secretSharingDAL.updateById(sharedSecret.id, { $decr: { expiresAfterViews: 1 } });
+      payload = { ...payload, $decr: { expiresAfterViews: 1 } };
     }
 
-    await secretSharingDAL.updateById(sharedSecret.id, {
-      lastViewedAt: new Date()
-    });
+    await secretSharingDAL.updateById(sharedSecret.id, payload, tx);
   };
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
@@ -649,10 +654,13 @@ export const secretSharingServiceFactory = ({
     const result = await secretSharingDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AccessSharedSecret(sharedSecretId)]);
 
-      const sharedSecret = await secretSharingDAL.findOne({
-        type: SecretSharingType.Share,
-        identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
-      });
+      const sharedSecret = await secretSharingDAL.findOne(
+        {
+          type: SecretSharingType.Share,
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+        },
+        tx
+      );
 
       if (!sharedSecret) {
         throw new NotFoundError({
@@ -684,13 +692,13 @@ export const secretSharingServiceFactory = ({
       // or can be safely sent to the client.
       if (expiresAt !== null && expiresAt < new Date()) {
         // check lifetime expiry
-        await secretSharingDAL.softDeleteById(sharedSecret.id);
+        await secretSharingDAL.softDeleteById(sharedSecret.id, tx);
         throw new NotFoundError({ message: "The shared secret has expired" });
       }
 
       if (expiresAfterViews !== null && expiresAfterViews === 0) {
         // check view count expiry
-        await secretSharingDAL.softDeleteById(sharedSecret.id);
+        await secretSharingDAL.softDeleteById(sharedSecret.id, tx);
         throw new NotFoundError({ message: "The shared secret has reached its view limit" });
       }
 
@@ -722,11 +730,14 @@ export const secretSharingServiceFactory = ({
         sharedSecret.orgId === orgId &&
         sharedSecret.accessType === SecretSharingAccessType.Organization
       ) {
-        organization = await orgDAL.findOrgById(sharedSecret.orgId);
+        const sharedOrgId = sharedSecret.orgId;
+        organization = await requestMemoize(requestMemoKeys.orgFindOrgById(sharedOrgId), () =>
+          orgDAL.findOrgById(sharedOrgId)
+        );
       }
 
       // decrement when we are sure the user will view secret.
-      await $decrementSecretViewCount(sharedSecret);
+      await $decrementSecretViewCount(sharedSecret, tx);
 
       return {
         ...mapIdentifierToId(sharedSecret),
@@ -823,7 +834,7 @@ export const secretSharingServiceFactory = ({
       return null;
     }
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     const assets = await orgAssetDAL.listAssetsByType(orgId, ["brand-logo", "brand-favicon"]);
 
     const hasLogo = assets.some((a) => a.assetType === "brand-logo");

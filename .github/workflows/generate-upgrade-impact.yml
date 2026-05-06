@@ -1,0 +1,98 @@
+name: Generate upgrade impact data
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Stable release tag to analyze, for example v0.159.23"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: release
+        run: |
+          TAG_NAME="${{ inputs.tag || github.ref_name }}"
+          if ! echo "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Skipping non-stable release tag: $TAG_NAME"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "stable=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout main
+        if: steps.release.outputs.stable == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node
+        if: steps.release.outputs.stable == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: upgrade-impact/package-lock.json
+
+      - name: Install dependencies
+        if: steps.release.outputs.stable == 'true'
+        run: npm ci
+        working-directory: upgrade-impact
+
+      - name: Generate upgrade impact data
+        if: steps.release.outputs.stable == 'true'
+        run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
+        working-directory: upgrade-impact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Validate upgrade impact data
+        if: steps.release.outputs.stable == 'true'
+        run: npm run validate
+        working-directory: upgrade-impact
+
+      - name: Open upgrade impact PR
+        if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.UPGRADE_IMPACT_PR_TOKEN }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          BRANCH_NAME="chore/upgrade-impact-${TAG_NAME}"
+          PR_TITLE="chore: add upgrade impact for ${TAG_NAME}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch -c "$BRANCH_NAME"
+          git add upgrade-impact/data
+
+          if git diff --cached --quiet; then
+            echo "No upgrade impact data changes detected."
+            exit 0
+          fi
+
+          git commit -m "$PR_TITLE"
+          git push --set-upstream origin "$BRANCH_NAME"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "$PR_TITLE" \
+            --body "Generated self-hosted upgrade impact data for \`${TAG_NAME}\`.
+
+          Review the generated YAML for self-hosted upgrade accuracy before merging."

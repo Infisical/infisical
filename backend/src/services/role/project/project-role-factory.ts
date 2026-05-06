@@ -140,7 +140,7 @@ export const newProjectRoleFactory = ({
       },
       {
         id: uuidv4(),
-        name: "Developer",
+        name: "Member",
         slug: ProjectMembershipRole.Member,
         permissions: projectMemberPermissions,
         description: "Limited read/write role in a project",

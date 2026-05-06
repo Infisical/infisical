@@ -65,6 +65,8 @@ import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-
 import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PAM_DOMAIN_FACTORY_MAP } from "../pam-domain/pam-domain-factory";
+import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
+import { TPamProjectRecordingConfigServiceFactory } from "../pam-project-recording-config/pam-project-recording-config-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamResourceRotationRulesDALFactory } from "../pam-resource/pam-resource-rotation-rules-dal";
@@ -72,8 +74,11 @@ import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
+import { TWindowsAccountCredentials } from "../pam-resource/windows-server/windows-server-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
+import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountRotationStatus } from "./pam-account-enums";
@@ -122,6 +127,8 @@ type TPamAccountServiceFactoryDep = {
     "findByAccountId" | "updateById" | "countByAccountIds"
   >;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  pamProjectRecordingConfigDAL: Pick<TPamProjectRecordingConfigDALFactory, "findByProjectId">;
+  pamProjectRecordingConfigService: Pick<TPamProjectRecordingConfigServiceFactory, "resolveConfigForProject">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -148,7 +155,9 @@ export const pamAccountServiceFactory = ({
   pamSessionExpirationService,
   resourceMetadataDAL,
   pamAccountDependenciesDAL,
-  keyStore
+  keyStore,
+  pamProjectRecordingConfigDAL,
+  pamProjectRecordingConfigService
 }: TPamAccountServiceFactoryDep) => {
   // Helper to resolve account parent (resource or domain)
   const resolveAccountParent = async ({
@@ -818,7 +827,9 @@ export const pamAccountServiceFactory = ({
         projectDAL.findById(account.projectId)
       );
       if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
-      const org = await orgDAL.findOrgById(project.orgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(project.orgId), () =>
+        orgDAL.findOrgById(project.orgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
       // Determine which MFA method to use
@@ -886,8 +897,19 @@ export const pamAccountServiceFactory = ({
     );
 
     // Temporarily disable access to Windows Server
-    if (resourceType === PamResource.Windows)
+    if ((resourceType as PamResource) === PamResource.Windows) {
       throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
+    }
+
+    if (resourceType === PamResource.Windows) {
+      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
+      if (!recordingConfig) {
+        throw new BadRequestError({
+          message:
+            "Windows resources require an external session recording configuration. Configure session recording in project settings before accessing Windows accounts."
+        });
+      }
+    }
 
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
@@ -954,6 +976,9 @@ export const pamAccountServiceFactory = ({
     }
 
     // For gateway-based resources (Postgres, MySQL, SSH), create session first
+    //
+    // Recording secrets are generated lazily at credential fetch time so the raw
+    // upload token can be returned exactly once to the gateway without persisting it
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -1064,6 +1089,19 @@ export const pamAccountServiceFactory = ({
             kmsService,
             projectId
           })) as TSSHAccountCredentials;
+
+          metadata = {
+            username: credentials.username
+          };
+        }
+        break;
+      case PamResource.Windows:
+        {
+          const credentials = (await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          })) as TWindowsAccountCredentials;
 
           metadata = {
             username: credentials.username
@@ -1244,13 +1282,51 @@ export const pamAccountServiceFactory = ({
 
     let sessionStarted = false;
 
-    // Mark session as started
+    // Recording secrets are lazily generated on the first /credentials call (status=Starting)
+    // The upload token is returned exactly once; the gateway persists it to disk
+    // On subsequent calls (status=Active), the session key and storage backend are re-derived so the gateway can resume chunk creation after a restart
+    let sessionRecordingSecrets: {
+      sessionKeyBase64: string;
+      uploadTokenBase64: string;
+      storageBackend: PamRecordingStorageBackend;
+    } | null = null;
     if (session.status === PamSessionStatus.Starting) {
-      await pamSessionDAL.updateById(sessionId, {
-        status: PamSessionStatus.Active,
-        startedAt: new Date()
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
+      const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+
+      const { sessionKey, uploadToken, encryptedSessionKey, uploadTokenHash } = await generateSessionRecordingSecrets({
+        projectId: session.projectId,
+        sessionId,
+        kmsService
       });
-      sessionStarted = true;
+
+      const started = await pamSessionDAL.startSession(sessionId, {
+        encryptedSessionKey,
+        gatewayUploadTokenHash: uploadTokenHash
+      });
+
+      if (started) {
+        sessionStarted = true;
+        sessionRecordingSecrets = {
+          sessionKeyBase64: sessionKey.toString("base64"),
+          uploadTokenBase64: uploadToken.toString("base64"),
+          storageBackend
+        };
+      }
+    } else if (session.status === PamSessionStatus.Active && session.encryptedSessionKey) {
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
+      const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+      const sessionKey = await decryptSessionKey({
+        projectId: session.projectId,
+        sessionId,
+        encryptedSessionKey: session.encryptedSessionKey,
+        kmsService
+      });
+      sessionRecordingSecrets = {
+        sessionKeyBase64: sessionKey.toString("base64"),
+        uploadTokenBase64: "",
+        storageBackend
+      };
     }
 
     // Handle SSH certificate-based authentication
@@ -1300,9 +1376,26 @@ export const pamAccountServiceFactory = ({
           policyRules,
           projectId: project.id,
           account,
-          sessionStarted
+          sessionStarted,
+          recording: sessionRecordingSecrets
         };
       }
+    }
+
+    if (decryptedResource.resourceType === PamResource.Windows) {
+      const { hostname, ...rest } = decryptedResource.connectionDetails;
+      return {
+        credentials: {
+          ...rest,
+          host: hostname,
+          ...decryptedAccount.credentials
+        },
+        policyRules,
+        projectId: project.id,
+        account,
+        sessionStarted,
+        recording: sessionRecordingSecrets
+      };
     }
 
     return {
@@ -1313,7 +1406,8 @@ export const pamAccountServiceFactory = ({
       policyRules,
       projectId: project.id,
       account,
-      sessionStarted
+      sessionStarted,
+      recording: sessionRecordingSecrets
     };
   };
 
@@ -1704,7 +1798,9 @@ export const pamAccountServiceFactory = ({
       const actorUser = await userDAL.findById(actorId);
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
 
-      const org = await orgDAL.findOrgById(actorOrgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
+        orgDAL.findOrgById(actorOrgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${actorOrgId}' not found` });
 
       const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;

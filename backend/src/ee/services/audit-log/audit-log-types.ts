@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
@@ -96,6 +97,8 @@ export type TCreateAuditLogDTO = {
   projectId?: string;
 } & BaseAuthData;
 
+export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
@@ -128,8 +131,6 @@ export type TAuditLogServiceFactory = {
   }>;
   checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
-
-export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {
   ipAddress?: string;
@@ -449,6 +450,7 @@ export enum EventType {
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
+  TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -475,6 +477,7 @@ export enum EventType {
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
   CMEK_BULK_EXPORT_PRIVATE_KEYS = "cmek-bulk-export-private-keys",
+  CMEK_BULK_IMPORT_KEYS = "cmek-bulk-import-keys",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -543,6 +546,7 @@ export enum EventType {
   CREATE_SECRET_ROTATION = "create-secret-rotation",
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  MOVE_SECRET_ROTATION = "move-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
   RECONCILE_SECRET_ROTATION = "reconcile-secret-rotation",
 
@@ -608,6 +612,11 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+  VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
+  VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
+  VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
+  VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN = "view-insights-pam-resource-breakdown",
+  VIEW_INSIGHTS_PAM_ROTATION_CALENDAR = "view-insights-pam-rotation-calendar",
 
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
@@ -617,6 +626,11 @@ export enum EventType {
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
   PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
+  PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
+  PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
+  PAM_RECORDING_CONFIG_UPDATE = "pam-recording-config-update",
+  PAM_RECORDING_CONFIG_DELETE = "pam-recording-config-delete",
+  PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED = "pam-recording-bucket-connection-test-failed",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
@@ -679,6 +693,7 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
+  VIEW_AUDIT_LOGS = "view-audit-logs",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -774,7 +789,25 @@ export enum EventType {
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
-  GATEWAY_ENROLL = "gateway-enroll"
+  GATEWAY_ENROLL = "gateway-enroll",
+
+  // Resource Auth Methods
+  RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
+  RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+
+  // Gateway Pools
+  GATEWAY_POOL_CREATE = "gateway-pool-create",
+  GATEWAY_POOL_UPDATE = "gateway-pool-update",
+  GATEWAY_POOL_DELETE = "gateway-pool-delete",
+  GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member",
+
+  // Honey Tokens
+  CREATE_HONEY_TOKEN = "create-honey-token",
+  UPDATE_HONEY_TOKEN = "update-honey-token",
+  REVOKE_HONEY_TOKEN = "revoke-honey-token"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -2290,6 +2323,9 @@ interface CreateWebhookEvent {
     environment: string;
     secretPath: string;
     isDisabled: boolean;
+    eventsFilter?: {
+      eventName: string;
+    }[];
   };
 }
 
@@ -2300,6 +2336,9 @@ interface UpdateWebhookStatusEvent {
     environment: string;
     secretPath: string;
     isDisabled: boolean;
+    eventsFilter?: {
+      eventName: string;
+    }[];
   };
 }
 
@@ -3667,6 +3706,15 @@ interface CmekBulkGetPrivateKeysEvent {
   };
 }
 
+interface CmekBulkImportKeysEvent {
+  type: EventType.CMEK_BULK_IMPORT_KEYS;
+  metadata: {
+    keyNames: string[];
+    failedKeyNames: string[];
+    projectId: string;
+  };
+}
+
 interface GetExternalGroupOrgRoleMappingsEvent {
   type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
   metadata?: Record<string, never>; // not needed, based off orgId
@@ -4366,6 +4414,18 @@ interface DeleteSecretRotationEvent {
   metadata: TDeleteSecretRotationV2DTO;
 }
 
+interface MoveSecretRotationEvent {
+  type: EventType.MOVE_SECRET_ROTATION;
+  metadata: {
+    type: string;
+    rotationId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+  };
+}
+
 interface RotateSecretRotationEvent {
   type: EventType.SECRET_ROTATION_ROTATE_SECRETS;
   metadata: Pick<TSecretRotationV2Raw, "parameters" | "secretsMapping" | "type" | "connectionId" | "folderId"> & {
@@ -4770,6 +4830,48 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewAuditLogsEvent {
+  type: EventType.VIEW_AUDIT_LOGS;
+  metadata?: Record<string, unknown>;
+}
+
+interface ViewPamInsightsSummaryEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_SUMMARY;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsSessionActivityEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_SESSION_ACTIVITY;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsTopActorsEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_TOP_ACTORS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsResourceBreakdownEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsRotationCalendarEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_ROTATION_CALENDAR;
+  metadata: {
+    projectId: string;
+    month: number;
+    year: number;
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -4891,6 +4993,52 @@ interface PamSessionEventBatchUploadEvent {
   metadata: {
     sessionId: string;
     startOffset: number;
+  };
+}
+
+interface PamSessionChunkUploadEvent {
+  type: EventType.PAM_SESSION_CHUNK_UPLOAD;
+  metadata: {
+    sessionId: string;
+    chunkIndex: number;
+    storageBackend: string;
+    ciphertextBytes: number;
+  };
+}
+
+interface PamSessionUploadTokenInvalidEvent {
+  type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID;
+  metadata: {
+    sessionId: string;
+    chunkIndex?: number;
+  };
+}
+
+interface PamRecordingConfigUpsertEvent {
+  type: EventType.PAM_RECORDING_CONFIG_UPDATE;
+  metadata: {
+    projectId: string;
+    storageBackend: string;
+    bucket: string;
+    region: string;
+  };
+}
+
+interface PamRecordingConfigDeleteEvent {
+  type: EventType.PAM_RECORDING_CONFIG_DELETE;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface PamRecordingBucketConnectionTestFailedEvent {
+  type: EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED;
+  metadata: {
+    projectId: string;
+    storageBackend: string;
+    bucket: string;
+    region: string;
+    reason: string;
   };
 }
 
@@ -5381,6 +5529,15 @@ interface GetCertificateFromRequestEvent {
   metadata: {
     certificateRequestId: string;
     certificateId?: string;
+  };
+}
+
+interface TriggerCertificateRequestValidationEvent {
+  type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION;
+  metadata: {
+    certificateRequestId: string;
+    status: string;
+    orderStatus?: string;
   };
 }
 
@@ -6119,6 +6276,135 @@ interface GatewayEnrollEvent {
   };
 }
 
+type ResourceAuthMethodKind = "aws" | "token";
+
+interface ResourceAuthMethodLoginEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    principalArn?: string;
+    accountId?: string;
+    enrollmentTokenId?: string;
+  };
+}
+
+interface ResourceAuthMethodLoginFailedEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    reasonCode: string;
+    message: string;
+    principalArn?: string;
+    accountId?: string;
+  };
+}
+
+interface ResourceAuthMethodUpdateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+  };
+}
+
+interface ResourceAuthMethodRevokeEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    gatewayName: string;
+    deletedTokenCount: number;
+  };
+}
+
+interface GatewayPoolCreateEvent {
+  type: EventType.GATEWAY_POOL_CREATE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolUpdateEvent {
+  type: EventType.GATEWAY_POOL_UPDATE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolDeleteEvent {
+  type: EventType.GATEWAY_POOL_DELETE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolAddMemberEvent {
+  type: EventType.GATEWAY_POOL_ADD_MEMBER;
+  metadata: {
+    poolId: string;
+    poolName: string;
+    gatewayId: string;
+    gatewayName: string;
+  };
+}
+
+interface GatewayPoolRemoveMemberEvent {
+  type: EventType.GATEWAY_POOL_REMOVE_MEMBER;
+  metadata: {
+    poolId: string;
+    poolName: string;
+    gatewayId: string;
+    gatewayName: string;
+  };
+}
+
+interface CreateHoneyTokenEvent {
+  type: EventType.CREATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateHoneyTokenEvent {
+  type: EventType.UPDATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RevokeHoneyTokenEvent {
+  type: EventType.REVOKE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6392,6 +6678,7 @@ export type Event =
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent
   | CmekBulkGetPrivateKeysEvent
+  | CmekBulkImportKeysEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent
@@ -6485,6 +6772,7 @@ export type Event =
   | CreateSecretRotationEvent
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
+  | MoveSecretRotationEvent
   | RotateSecretRotationEvent
   | ReconcileSecretRotationEvent
   | MicrosoftTeamsWorkflowIntegrationCreateEvent
@@ -6530,6 +6818,12 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewAuditLogsEvent
+  | ViewPamInsightsSummaryEvent
+  | ViewPamInsightsSessionActivityEvent
+  | ViewPamInsightsTopActorsEvent
+  | ViewPamInsightsResourceBreakdownEvent
+  | ViewPamInsightsRotationCalendarEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -6544,6 +6838,11 @@ export type Event =
   | PamSessionGetEvent
   | PamSessionListEvent
   | PamSessionEventBatchUploadEvent
+  | PamSessionChunkUploadEvent
+  | PamSessionUploadTokenInvalidEvent
+  | PamRecordingConfigUpsertEvent
+  | PamRecordingConfigDeleteEvent
+  | PamRecordingBucketConnectionTestFailedEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
@@ -6595,6 +6894,7 @@ export type Event =
   | GetCertificateRequestEvent
   | GetCertificateFromRequestEvent
   | ListCertificateRequestsEvent
+  | TriggerCertificateRequestValidationEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
@@ -6674,4 +6974,16 @@ export type Event =
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
-  | GatewayEnrollEvent;
+  | GatewayEnrollEvent
+  | ResourceAuthMethodLoginEvent
+  | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodUpdateEvent
+  | ResourceAuthMethodRevokeEvent
+  | GatewayPoolCreateEvent
+  | GatewayPoolUpdateEvent
+  | GatewayPoolDeleteEvent
+  | GatewayPoolAddMemberEvent
+  | GatewayPoolRemoveMemberEvent
+  | CreateHoneyTokenEvent
+  | UpdateHoneyTokenEvent
+  | RevokeHoneyTokenEvent;

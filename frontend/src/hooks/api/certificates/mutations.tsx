@@ -14,6 +14,7 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TTriggerCertificateRequestValidationResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
   TUpdateCertificateDTO,
@@ -271,6 +272,21 @@ export const useUnifiedCertificateIssuance = () => {
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
       });
+    }
+  });
+};
+
+export const useTriggerCertificateRequestValidation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TTriggerCertificateRequestValidationResponse, object, { requestId: string }>({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post<TTriggerCertificateRequestValidationResponse>(
+        `/api/v1/cert-manager/certificates/certificate-requests/${requestId}/trigger-validation`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificateRequests", "list"] });
     }
   });
 };

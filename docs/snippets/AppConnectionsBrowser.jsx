@@ -402,6 +402,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "Ona",
+      slug: "ona",
+      path: "/integrations/app-connections/ona",
+      description:
+        "Learn how to connect your Ona (Gitpod) workspaces to pull secrets from Infisical.",
+      category: "Hosting",
+    },
+    {
       name: "MongoDB",
       slug: "mongodb",
       path: "/integrations/app-connections/mongodb",
@@ -447,13 +455,29 @@ export const AppConnectionsBrowser = () => {
       category: "DevOps Tools",
     }, 
     {
+      name: "OVH",
+      slug: "ovh",
+      path: "/integrations/app-connections/ovh",
+      description:
+        "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Travis CI",
       slug: "travis-ci",
       path: "/integrations/app-connections/travis-ci",
       description:
         "Learn how to connect Travis CI to pull secrets from Infisical.",
       category: "CI/CD",
-    }
+    },
+    {
+      name: "Snowflake",
+      slug: "snowflake",
+      path: "/integrations/app-connections/snowflake",
+      description:
+        "Learn how to connect Snowflake to pull secrets from Infisical.",
+      category: "Databases",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

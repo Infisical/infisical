@@ -49,6 +49,10 @@ Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm 
 
 ## Cross-Cutting Patterns
 
+### Design System & Voice
+
+The v3 visual system (colors, typography, components, layout) and product voice/content tone are documented in [`DESIGN.md`](DESIGN.md). Read it before producing new UI or user-visible copy.
+
 ### Auth & Permissions
 
 Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN, MCP_JWT) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/CLAUDE.md` for backend details and `frontend/CLAUDE.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
@@ -60,6 +64,10 @@ No IoC container. Every service is a factory function with explicit dependencies
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.
+
+### Outbound HTTP & SSRF Protection
+
+Backend HTTP requests to URLs derived from user input (webhooks, integrations, dynamic secrets, identity-auth JWKS, audit logs, ACME, etc.) go through the `safeRequest` helper (`@app/lib/validator`): URL validation, DNS pinning, no automatic redirects, internal-infrastructure blocklist. Third-party HTTP clients that build their own agent (`jwks-rsa`, `axios-ntlm`) use `buildSsrfSafeAgent`. See `backend/CLAUDE.md` for the full pattern, gateway-aware variants, and the criteria for adding a new `allowPrivateIps: true` caller.
 
 ## Keeping CLAUDE.md Up to Date
 

@@ -63,6 +63,8 @@ export const KeyStorePrefixes = {
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
+  IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
+    `identity-token-uses-remaining:${identityId}:${jti}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
@@ -98,6 +100,7 @@ export const KeyStorePrefixes = {
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
+  TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
@@ -106,7 +109,22 @@ export const KeyStorePrefixes = {
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
+  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
+
+  AdminConfig: "infisical-admin-cfg",
+  InvalidatingCache: "invalidating-cache",
+  SecretManagerCachePattern: "secret-manager:*",
+  AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
+  LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
+    `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
+  IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
+    `lockout:identity:${identityId}:${authMethod}:*` as const,
+  IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
+
+  TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
+    `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
 };
 
 export const KeyStoreTtls = {
@@ -121,7 +139,22 @@ export const KeyStoreTtls = {
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
-  InsightsCacheInSeconds: 300 // 5 minutes
+  InsightsCacheInSeconds: 300, // 5 minutes
+  AdminConfigInSeconds: 60,
+  InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
+  AuditLogMigrationAlertInSeconds: 604800, // 7 days
+  LicenseCloudPlanInSeconds: 300, // 5 minutes
+  AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
+  AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
+  DashboardCacheInSeconds: 600, // 10 minutes
+  ProjectEnvironmentOperationMarkerInSeconds: 10,
+  UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
+  TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
+  TelemetryAggregatedEventInSeconds: 600, // 10 minutes
+  SecretEtagInSeconds: 900, // 15 minutes
+  PkiAcmeNonceInSeconds: 300, // 5 minutes
+  GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
+  SecretReplicationSuccessInSeconds: 10
 };
 
 type TDeleteItems = {

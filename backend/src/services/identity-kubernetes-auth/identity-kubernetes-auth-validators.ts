@@ -26,10 +26,12 @@ export type GatewayRequestExecutor = <T>(
 export const validateKubernetesHostConnectivity = async ({
   kubernetesHost,
   caCert,
+  verifyTlsCertificate,
   gatewayExecutor
 }: {
   kubernetesHost?: string;
   caCert?: string;
+  verifyTlsCertificate?: boolean;
   gatewayExecutor?: GatewayRequestExecutor;
 }): Promise<void> => {
   const isGatewayMode = Boolean(gatewayExecutor);
@@ -53,7 +55,7 @@ export const validateKubernetesHostConnectivity = async ({
 
       const httpsAgent = new https.Agent({
         ca: caCert || undefined,
-        rejectUnauthorized: Boolean(caCert)
+        rejectUnauthorized: verifyTlsCertificate ?? false
       });
 
       await blockLocalAndPrivateIpAddresses(kubernetesHost);
@@ -110,11 +112,13 @@ export const validateTokenReviewerPermissions = async ({
   kubernetesHost,
   tokenReviewerJwt,
   caCert,
+  verifyTlsCertificate,
   gatewayExecutor
 }: {
   kubernetesHost?: string;
   tokenReviewerJwt?: string;
   caCert?: string;
+  verifyTlsCertificate?: boolean;
   gatewayExecutor?: GatewayRequestExecutor;
 }): Promise<void> => {
   const isGatewayMode = Boolean(gatewayExecutor);
@@ -156,7 +160,7 @@ export const validateTokenReviewerPermissions = async ({
 
       const httpsAgent = new https.Agent({
         ca: caCert || undefined,
-        rejectUnauthorized: Boolean(caCert)
+        rejectUnauthorized: verifyTlsCertificate ?? false
       });
 
       await blockLocalAndPrivateIpAddresses(kubernetesHost);

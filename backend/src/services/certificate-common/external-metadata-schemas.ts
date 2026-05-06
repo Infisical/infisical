@@ -13,6 +13,16 @@ export const AwsAcmPublicCaExternalMetadataSchema = z.object({
 
 export type TAwsAcmPublicCaExternalMetadata = z.infer<typeof AwsAcmPublicCaExternalMetadataSchema>;
 
-export const ExternalMetadataSchema = z.discriminatedUnion("type", [AwsAcmPublicCaExternalMetadataSchema]);
+export const DigiCertExternalMetadataSchema = z.object({
+  type: z.literal(CaType.DIGICERT),
+  orderId: z.number().int().positive()
+});
+
+export type TDigiCertExternalMetadata = z.infer<typeof DigiCertExternalMetadataSchema>;
+
+export const ExternalMetadataSchema = z.discriminatedUnion("type", [
+  AwsAcmPublicCaExternalMetadataSchema,
+  DigiCertExternalMetadataSchema
+]);
 
 export type TExternalMetadata = z.infer<typeof ExternalMetadataSchema>;

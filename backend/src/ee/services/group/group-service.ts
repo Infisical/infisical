@@ -6,6 +6,8 @@ import { AccessScope, OrganizationActionScope, OrgMembershipRole, TGroups, TRole
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -122,7 +124,9 @@ export const groupServiceFactory = ({
       });
 
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (role !== OrgMembershipRole.NoAccess) {
       const permissionBoundary = validatePrivilegeChangeOperation(
@@ -235,7 +239,9 @@ export const groupServiceFactory = ({
     if (role) {
       const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
 
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+        orgDAL.findById(actorOrgId)
+      );
       const isCustomRole = Boolean(rolePermissionDetails?.role);
 
       const permissionBoundary = validatePrivilegeChangeOperation(
@@ -880,7 +886,9 @@ export const groupServiceFactory = ({
 
     const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
@@ -959,7 +967,9 @@ export const groupServiceFactory = ({
 
     const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
@@ -1050,7 +1060,9 @@ export const groupServiceFactory = ({
 
     const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(
@@ -1127,7 +1139,9 @@ export const groupServiceFactory = ({
 
     const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
 
     // check if user has broader or equal to privileges than group
     const permissionBoundary = validatePrivilegeChangeOperation(

@@ -24,6 +24,7 @@ import {
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   DbtConnectionMethod,
+  DevinConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -55,6 +56,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
@@ -65,14 +67,18 @@ import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/net
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
+import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
+import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
+import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -82,6 +88,7 @@ export const APP_CONNECTION_MAP: Record<
     size?: number;
     icon?: IconDefinition;
     enterprise?: boolean;
+    aliases?: string[];
   }
 > = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
@@ -160,11 +167,17 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
+  [AppConnection.VenafiTpp]: { name: "Venafi TPP", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
-  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" }
+  [AppConnection.OVH]: { name: "OVH Cloud", image: "OVH.png" },
+  [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
+  [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
+  [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
+  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
+  [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -173,6 +186,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubRadarConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
     case GitHubConnectionMethod.Pat:
+    case OnaConnectionMethod.PersonalAccessToken:
       return { name: "Personal Access Token", icon: faKey };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -181,6 +195,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
+    case VenafiTppConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -219,6 +234,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case SnowflakeConnectionMethod.UsernameAndToken:
+      return { name: "Username & Token", icon: faKey };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
@@ -245,6 +262,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DevinConnectionMethod.ApiKey:
+    case DigiCertConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
@@ -272,6 +291,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case OVHConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

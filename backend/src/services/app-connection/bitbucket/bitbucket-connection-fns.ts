@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -53,8 +54,12 @@ export const validateBitbucketConnectionCredentials = async (config: TBitbucketC
   return config.credentials;
 };
 
+interface BitbucketWorkspaceMembership {
+  workspace: { slug: string };
+}
+
 interface BitbucketWorkspacesResponse {
-  values: TBitbucketWorkspace[];
+  values: BitbucketWorkspaceMembership[];
   next?: string;
 }
 
@@ -67,17 +72,18 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   };
 
   let allWorkspaces: TBitbucketWorkspace[] = [];
-  let nextUrl: string | undefined = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces?pagelen=100`;
+  let nextUrl: string | undefined = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces?pagelen=100`;
   let iterationCount = 0;
 
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 workspaces
   while (nextUrl && iterationCount < 10) {
     // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: BitbucketWorkspacesResponse } = await request.get<BitbucketWorkspacesResponse>(nextUrl, {
-      headers
-    });
+    const { data }: { data: BitbucketWorkspacesResponse } = await safeRequest.get<BitbucketWorkspacesResponse>(
+      nextUrl,
+      { headers }
+    );
 
-    allWorkspaces = allWorkspaces.concat(data.values.map((workspace) => ({ slug: workspace.slug })));
+    allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
     nextUrl = data.next;
     iterationCount += 1;
   }
@@ -100,7 +106,7 @@ const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, 
 
   while (nextUrl && iterationCount < BITBUCKET_MAX_PAGES) {
     // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: BitbucketPaginatedResponse<T> } = await request.get(nextUrl, { headers });
+    const { data }: { data: BitbucketPaginatedResponse<T> } = await safeRequest.get(nextUrl, { headers });
 
     allItems = allItems.concat(data.values);
     nextUrl = data.next;
@@ -159,9 +165,10 @@ export const listBitbucketEnvironments = async (
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 environments
   while (hasNextPage && iterationCount < 10) {
     // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
-      headers
-    });
+    const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await safeRequest.get(
+      environmentsUrl,
+      { headers }
+    );
 
     if (data?.values.length > 0) {
       environments.push(...data.values);

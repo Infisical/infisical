@@ -142,6 +142,11 @@ export const useUpdateSecretV3 = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -298,6 +303,11 @@ export const useUpdateSecretBatch = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -412,13 +422,21 @@ export const useMoveSecrets = ({
 
       return data;
     },
-    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
+    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath, destinationSecretPath }) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: sourceSecretPath
         })
       });
+      if (destinationSecretPath !== sourceSecretPath) {
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getDashboardSecrets({
+            projectId,
+            secretPath: destinationSecretPath
+          })
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({
           projectId,
@@ -567,6 +585,11 @@ export const useCreateCommit = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })

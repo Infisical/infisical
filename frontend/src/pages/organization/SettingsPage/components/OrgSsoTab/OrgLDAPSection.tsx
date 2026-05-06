@@ -1,7 +1,28 @@
+import { ArrowLeftRight, MoreHorizontal, Pencil } from "lucide-react";
+
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle,
+  IconButton,
+  Switch
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -14,7 +35,11 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { LDAPGroupMapModal } from "./LDAPGroupMapModal";
 import { LDAPModal } from "./LDAPModal";
 
-export const OrgLDAPSection = (): JSX.Element => {
+type Props = {
+  onSwitchProvider?: () => void;
+};
+
+export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
@@ -54,8 +79,6 @@ export const OrgLDAPSection = (): JSX.Element => {
     try {
       if (subscription?.ldap && currentOrg) {
         if (!data) {
-          // case: LDAP is not configured
-          // -> initialize empty LDAP configuration
           await createMutateAsync({
             organizationId: currentOrg.id,
             isActive: false,
@@ -95,81 +118,93 @@ export const OrgLDAPSection = (): JSX.Element => {
   const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
 
   return (
-    <div className="mb-4">
-      <div className="py-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-xl font-medium text-gray-200">LDAP</p>
-            <p className="mb-2 text-gray-400">Manage LDAP authentication configuration</p>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
-            {(isAllowed) => (
-              <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                Manage
-              </Button>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>LDAP</CardTitle>
+          <CardDescription>Manage LDAP authentication configuration.</CardDescription>
+          <CardAction>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton variant="ghost" size="sm" aria-label="LDAP configuration options">
+                  <MoreHorizontal />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+                  {(isAllowed) => (
+                    <DropdownMenuItem isDisabled={!isAllowed} onClick={addLDAPBtnClick}>
+                      <Pencil />
+                      Edit Configuration
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
+                {onSwitchProvider && (
+                  <DropdownMenuItem onClick={onSwitchProvider}>
+                    <ArrowLeftRight />
+                    Switch Method
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            {data && (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>Enable LDAP</FieldTitle>
+                  <FieldDescription>
+                    Allow members to authenticate into Infisical with LDAP.
+                  </FieldDescription>
+                </FieldContent>
+                <OrgPermissionCan
+                  I={OrgPermissionActions.Edit}
+                  a={OrgPermissionSubjects.Ldap}
+                  tooltipProps={{
+                    className: "max-w-sm",
+                    side: "left"
+                  }}
+                  allowedLabel={
+                    isGoogleOAuthEnabled
+                      ? "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+                      : undefined
+                  }
+                  renderTooltip={isGoogleOAuthEnabled}
+                >
+                  {(isAllowed) => (
+                    <div>
+                      <Switch
+                        id="enable-ldap-sso"
+                        variant="org"
+                        checked={data.isActive}
+                        onCheckedChange={(value) => handleLDAPToggle(value)}
+                        disabled={!isAllowed || isGoogleOAuthEnabled}
+                      />
+                    </div>
+                  )}
+                </OrgPermissionCan>
+              </Field>
             )}
-          </OrgPermissionCan>
-        </div>
-      </div>
-
-      {data && (
-        <div className="pt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
-            <OrgPermissionCan
-              I={OrgPermissionActions.Edit}
-              a={OrgPermissionSubjects.Ldap}
-              tooltipProps={{
-                className: "max-w-sm",
-                side: "left"
-              }}
-              allowedLabel={
-                isGoogleOAuthEnabled
-                  ? "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
-                  : undefined
-              }
-              renderTooltip={isGoogleOAuthEnabled}
-            >
-              {(isAllowed) => (
-                <div>
-                  <Switch
-                    id="enable-ldap-sso"
-                    onCheckedChange={(value) => handleLDAPToggle(value)}
-                    isChecked={data ? data.isActive : false}
-                    isDisabled={!isAllowed || isGoogleOAuthEnabled}
-                  >
-                    Enable
-                  </Switch>
-                </div>
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Allow members to authenticate into Infisical with LDAP
-          </p>
-        </div>
-      )}
-
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">LDAP Group Mappings</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
-            {(isAllowed) => (
-              <Button
-                onClick={openLDAPGroupMapModal}
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-              >
-                Configure
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          Manage how LDAP groups are mapped to internal groups in Infisical
-        </p>
-      </div>
-
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>LDAP Group Mappings</FieldTitle>
+                <FieldDescription>
+                  Manage how LDAP groups are mapped to internal groups in Infisical.
+                </FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+                {(isAllowed) => (
+                  <Button variant="outline" isDisabled={!isAllowed} onClick={openLDAPGroupMapModal}>
+                    Configure
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
@@ -186,6 +221,6 @@ export const OrgLDAPSection = (): JSX.Element => {
         text="Your current plan does not include access to LDAP authentication. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
-    </div>
+    </>
   );
 };

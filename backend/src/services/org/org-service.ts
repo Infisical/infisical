@@ -33,6 +33,8 @@ import { delay as delayMs } from "@app/lib/delay";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { QueueName } from "@app/queue";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -177,7 +179,7 @@ export const orgServiceFactory = ({
     const appCfg = getConfig();
     const hasSubOrg = rootOrgId !== actorOrgId;
 
-    const org = await orgDAL.findOrgById(rootOrgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(rootOrgId), () => orgDAL.findOrgById(rootOrgId));
     if (!org) throw new NotFoundError({ message: `Organization with ID '${rootOrgId}' not found` });
 
     let subOrg;
@@ -450,7 +452,9 @@ export const orgServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(orgId);
-    const currentOrg = await orgDAL.findOrgById(actorOrgId);
+    const currentOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
+      orgDAL.findOrgById(actorOrgId)
+    );
 
     if (secretShareBrandConfig !== undefined) {
       if (!plan.secretShareExternalBranding) {
@@ -889,7 +893,7 @@ export const orgServiceFactory = ({
 
     const invitingUser = await userDAL.findOne({ id: actorId });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     const [inviteeOrgMembership] = await orgDAL.findMembership({
       [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
@@ -977,7 +981,7 @@ export const orgServiceFactory = ({
       });
     }
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
@@ -1236,7 +1240,9 @@ export const orgServiceFactory = ({
       invitedUsers.map(async (invitedUser) => {
         let org = orgCache[invitedUser.scopeOrgId];
         if (!org) {
-          org = await orgDAL.findById(invitedUser.scopeOrgId);
+          org = await requestMemoize(requestMemoKeys.orgFindById(invitedUser.scopeOrgId), () =>
+            orgDAL.findById(invitedUser.scopeOrgId)
+          );
           orgCache[invitedUser.scopeOrgId] = org;
         }
 

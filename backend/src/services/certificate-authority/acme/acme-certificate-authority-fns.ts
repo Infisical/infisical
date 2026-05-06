@@ -46,6 +46,7 @@ import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
+import { throwIfAcmeOrderAborted } from "./acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
 import {
   TAcmeCertificateAuthority,
@@ -295,7 +296,8 @@ export const orderCertificate = async (
     signatureAlgorithm,
     keyAlgorithm,
     isRenewal,
-    originalCertificateId
+    originalCertificateId,
+    abortSignal
   }: {
     caId: string;
     profileId?: string;
@@ -311,6 +313,7 @@ export const orderCertificate = async (
     keyAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    abortSignal?: AbortSignal;
   },
   deps: TOrderCertificateDeps,
   tx?: Knex
@@ -521,6 +524,8 @@ export const orderCertificate = async (
       }
     }
   });
+
+  throwIfAcmeOrderAborted(abortSignal);
 
   const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
   const certObj = new x509.X509Certificate(leafCert);
@@ -926,7 +931,8 @@ export const AcmeCertificateAuthorityFns = ({
     signatureAlgorithm,
     keyAlgorithm,
     isRenewal,
-    originalCertificateId
+    originalCertificateId,
+    abortSignal
   }: {
     caId: string;
     profileId?: string;
@@ -941,6 +947,7 @@ export const AcmeCertificateAuthorityFns = ({
     keyAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    abortSignal?: AbortSignal;
   }) => {
     return orderCertificate(
       {
@@ -957,7 +964,8 @@ export const AcmeCertificateAuthorityFns = ({
         signatureAlgorithm,
         keyAlgorithm,
         isRenewal,
-        originalCertificateId
+        originalCertificateId,
+        abortSignal
       },
       {
         appConnectionDAL,

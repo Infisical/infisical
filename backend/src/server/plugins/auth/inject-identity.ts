@@ -266,7 +266,10 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
-          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
+          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessTokenFast(
+            token,
+            req.realIp
+          );
           const serverCfg = await getServerCfg();
           requestContext.set(RequestContextKey.OrgId, identity.orgId);
           requestContext.set(RequestContextKey.OrgName, identity.orgName);

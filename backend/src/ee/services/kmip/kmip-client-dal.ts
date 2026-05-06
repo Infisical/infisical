@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TKmipClients } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
@@ -56,7 +57,7 @@ export const kmipClientDALFactory = (db: TDbClient) => {
         .where("projectId", projectId)
         .where((qb) => {
           if (search) {
-            void qb.whereILike("name", `%${search}%`);
+            void qb.whereILike("name", `%${sanitizeSqlLikeString(search)}%`);
           }
         })
         .select<

@@ -208,6 +208,12 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+  const isManagedSecretSelected = Object.values(selectedSecrets).some(
+    (secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret
+  );
+  const isHoneyTokenSelected = Object.values(selectedSecrets).some(
+    (secret) => secret.isHoneyTokenSecret
+  );
 
   const { permission } = useProjectPermission();
   const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
@@ -672,24 +678,30 @@ export const ActionBar = ({
     }
   };
 
-  const handleVaultImport = async (vaultPath: string, namespace: string) => {
-    const result = await importVaultSecrets({
+  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+    const { status } = await importVaultSecrets({
       projectId,
       environment,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPath: vaultPath
+      vaultSecretPaths: vaultPaths
     });
 
-    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
+    if (status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
-        text: "Secret change request created successfully. Awaiting approval."
+        text:
+          vaultPaths.length > 1
+            ? `Secret change request created for ${vaultPaths.length} Vault paths. Awaiting approval.`
+            : "Secret change request created successfully. Awaiting approval."
       });
     } else {
       createNotification({
         type: "success",
-        text: "Successfully imported secrets from HashiCorp Vault"
+        text:
+          vaultPaths.length > 1
+            ? `Successfully imported secrets from ${vaultPaths.length} HashiCorp Vault paths`
+            : "Successfully imported secrets from HashiCorp Vault"
       });
     }
   };
@@ -1177,7 +1189,7 @@ export const ActionBar = ({
                 leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
                 className="ml-4"
                 onClick={() => handlePopUpOpen("moveSecrets")}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || isHoneyTokenSelected}
                 size="xs"
               >
                 Move
@@ -1202,7 +1214,7 @@ export const ActionBar = ({
                 leftIcon={<FontAwesomeIcon icon={faTrash} />}
                 className="ml-2"
                 onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || isManagedSecretSelected}
                 size="xs"
               >
                 Delete

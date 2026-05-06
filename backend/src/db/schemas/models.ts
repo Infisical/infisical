@@ -61,7 +61,6 @@ export enum TableName {
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
-  ApiKey = "api_keys",
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -94,6 +93,7 @@ export enum TableName {
   Webhook = "webhooks",
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
+  IdentityAccessTokenRevocation = "identity_access_token_revocations",
   IdentityTokenAuth = "identity_token_auths",
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityKubernetesAuth = "identity_kubernetes_auths",
@@ -218,7 +218,11 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
-  GatewayEnrollmentTokens = "gateway_enrollment_tokens",
+  ResourceAuthMethod = "resource_auth_methods",
+  ResourceAwsAuth = "resource_aws_auths",
+  ResourceTokenAuth = "resource_token_auths",
+  GatewayPool = "gateway_pools",
+  GatewayPoolMembership = "gateway_pool_memberships",
 
   KeyValueStore = "key_value_store",
 
@@ -228,6 +232,8 @@ export enum TableName {
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
   PamSessionEventBatch = "pam_session_event_batches",
+  PamSessionEventChunk = "pam_session_event_chunks",
+  PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
@@ -288,11 +294,18 @@ export enum TableName {
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
 
+  // Honey Tokens
+  HoneyTokenConfig = "honey_token_configs",
+  HoneyToken = "honey_tokens",
+  HoneyTokenEvent = "honey_token_events",
+  HoneyTokenSecretMapping = "honey_token_secret_mappings",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
-  DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2"
+  DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
+  DeprecatedApiKey = "api_keys"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

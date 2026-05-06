@@ -11,6 +11,8 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
@@ -87,7 +89,9 @@ export const identityServiceFactory = ({
 
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], orgId);
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
@@ -215,7 +219,9 @@ export const identityServiceFactory = ({
     let customRole: TRoles | undefined;
     if (role) {
       const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
-      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+        orgDAL.findById(actorOrgId)
+      );
 
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
@@ -247,7 +253,7 @@ export const identityServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    const identityDetails = await identityDAL.findById(id);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
@@ -398,7 +404,7 @@ export const identityServiceFactory = ({
       return doc;
     });
 
-    const deletedIdentity = await identityDAL.findById(id);
+    const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

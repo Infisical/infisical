@@ -295,6 +295,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_POLICY_GET]: "Get PAM Account Policy",
   [EventType.PAM_ACCOUNT_READ_CREDENTIALS]: "Read PAM Account Credentials",
   [EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED]: "Create PAM Web Access Session Ticket",
+  [EventType.PAM_SESSION_CHUNK_UPLOAD]: "PAM Session Chunk Upload",
+  [EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID]: "PAM Session Upload Token Invalid",
+  [EventType.PAM_RECORDING_CONFIG_UPDATE]: "Update PAM Recording Config",
+  [EventType.PAM_RECORDING_CONFIG_DELETE]: "Delete PAM Recording Config",
+  [EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED]:
+    "PAM Recording Bucket Connection Test Failed",
   [EventType.PAM_RESOURCE_LIST]: "List PAM Resources",
   [EventType.PAM_RESOURCE_GET]: "Get PAM Resource",
   [EventType.PAM_RESOURCE_CREATE]: "Create PAM Resource",
@@ -327,6 +333,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
+
+  [EventType.CREATE_CERTIFICATE_REQUEST]: "Create Certificate Request",
+  [EventType.GET_CERTIFICATE_REQUEST]: "Get Certificate Request",
+  [EventType.GET_CERTIFICATE_FROM_REQUEST]: "Get Certificate From Request",
+  [EventType.LIST_CERTIFICATE_REQUESTS]: "List Certificate Requests",
+  [EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION]: "Trigger Certificate Request Validation",
 
   [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
   [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
@@ -392,7 +404,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   // External Migration
   [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
   [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
-  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration"
+  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
+  [EventType.GATEWAY_CREATE]: "Create gateway",
+  [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
+  [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Gateway login",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Gateway login failed",
+  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update gateway auth method",
+  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke gateway access"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -471,7 +490,12 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_RESOURCE_ROTATION_RULE_CREATE,
     EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE,
     EventType.PAM_RESOURCE_ROTATION_RULE_DELETE,
-    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER
+    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER,
+    EventType.PAM_SESSION_CHUNK_UPLOAD,
+    EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
+    EventType.PAM_RECORDING_CONFIG_UPDATE,
+    EventType.PAM_RECORDING_CONFIG_DELETE,
+    EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED
   ],
   [ProjectType.AI]: [
     ...sharedProjectEvents,

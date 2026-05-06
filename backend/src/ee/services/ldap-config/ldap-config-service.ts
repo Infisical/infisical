@@ -14,6 +14,8 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
@@ -32,6 +34,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -90,6 +94,7 @@ type TLdapConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -113,7 +118,8 @@ export const ldapConfigServiceFactory = ({
   smtpService,
   kmsService,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -149,7 +155,7 @@ export const ldapConfigServiceFactory = ({
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
       });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
@@ -277,7 +283,7 @@ export const ldapConfigServiceFactory = ({
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
       });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
@@ -425,7 +431,7 @@ export const ldapConfigServiceFactory = ({
       aliasType: UserAliasType.LDAP
     });
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     if (userAlias) {
@@ -471,6 +477,7 @@ export const ldapConfigServiceFactory = ({
         }
       });
     } else {
+      let isNewUser = false;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -488,6 +495,7 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         const newUserAlias = await userAliasDAL.create(
@@ -539,6 +547,19 @@ export const ldapConfigServiceFactory = ({
 
         return newUserAlias;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: sanitizedEmail,
+          organizationId: orgId,
+          properties: {
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            signupMethod: "ldap"
+          }
+        });
+      }
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
@@ -630,7 +651,7 @@ export const ldapConfigServiceFactory = ({
 
       await smtpService.sendMail({
         template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical confirmation code",
+        subjectLine: `Infisical confirmation code: ${token}`,
         recipients: [user.email],
         substitutions: {
           code: token

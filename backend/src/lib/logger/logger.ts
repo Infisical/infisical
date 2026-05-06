@@ -4,7 +4,6 @@
 // easier to use it that's all.
 import { requestContext } from "@fastify/request-context";
 import pino, { Logger } from "pino";
-import { z } from "zod";
 
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
@@ -47,15 +46,6 @@ export interface CustomLogger extends Omit<Logger, "info" | "error" | "warn" | "
 
 // eslint-disable-next-line import/no-mutable-exports
 export let logger: Readonly<CustomLogger>;
-
-const loggerConfig = z.object({
-  AWS_CLOUDWATCH_LOG_GROUP_NAME: z.string().default("infisical-log-stream"),
-  AWS_CLOUDWATCH_LOG_REGION: z.string().default("us-east-1"),
-  AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID: z.string().min(1).optional(),
-  AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET: z.string().min(1).optional(),
-  AWS_CLOUDWATCH_LOG_INTERVAL: z.coerce.number().default(1000),
-  NODE_ENV: z.enum(["development", "test", "production"]).default("production")
-});
 
 const redactedKeys = [
   "accessToken",
@@ -117,7 +107,6 @@ const extractOrgId = () => {
 };
 
 export const initLogger = () => {
-  const cfg = loggerConfig.parse(process.env);
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
       level: "info",
@@ -128,21 +117,6 @@ export const initLogger = () => {
       }
     }
   ];
-
-  if (cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID && cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET) {
-    targets.push({
-      target: "@serdnam/pino-cloudwatch-transport",
-      level: "info",
-      options: {
-        logGroupName: cfg.AWS_CLOUDWATCH_LOG_GROUP_NAME,
-        logStreamName: cfg.AWS_CLOUDWATCH_LOG_GROUP_NAME,
-        awsRegion: cfg.AWS_CLOUDWATCH_LOG_REGION,
-        awsAccessKeyId: cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID,
-        awsSecretAccessKey: cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET,
-        interval: cfg.AWS_CLOUDWATCH_LOG_INTERVAL
-      }
-    });
-  }
 
   const transport = pino.transport({
     targets

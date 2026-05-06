@@ -1,5 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
@@ -13,7 +13,9 @@ import {
   FormLabel,
   IconButton,
   Input,
-  SecretInput
+  SecretInput,
+  Switch,
+  Tooltip
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -37,7 +39,8 @@ const formSchema = z.object({
         configure: z.string().trim().min(1)
       })
     }),
-    ca: z.string().optional()
+    ca: z.string().optional(),
+    sslRejectUnauthorized: z.boolean().default(true)
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -99,7 +102,8 @@ export const RabbitMqInputForm = ({
             configure: ".*"
           }
         },
-        tags: []
+        tags: [],
+        sslRejectUnauthorized: true
       },
       environment: isSingleEnvironmentMode ? environments[0] : undefined,
       usernameTemplate: "{{randomUsername}}"
@@ -422,6 +426,37 @@ export const RabbitMqInputForm = ({
                   )}
                 />
               </div>
+              <Controller
+                name="provider.sslRejectUnauthorized"
+                control={control}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                    <Switch
+                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      id="ssl-reject-unauthorized"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={value}
+                      onCheckedChange={onChange}
+                    >
+                      <p className="w-full">
+                        SSL Reject Unauthorized
+                        <Tooltip
+                          className="max-w-md"
+                          content={
+                            <p>
+                              If enabled, the server certificate will be verified against the list
+                              of supplied CAs. Disable this option if you are using a self-signed
+                              certificate.
+                            </p>
+                          }
+                        >
+                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                        </Tooltip>
+                      </p>
+                    </Switch>
+                  </FormControl>
+                )}
+              />
               <Controller
                 control={control}
                 name="usernameTemplate"

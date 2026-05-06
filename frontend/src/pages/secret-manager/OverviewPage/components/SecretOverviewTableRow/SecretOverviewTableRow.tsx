@@ -9,6 +9,7 @@ import {
   faFileImport,
   faKey,
   faRotate,
+  faShieldHalved,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -264,6 +265,11 @@ export const SecretOverviewTableRow = ({
                                   <FontAwesomeIcon icon={faRotate} />
                                 </Tooltip>
                               )}
+                              {secret?.isHoneyTokenSecret && (
+                                <Tooltip content="Honey Token Secret">
+                                  <FontAwesomeIcon icon={faShieldHalved} className="text-yellow" />
+                                </Tooltip>
+                              )}
                               {secret?.idOverride && (
                                 <Tooltip content="Personal Override">
                                   <FontAwesomeIcon icon={faCodeBranch} />
@@ -289,6 +295,7 @@ export const SecretOverviewTableRow = ({
                               onSecretUpdate={onSecretUpdate}
                               environment={slug}
                               isRotatedSecret={secret?.isRotatedSecret}
+                              isHoneyTokenSecret={secret?.isHoneyTokenSecret}
                               importedBy={importedBy}
                               isSecretPresent={Boolean(secret)}
                             />
