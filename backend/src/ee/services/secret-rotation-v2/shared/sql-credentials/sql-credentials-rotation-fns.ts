@@ -67,24 +67,36 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
   const passwordRequirement = userProvidedPasswordRequirements || defaultPasswordRequirement;
 
-  const executeOperation = <T>(
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
+
+  const executeOperation = async <T>(
     operation: (client: Knex) => Promise<T>,
     credentialsOverride?: TSqlCredentialsRotationGeneratedCredentials[number]
   ) => {
+    const conn = await getResolvedConnection();
     const finalCredentials = {
-      ...connection.credentials,
+      ...conn.credentials,
       ...credentialsOverride
     };
 
     return executeWithPotentialGateway(
       {
-        ...connection,
+        ...conn,
         credentials: finalCredentials
       },
       gatewayService,
       gatewayV2Service,
-      (client) => operation(client),
-      gatewayPoolService
+      (client) => operation(client)
     );
   };
 

@@ -29,37 +29,43 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
 
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
+
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
-    const { credentials } = connection;
+    const conn = await getResolvedConnection();
 
     const verifyConfig: TSmbConnectionConfig = {
       method: SmbConnectionMethod.Credentials,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
-      gatewayPoolId: connection.gatewayPoolId,
+      app: conn.app,
+      orgId: conn.orgId,
+      gatewayId: conn.gatewayId,
       credentials: {
-        host: credentials.host,
-        port: credentials.port,
+        host: conn.credentials.host,
+        port: conn.credentials.port,
         domain: undefined,
         username: targetUsername,
         password: targetPassword
       }
     };
 
-    await executeSmbWithPotentialGateway(
-      verifyConfig,
-      gatewayV2Service,
-      async (targetHost, targetPort) => {
-        await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
-      },
-      gatewayPoolService
-    );
+    await executeSmbWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
+      await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
+    });
   };
 
-  // Main password rotation logic
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
-    const { credentials } = connection;
+    const conn = await getResolvedConnection();
+    const { credentials } = conn;
     const credentialsDomain: string | undefined = credentials.domain;
     const credentialsPassword: string = credentials.password;
     const newPassword = generatePassword(passwordRequirements);
@@ -79,17 +85,14 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     if (isSelfRotation && currentPassword) {
       smbConfig.adminUser = username;
       smbConfig.adminPassword = currentPassword;
-      // Clear domain for self-rotation - local accounts don't belong to a domain
       smbConfig.domain = undefined;
     }
 
-    // Determine which credentials to use for the SMB connection
     const connectConfig: TSmbConnectionConfig = {
-      method: connection.method,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
-      gatewayPoolId: connection.gatewayPoolId,
+      method: conn.method,
+      app: conn.app,
+      orgId: conn.orgId,
+      gatewayId: conn.gatewayId,
       credentials: {
         host: credentials.host,
         port: credentials.port,
@@ -102,24 +105,18 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     if (isSelfRotation && currentPassword) {
       connectConfig.credentials.username = username;
       connectConfig.credentials.password = currentPassword;
-      // Clear domain for self-rotation - local accounts don't belong to a domain
       connectConfig.credentials.domain = undefined;
     }
 
-    await executeSmbWithPotentialGateway(
-      connectConfig,
-      gatewayV2Service,
-      async (targetHost, targetPort) => {
-        const configWithProxiedHost: SmbRpcConfig = {
-          ...smbConfig,
-          host: targetHost,
-          port: targetPort
-        };
+    await executeSmbWithPotentialGateway(connectConfig, gatewayV2Service, async (targetHost, targetPort) => {
+      const configWithProxiedHost: SmbRpcConfig = {
+        ...smbConfig,
+        host: targetHost,
+        port: targetPort
+      };
 
-        await changeWindowsPassword(configWithProxiedHost, username, newPassword);
-      },
-      gatewayPoolService
-    );
+      await changeWindowsPassword(configWithProxiedHost, username, newPassword);
+    });
 
     await $verifyCredentials(username, newPassword);
 

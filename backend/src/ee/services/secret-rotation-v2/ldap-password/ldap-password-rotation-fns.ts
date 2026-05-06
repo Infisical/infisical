@@ -114,15 +114,27 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
   const { dn, passwordRequirements } = parameters;
 
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
+
   const $verifyCredentials = async (
     verifyOpts: Pick<TLdapConnection["credentials"], "dn" | "password"> & { url?: string }
   ) => {
     try {
+      const conn = await getResolvedConnection();
       await executeWithPotentialGateway(
-        { ...connection, credentials: { ...connection.credentials, ...verifyOpts } },
+        { ...conn, credentials: { ...conn.credentials, ...verifyOpts } },
         gatewayV2Service,
-        async () => {},
-        gatewayPoolService
+        async () => {}
       );
     } catch (error) {
       throw new Error(`Failed to verify credentials - ${(error as Error).message}`);
@@ -211,9 +223,10 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       // referral error here so we can re-throw it after the proxy's catch block.
       let capturedReferralError: LdapReferralError | undefined;
 
+      const conn = await getResolvedConnection();
       try {
         await executeWithPotentialGateway(
-          { ...connection, credentials: targetCredentials },
+          { ...conn, credentials: targetCredentials },
           gatewayV2Service,
           async (client) => {
             let userDn: string;
@@ -274,8 +287,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
                 }
               });
             });
-          },
-          gatewayPoolService
+          }
         );
       } catch (proxyErr) {
         if (capturedReferralError) {
