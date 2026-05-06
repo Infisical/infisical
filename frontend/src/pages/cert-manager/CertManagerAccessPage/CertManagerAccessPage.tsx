@@ -1,7 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { EmptyState, PageHeader, Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { EmptyState, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetOrgUsers } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -35,11 +36,7 @@ export const CertManagerAccessPage = () => {
 
   const renderUsersPanel = () => {
     if (isPending) {
-      return (
-        <div className="flex items-center justify-center p-6">
-          <Spinner />
-        </div>
-      );
+      return <PageLoader />;
     }
     if (certManagerUsers.length === 0) {
       return (

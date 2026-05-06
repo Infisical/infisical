@@ -2,17 +2,25 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Plus } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
-  Badge,
   Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -150,7 +158,7 @@ const ApiPanel = ({
   return (
     <div className="space-y-4">
       <p className="text-sm text-mineshaft-300">
-        API enrollment lets clients request certificates by calling the project API with this
+        API enrollment lets clients request certificates by calling the Infisical API with this
         profile.
       </p>
       <Controller
@@ -789,6 +797,22 @@ const ScepPanel = ({
   );
 };
 
+type EnrollmentMethod = "api" | "est" | "acme" | "scep";
+
+const METHOD_LABELS: Record<EnrollmentMethod, string> = {
+  api: "API",
+  est: "EST",
+  acme: "ACME",
+  scep: "SCEP"
+};
+
+const METHOD_DESCRIPTIONS: Record<EnrollmentMethod, string> = {
+  api: "Clients call the Infisical API directly to request certificates.",
+  est: "Clients use the EST protocol (RFC 7030) over HTTPS.",
+  acme: "Clients use the ACME protocol (RFC 8555) — same flow as Let's Encrypt.",
+  scep: "Network devices use the SCEP protocol over HTTPS."
+};
+
 export const ConfigureEnrollmentModal = ({
   isOpen,
   onOpenChange,
@@ -797,6 +821,51 @@ export const ConfigureEnrollmentModal = ({
 }: Props) => {
   const profileId = profile?.profileId ?? "";
   const { data, isLoading } = useGetPkiApplicationEnrollment(applicationId, profileId);
+
+  const configuredMethods: EnrollmentMethod[] = [];
+  if (data?.api) configuredMethods.push("api");
+  if (data?.estConfigured) configuredMethods.push("est");
+  if (data?.acmeConfigured) configuredMethods.push("acme");
+  if (data?.scepConfigured) configuredMethods.push("scep");
+
+  const [pendingMethod, setPendingMethod] = useState<EnrollmentMethod | null>(null);
+  const [activeTab, setActiveTab] = useState<EnrollmentMethod | "">("");
+
+  const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
+  const visibleMethods = ALL_ORDER.filter(
+    (m) => configuredMethods.includes(m) || pendingMethod === m
+  );
+  const addableMethods = ALL_ORDER.filter(
+    (m) => !configuredMethods.includes(m) && pendingMethod !== m
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingMethod(null);
+      setActiveTab("");
+    }
+  }, [isOpen, profileId]);
+
+  useEffect(() => {
+    if (visibleMethods.length === 0) {
+      setActiveTab("");
+      return;
+    }
+    if (!activeTab || !visibleMethods.includes(activeTab as EnrollmentMethod)) {
+      setActiveTab(visibleMethods[0]);
+    }
+  }, [visibleMethods, activeTab]);
+
+  useEffect(() => {
+    if (pendingMethod && configuredMethods.includes(pendingMethod)) {
+      setPendingMethod(null);
+    }
+  }, [pendingMethod, data]);
+
+  const handleAdd = (method: EnrollmentMethod) => {
+    setPendingMethod(method);
+    setActiveTab(method);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -816,67 +885,101 @@ export const ConfigureEnrollmentModal = ({
             <Spinner size="sm" />
           </div>
         ) : (
-          <Tabs defaultValue="api">
-            <TabList>
-              <Tab value="api">
-                <span className="inline-flex items-center gap-2">
-                  API
-                  {data?.api ? <Badge variant="success">active</Badge> : null}
-                </span>
-              </Tab>
-              <Tab value="est">
-                <span className="inline-flex items-center gap-2">
-                  EST
-                  {data?.estConfigured ? <Badge variant="success">active</Badge> : null}
-                </span>
-              </Tab>
-              <Tab value="acme">
-                <span className="inline-flex items-center gap-2">
-                  ACME
-                  {data?.acmeConfigured ? <Badge variant="success">active</Badge> : null}
-                </span>
-              </Tab>
-              <Tab value="scep">
-                <span className="inline-flex items-center gap-2">
-                  SCEP
-                  {data?.scepConfigured ? <Badge variant="success">active</Badge> : null}
-                </span>
-              </Tab>
-            </TabList>
-            <TabPanel value="api">
-              <ApiPanel
-                applicationId={applicationId}
-                profileId={profileId}
-                enabled={Boolean(data?.api)}
-                initial={data?.api ?? null}
-              />
-            </TabPanel>
-            <TabPanel value="est">
-              <EstPanel
-                applicationId={applicationId}
-                profileId={profileId}
-                enabled={Boolean(data?.estConfigured)}
-                initial={data?.est ?? null}
-              />
-            </TabPanel>
-            <TabPanel value="acme">
-              <AcmePanel
-                applicationId={applicationId}
-                profileId={profileId}
-                enabled={Boolean(data?.acmeConfigured)}
-                initial={data?.acme ?? null}
-              />
-            </TabPanel>
-            <TabPanel value="scep">
-              <ScepPanel
-                applicationId={applicationId}
-                profileId={profileId}
-                profileSlug={profile?.profileSlug ?? ""}
-                enabled={Boolean(data?.scepConfigured)}
-                initial={data?.scep ?? null}
-              />
-            </TabPanel>
-          </Tabs>
+          <>
+            <div className="flex items-center justify-between gap-2 border-b border-border">
+              {visibleMethods.length > 0 ? (
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
+                  <TabList className="border-b-0">
+                    {visibleMethods.map((m) => (
+                      <Tab key={m} value={m}>
+                        {METHOD_LABELS[m]}
+                      </Tab>
+                    ))}
+                  </TabList>
+                </Tabs>
+              ) : (
+                <div />
+              )}
+              {addableMethods.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="mb-2">
+                      <Plus className="size-4" />
+                      Add enrollment method
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {addableMethods.map((m) => (
+                      <DropdownMenuItem key={m} onClick={() => handleAdd(m)}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{METHOD_LABELS[m]}</span>
+                          <span className="text-muted-foreground text-xs">
+                            {METHOD_DESCRIPTIONS[m]}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </div>
+
+            {visibleMethods.length === 0 ? (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>No enrollment methods configured</EmptyTitle>
+                  <EmptyDescription>
+                    Click <span className="font-medium">Add enrollment method</span> above to let
+                    clients request certificates from this Profile.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
+                {visibleMethods.includes("api") ? (
+                  <TabPanel value="api">
+                    <ApiPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.api)}
+                      initial={data?.api ?? null}
+                    />
+                  </TabPanel>
+                ) : null}
+                {visibleMethods.includes("est") ? (
+                  <TabPanel value="est">
+                    <EstPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.estConfigured)}
+                      initial={data?.est ?? null}
+                    />
+                  </TabPanel>
+                ) : null}
+                {visibleMethods.includes("acme") ? (
+                  <TabPanel value="acme">
+                    <AcmePanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.acmeConfigured)}
+                      initial={data?.acme ?? null}
+                    />
+                  </TabPanel>
+                ) : null}
+                {visibleMethods.includes("scep") ? (
+                  <TabPanel value="scep">
+                    <ScepPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      profileSlug={profile?.profileSlug ?? ""}
+                      enabled={Boolean(data?.scepConfigured)}
+                      initial={data?.scep ?? null}
+                    />
+                  </TabPanel>
+                ) : null}
+              </Tabs>
+            )}
+          </>
         )}
       </DialogContent>
     </Dialog>

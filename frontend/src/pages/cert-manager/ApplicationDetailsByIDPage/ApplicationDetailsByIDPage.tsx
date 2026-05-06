@@ -2,24 +2,19 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faCheck, faCopy, faEllipsisVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { ChevronLeftIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  DeleteActionModal,
-  PageHeader,
-  Spinner,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+import { DeleteActionModal, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  PageLoader,
+  ResourceIcon
 } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 import {
@@ -79,11 +74,7 @@ export const ApplicationDetailsByIDPage = () => {
   };
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center p-12 text-muted">
-        <Spinner />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!application) {
@@ -98,8 +89,20 @@ export const ApplicationDetailsByIDPage = () => {
       <div className="h-full bg-bunker-800">
         <div className="mx-auto flex flex-col text-white">
           <div className="mx-auto mb-6 w-full max-w-8xl">
+            <div className="mb-4">
+              <Link
+                to={
+                  `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications` as never
+                }
+                className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+              >
+                <ChevronLeftIcon size={16} />
+                Back to Applications
+              </Link>
+            </div>
             <PageHeader
               scope={ProjectType.CertificateManager}
+              icon={ResourceIcon}
               title={application.name}
               description={application.description ?? undefined}
             >

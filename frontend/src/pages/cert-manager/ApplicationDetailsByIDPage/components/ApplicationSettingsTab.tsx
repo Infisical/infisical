@@ -465,7 +465,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-      <div className="space-y-4 lg:col-span-3">
+      <div className="space-y-4 lg:order-2 lg:col-span-3">
         <Card>
           <CardHeader className="grid-cols-[1fr_auto]">
             <CardTitle>General</CardTitle>
@@ -498,7 +498,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </Card>
       </div>
 
-      <div className="space-y-4 lg:col-span-9">
+      <div className="space-y-4 lg:order-1 lg:col-span-9">
         <Card>
           <CardHeader>
             <CardTitle>Enrollment Methods</CardTitle>

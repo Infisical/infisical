@@ -1,16 +1,9 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import {
-  Hexagon,
-  InfoIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  PlusIcon,
-  Trash2Icon
-} from "lucide-react";
+import { InfoIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, PageHeader, Spinner } from "@app/components/v2";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -27,6 +20,8 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageLoader,
+  ResourceIcon,
   Table,
   TableBody,
   TableCell,
@@ -60,11 +55,7 @@ export const ApplicationsPage = () => {
 
   const renderApplications = () => {
     if (isPending) {
-      return (
-        <div className="flex items-center justify-center p-8">
-          <Spinner />
-        </div>
-      );
+      return <PageLoader />;
     }
     if (!applications || applications.length === 0) {
       return (
@@ -103,7 +94,7 @@ export const ApplicationsPage = () => {
             >
               <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
-                  <Hexagon className="size-4 shrink-0 text-primary" strokeWidth={1.75} />
+                  <ResourceIcon className="size-4 shrink-0 text-primary" />
                   <span>{app.name}</span>
                   {app.description?.length ? (
                     <Tooltip>
@@ -170,6 +161,7 @@ export const ApplicationsPage = () => {
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
               scope={ProjectType.CertificateManager}
+              icon={ResourceIcon}
               title="Applications"
               description="Applications attach one or more Profiles and a team. Each Application has its own members, roles, certificates, alerts, and approval policies."
             />

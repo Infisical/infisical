@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
-import { Spinner } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -10,7 +9,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  PageLoader
 } from "@app/components/v3";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
@@ -48,9 +48,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
       </CardHeader>
       <CardContent>
         {isPending ? (
-          <div className="flex items-center justify-center p-8">
-            <Spinner />
-          </div>
+          <PageLoader />
         ) : (
           <PkiSyncsTable pkiSyncs={applicationSyncs} applicationName={applicationName} />
         )}

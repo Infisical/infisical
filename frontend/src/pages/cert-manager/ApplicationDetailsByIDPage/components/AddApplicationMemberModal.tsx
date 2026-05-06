@@ -1,43 +1,38 @@
 import { useMemo, useState } from "react";
-import { HardDriveIcon, SearchIcon, UserIcon, UsersIcon } from "lucide-react";
+import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Spinner } from "@app/components/v2";
+import { FilterableSelect, FormControl } from "@app/components/v2";
+import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  SelectValue
 } from "@app/components/v3";
+import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups
 } from "@app/hooks/api/organization";
+import { useCreateOrgIdentity } from "@app/hooks/api/orgIdentity";
 import { TPkiApplicationMember, useAddPkiApplicationMember } from "@app/hooks/api/pkiApplications";
+import {
+  useCreateProjectIdentityMembership,
+  useListProjectIdentityMemberships
+} from "@app/hooks/api/projectIdentityMembership";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetOrgUsers } from "@app/hooks/api/users";
 
 type ActorType = "user" | "identity" | "group";
@@ -49,11 +44,38 @@ type Props = {
   existingMembers: TPkiApplicationMember[];
 };
 
-const PLACEHOLDER: Record<ActorType, string> = {
-  user: "Search users by name or email…",
-  identity: "Search identities by name…",
-  group: "Search groups by name…"
+type Option = { value: string; label: string; isNew?: boolean };
+
+const APP_ROLES = [
+  { slug: "admin", label: "Admin" },
+  { slug: "operator", label: "Operator" },
+  { slug: "auditor", label: "Auditor" }
+];
+
+type CertManagerInviteResponse = {
+  memberships: Array<{ id: string; userId: string }>;
 };
+
+const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Promise<void> => {
+  await items.reduce<Promise<void>>(async (prev, item) => {
+    await prev;
+    await fn(item);
+  }, Promise.resolve());
+};
+
+const NoUserOptions = () => (
+  <p>
+    No matching org members. Type a full email to invite a new user — they&apos;ll receive an email
+    and be added to this Application.
+  </p>
+);
+
+const NoIdentityOptions = () => (
+  <p>
+    No matching identities. Type a name to create a new machine identity in the org and attach it to
+    this Application.
+  </p>
+);
 
 export const AddApplicationMemberModal = ({
   applicationId,
@@ -63,17 +85,31 @@ export const AddApplicationMemberModal = ({
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
-  const [type, setType] = useState<ActorType>("user");
-  const [search, setSearch] = useState("");
-  const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
-  const [role, setRole] = useState("operator");
-  const addMember = useAddPkiApplicationMember();
 
-  // Cert Manager projects don't use project-level memberships, so eligible
-  // members are scoped to the organization rather than the project.
+  const [type, setType] = useState<ActorType>("user");
+  const [selectedUsers, setSelectedUsers] = useState<Option[]>([]);
+  const [selectedIdentities, setSelectedIdentities] = useState<Option[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<Option[]>([]);
+  const [role, setRole] = useState("operator");
+  const [submitting, setSubmitting] = useState(false);
+
   const usersQuery = useGetOrgUsers(orgId);
   const identitiesQuery = useGetIdentityMembershipOrgs({ organizationId: orgId, limit: 100 });
   const groupsQuery = useGetOrganizationGroups(orgId);
+
+  const projectIdentitiesQuery = useListProjectIdentityMemberships({
+    projectId: "",
+    projectType: ProjectType.CertificateManager,
+    limit: 1000
+  });
+  const identityIdsAlreadyInProject = useMemo(() => {
+    const memberships = projectIdentitiesQuery.data?.identityMemberships ?? [];
+    return new Set(memberships.map((m) => m.identity.id));
+  }, [projectIdentitiesQuery.data]);
+
+  const addMember = useAddPkiApplicationMember();
+  const createIdentity = useCreateOrgIdentity();
+  const addIdentityToProject = useCreateProjectIdentityMembership();
 
   const taken = useMemo(() => {
     const set = new Set<string>();
@@ -85,69 +121,39 @@ export const AddApplicationMemberModal = ({
     return set;
   }, [existingMembers]);
 
-  const items: { id: string; primary: string; secondary?: string }[] = useMemo(() => {
-    const norm = search.trim().toLowerCase();
+  const userOptions: Option[] = useMemo(() => {
+    const users = usersQuery.data ?? [];
+    return users
+      .filter((u) => !taken.has(`user:${u.user.id}`))
+      .map((u) => ({
+        value: u.user.id,
+        label:
+          [u.user.firstName, u.user.lastName].filter(Boolean).join(" ").trim() ||
+          u.user.username ||
+          u.user.email ||
+          u.user.id
+      }));
+  }, [usersQuery.data, taken]);
 
-    if (type === "user") {
-      const users = usersQuery.data ?? [];
-      return users
-        .filter((u) => !taken.has(`user:${u.user.id}`))
-        .map((u) => ({
-          id: u.user.id,
-          primary:
-            [u.user.firstName, u.user.lastName].filter(Boolean).join(" ").trim() ||
-            u.user.username ||
-            u.user.email ||
-            u.user.id,
-          secondary: u.user.email ?? u.user.username ?? undefined
-        }))
-        .filter(
-          (i) =>
-            !norm ||
-            i.primary.toLowerCase().includes(norm) ||
-            (i.secondary?.toLowerCase().includes(norm) ?? false)
-        );
-    }
+  const identityOptions: Option[] = useMemo(() => {
+    const memberships = identitiesQuery.data?.identityMemberships ?? [];
+    return memberships
+      .filter((im) => !taken.has(`identity:${im.identity.id}`))
+      .map((im) => ({ value: im.identity.id, label: im.identity.name }));
+  }, [identitiesQuery.data, taken]);
 
-    if (type === "identity") {
-      const memberships = identitiesQuery.data?.identityMemberships ?? [];
-      return memberships
-        .filter((im) => !taken.has(`identity:${im.identity.id}`))
-        .map((im) => ({
-          id: im.identity.id,
-          primary: im.identity.name,
-          secondary: im.identity.authMethods?.[0] ?? undefined
-        }))
-        .filter((i) => !norm || i.primary.toLowerCase().includes(norm));
-    }
-
+  const groupOptions: Option[] = useMemo(() => {
     const groups = groupsQuery.data ?? [];
     return groups
       .filter((g) => !taken.has(`group:${g.id}`))
-      .map((g) => ({
-        id: g.id,
-        primary: g.name,
-        secondary: g.slug
-      }))
-      .filter(
-        (i) =>
-          !norm ||
-          i.primary.toLowerCase().includes(norm) ||
-          (i.secondary?.toLowerCase().includes(norm) ?? false)
-      );
-  }, [type, search, taken, usersQuery.data, identitiesQuery.data, groupsQuery.data]);
-
-  const isLoadingByType: Record<ActorType, boolean> = {
-    user: usersQuery.isPending,
-    identity: identitiesQuery.isPending,
-    group: groupsQuery.isPending
-  };
-  const isLoading = isLoadingByType[type];
+      .map((g) => ({ value: g.id, label: g.name }));
+  }, [groupsQuery.data, taken]);
 
   const reset = () => {
     setType("user");
-    setSearch("");
-    setSelectedActorId(null);
+    setSelectedUsers([]);
+    setSelectedIdentities([]);
+    setSelectedGroups([]);
     setRole("operator");
   };
 
@@ -156,27 +162,104 @@ export const AddApplicationMemberModal = ({
     onOpenChange(open);
   };
 
-  const handleTypeChange = (next: ActorType) => {
-    setType(next);
-    setSelectedActorId(null);
-    setSearch("");
+  const submitUsers = async () => {
+    if (selectedUsers.length === 0) return;
+    const orgUsers = usersQuery.data ?? [];
+    const existing = selectedUsers.filter((u) => !u.isNew);
+    const newInviteEmails = selectedUsers.filter((u) => u.isNew).map((u) => u.value);
+
+    let invitedMemberships: CertManagerInviteResponse["memberships"] = [];
+    if (newInviteEmails.length > 0 || existing.length > 0) {
+      const usernames = [
+        ...newInviteEmails,
+        ...existing
+          .map((u) => {
+            const o = orgUsers.find((x) => x.user.id === u.value);
+            return o?.user.username || o?.user.email || null;
+          })
+          .filter((x): x is string => Boolean(x))
+      ];
+      const { data } = await apiRequest.post<CertManagerInviteResponse>(
+        "/api/v1/cert-manager/access/users",
+        { usernames, roleSlugs: ["member"] }
+      );
+      invitedMemberships = data.memberships ?? [];
+    }
+
+    const userIds: string[] = [];
+    existing.forEach((u) => userIds.push(u.value));
+    if (newInviteEmails.length > 0) {
+      const refreshed = (await usersQuery.refetch()).data ?? [];
+      newInviteEmails.forEach((email) => {
+        const fromResponse = invitedMemberships.find((m) => Boolean(m.userId));
+        const fromOrg = refreshed.find(
+          (o) => o.user.email === email || o.user.username === email || o.inviteEmail === email
+        );
+        if (fromOrg?.user.id) userIds.push(fromOrg.user.id);
+        else if (fromResponse?.userId) userIds.push(fromResponse.userId);
+      });
+    }
+
+    await runSequential(userIds, async (userId) => {
+      await addMember.mutateAsync({ applicationId, userId, role });
+    });
+  };
+
+  const submitIdentities = async () => {
+    if (selectedIdentities.length === 0) return;
+    const identityIds: string[] = [];
+    await runSequential(selectedIdentities, async (item) => {
+      if (item.isNew) {
+        const created = await createIdentity.mutateAsync({
+          organizationId: orgId,
+          name: item.value,
+          hasDeleteProtection: false
+        });
+        identityIds.push(created.id);
+      } else {
+        identityIds.push(item.value);
+      }
+    });
+
+    const idsNeedingProjectMembership = identityIds.filter(
+      (id) => !identityIdsAlreadyInProject.has(id)
+    );
+    await runSequential(idsNeedingProjectMembership, async (identityId) => {
+      await addIdentityToProject.mutateAsync({
+        identityId,
+        projectId: "",
+        projectType: ProjectType.CertificateManager,
+        role: "member"
+      });
+    });
+
+    await runSequential(identityIds, async (identityId) => {
+      await addMember.mutateAsync({ applicationId, identityId, role });
+    });
+  };
+
+  const submitGroups = async () => {
+    if (selectedGroups.length === 0) return;
+    await runSequential(selectedGroups, async (item) => {
+      await addMember.mutateAsync({ applicationId, groupId: item.value, role });
+    });
   };
 
   const handleSubmit = async () => {
-    if (!selectedActorId) return;
+    setSubmitting(true);
     try {
-      await addMember.mutateAsync({
-        applicationId,
-        role,
-        userId: type === "user" ? selectedActorId : undefined,
-        identityId: type === "identity" ? selectedActorId : undefined,
-        groupId: type === "group" ? selectedActorId : undefined
-      });
-      createNotification({ type: "success", text: "Member added" });
+      if (type === "user") await submitUsers();
+      if (type === "identity") await submitIdentities();
+      if (type === "group") await submitGroups();
+      createNotification({ type: "success", text: "Members added" });
       handleClose(false);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : "Failed to add member.";
-      createNotification({ type: "error", text: detail });
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to add members"
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -186,17 +269,28 @@ export const AddApplicationMemberModal = ({
     { value: "group", label: "Groups", icon: UsersIcon }
   ];
 
+  const isEmail = (s: string) => z.string().email().safeParse(s).success;
+  const isIdentityName = (s: string) => s.trim().length > 0;
+
+  const selectedByType: Record<ActorType, number> = {
+    user: selectedUsers.length,
+    identity: selectedIdentities.length,
+    group: selectedGroups.length
+  };
+  const selectedCount = selectedByType[type];
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl overflow-visible">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
-            Grant access to this Application. Only organization members are eligible.
+            Grant access to this Application. Select one or more existing org members to attach
+            them, or type a new email/identity name to create and attach in one step.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex gap-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
             {TYPE_OPTIONS.map((opt) => {
               const Icon = opt.icon;
@@ -205,7 +299,7 @@ export const AddApplicationMemberModal = ({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => handleTypeChange(opt.value)}
+                  onClick={() => setType(opt.value)}
                   className={twMerge(
                     "flex flex-1 items-center justify-center gap-2 rounded px-3 py-1.5 text-sm transition-colors",
                     active
@@ -220,75 +314,73 @@ export const AddApplicationMemberModal = ({
             })}
           </div>
 
-          <InputGroup>
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={PLACEHOLDER[type]}
-            />
-          </InputGroup>
+          {type === "user" && (
+            <FormControl
+              label="Users"
+              helperText="Pick existing organization members or type a new email to invite + add."
+            >
+              <CreatableSelect
+                isMulti
+                isLoading={usersQuery.isPending}
+                options={userOptions}
+                value={selectedUsers}
+                onChange={(v) => setSelectedUsers((v ?? []) as Option[])}
+                placeholder="Select users or type an email…"
+                onCreateOption={(input) => {
+                  if (!isEmail(input)) return;
+                  setSelectedUsers((prev) => [
+                    ...prev,
+                    { value: input, label: input, isNew: true }
+                  ]);
+                }}
+                isValidNewOption={(input) => isEmail(input)}
+                formatCreateLabel={(input) => `Invite "${input}"`}
+                noOptionsMessage={NoUserOptions}
+              />
+            </FormControl>
+          )}
 
-          <div className="max-h-72 overflow-y-auto rounded-md border border-border">
-            {isLoading && (
-              <div className="flex items-center justify-center p-6">
-                <Spinner />
-              </div>
-            )}
-            {!isLoading && items.length === 0 && (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Nothing to add</EmptyTitle>
-                  <EmptyDescription>
-                    Every eligible {type} is already a member of this Application.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-            {!isLoading && items.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-full">Name</TableHead>
-                    <TableHead className="w-10 text-right">Selected</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => {
-                    const isSelected = selectedActorId === item.id;
-                    return (
-                      <TableRow
-                        key={item.id}
-                        onClick={() => setSelectedActorId(isSelected ? null : item.id)}
-                        className={twMerge(
-                          "cursor-pointer",
-                          isSelected && "bg-mineshaft-700 hover:bg-mineshaft-700"
-                        )}
-                      >
-                        <TableCell isTruncatable>
-                          <div className="min-w-0">
-                            <div className="truncate">{item.primary}</div>
-                            {item.secondary ? (
-                              <div className="truncate text-xs text-accent">{item.secondary}</div>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            isChecked={isSelected}
-                            onCheckedChange={() => setSelectedActorId(isSelected ? null : item.id)}
-                            aria-label={`Select ${item.primary}`}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+          {type === "identity" && (
+            <FormControl
+              label="Machine Identities"
+              helperText="Pick existing identities or type a new name to create + add."
+            >
+              <CreatableSelect
+                isMulti
+                isLoading={identitiesQuery.isPending}
+                options={identityOptions}
+                value={selectedIdentities}
+                onChange={(v) => setSelectedIdentities((v ?? []) as Option[])}
+                placeholder="Select identities or type a new name…"
+                onCreateOption={(input) => {
+                  if (!isIdentityName(input)) return;
+                  setSelectedIdentities((prev) => [
+                    ...prev,
+                    { value: input.trim(), label: input.trim(), isNew: true }
+                  ]);
+                }}
+                isValidNewOption={(input) => isIdentityName(input)}
+                formatCreateLabel={(input) => `Create identity "${input}"`}
+                noOptionsMessage={NoIdentityOptions}
+              />
+            </FormControl>
+          )}
+
+          {type === "group" && (
+            <FormControl
+              label="Groups"
+              helperText="Pick one or more organization groups to grant access through."
+            >
+              <FilterableSelect
+                isMulti
+                isLoading={groupsQuery.isPending}
+                options={groupOptions}
+                value={selectedGroups}
+                onChange={(v) => setSelectedGroups((v ?? []) as Option[])}
+                placeholder="Select groups…"
+              />
+            </FormControl>
+          )}
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-accent">Role:</span>
@@ -297,9 +389,11 @@ export const AddApplicationMemberModal = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="operator">Operator</SelectItem>
-                <SelectItem value="auditor">Auditor</SelectItem>
+                {APP_ROLES.map((r) => (
+                  <SelectItem key={r.slug} value={r.slug}>
+                    {r.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -311,11 +405,11 @@ export const AddApplicationMemberModal = ({
           </Button>
           <Button
             variant="project"
-            isDisabled={!selectedActorId || addMember.isPending}
-            isPending={addMember.isPending}
+            isDisabled={selectedCount === 0 || submitting}
+            isPending={submitting}
             onClick={handleSubmit}
           >
-            Add Member
+            Add Member{selectedCount > 1 ? "s" : ""}
           </Button>
         </DialogFooter>
       </DialogContent>

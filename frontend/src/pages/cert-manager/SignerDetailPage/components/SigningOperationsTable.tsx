@@ -99,7 +99,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
       if (!op.actorMembershipId) {
         createNotification({
           type: "info",
-          text: "This user is no longer a member of this project."
+          text: "This user is no longer a member of this organization."
         });
         return;
       }
@@ -115,7 +115,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
       if (!op.actorName) {
         createNotification({
           type: "info",
-          text: "This identity is no longer a member of this project."
+          text: "This identity is no longer a member of this organization."
         });
         return;
       }

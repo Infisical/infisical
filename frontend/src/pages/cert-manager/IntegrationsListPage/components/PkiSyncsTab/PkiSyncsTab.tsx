@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
-import { Spinner } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DocumentationLinkBadge, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -87,12 +86,7 @@ export const PkiSyncsTab = () => {
     }
   );
 
-  if (isPkiSyncsPending)
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
-        <Spinner />
-      </div>
-    );
+  if (isPkiSyncsPending) return <PageLoader />;
 
   return (
     <>

@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
-  Boxes,
   FileKey,
   FileText,
   GitCompare,
@@ -14,10 +13,12 @@ import {
   ShieldCheck
 } from "lucide-react";
 
-import { SidebarCollapsibleGroup } from "@app/components/v3";
+import { ResourceIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { approvalPolicyQuery, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { approvalRequestQuery } from "@app/hooks/api/approvalRequests";
+import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
 import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
@@ -49,6 +50,11 @@ export const CertManagerNav = ({
     ...approvalPolicyQuery.list({ projectId, policyType: ApprovalPolicyType.CertRequest }),
     enabled: isCertManagerAdmin && Boolean(projectId)
   });
+  const { data: pendingRequestsCount = 0 } = useQuery({
+    ...approvalRequestQuery.list({ projectId, policyType: ApprovalPolicyType.CertRequest }),
+    enabled: Boolean(projectId),
+    select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
+  });
 
   const hasLegacyAlerts =
     Boolean(v2AlertsData?.alerts?.some((a) => !a.applicationId)) ||
@@ -60,11 +66,17 @@ export const CertManagerNav = ({
   const overviewItems: NavItem[] = [
     { label: "Dashboard", icon: LayoutDashboard, pathSuffix: "overview" },
     { label: "Inventory", icon: FileKey, pathSuffix: "inventory" },
-    { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery/ }
+    { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery/ },
+    {
+      label: "Requests",
+      icon: Inbox,
+      pathSuffix: "requests",
+      badgeCount: pendingRequestsCount || undefined
+    }
   ];
 
   const applicationItems: NavItem[] = [
-    { label: "Applications", icon: Boxes, pathSuffix: "applications" }
+    { label: "Applications", icon: ResourceIcon, pathSuffix: "applications" }
   ];
 
   const codeSigningItems: NavItem[] = [
@@ -74,12 +86,6 @@ export const CertManagerNav = ({
       pathSuffix: "code-signing",
       activeMatch: /\/code-signing/
     }
-  ];
-
-  const workflowItems: NavItem[] = [{ label: "Requests", icon: Inbox, pathSuffix: "requests" }];
-
-  const complianceItems: NavItem[] = [
-    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
   ];
 
   const legacyItems: NavItem[] = [
@@ -100,7 +106,7 @@ export const CertManagerNav = ({
     }
   ];
 
-  const configurationItems: NavItem[] = [
+  const administrationItems: NavItem[] = [
     {
       label: "Access",
       icon: Shield,
@@ -112,35 +118,32 @@ export const CertManagerNav = ({
       label: "Settings",
       icon: Settings,
       pathSuffix: "settings"
-    }
+    },
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
   ];
+
+  const generalItemsForRole = isCertManagerAdmin
+    ? overviewItems
+    : overviewItems.filter((item) => item.pathSuffix === "requests");
 
   return (
     <>
-      {isCertManagerAdmin ? (
-        <SidebarCollapsibleGroup label="General">
-          <ProjectNavList items={overviewItems} onSubmenuOpen={onSubmenuOpen} />
-        </SidebarCollapsibleGroup>
-      ) : null}
+      <SidebarCollapsibleGroup label="General">
+        <ProjectNavList items={generalItemsForRole} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
       <SidebarCollapsibleGroup label="Applications">
         <ProjectNavList items={applicationItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
       <SidebarCollapsibleGroup label="Code Signing">
         <ProjectNavList items={codeSigningItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
-      <SidebarCollapsibleGroup label="Workflows">
-        <ProjectNavList items={workflowItems} onSubmenuOpen={onSubmenuOpen} />
-      </SidebarCollapsibleGroup>
-      <SidebarCollapsibleGroup label="Compliance">
-        <ProjectNavList items={complianceItems} onSubmenuOpen={onSubmenuOpen} />
-      </SidebarCollapsibleGroup>
       {isCertManagerAdmin && hasAnyLegacy ? (
-        <SidebarCollapsibleGroup label="Legacy">
+        <SidebarCollapsibleGroup label="Legacy" defaultOpen={false}>
           <ProjectNavList items={legacyItems} onSubmenuOpen={onSubmenuOpen} />
         </SidebarCollapsibleGroup>
       ) : null}
-      <SidebarCollapsibleGroup label="Configuration">
-        <ProjectNavList items={configurationItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Administration">
+        <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
     </>
   );
