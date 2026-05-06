@@ -201,8 +201,9 @@ export const pkiAlertV2QueueServiceFactory = ({
     certificateId: string;
     projectId: string;
     eventType: PkiAlertEventType;
+    applicationId?: string | null;
   }) => {
-    const { certificateId, projectId, eventType } = payload;
+    const { certificateId, projectId, eventType, applicationId } = payload;
 
     const alerts = await pkiAlertV2DAL.findByProjectId(projectId, {
       eventType,
@@ -211,7 +212,11 @@ export const pkiAlertV2QueueServiceFactory = ({
 
     if (alerts.length === 0) return;
 
-    for (const alert of alerts) {
+    const matchingAlerts = alerts.filter((alert) => !alert.applicationId || alert.applicationId === applicationId);
+
+    if (matchingAlerts.length === 0) return;
+
+    for (const alert of matchingAlerts) {
       try {
         await pkiAlertV2Service.sendEventNotifications(alert.id, [certificateId], eventType);
         logger.info(
@@ -228,6 +233,7 @@ export const pkiAlertV2QueueServiceFactory = ({
     certificateId: string;
     projectId: string;
     eventType: PkiAlertEventType;
+    applicationId?: string | null;
   }) => {
     await queueService.queue(QueueName.PkiAlertV2Event, QueueJobs.PkiAlertV2ProcessEvent, payload, {
       jobId: `pki-alert-event-${payload.projectId}-${payload.certificateId}-${payload.eventType}`,

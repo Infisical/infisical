@@ -192,7 +192,7 @@ export const AddApplicationMemberModal = ({
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
-            Grant access to this Application. Only project members are eligible.
+            Grant access to this Application. Only organization members are eligible.
           </DialogDescription>
         </DialogHeader>
 

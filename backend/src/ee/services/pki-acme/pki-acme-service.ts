@@ -479,10 +479,12 @@ export const pkiAcmeServiceFactory = ({
     const effectiveAcmeConfig = applicationId ? junctionAcmeConfig : (profile.acmeConfig ?? null);
     const expectedEabKid = applicationId ? junctionAcmeConfig?.id : profile.id;
 
+    const accountApplicationProfileId = junctionRow?.id ?? null;
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
       profileId,
       alg,
-      publicKeyThumbprint
+      publicKeyThumbprint,
+      accountApplicationProfileId
     );
     if (onlyReturnExisting) {
       if (!existingAccount) {
@@ -608,13 +610,9 @@ export const pkiAcmeServiceFactory = ({
       }
     }
 
-    const applicationProfileId = applicationId
-      ? ((await pkiApplicationProfileDAL.findOne(applicationId, profile.id))?.id ?? null)
-      : null;
-
     const newAccount = await acmeAccountDAL.create({
       profileId: profile.id,
-      applicationProfileId,
+      applicationProfileId: accountApplicationProfileId,
       alg,
       publicKey: jwk,
       publicKeyThumbprint,

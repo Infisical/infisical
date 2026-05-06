@@ -1326,7 +1326,8 @@ export const certificateV3ServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: cert.id,
         projectId: profile.projectId,
-        eventType: PkiAlertEventType.ISSUANCE
+        eventType: PkiAlertEventType.ISSUANCE,
+        applicationId: applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
@@ -1715,7 +1716,8 @@ export const certificateV3ServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: cert.id,
         projectId: profile.projectId,
-        eventType: PkiAlertEventType.ISSUANCE
+        eventType: PkiAlertEventType.ISSUANCE,
+        applicationId: applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
@@ -2075,7 +2077,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        ...(applicationId && { applicationId })
       });
 
       return {
@@ -2412,6 +2415,7 @@ export const certificateV3ServiceFactory = ({
           profileId: string | null;
           renewedFromCertificateId: string;
           renewBeforeDays?: number;
+          applicationId?: string | null;
         } = {
           profileId: originalCert.profileId || null,
           renewedFromCertificateId: originalCert.id
@@ -2421,10 +2425,22 @@ export const certificateV3ServiceFactory = ({
           renewalUpdateData.renewBeforeDays = finalRenewBeforeDays;
         }
 
+        if (originalCert.applicationId) {
+          renewalUpdateData.applicationId = originalCert.applicationId;
+        }
+
         await certificateDAL.updateById(newCert.id, renewalUpdateData, tx);
-      } else if (finalRenewBeforeDays !== undefined) {
-        // For self-signed certificates, just update the renewBeforeDays if needed
-        await certificateDAL.updateById(newCert.id, { renewBeforeDays: finalRenewBeforeDays }, tx);
+      } else {
+        const selfSignedUpdate: { renewBeforeDays?: number; applicationId?: string | null } = {};
+        if (finalRenewBeforeDays !== undefined) {
+          selfSignedUpdate.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (originalCert.applicationId) {
+          selfSignedUpdate.applicationId = originalCert.applicationId;
+        }
+        if (Object.keys(selfSignedUpdate).length > 0) {
+          await certificateDAL.updateById(newCert.id, selfSignedUpdate, tx);
+        }
       }
 
       await certificateDAL.updateById(
@@ -2549,7 +2565,8 @@ export const certificateV3ServiceFactory = ({
         locality: originalCert.subjectLocality || undefined,
         isRenewal: true,
         originalCertificateId: certificateId,
-        certificateRequestId: certificateRequest.id
+        certificateRequestId: certificateRequest.id,
+        ...(originalCert.applicationId && { applicationId: originalCert.applicationId })
       });
 
       return {
@@ -2586,7 +2603,8 @@ export const certificateV3ServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: renewalResult.newCert.id,
         projectId: renewalResult.originalCert.projectId,
-        eventType: PkiAlertEventType.RENEWAL
+        eventType: PkiAlertEventType.RENEWAL,
+        applicationId: renewalResult.originalCert.applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI renewal alert event");
