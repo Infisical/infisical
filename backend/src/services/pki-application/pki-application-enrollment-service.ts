@@ -185,6 +185,9 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const estConfig = junction.estConfigId ? await estEnrollmentConfigDAL.findById(junction.estConfigId) : null;
     const scepConfig = junction.scepConfigId ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId) : null;
 
+    const siteUrl = getConfig().SITE_URL ?? "";
+    const appProfilePath = `applications/${applicationId}/profiles/${profileId}`;
+
     return {
       applicationId,
       profileId,
@@ -198,14 +201,16 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       est: estConfig
         ? {
             id: estConfig.id,
-            disableBootstrapCaValidation: Boolean(estConfig.disableBootstrapCaValidation)
+            disableBootstrapCaValidation: Boolean(estConfig.disableBootstrapCaValidation),
+            estEndpointUrl: `${siteUrl}/.well-known/est/${appProfilePath}`
           }
         : null,
       acme: acmeConfig
         ? {
             id: acmeConfig.id,
             skipDnsOwnershipVerification: Boolean(acmeConfig.skipDnsOwnershipVerification),
-            skipEabBinding: Boolean(acmeConfig.skipEabBinding)
+            skipEabBinding: Boolean(acmeConfig.skipEabBinding),
+            directoryUrl: `${siteUrl}/api/v1/cert-manager/acme/${appProfilePath}/directory`
           }
         : null,
       scep: scepConfig
@@ -215,7 +220,14 @@ export const pkiApplicationEnrollmentServiceFactory = ({
             includeCaCertInResponse: Boolean(scepConfig.includeCaCertInResponse),
             allowCertBasedRenewal: Boolean(scepConfig.allowCertBasedRenewal),
             dynamicChallengeExpiryMinutes: scepConfig.dynamicChallengeExpiryMinutes ?? null,
-            dynamicChallengeMaxPending: scepConfig.dynamicChallengeMaxPending ?? null
+            dynamicChallengeMaxPending: scepConfig.dynamicChallengeMaxPending ?? null,
+            scepEndpointUrl: `${siteUrl}/scep/${appProfilePath}/pkiclient.exe`,
+            challengeEndpointUrl:
+              scepConfig.challengeType === ScepChallengeType.DYNAMIC
+                ? `${siteUrl}/scep/${appProfilePath}/challenge`
+                : null,
+            raCertificatePem: scepConfig.raCertificate,
+            raCertExpiresAt: scepConfig.raCertExpiresAt
           }
         : null,
       estConfigured: Boolean(junction.estConfigId),
@@ -612,12 +624,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       hashedChallengePassword = await crypto.hashing().createHash(config.challengePassword, appCfg.SALT_ROUNDS);
     }
 
-    const raCert = await generateRaCertificate(`app-${applicationId}-${profileId}`);
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-    const { cipherTextBlob: encryptedRaPrivateKey } = await kmsEncryptor({
-      plainText: Buffer.from(raCert.privateKeyDer)
-    });
+    const isFirstCreate = !junction.scepConfigId;
+    const raCert = isFirstCreate ? await generateRaCertificate(`app-${applicationId}-${profileId}`) : null;
+    let encryptedRaPrivateKey: Buffer | null = null;
+    if (raCert) {
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      const encResult = await kmsEncryptor({ plainText: Buffer.from(raCert.privateKeyDer) });
+      encryptedRaPrivateKey = encResult.cipherTextBlob;
+    }
 
     return pkiApplicationProfileDAL.transaction(async (tx) => {
       let { scepConfigId } = junction;
@@ -630,10 +645,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         await scepEnrollmentConfigDAL.updateById(
           scepConfigId,
           {
-            encryptedRaPrivateKey,
-            raCertificate: raCert.certificatePem,
-            raCertExpiresAt: raCert.expiresAt,
-            hashedChallengePassword,
+            ...(hashedChallengePassword !== null ? { hashedChallengePassword } : {}),
             challengeType,
             includeCaCertInResponse: config.includeCaCertInResponse ?? true,
             allowCertBasedRenewal: config.allowCertBasedRenewal ?? true,
@@ -643,6 +655,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           tx
         );
       } else {
+        if (!raCert || !encryptedRaPrivateKey) {
+          // Defensive, should never hit; raCert is generated when isFirstCreate.
+          throw new BadRequestError({ message: "Failed to generate SCEP RA certificate." });
+        }
         const created = await scepEnrollmentConfigDAL.create(
           {
             encryptedRaPrivateKey,

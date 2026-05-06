@@ -15,9 +15,10 @@ import {
   DetailValue,
   IconButton
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
 
 type Props = {
@@ -26,6 +27,8 @@ type Props = {
 
 export const GroupDetailsSection = ({ groupMembership }: Props) => {
   const { group } = groupMembership;
+  const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -64,7 +67,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>Project Role</DetailLabel>
+            <DetailLabel>{isCertManager ? "Cert Manager Role" : "Project Role"}</DetailLabel>
             <DetailValue>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
@@ -82,7 +85,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>Joined project</DetailLabel>
+            <DetailLabel>{isCertManager ? "Joined cert manager" : "Joined project"}</DetailLabel>
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>

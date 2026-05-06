@@ -2,12 +2,16 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionApplicationEnrollmentActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -76,7 +80,7 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOne">;
 };
 
@@ -909,6 +913,7 @@ export const pkiScepServiceFactory = ({
 
   const generateDynamicChallenge = async ({
     profileId,
+    applicationId,
     actor,
     actorId,
     actorAuthMethod,
@@ -919,24 +924,57 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "SCEP profile not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Edit,
-      subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-    );
+    let resolvedScepConfigId: string | null = null;
+    if (applicationId) {
+      if (!pkiApplicationProfileDAL) {
+        throw new BadRequestError({ message: "Application context is not supported on this server." });
+      }
+      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      if (!junction) {
+        throw new NotFoundError({
+          message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+        });
+      }
+      resolvedScepConfigId = junction.scepConfigId ?? null;
 
-    if (!profile.scepConfigId) {
-      throw new BadRequestError({ message: "SCEP enrollment not configured for this profile" });
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionApplicationEnrollmentActions.Edit,
+        ResourcePermissionSub.ApplicationEnrollment
+      );
+    } else {
+      resolvedScepConfigId = profile.scepConfigId ?? null;
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.Edit,
+        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+      );
     }
 
-    const scepConfig = await scepEnrollmentConfigDAL.findById(profile.scepConfigId);
+    if (!resolvedScepConfigId) {
+      throw new BadRequestError({
+        message: applicationId
+          ? "SCEP enrollment is not configured for this profile on the Application."
+          : "SCEP enrollment not configured for this profile"
+      });
+    }
+
+    const scepConfig = await scepEnrollmentConfigDAL.findById(resolvedScepConfigId);
     if (!scepConfig) {
       throw new NotFoundError({ message: "SCEP configuration not found" });
     }

@@ -49,6 +49,7 @@ export type TCreateInventoryViewDTO = {
   filters: TInventoryViewFilters;
   columns?: string[];
   isShared?: boolean;
+  applicationId?: string;
 };
 
 export type TUpdateInventoryViewDTO = {

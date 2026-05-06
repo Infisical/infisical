@@ -3,13 +3,17 @@ import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
 
-import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -135,7 +139,7 @@ type TCertificateV3ServiceFactoryDep = {
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
@@ -663,12 +667,19 @@ export const certificateV3ServiceFactory = ({
   const $resolveApplicationIdForProfile = async (
     profile: {
       id: string;
+      projectId: string;
       apiConfigId?: string | null;
       estConfigId?: string | null;
       acmeConfigId?: string | null;
       scepConfigId?: string | null;
     },
-    explicit: string | undefined
+    explicit: string | undefined,
+    actorContext?: {
+      actor?: ActorType;
+      actorId?: string;
+      actorAuthMethod?: ActorAuthMethod;
+      actorOrgId?: string;
+    }
   ): Promise<string | undefined> => {
     const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
 
@@ -678,6 +689,32 @@ export const certificateV3ServiceFactory = ({
           message: "This profile is not attached to the specified Application."
         });
       }
+
+      if (
+        actorContext?.actor &&
+        actorContext.actor !== ActorType.ACME_ACCOUNT &&
+        actorContext.actor !== ActorType.ACME_PROFILE &&
+        actorContext.actor !== ActorType.EST_ACCOUNT &&
+        actorContext.actor !== ActorType.SCEP_ACCOUNT &&
+        actorContext.actorId &&
+        actorContext.actorAuthMethod &&
+        actorContext.actorOrgId
+      ) {
+        const { permission } = await permissionService.getResourcePermission({
+          actor: actorContext.actor,
+          actorId: actorContext.actorId,
+          projectId: profile.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: explicit,
+          actorAuthMethod: actorContext.actorAuthMethod,
+          actorOrgId: actorContext.actorOrgId
+        });
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionCertificateActions.Create,
+          ResourcePermissionSub.Certificates
+        );
+      }
+
       return explicit;
     }
 
@@ -754,7 +791,12 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
-    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId);
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
@@ -1333,7 +1375,12 @@ export const certificateV3ServiceFactory = ({
       requiredEnrollmentType: enrollmentType,
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
-    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId);
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1710,7 +1757,12 @@ export const certificateV3ServiceFactory = ({
       requiredEnrollmentType: EnrollmentType.API,
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
-    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId);
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
 
     let certificateRequest: TCertificateRequest;
     let extractedKeyAlgorithm: string | undefined;

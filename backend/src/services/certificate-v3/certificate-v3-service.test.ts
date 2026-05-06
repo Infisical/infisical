@@ -124,7 +124,7 @@ describe("CertificateV3Service", () => {
       issueCertFromCa: vi.fn()
     };
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission"> = {
+  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
         throwUnlessCan: vi.fn(),
@@ -133,6 +133,18 @@ describe("CertificateV3Service", () => {
         relevantRuleFor: vi.fn(),
         rules: []
       }
+    }),
+    getResourcePermission: vi.fn().mockResolvedValue({
+      permission: {
+        throwUnlessCan: vi.fn(),
+        can: vi.fn().mockReturnValue(true),
+        cannot: vi.fn().mockReturnValue(false),
+        relevantRuleFor: vi.fn(),
+        rules: []
+      },
+      memberships: [],
+      hasRole: vi.fn().mockReturnValue(false),
+      isImplicitAdmin: false
     })
   };
 

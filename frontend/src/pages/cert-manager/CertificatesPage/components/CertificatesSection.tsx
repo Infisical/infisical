@@ -37,12 +37,14 @@ type CertificatesSectionProps = {
   };
   dashboardFilters?: FilterRule[];
   dashboardViewId?: string;
+  applicationId?: string;
 };
 
 export const CertificatesSection = ({
   externalFilter,
   dashboardFilters,
-  dashboardViewId
+  dashboardViewId,
+  applicationId
 }: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
@@ -153,6 +155,7 @@ export const CertificatesSection = ({
           externalFilter={externalFilter}
           dashboardFilters={dashboardFilters}
           dashboardViewId={dashboardViewId}
+          applicationId={applicationId}
         />
         <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

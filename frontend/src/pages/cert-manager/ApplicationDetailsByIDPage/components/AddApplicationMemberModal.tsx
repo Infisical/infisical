@@ -6,6 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { Spinner } from "@app/components/v2";
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,7 +24,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -181,7 +188,7 @@ export const AddApplicationMemberModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
@@ -224,7 +231,7 @@ export const AddApplicationMemberModal = ({
             />
           </InputGroup>
 
-          <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-background">
+          <div className="max-h-72 overflow-y-auto rounded-md border border-border">
             {isLoading && (
               <div className="flex items-center justify-center p-6">
                 <Spinner />
@@ -241,28 +248,45 @@ export const AddApplicationMemberModal = ({
               </Empty>
             )}
             {!isLoading && items.length > 0 && (
-              <ul>
-                {items.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedActorId(item.id)}
-                      className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${
-                        selectedActorId === item.id
-                          ? "bg-container-hover text-foreground"
-                          : "text-foreground hover:bg-container"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate">{item.primary}</div>
-                        {item.secondary ? (
-                          <div className="truncate text-xs text-accent">{item.secondary}</div>
-                        ) : null}
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-full">Name</TableHead>
+                    <TableHead className="w-10 text-right">Selected</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => {
+                    const isSelected = selectedActorId === item.id;
+                    return (
+                      <TableRow
+                        key={item.id}
+                        onClick={() => setSelectedActorId(isSelected ? null : item.id)}
+                        className={twMerge(
+                          "cursor-pointer",
+                          isSelected && "bg-mineshaft-700 hover:bg-mineshaft-700"
+                        )}
+                      >
+                        <TableCell isTruncatable>
+                          <div className="min-w-0">
+                            <div className="truncate">{item.primary}</div>
+                            {item.secondary ? (
+                              <div className="truncate text-xs text-accent">{item.secondary}</div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            isChecked={isSelected}
+                            onCheckedChange={() => setSelectedActorId(isSelected ? null : item.id)}
+                            aria-label={`Select ${item.primary}`}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             )}
           </div>
 

@@ -128,10 +128,13 @@ type Props = {
   };
   dashboardFilters?: FilterRule[];
   dashboardViewId?: string;
+  applicationId?: string;
 };
 
 const PER_PAGE_INIT = 25;
-const VIEW_STORAGE_KEY = "cert-inventory-active-view";
+const VIEW_STORAGE_KEY_BASE = "cert-inventory-active-view";
+const getViewStorageKey = (applicationId?: string) =>
+  applicationId ? `${VIEW_STORAGE_KEY_BASE}:${applicationId}` : VIEW_STORAGE_KEY_BASE;
 const MS_PER_DAY = 86_400_000;
 const SEARCH_DEBOUNCE_MS = 500;
 
@@ -161,7 +164,8 @@ export const CertificatesTable = ({
   handlePopUpOpen,
   externalFilter,
   dashboardFilters,
-  dashboardViewId
+  dashboardViewId,
+  applicationId
 }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
@@ -201,7 +205,7 @@ export const CertificatesTable = ({
     if (dashboardViewId) return dashboardViewId;
     if (hasDashboardFilters) return null;
     try {
-      return localStorage.getItem(VIEW_STORAGE_KEY) || "system-all";
+      return localStorage.getItem(getViewStorageKey(applicationId)) || "system-all";
     } catch {
       return "system-all";
     }
@@ -254,7 +258,7 @@ export const CertificatesTable = ({
   });
 
   const { data: caData } = useListCasByProjectId();
-  const { data: viewsData } = useListCertificateInventoryViews();
+  const { data: viewsData } = useListCertificateInventoryViews(applicationId);
   const { mutateAsync: deleteView } = useDeleteCertificateInventoryView();
   const { mutateAsync: updateView } = useUpdateCertificateInventoryView();
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
@@ -310,6 +314,7 @@ export const CertificatesTable = ({
       ? new Date(filterSearchParams.notBeforeTo)
       : undefined,
     source: filterSearchParams.source,
+    applicationId,
     sortBy,
     sortOrder
   });
@@ -356,10 +361,11 @@ export const CertificatesTable = ({
 
   const persistViewId = (viewId: string | null) => {
     try {
+      const storageKey = getViewStorageKey(applicationId);
       if (viewId) {
-        localStorage.setItem(VIEW_STORAGE_KEY, viewId);
+        localStorage.setItem(storageKey, viewId);
       } else {
-        localStorage.removeItem(VIEW_STORAGE_KEY);
+        localStorage.removeItem(storageKey);
       }
     } catch {
       // localStorage may be unavailable
@@ -1306,6 +1312,7 @@ export const CertificatesTable = ({
         onViewCreated={(viewId, viewFilters) => {
           handleSelectView(viewId, viewFilters);
         }}
+        applicationId={applicationId}
       />
     </div>
   );

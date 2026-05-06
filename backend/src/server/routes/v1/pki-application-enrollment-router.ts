@@ -15,13 +15,15 @@ const ApiEnrollmentSchema = z.object({
 
 const EstEnrollmentStateSchema = z.object({
   id: z.string().uuid(),
-  disableBootstrapCaValidation: z.boolean()
+  disableBootstrapCaValidation: z.boolean(),
+  estEndpointUrl: z.string()
 });
 
 const AcmeEnrollmentStateSchema = z.object({
   id: z.string().uuid(),
   skipDnsOwnershipVerification: z.boolean(),
-  skipEabBinding: z.boolean()
+  skipEabBinding: z.boolean(),
+  directoryUrl: z.string()
 });
 
 const ScepEnrollmentStateSchema = z.object({
@@ -30,7 +32,11 @@ const ScepEnrollmentStateSchema = z.object({
   includeCaCertInResponse: z.boolean(),
   allowCertBasedRenewal: z.boolean(),
   dynamicChallengeExpiryMinutes: z.number().int().nullable(),
-  dynamicChallengeMaxPending: z.number().int().nullable()
+  dynamicChallengeMaxPending: z.number().int().nullable(),
+  scepEndpointUrl: z.string(),
+  challengeEndpointUrl: z.string().nullable(),
+  raCertificatePem: z.string(),
+  raCertExpiresAt: z.date()
 });
 
 const EnrollmentStateSchema = z.object({

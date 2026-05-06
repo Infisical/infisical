@@ -23,6 +23,7 @@ import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
@@ -80,6 +81,8 @@ const Page = () => {
       </div>
     );
 
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
       {groupMembership ? (
@@ -96,12 +99,16 @@ const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
-            Project Groups
+            {isCertManager ? "Cert Manager Groups" : "Project Groups"}
           </Link>
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
-            description="Configure and manage project access control"
+            description={
+              isCertManager
+                ? "Configure and manage cert manager access control"
+                : "Configure and manage project access control"
+            }
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

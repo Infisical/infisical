@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApplicationActions,
@@ -10,7 +10,7 @@ import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -128,18 +128,25 @@ export const pkiApplicationServiceFactory = ({
       }
     }
 
-    return pkiApplicationDAL.transaction(async (tx) => {
-      const application = await pkiApplicationDAL.create({ projectId, name, description: description ?? null }, tx);
+    try {
+      return await pkiApplicationDAL.transaction(async (tx) => {
+        const application = await pkiApplicationDAL.create({ projectId, name, description: description ?? null }, tx);
 
-      if (profileIds && profileIds.length > 0) {
-        await pkiApplicationProfileDAL.insertMany(
-          profileIds.map((profileId) => ({ applicationId: application.id, profileId })),
-          tx
-        );
+        if (profileIds && profileIds.length > 0) {
+          await pkiApplicationProfileDAL.insertMany(
+            profileIds.map((profileId) => ({ applicationId: application.id, profileId })),
+            tx
+          );
+        }
+
+        return application;
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code?: string })?.code === "23505") {
+        throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
       }
-
-      return application;
-    });
+      throw err;
+    }
   };
 
   const getApplicationById = async ({
@@ -208,18 +215,23 @@ export const pkiApplicationServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TListPkiApplicationsDTO) => {
-    const { permission } = await $loadProjectPermission(projectId, { actor, actorId, actorAuthMethod, actorOrgId });
+    const { permission, hasRole } = await $loadProjectPermission(projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionApplicationActions.List,
       ProjectPermissionSub.Application
     );
 
-    const isProjectAdmin = permission.can(ProjectPermissionApplicationActions.Create, ProjectPermissionSub.Application);
-
-    if (isProjectAdmin) {
-      const applications = await pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset });
-      const total = await pkiApplicationDAL.countByProjectId(projectId, search);
+    if (hasRole(ProjectMembershipRole.Admin)) {
+      const [applications, total] = await Promise.all([
+        pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset }),
+        pkiApplicationDAL.countByProjectId(projectId, search)
+      ]);
       return { applications, total };
     }
 
@@ -238,13 +250,15 @@ export const pkiApplicationServiceFactory = ({
       return { applications: [], total: 0 };
     }
 
-    const applications = await pkiApplicationDAL.findByProjectId(projectId, {
-      search,
-      limit,
-      offset,
-      applicationIds: allowedIds
-    });
-    const total = await pkiApplicationDAL.countByProjectId(projectId, search, undefined, allowedIds);
+    const [applications, total] = await Promise.all([
+      pkiApplicationDAL.findByProjectId(projectId, {
+        search,
+        limit,
+        offset,
+        applicationIds: allowedIds
+      }),
+      pkiApplicationDAL.countByProjectId(projectId, search, undefined, allowedIds)
+    ]);
     return { applications, total };
   };
 
@@ -282,10 +296,17 @@ export const pkiApplicationServiceFactory = ({
       }
     }
 
-    return pkiApplicationDAL.updateById(applicationId, {
-      ...(name !== undefined && { name }),
-      ...(description !== undefined && { description })
-    });
+    try {
+      return await pkiApplicationDAL.updateById(applicationId, {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description })
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code?: string })?.code === "23505") {
+        throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
+      }
+      throw err;
+    }
   };
 
   const deleteApplication = async ({

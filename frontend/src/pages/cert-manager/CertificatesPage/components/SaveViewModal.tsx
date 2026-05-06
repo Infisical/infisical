@@ -22,9 +22,16 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   filters: FilterRule[];
   onViewCreated?: (viewId: string, filters: TInventoryViewFilters) => void;
+  applicationId?: string;
 };
 
-export const SaveViewModal = ({ isOpen, onOpenChange, filters, onViewCreated }: Props) => {
+export const SaveViewModal = ({
+  isOpen,
+  onOpenChange,
+  filters,
+  onViewCreated,
+  applicationId
+}: Props) => {
   const [name, setName] = useState("");
   const [isShared, setIsShared] = useState(false);
   const { mutateAsync: createView, isPending } = useCreateCertificateInventoryView();
@@ -36,7 +43,8 @@ export const SaveViewModal = ({ isOpen, onOpenChange, filters, onViewCreated }: 
     const result = await createView({
       name: name.trim(),
       filters: apiFilters,
-      isShared
+      isShared,
+      applicationId
     });
     createNotification({
       text: `View "${name}" saved successfully`,

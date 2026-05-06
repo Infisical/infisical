@@ -78,24 +78,28 @@ export const OrgCertManagerTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-right">Certificates</TableHead>
-                <TableHead className="text-right">Syncs</TableHead>
-                <TableHead className="text-right">Alerts</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="w-full">Name</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Certificates</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Syncs</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Alerts</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.instances.map((i) => (
                 <TableRow key={i.id}>
-                  <TableCell isTruncatable>
-                    <div className="font-medium text-foreground">{i.name}</div>
-                    <div className="font-mono text-xs text-accent">{i.slug}</div>
+                  <TableCell className="w-full">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="font-medium text-foreground">{i.name}</span>
+                      <span className="font-mono text-xs text-accent">{i.slug}</span>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-right">{i.certificateCount}</TableCell>
-                  <TableCell className="text-right">{i.syncCount}</TableCell>
-                  <TableCell className="text-right">{i.alertCount}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
+                    {i.certificateCount}
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{i.syncCount}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{i.alertCount}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
                     {i.isActive ? (
                       <Badge variant="success">Active</Badge>
                     ) : (

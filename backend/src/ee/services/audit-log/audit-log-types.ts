@@ -6377,6 +6377,7 @@ interface ScepDynamicChallengeGeneratedEvent {
     profileId: string;
     profileSlug: string;
     expiresAt: string;
+    applicationId?: string;
   };
 }
 

@@ -40,6 +40,7 @@ import {
   useGetWorkspaceUserDetails
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
@@ -126,6 +127,7 @@ export const Page = () => {
   }
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
@@ -143,7 +145,7 @@ export const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Project Users
+            {isCertManager ? "Cert Manager Users" : "Project Users"}
           </Link>
           <PageHeader
             scope={currentProject.type}
@@ -155,7 +157,11 @@ export const Page = () => {
                   membershipDetails.inviteEmail ||
                   "Unnamed User"
             }
-            description="Configure and manage project access control"
+            description={
+              isCertManager
+                ? "Configure and manage cert manager access control"
+                : "Configure and manage project access control"
+            }
           >
             {isOwnProjectMembershipDetails ? (
               <Tooltip

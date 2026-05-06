@@ -60,8 +60,8 @@ export const pkiApplicationMembershipServiceFactory = ({
     return application;
   };
 
-  const $assertActorPresentInProject = async (
-    projectId: string,
+  const $assertActorPresentInOrg = async (
+    orgId: string,
     actor: { userId?: string; identityId?: string; groupId?: string }
   ) => {
     const setActors = [actor.userId, actor.identityId, actor.groupId].filter(Boolean);
@@ -72,20 +72,20 @@ export const pkiApplicationMembershipServiceFactory = ({
     }
 
     const where: Record<string, unknown> = {
-      scope: AccessScope.Project,
-      scopeProjectId: projectId
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId
     };
     if (actor.userId) where.actorUserId = actor.userId;
     else if (actor.identityId) where.actorIdentityId = actor.identityId;
     else if (actor.groupId) where.actorGroupId = actor.groupId;
 
-    const projectMembership = await membershipDAL.find(where);
-    if (!projectMembership.length) {
+    const orgMembership = await membershipDAL.find(where);
+    if (!orgMembership.length) {
       throw new BadRequestError({
-        message: "The actor is not a member of this project. Add them at the project level first."
+        message: "The actor is not a member of this organization. Invite them to the organization first."
       });
     }
-    return projectMembership[0];
+    return orgMembership[0];
   };
 
   const $loadResourcePermission = (
@@ -141,13 +141,13 @@ export const pkiApplicationMembershipServiceFactory = ({
       });
     }
 
-    const projectMembership = await $assertActorPresentInProject(projectId, { userId, identityId, groupId });
+    const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
     return membershipDAL.transaction(async (tx) => {
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
-          scopeOrgId: projectMembership.scopeOrgId,
+          scopeOrgId: orgMembership.scopeOrgId,
           scopeProjectId: projectId,
           actorUserId: userId ?? null,
           actorIdentityId: identityId ?? null,

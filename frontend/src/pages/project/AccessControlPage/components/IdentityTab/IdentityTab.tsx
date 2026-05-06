@@ -245,7 +245,9 @@ export const IdentityTab = withProjectPermission(
                     isDisabled={!isAllowed}
                   >
                     <PlusIcon />
-                    {`Add Machine Identity to ${productLabel}`}
+                    {isCertManager
+                      ? "Add Machine Identity"
+                      : `Add Machine Identity to ${productLabel}`}
                   </Button>
                 )}
               </ProjectPermissionCan>

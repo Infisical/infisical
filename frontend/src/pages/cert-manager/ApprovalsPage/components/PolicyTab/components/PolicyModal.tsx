@@ -219,7 +219,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
                   <PolicyDetailsStep applicationId={applicationId} />
                 </Tab.Panel>
                 <Tab.Panel>
-                  <PolicyApprovalSteps />
+                  <PolicyApprovalSteps applicationId={applicationId} />
                 </Tab.Panel>
                 <Tab.Panel>
                   <PolicyReviewStep />

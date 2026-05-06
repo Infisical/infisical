@@ -50,9 +50,15 @@ type CertificateRequestFilters = {
 
 type Props = {
   onViewCertificateFromRequest?: (certificateId: string) => void;
+  applicationId?: string;
+  applicationName?: string;
 };
 
-export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Props) => {
+export const CertificateRequestsSection = ({
+  onViewCertificateFromRequest,
+  applicationId,
+  applicationName
+}: Props) => {
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateRequestFilters>({});
@@ -97,6 +103,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
       ...(debouncedSearch && { search: debouncedSearch }),
       ...(appliedFilters.status && { status: appliedFilters.status }),
       ...(profileIds && { profileIds }),
+      ...(applicationId && { applicationId }),
       ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
     }),
     [
@@ -105,6 +112,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
       debouncedSearch,
       appliedFilters.status,
       profileIds,
+      applicationId,
       activeMetadataFilters
     ]
   );
@@ -379,6 +387,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                     key={request.id}
                     request={request}
                     onViewCertificates={handleViewCertificates}
+                    applicationName={applicationName}
                   />
                 ))}
             </TBody>

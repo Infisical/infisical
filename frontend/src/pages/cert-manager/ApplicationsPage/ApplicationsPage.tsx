@@ -1,6 +1,13 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { Hexagon, MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import {
+  Hexagon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, PageHeader, Spinner } from "@app/components/v2";
@@ -25,7 +32,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   TPkiApplication,
@@ -72,12 +82,11 @@ export const ApplicationsPage = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Profiles</TableHead>
-            <TableHead>Members</TableHead>
-            <TableHead>Certificates</TableHead>
-            <TableHead>Created</TableHead>
+            <TableHead className="w-full">Name</TableHead>
+            <TableHead className="whitespace-nowrap">Profiles</TableHead>
+            <TableHead className="whitespace-nowrap">Members</TableHead>
+            <TableHead className="whitespace-nowrap">Certificates</TableHead>
+            <TableHead className="whitespace-nowrap">Created</TableHead>
             <TableHead className="w-5" />
           </TableRow>
         </TableHeader>
@@ -92,19 +101,26 @@ export const ApplicationsPage = () => {
                 } as never)
               }
             >
-              <TableCell isTruncatable>
+              <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
-                  <Hexagon className="size-5 shrink-0 text-primary" strokeWidth={1.75} />
+                  <Hexagon className="size-4 shrink-0 text-primary" strokeWidth={1.75} />
                   <span>{app.name}</span>
+                  {app.description?.length ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 shrink-0 text-accent" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        {app.description}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
                 </div>
               </TableCell>
-              <TableCell isTruncatable className="text-accent">
-                {app.description?.length ? app.description : "—"}
-              </TableCell>
-              <TableCell>{app.profileCount}</TableCell>
-              <TableCell>{app.memberCount}</TableCell>
-              <TableCell>{app.certificateCount}</TableCell>
-              <TableCell className="text-accent">
+              <TableCell className="whitespace-nowrap">{app.profileCount}</TableCell>
+              <TableCell className="whitespace-nowrap">{app.memberCount}</TableCell>
+              <TableCell className="whitespace-nowrap">{app.certificateCount}</TableCell>
+              <TableCell className="whitespace-nowrap text-accent">
                 {new Date(app.createdAt).toLocaleDateString()}
               </TableCell>
               <TableCell>

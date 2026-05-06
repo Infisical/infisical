@@ -160,6 +160,50 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/applications/:applicationId/profiles/:profileId/challenge",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        applicationId: z.string().uuid(),
+        profileId: z.string().uuid()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      const { applicationId, profileId } = req.params;
+
+      const result = await server.services.pkiScep.generateDynamicChallenge({
+        profileId,
+        applicationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      void server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED,
+          metadata: {
+            profileId,
+            profileSlug: result.profileSlug,
+            expiresAt: result.expiresAt,
+            applicationId
+          }
+        }
+      });
+
+      void res.header("Content-Type", "text/plain");
+      return res.send(result.challenge);
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/applications/:applicationId/profiles/:profileId/pkiclient.exe",
     config: { rateLimit: readLimit },
