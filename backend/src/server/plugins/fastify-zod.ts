@@ -49,6 +49,60 @@ const zodToJsonSchemaOptions = {
   postProcess: jsonDescription
 } as const;
 
+/**
+ * Recursively removes properties marked with "x-hidden": true from the JSON schema.
+ * This allows fields to be hidden from OpenAPI docs while still being validated.
+ * Usage: .describe(JSON.stringify({ "x-hidden": true }))
+ */
+const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
+  if (!schema || typeof schema !== "object") {
+    return schema;
+  }
+
+  const result = { ...schema };
+
+  if (result.properties && typeof result.properties === "object") {
+    const filteredProperties: FreeformRecord = {};
+    const hiddenKeys: string[] = [];
+
+    for (const key of Object.keys(result.properties)) {
+      const prop = result.properties[key];
+      if (prop?.["x-hidden"]) {
+        hiddenKeys.push(key);
+      } else {
+        filteredProperties[key] = removeHiddenProperties(prop);
+      }
+    }
+
+    result.properties = filteredProperties;
+
+    if (result.required && Array.isArray(result.required)) {
+      result.required = result.required.filter((r: string) => !hiddenKeys.includes(r));
+      if (result.required.length === 0) {
+        delete result.required;
+      }
+    }
+  }
+
+  if (result.items) {
+    result.items = removeHiddenProperties(result.items);
+  }
+
+  if (result.allOf && Array.isArray(result.allOf)) {
+    result.allOf = result.allOf.map(removeHiddenProperties);
+  }
+
+  if (result.oneOf && Array.isArray(result.oneOf)) {
+    result.oneOf = result.oneOf.map(removeHiddenProperties);
+  }
+
+  if (result.anyOf && Array.isArray(result.anyOf)) {
+    result.anyOf = result.anyOf.map(removeHiddenProperties);
+  }
+
+  return result;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hasOwnProperty<T, K extends PropertyKey>(obj: T, prop: K): obj is T & Record<K, any> {
   return Object.prototype.hasOwnProperty.call(obj, prop);
@@ -90,7 +144,7 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
     for (const prop in zodSchemas) {
       const zodSchema = zodSchemas[prop];
       if (zodSchema) {
-        transformed[prop] = zodToJsonSchema(zodSchema, zodToJsonSchemaOptions);
+        transformed[prop] = removeHiddenProperties(zodToJsonSchema(zodSchema, zodToJsonSchemaOptions));
       }
     }
 
@@ -102,10 +156,12 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const schema = resolveSchema((response as any)[prop]);
 
-        const transformedResponse = zodToJsonSchema(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          schema as any,
-          zodToJsonSchemaOptions
+        const transformedResponse = removeHiddenProperties(
+          zodToJsonSchema(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            schema as any,
+            zodToJsonSchemaOptions
+          )
         );
         transformed.response[prop] = transformedResponse;
       }

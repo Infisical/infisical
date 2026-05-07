@@ -6,6 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -56,7 +57,7 @@ export const registerCertificateProfilesRouter = async (
       tags: [ApiDocsTags.PkiCertificateProfiles],
       body: z
         .object({
-          projectId: z.string().min(1).optional(),
+          projectId: z.string().min(1).optional().describe(openApiHidden()),
           caId: z.string().uuid().optional(),
           certificatePolicyId: z.string().uuid(),
           slug: z
@@ -276,7 +277,7 @@ export const registerCertificateProfilesRouter = async (
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional(),
-        projectId: z.string().uuid().optional()
+        projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
