@@ -355,13 +355,17 @@ export const externalMigrationServiceFactory = ({
       });
     }
 
-    // Allow root namespace access when no namespace is configured on the connection
-    const isRootAccess = namespace === "root" || namespace === "/";
-    const hasNoNamespace = connection.credentials.namespace === undefined;
+    const normalizeVaultNamespace = (vaultNamespace?: string | null) => {
+      const trimmedNamespace = vaultNamespace?.trim();
 
-    if (hasNoNamespace && isRootAccess) {
-      // Skip validation for root access with no configured namespace
-    } else if (connection.credentials.namespace !== namespace) {
+      if (!trimmedNamespace || trimmedNamespace === "/" || trimmedNamespace.toLowerCase() === "root") {
+        return "";
+      }
+
+      return trimmedNamespace;
+    };
+
+    if (normalizeVaultNamespace(connection.credentials.namespace) !== normalizeVaultNamespace(namespace)) {
       throw new BadRequestError({ message: "Namespace value does not match the namespace of the connection" });
     }
 
