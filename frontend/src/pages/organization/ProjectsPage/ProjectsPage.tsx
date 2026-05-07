@@ -22,10 +22,10 @@ export const ProjectsPage = () => {
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
   });
 
-  const { data: projects = [] } = useGetUserProjects();
+  const { data: projects = [], isFetched } = useGetUserProjects();
 
   useEffect(() => {
-    if (!projectRedirect || !projects.length) return;
+    if (!projectRedirect || !isFetched) return;
 
     const project = projects.find((p) => p.id === projectRedirect);
     if (project) {
@@ -43,7 +43,7 @@ export const ProjectsPage = () => {
         replace: true
       });
     }
-  }, [projectRedirect, projects]);
+  }, [projectRedirect, projects, isFetched]);
 
   const projectsRouteId =
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects";
