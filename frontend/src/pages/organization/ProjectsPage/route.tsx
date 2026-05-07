@@ -2,11 +2,11 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { apiRequest } from "@app/config/request";
 import { clearLastProject } from "@app/helpers/lastProject";
 import { getProjectHomePage } from "@app/helpers/project";
 import { projectKeys } from "@app/hooks/api/projects/query-keys";
 import { Project } from "@app/hooks/api/projects/types";
-import { apiRequest } from "@app/config/request";
 
 import { ProjectsPage } from "./ProjectsPage";
 
@@ -17,7 +17,6 @@ const searchSchema = z.object({
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
 )({
-  component: ProjectsPage,
   validateSearch: zodValidator(searchSchema),
   beforeLoad: async ({ context, search, params }) => {
     if (!search.projectRedirect) return;
@@ -49,6 +48,7 @@ export const Route = createFileRoute(
       search: {}
     });
   },
+  component: ProjectsPage,
   context: () => ({
     breadcrumbs: [
       {
