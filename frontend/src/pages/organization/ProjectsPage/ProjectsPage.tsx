@@ -1,49 +1,16 @@
-import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Outlet, useMatches, useNavigate, useSearch } from "@tanstack/react-router";
+import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { PageHeader } from "@app/components/v2";
-import { useOrganization, useUser } from "@app/context";
-import { clearLastProject } from "@app/helpers/lastProject";
-import { getProjectHomePage } from "@app/helpers/project";
-import { useGetUserProjects } from "@app/hooks/api";
+import { useOrganization } from "@app/context";
 
 import { ProjectCategoryOverview } from "./components/ProjectCategoryOverview";
 
 export const ProjectsPage = () => {
   const { t } = useTranslation();
   const matches = useMatches();
-  const navigate = useNavigate();
-  const { isSubOrganization, currentOrg } = useOrganization();
-  const { user } = useUser();
-
-  const { projectRedirect } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
-  });
-
-  const { data: projects = [], isFetched } = useGetUserProjects();
-
-  useEffect(() => {
-    if (!projectRedirect || !isFetched) return;
-
-    const project = projects.find((p) => p.id === projectRedirect);
-    if (project) {
-      navigate({
-        to: getProjectHomePage(project.type, project.environments),
-        params: { orgId: currentOrg?.id || "", projectId: project.id },
-        replace: true
-      });
-    } else {
-      clearLastProject(user.id, currentOrg?.id || "");
-      navigate({
-        to: "/organizations/$orgId/projects",
-        params: { orgId: currentOrg?.id || "" },
-        search: {},
-        replace: true
-      });
-    }
-  }, [projectRedirect, projects, isFetched]);
+  const { isSubOrganization } = useOrganization();
 
   const projectsRouteId =
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects";
@@ -52,10 +19,6 @@ export const ProjectsPage = () => {
 
   if (hasChildRoute) {
     return <Outlet />;
-  }
-
-  if (projectRedirect) {
-    return null;
   }
 
   return (
