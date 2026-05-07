@@ -108,7 +108,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     method: "PATCH",
     url: "/:alertId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
