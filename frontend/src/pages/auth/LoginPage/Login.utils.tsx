@@ -11,6 +11,7 @@ type NavigateUserToOrgParams = {
   navigate: NavigateFn;
   organizationId?: string;
   navigateTo?: string;
+  userId?: string;
 };
 
 export enum LoginSection {
@@ -19,14 +20,19 @@ export enum LoginSection {
   OIDC = "oidc"
 }
 
-const getLastProjectId = (organizationId: string): string | null => {
-  const user = queryClient.getQueryData<User & UserEnc>(userKeys.getUser);
-  if (!user?.id) return null;
-  return getLastProject(user.id, organizationId);
+const getLastProjectId = (organizationId: string, userId?: string): string | null => {
+  const resolvedUserId = userId || queryClient.getQueryData<User & UserEnc>(userKeys.getUser)?.id;
+  if (!resolvedUserId) return null;
+  return getLastProject(resolvedUserId, organizationId);
 };
 
-const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?: string) => {
-  const lastProjectId = !navigateTo ? getLastProjectId(organizationId) : null;
+const navigateToOrg = (
+  navigate: NavigateFn,
+  organizationId: string,
+  navigateTo?: string,
+  userId?: string
+) => {
+  const lastProjectId = !navigateTo ? getLastProjectId(organizationId, userId) : null;
 
   navigate({
     to: navigateTo || ("/organizations/$orgId/projects" as const),
@@ -38,11 +44,12 @@ const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?
 export const navigateUserToOrg = async ({
   navigate,
   organizationId,
-  navigateTo
+  navigateTo,
+  userId
 }: NavigateUserToOrgParams) => {
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigateToOrg(navigate, organizationId, navigateTo);
+    navigateToOrg(navigate, organizationId, navigateTo, userId);
     return;
   }
 
@@ -51,7 +58,7 @@ export const navigateUserToOrg = async ({
   if (nonAuthEnforcedOrgs.length > 0) {
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigateToOrg(navigate, userOrg, navigateTo);
+    navigateToOrg(navigate, userOrg, navigateTo, userId);
   } else {
     localStorage.removeItem("orgData.id");
     navigate({ to: "/organizations/none" });
