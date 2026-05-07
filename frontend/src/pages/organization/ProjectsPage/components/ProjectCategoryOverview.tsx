@@ -152,21 +152,17 @@ export const ProjectCategoryOverview = () => {
         {PRODUCT_TYPES.map((type) => {
           const isCertManager = type === ProjectType.CertificateManager;
           const count = projectCountsByType[type] || 0;
-          const isDisabled = isCertManager && !certManagerInstance?.activeProjectId;
 
           return (
             <Card
               key={type}
               role="button"
-              tabIndex={isDisabled ? -1 : 0}
-              aria-disabled={isDisabled}
-              onClick={() => !isDisabled && handleTileClick(type)}
+              tabIndex={0}
+              onClick={() => handleTileClick(type)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !isDisabled) handleTileClick(type);
+                if (e.key === "Enter") handleTileClick(type);
               }}
-              className={`group relative h-auto cursor-pointer overflow-hidden px-7 transition-all duration-100 before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:bg-mineshaft-400 before:transition-colors before:content-[''] hover:bg-card/80 hover:before:bg-primary ${
-                isDisabled ? "cursor-not-allowed opacity-40" : ""
-              }`}
+              className="group relative h-auto cursor-pointer overflow-hidden px-7 transition-all duration-100 before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:bg-mineshaft-400 before:transition-colors before:content-[''] hover:bg-card/80 hover:before:bg-primary"
             >
               <CardHeader>
                 <CardTitle className="flex items-start justify-between">

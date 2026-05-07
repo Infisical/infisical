@@ -225,7 +225,7 @@ export const Navbar = () => {
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
 
-    await navigateUserToOrg({ navigate, organizationId, navigateTo });
+    await navigateUserToOrg({ navigate, organizationId, navigateTo, userId: user?.id });
     queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
     if (onSuccess) {
