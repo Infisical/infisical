@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import {
@@ -102,7 +102,9 @@ export const ApplicationSelect = () => {
     projectId?: string;
     orgId?: string;
   };
-  const { applicationName, projectId, orgId } = params;
+  const search = useSearch({ strict: false }) as { fromApplication?: string };
+  const { projectId, orgId } = params;
+  const applicationName = params.applicationName ?? search.fromApplication;
   if (!applicationName || !projectId || !orgId) return null;
 
   return (

@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Plus } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ConfirmActionModal, Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
   Dialog,
@@ -95,6 +95,37 @@ const CopyableField = ({
       </div>
       {helper ? <p className="mt-1 text-xs text-mineshaft-400">{helper}</p> : null}
     </div>
+  );
+};
+
+const DisableEnrollmentButton = ({
+  method,
+  onConfirmed,
+  isPending
+}: {
+  method: "API" | "EST" | "ACME" | "SCEP";
+  onConfirmed: () => Promise<void>;
+  isPending: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <>
+      <Button variant="outline" onClick={() => setIsOpen(true)} isPending={isPending}>
+        Disable
+      </Button>
+      <ConfirmActionModal
+        isOpen={isOpen}
+        onChange={setIsOpen}
+        confirmKey="disable"
+        title={`Disable ${method} enrollment for this profile?`}
+        subTitle={`Clients using ${method} against this profile via this Application will stop being able to request certificates. Existing certificates remain valid.`}
+        buttonText="Disable enrollment"
+        onConfirmed={async () => {
+          await onConfirmed();
+          setIsOpen(false);
+        }}
+      />
+    </>
   );
 };
 
@@ -205,9 +236,11 @@ const ApiPanel = ({
       )}
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
-          <Button variant="outline" onClick={onDisable} isPending={clearMutation.isPending}>
-            Disable
-          </Button>
+          <DisableEnrollmentButton
+            method="API"
+            onConfirmed={onDisable}
+            isPending={clearMutation.isPending}
+          />
         )}
         <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
           {enabled ? "Save" : "Enable"}
@@ -339,9 +372,11 @@ const EstPanel = ({
       />
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
-          <Button variant="outline" onClick={onDisable} isPending={clearMutation.isPending}>
-            Disable
-          </Button>
+          <DisableEnrollmentButton
+            method="EST"
+            onConfirmed={onDisable}
+            isPending={clearMutation.isPending}
+          />
         )}
         <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
           {enabled ? "Save" : "Enable"}
@@ -518,9 +553,11 @@ const AcmePanel = ({
       )}
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
-          <Button variant="outline" onClick={onDisable} isPending={clearMutation.isPending}>
-            Disable
-          </Button>
+          <DisableEnrollmentButton
+            method="ACME"
+            onConfirmed={onDisable}
+            isPending={clearMutation.isPending}
+          />
         )}
         <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
           {enabled ? "Save" : "Enable"}
@@ -785,9 +822,11 @@ const ScepPanel = ({
       />
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
-          <Button variant="outline" onClick={onDisable} isPending={clearMutation.isPending}>
-            Disable
-          </Button>
+          <DisableEnrollmentButton
+            method="SCEP"
+            onConfirmed={onDisable}
+            isPending={clearMutation.isPending}
+          />
         )}
         <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
           {enabled ? "Save" : "Enable"}

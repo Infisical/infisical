@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { faCheck, faCopy, faEllipsisVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faCopy,
+  faEllipsisVertical,
+  faPenToSquare,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
@@ -16,7 +22,7 @@ import {
   PageLoader,
   ResourceIcon
 } from "@app/components/v3";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   useDeletePkiApplication,
   useGetPkiApplicationByName,
@@ -25,6 +31,7 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { PkiApplicationModal } from "../ApplicationsPage/components/PkiApplicationModal";
 import { ApplicationCertificatesTab } from "./components/ApplicationCertificatesTab";
 import { ApplicationMembersTab } from "./components/ApplicationMembersTab";
 import { ApplicationRequestsTab } from "./components/ApplicationRequestsTab";
@@ -47,6 +54,11 @@ export const ApplicationDetailsByIDPage = () => {
   const deleteApp = useDeletePkiApplication();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isIdCopied, setIsIdCopied] = useToggle(false);
+  const {
+    popUp: editPopUp,
+    handlePopUpOpen: handleEditPopUpOpen,
+    handlePopUpToggle: handleEditPopUpToggle
+  } = usePopUp(["application"] as const);
 
   const selectedTab = search.selectedTab ?? "certificates";
 
@@ -119,6 +131,10 @@ export const ApplicationDetailsByIDPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={2}>
+                  <DropdownMenuItem onClick={() => handleEditPopUpOpen("application", application)}>
+                    <FontAwesomeIcon icon={faPenToSquare} />
+                    Edit Application
+                  </DropdownMenuItem>
                   <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
                     <FontAwesomeIcon icon={faTrash} />
                     Delete Application
@@ -156,6 +172,7 @@ export const ApplicationDetailsByIDPage = () => {
               <TabPanel value="certificates">
                 <ApplicationCertificatesTab
                   applicationId={application.id}
+                  applicationName={application.name}
                   initialSearch={search.search}
                 />
               </TabPanel>
@@ -191,6 +208,8 @@ export const ApplicationDetailsByIDPage = () => {
         deleteKey="confirm"
         onDeleteApproved={handleDelete}
       />
+
+      <PkiApplicationModal popUp={editPopUp} handlePopUpToggle={handleEditPopUpToggle} />
     </>
   );
 };

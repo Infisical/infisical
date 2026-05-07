@@ -18,7 +18,10 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -50,9 +53,24 @@ type Props = {
 type Option = { value: string; label: string; isNew?: boolean };
 
 const APP_ROLES = [
-  { slug: "admin", label: "Admin" },
-  { slug: "operator", label: "Operator" },
-  { slug: "auditor", label: "Auditor" }
+  {
+    slug: "admin",
+    label: "Admin",
+    description:
+      "Full management of this application: edit/delete, attach/detach profiles, configure enrollment, manage approval policies, and manage members."
+  },
+  {
+    slug: "operator",
+    label: "Operator",
+    description:
+      "Day-to-day issuance: request and issue certificates against attached profiles, view enrollment, view approval policies, and submit approval requests."
+  },
+  {
+    slug: "auditor",
+    label: "Auditor",
+    description:
+      "Read-only access: view the application, certificates, enrollment, approval policies/requests, and audit logs."
+  }
 ];
 
 const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Promise<void> => {
@@ -362,20 +380,30 @@ export const AddApplicationMemberModal = ({
             </FormControl>
           )}
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-accent">Role:</span>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {APP_ROLES.map((r) => (
-                  <SelectItem key={r.slug} value={r.slug}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-accent">Role:</span>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {APP_ROLES.map((r) => (
+                    <Tooltip key={r.slug} delayDuration={150}>
+                      <TooltipTrigger asChild>
+                        <SelectItem value={r.slug}>{r.label}</SelectItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        {r.description}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-accent">
+              {APP_ROLES.find((r) => r.slug === role)?.description}
+            </p>
           </div>
         </div>
 

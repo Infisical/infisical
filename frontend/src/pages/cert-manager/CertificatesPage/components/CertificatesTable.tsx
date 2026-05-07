@@ -129,6 +129,7 @@ type Props = {
   dashboardFilters?: FilterRule[];
   dashboardViewId?: string;
   applicationId?: string;
+  applicationName?: string;
 };
 
 const PER_PAGE_INIT = 25;
@@ -165,7 +166,8 @@ export const CertificatesTable = ({
   externalFilter,
   dashboardFilters,
   dashboardViewId,
-  applicationId
+  applicationId,
+  applicationName
 }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
@@ -806,7 +808,8 @@ export const CertificatesTable = ({
                             orgId: currentOrg.id,
                             projectId: currentProject.id,
                             certificateId: certificate.id
-                          }
+                          },
+                          search: applicationName ? { fromApplication: applicationName } : undefined
                         });
                       }}
                     >

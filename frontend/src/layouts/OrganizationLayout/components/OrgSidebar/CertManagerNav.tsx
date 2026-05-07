@@ -154,9 +154,11 @@ export const CertManagerNav = ({
           <ProjectNavList items={legacyItems} onSubmenuOpen={onSubmenuOpen} />
         </SidebarCollapsibleGroup>
       ) : null}
-      <SidebarCollapsibleGroup label="Administration">
-        <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
-      </SidebarCollapsibleGroup>
+      {isCertManagerAdmin ? (
+        <SidebarCollapsibleGroup label="Administration">
+          <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      ) : null}
     </>
   );
 };

@@ -117,7 +117,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Field>
                 <FieldLabel>Name</FieldLabel>
                 <FieldContent>
-                  <Input {...field} placeholder="payments-service" />
+                  <Input {...field} placeholder="my-service" />
                 </FieldContent>
                 {error ? <FieldError>{error.message}</FieldError> : null}
               </Field>
@@ -132,7 +132,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <FieldContent>
                   <TextArea
                     {...field}
-                    placeholder="Issues and rotates certificates for the payments stack."
+                    placeholder="Issues and rotates certificates for my application stack."
                   />
                 </FieldContent>
                 {error ? <FieldError>{error.message}</FieldError> : null}

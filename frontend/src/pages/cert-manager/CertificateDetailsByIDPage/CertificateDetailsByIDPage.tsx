@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -65,6 +65,7 @@ const Page = () => {
     from: ROUTE_PATHS.CertManager.CertificateDetailsByIDPage.id
   });
   const { certificateId } = params as { certificateId: string };
+  const { fromApplication } = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
 
@@ -202,17 +203,33 @@ const Page = () => {
           {(isAllowed) =>
             isAllowed ? (
               <div className="mx-auto mb-6 w-full max-w-8xl">
-                <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId
-                  }}
-                  className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-                >
-                  <ChevronLeftIcon size={16} />
-                  Certificates
-                </Link>
+                {fromApplication ? (
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId,
+                      applicationName: fromApplication
+                    }}
+                    search={{ selectedTab: "certificates" }}
+                    className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+                  >
+                    <ChevronLeftIcon size={16} />
+                    {fromApplication} Certificates
+                  </Link>
+                ) : (
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId
+                    }}
+                    className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+                  >
+                    <ChevronLeftIcon size={16} />
+                    Certificates
+                  </Link>
+                )}
                 <PageHeader
                   scope={ProjectType.CertificateManager}
                   description="View certificate details"

@@ -77,7 +77,6 @@ import {
   useAttachPkiApplicationProfiles,
   useDetachPkiApplicationProfile
 } from "@app/hooks/api/pkiApplications";
-import { PkiApplicationModal } from "@app/pages/cert-manager/ApplicationsPage/components/PkiApplicationModal";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
@@ -357,11 +356,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     handlePopUpOpen: handleIssuePopUpOpen,
     handlePopUpToggle: handleIssuePopUpToggle
   } = usePopUp(["issueCertificate"] as const);
-  const {
-    popUp: editPopUp,
-    handlePopUpOpen: handleEditPopUpOpen,
-    handlePopUpToggle: handleEditPopUpToggle
-  } = usePopUp(["application"] as const);
   const [profileToIssue, setProfileToIssue] = useState<TPkiApplicationProfile | null>(null);
   const deletePolicy = useDeleteApprovalPolicy();
 
@@ -463,222 +457,187 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-      <div className="space-y-4 lg:order-2 lg:col-span-3">
-        <Card>
-          <CardHeader className="grid-cols-[1fr_auto]">
-            <CardTitle>General</CardTitle>
-            <CardDescription>Edit application metadata.</CardDescription>
-            <CardAction className="col-start-2 row-span-2 row-start-1 self-start justify-self-end">
-              <IconButton
-                variant="ghost"
-                size="xs"
-                onClick={() => handleEditPopUpOpen("application", application)}
-                aria-label="Edit application"
-              >
-                <PencilIcon />
-              </IconButton>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-1 gap-3 text-sm">
-              <div>
-                <dt className="text-xs text-accent">Name</dt>
-                <dd className="font-mono text-foreground">{application.name}</dd>
-              </div>
-              {application.description?.length ? (
-                <div>
-                  <dt className="text-xs text-accent">Description</dt>
-                  <dd className="text-foreground">{application.description}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-4 lg:order-1 lg:col-span-9">
-        <Card>
-          <CardHeader>
-            <CardTitle>Enrollment Methods</CardTitle>
-            <CardDescription>
-              Profiles this Application can issue from, and the methods (API · EST · ACME · SCEP)
-              configured on each.
-            </CardDescription>
-            <CardAction>
-              <Button
-                size="sm"
-                variant="project"
-                onClick={() => setIsAttachOpen(true)}
-                isDisabled={availableProfiles.length === 0}
-              >
-                <PlusIcon />
-                Attach Profile
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {profiles.length === 0 ? (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>No profiles attached</EmptyTitle>
-                  <EmptyDescription>Attach a profile to enable issuance.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Profile</TableHead>
-                    <TableHead>Methods</TableHead>
-                    <TableHead className="w-5" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {profiles.map((p) => {
-                    const methods = methodBadges(p);
-                    return (
-                      <TableRow key={p.profileId}>
-                        <TableCell isTruncatable className="font-mono">
-                          {p.profileSlug}
-                        </TableCell>
-                        <TableCell>
-                          {methods.length === 0 ? (
-                            <span className="text-xs text-accent">None</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1.5">
-                              {methods.map((m) => (
-                                <Badge key={m} variant="neutral">
-                                  {m}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton variant="ghost" size="xs">
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-                              <DropdownMenuItem onClick={() => setProfileToConfigure(p)}>
-                                <SettingsIcon />
-                                Configure method
-                              </DropdownMenuItem>
-                              {p.apiConfigId ? (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setProfileToIssue(p);
-                                    handleIssuePopUpOpen("issueCertificate");
-                                  }}
-                                >
-                                  <FilePlusIcon />
-                                  Request Certificate
-                                </DropdownMenuItem>
-                              ) : null}
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setProfileToDetach(p)}
-                              >
-                                <Trash2Icon />
-                                Detach Profile
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Approval Policies</CardTitle>
-            <CardDescription>
-              Approval workflows that gate certificate operations against this Application.
-            </CardDescription>
-            <CardAction>
-              <Button variant="outline" onClick={() => handlePopUpOpen("policy")}>
-                <FontAwesomeIcon icon={faPlus} />
-                Create Policy
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <ApplicationPoliciesTable
-              applicationId={application.id}
-              onEdit={(policy) => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-              onDelete={(policy) => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Alerting</CardTitle>
-            <CardDescription>
-              Alert rules for certificate events scoped to {application.name}.
-            </CardDescription>
-            <CardAction>
-              <Button variant="outline" onClick={() => setAlertModal({ isOpen: true })}>
-                <FontAwesomeIcon icon={faPlus} />
-                Create Alert
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Enrollment Methods</CardTitle>
+          <CardDescription>
+            Define which profiles this Application uses and how certificates are requested from each
+            one.
+          </CardDescription>
+          <CardAction>
+            <Button
+              size="sm"
+              variant="project"
+              onClick={() => setIsAttachOpen(true)}
+              isDisabled={availableProfiles.length === 0}
+            >
+              <PlusIcon />
+              Attach Profile
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {profiles.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No profiles attached</EmptyTitle>
+                <EmptyDescription>Attach a profile to enable issuance.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-full">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Event Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                  <TableHead className="w-5 text-right">Actions</TableHead>
+                  <TableHead>Profile</TableHead>
+                  <TableHead>Methods</TableHead>
+                  <TableHead className="w-5" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isAlertsLoading &&
-                  Array.from({ length: 3 }, (_, idx) => (
-                    <TableRow key={`alert-skeleton-${idx + 1}`}>
-                      {Array.from({ length: 6 }, (__, cellIdx) => (
-                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
-                          <Skeleton className="h-4 w-24" />
-                        </TableCell>
-                      ))}
+                {profiles.map((p) => {
+                  const methods = methodBadges(p);
+                  return (
+                    <TableRow key={p.profileId}>
+                      <TableCell isTruncatable className="font-mono">
+                        {p.profileSlug}
+                      </TableCell>
+                      <TableCell>
+                        {methods.length === 0 ? (
+                          <span className="text-xs text-accent">None</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {methods.map((m) => (
+                              <Badge key={m} variant="neutral">
+                                {m}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton variant="ghost" size="xs">
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
+                            <DropdownMenuItem onClick={() => setProfileToConfigure(p)}>
+                              <SettingsIcon />
+                              Configure method
+                            </DropdownMenuItem>
+                            {p.apiConfigId ? (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setProfileToIssue(p);
+                                  handleIssuePopUpOpen("issueCertificate");
+                                }}
+                              >
+                                <FilePlusIcon />
+                                Request Certificate
+                              </DropdownMenuItem>
+                            ) : null}
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setProfileToDetach(p)}
+                            >
+                              <Trash2Icon />
+                              Detach Profile
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
-                  ))}
-                {!isAlertsLoading && alerts.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-accent">
-                      No PKI alerts configured yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!isAlertsLoading &&
-                  alerts.map((a: TPkiAlertV2) => (
-                    <AlertRow
-                      key={a.id}
-                      alert={a}
-                      onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
-                      onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
-                      onDelete={() =>
-                        setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
-                      }
-                    />
-                  ))}
+                  );
+                })}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Approval Policies</CardTitle>
+          <CardDescription>
+            Approval workflows that gate certificate operations against this Application.
+          </CardDescription>
+          <CardAction>
+            <Button variant="outline" onClick={() => handlePopUpOpen("policy")}>
+              <FontAwesomeIcon icon={faPlus} />
+              Create Policy
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <ApplicationPoliciesTable
+            applicationId={application.id}
+            onEdit={(policy) => handlePopUpOpen("policy", { policyId: policy.id, policy })}
+            onDelete={(policy) => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Alerting</CardTitle>
+          <CardDescription>
+            Alert rules for certificate events scoped to {application.name}.
+          </CardDescription>
+          <CardAction>
+            <Button variant="outline" onClick={() => setAlertModal({ isOpen: true })}>
+              <FontAwesomeIcon icon={faPlus} />
+              Create Alert
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-full">Name</TableHead>
+                <TableHead className="whitespace-nowrap">Event Type</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="whitespace-nowrap">Alert Before</TableHead>
+                <TableHead className="whitespace-nowrap">Last Run</TableHead>
+                <TableHead className="w-5 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isAlertsLoading &&
+                Array.from({ length: 3 }, (_, idx) => (
+                  <TableRow key={`alert-skeleton-${idx + 1}`}>
+                    {Array.from({ length: 6 }, (__, cellIdx) => (
+                      <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {!isAlertsLoading && alerts.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-accent">
+                    No PKI alerts configured yet.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isAlertsLoading &&
+                alerts.map((a: TPkiAlertV2) => (
+                  <AlertRow
+                    key={a.id}
+                    alert={a}
+                    onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
+                    onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
+                    onDelete={() =>
+                      setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
+                    }
+                  />
+                ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <PolicyModal
         popUp={popUp}
@@ -781,8 +740,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         profileId={profileToIssue?.profileId}
         applicationId={application.id}
       />
-
-      <PkiApplicationModal popUp={editPopUp} handlePopUpToggle={handleEditPopUpToggle} />
     </div>
   );
 };

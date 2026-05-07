@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import { Lottie } from "@app/components/v2";
@@ -153,6 +153,7 @@ const TypeSelectInner = ({
 
 export const TypeSelect = () => {
   const params = useParams({ strict: false });
+  const search = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: projects = [] } = useGetUserProjects();
 
   if (params.type && !params.projectId) {
@@ -165,9 +166,10 @@ export const TypeSelect = () => {
   if (params.projectId) {
     const project = projects.find((p) => p.id === params.projectId);
     if (project) {
+      const applicationName =
+        (params as { applicationName?: string }).applicationName ?? search.fromApplication;
       const hasApplicationSelect =
-        project.type === ProjectType.CertificateManager &&
-        Boolean((params as { applicationName?: string }).applicationName);
+        project.type === ProjectType.CertificateManager && Boolean(applicationName);
       const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
       return (
         <TypeSelectInner
