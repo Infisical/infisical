@@ -22,7 +22,10 @@ export const OracleResourceConnectionDetailsSchema = BaseSqlResourceConnectionDe
     .trim()
     .min(1)
     .max(128)
-    .regex(/^[a-zA-Z][a-zA-Z0-9_.#$]*$/, "Invalid Oracle service name: must start with a letter and contain only letters, digits, underscores, dots, # or $")
+    .regex(
+      /^[a-zA-Z][a-zA-Z0-9_.#$]*$/,
+      "Invalid Oracle service name: must start with a letter and contain only letters, digits, underscores, dots, # or $"
+    )
 });
 export const OracleAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
 
