@@ -275,9 +275,10 @@ export const getHCVaultAccessToken = async (
   // Generate temporary token for AppRole method
   try {
     const { instanceUrl, roleId, secretId } = connection.credentials;
+    const authMountPath = connection.credentials.authMountPath || "approle";
 
     const tokenResp = await requestWithHCVaultGateway<TokenRespData>(connection, gatewayService, gatewayV2Service, {
-      url: `${removeTrailingSlash(instanceUrl)}/v1/auth/approle/login`,
+      url: `${removeTrailingSlash(instanceUrl)}/v1/auth/${authMountPath}/login`,
       method: "POST",
       headers: {
         "Content-Type": "application/json",

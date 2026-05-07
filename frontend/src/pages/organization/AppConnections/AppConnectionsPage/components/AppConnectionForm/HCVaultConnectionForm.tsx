@@ -45,6 +45,20 @@ const InstanceUrlSchema = z
   .url("Invalid Instance URL");
 
 const NamespaceSchema = z.string().trim().optional();
+const AuthMountPathSchema = z
+  .string()
+  .trim()
+  .refine(
+    (authMountPath) =>
+      !authMountPath ||
+      (!authMountPath.startsWith("/") &&
+        !authMountPath.endsWith("/") &&
+        !authMountPath.includes("//") &&
+        !/[?#\s]/.test(authMountPath)),
+    "Auth Mount Path must be a relative Vault auth mount path"
+  )
+  .transform((authMountPath) => authMountPath || undefined)
+  .optional();
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
@@ -60,6 +74,7 @@ const formSchema = z.discriminatedUnion("method", [
     credentials: z.object({
       instanceUrl: InstanceUrlSchema,
       namespace: NamespaceSchema,
+      authMountPath: AuthMountPathSchema,
       roleId: z.string().trim().min(1, "Role ID required"),
       secretId: z.string().trim().min(1, "Secret ID required")
     })
@@ -229,6 +244,23 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
           />
         ) : (
           <>
+            <Controller
+              name="credentials.authMountPath"
+              control={control}
+              shouldUnregister
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Auth Mount Path"
+                  isOptional
+                  tooltipClassName="max-w-sm"
+                  tooltipText="The Vault auth mount path for AppRole login. Defaults to approle."
+                >
+                  <Input {...field} placeholder="approle" />
+                </FormControl>
+              )}
+            />
             <Controller
               name="credentials.roleId"
               control={control}

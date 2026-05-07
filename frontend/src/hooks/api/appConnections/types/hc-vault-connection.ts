@@ -20,6 +20,7 @@ export type THCVaultConnection = TRootAppConnection & { app: AppConnection.HCVau
         credentials: {
           instanceUrl: string;
           namespace?: string;
+          authMountPath?: string;
           roleId: string;
           secretId: string;
         };
