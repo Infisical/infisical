@@ -298,6 +298,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                   const name =
                     u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
                   const email = u?.email || inviteEmail;
+                  const detailKey = isCertManager ? u.id : membershipId;
 
                   return (
                     <TableRow
@@ -311,7 +312,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                             params: {
                               projectId,
-                              membershipId
+                              membershipId: detailKey
                             }
                           });
                         }
@@ -321,7 +322,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                           to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                           params: {
                             projectId,
-                            membershipId
+                            membershipId: detailKey
                           }
                         })
                       }

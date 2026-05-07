@@ -114,6 +114,35 @@ export const useAddPkiApplicationMember = () => {
   });
 };
 
+export const useAddPkiApplicationUserMembers = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      applicationId,
+      userIds,
+      emails,
+      role
+    }: {
+      applicationId: string;
+      userIds?: string[];
+      emails?: string[];
+      role: string;
+    }) => {
+      const { data } = await apiRequest.post<{
+        memberships: TPkiApplicationMember[];
+        skipped: string[];
+        unresolved: string[];
+      }>(`${BASE_URL}/${applicationId}/users`, {
+        userIds: userIds ?? [],
+        emails: emails ?? [],
+        role
+      });
+      return data;
+    },
+    onSuccess: () => invalidateAll(qc)
+  });
+};
+
 export const useUpdatePkiApplicationMemberRole = () => {
   const qc = useQueryClient();
   return useMutation({

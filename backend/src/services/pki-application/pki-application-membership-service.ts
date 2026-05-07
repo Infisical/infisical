@@ -17,6 +17,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import {
   TAddApplicationMemberDTO,
+  TAddApplicationUserMembersDTO,
   TApplicationMember,
   TListApplicationMembersDTO,
   TRemoveApplicationMemberDTO,
@@ -399,5 +400,95 @@ export const pkiApplicationMembershipServiceFactory = ({
     return { membershipId: membership.id, applicationId };
   };
 
-  return { addMember, listMembers, updateMemberRole, removeMember };
+  const addUserMembers = async ({
+    applicationId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    userIds,
+    emails,
+    role
+  }: TAddApplicationUserMembersDTO): Promise<{
+    memberships: TApplicationMember[];
+    skipped: string[];
+    unresolved: string[];
+  }> => {
+    if (!isBuiltInApplicationRole(role)) {
+      throw new BadRequestError({
+        message: `Unknown application role '${role}'. Expected one of: admin, operator, auditor.`
+      });
+    }
+
+    await $loadApplicationOrThrow(applicationId, projectId);
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Edit,
+      ResourcePermissionSub.Application
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
+
+    const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
+    const userByEmail = new Map<string, (typeof usersByEmail)[number]>();
+    for (const u of usersByEmail) userByEmail.set(u.username, u);
+    const unresolved = emails.filter((e) => !userByEmail.has(e));
+
+    const existing = await membershipDAL.find({
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      scopeResourceId: applicationId
+    });
+    const alreadyAttached = new Set<string>(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
+
+    const targets: { userId: string; label: string }[] = [];
+    const seen = new Set<string>();
+    userIds.forEach((id) => {
+      if (!seen.has(id)) {
+        seen.add(id);
+        targets.push({ userId: id, label: id });
+      }
+    });
+    emails.forEach((email) => {
+      const user = userByEmail.get(email);
+      if (user && !seen.has(user.id)) {
+        seen.add(user.id);
+        targets.push({ userId: user.id, label: email });
+      }
+    });
+
+    const memberships: TApplicationMember[] = [];
+    const skipped: string[] = [];
+    for (const t of targets) {
+      if (alreadyAttached.has(t.userId)) {
+        skipped.push(t.label);
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        const m = await addMember({
+          applicationId,
+          userId: t.userId,
+          role,
+          projectId,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        memberships.push(m);
+        alreadyAttached.add(t.userId);
+      }
+    }
+
+    return { memberships, skipped, unresolved };
+  };
+
+  return { addMember, addUserMembers, listMembers, updateMemberRole, removeMember };
 };

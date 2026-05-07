@@ -115,3 +115,10 @@ export type TRemoveApplicationMemberDTO = {
   kind: TApplicationMemberKind;
   memberId: string;
 } & TProjectPermission;
+
+export type TAddApplicationUserMembersDTO = {
+  applicationId: string;
+  userIds: string[];
+  emails: string[];
+  role: string;
+} & TProjectPermission;

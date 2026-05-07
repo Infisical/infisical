@@ -20,14 +20,17 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups
 } from "@app/hooks/api/organization";
 import { useCreateOrgIdentity } from "@app/hooks/api/orgIdentity";
-import { TPkiApplicationMember, useAddPkiApplicationMember } from "@app/hooks/api/pkiApplications";
+import {
+  TPkiApplicationMember,
+  useAddPkiApplicationMember,
+  useAddPkiApplicationUserMembers
+} from "@app/hooks/api/pkiApplications";
 import {
   useCreateProjectIdentityMembership,
   useListProjectIdentityMemberships
@@ -51,10 +54,6 @@ const APP_ROLES = [
   { slug: "operator", label: "Operator" },
   { slug: "auditor", label: "Auditor" }
 ];
-
-type CertManagerInviteResponse = {
-  memberships: Array<{ id: string; userId: string }>;
-};
 
 const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Promise<void> => {
   await items.reduce<Promise<void>>(async (prev, item) => {
@@ -108,6 +107,7 @@ export const AddApplicationMemberModal = ({
   }, [projectIdentitiesQuery.data]);
 
   const addMember = useAddPkiApplicationMember();
+  const addUserMembers = useAddPkiApplicationUserMembers();
   const createIdentity = useCreateOrgIdentity();
   const addIdentityToProject = useCreateProjectIdentityMembership();
 
@@ -164,52 +164,27 @@ export const AddApplicationMemberModal = ({
 
   const submitUsers = async () => {
     if (selectedUsers.length === 0) return;
-    const orgUsers = usersQuery.data ?? [];
-    const existing = selectedUsers.filter((u) => !u.isNew);
-    const newInviteEmails = selectedUsers.filter((u) => u.isNew).map((u) => u.value);
-
-    if (newInviteEmails.length > 0 || existing.length > 0) {
-      const usernames = [
-        ...newInviteEmails,
-        ...existing
-          .map((u) => {
-            const o = orgUsers.find((x) => x.user.id === u.value);
-            return o?.user.username || o?.user.email || null;
-          })
-          .filter((x): x is string => Boolean(x))
-      ];
-      await apiRequest.post<CertManagerInviteResponse>("/api/v1/cert-manager/access/users", {
-        usernames,
-        roleSlugs: ["member"]
-      });
-    }
 
     const userIds: string[] = [];
-    existing.forEach((u) => userIds.push(u.value));
-    if (newInviteEmails.length > 0) {
-      const refreshed = (await usersQuery.refetch()).data ?? [];
-      const unresolved: string[] = [];
-      newInviteEmails.forEach((email) => {
-        const fromOrg = refreshed.find(
-          (o) => o.user.email === email || o.user.username === email || o.inviteEmail === email
-        );
-        if (fromOrg?.user.id) {
-          userIds.push(fromOrg.user.id);
-          return;
-        }
-        unresolved.push(email);
-      });
-      if (unresolved.length > 0) {
-        createNotification({
-          type: "warning",
-          text: `Invited ${unresolved.length === 1 ? "user" : "users"} but couldn't add to the Application yet: ${unresolved.join(", ")}. Refresh and add them once they appear in the org.`
-        });
-      }
-    }
-
-    await runSequential(userIds, async (userId) => {
-      await addMember.mutateAsync({ applicationId, kind: "user", memberId: userId, role });
+    const emails: string[] = [];
+    selectedUsers.forEach((u) => {
+      if (u.isNew) emails.push(u.value);
+      else userIds.push(u.value);
     });
+
+    const result = await addUserMembers.mutateAsync({
+      applicationId,
+      userIds,
+      emails,
+      role
+    });
+
+    if (result.unresolved.length > 0) {
+      createNotification({
+        type: "warning",
+        text: `Couldn't resolve ${result.unresolved.length === 1 ? "user" : "users"}: ${result.unresolved.join(", ")}. They were invited to the org but not yet attached to the Application.`
+      });
+    }
   };
 
   const submitIdentities = async () => {

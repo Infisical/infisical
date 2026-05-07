@@ -59,21 +59,28 @@ type RequestProjectAccessModalProps = {
   onOpenChange: (isOpen: boolean) => void;
   project?: Project;
   onComplete?: () => void;
+  title?: string;
+  subTitle?: string;
 };
 
 export const RequestProjectAccessModal = ({
   isOpen,
   onOpenChange,
   project,
-  onComplete
+  onComplete,
+  title = "Confirm Access Request",
+  subTitle
 }: RequestProjectAccessModalProps) => {
   if (!project) return null;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        title="Confirm Access Request"
-        subTitle={`Requesting access to project ${project?.name}. You may include an optional note for project admins to review your request.`}
+        title={title}
+        subTitle={
+          subTitle ??
+          `Requesting access to project ${project?.name}. You may include an optional note for project admins to review your request.`
+        }
       >
         <Content
           onComplete={() => {

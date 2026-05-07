@@ -40,7 +40,8 @@ const Page = () => {
 
   const { data: groupMembership, isPending } = useGetWorkspaceGroupMembershipDetails(
     currentProject.id,
-    groupId
+    groupId,
+    currentProject.type
   );
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();

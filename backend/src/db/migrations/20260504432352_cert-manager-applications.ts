@@ -6,13 +6,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-const ACCESS_SCOPE_PROJECT = "project";
-const ACCESS_SCOPE_ORGANIZATION = "organization";
 const PROJECT_TYPE_CERT_MANAGER = "cert-manager";
 const PROJECT_VERSION_V3 = 3;
-const PROJECT_MEMBERSHIP_ROLE_ADMIN = "admin";
-const ORG_MEMBERSHIP_ROLE_ADMIN = "admin";
-const ORG_MEMBERSHIP_ROLE_OWNER = "owner";
 const PIT_VERSION_LIMIT_DEFAULT = 10;
 
 const BACKFILL_CHUNK_SIZE = 8;
@@ -33,36 +28,6 @@ const backfillOrgCertManagerProject = async (knex: Knex, orgId: string) => {
       .returning("id")) as Array<{ id: string }>;
 
     await tx(TableName.Organization).where("id", orgId).update({ defaultCertManagerProjectId: projectId });
-
-    // Promote every existing org admin / owner to project admin so they can manage the new project.
-    const orgAdminMemberships = (await tx(TableName.Membership)
-      .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-      .where(`${TableName.Membership}.scope`, ACCESS_SCOPE_ORGANIZATION)
-      .where(`${TableName.Membership}.scopeOrgId`, orgId)
-      .whereNotNull(`${TableName.Membership}.actorUserId`)
-      .whereIn(`${TableName.MembershipRole}.role`, [ORG_MEMBERSHIP_ROLE_ADMIN, ORG_MEMBERSHIP_ROLE_OWNER])
-      .distinct(`${TableName.Membership}.actorUserId as actorUserId`)) as Array<{ actorUserId: string }>;
-
-    if (orgAdminMemberships.length === 0) return;
-
-    const insertedMemberships = (await tx(TableName.Membership)
-      .insert(
-        orgAdminMemberships.map((m) => ({
-          scope: ACCESS_SCOPE_PROJECT,
-          scopeOrgId: orgId,
-          scopeProjectId: projectId,
-          actorUserId: m.actorUserId,
-          isActive: true
-        }))
-      )
-      .returning("id")) as Array<{ id: string }>;
-
-    await tx(TableName.MembershipRole).insert(
-      insertedMemberships.map(({ id: membershipId }) => ({
-        membershipId,
-        role: PROJECT_MEMBERSHIP_ROLE_ADMIN
-      }))
-    );
   });
 };
 

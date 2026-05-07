@@ -270,13 +270,14 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
         ...req.query,
-        projectId: req.internalCertManagerProjectId
+        projectId
       });
 
       await server.services.auditLog.createAuditLog({
