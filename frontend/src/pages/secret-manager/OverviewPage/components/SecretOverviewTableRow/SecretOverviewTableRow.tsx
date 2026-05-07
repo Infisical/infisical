@@ -251,8 +251,10 @@ export const SecretOverviewTableRow = ({
                             className="flex h-full items-center"
                             style={{ padding: "0.25rem 1rem" }}
                           >
-                            <div title={name} className="flex h-8 w-32 items-center space-x-2">
-                              <span className="truncate">{name}</span>
+                            <div className="flex h-8 w-32 items-center space-x-2">
+                              <Tooltip content={name}>
+                                <span className="truncate">{name}</span>
+                              </Tooltip>
                               {isImportedSecret && (
                                 <Tooltip
                                   content={`Imported secret from the '${importedSecret?.environmentInfo?.name}' environment`}

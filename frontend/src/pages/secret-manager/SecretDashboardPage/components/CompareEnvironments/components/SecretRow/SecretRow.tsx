@@ -180,13 +180,14 @@ export const SecretRow = ({
                             }}
                           >
                             <div
-                              title={name}
                               style={{
                                 width: colWidth
                               }}
                               className="flex h-full min-h-[40px] w-32 items-center space-x-2 border-r border-mineshaft-500 px-4"
                             >
-                              <span className="truncate">{name}</span>
+                              <Tooltip content={name}>
+                                <span className="truncate">{name}</span>
+                              </Tooltip>
                               {isImportedSecret && (
                                 <Tooltip
                                   content={`Imported secret from the '${importedSecret?.environmentInfo?.name}' environment`}

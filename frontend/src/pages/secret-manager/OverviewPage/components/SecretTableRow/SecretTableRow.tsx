@@ -519,8 +519,13 @@ export const SecretTableRow = ({
                       <Fragment key={`secret-expanded-${slug}-${secretKey}`}>
                         <TableRow className="group hover:z-10">
                           <TableCell className={hasOverride ? "border-b-border/50" : undefined}>
-                            <div title={name} className="flex h-8 w-32 items-center space-x-2">
-                              <span className="truncate">{name}</span>
+                            <div className="flex h-8 w-32 items-center space-x-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="truncate">{name}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>{name}</TooltipContent>
+                              </Tooltip>
                               {isImportedSecret && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
