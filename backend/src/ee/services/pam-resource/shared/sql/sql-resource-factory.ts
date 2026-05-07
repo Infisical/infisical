@@ -1,6 +1,5 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
-import oracledb from "oracledb";
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -10,7 +9,6 @@ import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { probeOracleTls } from "../../oracle/oracle-resource-fns";
 import { PamResource } from "../../pam-resource-enums";
 import {
   TPamResourceFactory,
@@ -239,74 +237,6 @@ const makeSqlConnection = (
           });
         },
         close: () => client.destroy()
-      };
-    }
-    case PamResource.Oracle: {
-      // Oracle uses node-oracledb directly rather than knex — knex's oracledb
-      // dialect drops connectTimeout / transportConnectTimeout and masks driver
-      // errors as generic "pool is probably full" timeouts.
-      const ORACLE_CONNECT_TIMEOUT_SECONDS = 30;
-
-      const openConnection = () =>
-        oracledb.getConnection({
-          user: actualUsername,
-          password: actualPassword,
-          connectString: `localhost:${proxyPort}/${connectionDetails.database}`,
-          connectTimeout: ORACLE_CONNECT_TIMEOUT_SECONDS,
-          transportConnectTimeout: ORACLE_CONNECT_TIMEOUT_SECONDS
-        });
-
-      return {
-        validate: async (connectOnly) => {
-          // TLS Oracle: probe reachability + cert only (thin mode can't accept inline CA).
-          if (sslEnabled) {
-            try {
-              await probeOracleTls({
-                tcpHost: "localhost",
-                port: proxyPort,
-                servername: host,
-                caPem: sslCertificate,
-                rejectUnauthorized: sslRejectUnauthorized
-              });
-              return;
-            } catch (error) {
-              throw new BadRequestError({
-                message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
-              });
-            }
-          }
-
-          // Non-TLS Oracle: standard driver-based validation.
-          let conn: oracledb.Connection | null = null;
-          try {
-            conn = await openConnection();
-            await conn.execute("SELECT 1 FROM DUAL");
-          } catch (error) {
-            if (error instanceof Error) {
-              const msg = error.message || "";
-              // ORA-01017 means we reached Oracle but credentials are bad —
-              // that's the signal the connectOnly path is looking for.
-              if (connectOnly && (msg.includes("ORA-01017") || msg.includes("invalid username/password"))) {
-                return;
-              }
-            }
-            throw new BadRequestError({
-              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
-            });
-          } finally {
-            if (conn) {
-              await conn.close().catch(() => undefined);
-            }
-          }
-        },
-        rotateCredentials: async () => {
-          throw new BadRequestError({
-            message: "Unsupported operation"
-          });
-        },
-        close: async () => {
-          // Connections are opened and closed per operation.
-        }
       };
     }
     default:
