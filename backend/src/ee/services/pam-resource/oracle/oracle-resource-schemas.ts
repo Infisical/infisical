@@ -16,7 +16,14 @@ import {
 } from "../shared/sql/sql-resource-schemas";
 
 // Resources
-export const OracleResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
+export const OracleResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema.extend({
+  database: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(/^[a-zA-Z][a-zA-Z0-9_.#$]*$/, "Invalid Oracle service name: must start with a letter and contain only letters, digits, underscores, dots, # or $")
+});
 export const OracleAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
 
 const BaseOracleResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.OracleDB) });

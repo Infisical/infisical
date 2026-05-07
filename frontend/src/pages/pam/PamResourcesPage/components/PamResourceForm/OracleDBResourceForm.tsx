@@ -10,6 +10,18 @@ import { SqlResourceFields } from "./shared/SqlResourceFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
+const OracleResourceSchema = BaseSqlResourceSchema.extend({
+  database: z
+    .string()
+    .trim()
+    .min(1, "Service name required")
+    .max(128)
+    .regex(
+      /^[a-zA-Z][a-zA-Z0-9_.#$]*$/,
+      "Must start with a letter and contain only letters, digits, underscores, dots, # or $"
+    )
+});
+
 type Props = {
   resource?: TOracleDBResource;
   onSubmit: (formData: FormData) => Promise<void>;
@@ -18,7 +30,7 @@ type Props = {
 
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.OracleDB),
-  connectionDetails: BaseSqlResourceSchema
+  connectionDetails: OracleResourceSchema
 });
 
 type FormData = z.infer<typeof formSchema>;
