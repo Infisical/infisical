@@ -142,7 +142,7 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
 
     <Note>
         - The Infisical ACME server supports both the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) and the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) methods. HTTP-01 is shown in the example above. See the [DNS-01 solver configuration](#dns-01-solver-configuration) section below for DNS-01 setup.
-        - If domain ownership validation is not needed (e.g., for internal infrastructure or service mesh mTLS), you can skip challenges entirely by enabling the **Skip DNS ownership validation** option on your ACME certificate profile. See [Internal PKI without challenges](#internal-pki-without-challenges) below.
+        - If domain ownership validation is not needed (e.g., for internal infrastructure or service mesh mTLS), you can skip challenges entirely by enabling the **Skip DNS Ownership Validation** option on your ACME certificate profile. See [Internal PKI Without Challenges](#internal-pki-without-challenges) below.
         - An `Issuer` is namespace-scoped. Certificates can only be issued using an `Issuer` that exists in the same namespace as the `Certificate` resource.
         - If you need to issue certificates across multiple namespaces with a single resource, create a `ClusterIssuer` instead. The configuration is identical except `kind: ClusterIssuer` and no `metadata.namespace`.
         - More details: https://cert-manager.io/docs/configuration/acme/
@@ -301,7 +301,7 @@ For internal infrastructure such as service mesh mTLS (e.g., Cilium, Istio, Link
 
 Enable the **Skip DNS Ownership Validation** option on your ACME certificate profile in Infisical. When enabled, the ACME server will issue certificates immediately without requiring HTTP-01 or DNS-01 challenge completion. This is the simplest approach for internal PKI use cases where all certificate domains are under your control.
 
-With this option enabled, your Issuer configuration still uses the ACME issuer type, but no solver configuration is needed since challenges are skipped:
+With this option enabled, your Issuer still uses the ACME issuer type. cert-manager's schema requires a `solvers` block, but the configured solver will never be invoked since challenges are skipped:
 
 ```yaml issuer-infisical-internal.yaml
 apiVersion: cert-manager.io/v1
