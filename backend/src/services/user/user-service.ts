@@ -155,7 +155,7 @@ export const userServiceFactory = ({
     return organizations.some((org) => org.scimEnabled);
   };
 
-  const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
+  const requestEmailChangeOTP = async ({ userId, newEmail, password }: TUpdateUserEmailDTO) => {
     const startTime = new Date();
     const normalizedNewEmail = sanitizeEmail(newEmail);
     validateEmail(normalizedNewEmail);
@@ -174,6 +174,25 @@ export const userServiceFactory = ({
           message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
           name: "RequestEmailChangeOTP"
         });
+      }
+
+      // Step-up authentication: require current password when one is set.
+      // SSO-only users (no hashedPassword) bypass — their identity is governed by the IdP.
+      if (user.hashedPassword) {
+        if (!password) {
+          throw new BadRequestError({
+            message: "Current password is required.",
+            name: "RequestEmailChangeOTP"
+          });
+        }
+
+        const isValid = await crypto.hashing().compareHash(password, user.hashedPassword);
+        if (!isValid) {
+          throw new BadRequestError({
+            message: "Incorrect current password.",
+            name: "RequestEmailChangeOTP"
+          });
+        }
       }
 
       // Silently check if another user already has this email - don't send OTP if email is taken
@@ -195,6 +214,19 @@ export const userServiceFactory = ({
             code: otpCode
           }
         });
+
+        // Notify the OLD email so the legitimate owner can react before the change is finalized.
+        if (user.email) {
+          await smtpService.sendMail({
+            template: SmtpTemplates.EmailChangeRequestNotification,
+            subjectLine: "Security alert: email change requested on your Infisical account",
+            recipients: [user.email],
+            substitutions: {
+              currentEmail: user.email,
+              requestedEmail: newEmail.toLowerCase()
+            }
+          });
+        }
       }
 
       return { success: true, message: "Verification code sent to new email address" };

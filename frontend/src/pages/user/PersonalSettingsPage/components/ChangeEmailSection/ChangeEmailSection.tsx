@@ -12,11 +12,10 @@ import { useRequestEmailChangeOTP, useUpdateUserEmail } from "@app/hooks/api/use
 import { clearSession } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
-const emailSchema = z
-  .object({
-    newEmail: z.string().email("Please enter a valid email")
-  })
-  .required();
+const emailSchema = z.object({
+  newEmail: z.string().email("Please enter a valid email"),
+  currentPassword: z.string().optional()
+});
 
 export type EmailFormData = z.infer<typeof emailSchema>;
 
@@ -49,7 +48,7 @@ export const ChangeEmailSection = () => {
   const [pendingEmail, setPendingEmail] = useState("");
 
   const emailForm = useForm<EmailFormData>({
-    defaultValues: { newEmail: "" },
+    defaultValues: { newEmail: "", currentPassword: "" },
     resolver: zodResolver(emailSchema)
   });
 
@@ -74,7 +73,7 @@ export const ChangeEmailSection = () => {
     }
   };
 
-  const handleEmailSubmit = async ({ newEmail }: EmailFormData) => {
+  const handleEmailSubmit = async ({ newEmail, currentPassword }: EmailFormData) => {
     if (newEmail.toLowerCase() === user?.email?.toLowerCase()) {
       createNotification({
         text: "New email must be different from current email",
@@ -83,7 +82,19 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    await requestEmailChangeOTP({ newEmail });
+    if (hasEmailAuth && !currentPassword) {
+      emailForm.setError("currentPassword", {
+        type: "manual",
+        message: "Current password is required."
+      });
+      return;
+    }
+
+    await requestEmailChangeOTP({
+      newEmail,
+      password: hasEmailAuth ? currentPassword : undefined
+    });
+
     setPendingEmail(newEmail);
     setIsOTPModalOpen(true);
 
@@ -179,6 +190,29 @@ export const ChangeEmailSection = () => {
               )}
             />
           </div>
+          {hasEmailAuth && (
+            <div className="max-w-md">
+              <Controller
+                control={emailForm.control}
+                name="currentPassword"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Current password"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="Enter your current password"
+                      type="password"
+                      autoComplete="current-password"
+                      className="bg-mineshaft-800"
+                    />
+                  </FormControl>
+                )}
+              />
+            </div>
+          )}
           <Button
             type="submit"
             colorSchema="secondary"
@@ -188,7 +222,10 @@ export const ChangeEmailSection = () => {
             Send Verification Code
           </Button>
           <p className="mt-2 font-inter text-sm text-mineshaft-400">
-            We&apos;ll send an 6-digit verification code to your new email address.
+            We&apos;ll send a 6-digit verification code to your new email address.{" "}
+            {hasEmailAuth
+              ? "A security alert will also be sent to your current email address."
+              : "A security alert will be sent to your current email address."}
           </p>
         </form>
       </div>

@@ -122,7 +122,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "requestEmailChangeOtp",
       body: z.object({
-        newEmail: z.string().email().trim()
+        newEmail: z.string().email().trim(),
+        password: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -135,7 +136,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.user.requestEmailChangeOTP({
         userId: req.permission.id,
-        newEmail: req.body.newEmail
+        newEmail: req.body.newEmail,
+        password: req.body.password
       });
       return result;
     }

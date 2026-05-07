@@ -20,4 +20,5 @@ export type TUpdateUserMfaDTO = {
 export type TUpdateUserEmailDTO = {
   userId: string;
   newEmail: string;
+  password?: string;
 };
