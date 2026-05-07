@@ -610,6 +610,8 @@ export const externalMigrationServiceFactory = ({
     secretPath,
     vaultNamespace,
     vaultSecretPaths,
+    vaultMountPath,
+    vaultKvVersion,
     auditLogInfo
   }: {
     actor: OrgServiceActor;
@@ -618,12 +620,24 @@ export const externalMigrationServiceFactory = ({
     secretPath: string;
     vaultNamespace: string;
     vaultSecretPaths: string[];
+    vaultMountPath?: string;
+    vaultKvVersion?: "1" | "2";
     auditLogInfo: AuditLogInfo;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, vaultNamespace, "import vault secrets");
 
     if (!vaultSecretPaths.length) {
       throw new BadRequestError({ message: "At least one Vault secret path is required" });
+    }
+
+    if ((vaultMountPath && !vaultKvVersion) || (!vaultMountPath && vaultKvVersion)) {
+      throw new BadRequestError({ message: "Vault mount path and KV version must be provided together" });
+    }
+
+    const normalizedVaultMountPath = vaultMountPath?.trim().replace(/^\/+|\/+$/g, "");
+
+    if (vaultMountPath && !normalizedVaultMountPath) {
+      throw new BadRequestError({ message: "Vault mount path is required" });
     }
 
     const uniqueVaultSecretPaths = Array.from(new Set(vaultSecretPaths));
@@ -633,7 +647,10 @@ export const externalMigrationServiceFactory = ({
       uniqueVaultSecretPaths,
       connection,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      normalizedVaultMountPath && vaultKvVersion
+        ? { path: normalizedVaultMountPath, version: vaultKvVersion }
+        : undefined
     );
 
     const keyOrigins = new Map<string, string[]>();
