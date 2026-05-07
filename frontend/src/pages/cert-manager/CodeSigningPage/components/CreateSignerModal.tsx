@@ -16,7 +16,11 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { approvalPolicyQuery, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  approvalPolicyQuery,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { useCreateSigner } from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
@@ -55,7 +59,8 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 

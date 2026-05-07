@@ -206,19 +206,19 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasColumn(TableName.ApprovalPolicies, "applicationId"))) {
+  if (!(await knex.schema.hasColumn(TableName.ApprovalPolicies, "scopeType"))) {
     await knex.schema.alterTable(TableName.ApprovalPolicies, (t) => {
-      t.uuid("applicationId").nullable();
-      t.foreign("applicationId").references("id").inTable(TableName.PkiApplication).onDelete("CASCADE");
-      t.index("applicationId");
+      t.string("scopeType").nullable();
+      t.uuid("scopeId").nullable();
+      t.index(["scopeType", "scopeId"]);
     });
   }
 
-  if (!(await knex.schema.hasColumn(TableName.ApprovalRequests, "applicationId"))) {
+  if (!(await knex.schema.hasColumn(TableName.ApprovalRequests, "scopeType"))) {
     await knex.schema.alterTable(TableName.ApprovalRequests, (t) => {
-      t.uuid("applicationId").nullable();
-      t.foreign("applicationId").references("id").inTable(TableName.PkiApplication).onDelete("CASCADE");
-      t.index("applicationId");
+      t.string("scopeType").nullable();
+      t.uuid("scopeId").nullable();
+      t.index(["scopeType", "scopeId"]);
     });
   }
 
@@ -323,17 +323,17 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasColumn(TableName.ApprovalRequests, "applicationId")) {
+  if (await knex.schema.hasColumn(TableName.ApprovalRequests, "scopeType")) {
     await knex.schema.alterTable(TableName.ApprovalRequests, (t) => {
-      t.dropForeign(["applicationId"]);
-      t.dropColumn("applicationId");
+      t.dropColumn("scopeType");
+      t.dropColumn("scopeId");
     });
   }
 
-  if (await knex.schema.hasColumn(TableName.ApprovalPolicies, "applicationId")) {
+  if (await knex.schema.hasColumn(TableName.ApprovalPolicies, "scopeType")) {
     await knex.schema.alterTable(TableName.ApprovalPolicies, (t) => {
-      t.dropForeign(["applicationId"]);
-      t.dropColumn("applicationId");
+      t.dropColumn("scopeType");
+      t.dropColumn("scopeId");
     });
   }
 

@@ -555,7 +555,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
         actor: req.permission.type,
@@ -682,8 +682,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { metadata, projectId: explicitProjectId, ...filters } = req.body;
-      const projectId = explicitProjectId ?? req.certManagerProjectId;
+      const { metadata, ...filters } = req.body;
+      const projectId = req.internalCertManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
         actor: req.permission.type,
@@ -1488,7 +1488,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          projectId: req.certManagerProjectId,
+          projectId: req.internalCertManagerProjectId,
           ...req.body
         });
 

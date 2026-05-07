@@ -30,7 +30,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId
       });
 
@@ -62,14 +62,14 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileIds: req.body.profileIds
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.ATTACH_PKI_APPLICATION_PROFILES,
           metadata: {
@@ -110,14 +110,14 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.DETACH_PKI_APPLICATION_PROFILE,
           metadata: {

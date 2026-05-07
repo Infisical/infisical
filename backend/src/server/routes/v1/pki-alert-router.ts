@@ -30,6 +30,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: BasePkiAlertV2Schema.extend({
+        projectId: z.string().uuid().optional().describe("Project ID"),
         applicationId: z
           .string()
           .uuid()
@@ -71,13 +72,13 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_PKI_ALERT,
           metadata: {
@@ -153,14 +154,13 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { projectId: explicitProjectId, ...query } = req.query;
       const alerts = await server.services.pkiAlertV2.listAlerts({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: explicitProjectId ?? req.certManagerProjectId,
-        ...query
+        ...req.query,
+        projectId: req.internalCertManagerProjectId
       });
 
       return alerts;
@@ -440,6 +440,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
+        projectId: z.string().uuid().optional().describe("Project ID"),
         filters: z.array(PkiFilterRuleSchema),
         alertBefore: z
           .string()
@@ -474,7 +475,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 

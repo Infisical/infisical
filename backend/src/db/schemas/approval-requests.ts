@@ -24,7 +24,8 @@ export const ApprovalRequestsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   machineIdentityId: z.string().uuid().nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional()
+  scopeType: z.string().nullable().optional(),
+  scopeId: z.string().uuid().nullable().optional()
 });
 
 export type TApprovalRequests = z.infer<typeof ApprovalRequestsSchema>;

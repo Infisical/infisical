@@ -29,6 +29,7 @@ import {
 import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   CertRequestPolicyConditions,
   TApprovalPolicy
@@ -50,8 +51,8 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
-      projectId,
-      applicationId
+      scope: applicationId ? ApprovalPolicyScope.PkiApplication : ApprovalPolicyScope.Project,
+      scopeId: applicationId || projectId
     })
   );
 
@@ -88,7 +89,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                   <Td>
                     <div className="flex items-center gap-x-2">
                       <span className="text-sm font-medium text-mineshaft-100">{policy.name}</span>
-                      {!policy.applicationId && (
+                      {policy.scopeType !== ApprovalPolicyScope.PkiApplication && (
                         <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-[10px] tracking-wide text-mineshaft-200 uppercase">
                           Legacy
                         </span>

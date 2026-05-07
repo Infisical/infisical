@@ -71,7 +71,7 @@ export const ProjectNavLink = ({
           <item.icon className="size-4" />
           <span>{item.label}</span>
           {Boolean(item.badgeCount) && (
-            <Badge variant="warning" isSquare>
+            <Badge variant="warning" isSquare className="ml-auto">
               {item.badgeCount}
             </Badge>
           )}

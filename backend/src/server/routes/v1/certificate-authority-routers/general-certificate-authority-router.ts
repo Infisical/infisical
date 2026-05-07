@@ -37,6 +37,9 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
       operationId: "listCertificateAuthoritiesV1General",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get Certificate Authorities",
+      querystring: z.object({
+        projectId: z.string().optional()
+      }),
       response: {
         200: z.object({
           certificateAuthorities: CertificateAuthoritySchema.array()
@@ -44,7 +47,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
       }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const internalCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
           projectId,

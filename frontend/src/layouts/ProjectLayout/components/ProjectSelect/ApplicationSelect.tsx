@@ -46,19 +46,20 @@ const ApplicationSelectInner = ({
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverAnchor className="absolute left-18" />
-        <Link
-          to={
-            `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
-          }
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
-        >
-          <ResourceIcon className="size-[14px] shrink-0 text-project" />
-          <span className="truncate">{displayName}</span>
-          <Badge variant="project" className="hidden lg:inline-flex">
-            Application
-          </Badge>
-        </Link>
+        <PopoverAnchor asChild>
+          <Link
+            to={
+              `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
+            }
+            className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          >
+            <ResourceIcon className="size-[14px] shrink-0 text-project" />
+            <span className="truncate">{displayName}</span>
+            <Badge variant="project" className="hidden lg:inline-flex">
+              Application
+            </Badge>
+          </Link>
+        </PopoverAnchor>
         <PopoverTrigger asChild>
           <IconButton variant="ghost" size="xs" aria-label="switch-application">
             <ChevronsUpDown />

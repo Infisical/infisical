@@ -35,6 +35,7 @@ import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   ApproverType,
   PamAccessPolicyConditions,
@@ -58,7 +59,8 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.PamAccess,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 

@@ -46,7 +46,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         search: req.query.search,
         eventType: req.query.eventType,
@@ -80,13 +80,13 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         applicationId: req.params.applicationId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_PKI_ALERT,
           metadata: {
@@ -133,7 +133,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.UPDATE_PKI_ALERT,
           metadata: {
@@ -178,7 +178,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.DELETE_PKI_ALERT,
           metadata: {

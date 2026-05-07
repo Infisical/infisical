@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -8,6 +7,7 @@ import { FilterableSelect, FormControl } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import {
   Button,
+  ButtonGroup,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -168,7 +168,6 @@ export const AddApplicationMemberModal = ({
     const existing = selectedUsers.filter((u) => !u.isNew);
     const newInviteEmails = selectedUsers.filter((u) => u.isNew).map((u) => u.value);
 
-    let invitedMemberships: CertManagerInviteResponse["memberships"] = [];
     if (newInviteEmails.length > 0 || existing.length > 0) {
       const usernames = [
         ...newInviteEmails,
@@ -179,29 +178,37 @@ export const AddApplicationMemberModal = ({
           })
           .filter((x): x is string => Boolean(x))
       ];
-      const { data } = await apiRequest.post<CertManagerInviteResponse>(
-        "/api/v1/cert-manager/access/users",
-        { usernames, roleSlugs: ["member"] }
-      );
-      invitedMemberships = data.memberships ?? [];
+      await apiRequest.post<CertManagerInviteResponse>("/api/v1/cert-manager/access/users", {
+        usernames,
+        roleSlugs: ["member"]
+      });
     }
 
     const userIds: string[] = [];
     existing.forEach((u) => userIds.push(u.value));
     if (newInviteEmails.length > 0) {
       const refreshed = (await usersQuery.refetch()).data ?? [];
+      const unresolved: string[] = [];
       newInviteEmails.forEach((email) => {
-        const fromResponse = invitedMemberships.find((m) => Boolean(m.userId));
         const fromOrg = refreshed.find(
           (o) => o.user.email === email || o.user.username === email || o.inviteEmail === email
         );
-        if (fromOrg?.user.id) userIds.push(fromOrg.user.id);
-        else if (fromResponse?.userId) userIds.push(fromResponse.userId);
+        if (fromOrg?.user.id) {
+          userIds.push(fromOrg.user.id);
+          return;
+        }
+        unresolved.push(email);
       });
+      if (unresolved.length > 0) {
+        createNotification({
+          type: "warning",
+          text: `Invited ${unresolved.length === 1 ? "user" : "users"} but couldn't add to the Application yet: ${unresolved.join(", ")}. Refresh and add them once they appear in the org.`
+        });
+      }
     }
 
     await runSequential(userIds, async (userId) => {
-      await addMember.mutateAsync({ applicationId, userId, role });
+      await addMember.mutateAsync({ applicationId, kind: "user", memberId: userId, role });
     });
   };
 
@@ -234,14 +241,14 @@ export const AddApplicationMemberModal = ({
     });
 
     await runSequential(identityIds, async (identityId) => {
-      await addMember.mutateAsync({ applicationId, identityId, role });
+      await addMember.mutateAsync({ applicationId, kind: "identity", memberId: identityId, role });
     });
   };
 
   const submitGroups = async () => {
     if (selectedGroups.length === 0) return;
     await runSequential(selectedGroups, async (item) => {
-      await addMember.mutateAsync({ applicationId, groupId: item.value, role });
+      await addMember.mutateAsync({ applicationId, kind: "group", memberId: item.value, role });
     });
   };
 
@@ -291,28 +298,26 @@ export const AddApplicationMemberModal = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex gap-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+          <ButtonGroup className="w-full">
             {TYPE_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               const active = type === opt.value;
               return (
-                <button
+                <Button
                   key={opt.value}
                   type="button"
+                  variant={active ? "project" : "outline"}
+                  size="sm"
+                  className="flex-1"
                   onClick={() => setType(opt.value)}
-                  className={twMerge(
-                    "flex flex-1 items-center justify-center gap-2 rounded px-3 py-1.5 text-sm transition-colors",
-                    active
-                      ? "bg-mineshaft-500 text-foreground"
-                      : "text-accent hover:bg-mineshaft-600 hover:text-foreground"
-                  )}
+                  aria-pressed={active}
                 >
-                  <Icon size={14} />
+                  <Icon />
                   {opt.label}
-                </button>
+                </Button>
               );
             })}
-          </div>
+          </ButtonGroup>
 
           {type === "user" && (
             <FormControl

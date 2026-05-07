@@ -33,11 +33,12 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   CertRequestRequestData,
+  CodeSigningRequestData,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
@@ -94,6 +95,17 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
   );
 };
 
+const isCodeSigningData = (data: unknown): data is { requestData: CodeSigningRequestData } => {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "requestData" in data &&
+      data.requestData &&
+      typeof data.requestData === "object" &&
+      "signerName" in (data.requestData as object)
+  );
+};
+
 export const RequestsPage = () => {
   const { projectId, orgId } = useParams({ strict: false }) as {
     projectId?: string;
@@ -109,6 +121,12 @@ export const RequestsPage = () => {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebounce(searchInput, 300);
 
+  const [signingStatusFilters, setSigningStatusFilters] = useState<Set<StatusFilter>>(
+    () => new Set<StatusFilter>(["pending"])
+  );
+  const [signingSearchInput, setSigningSearchInput] = useState("");
+  const [debouncedSigningSearch] = useDebounce(signingSearchInput, 300);
+
   const toggleStatusFilter = (key: StatusFilter) => {
     setStatusFilters((prev) => {
       const next = new Set(prev);
@@ -119,10 +137,29 @@ export const RequestsPage = () => {
   };
   const isFiltered = statusFilters.size > 0;
 
+  const toggleSigningStatusFilter = (key: StatusFilter) => {
+    setSigningStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const isSigningFiltered = signingStatusFilters.size > 0;
+
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
-      projectId: projectId ?? ""
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId ?? ""
+    })
+  );
+
+  const { data: signingRequests = [], isPending: isSigningRequestsLoading } = useQuery(
+    approvalRequestQuery.list({
+      policyType: ApprovalPolicyType.CertCodeSigning,
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId ?? ""
     })
   );
 
@@ -158,21 +195,23 @@ export const RequestsPage = () => {
       });
   }, [requests, statusFilters, debouncedSearch]);
 
-  const counts = useMemo(() => {
-    const result: Record<StatusFilter, number> = { pending: 0, approved: 0, rejected: 0 };
-    (requests as TApprovalRequest[]).forEach((r) => {
-      const s = r.status as ApprovalRequestStatus;
-      if (s === ApprovalRequestStatus.Pending) result.pending += 1;
-      else if (s === ApprovalRequestStatus.Approved) result.approved += 1;
-      else if (
-        s === ApprovalRequestStatus.Rejected ||
-        s === ApprovalRequestStatus.Cancelled ||
-        s === ApprovalRequestStatus.Expired
-      )
-        result.rejected += 1;
-    });
-    return result;
-  }, [requests]);
+  const filteredSigning = useMemo(() => {
+    const norm = debouncedSigningSearch.trim().toLowerCase();
+    const activeFilters = STATUS_FILTERS.filter((f) => signingStatusFilters.has(f.key));
+    const matchesStatus = (s: ApprovalRequestStatus) =>
+      activeFilters.length === 0 || activeFilters.some((f) => f.matches(s));
+
+    return (signingRequests as TApprovalRequest[])
+      .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
+      .filter((r) => {
+        if (!norm) return true;
+        const signerName = isCodeSigningData(r.requestData)
+          ? (r.requestData.requestData.signerName ?? "")
+          : "";
+        const requester = `${r.requesterName} ${r.requesterEmail}`;
+        return signerName.toLowerCase().includes(norm) || requester.toLowerCase().includes(norm);
+      });
+  }, [signingRequests, signingStatusFilters, debouncedSigningSearch]);
 
   return (
     <>
@@ -246,7 +285,7 @@ export const RequestsPage = () => {
                                 toggleStatusFilter(f.key);
                               }}
                             >
-                              {f.label} ({counts[f.key]})
+                              {f.label}
                             </DropdownMenuCheckboxItem>
                           ))}
                         </DropdownMenuContent>
@@ -293,7 +332,9 @@ export const RequestsPage = () => {
                               : null;
                             const cn = certData?.certificateRequest?.commonName ?? "—";
                             const profile = certData?.profileName ?? "—";
-                            const app = r.applicationId ? appById.get(r.applicationId) : null;
+                            const requestAppId =
+                              r.scopeType === ApprovalPolicyScope.PkiApplication ? r.scopeId : null;
+                            const app = requestAppId ? appById.get(requestAppId) : null;
                             const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
                               label: r.status,
                               variant: "neutral" as const
@@ -359,20 +400,120 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
                     <CardDescription>
-                      Code-signing requests live on the Code Signing page. Visit Signers to review
-                      pending signing operations.
+                      Code-signing approval workflows triggered by a Signer policy.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Empty className="border">
-                      <EmptyHeader>
-                        <EmptyTitle>Code signing has its own surface</EmptyTitle>
-                        <EmptyDescription>
-                          Visit the Signers page to review pending code-signing requests — we link
-                          out instead of duplicating the list here.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
+                    <div className="my-4 flex gap-2">
+                      <InputGroup className="flex-1">
+                        <InputGroupAddon>
+                          <SearchIcon />
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          placeholder="Search by signer or requester…"
+                          value={signingSearchInput}
+                          onChange={(e) => setSigningSearchInput(e.target.value)}
+                        />
+                      </InputGroup>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            aria-label="Filter by status"
+                            variant={isSigningFiltered ? "project" : "outline"}
+                          >
+                            <FilterIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                          {STATUS_FILTERS.map((f) => (
+                            <DropdownMenuCheckboxItem
+                              key={f.key}
+                              checked={signingStatusFilters.has(f.key)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                toggleSigningStatusFilter(f.key);
+                              }}
+                            >
+                              {f.label}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {isSigningRequestsLoading && (
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyTitle>Loading…</EmptyTitle>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    {!isSigningRequestsLoading && filteredSigning.length === 0 && (
+                      <Empty className="border">
+                        <EmptyHeader>
+                          <EmptyTitle>
+                            {signingStatusFilters.size === 1 && signingStatusFilters.has("pending")
+                              ? "No requests pending review"
+                              : "No requests"}
+                          </EmptyTitle>
+                          <EmptyDescription>
+                            Code-signing approval workflows from any Signer will appear here.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    {!isSigningRequestsLoading && filteredSigning.length > 0 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Signer</TableHead>
+                            <TableHead>Requester</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Requested</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredSigning.map((r) => {
+                            const signingData = isCodeSigningData(r.requestData)
+                              ? r.requestData.requestData
+                              : null;
+                            const signerName = signingData?.signerName ?? "—";
+                            const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
+                              label: r.status,
+                              variant: "neutral" as const
+                            };
+
+                            return (
+                              <TableRow
+                                key={r.id}
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  navigate({
+                                    to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
+                                    search: {
+                                      policyType: ApprovalPolicyType.CertCodeSigning,
+                                      from: "root-requests"
+                                    } as never
+                                  } as never)
+                                }
+                              >
+                                <TableCell isTruncatable className="font-mono">
+                                  {signerName}
+                                </TableCell>
+                                <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
+                                <TableCell>
+                                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                                </TableCell>
+                                <TableCell className="text-accent">
+                                  {formatRelative(r.createdAt)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
               </TabPanel>

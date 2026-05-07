@@ -19,6 +19,7 @@ import {
 import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
@@ -92,7 +93,8 @@ const Content = ({ onOpenChange }: Props) => {
   const { data: policies = [] } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 
@@ -185,7 +187,8 @@ const Content = ({ onOpenChange }: Props) => {
 
     await createApprovalRequest({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId,
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId,
       justification: formData.justification || null,
       requestData: {
         signerId: selectedSigner.id,

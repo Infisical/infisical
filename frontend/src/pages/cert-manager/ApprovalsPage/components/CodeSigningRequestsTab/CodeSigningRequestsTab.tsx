@@ -44,7 +44,11 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext";
 import { usePagination } from "@app/hooks";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApproverType
+} from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
@@ -111,7 +115,8 @@ export const CodeSigningRequestsTab = () => {
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 

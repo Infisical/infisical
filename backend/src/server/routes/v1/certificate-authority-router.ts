@@ -38,6 +38,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       description: "Create CA",
       body: z
         .object({
+          projectSlug: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.projectSlug),
           type: z.nativeEnum(InternalCaType).describe(CERTIFICATE_AUTHORITIES.CREATE.type),
           friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
           commonName: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.commonName),
@@ -97,7 +98,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         isInternal: false,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
         ...req.body
       });
 

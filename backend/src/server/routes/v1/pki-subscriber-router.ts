@@ -32,6 +32,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberName)
       }),
+      querystring: z.object({
+        projectId: z.string().optional().describe(PKI_SUBSCRIBERS.GET.projectId)
+      }),
       response: {
         200: sanitizedPkiSubscriber
       }
@@ -40,7 +43,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.getSubscriber({
         subscriberName: req.params.subscriberName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -75,6 +78,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Create PKI Subscriber",
       body: z.object({
+        projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.CREATE.projectId),
         caId: z
           .string()
           .trim()
@@ -202,7 +206,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -247,6 +251,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         subscriberName: z.string().trim().describe(PKI_SUBSCRIBERS.UPDATE.subscriberName)
       }),
       body: z.object({
+        projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.UPDATE.projectId),
         caId: z
           .string()
           .trim()
@@ -370,7 +375,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.updateSubscriber({
         subscriberName: req.params.subscriberName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -413,6 +418,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.DELETE.subscriberName)
       }),
+      querystring: z.object({
+        projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.DELETE.projectId)
+      }),
       response: {
         200: sanitizedPkiSubscriber
       }
@@ -421,7 +429,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberName: req.params.subscriberName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -459,6 +467,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
       }),
+      body: z
+        .object({
+          projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId)
+        })
+        .optional(),
       response: {
         200: z.object({
           message: z.string().trim()
@@ -468,7 +481,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.orderSubscriberCert({
         subscriberName: req.params.subscriberName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -519,6 +532,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.ISSUE_CERT.subscriberName)
       }),
+      body: z
+        .object({
+          projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.ISSUE_CERT.projectId)
+        })
+        .optional(),
       response: {
         200: z.object({
           certificate: z.string().trim().describe(PKI_SUBSCRIBERS.ISSUE_CERT.certificate),
@@ -533,7 +551,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, subscriber } =
         await server.services.pkiSubscriber.issueSubscriberCert({
           subscriberName: req.params.subscriberName,
-          projectId: req.certManagerProjectId,
+          projectId: req.internalCertManagerProjectId,
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -590,6 +608,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.SIGN_CERT.subscriberName)
       }),
       body: z.object({
+        projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.SIGN_CERT.projectId),
         csr: z.string().trim().min(1).max(3000).describe(PKI_SUBSCRIBERS.SIGN_CERT.csr)
       }),
       response: {
@@ -605,7 +624,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, subscriber } =
         await server.services.pkiSubscriber.signSubscriberCert({
           subscriberName: req.params.subscriberName,
-          projectId: req.certManagerProjectId,
+          projectId: req.internalCertManagerProjectId,
           csr: req.body.csr,
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -660,6 +679,9 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.subscriberName)
       }),
+      querystring: z.object({
+        projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.projectId)
+      }),
       response: {
         200: z.object({
           certificate: z.string().trim().describe(PKI_SUBSCRIBERS.GET_LATEST_CERT_BUNDLE.certificate),
@@ -682,7 +704,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          projectId: req.certManagerProjectId
+          projectId: req.internalCertManagerProjectId
         });
 
       await server.services.auditLog.createAuditLog({
@@ -725,6 +747,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.GET.subscriberName)
       }),
       querystring: z.object({
+        projectId: z.string().trim().optional().describe(PKI_SUBSCRIBERS.LIST_CERTS.projectId),
         offset: z.coerce.number().min(0).max(100).default(0).describe(PKI_SUBSCRIBERS.LIST_CERTS.offset),
         limit: z.coerce.number().min(1).max(100).default(25).describe(PKI_SUBSCRIBERS.LIST_CERTS.limit)
       }),
@@ -743,19 +766,19 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.query
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.LIST_PKI_SUBSCRIBER_CERTS,
           metadata: {
             subscriberId: req.params.subscriberName,
             name: req.params.subscriberName,
-            projectId: req.certManagerProjectId
+            projectId: req.internalCertManagerProjectId
           }
         }
       });

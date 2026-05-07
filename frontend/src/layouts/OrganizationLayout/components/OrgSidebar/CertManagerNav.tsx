@@ -16,7 +16,11 @@ import {
 import { ResourceIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
-import { approvalPolicyQuery, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  approvalPolicyQuery,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests";
 import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
 import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
@@ -47,11 +51,19 @@ export const CertManagerNav = ({
     enabled: isCertManagerAdmin && Boolean(projectId)
   });
   const { data: policies } = useQuery({
-    ...approvalPolicyQuery.list({ projectId, policyType: ApprovalPolicyType.CertRequest }),
+    ...approvalPolicyQuery.list({
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId,
+      policyType: ApprovalPolicyType.CertRequest
+    }),
     enabled: isCertManagerAdmin && Boolean(projectId)
   });
   const { data: pendingRequestsCount = 0 } = useQuery({
-    ...approvalRequestQuery.list({ projectId, policyType: ApprovalPolicyType.CertRequest }),
+    ...approvalRequestQuery.list({
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId,
+      policyType: ApprovalPolicyType.CertRequest
+    }),
     enabled: Boolean(projectId),
     select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
   });
@@ -60,7 +72,7 @@ export const CertManagerNav = ({
     Boolean(v2AlertsData?.alerts?.some((a) => !a.applicationId)) ||
     Boolean(v1AlertsData?.alerts?.length);
   const hasLegacySyncs = Boolean(syncs?.some((s) => !s.applicationId));
-  const hasLegacyPolicies = Boolean(policies?.some((p) => !p.applicationId));
+  const hasLegacyPolicies = Boolean(policies?.some((p) => !p.scopeType));
   const hasAnyLegacy = hasLegacyAlerts || hasLegacySyncs || hasLegacyPolicies;
 
   const overviewItems: NavItem[] = [

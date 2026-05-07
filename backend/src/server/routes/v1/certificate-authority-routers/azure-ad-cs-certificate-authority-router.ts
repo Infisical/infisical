@@ -35,6 +35,9 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
       params: z.object({
         caId: z.string().describe("Azure AD CS CA ID")
       }),
+      querystring: z.object({
+        projectId: z.string().optional().describe("Project ID")
+      }),
       response: {
         200: z.object({
           templates: z.array(
@@ -49,7 +52,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const templates = await server.services.certificateAuthority.getAzureAdcsTemplates({
         caId: req.params.caId,
         projectId,

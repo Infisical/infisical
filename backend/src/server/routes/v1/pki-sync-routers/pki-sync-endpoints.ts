@@ -63,13 +63,16 @@ export const registerSyncPkiEndpoints = ({
       ...(enableOperationId ? { operationId: `list${destinationNameForOpId}PkiSyncs` } : {}),
       tags: [ApiDocsTags.PkiSyncs],
       description: `List the ${destinationName} PKI Syncs for the specified project.`,
+      querystring: z.object({
+        projectId: z.string().trim().optional()
+      }),
       response: {
         200: z.object({ pkiSyncs: responseSchema.array() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
 
       const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId }, req.permission);
 
@@ -147,7 +150,7 @@ export const registerSyncPkiEndpoints = ({
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pkiSync = await server.services.pkiSync.createPkiSync(
-        { ...req.body, projectId: req.body.projectId ?? req.certManagerProjectId, destination },
+        { ...req.body, projectId: req.body.projectId ?? req.internalCertManagerProjectId, destination },
         req.permission
       );
 
