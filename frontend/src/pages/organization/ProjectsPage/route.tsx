@@ -18,6 +18,14 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
 )({
   validateSearch: zodValidator(searchSchema),
+  context: () => ({
+    breadcrumbs: [
+      {
+        label: "Projects"
+      }
+    ]
+  }),
+  component: ProjectsPage,
   beforeLoad: async ({ context, search, params }) => {
     if (!search.projectRedirect) return;
 
@@ -47,13 +55,5 @@ export const Route = createFileRoute(
       params: { orgId: params.orgId },
       search: {}
     });
-  },
-  component: ProjectsPage,
-  context: () => ({
-    breadcrumbs: [
-      {
-        label: "Projects"
-      }
-    ]
-  })
+  }
 });
