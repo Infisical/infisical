@@ -365,24 +365,8 @@ export const externalMigrationServiceFactory = ({
       throw new BadRequestError({ message: "Namespace value does not match the namespace of the connection" });
     }
 
-    const gatewayDetails = await getGatewayDetails(connection);
-
-    try {
-      await getHCVaultAuthMounts(
-        namespace,
-        HCVaultAuthType.Kubernetes,
-        connection,
-        gatewayService,
-        gatewayV2Service,
-        gatewayDetails
-      );
-
-      await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
-    } catch (error) {
-      throw new BadRequestError({
-        message: `Failed to establish namespace configuration. ${error instanceof Error ? error.message : "Unknown error"}`
-      });
-    }
+    // Do not require privileged sys/auth or sys/mounts access when saving the namespace configuration.
+    // The dedicated discovery endpoints surface those permission errors only when callers need mount data.
   };
 
   const createExternalMigration = async ({
