@@ -141,7 +141,8 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     ```
 
     <Note>
-        - Currently, the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) only supports the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) method. Support for the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method is planned for a future release. If domain ownership validation is not desired, you can disable it by enabling the **Skip DNS ownership validation** option in your ACME certificate profile configuration.
+        - The Infisical ACME server supports both the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) and the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) methods. HTTP-01 is shown in the example above. See the [DNS-01 solver configuration](#dns-01-solver-configuration) section below for DNS-01 setup.
+        - If domain ownership validation is not needed (e.g., for internal infrastructure or service mesh mTLS), you can skip challenges entirely by enabling the **Skip DNS ownership validation** option on your ACME certificate profile. See [Internal PKI without challenges](#internal-pki-without-challenges) below.
         - An `Issuer` is namespace-scoped. Certificates can only be issued using an `Issuer` that exists in the same namespace as the `Certificate` resource.
         - If you need to issue certificates across multiple namespaces with a single resource, create a `ClusterIssuer` instead. The configuration is identical except `kind: ClusterIssuer` and no `metadata.namespace`.
         - More details: https://cert-manager.io/docs/configuration/acme/
@@ -257,6 +258,82 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
   </Step>
 
 </Steps>
+
+## DNS-01 Solver Configuration
+
+If your certificate domains are not publicly reachable (e.g., they resolve to private IPs or are internal infrastructure domains), HTTP-01 challenges will not work because the Infisical ACME server cannot reach your hosts to verify ownership. In this case, use DNS-01 challenges instead.
+
+DNS-01 validation works by creating a DNS TXT record at `_acme-challenge.<domain>`, which only requires API access to your DNS provider — no inbound connectivity is needed.
+
+To use DNS-01, configure a DNS-01 solver in your Issuer instead of HTTP-01. For example, using Route53:
+
+```yaml issuer-infisical-dns01.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+    name: issuer-infisical
+    namespace: <namespace_you_want_to_issue_certificates_in>
+spec:
+    acme:
+        server: <acme_server_url>
+        email: <your_email>
+        enableDurationFeature: true
+        externalAccountBinding:
+            keyID: <acme_eab_kid>
+            keySecretRef:
+                name: infisical-acme-eab-secret
+                key: eabSecret
+        privateKeySecretRef:
+            name: issuer-infisical-account-key
+        solvers:
+        - dns01:
+            route53:
+                region: us-east-1
+                # Configure credentials as needed for your environment.
+                # See cert-manager docs for all supported DNS providers.
+```
+
+cert-manager supports many DNS providers for DNS-01 challenges (Route53, CloudFlare, Google Cloud DNS, etc.). Refer to the [cert-manager DNS-01 documentation](https://cert-manager.io/docs/configuration/acme/dns01/) for the full list of supported providers and their configuration options.
+
+## Internal PKI Without Challenges
+
+For internal infrastructure such as service mesh mTLS (e.g., Cilium, Istio, Linkerd), private network services, or any environment where domain ownership verification is unnecessary, you can skip ACME challenges entirely.
+
+Enable the **Skip DNS Ownership Validation** option on your ACME certificate profile in Infisical. When enabled, the ACME server will issue certificates immediately without requiring HTTP-01 or DNS-01 challenge completion. This is the simplest approach for internal PKI use cases where all certificate domains are under your control.
+
+With this option enabled, your Issuer configuration still uses the ACME issuer type, but no solver configuration is needed since challenges are skipped:
+
+```yaml issuer-infisical-internal.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+    name: issuer-infisical
+    namespace: <namespace_you_want_to_issue_certificates_in>
+spec:
+    acme:
+        server: <acme_server_url>
+        email: <your_email>
+        enableDurationFeature: true
+        externalAccountBinding:
+            keyID: <acme_eab_kid>
+            keySecretRef:
+                name: infisical-acme-eab-secret
+                key: eabSecret
+        privateKeySecretRef:
+            name: issuer-infisical-account-key
+        solvers:
+        - http01:
+            ingress:
+                className: nginx
+```
+
+<Note>
+  Even though a solver is configured above, it will never be used because the Infisical ACME server marks all authorizations as valid immediately when **Skip DNS Ownership Validation** is enabled. The solver block is required by cert-manager's schema but has no effect in this mode.
+</Note>
+
+<Warning>
+  Only enable **Skip DNS Ownership Validation** for internal PKI use cases where you trust all ACME clients. Skipping validation means any client with valid EAB credentials can obtain a certificate for any domain name without proving ownership.
+</Warning>
 
 ## Injecting CA Certificate into Secrets with trust-manager
 
