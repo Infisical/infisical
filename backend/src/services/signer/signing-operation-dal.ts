@@ -61,6 +61,7 @@ export const signingOperationDALFactory = (db: TDbClient) => {
 
       const rows = await query
         .orderBy(`${TableName.PkiSigningOperations}.createdAt`, "desc")
+        .orderBy(`${TableName.PkiSigningOperations}.id`, "asc")
         .offset(offset)
         .limit(limit);
 

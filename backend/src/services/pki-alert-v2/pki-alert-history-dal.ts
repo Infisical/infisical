@@ -57,7 +57,8 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.PkiAlertHistory))
         .from(TableName.PkiAlertHistory)
         .where(`${TableName.PkiAlertHistory}.alertId`, alertId)
-        .orderBy(`${TableName.PkiAlertHistory}.triggeredAt`, "desc");
+        .orderBy(`${TableName.PkiAlertHistory}.triggeredAt`, "desc")
+        .orderBy(`${TableName.PkiAlertHistory}.id`, "asc");
 
       if (options?.limit) {
         query = query.limit(options.limit);

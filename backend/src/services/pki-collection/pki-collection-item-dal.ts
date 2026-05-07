@@ -63,7 +63,9 @@ export const pkiCollectionItemDALFactory = (db: TDbClient) => {
         void query.limit(limit);
       }
 
-      void query.orderBy(`${TableName.PkiCollectionItem}.createdAt`, "desc");
+      void query
+        .orderBy(`${TableName.PkiCollectionItem}.createdAt`, "desc")
+        .orderBy(`${TableName.PkiCollectionItem}.id`, "asc");
 
       const result = await query;
       return result as (TPkiCollectionItems & { notAfter: Date; notBefore: Date; friendlyName: string })[];
