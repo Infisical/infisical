@@ -120,7 +120,7 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "Profile is not configured for SCEP enrollment" });
     }
 
-    let resolvedScepConfigId: string | null = profile.scepConfigId ?? null;
+    let resolvedScepConfigId: string | null;
     if (applicationId && pkiApplicationProfileDAL) {
       const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
       if (!junction) {
@@ -128,13 +128,17 @@ export const pkiScepServiceFactory = ({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
         });
       }
-      if (junction.scepConfigId) {
-        resolvedScepConfigId = junction.scepConfigId;
-      }
+      resolvedScepConfigId = junction.scepConfigId ?? null;
+    } else {
+      resolvedScepConfigId = profile.scepConfigId ?? null;
     }
 
     if (!resolvedScepConfigId) {
-      throw new BadRequestError({ message: "SCEP enrollment not configured for this profile" });
+      throw new BadRequestError({
+        message: applicationId
+          ? "SCEP enrollment is not configured for this profile on the Application."
+          : "SCEP enrollment not configured for this profile"
+      });
     }
 
     if (!profile.caId) {

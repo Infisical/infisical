@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ApplicationMembershipRole, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import {
+  AccessScope,
+  ApplicationMembershipRole,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE,
+  ResourceType
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions } from "@app/ee/services/permission/project-permission";
@@ -16,9 +22,11 @@ import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import {
+  ApplicationMemberKind,
   TAddApplicationMemberDTO,
   TAddApplicationUserMembersDTO,
   TApplicationMember,
+  TApplicationMemberKind,
   TListApplicationMembersDTO,
   TRemoveApplicationMemberDTO,
   TUpdateApplicationMemberRoleDTO
@@ -59,6 +67,30 @@ export const pkiApplicationMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
     return application;
+  };
+
+  const $buildMemberDetails = async (member: {
+    actorUserId?: string | null;
+    actorIdentityId?: string | null;
+    actorGroupId?: string | null;
+  }): Promise<TApplicationMember["details"]> => {
+    if (member.actorUserId) {
+      const [u] = await userDAL.find({ $in: { id: [member.actorUserId] } });
+      if (!u) return null;
+      const fullName = [u.firstName, u.lastName].filter((p): p is string => Boolean(p?.trim())).join(" ") || null;
+      return { name: fullName, email: u.email ?? null, username: u.username ?? null };
+    }
+    if (member.actorIdentityId) {
+      const [i] = await identityDAL.find({ $in: { id: [member.actorIdentityId] } });
+      if (!i) return null;
+      return { name: i.name, authMethod: i.authMethod ?? null };
+    }
+    if (member.actorGroupId) {
+      const [g] = await groupDAL.find({ $in: { id: [member.actorGroupId] } });
+      if (!g) return null;
+      return { name: g.name, slug: g.slug };
+    }
+    return null;
   };
 
   const $assertActorPresentInOrg = async (
@@ -121,7 +153,7 @@ export const pkiApplicationMembershipServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TAddApplicationMemberDTO): Promise<TApplicationMember> => {
-    await $loadApplicationOrThrow(applicationId, projectId);
+    const application = await $loadApplicationOrThrow(applicationId, projectId);
 
     const { permission } = await $loadResourcePermission(applicationId, projectId, {
       actor,
@@ -144,7 +176,35 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
-    return membershipDAL.transaction(async (tx) => {
+    const membership = await membershipDAL.transaction(async (tx) => {
+      const projectMembershipFilter: Record<string, unknown> = {
+        scope: AccessScope.Project,
+        scopeProjectId: projectId
+      };
+      if (userId) projectMembershipFilter.actorUserId = userId;
+      else if (identityId) projectMembershipFilter.actorIdentityId = identityId;
+      else if (groupId) projectMembershipFilter.actorGroupId = groupId;
+      const existingProjectMembership = await membershipDAL.find(projectMembershipFilter, { tx });
+
+      if (existingProjectMembership.length === 0) {
+        const projectMembership = await membershipDAL.create(
+          {
+            scope: AccessScope.Project,
+            scopeOrgId: orgMembership.scopeOrgId,
+            scopeProjectId: projectId,
+            actorUserId: userId ?? null,
+            actorIdentityId: identityId ?? null,
+            actorGroupId: groupId ?? null,
+            isActive: true
+          },
+          tx
+        );
+        await membershipRoleDAL.create(
+          { membershipId: projectMembership.id, role: ProjectMembershipRole.NoAccess },
+          tx
+        );
+      }
+
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
@@ -180,6 +240,9 @@ export const pkiApplicationMembershipServiceFactory = ({
         updatedAt: newMembership.updatedAt
       };
     });
+
+    const details = await $buildMemberDetails(membership);
+    return { ...membership, applicationName: application.name, details };
   };
 
   const listMembers = async ({
@@ -214,8 +277,8 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const filteredMemberships = kind
       ? memberships.filter((m) => {
-          if (kind === "user") return Boolean(m.actorUserId);
-          if (kind === "identity") return Boolean(m.actorIdentityId);
+          if (kind === ApplicationMemberKind.User) return Boolean(m.actorUserId);
+          if (kind === ApplicationMemberKind.Identity) return Boolean(m.actorIdentityId);
           return Boolean(m.actorGroupId);
         })
       : memberships;
@@ -286,7 +349,7 @@ export const pkiApplicationMembershipServiceFactory = ({
   const $findMembershipByMember = async (
     applicationId: string,
     projectId: string,
-    kind: "user" | "identity" | "group",
+    kind: TApplicationMemberKind,
     memberId: string
   ) => {
     const where: Record<string, unknown> = {
@@ -295,8 +358,8 @@ export const pkiApplicationMembershipServiceFactory = ({
       scopeResourceType: ResourceType.CertificateApplication,
       scopeResourceId: applicationId
     };
-    if (kind === "user") where.actorUserId = memberId;
-    else if (kind === "identity") where.actorIdentityId = memberId;
+    if (kind === ApplicationMemberKind.User) where.actorUserId = memberId;
+    else if (kind === ApplicationMemberKind.Identity) where.actorIdentityId = memberId;
     else where.actorGroupId = memberId;
 
     const matches = await membershipDAL.find(where);
@@ -320,7 +383,7 @@ export const pkiApplicationMembershipServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateApplicationMemberRoleDTO): Promise<TApplicationMember> => {
-    await $loadApplicationOrThrow(applicationId, projectId);
+    const application = await $loadApplicationOrThrow(applicationId, projectId);
 
     const { permission } = await $loadResourcePermission(applicationId, projectId, {
       actor,
@@ -343,13 +406,13 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
 
-    return membershipDAL.transaction(async (tx) => {
+    const updated = await membershipDAL.transaction(async (tx) => {
       const updatedRoles = await membershipRoleDAL.update(
         { membershipId: membership.id },
         { role, customRoleId: null },
         tx
       );
-      const updated = updatedRoles[0];
+      const r = updatedRoles[0];
 
       return {
         membershipId: membership.id,
@@ -357,12 +420,15 @@ export const pkiApplicationMembershipServiceFactory = ({
         actorUserId: membership.actorUserId ?? null,
         actorIdentityId: membership.actorIdentityId ?? null,
         actorGroupId: membership.actorGroupId ?? null,
-        role: updated.role,
-        customRoleId: updated.customRoleId ?? null,
+        role: r.role,
+        customRoleId: r.customRoleId ?? null,
         createdAt: membership.createdAt,
         updatedAt: membership.updatedAt
       };
     });
+
+    const details = await $buildMemberDetails(updated);
+    return { ...updated, applicationName: application.name, details };
   };
 
   const removeMember = async ({
@@ -374,8 +440,16 @@ export const pkiApplicationMembershipServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TRemoveApplicationMemberDTO): Promise<{ membershipId: string; applicationId: string }> => {
-    await $loadApplicationOrThrow(applicationId, projectId);
+  }: TRemoveApplicationMemberDTO): Promise<{
+    membershipId: string;
+    applicationId: string;
+    applicationName: string;
+    actorUserId?: string | null;
+    actorIdentityId?: string | null;
+    actorGroupId?: string | null;
+    details?: TApplicationMember["details"];
+  }> => {
+    const application = await $loadApplicationOrThrow(applicationId, projectId);
 
     const { permission } = await $loadResourcePermission(applicationId, projectId, {
       actor,
@@ -391,13 +465,22 @@ export const pkiApplicationMembershipServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ResourcePermissionSub.Member);
 
     const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
+    const details = await $buildMemberDetails(membership);
 
     await membershipDAL.transaction(async (tx) => {
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
     });
 
-    return { membershipId: membership.id, applicationId };
+    return {
+      membershipId: membership.id,
+      applicationId,
+      applicationName: application.name,
+      actorUserId: membership.actorUserId ?? null,
+      actorIdentityId: membership.actorIdentityId ?? null,
+      actorGroupId: membership.actorGroupId ?? null,
+      details
+    };
   };
 
   const addUserMembers = async ({

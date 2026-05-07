@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import {
   ApprovalPolicyType,
@@ -222,7 +222,40 @@ export const approvalRequestGrantsDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdForUpdate, markExpiredGrants };
+  const findByProjectAndScope = async (filter: {
+    projectId: string;
+    type: string;
+    scopeType: string | null;
+    scopeId: string | null;
+  }) => {
+    try {
+      const query = db
+        .replicaNode()(TableName.ApprovalRequestGrants)
+        .leftJoin(
+          TableName.ApprovalRequests,
+          `${TableName.ApprovalRequests}.id`,
+          `${TableName.ApprovalRequestGrants}.requestId`
+        )
+        .where(`${TableName.ApprovalRequestGrants}.projectId`, filter.projectId)
+        .where(`${TableName.ApprovalRequestGrants}.type`, filter.type)
+        .select(selectAllTableCols(TableName.ApprovalRequestGrants));
+
+      if (filter.scopeType === null) {
+        void query.whereNull(`${TableName.ApprovalRequests}.scopeType`);
+      } else {
+        void query
+          .where(`${TableName.ApprovalRequests}.scopeType`, filter.scopeType)
+          .where(`${TableName.ApprovalRequests}.scopeId`, filter.scopeId as string);
+      }
+
+      const grants = await query;
+      return grants as Awaited<ReturnType<typeof orm.find>>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindGrantsByProjectAndScope" });
+    }
+  };
+
+  return { ...orm, findByIdForUpdate, markExpiredGrants, findByProjectAndScope };
 };
 
 // Approval Request Approvals

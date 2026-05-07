@@ -18,11 +18,10 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "createPkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Create PKI collection",
       body: z.object({
-        projectId: z.string().trim().optional().describe(PKI_COLLECTIONS.CREATE.projectId),
+        projectId: z.string().trim().describe(PKI_COLLECTIONS.CREATE.projectId),
         name: z.string().trim().describe(PKI_COLLECTIONS.CREATE.name),
         description: z.string().trim().default("").describe(PKI_COLLECTIONS.CREATE.description)
       }),
@@ -36,7 +35,6 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 

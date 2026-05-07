@@ -3539,10 +3539,14 @@ interface AddPkiApplicationMember {
   type: EventType.ADD_PKI_APPLICATION_MEMBER;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     membershipId: string;
     userId?: string;
+    userName?: string;
     identityId?: string;
+    identityName?: string;
     groupId?: string;
+    groupName?: string;
     role: string;
   };
 }
@@ -3551,7 +3555,14 @@ interface UpdatePkiApplicationMemberRole {
   type: EventType.UPDATE_PKI_APPLICATION_MEMBER_ROLE;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     membershipId: string;
+    userId?: string;
+    userName?: string;
+    identityId?: string;
+    identityName?: string;
+    groupId?: string;
+    groupName?: string;
     role: string;
   };
 }
@@ -3560,7 +3571,14 @@ interface RemovePkiApplicationMember {
   type: EventType.REMOVE_PKI_APPLICATION_MEMBER;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     membershipId: string;
+    userId?: string;
+    userName?: string;
+    identityId?: string;
+    identityName?: string;
+    groupId?: string;
+    groupName?: string;
   };
 }
 
@@ -3568,6 +3586,7 @@ interface ListPkiApplicationMembers {
   type: EventType.LIST_PKI_APPLICATION_MEMBERS;
   metadata: {
     applicationId: string;
+    applicationName?: string;
   };
 }
 

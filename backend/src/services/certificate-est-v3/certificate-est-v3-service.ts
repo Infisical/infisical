@@ -65,7 +65,7 @@ export const certificateEstV3ServiceFactory = ({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
         });
       }
-      if (junction.estConfigId) return junction.estConfigId;
+      return junction.estConfigId ?? null;
     }
     return profile.estConfigId ?? null;
   };

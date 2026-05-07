@@ -72,6 +72,7 @@ export type TListApplicationProfilesDTO = {
 export type TApplicationMember = {
   membershipId: string;
   applicationId: string;
+  applicationName?: string;
   actorUserId?: string | null;
   actorIdentityId?: string | null;
   actorGroupId?: string | null;
@@ -96,7 +97,13 @@ export type TAddApplicationMemberDTO = {
   role: string;
 } & TProjectPermission;
 
-export type TApplicationMemberKind = "user" | "identity" | "group";
+export enum ApplicationMemberKind {
+  User = "user",
+  Identity = "identity",
+  Group = "group"
+}
+
+export type TApplicationMemberKind = `${ApplicationMemberKind}`;
 
 export type TListApplicationMembersDTO = {
   applicationId: string;

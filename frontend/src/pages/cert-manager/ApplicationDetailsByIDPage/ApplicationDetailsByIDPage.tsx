@@ -105,6 +105,7 @@ export const ApplicationDetailsByIDPage = () => {
               icon={ResourceIcon}
               title={application.name}
               description={application.description ?? undefined}
+              className="mb-4"
             >
               <Button variant="outline" size="xs" onClick={handleCopyId}>
                 <FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />

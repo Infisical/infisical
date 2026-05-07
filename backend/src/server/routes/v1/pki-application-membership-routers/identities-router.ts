@@ -5,6 +5,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { ApplicationIdParamsSchema } from "../pki-application-schemas";
 import { ApplicationMemberSchema, RemoveResponseSchema, RoleBodySchema } from "./schemas";
@@ -36,7 +37,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
         actorOrgId: req.permission.orgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
-        kind: "identity"
+        kind: ApplicationMemberKind.Identity
       });
 
       await server.services.auditLog.createAuditLog({
@@ -85,8 +86,10 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
           type: EventType.ADD_PKI_APPLICATION_MEMBER,
           metadata: {
             applicationId: membership.applicationId,
+            applicationName: membership.applicationName,
             membershipId: membership.membershipId,
             identityId: membership.actorIdentityId ?? undefined,
+            identityName: membership.details?.name ?? undefined,
             role: membership.role
           }
         }
@@ -118,7 +121,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
         actorOrgId: req.permission.orgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
-        kind: "identity",
+        kind: ApplicationMemberKind.Identity,
         memberId: req.params.identityId,
         role: req.body.role
       });
@@ -130,7 +133,10 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
           type: EventType.UPDATE_PKI_APPLICATION_MEMBER_ROLE,
           metadata: {
             applicationId: membership.applicationId,
+            applicationName: membership.applicationName,
             membershipId: membership.membershipId,
+            identityId: membership.actorIdentityId ?? undefined,
+            identityName: membership.details?.name ?? undefined,
             role: membership.role
           }
         }
@@ -161,7 +167,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
         actorOrgId: req.permission.orgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
-        kind: "identity",
+        kind: ApplicationMemberKind.Identity,
         memberId: req.params.identityId
       });
 
@@ -170,11 +176,17 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.REMOVE_PKI_APPLICATION_MEMBER,
-          metadata: { applicationId: result.applicationId, membershipId: result.membershipId }
+          metadata: {
+            applicationId: result.applicationId,
+            applicationName: result.applicationName,
+            membershipId: result.membershipId,
+            identityId: result.actorIdentityId ?? undefined,
+            identityName: result.details?.name ?? undefined
+          }
         }
       });
 
-      return result;
+      return { membershipId: result.membershipId, applicationId: result.applicationId };
     }
   });
 };

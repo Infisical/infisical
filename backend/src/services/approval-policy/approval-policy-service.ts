@@ -954,7 +954,7 @@ export const approvalPolicyServiceFactory = ({
     inputScopeId: string,
     actor: OrgServiceActor
   ) => {
-    const { projectId } = await $resolveScope(scope, inputScopeId);
+    const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = await $resolveScope(scope, inputScopeId);
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -970,7 +970,12 @@ export const approvalPolicyServiceFactory = ({
       ProjectPermissionSub.ApprovalRequestGrants
     );
 
-    const grants = await approvalRequestGrantsDAL.find({ projectId, type: policyType });
+    const grants = await approvalRequestGrantsDAL.findByProjectAndScope({
+      projectId,
+      type: policyType,
+      scopeType: dbScopeType,
+      scopeId: dbScopeId
+    });
     const updatedGrants = grants.map((grant) => {
       if (
         grant.status === ApprovalRequestGrantStatus.Active &&

@@ -223,7 +223,7 @@ export const registerCertificateAuthorityEndpoints = <
       params: z.object({
         caName: z.string()
       }),
-      querystring: z.object({
+      body: z.object({
         projectId: z.string().uuid()
       }),
       response: {
@@ -233,7 +233,7 @@ export const registerCertificateAuthorityEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { caName } = req.params;
-      const { projectId } = req.query;
+      const { projectId } = req.body;
 
       const certificateAuthority = (await server.services.certificateAuthority.deprecatedDeleteCertificateAuthority(
         { caName, type: caType, projectId },

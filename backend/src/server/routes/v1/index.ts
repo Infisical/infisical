@@ -13,7 +13,7 @@ import { registerAdminRouter } from "./admin-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
-import { registerCertManagerAccessRouter } from "./cert-manager-access-router";
+import { registerCertManagerAccessRouter } from "./cert-manager-access-routers";
 import { registerCertManagerInstanceRouter } from "./cert-manager-instance-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";

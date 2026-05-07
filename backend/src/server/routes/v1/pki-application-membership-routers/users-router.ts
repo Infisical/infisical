@@ -6,6 +6,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { ApplicationIdParamsSchema } from "../pki-application-schemas";
 import { ApplicationMemberSchema, RemoveResponseSchema, RoleBodySchema } from "./schemas";
@@ -58,7 +59,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
         actorOrgId: req.permission.orgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
-        kind: "user"
+        kind: ApplicationMemberKind.User
       });
 
       await server.services.auditLog.createAuditLog({
@@ -130,9 +131,11 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
           event: {
             type: EventType.ADD_PKI_APPLICATION_MEMBER,
             metadata: {
-              applicationId: req.params.applicationId,
+              applicationId: m.applicationId,
+              applicationName: m.applicationName,
               membershipId: m.membershipId,
               userId: m.actorUserId ?? undefined,
+              userName: m.details?.email ?? m.details?.username ?? m.details?.name ?? undefined,
               role: m.role
             }
           }
@@ -165,7 +168,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
         actorOrgId: req.permission.orgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
-        kind: "user",
+        kind: ApplicationMemberKind.User,
         memberId: req.params.userId,
         role: req.body.role
       });
@@ -177,7 +180,11 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
           type: EventType.UPDATE_PKI_APPLICATION_MEMBER_ROLE,
           metadata: {
             applicationId: membership.applicationId,
+            applicationName: membership.applicationName,
             membershipId: membership.membershipId,
+            userId: membership.actorUserId ?? undefined,
+            userName:
+              membership.details?.email ?? membership.details?.username ?? membership.details?.name ?? undefined,
             role: membership.role
           }
         }
@@ -208,7 +215,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
         actorOrgId: req.permission.orgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
-        kind: "user",
+        kind: ApplicationMemberKind.User,
         memberId: req.params.userId
       });
 
@@ -217,11 +224,17 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.REMOVE_PKI_APPLICATION_MEMBER,
-          metadata: { applicationId: result.applicationId, membershipId: result.membershipId }
+          metadata: {
+            applicationId: result.applicationId,
+            applicationName: result.applicationName,
+            membershipId: result.membershipId,
+            userId: result.actorUserId ?? undefined,
+            userName: result.details?.email ?? result.details?.username ?? result.details?.name ?? undefined
+          }
         }
       });
 
-      return result;
+      return { membershipId: result.membershipId, applicationId: result.applicationId };
     }
   });
 };
