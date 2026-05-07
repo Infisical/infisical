@@ -161,19 +161,28 @@ export const oracleResourceFactory: TPamResourceFactory<
       throw new BadRequestError({ message: "Gateway ID is required" });
     }
 
-    await executeWithGateway(
-      {
-        connectionDetails,
-        gatewayId,
-        username: credentials.username,
-        password: credentials.password
-      },
-      gatewayV2Service,
-      async (client) => {
-        await client.validate(false);
+    try {
+      await executeWithGateway(
+        {
+          connectionDetails,
+          gatewayId,
+          username: credentials.username,
+          password: credentials.password
+        },
+        gatewayV2Service,
+        async (client) => {
+          await client.validate(false);
+        }
+      );
+      return credentials;
+    } catch (error) {
+      if (error instanceof BadRequestError && error.message.includes("ORA-01017")) {
+        throw new BadRequestError({
+          message: "Account credentials invalid: Username or password incorrect"
+        });
       }
-    );
-    return credentials;
+      throw error;
+    }
   };
 
   const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<TOracleAccountCredentials> = async () => {
