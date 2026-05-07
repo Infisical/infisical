@@ -30,6 +30,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: BasePkiAlertV2Schema.extend({
+        projectId: z.string().uuid().optional().describe("Project ID"),
         applicationId: z
           .string()
           .uuid()
@@ -47,6 +48,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            applicationId: z.string().uuid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
@@ -70,13 +72,13 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_PKI_ALERT,
           metadata: {
@@ -110,7 +112,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         eventType: z.nativeEnum(PkiAlertEventType).optional(),
         enabled: z.coerce.boolean().optional(),
         limit: z.coerce.number().min(1).max(100).default(20),
-        offset: z.coerce.number().min(0).default(0)
+        offset: z.coerce.number().min(0).default(0),
+        projectId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -123,6 +126,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
               alertBefore: z.string().optional(),
               filters: z.array(PkiFilterRuleSchema),
               enabled: z.boolean(),
+              applicationId: z.string().uuid().nullable(),
               notificationConfig: NotificationConfigSchema.nullable(),
               channels: z.array(
                 z.object({
@@ -155,8 +159,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
-        ...req.query
+        ...req.query,
+        projectId: req.internalCertManagerProjectId
       });
 
       return alerts;
@@ -189,6 +193,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            applicationId: z.string().uuid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
@@ -257,6 +262,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            applicationId: z.string().uuid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
@@ -328,6 +334,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            applicationId: z.string().uuid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
@@ -433,6 +440,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
+        projectId: z.string().uuid().optional().describe("Project ID"),
         filters: z.array(PkiFilterRuleSchema),
         alertBefore: z
           .string()
@@ -467,7 +475,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 

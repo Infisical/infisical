@@ -416,9 +416,7 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
         )}
         {!filteredPkiSyncs?.length && (
           <EmptyState
-            title={
-              pkiSyncs.length ? "No syncs match search..." : "This project has no syncs configured"
-            }
+            title={pkiSyncs.length ? "No syncs match search..." : "No syncs configured yet"}
             icon={pkiSyncs.length ? faSearch : faRotate}
           />
         )}

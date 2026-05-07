@@ -96,17 +96,29 @@ export type TAddApplicationMemberDTO = {
   role: string;
 } & TProjectPermission;
 
+export type TApplicationMemberKind = "user" | "identity" | "group";
+
 export type TListApplicationMembersDTO = {
   applicationId: string;
+  kind?: TApplicationMemberKind;
 } & TProjectPermission;
 
 export type TUpdateApplicationMemberRoleDTO = {
   applicationId: string;
-  membershipId: string;
+  kind: TApplicationMemberKind;
+  memberId: string;
   role: string;
 } & TProjectPermission;
 
 export type TRemoveApplicationMemberDTO = {
   applicationId: string;
-  membershipId: string;
+  kind: TApplicationMemberKind;
+  memberId: string;
+} & TProjectPermission;
+
+export type TAddApplicationUserMembersDTO = {
+  applicationId: string;
+  userIds: string[];
+  emails: string[];
+  role: string;
 } & TProjectPermission;

@@ -107,23 +107,26 @@ export type TDetachPkiApplicationProfileDTO = {
   profileId: string;
 };
 
+export type TPkiApplicationMemberKind = "user" | "identity" | "group";
+
 export type TAddPkiApplicationMemberDTO = {
   applicationId: string;
-  userId?: string;
-  identityId?: string;
-  groupId?: string;
+  kind: TPkiApplicationMemberKind;
+  memberId: string;
   role: string;
 };
 
 export type TUpdatePkiApplicationMemberRoleDTO = {
   applicationId: string;
-  membershipId: string;
+  kind: TPkiApplicationMemberKind;
+  memberId: string;
   role: string;
 };
 
 export type TRemovePkiApplicationMemberDTO = {
   applicationId: string;
-  membershipId: string;
+  kind: TPkiApplicationMemberKind;
+  memberId: string;
 };
 
 export type TListPkiApplicationsResponse = {

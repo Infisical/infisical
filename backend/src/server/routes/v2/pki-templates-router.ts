@@ -26,6 +26,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       operationId: "createPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
+        projectId: z.string().optional(),
         name: slugSchema(),
         caName: slugSchema({ field: "caName" }),
         commonName: validateTemplateRegexField,
@@ -51,7 +52,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 
@@ -73,6 +74,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         templateName: slugSchema()
       }),
       body: z.object({
+        projectId: z.string().optional(),
         name: slugSchema().optional(),
         caName: slugSchema(),
         commonName: validateTemplateRegexField.optional(),
@@ -102,7 +104,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         templateName: req.params.templateName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 
@@ -123,6 +125,9 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       params: z.object({
         templateName: z.string().min(1)
       }),
+      querystring: z.object({
+        projectId: z.string().optional()
+      }),
       response: {
         200: z.object({
           certificateTemplate: CertificateTemplatesSchema
@@ -137,7 +142,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         templateName: req.params.templateName,
-        projectId: req.certManagerProjectId
+        projectId: req.internalCertManagerProjectId
       });
 
       return { certificateTemplate };
@@ -157,6 +162,9 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       params: z.object({
         templateName: slugSchema()
       }),
+      querystring: z.object({
+        projectId: z.string().optional()
+      }),
       response: {
         200: z.object({
           certificateTemplate: CertificateTemplatesSchema.extend({
@@ -173,7 +181,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         templateName: req.params.templateName,
-        projectId: req.certManagerProjectId
+        projectId: req.internalCertManagerProjectId
       });
 
       return { certificateTemplate };
@@ -191,6 +199,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       operationId: "listPkiTemplates",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       querystring: z.object({
+        projectId: z.string().optional(),
         limit: z.coerce.number().default(100),
         offset: z.coerce.number().default(0)
       }),
@@ -210,7 +219,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.query
       });
 
@@ -232,6 +241,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         templateName: slugSchema()
       }),
       body: z.object({
+        projectId: z.string().optional(),
         commonName: validateTemplateRegexField,
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
         keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
@@ -258,7 +268,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         templateName: req.params.templateName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 
@@ -280,6 +290,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         templateName: slugSchema()
       }),
       body: z.object({
+        projectId: z.string().optional(),
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
         csr: z.string().trim().min(1).max(4096)
       }),
@@ -300,7 +311,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         templateName: req.params.templateName,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         ...req.body
       });
 

@@ -1330,6 +1330,10 @@ export const registerRoutes = async (
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
+  const approvalRequestDAL = approvalRequestDALFactory(db);
+  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
+  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
@@ -1432,6 +1436,8 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     membershipDAL,
     membershipRoleDAL,
+    approvalPolicyDAL,
+    approvalRequestDAL,
     permissionService
   });
 
@@ -2257,11 +2263,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const approvalRequestDAL = approvalRequestDALFactory(db);
-  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
-  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
-  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
-
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
@@ -2737,6 +2738,7 @@ export const registerRoutes = async (
     permissionService,
     projectMembershipDAL,
     membershipDAL,
+    pkiApplicationDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,

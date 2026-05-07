@@ -84,7 +84,10 @@ import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
-import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
+import {
+  ApplicationSelect,
+  ProjectSelect
+} from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
@@ -545,6 +548,7 @@ export const Navbar = () => {
               <>
                 <TypeSelect />
                 <ProjectSelect />
+                <ApplicationSelect />
               </>
             )}
           </>

@@ -1,6 +1,7 @@
 import { logger } from "@app/lib/logger";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 
+import { ApprovalPolicyScope } from "../approval-policy-enums";
 import {
   TApprovalRequestFactoryCanAccess,
   TApprovalRequestFactoryMatchPolicy,
@@ -30,8 +31,10 @@ export const certRequestPolicyFactory: TApprovalResourceFactory<
     const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId);
 
     const inputAppId = inputs.applicationId ?? null;
+    const expectedScopeType = inputAppId ? ApprovalPolicyScope.PkiApplication : null;
+    const expectedScopeId = inputAppId ?? null;
     const candidates = (policies as TCertRequestPolicy[]).filter(
-      (p) => p.isActive && (p.applicationId ?? null) === inputAppId
+      (p) => p.isActive && (p.scopeType ?? null) === expectedScopeType && (p.scopeId ?? null) === expectedScopeId
     );
 
     const matched = candidates.find((p) =>

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { SearchIcon } from "lucide-react";
+import { FilterIcon, SearchIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
@@ -12,10 +12,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -27,33 +33,26 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   CertRequestRequestData,
+  CodeSigningRequestData,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-type StatusFilter = "pending" | "approved" | "rejected" | "all";
+type StatusFilter = "pending" | "approved" | "rejected";
 
-const STATUS_TABS: {
+const STATUS_FILTERS: {
   key: StatusFilter;
   label: string;
   matches: (s: ApprovalRequestStatus) => boolean;
 }[] = [
-  {
-    key: "pending",
-    label: "Pending",
-    matches: (s) => s === ApprovalRequestStatus.Pending
-  },
-  {
-    key: "approved",
-    label: "Approved",
-    matches: (s) => s === ApprovalRequestStatus.Approved
-  },
+  { key: "pending", label: "Pending", matches: (s) => s === ApprovalRequestStatus.Pending },
+  { key: "approved", label: "Approved", matches: (s) => s === ApprovalRequestStatus.Approved },
   {
     key: "rejected",
     label: "Rejected",
@@ -61,8 +60,7 @@ const STATUS_TABS: {
       s === ApprovalRequestStatus.Rejected ||
       s === ApprovalRequestStatus.Cancelled ||
       s === ApprovalRequestStatus.Expired
-  },
-  { key: "all", label: "All", matches: () => true }
+  }
 ];
 
 const STATUS_BADGE: Record<
@@ -97,6 +95,17 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
   );
 };
 
+const isCodeSigningData = (data: unknown): data is { requestData: CodeSigningRequestData } => {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "requestData" in data &&
+      data.requestData &&
+      typeof data.requestData === "object" &&
+      "signerName" in (data.requestData as object)
+  );
+};
+
 export const RequestsPage = () => {
   const { projectId, orgId } = useParams({ strict: false }) as {
     projectId?: string;
@@ -106,14 +115,51 @@ export const RequestsPage = () => {
   const navigate = useNavigate();
   const selectedTab = search.selectedTab ?? "application-requests";
 
-  const [activeStatus, setActiveStatus] = useState<StatusFilter>("pending");
+  const [statusFilters, setStatusFilters] = useState<Set<StatusFilter>>(
+    () => new Set<StatusFilter>(["pending"])
+  );
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebounce(searchInput, 300);
+
+  const [signingStatusFilters, setSigningStatusFilters] = useState<Set<StatusFilter>>(
+    () => new Set<StatusFilter>(["pending"])
+  );
+  const [signingSearchInput, setSigningSearchInput] = useState("");
+  const [debouncedSigningSearch] = useDebounce(signingSearchInput, 300);
+
+  const toggleStatusFilter = (key: StatusFilter) => {
+    setStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const isFiltered = statusFilters.size > 0;
+
+  const toggleSigningStatusFilter = (key: StatusFilter) => {
+    setSigningStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const isSigningFiltered = signingStatusFilters.size > 0;
 
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
-      projectId: projectId ?? ""
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId ?? ""
+    })
+  );
+
+  const { data: signingRequests = [], isPending: isSigningRequestsLoading } = useQuery(
+    approvalRequestQuery.list({
+      policyType: ApprovalPolicyType.CertCodeSigning,
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId ?? ""
     })
   );
 
@@ -125,11 +171,13 @@ export const RequestsPage = () => {
   }, [apps]);
 
   const filtered = useMemo(() => {
-    const tab = STATUS_TABS.find((t) => t.key === activeStatus) ?? STATUS_TABS[0];
     const norm = debouncedSearch.trim().toLowerCase();
+    const activeFilters = STATUS_FILTERS.filter((f) => statusFilters.has(f.key));
+    const matchesStatus = (s: ApprovalRequestStatus) =>
+      activeFilters.length === 0 || activeFilters.some((f) => f.matches(s));
 
     return (requests as TApprovalRequest[])
-      .filter((r) => tab.matches(r.status as ApprovalRequestStatus))
+      .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
         const cn = isCertRequestData(r.requestData)
@@ -145,28 +193,25 @@ export const RequestsPage = () => {
           requester.toLowerCase().includes(norm)
         );
       });
-  }, [requests, activeStatus, debouncedSearch]);
+  }, [requests, statusFilters, debouncedSearch]);
 
-  const counts = useMemo(() => {
-    const result: Record<StatusFilter, number> = {
-      pending: 0,
-      approved: 0,
-      rejected: 0,
-      all: requests.length
-    };
-    (requests as TApprovalRequest[]).forEach((r) => {
-      const s = r.status as ApprovalRequestStatus;
-      if (s === ApprovalRequestStatus.Pending) result.pending += 1;
-      else if (s === ApprovalRequestStatus.Approved) result.approved += 1;
-      else if (
-        s === ApprovalRequestStatus.Rejected ||
-        s === ApprovalRequestStatus.Cancelled ||
-        s === ApprovalRequestStatus.Expired
-      )
-        result.rejected += 1;
-    });
-    return result;
-  }, [requests]);
+  const filteredSigning = useMemo(() => {
+    const norm = debouncedSigningSearch.trim().toLowerCase();
+    const activeFilters = STATUS_FILTERS.filter((f) => signingStatusFilters.has(f.key));
+    const matchesStatus = (s: ApprovalRequestStatus) =>
+      activeFilters.length === 0 || activeFilters.some((f) => f.matches(s));
+
+    return (signingRequests as TApprovalRequest[])
+      .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
+      .filter((r) => {
+        if (!norm) return true;
+        const signerName = isCodeSigningData(r.requestData)
+          ? (r.requestData.requestData.signerName ?? "")
+          : "";
+        const requester = `${r.requesterName} ${r.requesterEmail}`;
+        return signerName.toLowerCase().includes(norm) || requester.toLowerCase().includes(norm);
+      });
+  }, [signingRequests, signingStatusFilters, debouncedSigningSearch]);
 
   return (
     <>
@@ -209,135 +254,143 @@ export const RequestsPage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Tabs
-                      value={activeStatus}
-                      onValueChange={(v) => setActiveStatus(v as StatusFilter)}
-                    >
-                      <TabList>
-                        {STATUS_TABS.map((t) => (
-                          <Tab key={t.key} value={t.key} variant="project">
-                            {t.label} ({counts[t.key]})
-                          </Tab>
-                        ))}
-                      </TabList>
-                      {STATUS_TABS.map((t) => (
-                        <TabPanel key={t.key} value={t.key}>
-                          <div className="my-4">
-                            <InputGroup>
-                              <InputGroupAddon>
-                                <SearchIcon />
-                              </InputGroupAddon>
-                              <InputGroupInput
-                                placeholder="Search by common name, profile, or requester…"
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                              />
-                            </InputGroup>
-                          </div>
+                    <div className="my-4 flex gap-2">
+                      <InputGroup className="flex-1">
+                        <InputGroupAddon>
+                          <SearchIcon />
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          placeholder="Search by common name, profile, or requester…"
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                        />
+                      </InputGroup>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            aria-label="Filter by status"
+                            variant={isFiltered ? "project" : "outline"}
+                          >
+                            <FilterIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                          {STATUS_FILTERS.map((f) => (
+                            <DropdownMenuCheckboxItem
+                              key={f.key}
+                              checked={statusFilters.has(f.key)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                toggleStatusFilter(f.key);
+                              }}
+                            >
+                              {f.label}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
-                          {isRequestsLoading && (
-                            <Empty>
-                              <EmptyHeader>
-                                <EmptyTitle>Loading…</EmptyTitle>
-                              </EmptyHeader>
-                            </Empty>
-                          )}
-                          {!isRequestsLoading && filtered.length === 0 && (
-                            <Empty className="border">
-                              <EmptyHeader>
-                                <EmptyTitle>
-                                  {activeStatus === "pending"
-                                    ? "No requests pending review"
-                                    : "No requests"}
-                                </EmptyTitle>
-                                <EmptyDescription>
-                                  Cert-request approval workflows from any Application in this
-                                  project will appear here.
-                                </EmptyDescription>
-                              </EmptyHeader>
-                            </Empty>
-                          )}
-                          {!isRequestsLoading && filtered.length > 0 && (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Common Name</TableHead>
-                                  <TableHead>Profile</TableHead>
-                                  <TableHead>Application</TableHead>
-                                  <TableHead>Requester</TableHead>
-                                  <TableHead>Status</TableHead>
-                                  <TableHead>Requested</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {filtered.map((r) => {
-                                  const certData = isCertRequestData(r.requestData)
-                                    ? r.requestData.requestData
-                                    : null;
-                                  const cn = certData?.certificateRequest?.commonName ?? "—";
-                                  const profile = certData?.profileName ?? "—";
-                                  const app = r.applicationId ? appById.get(r.applicationId) : null;
-                                  const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
-                                    label: r.status,
-                                    variant: "neutral" as const
-                                  };
+                    {isRequestsLoading && (
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyTitle>Loading…</EmptyTitle>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    {!isRequestsLoading && filtered.length === 0 && (
+                      <Empty className="border">
+                        <EmptyHeader>
+                          <EmptyTitle>
+                            {statusFilters.size === 1 && statusFilters.has("pending")
+                              ? "No requests pending review"
+                              : "No requests"}
+                          </EmptyTitle>
+                          <EmptyDescription>
+                            Cert-request approval workflows from any Application will appear here.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    {!isRequestsLoading && filtered.length > 0 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Common Name</TableHead>
+                            <TableHead>Profile</TableHead>
+                            <TableHead>Application</TableHead>
+                            <TableHead>Requester</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Requested</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filtered.map((r) => {
+                            const certData = isCertRequestData(r.requestData)
+                              ? r.requestData.requestData
+                              : null;
+                            const cn = certData?.certificateRequest?.commonName ?? "—";
+                            const profile = certData?.profileName ?? "—";
+                            const requestAppId =
+                              r.scopeType === ApprovalPolicyScope.PkiApplication ? r.scopeId : null;
+                            const app = requestAppId ? appById.get(requestAppId) : null;
+                            const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
+                              label: r.status,
+                              variant: "neutral" as const
+                            };
 
-                                  return (
-                                    <TableRow
-                                      key={r.id}
-                                      className="cursor-pointer"
-                                      onClick={() =>
-                                        navigate({
-                                          to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
-                                          search: {
-                                            policyType: ApprovalPolicyType.CertRequest,
-                                            from: "root-requests"
-                                          } as never
-                                        } as never)
+                            return (
+                              <TableRow
+                                key={r.id}
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  navigate({
+                                    to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
+                                    search: {
+                                      policyType: ApprovalPolicyType.CertRequest,
+                                      from: "root-requests"
+                                    } as never
+                                  } as never)
+                                }
+                              >
+                                <TableCell isTruncatable className="font-mono">
+                                  {cn}
+                                </TableCell>
+                                <TableCell className="font-mono text-xs">{profile}</TableCell>
+                                <TableCell className="font-mono text-xs">
+                                  {app ? (
+                                    <Link
+                                      to={
+                                        `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
                                       }
+                                      className="text-foreground hover:text-project"
+                                      onClick={(e) => e.stopPropagation()}
                                     >
-                                      <TableCell isTruncatable className="font-mono">
-                                        {cn}
-                                      </TableCell>
-                                      <TableCell className="font-mono text-xs">{profile}</TableCell>
-                                      <TableCell className="font-mono text-xs">
-                                        {app ? (
-                                          <Link
-                                            to={
-                                              `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
-                                            }
-                                            className="text-foreground hover:text-project"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            {app.name}
-                                          </Link>
-                                        ) : (
-                                          <span className="text-accent">—</span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell>
-                                        <div>{r.requesterName || "—"}</div>
-                                        {r.requesterEmail ? (
-                                          <div className="text-xs text-accent">
-                                            {r.requesterEmail}
-                                          </div>
-                                        ) : null}
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge variant={badge.variant}>{badge.label}</Badge>
-                                      </TableCell>
-                                      <TableCell className="text-accent">
-                                        {formatRelative(r.createdAt)}
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          )}
-                        </TabPanel>
-                      ))}
-                    </Tabs>
+                                      {app.name}
+                                    </Link>
+                                  ) : (
+                                    <span className="text-accent">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div>{r.requesterName || "—"}</div>
+                                  {r.requesterEmail ? (
+                                    <div className="text-xs text-accent">{r.requesterEmail}</div>
+                                  ) : null}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                                </TableCell>
+                                <TableCell className="text-accent">
+                                  {formatRelative(r.createdAt)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
               </TabPanel>
@@ -347,20 +400,120 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
                     <CardDescription>
-                      Code-signing requests live on the Code Signing page. Visit Signers to review
-                      pending signing operations.
+                      Code-signing approval workflows triggered by a Signer policy.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Empty className="border">
-                      <EmptyHeader>
-                        <EmptyTitle>Code signing has its own surface</EmptyTitle>
-                        <EmptyDescription>
-                          Visit the Signers page to review pending code-signing requests — we link
-                          out instead of duplicating the list here.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
+                    <div className="my-4 flex gap-2">
+                      <InputGroup className="flex-1">
+                        <InputGroupAddon>
+                          <SearchIcon />
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          placeholder="Search by signer or requester…"
+                          value={signingSearchInput}
+                          onChange={(e) => setSigningSearchInput(e.target.value)}
+                        />
+                      </InputGroup>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            aria-label="Filter by status"
+                            variant={isSigningFiltered ? "project" : "outline"}
+                          >
+                            <FilterIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                          {STATUS_FILTERS.map((f) => (
+                            <DropdownMenuCheckboxItem
+                              key={f.key}
+                              checked={signingStatusFilters.has(f.key)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                toggleSigningStatusFilter(f.key);
+                              }}
+                            >
+                              {f.label}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {isSigningRequestsLoading && (
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyTitle>Loading…</EmptyTitle>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    {!isSigningRequestsLoading && filteredSigning.length === 0 && (
+                      <Empty className="border">
+                        <EmptyHeader>
+                          <EmptyTitle>
+                            {signingStatusFilters.size === 1 && signingStatusFilters.has("pending")
+                              ? "No requests pending review"
+                              : "No requests"}
+                          </EmptyTitle>
+                          <EmptyDescription>
+                            Code-signing approval workflows from any Signer will appear here.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    {!isSigningRequestsLoading && filteredSigning.length > 0 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Signer</TableHead>
+                            <TableHead>Requester</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Requested</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredSigning.map((r) => {
+                            const signingData = isCodeSigningData(r.requestData)
+                              ? r.requestData.requestData
+                              : null;
+                            const signerName = signingData?.signerName ?? "—";
+                            const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
+                              label: r.status,
+                              variant: "neutral" as const
+                            };
+
+                            return (
+                              <TableRow
+                                key={r.id}
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  navigate({
+                                    to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
+                                    search: {
+                                      policyType: ApprovalPolicyType.CertCodeSigning,
+                                      from: "root-requests"
+                                    } as never
+                                  } as never)
+                                }
+                              >
+                                <TableCell isTruncatable className="font-mono">
+                                  {signerName}
+                                </TableCell>
+                                <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
+                                <TableCell>
+                                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                                </TableCell>
+                                <TableCell className="text-accent">
+                                  {formatRelative(r.createdAt)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
               </TabPanel>

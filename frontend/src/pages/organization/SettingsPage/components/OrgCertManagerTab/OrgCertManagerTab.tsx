@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { Spinner } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -14,6 +13,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  PageLoader,
   Table,
   TableBody,
   TableCell,
@@ -48,11 +48,7 @@ export const OrgCertManagerTab = () => {
   };
 
   if (isPending || !data) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Spinner />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (

@@ -94,15 +94,50 @@ export const useDetachPkiApplicationProfile = () => {
   });
 };
 
+const memberPathSegment = (kind: "user" | "identity" | "group") => {
+  if (kind === "user") return "users";
+  if (kind === "identity") return "identities";
+  return "groups";
+};
+
 export const useAddPkiApplicationMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ applicationId, ...body }: TAddPkiApplicationMemberDTO) => {
+    mutationFn: async ({ applicationId, kind, memberId, role }: TAddPkiApplicationMemberDTO) => {
       const { data } = await apiRequest.post<{ membership: TPkiApplicationMember }>(
-        `${BASE_URL}/${applicationId}/memberships`,
-        body
+        `${BASE_URL}/${applicationId}/${memberPathSegment(kind)}/${memberId}`,
+        { role }
       );
       return data.membership;
+    },
+    onSuccess: () => invalidateAll(qc)
+  });
+};
+
+export const useAddPkiApplicationUserMembers = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      applicationId,
+      userIds,
+      emails,
+      role
+    }: {
+      applicationId: string;
+      userIds?: string[];
+      emails?: string[];
+      role: string;
+    }) => {
+      const { data } = await apiRequest.post<{
+        memberships: TPkiApplicationMember[];
+        skipped: string[];
+        unresolved: string[];
+      }>(`${BASE_URL}/${applicationId}/users`, {
+        userIds: userIds ?? [],
+        emails: emails ?? [],
+        role
+      });
+      return data;
     },
     onSuccess: () => invalidateAll(qc)
   });
@@ -113,12 +148,13 @@ export const useUpdatePkiApplicationMemberRole = () => {
   return useMutation({
     mutationFn: async ({
       applicationId,
-      membershipId,
-      ...body
+      kind,
+      memberId,
+      role
     }: TUpdatePkiApplicationMemberRoleDTO) => {
       const { data } = await apiRequest.patch<{ membership: TPkiApplicationMember }>(
-        `${BASE_URL}/${applicationId}/memberships/${membershipId}`,
-        body
+        `${BASE_URL}/${applicationId}/${memberPathSegment(kind)}/${memberId}`,
+        { role }
       );
       return data.membership;
     },
@@ -129,11 +165,11 @@ export const useUpdatePkiApplicationMemberRole = () => {
 export const useRemovePkiApplicationMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ applicationId, membershipId }: TRemovePkiApplicationMemberDTO) => {
+    mutationFn: async ({ applicationId, kind, memberId }: TRemovePkiApplicationMemberDTO) => {
       const { data } = await apiRequest.delete<{
         membershipId: string;
         applicationId: string;
-      }>(`${BASE_URL}/${applicationId}/memberships/${membershipId}`);
+      }>(`${BASE_URL}/${applicationId}/${memberPathSegment(kind)}/${memberId}`);
       return data;
     },
     onSuccess: () => invalidateAll(qc)

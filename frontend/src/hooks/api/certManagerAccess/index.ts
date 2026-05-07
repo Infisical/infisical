@@ -25,5 +25,5 @@ export const rolesBase = (type?: string, projectId?: string): string =>
 
 export const availableIdentitiesUrl = (type?: string, projectId?: string): string =>
   isCertManagerProject(type)
-    ? "/api/v1/cert-manager/access/identities/available"
+    ? "/api/v1/cert-manager/access/available-identities"
     : `/api/v1/projects/${projectId ?? ""}/memberships/available-identities`;

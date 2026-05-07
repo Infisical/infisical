@@ -68,7 +68,7 @@ const Page = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetProjectIdentityMembershipV2(projectId, identityId);
+    useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
 

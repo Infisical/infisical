@@ -75,6 +75,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "createPkiDiscovery",
       description: "Create a new PKI discovery configuration",
       body: z.object({
+        projectId: z.string().optional().describe("The ID of the project"),
         name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
         description: z.string().max(500).optional().describe("Description of the discovery configuration"),
         discoveryType: z
@@ -102,7 +103,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
       }
 
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const discovery = await server.services.pkiDiscovery.createDiscovery({
         projectId,
         name: req.body.name,
@@ -147,6 +148,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPkiDiscoveries",
       description: "List PKI discovery configurations for a project",
       querystring: z.object({
+        projectId: z.string().optional().describe("The ID of the project"),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
         limit: z.coerce.number().min(1).max(100).optional().default(25).describe("Pagination limit"),
         search: z.string().optional().describe("Search filter for name or description")
@@ -164,7 +166,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { discoveries, totalCount } = await server.services.pkiDiscovery.listDiscoveries({
         projectId,
         offset: req.query.offset,

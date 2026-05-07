@@ -165,8 +165,16 @@ export const TypeSelect = () => {
   if (params.projectId) {
     const project = projects.find((p) => p.id === params.projectId);
     if (project) {
+      const hasApplicationSelect =
+        project.type === ProjectType.CertificateManager &&
+        Boolean((params as { applicationName?: string }).applicationName);
       const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
-      return <TypeSelectInner currentType={project.type} showDivider={hasSiblingProjectSelect} />;
+      return (
+        <TypeSelectInner
+          currentType={project.type}
+          showDivider={hasSiblingProjectSelect || hasApplicationSelect}
+        />
+      );
     }
   }
 

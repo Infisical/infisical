@@ -74,7 +74,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
@@ -549,7 +549,8 @@ export const certificateServiceFactory = ({
    * Import certificate
    */
   const importCert = async ({
-    projectId,
+    projectId: projectIdInput,
+    projectSlug,
     pkiCollectionId,
     actorId,
     actorAuthMethod,
@@ -561,6 +562,17 @@ export const certificateServiceFactory = ({
     privateKeyPem
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
+
+    const resolveProjectId = async (): Promise<string> => {
+      if (projectIdInput) return projectIdInput;
+      if (projectSlug) {
+        const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+        if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+        return project.id;
+      }
+      throw new BadRequestError({ message: "Either projectId or projectSlug is required" });
+    };
+    const projectId = await resolveProjectId();
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

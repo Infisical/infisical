@@ -175,6 +175,7 @@ const policyBasicConstraintsSchema = z
   .nullable();
 
 const createCertificatePolicySchema = z.object({
+  projectId: z.string().min(1).optional(),
   name: slugSchema({ min: 1, max: 255, field: "Name" }),
   description: z.string().max(1000).optional(),
   subject: z.array(policySubjectSchema).optional(),
@@ -223,13 +224,13 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         data: req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_CERTIFICATE_POLICY,
           metadata: {
@@ -257,7 +258,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
-        search: z.string().optional()
+        search: z.string().optional(),
+        projectId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -268,22 +270,23 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
-        ...req.query
+        ...req.query,
+        projectId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId,
         event: {
           type: EventType.LIST_CERTIFICATE_POLICIES,
           metadata: {
-            projectId: req.certManagerProjectId
+            projectId
           }
         }
       });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ScepOperation } from "@app/ee/services/pki-scep/pki-scep-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -49,19 +50,19 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       const { operation, message: messageBase64 } = req.query;
 
       switch (operation) {
-        case "GetCACaps": {
+        case ScepOperation.GetCACaps: {
           const caps = await server.services.pkiScep.getCaCaps({ profileId });
           void res.header("Content-Type", "text/plain");
           return caps;
         }
 
-        case "GetCACert": {
+        case ScepOperation.GetCACert: {
           const certBundle = await server.services.pkiScep.getCaCert({ profileId });
           void res.header("Content-Type", "application/x-x509-ca-ra-cert");
           return res.send(certBundle);
         }
 
-        case "PKIOperation": {
+        case ScepOperation.PKIOperation: {
           if (!messageBase64) {
             throw new BadRequestError({ message: "Missing message parameter for PKIOperation" });
           }
@@ -222,17 +223,17 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       const { operation, message: messageBase64 } = req.query;
 
       switch (operation) {
-        case "GetCACaps": {
+        case ScepOperation.GetCACaps: {
           const caps = await server.services.pkiScep.getCaCaps({ profileId, applicationId });
           void res.header("Content-Type", "text/plain");
           return caps;
         }
-        case "GetCACert": {
+        case ScepOperation.GetCACert: {
           const certBundle = await server.services.pkiScep.getCaCert({ profileId, applicationId });
           void res.header("Content-Type", "application/x-x509-ca-ra-cert");
           return res.send(certBundle);
         }
-        case "PKIOperation": {
+        case ScepOperation.PKIOperation: {
           if (!messageBase64) {
             throw new BadRequestError({ message: "Missing message parameter for PKIOperation" });
           }

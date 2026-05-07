@@ -78,7 +78,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { data: memberships } = await server.services.membershipUser.listMemberships({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -95,11 +95,11 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/users/:membershipId",
+    url: "/users/:userId",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getCertManagerUser",
-      params: z.object({ membershipId: z.string().trim().min(1) }),
+      params: z.object({ userId: z.string().trim().min(1) }),
       response: {
         200: z.object({
           membership: ProjectMembershipsSchema.extend({
@@ -111,12 +111,8 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
-      const { userId } = await server.services.convertor.userMembershipIdToUserId(
-        req.params.membershipId,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const projectId = req.internalCertManagerProjectId;
+      const { userId } = req.params;
       const membership = await server.services.membershipUser.getMembershipByUserId({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -155,7 +151,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
       await server.services.membershipUser.createMembership({
@@ -199,22 +195,18 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "PATCH",
-    url: "/users/:membershipId",
+    url: "/users/:userId",
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "updateCertManagerUser",
-      params: z.object({ membershipId: z.string().trim().min(1) }),
+      params: z.object({ userId: z.string().trim().min(1) }),
       body: RolesUpdateBodySchema,
       response: { 200: z.object({ roles: ProjectUserMembershipRolesSchema.array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
-      const { userId } = await server.services.convertor.userMembershipIdToUserId(
-        req.params.membershipId,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const projectId = req.internalCertManagerProjectId;
+      const { userId } = req.params;
       const { membership } = await server.services.membershipUser.updateMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -222,7 +214,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
         data: { roles: req.body.roles }
       });
       return {
-        roles: membership.roles.map((el) => ({ ...el, projectMembershipId: req.params.membershipId }))
+        roles: membership.roles.map((el) => ({ ...el, projectMembershipId: membership.id }))
       };
     }
   });
@@ -250,7 +242,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -280,21 +272,17 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "DELETE",
-    url: "/users/:membershipId",
+    url: "/users/:userId",
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "removeCertManagerUser",
-      params: z.object({ membershipId: z.string().trim().min(1) }),
+      params: z.object({ userId: z.string().trim().min(1) }),
       response: { 200: z.object({ membership: ProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
-      const { userId } = await server.services.convertor.userMembershipIdToUserId(
-        req.params.membershipId,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const projectId = req.internalCertManagerProjectId;
+      const { userId } = req.params;
       const { membership } = await server.services.membershipUser.deleteMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -345,7 +333,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -362,7 +350,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/identities/available",
+    url: "/available-identities",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "listAvailableCertManagerIdentities",
@@ -379,7 +367,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -426,7 +414,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -467,7 +455,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ identityMembership: IdentityProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { role, roles } = req.body;
       if (!role && !roles) {
         throw new BadRequestError({ message: "You must provide either role or roles field" });
@@ -505,7 +493,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ identityMembership: IdentityProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipIdentity.updateMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -536,7 +524,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ identityMembership: IdentityProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipIdentity.deleteMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -591,7 +579,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ groupMemberships: z.array(certManagerGroupMembershipSchema) }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { memberships: groupMemberships } = await server.services.membershipGroup.listMemberships({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -618,7 +606,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ groupMembership: certManagerGroupMembershipSchema }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipGroup.getMembershipByGroupId({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -665,7 +653,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ groupMembership: certManagerGroupMembershipSchema }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const roles =
         req.body.roles ??
         (req.body.role
@@ -703,7 +691,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ roles: ProjectUserMembershipRolesSchema.array() }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { membership: groupMembership } = await server.services.membershipGroup.updateMembership({
         permission: req.permission,
         selector: { groupId: req.params.groupId },
@@ -733,7 +721,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
         permission: req.permission,
         selector: { groupId: req.params.groupId },
@@ -768,7 +756,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const { roles } = await server.services.role.listRoles({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
@@ -796,7 +784,7 @@ export const registerCertManagerAccessRouter = async (server: FastifyZodProvider
       response: { 200: z.object({ role: SanitizedRoleSchema.omit({ projectId: true }) }) }
     },
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
       const role = await server.services.role.getRoleBySlug({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },

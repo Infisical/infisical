@@ -122,7 +122,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
@@ -278,7 +278,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     crlDistributionPointUrls,
     ...dto
   }: TCreateCaDTO) => {
-    const { projectId } = dto;
+    let projectId: string;
+    if (dto.isInternal) {
+      projectId = dto.projectId;
+    } else if (dto.projectId) {
+      projectId = dto.projectId;
+    } else if (dto.projectSlug) {
+      const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actorOrgId);
+      if (!project) throw new NotFoundError({ message: `Project with slug '${dto.projectSlug}' not found` });
+      projectId = project.id;
+    } else {
+      throw new BadRequestError({ message: "Either projectId or projectSlug is required" });
+    }
     if (!dto.isInternal) {
       const { permission } = await permissionService.getProjectPermission({
         actor: dto.actor,

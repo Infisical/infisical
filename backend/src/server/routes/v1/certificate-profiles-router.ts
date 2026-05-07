@@ -56,6 +56,7 @@ export const registerCertificateProfilesRouter = async (
       tags: [ApiDocsTags.PkiCertificateProfiles],
       body: z
         .object({
+          projectId: z.string().min(1).optional(),
           caId: z.string().uuid().optional(),
           certificatePolicyId: z.string().uuid(),
           slug: z
@@ -235,13 +236,13 @@ export const registerCertificateProfilesRouter = async (
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         data: req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_CERTIFICATE_PROFILE,
           metadata: {
@@ -274,7 +275,8 @@ export const registerCertificateProfilesRouter = async (
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
-        caId: z.string().uuid().optional()
+        caId: z.string().uuid().optional(),
+        projectId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -349,17 +351,17 @@ export const registerCertificateProfilesRouter = async (
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
-        ...req.query
+        ...req.query,
+        projectId: req.internalCertManagerProjectId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.LIST_CERTIFICATE_PROFILES,
           metadata: {
-            projectId: req.certManagerProjectId
+            projectId: req.internalCertManagerProjectId
           }
         }
       });
@@ -502,7 +504,7 @@ export const registerCertificateProfilesRouter = async (
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         slug: req.params.slug
       });
 

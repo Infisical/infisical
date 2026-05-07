@@ -74,14 +74,12 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
   conditions: CertRequestPolicyConditionsSchema,
   constraints: CertRequestPolicyConstraintsSchema.optional()
     .default({})
-    .transform((val) => val ?? {}),
-  applicationId: z.string().uuid().nullable().optional()
+    .transform((val) => val ?? {})
 });
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  constraints: CertRequestPolicyConstraintsSchema.optional(),
-  applicationId: z.string().uuid().nullable().optional()
+  constraints: CertRequestPolicyConstraintsSchema.optional()
 });
 
 export const CertRequestRequestSchema = BaseApprovalRequestSchema.extend({

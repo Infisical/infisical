@@ -29,6 +29,7 @@ import {
 import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
@@ -48,7 +49,8 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 

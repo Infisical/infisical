@@ -54,10 +54,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   CertRequestPolicyConditions,
   TApprovalPolicy,
@@ -116,12 +116,11 @@ const ApplicationPoliciesTable = ({
   onEdit,
   onDelete
 }: ApplicationPoliciesTableProps) => {
-  const { currentProject } = useProject();
   const { data: policies = [], isPending } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
-      projectId: currentProject?.id ?? "",
-      applicationId
+      scope: ApprovalPolicyScope.PkiApplication,
+      scopeId: applicationId
     })
   );
 
@@ -176,7 +175,7 @@ const ApplicationPoliciesTable = ({
                 <TableCell isTruncatable>
                   <div className="flex items-center gap-x-2">
                     <span className="font-medium text-foreground">{policy.name}</span>
-                    {!policy.applicationId ? (
+                    {policy.scopeType !== ApprovalPolicyScope.PkiApplication ? (
                       <Badge variant="neutral" className="uppercase">
                         Legacy
                       </Badge>
@@ -465,11 +464,11 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-      <div className="space-y-4 lg:col-span-3">
+      <div className="space-y-4 lg:order-2 lg:col-span-3">
         <Card>
           <CardHeader className="grid-cols-[1fr_auto]">
             <CardTitle>General</CardTitle>
-            <CardDescription>Edit core metadata for this Application.</CardDescription>
+            <CardDescription>Edit application metadata.</CardDescription>
             <CardAction className="col-start-2 row-span-2 row-start-1 self-start justify-self-end">
               <IconButton
                 variant="ghost"
@@ -498,7 +497,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </Card>
       </div>
 
-      <div className="space-y-4 lg:col-span-9">
+      <div className="space-y-4 lg:order-1 lg:col-span-9">
         <Card>
           <CardHeader>
             <CardTitle>Enrollment Methods</CardTitle>

@@ -128,9 +128,7 @@ export const CertificatesSection = ({
           Certificates
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
         </CardTitle>
-        <CardDescription>
-          View, filter, and manage all certificates across your project.
-        </CardDescription>
+        <CardDescription>View, filter, and manage all certificates.</CardDescription>
         <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionCertificateActions.Import}

@@ -298,6 +298,8 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       tags: [ApiDocsTags.PkiCertificates],
       description: "Import certificate",
       body: z.object({
+        projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
+
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
@@ -321,7 +323,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          projectId: req.certManagerProjectId,
           ...req.body
         });
 

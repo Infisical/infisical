@@ -49,13 +49,16 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `list${caTypeNameForOpId}CertificateAuthoritiesV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
+      querystring: z.object({
+        projectId: z.string().uuid().optional()
+      }),
       response: {
         200: responseSchema.array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.query.projectId ?? req.internalCertManagerProjectId;
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },
@@ -138,7 +141,7 @@ export const registerCertificateAuthorityEndpoints = <
     handler: async (req) => {
       const body = req.body as { projectId?: string };
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
-        { ...req.body, projectId: body.projectId ?? req.certManagerProjectId, type: caType },
+        { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
         req.permission
       )) as T;
 

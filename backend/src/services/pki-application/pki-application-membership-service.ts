@@ -17,6 +17,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import {
   TAddApplicationMemberDTO,
+  TAddApplicationUserMembersDTO,
   TApplicationMember,
   TListApplicationMembersDTO,
   TRemoveApplicationMemberDTO,
@@ -183,6 +184,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
   const listMembers = async ({
     applicationId,
+    kind,
     projectId,
     actor,
     actorId,
@@ -210,17 +212,25 @@ export const pkiApplicationMembershipServiceFactory = ({
       scopeResourceId: applicationId
     });
 
-    if (memberships.length === 0) return [];
+    const filteredMemberships = kind
+      ? memberships.filter((m) => {
+          if (kind === "user") return Boolean(m.actorUserId);
+          if (kind === "identity") return Boolean(m.actorIdentityId);
+          return Boolean(m.actorGroupId);
+        })
+      : memberships;
+
+    if (filteredMemberships.length === 0) return [];
 
     const roles = await membershipRoleDAL.find({
-      $in: { membershipId: memberships.map((m) => m.id) }
+      $in: { membershipId: filteredMemberships.map((m) => m.id) }
     });
     const rolesByMembership = new Map<string, (typeof roles)[number]>();
     for (const r of roles) rolesByMembership.set(r.membershipId, r);
 
-    const userIds = memberships.map((m) => m.actorUserId).filter((v): v is string => Boolean(v));
-    const identityIds = memberships.map((m) => m.actorIdentityId).filter((v): v is string => Boolean(v));
-    const groupIds = memberships.map((m) => m.actorGroupId).filter((v): v is string => Boolean(v));
+    const userIds = filteredMemberships.map((m) => m.actorUserId).filter((v): v is string => Boolean(v));
+    const identityIds = filteredMemberships.map((m) => m.actorIdentityId).filter((v): v is string => Boolean(v));
+    const groupIds = filteredMemberships.map((m) => m.actorGroupId).filter((v): v is string => Boolean(v));
 
     const [users, identities, groups] = await Promise.all([
       userIds.length > 0 ? userDAL.find({ $in: { id: userIds } }) : Promise.resolve([]),
@@ -232,7 +242,7 @@ export const pkiApplicationMembershipServiceFactory = ({
     const identityById = new Map(identities.map((i) => [i.id, i]));
     const groupById = new Map(groups.map((g) => [g.id, g]));
 
-    return memberships.map((m) => {
+    return filteredMemberships.map((m) => {
       const r = rolesByMembership.get(m.id);
 
       let details: TApplicationMember["details"] = null;
@@ -273,9 +283,36 @@ export const pkiApplicationMembershipServiceFactory = ({
     });
   };
 
+  const $findMembershipByMember = async (
+    applicationId: string,
+    projectId: string,
+    kind: "user" | "identity" | "group",
+    memberId: string
+  ) => {
+    const where: Record<string, unknown> = {
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      scopeResourceId: applicationId
+    };
+    if (kind === "user") where.actorUserId = memberId;
+    else if (kind === "identity") where.actorIdentityId = memberId;
+    else where.actorGroupId = memberId;
+
+    const matches = await membershipDAL.find(where);
+    const membership = matches[0];
+    if (!membership) {
+      throw new NotFoundError({
+        message: `No application membership found for ${kind} '${memberId}' on application '${applicationId}'.`
+      });
+    }
+    return membership;
+  };
+
   const updateMemberRole = async ({
     applicationId,
-    membershipId,
+    kind,
+    memberId,
     role,
     projectId,
     actor,
@@ -304,22 +341,18 @@ export const pkiApplicationMembershipServiceFactory = ({
       });
     }
 
-    const membership = await membershipDAL.findById(membershipId);
-    if (
-      !membership ||
-      membership.scopeResourceType !== ResourceType.CertificateApplication ||
-      membership.scopeResourceId !== applicationId ||
-      membership.scopeProjectId !== projectId
-    ) {
-      throw new NotFoundError({ message: `Membership with id '${membershipId}' not found on this application.` });
-    }
+    const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
 
     return membershipDAL.transaction(async (tx) => {
-      const updatedRoles = await membershipRoleDAL.update({ membershipId }, { role, customRoleId: null }, tx);
+      const updatedRoles = await membershipRoleDAL.update(
+        { membershipId: membership.id },
+        { role, customRoleId: null },
+        tx
+      );
       const updated = updatedRoles[0];
 
       return {
-        membershipId,
+        membershipId: membership.id,
         applicationId,
         actorUserId: membership.actorUserId ?? null,
         actorIdentityId: membership.actorIdentityId ?? null,
@@ -334,7 +367,8 @@ export const pkiApplicationMembershipServiceFactory = ({
 
   const removeMember = async ({
     applicationId,
-    membershipId,
+    kind,
+    memberId,
     projectId,
     actor,
     actorId,
@@ -356,23 +390,105 @@ export const pkiApplicationMembershipServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ResourcePermissionSub.Member);
 
-    const membership = await membershipDAL.findById(membershipId);
-    if (
-      !membership ||
-      membership.scopeResourceType !== ResourceType.CertificateApplication ||
-      membership.scopeResourceId !== applicationId ||
-      membership.scopeProjectId !== projectId
-    ) {
-      throw new NotFoundError({ message: `Membership with id '${membershipId}' not found on this application.` });
-    }
+    const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
 
     await membershipDAL.transaction(async (tx) => {
-      await membershipRoleDAL.delete({ membershipId }, tx);
-      await membershipDAL.deleteById(membershipId, tx);
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      await membershipDAL.deleteById(membership.id, tx);
     });
 
-    return { membershipId, applicationId };
+    return { membershipId: membership.id, applicationId };
   };
 
-  return { addMember, listMembers, updateMemberRole, removeMember };
+  const addUserMembers = async ({
+    applicationId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    userIds,
+    emails,
+    role
+  }: TAddApplicationUserMembersDTO): Promise<{
+    memberships: TApplicationMember[];
+    skipped: string[];
+    unresolved: string[];
+  }> => {
+    if (!isBuiltInApplicationRole(role)) {
+      throw new BadRequestError({
+        message: `Unknown application role '${role}'. Expected one of: admin, operator, auditor.`
+      });
+    }
+
+    await $loadApplicationOrThrow(applicationId, projectId);
+
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Edit,
+      ResourcePermissionSub.Application
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
+
+    const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
+    const userByEmail = new Map<string, (typeof usersByEmail)[number]>();
+    for (const u of usersByEmail) userByEmail.set(u.username, u);
+    const unresolved = emails.filter((e) => !userByEmail.has(e));
+
+    const existing = await membershipDAL.find({
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.CertificateApplication,
+      scopeResourceId: applicationId
+    });
+    const alreadyAttached = new Set<string>(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
+
+    const targets: { userId: string; label: string }[] = [];
+    const seen = new Set<string>();
+    userIds.forEach((id) => {
+      if (!seen.has(id)) {
+        seen.add(id);
+        targets.push({ userId: id, label: id });
+      }
+    });
+    emails.forEach((email) => {
+      const user = userByEmail.get(email);
+      if (user && !seen.has(user.id)) {
+        seen.add(user.id);
+        targets.push({ userId: user.id, label: email });
+      }
+    });
+
+    const memberships: TApplicationMember[] = [];
+    const skipped: string[] = [];
+    for (const t of targets) {
+      if (alreadyAttached.has(t.userId)) {
+        skipped.push(t.label);
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        const m = await addMember({
+          applicationId,
+          userId: t.userId,
+          role,
+          projectId,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        memberships.push(m);
+        alreadyAttached.add(t.userId);
+      }
+    }
+
+    return { memberships, skipped, unresolved };
+  };
+
+  return { addMember, addUserMembers, listMembers, updateMemberRole, removeMember };
 };

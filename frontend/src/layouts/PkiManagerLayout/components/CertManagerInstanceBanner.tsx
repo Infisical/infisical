@@ -1,7 +1,8 @@
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useParams } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 
-import { Button } from "@app/components/v3";
+import { Button } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
 import {
   OrgPermissionCertManagerActions,
@@ -28,32 +29,22 @@ export const CertManagerInstanceBanner = () => {
   const otherCount = Math.max(0, data.projects.length - 1);
   const isViewingActive = activeProject?.id === projectId;
 
+  const message = isViewingActive
+    ? `Your organization has ${otherCount} other Cert Manager ${otherCount === 1 ? "workspace" : "workspaces"}, consolidate to a single workspace, multi-project Cert Manager will be deprecated soon.`
+    : `Legacy Cert Manager instance (active is ${activeProject?.name ?? "not set"}) — consolidate to a single instance, multi-project Cert Manager will be deprecated soon.`;
+
   return (
     <>
-      <div className="flex items-start gap-3 border-b border-mineshaft-600 bg-mineshaft-800 px-12 py-3 text-sm text-mineshaft-200">
-        <InfoIcon size={16} className="mt-0.5 text-warning" />
-        <div className="flex-1">
-          {isViewingActive ? (
-            <>
-              You&apos;re viewing the active instance
-              {activeProject ? (
-                <span className="text-mineshaft-100"> — {activeProject.name}</span>
-              ) : null}
-              . Your org has <span className="text-mineshaft-100">{otherCount} other</span> Cert
-              Manager
-              {otherCount === 1 ? " instance" : " instances"} from the legacy multi-project model.
-            </>
-          ) : (
-            <>
-              This is a legacy Cert Manager instance. The active instance is{" "}
-              <span className="text-mineshaft-100">{activeProject?.name ?? "not set"}</span>; new
-              API requests without a <code>projectId</code> resolve there.
-            </>
-          )}
-          <span className="ml-1">We&apos;re moving Cert Manager to a single-instance model.</span>
-        </div>
+      <div className="flex w-full items-center border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
+        <FontAwesomeIcon icon={faWarning} className="mr-2.5 text-base text-yellow" />
+        <span>{message}</span>
         {canManage && (
-          <Button size="xs" variant="outline" onClick={() => handlePopUpOpen("activeInstance")}>
+          <Button
+            size="xs"
+            variant="outline_bg"
+            className="ml-auto"
+            onClick={() => handlePopUpOpen("activeInstance")}
+          >
             Manage instances
           </Button>
         )}

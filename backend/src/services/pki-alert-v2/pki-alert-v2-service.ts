@@ -167,6 +167,7 @@ export const pkiAlertV2ServiceFactory = ({
       filters: (alert.filters ?? []) as TPkiFilterRule[],
       enabled: alert.enabled ?? true,
       projectId: alert.projectId,
+      applicationId: alert.applicationId ?? null,
       channels: (alert.channels || []).map((channel) => {
         const config = decryptChannelConfig<TChannelConfig>(channel, decryptor);
 

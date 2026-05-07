@@ -1,5 +1,11 @@
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
+export enum ScepOperation {
+  GetCACaps = "GetCACaps",
+  GetCACert = "GetCACert",
+  PKIOperation = "PKIOperation"
+}
+
 export enum ScepMessageType {
   CertRep = "3",
   RenewalReq = "17",

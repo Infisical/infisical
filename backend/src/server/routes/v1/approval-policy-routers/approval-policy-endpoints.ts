@@ -4,7 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
   TApprovalPolicyInputs,
   TCreatePolicyDTO,
@@ -109,8 +109,8 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "listApprovalPolicies",
       description: "List approval policies",
       querystring: z.object({
-        projectId: z.string().uuid(),
-        applicationId: z.string().uuid().optional()
+        scope: z.nativeEnum(ApprovalPolicyScope),
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -120,14 +120,17 @@ export const registerApprovalPolicyEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { policies } = await server.services.approvalPolicy.list(policyType, req.query.projectId, req.permission, {
-        applicationId: req.query.applicationId
-      });
+      const { policies, projectId } = await server.services.approvalPolicy.list(
+        policyType,
+        req.query.scope,
+        req.query.id,
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.APPROVAL_POLICY_LIST,
           metadata: {
@@ -279,8 +282,8 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "listApprovalRequests",
       description: "List approval requests",
       querystring: z.object({
-        projectId: z.string().uuid(),
-        applicationId: z.string().uuid().optional()
+        scope: z.nativeEnum(ApprovalPolicyScope),
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -290,17 +293,17 @@ export const registerApprovalPolicyEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { requests } = await server.services.approvalPolicy.listRequests(
+      const { requests, projectId } = await server.services.approvalPolicy.listRequests(
         policyType,
-        req.query.projectId,
-        req.permission,
-        { applicationId: req.query.applicationId }
+        req.query.scope,
+        req.query.id,
+        req.permission
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.APPROVAL_REQUEST_LIST,
           metadata: {
@@ -560,7 +563,8 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "listApprovalGrants",
       description: "List approval grants",
       querystring: z.object({
-        projectId: z.string().uuid()
+        scope: z.nativeEnum(ApprovalPolicyScope),
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -570,16 +574,17 @@ export const registerApprovalPolicyEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { grants } = await server.services.approvalPolicy.listGrants(
+      const { grants, projectId } = await server.services.approvalPolicy.listGrants(
         policyType,
-        req.query.projectId,
+        req.query.scope,
+        req.query.id,
         req.permission
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.APPROVAL_REQUEST_GRANT_LIST,
           metadata: {

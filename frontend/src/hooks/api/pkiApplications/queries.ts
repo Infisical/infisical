@@ -116,10 +116,22 @@ export const useListPkiApplicationMembers = (applicationId: string) =>
   useQuery({
     queryKey: pkiApplicationKeys.members(applicationId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ memberships: TPkiApplicationMember[] }>(
-        `${BASE_URL}/${applicationId}/memberships`
-      );
-      return data.memberships;
+      const [users, identities, groups] = await Promise.all([
+        apiRequest.get<{ memberships: TPkiApplicationMember[] }>(
+          `${BASE_URL}/${applicationId}/users`
+        ),
+        apiRequest.get<{ memberships: TPkiApplicationMember[] }>(
+          `${BASE_URL}/${applicationId}/identities`
+        ),
+        apiRequest.get<{ memberships: TPkiApplicationMember[] }>(
+          `${BASE_URL}/${applicationId}/groups`
+        )
+      ]);
+      return [
+        ...users.data.memberships,
+        ...identities.data.memberships,
+        ...groups.data.memberships
+      ];
     },
     enabled: Boolean(applicationId)
   });

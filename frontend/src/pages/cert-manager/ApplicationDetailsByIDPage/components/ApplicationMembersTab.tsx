@@ -64,11 +64,13 @@ const displayPrimary = (m: TPkiApplicationMember): string => {
   return m.actorUserId ?? m.actorIdentityId ?? m.actorGroupId ?? "—";
 };
 
-const displaySecondary = (m: TPkiApplicationMember): string | null => {
-  if (m.actorUserId) return m.details?.email ?? m.details?.username ?? null;
-  if (m.actorIdentityId) return m.details?.authMethod ?? null;
-  if (m.actorGroupId) return m.details?.slug ?? null;
-  return null;
+const memberRef = (
+  m: TPkiApplicationMember
+): { kind: "user" | "identity" | "group"; memberId: string } => {
+  if (m.actorUserId) return { kind: "user", memberId: m.actorUserId };
+  if (m.actorIdentityId) return { kind: "identity", memberId: m.actorIdentityId };
+  if (m.actorGroupId) return { kind: "group", memberId: m.actorGroupId };
+  throw new Error("Membership has no associated user, identity, or group.");
 };
 
 export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
@@ -118,12 +120,10 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
               <TableBody>
                 {members.map((m) => {
                   const { label } = memberType(m);
-                  const secondary = displaySecondary(m);
                   return (
                     <TableRow key={m.membershipId} className="[&>td]:py-3">
                       <TableCell isTruncatable>
                         <div className="text-foreground">{displayPrimary(m)}</div>
-                        {secondary ? <div className="text-xs text-accent">{secondary}</div> : null}
                       </TableCell>
                       <TableCell>
                         <Badge variant="neutral">{label}</Badge>
@@ -135,7 +135,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
                             try {
                               await updateRole.mutateAsync({
                                 applicationId,
-                                membershipId: m.membershipId,
+                                ...memberRef(m),
                                 role
                               });
                               createNotification({ type: "success", text: "Role updated" });
@@ -205,7 +205,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
           try {
             await removeMember.mutateAsync({
               applicationId,
-              membershipId: m.membershipId
+              ...memberRef(m)
             });
             createNotification({ type: "success", text: "Member removed" });
             handlePopUpClose("removeMember");

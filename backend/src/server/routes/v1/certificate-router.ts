@@ -555,7 +555,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
         actor: req.permission.type,
@@ -633,6 +633,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .uuid()
           .optional()
           .describe("Filter to certificate requests for profiles attached to a specific Application."),
+        projectId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe(
+            "Optional explicit cert-manager project. Defaults to the org's default cert-manager project; required when the org has multiple cert-manager projects and you want to target a non-default one."
+          ),
         sortBy: z.string().trim().optional(),
         sortOrder: z.enum(["asc", "desc"]).optional(),
         metadata: z
@@ -676,7 +683,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { metadata, ...filters } = req.body;
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
         actor: req.permission.type,
@@ -1481,7 +1488,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          projectId: req.certManagerProjectId,
+          projectId: req.internalCertManagerProjectId,
           ...req.body
         });
 

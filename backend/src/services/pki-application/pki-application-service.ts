@@ -12,6 +12,9 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
+import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
@@ -46,6 +49,8 @@ type TPkiApplicationServiceFactoryDep = {
   >;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "delete">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
@@ -56,6 +61,8 @@ export const pkiApplicationServiceFactory = ({
   pkiApplicationProfileDAL,
   membershipDAL,
   membershipRoleDAL,
+  approvalPolicyDAL,
+  approvalRequestDAL,
   permissionService
 }: TPkiApplicationServiceFactoryDep) => {
   const $loadProjectPermission = (
@@ -347,6 +354,8 @@ export const pkiApplicationServiceFactory = ({
         await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
         await membershipDAL.delete({ $in: { id: ids } }, tx);
       }
+      await approvalRequestDAL.delete({ scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId }, tx);
+      await approvalPolicyDAL.delete({ scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId }, tx);
       await pkiApplicationDAL.deleteById(applicationId, tx);
     });
 

@@ -8,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   CertRequestPolicyConditions,
   TApprovalPolicy,
@@ -120,8 +121,8 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
       } else {
         await createPolicy({
           policyType: ApprovalPolicyType.CertRequest,
-          projectId: currentProject.id,
-          ...(applicationId && { applicationId }),
+          scope: applicationId ? ApprovalPolicyScope.PkiApplication : ApprovalPolicyScope.Project,
+          scopeId: applicationId || currentProject.id,
           ...data
         });
         createNotification({

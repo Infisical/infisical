@@ -139,7 +139,9 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all the PKI Syncs for the specified project.",
       querystring: z.object({
-        certificateId: z.string().uuid().optional()
+        projectId: z.string().trim().optional(),
+        certificateId: z.string().uuid().optional(),
+        applicationId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
@@ -148,12 +150,15 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        query: { certificateId },
+        query: { certificateId, applicationId },
         permission
       } = req;
-      const projectId = req.certManagerProjectId;
+      const projectId = req.internalCertManagerProjectId;
 
-      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId, certificateId }, permission);
+      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId(
+        { projectId, certificateId, applicationId },
+        permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

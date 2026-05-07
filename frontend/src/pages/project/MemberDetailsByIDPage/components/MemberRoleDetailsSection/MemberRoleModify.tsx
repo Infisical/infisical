@@ -37,7 +37,7 @@ import {
 } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
-import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
@@ -182,10 +182,11 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
       return;
     }
 
+    const isCertManager = currentProject?.type === ProjectType.CertificateManager;
     await updateMembershipRole.mutateAsync({
       projectId,
       projectType: currentProject?.type,
-      membershipId: projectMember.id,
+      membershipId: isCertManager ? projectMember.user.id : projectMember.id,
       roles: sanitizedRoles
     });
     createNotification({ text: "Successfully updated roles", type: "success" });

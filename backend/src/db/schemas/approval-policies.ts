@@ -20,7 +20,8 @@ export const ApprovalPoliciesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   bypassForMachineIdentities: z.boolean().default(false).nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional()
+  scopeType: z.string().nullable().optional(),
+  scopeId: z.string().uuid().nullable().optional()
 });
 
 export type TApprovalPolicies = z.infer<typeof ApprovalPoliciesSchema>;

@@ -32,7 +32,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     url: "/instance",
     config: { rateLimit: readLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getCertManagerInstanceState",
       description:
         "Get the active Cert Manager project and the list of legacy Cert Manager projects in this organization.",
@@ -70,7 +70,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     url: "/instance/legacy",
     config: { rateLimit: readLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listCertManagerLegacyInstances",
       description: "List all Cert Manager projects in the organization with their certificate, sync, and alert counts.",
       tags: [ApiDocsTags.CertManagerInstance],
@@ -97,7 +97,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     url: "/instance/active-project",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "setCertManagerActiveProject",
       description:
         "Set the active Cert Manager project for this organization. New API requests resolve to this project when no projectId is supplied.",

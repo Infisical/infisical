@@ -52,6 +52,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "List system and custom certificate inventory views for a project.",
       querystring: z.object({
+        projectId: z.string().trim().optional(),
         applicationId: z.string().uuid().optional()
       }),
       response: {
@@ -87,7 +88,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.certificateInventoryView.listViews({
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         applicationId: req.query.applicationId,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -109,6 +110,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "Create a custom certificate inventory view.",
       body: z.object({
+        projectId: z.string().trim().optional(),
         name: z.string().trim().min(1).max(255),
         filters: InventoryViewFiltersSchema.default({}),
         columns: ColumnsSchema.optional(),
@@ -124,7 +126,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.createView({
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         applicationId: req.body.applicationId,
         name: req.body.name,
         filters: req.body.filters,
@@ -137,7 +139,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {
@@ -168,6 +170,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         viewId: z.string().uuid()
       }),
       body: z.object({
+        projectId: z.string().trim().optional(),
         name: z.string().trim().min(1).max(255).optional(),
         filters: InventoryViewFiltersSchema.optional(),
         columns: ColumnsSchema.optional(),
@@ -183,7 +186,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.updateView({
         viewId: req.params.viewId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         name: req.body.name,
         filters: req.body.filters,
         columns: req.body.columns,
@@ -195,7 +198,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.UPDATE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {
@@ -235,7 +238,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.deleteView({
         viewId: req.params.viewId,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
@@ -243,7 +246,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.certManagerProjectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.DELETE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {
