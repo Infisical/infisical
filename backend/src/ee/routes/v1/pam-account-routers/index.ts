@@ -134,10 +134,10 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       updateAccountSchema: UpdateWindowsAccountSchema
     });
   },
-  [PamResource.Oracle]: async (server: FastifyZodProvider) => {
+  [PamResource.OracleDB]: async (server: FastifyZodProvider) => {
     registerPamAccountEndpoints({
       server,
-      parentType: PamResource.Oracle,
+      parentType: PamResource.OracleDB,
       accountResponseSchema: SanitizedOracleAccountWithResourceSchema,
       createAccountSchema: CreateOracleAccountSchema,
       updateAccountSchema: UpdateOracleAccountSchema

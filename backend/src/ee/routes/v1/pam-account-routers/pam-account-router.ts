@@ -134,7 +134,7 @@ const AccountCredentialsResponseSchema = z.discriminatedUnion("parentType", [
     credentials: WindowsAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    parentType: z.literal(PamResource.Oracle),
+    parentType: z.literal(PamResource.OracleDB),
     credentials: OracleAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
@@ -566,7 +566,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
-          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Oracle) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.OracleDB) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Windows) }),
           // AWS IAM (no gateway, returns short-lived STS credentials usable by both CLI and console)
           z.object({

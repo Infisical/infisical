@@ -140,10 +140,10 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       updateResourceSchema: UpdateWindowsResourceSchema
     });
   },
-  [PamResource.Oracle]: async (server: FastifyZodProvider) => {
+  [PamResource.OracleDB]: async (server: FastifyZodProvider) => {
     registerPamResourceEndpoints({
       server,
-      resourceType: PamResource.Oracle,
+      resourceType: PamResource.OracleDB,
       resourceResponseSchema: OracleResourceSchema,
       createResourceSchema: CreateOracleResourceSchema,
       updateResourceSchema: UpdateOracleResourceSchema

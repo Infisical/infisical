@@ -19,7 +19,7 @@ import {
 export const OracleResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
 export const OracleAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
 
-const BaseOracleResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.Oracle) });
+const BaseOracleResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.OracleDB) });
 
 export const OracleResourceSchema = BaseOracleResourceSchema.extend({
   connectionDetails: OracleResourceConnectionDetailsSchema,
@@ -37,7 +37,7 @@ export const SanitizedOracleResourceSchema = BaseOracleResourceSchema.extend({
 
 export const OracleResourceListItemSchema = z.object({
   name: z.literal("Oracle Database"),
-  resource: z.literal(PamResource.Oracle)
+  resource: z.literal(PamResource.OracleDB)
 });
 
 export const CreateOracleResourceSchema = BaseCreateGatewayPamResourceSchema.extend({
@@ -64,7 +64,7 @@ export const UpdateOracleAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedOracleAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  parentType: z.literal(PamResource.Oracle),
+  parentType: z.literal(PamResource.OracleDB),
   credentials: OracleAccountCredentialsSchema.pick({
     username: true
   })

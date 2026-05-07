@@ -8,7 +8,7 @@ export enum PamResource {
   Redis = "redis",
   MongoDB = "mongodb",
   Windows = "windows",
-  Oracle = "oracledb"
+  OracleDB = "oracledb"
 }
 
 export enum PamResourceOrderBy {
