@@ -95,6 +95,7 @@ export const MemberRoleDetailsSection = ({
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
@@ -126,14 +127,13 @@ export const MemberRoleDetailsSection = ({
               })
         })
       ),
-      membershipId: membershipDetails.id
+      membershipId: isCertManager ? membershipDetails.user.id : membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed role" });
     handlePopUpClose("deleteRole");
   };
 
   const hasRoles = Boolean(membershipDetails?.roles.length);
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   return (
     <>
