@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import {
   AccessScope,
+  ActionProjectType,
   ApplicationMembershipRole,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
@@ -9,12 +10,12 @@ import {
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionMemberActions } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -36,7 +37,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
@@ -176,6 +177,19 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
+    const { permission: projectPermission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    const canCreateProjectMember = projectPermission.can(
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionSub.Member
+    );
+
     const membership = await membershipDAL.transaction(async (tx) => {
       const projectMembershipFilter: Record<string, unknown> = {
         scope: AccessScope.Project,
@@ -187,6 +201,9 @@ export const pkiApplicationMembershipServiceFactory = ({
       const existingProjectMembership = await membershipDAL.find(projectMembershipFilter, { tx });
 
       if (existingProjectMembership.length === 0) {
+        if (!canCreateProjectMember) {
+          throw new ForbiddenRequestError({ message: "You don't have access to perform this action." });
+        }
         const projectMembership = await membershipDAL.create(
           {
             scope: AccessScope.Project,
