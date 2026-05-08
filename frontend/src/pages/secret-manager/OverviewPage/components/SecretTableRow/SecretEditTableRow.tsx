@@ -88,6 +88,7 @@ import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashbo
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
+import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
@@ -199,7 +200,8 @@ export const SecretEditTableRow = ({
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "accessInsightsUpgrade",
-    "createSharedSecret"
+    "createSharedSecret",
+    "duplicateSecret"
   ] as const);
 
   const { currentProject } = useProject();
@@ -1656,6 +1658,39 @@ export const SecretEditTableRow = ({
                   </TooltipContent>
                 </Tooltip>
                 <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName,
+                    secretTags: ["*"]
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Tooltip
+                      open={isCreatable || !isAllowed ? undefined : false}
+                      disableHoverableContent
+                    >
+                      <TooltipTrigger className="block w-full">
+                        <DropdownMenuItem
+                          onClick={() => handlePopUpOpen("duplicateSecret")}
+                          isDisabled={isCreatable || !secretId || !isAllowed}
+                        >
+                          <CopyIcon />
+                          Duplicate Secret
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        {!isAllowed
+                          ? "Access Denied"
+                          : isCreatable
+                            ? "Create Secret First"
+                            : "Duplicate Secret"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={subject(ProjectPermissionSub.Secrets, {
                     environment,
@@ -1838,6 +1873,13 @@ export const SecretEditTableRow = ({
         </AlertDialogContent>
       </AlertDialog>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <DuplicateSecretModal
+        isOpen={popUp.duplicateSecret.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("duplicateSecret", open)}
+        secretName={secretName}
+        secretPath={secretPath}
+        sourceEnvironment={{ slug: environment, name: environmentName }}
+      />
     </>
   );
 
