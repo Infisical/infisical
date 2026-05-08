@@ -9,11 +9,6 @@ export enum ApproverType {
   User = "user"
 }
 
-export enum BypasserType {
-  Group = "group",
-  User = "user"
-}
-
 export enum EnforcementLevel {
   Hard = "hard",
   Soft = "soft"
@@ -30,7 +25,7 @@ export type ApprovalPolicyStep = {
 };
 
 export type PolicyBypasser = {
-  type: BypasserType;
+  type: ApproverType;
   id: string;
 };
 

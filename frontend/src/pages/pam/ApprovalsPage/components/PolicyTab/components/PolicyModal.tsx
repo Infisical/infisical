@@ -8,7 +8,7 @@ import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
   ApprovalPolicyType,
-  BypasserType,
+  ApproverType,
   EnforcementLevel,
   PamAccessPolicyConditions,
   PamAccessPolicyConstraints,
@@ -94,11 +94,11 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         })),
         enforcementLevel: policyData.policy.enforcementLevel ?? EnforcementLevel.Hard,
         userBypassers: policyBypassers
-          .filter((b) => b.type === BypasserType.User)
-          .map((b) => ({ type: BypasserType.User, id: b.id })),
+          .filter((b) => b.type === ApproverType.User)
+          .map((b) => ({ type: ApproverType.User, id: b.id })),
         groupBypassers: policyBypassers
-          .filter((b) => b.type === BypasserType.Group)
-          .map((b) => ({ type: BypasserType.Group, id: b.id }))
+          .filter((b) => b.type === ApproverType.Group)
+          .map((b) => ({ type: ApproverType.Group, id: b.id }))
       });
     } else {
       reset({

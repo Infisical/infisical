@@ -991,11 +991,11 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const policy =
-      policyType === ApprovalPolicyType.PamAccess && request.policyId
+      bypassReason !== undefined && policyType === ApprovalPolicyType.PamAccess && request.policyId
         ? await approvalPolicyDAL.findById(request.policyId)
         : null;
     const bypassers: PolicyBypasser[] =
-      policyType === ApprovalPolicyType.PamAccess && request.policyId
+      bypassReason !== undefined && policyType === ApprovalPolicyType.PamAccess && request.policyId
         ? await approvalPolicyDAL.findBypassersByPolicyId(request.policyId)
         : [];
 
@@ -1275,14 +1275,12 @@ export const approvalPolicyServiceFactory = ({
       const requestIds = visibleRequests.map((r) => r.id);
       const policyIds = [...new Set(visibleRequests.map((r) => r.policyId).filter((id): id is string => Boolean(id)))];
 
-      const [grants, policies, bypassers] = await Promise.all([
+      const [grants, policies, bypassersByPolicyId] = await Promise.all([
         approvalRequestGrantsDAL.find({ $in: { requestId: requestIds } }),
         policyIds.length
           ? approvalPolicyDAL.find({ $in: { id: policyIds } })
           : Promise.resolve([] as Awaited<ReturnType<typeof approvalPolicyDAL.find>>),
-        policyIds.length
-          ? Promise.all(policyIds.map((id) => approvalPolicyDAL.findBypassersByPolicyId(id)))
-          : Promise.resolve([] as PolicyBypasser[][])
+        approvalPolicyDAL.findBypassersByPolicyIds(policyIds)
       ]);
 
       ctx.grantsByRequestId = new Map();
@@ -1299,7 +1297,7 @@ export const approvalPolicyServiceFactory = ({
       }
 
       ctx.policyById = new Map(policies.map((p) => [p.id, p]));
-      ctx.bypassersByPolicyId = new Map(policyIds.map((id, i) => [id, bypassers[i]]));
+      ctx.bypassersByPolicyId = new Map(Object.entries(bypassersByPolicyId));
     }
 
     const decorated = await Promise.all(visibleRequests.map((r) => $decorateRequest(r, actor, ctx)));

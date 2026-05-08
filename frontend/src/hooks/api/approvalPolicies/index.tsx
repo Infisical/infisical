@@ -9,7 +9,6 @@ export {
   type ApprovalPolicyStep,
   ApprovalPolicyType,
   ApproverType,
-  BypasserType,
   type CertRequestPolicyConditions,
   type CodeSigningPolicyConstraints,
   EnforcementLevel,

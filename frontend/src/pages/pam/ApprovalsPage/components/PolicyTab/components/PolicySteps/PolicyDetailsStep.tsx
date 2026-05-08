@@ -7,7 +7,7 @@ import { FilterableSelect, FormControl, Input, Switch } from "@app/components/v2
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { BypasserType, EnforcementLevel } from "@app/hooks/api/approvalPolicies";
+import { ApproverType, EnforcementLevel } from "@app/hooks/api/approvalPolicies";
 
 import { TPolicyForm } from "../PolicySchema";
 
@@ -29,13 +29,13 @@ export const PolicyDetailsStep = () => {
     () =>
       members.map((member) => ({
         id: member.user.id,
-        type: BypasserType.User as const
+        type: ApproverType.User as const
       })),
     [members]
   );
 
   const groupBypasserOptions = useMemo(
-    () => groups?.map(({ group }) => ({ id: group.id, type: BypasserType.Group as const })) ?? [],
+    () => groups?.map(({ group }) => ({ id: group.id, type: ApproverType.Group as const })) ?? [],
     [groups]
   );
 
@@ -168,7 +168,7 @@ export const PolicyDetailsStep = () => {
                     value={value || []}
                     onChange={(selected) => {
                       onChange(
-                        (selected as MultiValue<{ type: BypasserType.User; id: string }>) || []
+                        (selected as MultiValue<{ type: ApproverType.User; id: string }>) || []
                       );
                     }}
                   />
@@ -196,7 +196,7 @@ export const PolicyDetailsStep = () => {
                     value={value || []}
                     onChange={(selected) => {
                       onChange(
-                        (selected as MultiValue<{ type: BypasserType.Group; id: string }>) || []
+                        (selected as MultiValue<{ type: ApproverType.Group; id: string }>) || []
                       );
                     }}
                   />

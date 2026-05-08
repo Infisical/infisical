@@ -37,7 +37,6 @@ import {
   approvalPolicyQuery,
   ApprovalPolicyType,
   ApproverType,
-  BypasserType,
   EnforcementLevel,
   PamAccessPolicyConditions,
   PamAccessPolicyConstraints
@@ -286,10 +285,10 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                           variant="neutral"
                                           key={`${policy.id}-bypasser-${i + 1}`}
                                         >
-                                          {b.type === BypasserType.Group ? <Users /> : <User />}
+                                          {b.type === ApproverType.Group ? <Users /> : <User />}
                                           {getApproverLabel(
                                             b.id,
-                                            b.type === BypasserType.User
+                                            b.type === ApproverType.User
                                               ? ApproverType.User
                                               : ApproverType.Group
                                           )}

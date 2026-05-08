@@ -77,6 +77,32 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findBypassersByPolicyIds = async (policyIds: string[]): Promise<Record<string, PolicyBypasser[]>> => {
+    if (!policyIds.length) return {};
+    try {
+      const dbInstance = db.replicaNode();
+      const rows = (await dbInstance(TableName.ApprovalPolicyBypassers)
+        .whereIn("policyId", policyIds)
+        .select("policyId", "userId", "groupId")) as {
+        policyId: string;
+        userId: string | null;
+        groupId: string | null;
+      }[];
+
+      return rows.reduce<Record<string, PolicyBypasser[]>>((acc, row) => {
+        const list = acc[row.policyId] || [];
+        list.push({
+          type: row.userId ? ApproverType.User : ApproverType.Group,
+          id: (row.userId || row.groupId) as string
+        });
+        acc[row.policyId] = list;
+        return acc;
+      }, {});
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval policy bypassers by policy ids" });
+    }
+  };
+
   const findByProjectId = async (policyType: ApprovalPolicyType, projectId: string) => {
     try {
       const dbInstance = db.replicaNode();
@@ -163,6 +189,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     ...orm,
     findStepsByPolicyId,
     findBypassersByPolicyId,
+    findBypassersByPolicyIds,
     findByProjectId
   };
 };
