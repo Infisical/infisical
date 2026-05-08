@@ -11,8 +11,8 @@ However, you can configure additional settings to activate more features as need
 Used to configure platform-specific security and operational settings
 
 <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
-  16`
+  Must be a random 32 byte base64 string. Can be generated with `openssl rand
+  -base64 32`
 </ParamField>
 
 <ParamField query="AUTH_SECRET" type="string" default="none" required>
