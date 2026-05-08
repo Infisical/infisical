@@ -280,7 +280,7 @@ export const CreatePkiSyncForm = ({
               <PkiSyncDetailsFields />
             </Tab.Panel>
             <Tab.Panel className="max-h-full overflow-y-auto">
-              <PkiSyncCertificatesFields />
+              <PkiSyncCertificatesFields applicationId={applicationId} />
             </Tab.Panel>
             <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncReviewFields />

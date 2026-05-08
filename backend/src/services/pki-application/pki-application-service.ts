@@ -4,6 +4,7 @@ import { ActionProjectType, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApplicationActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -405,16 +406,18 @@ export const pkiApplicationServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
+      projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.AttachProfile,
-      ResourcePermissionSub.Application
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      ProjectPermissionSub.CertificateProfiles
     );
 
     const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
@@ -452,16 +455,18 @@ export const pkiApplicationServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
+      projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.DetachProfile,
-      ResourcePermissionSub.Application
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      ProjectPermissionSub.CertificateProfiles
     );
 
     const link = await pkiApplicationProfileDAL.findOne(applicationId, profileId);

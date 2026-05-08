@@ -159,7 +159,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateProfileActions.Delete,
       ProjectPermissionCertificateProfileActions.IssueCert,
       ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
-      ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret
+      ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret,
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments
     ],
     ProjectPermissionSub.CertificateProfiles
   );
@@ -920,9 +921,7 @@ const buildApplicationAdminPermissionRules = () => {
     [
       ResourcePermissionApplicationActions.Read,
       ResourcePermissionApplicationActions.Edit,
-      ResourcePermissionApplicationActions.Delete,
-      ResourcePermissionApplicationActions.AttachProfile,
-      ResourcePermissionApplicationActions.DetachProfile
+      ResourcePermissionApplicationActions.Delete
     ],
     ResourcePermissionSub.Application
   );

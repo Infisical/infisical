@@ -142,7 +142,11 @@ export const pkiSyncServiceFactory = ({
     return permission;
   };
 
-  const validateCertificatesProjectOwnership = async (certificateIds: string[], expectedProjectId: string) => {
+  const validateCertificatesForSync = async (
+    certificateIds: string[],
+    expectedProjectId: string,
+    expectedApplicationId: string | null | undefined
+  ) => {
     if (certificateIds.length === 0) return;
 
     const certificates = await certificateDAL.findActiveCertificatesByIds(certificateIds);
@@ -160,6 +164,19 @@ export const pkiSyncServiceFactory = ({
       throw new BadRequestError({
         message: `Certificates do not belong to the same project: ${invalidProjectCertificates.map((cert) => cert.id).join(", ")}`
       });
+    }
+
+    if (expectedApplicationId) {
+      const invalidApplicationCertificates = certificates.filter(
+        (cert) => cert.applicationId !== expectedApplicationId
+      );
+      if (invalidApplicationCertificates.length > 0) {
+        throw new BadRequestError({
+          message: `Certificates do not belong to this Application: ${invalidApplicationCertificates
+            .map((cert) => cert.id)
+            .join(", ")}`
+        });
+      }
     }
 
     const invalidRenewedCertificates = certificates.filter((cert) => cert.renewedByCertificateId);
@@ -249,7 +266,7 @@ export const pkiSyncServiceFactory = ({
     };
 
     if (certificateIds.length > 0) {
-      await validateCertificatesProjectOwnership(certificateIds, projectId);
+      await validateCertificatesForSync(certificateIds, projectId, applicationId);
     }
 
     try {
@@ -394,7 +411,7 @@ export const pkiSyncServiceFactory = ({
 
     if (certificateIds !== undefined) {
       if (certificateIds.length > 0) {
-        await validateCertificatesProjectOwnership(certificateIds, pkiSync.projectId);
+        await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
       }
 
       await certificateSyncDAL.removeAllCertificatesFromSync(id);
@@ -710,7 +727,7 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    await validateCertificatesProjectOwnership(certificateIds, pkiSync.projectId);
+    await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
 
     const addedCertificates = await certificateSyncDAL.addCertificates(
       pkiSyncId,

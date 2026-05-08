@@ -26,9 +26,7 @@ export enum ResourcePermissionSub {
 export enum ResourcePermissionApplicationActions {
   Read = "read",
   Edit = "edit",
-  Delete = "delete",
-  AttachProfile = "attach-profile",
-  DetachProfile = "detach-profile"
+  Delete = "delete"
 }
 
 export enum ResourcePermissionApplicationEnrollmentActions {

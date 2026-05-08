@@ -3,6 +3,7 @@ import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import {
@@ -13,15 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  DialogTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -52,24 +45,23 @@ type Props = {
 
 type Option = { value: string; label: string; isNew?: boolean };
 
-const APP_ROLES = [
+type AppRoleOption = { slug: string; name: string; description?: string };
+
+const APP_ROLES: AppRoleOption[] = [
   {
     slug: "admin",
-    label: "Admin",
-    description:
-      "Full management of this application: edit/delete, attach/detach profiles, configure enrollment, manage approval policies, and manage members."
+    name: "Admin",
+    description: "Full management of this application and its members."
   },
   {
     slug: "operator",
-    label: "Operator",
-    description:
-      "Day-to-day issuance: request and issue certificates against attached profiles, view enrollment, view approval policies, and submit approval requests."
+    name: "Operator",
+    description: "Issue certificates and submit approval requests."
   },
   {
     slug: "auditor",
-    label: "Auditor",
-    description:
-      "Read-only access: view the application, certificates, enrollment, approval policies/requests, and audit logs."
+    name: "Auditor",
+    description: "Read-only access to this application."
   }
 ];
 
@@ -173,6 +165,14 @@ export const AddApplicationMemberModal = ({
     setSelectedIdentities([]);
     setSelectedGroups([]);
     setRole("operator");
+  };
+
+  const handleTypeChange = (next: ActorType) => {
+    if (next === type) return;
+    setSelectedUsers([]);
+    setSelectedIdentities([]);
+    setSelectedGroups([]);
+    setType(next);
   };
 
   const handleClose = (open: boolean) => {
@@ -302,7 +302,7 @@ export const AddApplicationMemberModal = ({
                   variant={active ? "project" : "outline"}
                   size="sm"
                   className="flex-1"
-                  onClick={() => setType(opt.value)}
+                  onClick={() => handleTypeChange(opt.value)}
                   aria-pressed={active}
                 >
                   <Icon />
@@ -313,10 +313,7 @@ export const AddApplicationMemberModal = ({
           </ButtonGroup>
 
           {type === "user" && (
-            <FormControl
-              label="Users"
-              helperText="Pick existing organization members or type a new email to invite + add."
-            >
+            <FormControl label="Users">
               <CreatableSelect
                 isMulti
                 isLoading={usersQuery.isPending}
@@ -339,10 +336,7 @@ export const AddApplicationMemberModal = ({
           )}
 
           {type === "identity" && (
-            <FormControl
-              label="Machine Identities"
-              helperText="Pick existing identities or type a new name to create + add."
-            >
+            <FormControl label="Machine Identities">
               <CreatableSelect
                 isMulti
                 isLoading={identitiesQuery.isPending}
@@ -365,10 +359,7 @@ export const AddApplicationMemberModal = ({
           )}
 
           {type === "group" && (
-            <FormControl
-              label="Groups"
-              helperText="Pick one or more organization groups to grant access through."
-            >
+            <FormControl label="Groups">
               <FilterableSelect
                 isMulti
                 isLoading={groupsQuery.isPending}
@@ -380,31 +371,20 @@ export const AddApplicationMemberModal = ({
             </FormControl>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-accent">Role:</span>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {APP_ROLES.map((r) => (
-                    <Tooltip key={r.slug} delayDuration={150}>
-                      <TooltipTrigger asChild>
-                        <SelectItem value={r.slug}>{r.label}</SelectItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-xs">
-                        {r.description}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-xs text-accent">
-              {APP_ROLES.find((r) => r.slug === role)?.description}
-            </p>
-          </div>
+          <FormControl label="Role">
+            <FilterableSelect
+              options={APP_ROLES}
+              value={APP_ROLES.find((r) => r.slug === role) ?? null}
+              onChange={(v) => {
+                const next = v as AppRoleOption | null;
+                if (next) setRole(next.slug);
+              }}
+              getOptionValue={(option) => option.slug}
+              getOptionLabel={(option) => option.name}
+              components={{ Option: RoleOption }}
+              isClearable={false}
+            />
+          </FormControl>
         </div>
 
         <DialogFooter>

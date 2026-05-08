@@ -146,7 +146,8 @@ export enum ProjectPermissionCertificateProfileActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
-  RotateAcmeEabSecret = "rotate-acme-eab-secret"
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  ManageApplicationAttachments = "manage-application-attachments"
 }
 
 export enum ProjectPermissionApplicationActions {

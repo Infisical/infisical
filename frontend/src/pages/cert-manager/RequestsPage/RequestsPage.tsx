@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Badge,
   Card,
@@ -25,11 +25,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
@@ -232,29 +227,26 @@ export const RequestsPage = () => {
               description="Certificate approval requests across every Application. Use this inbox to approve, reject, or follow up on pending issuance."
             />
 
-            <div className="mb-4 flex items-center gap-3">
-              <span className="text-sm text-mineshaft-300">View</span>
-              <Select
-                value={selectedTab}
-                onValueChange={(v) =>
-                  navigate({
-                    to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/requests`,
-                    search: { selectedTab: v } as never
-                  } as never)
-                }
-              >
-                <SelectTrigger className="w-[260px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="application-requests">Application Requests</SelectItem>
-                  <SelectItem value="signing-requests">Signing Requests</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Tabs
+              value={selectedTab}
+              onValueChange={(v) =>
+                navigate({
+                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/requests`,
+                  search: { selectedTab: v } as never
+                } as never)
+              }
+            >
+              <TabList>
+                <Tab variant="project" value="application-requests">
+                  Application Requests
+                </Tab>
+                <Tab variant="project" value="signing-requests">
+                  Signing Requests
+                </Tab>
+              </TabList>
 
-            {selectedTab === "application-requests" && (
-              <Card>
+              <TabPanel value="application-requests">
+                <Card>
                 <CardHeader>
                   <CardTitle>Application Requests</CardTitle>
                   <CardDescription>
@@ -401,17 +393,17 @@ export const RequestsPage = () => {
                   )}
                 </CardContent>
               </Card>
-            )}
+              </TabPanel>
 
-            {selectedTab === "signing-requests" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Signing Requests</CardTitle>
-                  <CardDescription>
-                    Code-signing approval workflows triggered by a Signer policy.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+              <TabPanel value="signing-requests">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Signing Requests</CardTitle>
+                    <CardDescription>
+                      Code-signing approval workflows triggered by a Signer policy.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                   <div className="my-4 flex gap-2">
                     <InputGroup className="flex-1">
                       <InputGroupAddon>
@@ -524,7 +516,8 @@ export const RequestsPage = () => {
                   )}
                 </CardContent>
               </Card>
-            )}
+              </TabPanel>
+            </Tabs>
           </div>
         </div>
       </div>

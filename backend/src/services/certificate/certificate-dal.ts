@@ -392,11 +392,15 @@ export const certificateDALFactory = (db: TDbClient) => {
   const countActiveCertificatesForSync = async ({
     projectId,
     friendlyName,
-    commonName
+    commonName,
+    applicationId,
+    applicationIds
   }: {
     projectId: string;
     friendlyName?: string;
     commonName?: string;
+    applicationId?: string;
+    applicationIds?: string[];
   }) => {
     try {
       interface CountResult {
@@ -420,6 +424,13 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (commonName) {
         const sanitizedValue = sanitizeSqlLikeString(commonName);
         query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
+      }
+
+      if (applicationId) {
+        query = query.andWhere(`${TableName.Certificate}.applicationId`, applicationId);
+      }
+      if (applicationIds && applicationIds.length > 0) {
+        query = query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
       }
 
       const count = await query.count("*").first();

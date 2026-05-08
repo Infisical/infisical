@@ -54,6 +54,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   approvalPolicyQuery,
@@ -338,6 +343,11 @@ const AlertRow = ({ alert, onView, onEdit, onDelete }: AlertRowProps) => {
 };
 
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
+  const { permission } = useProjectPermission();
+  const canManageProfileAttachments = permission.can(
+    ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+    ProjectPermissionSub.CertificateProfiles
+  );
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [profilesToAttach, setProfilesToAttach] = useState<{ value: string; label: string }[]>([]);
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
@@ -465,17 +475,19 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             Define which profiles this Application uses and how certificates are requested from each
             one.
           </CardDescription>
-          <CardAction>
-            <Button
-              size="sm"
-              variant="project"
-              onClick={() => setIsAttachOpen(true)}
-              isDisabled={availableProfiles.length === 0}
-            >
-              <PlusIcon />
-              Attach Profile
-            </Button>
-          </CardAction>
+          {canManageProfileAttachments ? (
+            <CardAction>
+              <Button
+                size="sm"
+                variant="project"
+                onClick={() => setIsAttachOpen(true)}
+                isDisabled={availableProfiles.length === 0}
+              >
+                <PlusIcon />
+                Attach Profile
+              </Button>
+            </CardAction>
+          ) : null}
         </CardHeader>
         <CardContent>
           {profiles.length === 0 ? (
@@ -538,13 +550,15 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                 Request Certificate
                               </DropdownMenuItem>
                             ) : null}
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setProfileToDetach(p)}
-                            >
-                              <Trash2Icon />
-                              Detach Profile
-                            </DropdownMenuItem>
+                            {canManageProfileAttachments ? (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setProfileToDetach(p)}
+                              >
+                                <Trash2Icon />
+                                Detach Profile
+                              </DropdownMenuItem>
+                            ) : null}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
