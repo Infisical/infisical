@@ -38,19 +38,25 @@ const makeOracleConnection = (
   const actualUsername = config.username ?? TEST_CONNECTION_USERNAME;
   const actualPassword = config.password ?? TEST_CONNECTION_PASSWORD;
 
+  const connectString = sslEnabled
+    ? `tcps://localhost:${proxyPort}/${connectionDetails.database}?ssl_server_dn_match=false`
+    : `localhost:${proxyPort}/${connectionDetails.database}`;
+
   const openConnection = () =>
     oracledb.getConnection({
       user: actualUsername,
       password: actualPassword,
-      connectString: `localhost:${proxyPort}/${connectionDetails.database}`,
+      connectString,
       connectTimeout: ORACLE_CONNECT_TIMEOUT_SECONDS,
       transportConnectTimeout: ORACLE_CONNECT_TIMEOUT_SECONDS
     });
 
   return {
     validate: async (connectOnly) => {
-      // TLS Oracle: probe reachability + cert only (thin mode can't accept inline CA).
-      if (sslEnabled) {
+      // When a custom CA is provided, probe the cert chain first — node-oracledb
+      // thin mode can't accept an inline CA, so tcps:// only works if the cert
+      // is already trusted by the system store.
+      if (sslEnabled && sslCertificate) {
         try {
           await probeOracleTls({
             tcpHost: "localhost",
@@ -59,7 +65,6 @@ const makeOracleConnection = (
             caPem: sslCertificate,
             rejectUnauthorized: sslRejectUnauthorized
           });
-          return;
         } catch (error) {
           throw new BadRequestError({
             message: `Unable to validate connection to Oracle: ${(error as Error).message || String(error)}`
@@ -74,9 +79,16 @@ const makeOracleConnection = (
       } catch (error) {
         if (error instanceof Error) {
           const msg = error.message || "";
-          if (connectOnly && (msg.includes("ORA-01017") || msg.includes("invalid username/password"))) {
+          if (connectOnly && msg.includes("ORA-")) {
+            // Any Oracle response means the host is reachable.
             return;
           }
+        }
+        // If CA was provided and probe passed, the cert is valid — the tcps://
+        // failure is likely because the CA isn't in the system trust store.
+        // Save anyway; creds will be checked on first PAM session.
+        if (sslEnabled && sslCertificate) {
+          return;
         }
         throw new BadRequestError({
           message: `Unable to validate connection to Oracle: ${(error as Error).message || String(error)}`
