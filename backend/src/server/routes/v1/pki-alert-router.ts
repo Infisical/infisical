@@ -32,11 +32,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAlerting],
       body: BasePkiAlertV2Schema.extend({
         projectId: z.string().uuid().optional().describe(openApiHidden()),
-        applicationId: z
-          .string()
-          .uuid()
-          .optional()
-          .describe("Optional Cert Manager Application this alert is scoped to")
+        applicationId: z.string().uuid().optional().describe("Optional Application this alert is scoped to")
       }),
       response: {
         200: z.object({

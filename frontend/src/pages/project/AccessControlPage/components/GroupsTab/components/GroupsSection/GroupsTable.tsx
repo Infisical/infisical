@@ -66,7 +66,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Cert Manager" : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const {
     search,

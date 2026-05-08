@@ -100,7 +100,9 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             </Detail>
           )}
           <Detail>
-            <DetailLabel>{isCertManager ? "Joined cert manager" : "Joined project"}</DetailLabel>
+            <DetailLabel>
+              {isCertManager ? "Joined certificate manager" : "Joined project"}
+            </DetailLabel>
             <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>

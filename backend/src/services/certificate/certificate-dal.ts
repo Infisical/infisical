@@ -86,6 +86,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     notBeforeFrom?: Date;
     notBeforeTo?: Date;
     applicationId?: string;
+    applicationIds?: string[];
   };
 
   const applyInventoryFilters = (
@@ -227,6 +228,10 @@ export const certificateDALFactory = (db: TDbClient) => {
       q = q.andWhere(`${TableName.Certificate}.applicationId`, filters.applicationId);
     }
 
+    if (filters.applicationIds && filters.applicationIds.length > 0) {
+      q = q.whereIn(`${TableName.Certificate}.applicationId`, filters.applicationIds);
+    }
+
     return q;
   };
 
@@ -348,13 +353,18 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull("renewedByCertificateId");
 
       Object.entries(filter).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (key === "friendlyName" || key === "commonName") {
-            const sanitizedValue = sanitizeSqlLikeString(String(value));
-            query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
-          } else {
-            query = query.andWhere(`${TableName.Certificate}.${key}`, value);
+        if (value === undefined || value === null) return;
+        if (key === "applicationIds") {
+          if (Array.isArray(value) && value.length > 0) {
+            query = query.whereIn(`${TableName.Certificate}.applicationId`, value as string[]);
           }
+          return;
+        }
+        if (key === "friendlyName" || key === "commonName") {
+          const sanitizedValue = sanitizeSqlLikeString(String(value));
+          query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
+        } else {
+          query = query.andWhere(`${TableName.Certificate}.${key}`, value);
         }
       });
 
@@ -516,6 +526,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         notAfterTo,
         notBeforeFrom,
         notBeforeTo,
+        applicationIds,
         ...regularFilters
       } = filter;
 
@@ -546,7 +557,8 @@ export const certificateDALFactory = (db: TDbClient) => {
           notAfterFrom,
           notAfterTo,
           notBeforeFrom,
-          notBeforeTo
+          notBeforeTo,
+          applicationIds
         },
         true
       ) as typeof query;

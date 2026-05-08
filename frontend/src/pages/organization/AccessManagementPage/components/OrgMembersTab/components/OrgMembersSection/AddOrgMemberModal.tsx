@@ -39,8 +39,16 @@ const BUILT_IN_PROJECT_ROLES = [
 ];
 
 const CERT_MANAGER_ROLES = [
-  { slug: "admin", name: "Admin", description: "Full administrative access over Cert Manager" },
-  { slug: "member", name: "Guest", description: "Limited read/write access in Cert Manager" }
+  {
+    slug: "admin",
+    name: "Admin",
+    description: "Full administrative access over Certificate Manager"
+  },
+  {
+    slug: "member",
+    name: "Member",
+    description: "Limited read/write access in Certificate Manager"
+  }
 ];
 
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
@@ -108,7 +116,9 @@ export const AddOrgMemberModal = ({
         if (p.type !== ProjectType.CertificateManager) return true;
         return activeId ? p.id === activeId : true;
       })
-      .map((p) => (p.type === ProjectType.CertificateManager ? { ...p, name: "Cert Manager" } : p));
+      .map((p) =>
+        p.type === ProjectType.CertificateManager ? { ...p, name: "Certificate Manager" } : p
+      );
   }, [rawProjects, certManagerInstance?.activeProjectId]);
 
   const {

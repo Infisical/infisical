@@ -10,7 +10,7 @@ import { SanitizedRoleSchema } from "../../sanitizedSchemas";
 
 const CERT_MANAGER_ROLE_SLUGS = new Set([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
 const CERT_MANAGER_CUSTOM_ROLE_ERROR =
-  "Cert Manager does not support custom roles. Use the built-in Admin or Guest role.";
+  "Certificate Manager does not support custom roles. Use the built-in Admin or Member role.";
 
 export const registerCertManagerAccessRolesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -34,12 +34,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
         data: {}
       });
       return {
-        roles: roles
-          .filter((el) => CERT_MANAGER_ROLE_SLUGS.has(el.slug as ProjectMembershipRole))
-          .map((el) => ({
-            ...el,
-            name: el.slug === ProjectMembershipRole.Member ? "Guest" : el.name
-          }))
+        roles: roles.filter((el) => CERT_MANAGER_ROLE_SLUGS.has(el.slug as ProjectMembershipRole))
       };
     }
   });

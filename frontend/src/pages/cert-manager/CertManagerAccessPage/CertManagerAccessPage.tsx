@@ -9,13 +9,13 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 const CERT_MANAGER_ORG_ROLES = new Set<string>([
   "cert-manager-admin",
-  "cert-manager-guest",
+  "cert-manager-member",
   "admin"
 ]);
 
 const roleLabel = (role: string) => {
   if (role === "cert-manager-admin") return "Admin";
-  if (role === "cert-manager-guest") return "Member";
+  if (role === "cert-manager-member") return "Member";
   if (role === "admin") return "Admin (org)";
   if (role === "custom") return "Member";
   return role;
@@ -42,7 +42,7 @@ export const CertManagerAccessPage = () => {
       return (
         <EmptyState title="No members yet">
           Assign the <span className="font-mono">cert-manager-admin</span> or{" "}
-          <span className="font-mono">cert-manager-guest</span> role to an org member from Org
+          <span className="font-mono">cert-manager-member</span> role to an org member from Org
           Access Control.
         </EmptyState>
       );
@@ -127,15 +127,15 @@ export const CertManagerAccessPage = () => {
               </TabPanel>
               <TabPanel value="groups">
                 <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-sm text-mineshaft-300">
-                  Groups assigned the cert-manager-admin or cert-manager-guest org role appear here.
-                  Application-level group memberships live inside each Application&apos;s Access
-                  Control tab.
+                  Groups assigned the cert-manager-admin or cert-manager-member org role appear
+                  here. Application-level group memberships live inside each Application&apos;s
+                  Access Control tab.
                 </div>
               </TabPanel>
               <TabPanel value="identities">
                 <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-sm text-mineshaft-300">
                   Machine identities assigned the cert-manager-admin role appear here. These
-                  identities can manage the Cert Manager surface programmatically.
+                  identities can manage the Certificate Manager surface programmatically.
                 </div>
               </TabPanel>
             </Tabs>

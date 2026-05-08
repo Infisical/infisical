@@ -147,7 +147,7 @@ export const ProjectIdentityDetailsSection = ({
                 {/* eslint-disable-next-line no-nested-ternary */}
                 {isOrgIdentity
                   ? isCertManager
-                    ? "Joined cert manager"
+                    ? "Joined certificate manager"
                     : "Joined project"
                   : "Created"}
               </DetailLabel>

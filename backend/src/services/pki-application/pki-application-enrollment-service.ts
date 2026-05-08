@@ -358,9 +358,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const appCfg = getConfig();
     const hashedPassphrase = await crypto.hashing().createHash(config.passphrase, appCfg.SALT_ROUNDS);
 
+    const caChainProvided = typeof config.caChain === "string" && config.caChain.length > 0;
     let encryptedCaChain: Buffer | null = null;
-    if (!config.disableBootstrapCaValidation && config.caChain) {
-      const result = await validateAndEncryptPemCaChain(config.caChain, projectId, kmsService, projectDAL);
+    if (!config.disableBootstrapCaValidation && caChainProvided) {
+      const result = await validateAndEncryptPemCaChain(config.caChain as string, projectId, kmsService, projectDAL);
       encryptedCaChain = result.encryptedCaChain;
     }
 
@@ -372,7 +373,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           {
             disableBootstrapCaValidation: config.disableBootstrapCaValidation ?? false,
             hashedPassphrase,
-            encryptedCaChain
+            ...(caChainProvided ? { encryptedCaChain } : {})
           },
           tx
         );

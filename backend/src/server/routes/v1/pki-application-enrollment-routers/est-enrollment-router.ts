@@ -14,7 +14,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
     schema: {
       hide: false,
       operationId: "setPkiApplicationEstEnrollment",
-      description: "Enable or update the EST enrollment method for a profile on a Cert Manager application.",
+      description: "Enable or update the EST enrollment method for a profile on a application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       body: z.object({
@@ -69,7 +69,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
     schema: {
       hide: false,
       operationId: "clearPkiApplicationEstEnrollment",
-      description: "Disable the EST enrollment method for a profile on a Cert Manager application.",
+      description: "Disable the EST enrollment method for a profile on a application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: {

@@ -100,8 +100,7 @@ export const PkiSyncsTab = () => {
               </div>
             </div>
             <p className="text-sm text-bunker-300">
-              Existing project-level syncs remain editable. Create new syncs inside a Cert Manager
-              Application.
+              Existing project-level syncs remain editable. Create new syncs inside an Application.
             </p>
           </div>
         </div>

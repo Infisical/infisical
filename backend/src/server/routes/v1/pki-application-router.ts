@@ -32,7 +32,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "createPkiApplication",
-      description: "Create a Cert Manager application.",
+      description: "Create a application.",
       tags: [ApiDocsTags.PkiApplications],
       body: z.object({
         name: ApplicationNameSchema,
@@ -80,7 +80,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "listPkiApplications",
-      description: "List Cert Manager applications.",
+      description: "List applications.",
       tags: [ApiDocsTags.PkiApplications],
       querystring: z.object({
         search: z.string().optional(),
@@ -127,7 +127,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "getPkiApplication",
-      description: "Get a Cert Manager application by id.",
+      description: "Get a application by id.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ application: PkiApplicationsSchema }) }
@@ -163,7 +163,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "getPkiApplicationByName",
-      description: "Get a Cert Manager application by name.",
+      description: "Get a application by name.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ name: ApplicationNameSchema }),
       response: { 200: z.object({ application: PkiApplicationsSchema }) }
@@ -199,7 +199,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "updatePkiApplication",
-      description: "Update a Cert Manager application.",
+      description: "Update a application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: z
@@ -245,7 +245,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "deletePkiApplication",
-      description: "Delete a Cert Manager application.",
+      description: "Delete a application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ application: PkiApplicationsSchema }) }

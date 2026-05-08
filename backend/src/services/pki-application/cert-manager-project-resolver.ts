@@ -19,7 +19,7 @@ export const resolveCertManagerProjectId = async (
   if (projects.length === 0) {
     throw new BadRequestError({
       message:
-        "This organization has no Cert Manager project. Contact your administrator; one should have been created automatically."
+        "This organization has no Certificate Manager project. Contact your administrator; one should have been created automatically."
     });
   }
 
@@ -31,7 +31,7 @@ export const resolveCertManagerProjectId = async (
 
   throw new BadRequestError({
     message:
-      "This organization has multiple Cert Manager projects but no default is set. An org Admin must set the default in the Cert Manager settings."
+      "This organization has multiple Certificate Manager projects but no default is set. An org Admin must set the default in the Certificate Manager settings."
   });
 };
 

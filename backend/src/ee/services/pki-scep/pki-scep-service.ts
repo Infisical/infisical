@@ -188,6 +188,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "SCEP profile not found" });
     }
 
+    let resolvedScepConfigId: string | null;
     if (applicationId && pkiApplicationProfileDAL) {
       const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
       if (!junction) {
@@ -195,11 +196,18 @@ export const pkiScepServiceFactory = ({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
         });
       }
+      resolvedScepConfigId = junction.scepConfigId ?? null;
+    } else {
+      resolvedScepConfigId = profile.scepConfigId ?? null;
     }
 
-    return getScepCapabilities({
-      allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? false
-    });
+    let allowCertBasedRenewal = false;
+    if (resolvedScepConfigId) {
+      const scepConfig = await scepEnrollmentConfigDAL.findById(resolvedScepConfigId);
+      allowCertBasedRenewal = scepConfig?.allowCertBasedRenewal ?? false;
+    }
+
+    return getScepCapabilities({ allowCertBasedRenewal });
   };
 
   const getCaCert = async ({ profileId, applicationId }: TGetCaCertDTO): Promise<Buffer> => {

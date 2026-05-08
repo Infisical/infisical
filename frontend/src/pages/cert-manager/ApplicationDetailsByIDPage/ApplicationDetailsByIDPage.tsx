@@ -116,7 +116,11 @@ export const ApplicationDetailsByIDPage = () => {
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
               title={application.name}
-              description={application.description ?? undefined}
+              description={
+                application.description ? (
+                  <span className="break-all">{application.description}</span>
+                ) : undefined
+              }
               className="mb-4"
             >
               <Button variant="outline" size="xs" onClick={handleCopyId}>

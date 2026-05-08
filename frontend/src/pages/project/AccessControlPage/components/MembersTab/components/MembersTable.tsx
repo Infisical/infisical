@@ -82,7 +82,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Cert Manager" : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
   const { data: projectRoles } = useGetProjectRoles(projectId, currentProject?.type);

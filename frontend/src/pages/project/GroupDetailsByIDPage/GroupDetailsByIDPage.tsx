@@ -100,14 +100,14 @@ const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
-            {isCertManager ? "Cert Manager Groups" : "Project Groups"}
+            {isCertManager ? "Certificate Manager Groups" : "Project Groups"}
           </Link>
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
             description={
               isCertManager
-                ? "Configure and manage cert manager access control"
+                ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
             }
           >

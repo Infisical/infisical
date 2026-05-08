@@ -19,7 +19,7 @@ export const blockCertManagerProjectAccess: FastifyPluginAsync = fp(async (serve
     if (isCertManager) {
       throw new ForbiddenRequestError({
         message:
-          "This Cert Manager project does not support project-level memberships. Use /api/v1/cert-manager/access/* instead."
+          "This Certificate Manager project does not support project-level memberships. Use /api/v1/cert-manager/access/* instead."
       });
     }
   });

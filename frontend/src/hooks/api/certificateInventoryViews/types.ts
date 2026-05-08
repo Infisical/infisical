@@ -9,6 +9,7 @@ export type TInventoryViewFilters = {
   keySizes?: number[];
   caIds?: string[];
   profileIds?: string[];
+  applicationIds?: string[];
   source?: string | string[];
 };
 

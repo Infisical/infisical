@@ -431,7 +431,14 @@ export const pkiAcmeServiceFactory = ({
 
   const getAcmeDirectory = async (profileId: string, applicationId?: string): Promise<TGetAcmeDirectoryResponse> => {
     const profile = await validateAcmeProfile(profileId);
-    const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+    let skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+    if (applicationId) {
+      const junctionRow = await pkiApplicationProfileDAL.findOne(applicationId, profile.id);
+      const junctionAcmeConfig = junctionRow?.acmeConfigId
+        ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
+        : null;
+      skipEabBinding = junctionAcmeConfig?.skipEabBinding ?? false;
+    }
     return {
       newNonce: buildUrl(profile.id, "/new-nonce"),
       newAccount: buildUrl(profile.id, "/new-account", applicationId),

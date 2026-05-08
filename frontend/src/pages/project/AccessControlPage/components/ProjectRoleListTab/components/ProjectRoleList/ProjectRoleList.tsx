@@ -228,12 +228,12 @@ export const ProjectRoleList = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Cert Manager Roles" : "Project Roles"}
+            {isCertManager ? "Certificate Manager Roles" : "Project Roles"}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
           </CardTitle>
           <CardDescription>
             {isCertManager
-              ? "View built-in roles for Cert Manager"
+              ? "View built-in roles for Certificate Manager"
               : "Create and manage project roles"}
           </CardDescription>
           {!isCertManager && (

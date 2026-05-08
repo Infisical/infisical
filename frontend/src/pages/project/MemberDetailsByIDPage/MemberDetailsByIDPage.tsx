@@ -145,7 +145,7 @@ export const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            {isCertManager ? "Cert Manager Users" : "Project Users"}
+            {isCertManager ? "Certificate Manager Users" : "Project Users"}
           </Link>
           <PageHeader
             scope={currentProject.type}
@@ -159,7 +159,7 @@ export const Page = () => {
             }
             description={
               isCertManager
-                ? "Configure and manage cert manager access control"
+                ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
             }
           >

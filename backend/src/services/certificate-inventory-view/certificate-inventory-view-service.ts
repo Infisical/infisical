@@ -158,6 +158,12 @@ export const certificateInventoryViewServiceFactory = ({
       ProjectPermissionActions.Create
     );
 
+    if (applicationId && filters?.applicationIds?.length) {
+      throw new BadRequestError({
+        message: "Application filter is only available on project-wide inventory views."
+      });
+    }
+
     try {
       const view = await certificateInventoryViewDAL.create({
         projectId,
@@ -206,6 +212,12 @@ export const certificateInventoryViewServiceFactory = ({
 
     if (existing.createdByUserId !== actorId) {
       throw new BadRequestError({ message: "You can only update your own views" });
+    }
+
+    if (existing.applicationId && filters?.applicationIds?.length) {
+      throw new BadRequestError({
+        message: "Application filter is only available on project-wide inventory views."
+      });
     }
 
     try {

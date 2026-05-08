@@ -52,8 +52,8 @@ export const PolicyTab = () => {
             <p className="text-xl font-medium text-mineshaft-100">Certificate Approval Policies</p>
           </div>
           <p className="text-sm text-bunker-300">
-            Existing project-level policies remain editable. Create new approval policies inside a
-            Cert Manager Application.
+            Existing project-level policies remain editable. Create new approval policies inside an
+            Application.
           </p>
         </div>
       </div>

@@ -342,16 +342,12 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TListAlertsV2DTO): Promise<TListAlertsV2Response> => {
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Read, projectId, applicationId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
     const filters = { search, eventType, enabled, limit, offset, applicationId };
 

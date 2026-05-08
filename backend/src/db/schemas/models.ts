@@ -333,7 +333,7 @@ export enum OrgMembershipRole {
   NoAccess = "no-access",
   Custom = "custom",
   CertManagerAdmin = "cert-manager-admin",
-  CertManagerGuest = "cert-manager-guest"
+  CertManagerMember = "cert-manager-member"
 }
 
 export enum OrgMembershipStatus {

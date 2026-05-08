@@ -105,7 +105,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
           <DialogDescription>
             {editing
               ? "Update the Application's metadata. Changing the name will invalidate any deep links."
-              : "Applications attach Profiles and a team. Members and certs are scoped to the Application. The name is used as the identifier (Terraform, agents) so use a slug-style value."}
+              : "Group the Profiles, members, and approval policies for one workload, like a service, environment, or team, so issuance and access are managed together."}
           </DialogDescription>
         </DialogHeader>
 

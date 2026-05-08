@@ -44,7 +44,7 @@ const Page = () => {
 
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string, currentProject?.type);
-  const displayName = isCertManager && data?.slug === "member" ? "Guest" : (data?.name ?? "");
+  const displayName = data?.name ?? "";
 
   const { mutateAsync: deleteProjectRole } = useDeleteProjectRole();
 
@@ -99,7 +99,7 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-muted"
           >
             <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Cert Manager Roles" : "Project Roles"}
+            {isCertManager ? "Certificate Manager Roles" : "Project Roles"}
           </Link>
           <PageHeader
             scope={currentProject.type}
@@ -205,13 +205,13 @@ const Page = () => {
           {isCertManager && isCustomRole && (
             <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-sm text-mineshaft-200">
               <p className="font-medium text-mineshaft-100">
-                Custom roles act as Member in Cert Manager
+                Custom roles act as Member in Certificate Manager
               </p>
               <p className="mt-1 text-mineshaft-300">
-                In the new Cert Manager flow, access is granted through Application memberships
-                (Admin or Member). Permissions defined here only apply to legacy endpoints — users
-                with this role are treated as Member at the project level and only see resources
-                inside Applications they are explicitly added to.
+                In the new Certificate Manager flow, access is granted through Application
+                memberships (Admin or Member). Permissions defined here only apply to legacy
+                endpoints — users with this role are treated as Member at the project level and only
+                see resources inside Applications they are explicitly added to.
               </p>
             </div>
           )}

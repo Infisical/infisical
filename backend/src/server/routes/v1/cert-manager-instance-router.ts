@@ -35,7 +35,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
       hide: true,
       operationId: "getCertManagerInstanceState",
       description:
-        "Get the active Cert Manager project and the list of legacy Cert Manager projects in this organization.",
+        "Get the active Certificate Manager project and the list of legacy Certificate Manager projects in this organization.",
       tags: [ApiDocsTags.CertManagerInstance],
       response: { 200: InstanceStateSchema }
     },
@@ -72,7 +72,8 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     schema: {
       hide: true,
       operationId: "listCertManagerLegacyInstances",
-      description: "List all Cert Manager projects in the organization with their certificate, sync, and alert counts.",
+      description:
+        "List all Certificate Manager projects in the organization with their certificate, sync, and alert counts.",
       tags: [ApiDocsTags.CertManagerInstance],
       response: {
         200: z.object({
@@ -100,7 +101,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
       hide: true,
       operationId: "setCertManagerActiveProject",
       description:
-        "Set the active Cert Manager project for this organization. New API requests resolve to this project when no projectId is supplied.",
+        "Set the active Certificate Manager project for this organization. New API requests resolve to this project when no projectId is supplied.",
       tags: [ApiDocsTags.CertManagerInstance],
       body: z.object({ projectId: z.string().uuid() }),
       response: {

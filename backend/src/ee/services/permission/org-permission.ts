@@ -633,7 +633,7 @@ const buildCertManagerAdminPermission = () => {
 };
 export const orgCertManagerAdminPermissions = buildCertManagerAdminPermission();
 
-const buildCertManagerGuestPermission = () => {
+const buildCertManagerMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
@@ -641,4 +641,4 @@ const buildCertManagerGuestPermission = () => {
   can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
   return rules;
 };
-export const orgCertManagerGuestPermissions = buildCertManagerGuestPermission();
+export const orgCertManagerMemberPermissions = buildCertManagerMemberPermission();

@@ -188,7 +188,7 @@ export const pkiSyncServiceFactory = ({
     if (!applicationId) {
       throw new BadRequestError({
         message:
-          "Certificate Syncs must be created inside a Cert Manager Application. Open the Application's Certificate Syncs tab and click Add Sync."
+          "Certificate Syncs must be created inside a Application. Open the Application's Certificate Syncs tab and click Add Sync."
       });
     }
 

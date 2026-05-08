@@ -27,7 +27,7 @@ import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { CERT_MANAGER_ACCESS_CONTROL_SUBMENU } from "./submenus";
+import { CERT_DISCOVERY_SUBMENU, CERT_MANAGER_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const CertManagerNav = ({
@@ -78,7 +78,13 @@ export const CertManagerNav = ({
   const overviewItems: NavItem[] = [
     { label: "Dashboard", icon: LayoutDashboard, pathSuffix: "overview" },
     { label: "Inventory", icon: FileKey, pathSuffix: "inventory" },
-    { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery/ },
+    {
+      label: "Discovery",
+      icon: Search,
+      pathSuffix: "discovery",
+      activeMatch: /\/discovery/,
+      submenu: CERT_DISCOVERY_SUBMENU
+    },
     {
       label: "Requests",
       icon: Inbox,
@@ -120,18 +126,18 @@ export const CertManagerNav = ({
 
   const administrationItems: NavItem[] = [
     {
-      label: "Access",
+      label: "Access Control",
       icon: Shield,
       pathSuffix: "access-management",
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: CERT_MANAGER_ACCESS_CONTROL_SUBMENU
     },
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     {
       label: "Settings",
       icon: Settings,
       pathSuffix: "settings"
-    },
-    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
+    }
   ];
 
   const generalItemsForRole = isCertManagerAdmin

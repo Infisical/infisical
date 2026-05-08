@@ -65,6 +65,6 @@ export const useSetCertManagerActiveProject = () => {
       }>(`${BASE_URL}/active-project`, { projectId });
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: certManagerInstanceKeys.all })
+    onSuccess: () => qc.invalidateQueries()
   });
 };

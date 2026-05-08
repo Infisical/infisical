@@ -189,13 +189,15 @@ const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
-            {isCertManager ? "Cert Manager Machine Identities" : "Project Machine Identities"}
+            {isCertManager
+              ? "Certificate Manager Machine Identities"
+              : "Project Machine Identities"}
           </Link>
           <PageHeader
             scope={currentProject.type}
             description={
               isCertManager
-                ? `Configure and manage${isProjectIdentity ? " machine identity and " : " "}cert manager access control`
+                ? `Configure and manage${isProjectIdentity ? " machine identity and " : " "}certificate manager access control`
                 : `Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`
             }
             title={identityMembershipDetails.identity.name}

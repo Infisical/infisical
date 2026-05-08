@@ -70,7 +70,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Cert Manager" : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const { data: members } = useGetWorkspaceUsers(projectId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
@@ -240,7 +240,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         bodyClassName="overflow-visible"
         title={
           isCertManager
-            ? "Add Members to Cert Manager"
+            ? "Add Members to Certificate Manager"
             : (t("section.members.add-dialog.add-member-to-project") as string)
         }
         subTitle={t("section.members.add-dialog.user-will-email")}

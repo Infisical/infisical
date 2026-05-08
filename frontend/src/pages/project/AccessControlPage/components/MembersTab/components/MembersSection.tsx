@@ -30,7 +30,7 @@ export const MembersSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Cert Manager" : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 

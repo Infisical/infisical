@@ -41,9 +41,7 @@ export const PkiAlertsSection = () => {
             Legacy
           </span>
         </div>
-        <p className="text-xs text-bunker-300">
-          Create new alerts inside a Cert Manager Application.
-        </p>
+        <p className="text-xs text-bunker-300">Create new alerts inside an Application.</p>
       </div>
       <PkiAlertsTable handlePopUpOpen={handlePopUpOpen} />
       <PkiAlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

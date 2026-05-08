@@ -155,7 +155,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Cert Manager" : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   return (
     <Modal

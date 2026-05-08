@@ -80,6 +80,7 @@ import type {
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
+import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -259,6 +260,10 @@ export const CertificatesTable = ({
     limit: 100
   });
 
+  const { data: applicationsData } = useListPkiApplications(undefined, {
+    enabled: !applicationId
+  });
+
   const { data: caData } = useListCasByProjectId();
   const { data: viewsData } = useListCertificateInventoryViews(applicationId);
   const { mutateAsync: deleteView } = useDeleteCertificateInventoryView();
@@ -289,8 +294,14 @@ export const CertificatesTable = ({
         label: p.slug
       }));
     }
+    if (applicationsData) {
+      options.applicationId = applicationsData.map((app) => ({
+        value: app.id,
+        label: app.name
+      }));
+    }
     return options;
-  }, [caData, profilesData]);
+  }, [caData, profilesData, applicationsData]);
 
   const filterSearchParams = useMemo(() => filtersToSearchParams(appliedFilters), [appliedFilters]);
 
@@ -317,6 +328,7 @@ export const CertificatesTable = ({
       : undefined,
     source: filterSearchParams.source,
     applicationId,
+    applicationIds: filterSearchParams.applicationIds,
     sortBy,
     sortOrder
   });
@@ -542,6 +554,14 @@ export const CertificatesTable = ({
             value: customFilters.profileIds
           });
         }
+        if (customFilters.applicationIds && customFilters.applicationIds.length > 0) {
+          rules.push({
+            id: "cv-application",
+            field: "applicationId",
+            operator: "in",
+            value: customFilters.applicationIds
+          });
+        }
         if (customFilters.source) {
           const sourceValue = Array.isArray(customFilters.source)
             ? customFilters.source
@@ -676,6 +696,7 @@ export const CertificatesTable = ({
               }}
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
+              hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
             />
           </PopoverContent>
         </Popover>

@@ -102,7 +102,7 @@ export const IdentityTab = withProjectPermission(
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
     const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-    const productLabel = isCertManager ? "Cert Manager" : "Project";
+    const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
     const [addMachineIdentityType, setAddMachineIdentityType] = useState<AddIdentityType>(
       AddIdentityType.CreateNew
@@ -301,7 +301,7 @@ export const IdentityTab = withProjectPermission(
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "No machine identities match search"
                         : isCertManager
-                          ? "No machine identities have been added to this Cert Manager"
+                          ? "No machine identities have been added to this Certificate Manager"
                           : "No machine identities have been added to this project"}
                     </EmptyTitle>
                     <EmptyDescription>
@@ -576,7 +576,7 @@ export const IdentityTab = withProjectPermission(
                                           {identityProjectId
                                             ? "Delete Machine Identity"
                                             : isCertManager
-                                              ? "Remove From Cert Manager"
+                                              ? "Remove From Certificate Manager"
                                               : "Remove From Project"}
                                         </DropdownMenuItem>
                                       )}

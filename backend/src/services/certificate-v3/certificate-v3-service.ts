@@ -740,8 +740,7 @@ export const certificateV3ServiceFactory = ({
     );
     if (!hasProfileLevelEnrollment) {
       throw new BadRequestError({
-        message:
-          "This profile must be issued through a Cert Manager Application. Attach it to an Application and issue from there."
+        message: "This profile must be issued through a Application. Attach it to an Application and issue from there."
       });
     }
 

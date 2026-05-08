@@ -24,7 +24,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       hide: false,
       operationId: "listCertManagerUsers",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "List Cert Manager users.",
+      description: "List Certificate Manager users.",
       response: {
         200: z.object({
           memberships: ProjectMembershipsSchema.extend({
@@ -90,7 +90,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       hide: false,
       operationId: "inviteCertManagerUsers",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Invite users to Cert Manager.",
+      description: "Invite users to Certificate Manager.",
       body: z.object({
         emails: z
           .string()

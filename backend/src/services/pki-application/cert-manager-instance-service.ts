@@ -88,7 +88,7 @@ export const certManagerInstanceServiceFactory = ({
     const target = projects.find((p) => p.id === projectId);
     if (!target) {
       throw new BadRequestError({
-        message: "The selected project is not a Cert Manager project in this organization."
+        message: "The selected project is not a Certificate Manager project in this organization."
       });
     }
 

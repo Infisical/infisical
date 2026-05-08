@@ -67,7 +67,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>{isCertManager ? "Cert Manager Role" : "Project Role"}</DetailLabel>
+            <DetailLabel>{isCertManager ? "Certificate Manager Role" : "Project Role"}</DetailLabel>
             <DetailValue>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
@@ -85,7 +85,9 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>{isCertManager ? "Joined cert manager" : "Joined project"}</DetailLabel>
+            <DetailLabel>
+              {isCertManager ? "Joined certificate manager" : "Joined project"}
+            </DetailLabel>
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>
