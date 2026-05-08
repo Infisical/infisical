@@ -276,7 +276,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         const created = await apiEnrollmentConfigDAL.create(
           {
             autoRenew: config.autoRenew ?? false,
-            renewBeforeDays: config.renewBeforeDays ?? null
+            renewBeforeDays: config.renewBeforeDays ?? null,
+            applicationProfileId: junction.id
           },
           tx
         );
@@ -382,7 +383,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           {
             disableBootstrapCaValidation: config.disableBootstrapCaValidation ?? false,
             hashedPassphrase,
-            encryptedCaChain
+            encryptedCaChain,
+            applicationProfileId: junction.id
           },
           tx
         );
@@ -466,7 +468,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           {
             skipDnsOwnershipVerification: config.skipDnsOwnershipVerification ?? false,
             skipEabBinding: config.skipEabBinding ?? false,
-            encryptedEabSecret
+            encryptedEabSecret,
+            applicationProfileId: junction.id
           },
           tx
         );
@@ -670,7 +673,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
             includeCaCertInResponse: config.includeCaCertInResponse ?? true,
             allowCertBasedRenewal: config.allowCertBasedRenewal ?? true,
             dynamicChallengeExpiryMinutes,
-            dynamicChallengeMaxPending
+            dynamicChallengeMaxPending,
+            applicationProfileId: junction.id
           },
           tx
         );

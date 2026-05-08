@@ -1,3 +1,4 @@
+import { blockCertManagerProjectAccess } from "@app/server/plugins/block-cert-manager-project-access";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 
 import { registerCaRouter } from "./certificate-authority-router";
@@ -48,6 +49,7 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
   // moved to v1/projects
   await server.register(
     async (projectServer) => {
+      await projectServer.register(blockCertManagerProjectAccess);
       await projectServer.register(registerDeprecatedProjectRouter);
       await projectServer.register(registerDeprecatedIdentityProjectRouter);
       await projectServer.register(registerDeprecatedGroupProjectRouter);

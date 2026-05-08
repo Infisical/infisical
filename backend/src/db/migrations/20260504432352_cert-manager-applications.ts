@@ -118,6 +118,23 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiApplicationProfile);
   }
 
+  for (const tableName of [
+    TableName.PkiApiEnrollmentConfig,
+    TableName.PkiEstEnrollmentConfig,
+    TableName.PkiAcmeEnrollmentConfig,
+    TableName.PkiScepEnrollmentConfig
+  ] as const) {
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await knex.schema.hasColumn(tableName, "applicationProfileId"))) {
+      // eslint-disable-next-line no-await-in-loop
+      await knex.schema.alterTable(tableName, (t) => {
+        t.uuid("applicationProfileId").nullable();
+        t.foreign("applicationProfileId").references("id").inTable(TableName.PkiApplicationProfile).onDelete("CASCADE");
+        t.index("applicationProfileId");
+      });
+    }
+  }
+
   if (!(await knex.schema.hasColumn(TableName.Membership, "scopeResourceType"))) {
     await knex.schema.alterTable(TableName.Membership, (t) => {
       t.string("scopeResourceType", 32);
@@ -342,6 +359,22 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("scopeResourceType");
       t.dropColumn("scopeResourceId");
     });
+  }
+
+  for (const tableName of [
+    TableName.PkiApiEnrollmentConfig,
+    TableName.PkiEstEnrollmentConfig,
+    TableName.PkiAcmeEnrollmentConfig,
+    TableName.PkiScepEnrollmentConfig
+  ] as const) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await knex.schema.hasColumn(tableName, "applicationProfileId")) {
+      // eslint-disable-next-line no-await-in-loop
+      await knex.schema.alterTable(tableName, (t) => {
+        t.dropForeign(["applicationProfileId"]);
+        t.dropColumn("applicationProfileId");
+      });
+    }
   }
 
   await dropOnUpdateTrigger(knex, TableName.PkiApplicationProfile);

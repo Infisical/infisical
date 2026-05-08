@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { RESOURCE_SCOPE, ResourceType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
 import { TPkiApplicationListItem } from "./pki-application-types";
@@ -80,10 +81,11 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
         .offset(offset);
 
       if (search) {
+        const sanitized = sanitizeSqlLikeString(search);
         query = query.where((qb) => {
           void qb
-            .whereILike(`${TableName.PkiApplication}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.PkiApplication}.description`, `%${search}%`);
+            .whereILike(`${TableName.PkiApplication}.name`, `%${sanitized}%`)
+            .orWhereILike(`${TableName.PkiApplication}.description`, `%${sanitized}%`);
         });
       }
 
@@ -107,8 +109,9 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
     try {
       let query = (tx || db.replicaNode())(TableName.PkiApplication).where({ projectId });
       if (search) {
+        const sanitized = sanitizeSqlLikeString(search);
         query = query.where((qb) => {
-          void qb.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void qb.whereILike("name", `%${sanitized}%`).orWhereILike("description", `%${sanitized}%`);
         });
       }
       if (applicationIds) {

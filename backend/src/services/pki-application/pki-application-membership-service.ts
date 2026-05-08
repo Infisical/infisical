@@ -191,6 +191,24 @@ export const pkiApplicationMembershipServiceFactory = ({
     );
 
     const membership = await membershipDAL.transaction(async (tx) => {
+      const existingAppMembershipFilter: Record<string, unknown> = {
+        scope: RESOURCE_SCOPE,
+        scopeProjectId: projectId,
+        scopeResourceType: ResourceType.CertificateApplication,
+        scopeResourceId: applicationId
+      };
+      if (userId) existingAppMembershipFilter.actorUserId = userId;
+      else if (identityId) existingAppMembershipFilter.actorIdentityId = identityId;
+      else if (groupId) existingAppMembershipFilter.actorGroupId = groupId;
+      const existingAppMembership = await membershipDAL.find(existingAppMembershipFilter, { tx });
+      if (existingAppMembership.length > 0) {
+        // eslint-disable-next-line no-nested-ternary
+        const subjectLabel = userId ? "user" : identityId ? "identity" : "group";
+        throw new BadRequestError({
+          message: `This ${subjectLabel} is already a member of this Application.`
+        });
+      }
+
       const projectMembershipFilter: Record<string, unknown> = {
         scope: AccessScope.Project,
         scopeProjectId: projectId

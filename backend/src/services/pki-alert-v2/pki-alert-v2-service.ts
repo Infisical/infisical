@@ -225,6 +225,12 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateAlertV2DTO): Promise<TAlertV2Response> => {
+    if (!applicationId) {
+      throw new BadRequestError({
+        message: "Alerts must be created inside an Application. Open the Application's Alerts tab and click Add Alert."
+      });
+    }
+
     await $assertCanActOnAlert(ProjectPermissionActions.Create, projectId, applicationId, {
       actor,
       actorId,

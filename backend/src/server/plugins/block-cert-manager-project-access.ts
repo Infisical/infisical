@@ -5,14 +5,16 @@ import RE2 from "re2";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
 const ACCESS_PATH_RE = new RE2("/(memberships|identities|groups|roles)(/|$|\\?)");
+const PROJECT_ROUTE_PREFIX_RE = new RE2("^/api/v[12]/(projects|workspace)/");
 
 export const blockCertManagerProjectAccess: FastifyPluginAsync = fp(async (server) => {
   server.addHook("preValidation", async (req) => {
-    const projectId = (req.params as { projectId?: string } | null)?.projectId;
+    const params = req.params as { projectId?: string; workspaceId?: string } | null;
+    const projectId = params?.projectId ?? params?.workspaceId;
     if (!projectId) return;
 
     const routePath = req.routerPath ?? "";
-    if (!routePath.startsWith("/api/v1/projects/")) return;
+    if (!PROJECT_ROUTE_PREFIX_RE.test(routePath)) return;
     if (!ACCESS_PATH_RE.test(routePath)) return;
 
     const isCertManager = await server.services.certManagerProjectResolver.isCertManagerProject(projectId);

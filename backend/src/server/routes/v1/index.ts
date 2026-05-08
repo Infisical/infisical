@@ -146,6 +146,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
+      await projectRouter.register(blockCertManagerProjectAccess);
       await projectRouter.register(registerDeprecatedProjectRouter);
       await projectRouter.register(registerDeprecatedProjectEnvRouter);
       // depreciated completed in use
