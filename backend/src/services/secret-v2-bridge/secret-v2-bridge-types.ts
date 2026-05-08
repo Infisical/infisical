@@ -351,6 +351,25 @@ export type TMoveSecretsDTO = {
   shouldOverwrite: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TDuplicateSecretAttributes = {
+  value?: boolean;
+  comment?: boolean;
+  tags?: boolean;
+  metadata?: boolean;
+  skipMultilineEncoding?: boolean;
+};
+
+export type TDuplicateSecretDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretId: string;
+  shouldOverwrite: boolean;
+  attributesToCopy: TDuplicateSecretAttributes;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TAttachSecretTagsDTO = {
   projectId: string;
   secretName: string;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckIcon, ChevronsUpDownIcon, CopyIcon, KeyIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -24,6 +25,7 @@ import {
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useProject } from "@app/context";
+import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
 type IncludeKey = "value" | "comment" | "tags" | "metadata" | "skipMultilineEncoding";
 
@@ -50,6 +52,7 @@ const DEFAULT_INCLUDE: Record<IncludeKey, boolean> = {
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  secretId?: string;
   secretName: string;
   secretPath: string;
   sourceEnvironment: { slug: string; name: string };
@@ -58,17 +61,20 @@ type Props = {
 export const DuplicateSecretModal = ({
   isOpen,
   onOpenChange,
+  secretId,
   secretName,
   secretPath,
   sourceEnvironment
 }: Props) => {
   const {
-    currentProject: { environments }
+    currentProject: { id: projectId, environments }
   } = useProject();
+  const duplicateSecret = useDuplicateSecret();
 
   const [selectedEnvIds, setSelectedEnvIds] = useState<string[]>([]);
   const [includeOptions, setIncludeOptions] =
     useState<Record<IncludeKey, boolean>>(DEFAULT_INCLUDE);
+  const [shouldOverwrite, setShouldOverwrite] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -76,6 +82,7 @@ export const DuplicateSecretModal = ({
     if (!isOpen) {
       setSelectedEnvIds([]);
       setIncludeOptions(DEFAULT_INCLUDE);
+      setShouldOverwrite(false);
       setSearchValue("");
       setPopoverOpen(false);
     }
@@ -93,24 +100,98 @@ export const DuplicateSecretModal = ({
     setIncludeOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleDuplicate = async () => {
+    if (!secretId || selectedEnvIds.length === 0) return;
+
+    const targets = selectedEnvIds
+      .map((id) => availableEnvs.find((env) => env.id === id))
+      .filter((env): env is (typeof availableEnvs)[number] => Boolean(env));
+
+    const results = await Promise.allSettled(
+      targets.map((env) =>
+        duplicateSecret.mutateAsync({
+          projectId,
+          sourceEnvironment: sourceEnvironment.slug,
+          sourceSecretPath: secretPath,
+          destinationEnvironment: env.slug,
+          destinationSecretPath: secretPath,
+          secretId,
+          shouldOverwrite,
+          attributesToCopy: includeOptions
+        })
+      )
+    );
+
+    let successCount = 0;
+    let approvalCount = 0;
+    const failures: { env: string; message: string }[] = [];
+
+    results.forEach((result, idx) => {
+      const envName = targets[idx].name;
+      if (result.status === "fulfilled") {
+        if ("approval" in result.value) {
+          approvalCount += 1;
+        } else {
+          successCount += 1;
+        }
+      } else {
+        const reason = result.reason as {
+          response?: { data?: { message?: string } };
+          message?: string;
+        };
+        failures.push({
+          env: envName,
+          message: reason?.response?.data?.message ?? reason?.message ?? "Unknown error"
+        });
+      }
+    });
+
+    if (successCount > 0) {
+      createNotification({
+        type: "success",
+        text: `Duplicated '${secretName}' to ${successCount} environment${successCount === 1 ? "" : "s"}`
+      });
+    }
+    if (approvalCount > 0) {
+      createNotification({
+        type: "info",
+        text: `${approvalCount} environment${approvalCount === 1 ? "" : "s"} require approval before the secret is created`
+      });
+    }
+    failures.forEach(({ env, message }) => {
+      createNotification({
+        type: "error",
+        text: `Failed to duplicate to ${env}: ${message}`
+      });
+    });
+
+    if (failures.length === 0) {
+      onOpenChange(false);
+    }
+  };
+
+  const selectedEnvCount = selectedEnvIds.length;
+  const singleSelectedEnvName =
+    selectedEnvCount === 1
+      ? (availableEnvs.find((e) => e.id === selectedEnvIds[0])?.name ?? null)
+      : null;
+
   let triggerLabel: string;
-  if (selectedEnvIds.length === 0) {
+  if (selectedEnvCount === 0) {
     triggerLabel = "Search environments...";
-  } else if (selectedEnvIds.length === 1) {
-    const env = availableEnvs.find((e) => e.id === selectedEnvIds[0]);
-    triggerLabel = env?.name ?? "1 environment";
+  } else if (selectedEnvCount === 1) {
+    triggerLabel = singleSelectedEnvName ?? "1 environment";
   } else {
-    triggerLabel = `${selectedEnvIds.length} environments`;
+    triggerLabel = `${selectedEnvCount} environments`;
   }
 
   let actionLabel: string;
-  if (selectedEnvIds.length === 0) {
+  if (selectedEnvCount === 0) {
     actionLabel = "Duplicate to ...";
-  } else if (selectedEnvIds.length === 1) {
-    const env = availableEnvs.find((e) => e.id === selectedEnvIds[0]);
-    actionLabel = `Duplicate to ${env?.name ?? "environment"}`;
+  } else if (selectedEnvCount === 1) {
+    actionLabel = `Duplicate to ${singleSelectedEnvName ?? "environment"}`;
   } else {
-    actionLabel = `Duplicate to ${selectedEnvIds.length} environments`;
+    actionLabel = `Duplicate to ${selectedEnvCount} environments`;
   }
 
   return (
@@ -229,14 +310,42 @@ export const DuplicateSecretModal = ({
           </div>
         </div>
 
+        <div className="flex flex-col gap-1.5">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            If a secret with the same key already exists
+          </p>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label
+            htmlFor="duplicate-overwrite"
+            className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3"
+          >
+            <Checkbox
+              id="duplicate-overwrite"
+              variant="project"
+              isChecked={shouldOverwrite}
+              onCheckedChange={(checked) => setShouldOverwrite(Boolean(checked))}
+              className="mt-0.5"
+            />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm text-foreground">Overwrite existing secret</span>
+              <span className="text-muted-foreground text-xs">
+                Replace the destination secret&apos;s selected fields with the values from the
+                source. Without this, duplication fails for environments that already have a secret
+                with this key.
+              </span>
+            </div>
+          </label>
+        </div>
+
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
           <Button
             variant="project"
-            isDisabled={selectedEnvIds.length === 0}
-            onClick={() => onOpenChange(false)}
+            isDisabled={selectedEnvIds.length === 0 || !secretId}
+            isPending={duplicateSecret.isPending}
+            onClick={handleDuplicate}
           >
             <CopyIcon />
             {actionLabel}

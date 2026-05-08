@@ -265,6 +265,39 @@ export type TMoveSecretsDTO = {
   shouldOverwrite: boolean;
 };
 
+export type TDuplicateSecretAttributes = {
+  value?: boolean;
+  comment?: boolean;
+  tags?: boolean;
+  metadata?: boolean;
+  skipMultilineEncoding?: boolean;
+};
+
+export type TDuplicateSecretDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretId: string;
+  shouldOverwrite: boolean;
+  attributesToCopy: TDuplicateSecretAttributes;
+};
+
+export type TDuplicateSecretResponse =
+  | {
+      destinationSecretId: string;
+      sourceSecretKey: string;
+    }
+  | {
+      approval: {
+        id: string;
+        slug: string;
+        status: string;
+        committerUserId: string;
+      };
+    };
+
 export type TGetSecretReferenceTreeDTO = {
   secretKey: string;
   secretPath: string;

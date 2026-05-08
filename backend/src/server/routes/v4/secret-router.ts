@@ -31,6 +31,16 @@ const SecretReferenceNode = z.object({
   secretPath: z.string()
 });
 
+const DuplicateSecretAttributesSchema = z
+  .object({
+    value: z.boolean().default(false),
+    comment: z.boolean().default(false),
+    tags: z.boolean().default(false),
+    metadata: z.boolean().default(false),
+    skipMultilineEncoding: z.boolean().default(false)
+  })
+  .default({});
+
 const convertStringBoolean = (defaultValue: boolean = false) => {
   return z
     .enum(["true", "false"])
@@ -894,6 +904,102 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return {
         isSourceUpdated,
         isDestinationUpdated
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/duplicate",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "duplicateSecretV4",
+      tags: [ApiDocsTags.Secrets],
+      description: "Duplicate a static secret into another environment",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim().describe(RAW_SECRETS.DUPLICATE_SECRET.projectId),
+        sourceEnvironment: z.string().trim().describe(RAW_SECRETS.DUPLICATE_SECRET.sourceEnvironment),
+        sourceSecretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.DUPLICATE_SECRET.sourceSecretPath),
+        destinationEnvironment: z.string().trim().describe(RAW_SECRETS.DUPLICATE_SECRET.destinationEnvironment),
+        destinationSecretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.DUPLICATE_SECRET.destinationSecretPath),
+        secretId: z.string().trim().uuid().describe(RAW_SECRETS.DUPLICATE_SECRET.secretId),
+        shouldOverwrite: z.boolean().default(false).describe(RAW_SECRETS.DUPLICATE_SECRET.shouldOverwrite),
+        attributesToCopy: DuplicateSecretAttributesSchema.describe(RAW_SECRETS.DUPLICATE_SECRET.attributesToCopy)
+      }),
+      response: {
+        200: z.union([
+          z.object({
+            destinationSecretId: z.string(),
+            sourceSecretKey: z.string()
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("Returned when the destination has an active secret-approval policy.")
+        ])
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { destinationSecretId, approval, sourceSecretKey, projectId } =
+        await server.services.secret.duplicateSecret({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DUPLICATE_SECRET,
+          metadata: {
+            sourceEnvironment: req.body.sourceEnvironment,
+            sourceSecretPath: req.body.sourceSecretPath,
+            sourceSecretId: req.body.secretId,
+            sourceSecretKey,
+            destinationEnvironment: req.body.destinationEnvironment,
+            destinationSecretPath: req.body.destinationSecretPath,
+            destinationSecretId,
+            approvalRequestId: approval?.id,
+            shouldOverwrite: req.body.shouldOverwrite,
+            attributesCopied: {
+              value: req.body.attributesToCopy.value,
+              comment: req.body.attributesToCopy.comment,
+              tags: req.body.attributesToCopy.tags,
+              metadata: req.body.attributesToCopy.metadata,
+              skipMultilineEncoding: req.body.attributesToCopy.skipMultilineEncoding
+            }
+          }
+        }
+      });
+
+      if (approval) {
+        return { approval };
+      }
+
+      return {
+        destinationSecretId,
+        sourceSecretKey
       };
     }
   });
