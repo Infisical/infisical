@@ -14,7 +14,7 @@ import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pk
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -75,7 +75,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "createPkiDiscovery",
       description: "Create a new PKI discovery configuration",
       body: z.object({
-        projectId: z.string().optional().describe("The ID of the project"),
+        projectId: z.string().optional().describe(openApiHidden()),
         name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
         description: z.string().max(500).optional().describe("Description of the discovery configuration"),
         discoveryType: z
@@ -148,7 +148,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPkiDiscoveries",
       description: "List PKI discovery configurations for a project",
       querystring: z.object({
-        projectId: z.string().optional().describe("The ID of the project"),
+        projectId: z.string().optional().describe(openApiHidden()),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
         limit: z.coerce.number().min(1).max(100).optional().default(25).describe("Pagination limit"),
         search: z.string().optional().describe("Search filter for name or description")

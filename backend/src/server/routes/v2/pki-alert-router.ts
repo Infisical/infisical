@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -29,7 +30,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: BasePkiAlertV2Schema.extend({
-        projectId: z.string().uuid().optional().describe("Project ID"),
+        projectId: z.string().uuid().optional().describe(openApiHidden()),
         applicationId: z
           .string()
           .uuid()
@@ -105,7 +106,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "List PKI alerts for a project",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
-        projectId: z.string().uuid().optional().describe("Project ID"),
+        projectId: z.string().uuid().optional().describe(openApiHidden()),
         applicationId: z.string().uuid().optional(),
         search: z.string().optional(),
         eventType: z.nativeEnum(PkiAlertEventType).optional(),
@@ -435,7 +436,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
-        projectId: z.string().uuid().optional().describe("Project ID"),
+        projectId: z.string().uuid().optional().describe(openApiHidden()),
         filters: z.array(PkiFilterRuleSchema),
         alertBefore: z
           .string()
@@ -490,7 +491,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Test a webhook configuration by sending a test payload",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
-        projectId: z.string().uuid().optional().describe("Project ID for permission check"),
+        projectId: z.string().uuid().optional().describe(openApiHidden()),
         url: z
           .string()
           .url()

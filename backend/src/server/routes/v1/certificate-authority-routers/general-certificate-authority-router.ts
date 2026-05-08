@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
@@ -38,7 +39,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get Certificate Authorities",
       querystring: z.object({
-        projectId: z.string().optional()
+        projectId: z.string().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({

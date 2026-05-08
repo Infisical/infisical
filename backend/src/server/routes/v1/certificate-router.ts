@@ -9,6 +9,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
@@ -633,13 +634,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .uuid()
           .optional()
           .describe("Filter to certificate requests for profiles attached to a specific Application."),
-        projectId: z
-          .string()
-          .uuid()
-          .optional()
-          .describe(
-            "Optional explicit cert-manager project. Defaults to the org's default cert-manager project; required when the org has multiple cert-manager projects and you want to target a non-default one."
-          ),
+        projectId: z.string().uuid().optional().describe(openApiHidden()),
         sortBy: z.string().trim().optional(),
         sortOrder: z.enum(["asc", "desc"]).optional(),
         metadata: z

@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
@@ -67,7 +68,7 @@ export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
   syncOptions: AwsCertificateManagerPkiSyncOptionsSchema.optional().default({}),
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
-  projectId: z.string().trim().min(1).optional(),
+  projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
   certificateIds: z.array(z.string().uuid()).optional()
 });

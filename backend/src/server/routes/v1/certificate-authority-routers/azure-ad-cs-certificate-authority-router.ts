@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -36,7 +37,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
         caId: z.string().describe("Azure AD CS CA ID")
       }),
       querystring: z.object({
-        projectId: z.string().optional().describe("Project ID")
+        projectId: z.string().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({

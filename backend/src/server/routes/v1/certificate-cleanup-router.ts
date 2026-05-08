@@ -4,6 +4,7 @@ import { CertificateCleanupConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -21,7 +22,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       description: "Get certificate cleanup configuration for a project",
       tags: [ApiDocsTags.PkiCertificates],
       querystring: z.object({
-        projectId: z.string().trim().optional().describe("Project ID")
+        projectId: z.string().trim().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -54,7 +55,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       description: "Create or update certificate cleanup configuration for a project",
       tags: [ApiDocsTags.PkiCertificates],
       body: z.object({
-        projectId: z.string().trim().optional().describe("Project ID"),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         isEnabled: z.boolean().optional().describe("Enable cleanup"),
         postExpiryRetentionDays: z
           .number()

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -175,7 +175,7 @@ const policyBasicConstraintsSchema = z
   .nullable();
 
 const createCertificatePolicySchema = z.object({
-  projectId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional().describe(openApiHidden()),
   name: slugSchema({ min: 1, max: 255, field: "Name" }),
   description: z.string().max(1000).optional(),
   subject: z.array(policySubjectSchema).optional(),
@@ -259,7 +259,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
-        projectId: z.string().uuid().optional()
+        projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({

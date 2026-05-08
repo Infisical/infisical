@@ -4,6 +4,7 @@ import { CertificateInventoryViewsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -52,7 +53,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "List system and custom certificate inventory views for a project.",
       querystring: z.object({
-        projectId: z.string().trim().optional(),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         applicationId: z.string().uuid().optional()
       }),
       response: {
@@ -110,7 +111,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiCertificates],
       description: "Create a custom certificate inventory view.",
       body: z.object({
-        projectId: z.string().trim().optional(),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         name: z.string().trim().min(1).max(255),
         filters: InventoryViewFiltersSchema.default({}),
         columns: ColumnsSchema.optional(),
@@ -170,7 +171,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         viewId: z.string().uuid()
       }),
       body: z.object({
-        projectId: z.string().trim().optional(),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         name: z.string().trim().min(1).max(255).optional(),
         filters: InventoryViewFiltersSchema.optional(),
         columns: ColumnsSchema.optional(),
