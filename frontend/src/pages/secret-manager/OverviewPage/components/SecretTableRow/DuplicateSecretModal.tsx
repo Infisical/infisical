@@ -1,7 +1,19 @@
-import { useEffect, useState } from "react";
-import { CheckIcon, ChevronsUpDownIcon, CopyIcon, KeyIcon } from "lucide-react";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronsUpDownIcon,
+  CircleAlertIcon,
+  CopyIcon,
+  InfoIcon,
+  KeyIcon,
+  LoaderCircleIcon
+} from "lucide-react";
+import { twMerge } from "tailwind-merge";
+import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -19,6 +31,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
   Popover,
   PopoverContent,
   PopoverTrigger
@@ -49,6 +65,82 @@ const DEFAULT_INCLUDE: Record<IncludeKey, boolean> = {
   skipMultilineEncoding: true
 };
 
+const formSchema = z.object({
+  environmentIds: z.array(z.string()).min(1),
+  include: z.object({
+    value: z.boolean(),
+    comment: z.boolean(),
+    tags: z.boolean(),
+    metadata: z.boolean(),
+    skipMultilineEncoding: z.boolean()
+  }),
+  shouldOverwrite: z.boolean()
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+enum DuplicateStatus {
+  Success = "success",
+  Info = "info",
+  Error = "error"
+}
+
+type DuplicateResults = {
+  status: DuplicateStatus;
+  name: string;
+  id: string;
+  message: string;
+}[];
+
+const DuplicateResultsView = ({
+  results,
+  onDismiss
+}: {
+  results: DuplicateResults;
+  onDismiss: () => void;
+}) => (
+  <div className="w-full">
+    <div className="mb-2 text-sm font-medium">Results</div>
+    <div className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border bg-container px-2 py-2">
+      {results.map(({ id, name, status, message }) => {
+        let resultClassName: string;
+        let Icon: typeof CheckCircleIcon;
+
+        switch (status) {
+          case DuplicateStatus.Success:
+            Icon = CheckCircleIcon;
+            resultClassName = "text-success";
+            break;
+          case DuplicateStatus.Info:
+            Icon = InfoIcon;
+            resultClassName = "text-info";
+            break;
+          case DuplicateStatus.Error:
+          default:
+            Icon = CircleAlertIcon;
+            resultClassName = "text-danger";
+        }
+
+        return (
+          <div key={id} className="flex items-start gap-2 p-2 text-sm">
+            <Icon className={twMerge(resultClassName, "mt-0.5 size-3.5 shrink-0")} />
+            <span>
+              {name}: {message}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+    <DialogFooter>
+      <DialogClose asChild>
+        <Button variant="outline" onClick={onDismiss}>
+          Dismiss
+        </Button>
+      </DialogClose>
+    </DialogFooter>
+  </div>
+);
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -58,56 +150,51 @@ type Props = {
   sourceEnvironment: { slug: string; name: string };
 };
 
-export const DuplicateSecretModal = ({
-  isOpen,
-  onOpenChange,
+type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
+  onClose: () => void;
+};
+
+const DuplicateSecretContent = ({
   secretId,
   secretName,
   secretPath,
-  sourceEnvironment
-}: Props) => {
+  sourceEnvironment,
+  onClose
+}: ContentProps) => {
   const {
     currentProject: { id: projectId, environments }
   } = useProject();
   const duplicateSecret = useDuplicateSecret();
 
-  const [selectedEnvIds, setSelectedEnvIds] = useState<string[]>([]);
-  const [includeOptions, setIncludeOptions] =
-    useState<Record<IncludeKey, boolean>>(DEFAULT_INCLUDE);
-  const [shouldOverwrite, setShouldOverwrite] = useState(false);
+  const {
+    handleSubmit,
+    control,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      environmentIds: [],
+      include: DEFAULT_INCLUDE,
+      shouldOverwrite: false
+    }
+  });
+
+  const [duplicateResults, setDuplicateResults] = useState<DuplicateResults | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedEnvIds([]);
-      setIncludeOptions(DEFAULT_INCLUDE);
-      setShouldOverwrite(false);
-      setSearchValue("");
-      setPopoverOpen(false);
-    }
-  }, [isOpen]);
-
+  const selectedEnvIds = watch("environmentIds");
   const availableEnvs = environments.filter((env) => env.slug !== sourceEnvironment.slug);
 
-  const toggleEnv = (envId: string) => {
-    setSelectedEnvIds((prev) =>
-      prev.includes(envId) ? prev.filter((id) => id !== envId) : [...prev, envId]
-    );
-  };
+  const handleFormSubmit = async (data: FormValues) => {
+    if (!secretId || data.environmentIds.length === 0) return;
 
-  const toggleInclude = (key: IncludeKey) => {
-    setIncludeOptions((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleDuplicate = async () => {
-    if (!secretId || selectedEnvIds.length === 0) return;
-
-    const targets = selectedEnvIds
+    const targets = data.environmentIds
       .map((id) => availableEnvs.find((env) => env.id === id))
       .filter((env): env is (typeof availableEnvs)[number] => Boolean(env));
 
-    const results = await Promise.allSettled(
+    const settled = await Promise.allSettled(
       targets.map((env) =>
         duplicateSecret.mutateAsync({
           projectId,
@@ -116,59 +203,59 @@ export const DuplicateSecretModal = ({
           destinationEnvironment: env.slug,
           destinationSecretPath: secretPath,
           secretId,
-          shouldOverwrite,
-          attributesToCopy: includeOptions
+          shouldOverwrite: data.shouldOverwrite,
+          attributesToCopy: data.include
         })
       )
     );
 
-    let successCount = 0;
-    let approvalCount = 0;
-    const failures: { env: string; message: string }[] = [];
+    const results: DuplicateResults = settled.map((result, idx) => {
+      const env = targets[idx];
 
-    results.forEach((result, idx) => {
-      const envName = targets[idx].name;
       if (result.status === "fulfilled") {
         if ("approval" in result.value) {
-          approvalCount += 1;
-        } else {
-          successCount += 1;
+          return {
+            id: env.id,
+            name: env.name,
+            status: DuplicateStatus.Info,
+            message: "A secret approval request has been generated"
+          };
         }
-      } else {
-        const reason = result.reason as {
-          response?: { data?: { message?: string } };
-          message?: string;
+        return {
+          id: env.id,
+          name: env.name,
+          status: DuplicateStatus.Success,
+          message: "Successfully duplicated secret"
         };
-        failures.push({
-          env: envName,
-          message: reason?.response?.data?.message ?? reason?.message ?? "Unknown error"
-        });
       }
+
+      const reason = result.reason as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      return {
+        id: env.id,
+        name: env.name,
+        status: DuplicateStatus.Error,
+        message: reason?.response?.data?.message ?? reason?.message ?? "Unknown error"
+      };
     });
 
-    if (successCount > 0) {
-      createNotification({
-        type: "success",
-        text: `Duplicated '${secretName}' to ${successCount} environment${successCount === 1 ? "" : "s"}`
-      });
-    }
-    if (approvalCount > 0) {
-      createNotification({
-        type: "info",
-        text: `${approvalCount} environment${approvalCount === 1 ? "" : "s"} require approval before the secret is created`
-      });
-    }
-    failures.forEach(({ env, message }) => {
-      createNotification({
-        type: "error",
-        text: `Failed to duplicate to ${env}: ${message}`
-      });
-    });
-
-    if (failures.length === 0) {
-      onOpenChange(false);
-    }
+    setDuplicateResults(results);
   };
+
+  if (duplicateResults) {
+    return <DuplicateResultsView results={duplicateResults} onDismiss={onClose} />;
+  }
+
+  if (duplicateSecret.isPending) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center py-2.5">
+        <LoaderCircleIcon className="size-8 animate-spin text-accent" />
+        <p className="mt-4 text-sm text-accent">Duplicating secret...</p>
+      </div>
+    );
+  }
 
   const selectedEnvCount = selectedEnvIds.length;
   const singleSelectedEnvName =
@@ -195,24 +282,10 @@ export const DuplicateSecretModal = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-md border border-project/25 bg-project/10 text-project">
-              <CopyIcon className="size-3.5" />
-            </span>
-            <DialogTitle>Duplicate Secret</DialogTitle>
-          </div>
-          <DialogDescription>
-            Copy this secret and its metadata into one or more environments.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-1.5">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Source
-          </p>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Field>
+        <FieldLabel>Source</FieldLabel>
+        <FieldContent>
           <div className="flex items-center justify-between rounded-md border border-border bg-container px-3 py-2">
             <div className="flex min-w-0 items-center gap-2 text-sm text-foreground">
               <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
@@ -223,135 +296,179 @@ export const DuplicateSecretModal = ({
             </div>
             <Badge variant="info">{sourceEnvironment.name}</Badge>
           </div>
-        </div>
+        </FieldContent>
+      </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Target environments
-          </p>
-          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={popoverOpen}
-                isFullWidth
-                className="justify-between font-normal"
-              >
-                <span
-                  className={cn("truncate", selectedEnvIds.length === 0 && "text-muted-foreground")}
-                >
-                  {triggerLabel}
-                </span>
-                <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-              <Command>
-                <CommandInput
-                  value={searchValue}
-                  onValueChange={setSearchValue}
-                  placeholder="Filter environments"
-                />
-                <CommandList>
-                  <CommandEmpty>No environment found.</CommandEmpty>
-                  <CommandGroup>
-                    {availableEnvs.map((env) => (
-                      <CommandItem
-                        key={env.id}
-                        value={env.id}
-                        keywords={[env.name, env.slug]}
-                        onSelect={toggleEnv}
-                        title={env.name}
+      <Controller
+        control={control}
+        name="environmentIds"
+        render={({ field: { value, onChange } }) => {
+          const toggleEnv = (envId: string) => {
+            if (value.includes(envId)) {
+              onChange(value.filter((id) => id !== envId));
+            } else {
+              onChange([...value, envId]);
+            }
+          };
+
+          return (
+            <Field className="mt-4">
+              <FieldLabel>Target Environments</FieldLabel>
+              <FieldContent>
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={popoverOpen}
+                      isFullWidth
+                      className="justify-between font-normal"
+                    >
+                      <span
+                        className={cn("truncate", value.length === 0 && "text-muted-foreground")}
                       >
-                        <CheckIcon
-                          className={cn(
-                            "h-4 w-4 shrink-0",
-                            selectedEnvIds.includes(env.id) ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <span className="truncate">{env.name}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+                        {triggerLabel}
+                      </span>
+                      <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
+                  >
+                    <Command>
+                      <CommandInput
+                        value={searchValue}
+                        onValueChange={setSearchValue}
+                        placeholder="Filter environments"
+                      />
+                      <CommandList>
+                        <CommandEmpty>No environment found.</CommandEmpty>
+                        <CommandGroup>
+                          {availableEnvs.map((env) => (
+                            <CommandItem
+                              key={env.id}
+                              value={env.id}
+                              keywords={[env.name, env.slug]}
+                              onSelect={toggleEnv}
+                              title={env.name}
+                            >
+                              <CheckIcon
+                                className={cn(
+                                  "h-4 w-4 shrink-0",
+                                  value.includes(env.id) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span className="truncate">{env.name}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <FieldDescription>Pick one or more destinations.</FieldDescription>
+              </FieldContent>
+            </Field>
+          );
+        }}
+      />
 
-        <div className="flex flex-col gap-1.5">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Include values
-          </p>
-          <div className="divide-y divide-border rounded-md border border-border">
-            {INCLUDE_OPTIONS.map((opt) => {
-              const id = `duplicate-include-${opt.key}`;
-              return (
-                <label
-                  key={opt.key}
-                  htmlFor={id}
-                  className="flex cursor-pointer items-start gap-3 p-3"
-                >
-                  <Checkbox
-                    id={id}
-                    variant="project"
-                    isChecked={includeOptions[opt.key]}
-                    onCheckedChange={() => toggleInclude(opt.key)}
-                    className="mt-0.5"
-                  />
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm text-foreground">{opt.label}</span>
-                    <span className="text-muted-foreground text-xs">{opt.description}</span>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        </div>
+      <Controller
+        control={control}
+        name="include"
+        render={({ field: { value, onChange } }) => (
+          <Field className="mt-4">
+            <FieldLabel>Include values</FieldLabel>
+            <FieldContent>
+              <div className="divide-y divide-border rounded-md border border-border">
+                {INCLUDE_OPTIONS.map((opt) => {
+                  const id = `duplicate-include-${opt.key}`;
+                  return (
+                    <label
+                      key={opt.key}
+                      htmlFor={id}
+                      className="flex cursor-pointer items-start gap-3 p-3"
+                    >
+                      <Checkbox
+                        id={id}
+                        variant="project"
+                        isChecked={value[opt.key]}
+                        onCheckedChange={() => onChange({ ...value, [opt.key]: !value[opt.key] })}
+                        className="mt-0.5"
+                      />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm text-foreground">{opt.label}</span>
+                        <span className="text-muted-foreground text-xs">{opt.description}</span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </FieldContent>
+          </Field>
+        )}
+      />
 
-        <div className="flex flex-col gap-1.5">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            If a secret with the same key already exists
-          </p>
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label
-            htmlFor="duplicate-overwrite"
-            className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3"
-          >
-            <Checkbox
-              id="duplicate-overwrite"
-              variant="project"
-              isChecked={shouldOverwrite}
-              onCheckedChange={(checked) => setShouldOverwrite(Boolean(checked))}
-              className="mt-0.5"
-            />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm text-foreground">Overwrite existing secret</span>
-              <span className="text-muted-foreground text-xs">
-                Replace the destination secret&apos;s selected fields with the values from the
-                source. Without this, duplication fails for environments that already have a secret
-                with this key.
-              </span>
-            </div>
-          </label>
-        </div>
+      <Controller
+        control={control}
+        name="shouldOverwrite"
+        render={({ field: { onBlur, value, onChange } }) => (
+          <Field className="mt-4">
+            <Field orientation="horizontal">
+              <Checkbox
+                id="duplicate-overwrite"
+                isChecked={value}
+                onCheckedChange={onChange}
+                onBlur={onBlur}
+                variant="project"
+              />
+              <FieldLabel htmlFor="duplicate-overwrite" className="cursor-pointer">
+                Overwrite existing secret
+              </FieldLabel>
+            </Field>
+            <FieldDescription>
+              {value
+                ? "Secrets with conflicting keys at the destination will be overwritten"
+                : "Secrets with conflicting keys at the destination will not be overwritten"}
+            </FieldDescription>
+          </Field>
+        )}
+      />
 
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button
-            variant="project"
-            isDisabled={selectedEnvIds.length === 0 || !secretId}
-            isPending={duplicateSecret.isPending}
-            onClick={handleDuplicate}
-          >
-            <CopyIcon />
-            {actionLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter className="mt-6">
+        <DialogClose asChild>
+          <Button variant="outline">Cancel</Button>
+        </DialogClose>
+        <Button
+          type="submit"
+          variant="project"
+          isDisabled={selectedEnvIds.length === 0 || !secretId || isSubmitting}
+          isPending={isSubmitting}
+        >
+          <CopyIcon />
+          {actionLabel}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 };
+
+export const DuplicateSecretModal = ({ isOpen, onOpenChange, ...props }: Props) => (
+  <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <DialogContent className="max-w-xl">
+      <DialogHeader>
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 items-center justify-center rounded-md border border-project/25 bg-project/10 text-project">
+            <CopyIcon className="size-3.5" />
+          </span>
+          <DialogTitle>Duplicate Secret</DialogTitle>
+        </div>
+        <DialogDescription>
+          Copy this secret and its metadata into one or more environments.
+        </DialogDescription>
+      </DialogHeader>
+      <DuplicateSecretContent {...props} onClose={() => onOpenChange(false)} />
+    </DialogContent>
+  </Dialog>
+);
