@@ -752,6 +752,26 @@ export const projectServiceFactory = ({
       });
     }
 
+    if (project.type === ProjectType.CertificateManager) {
+      const certManagerProjects = await projectDAL.find({
+        orgId: project.orgId,
+        type: ProjectType.CertificateManager
+      });
+      if (certManagerProjects.length <= 1) {
+        throw new BadRequestError({
+          message:
+            "Cannot delete the last Certificate Manager project in this organization. Create another Certificate Manager project first."
+        });
+      }
+      const org = await orgDAL.findOne({ id: project.orgId });
+      if (org?.defaultCertManagerProjectId === project.id) {
+        throw new BadRequestError({
+          message:
+            "Cannot delete the active Certificate Manager project. Set another project as active in Organization Settings → Certificate Manager first."
+        });
+      }
+    }
+
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {
       lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {

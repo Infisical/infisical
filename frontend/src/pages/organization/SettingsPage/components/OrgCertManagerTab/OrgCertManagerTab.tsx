@@ -1,19 +1,282 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
-import { ActiveInstancePicker } from "@app/layouts/PkiManagerLayout/components/ActiveInstancePicker";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowRightIcon,
+  BoxIcon,
+  MoreHorizontalIcon,
+  StarIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+  PageLoader,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
+import { useOrgPermission } from "@app/context";
+import {
+  OrgPermissionCertManagerActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import {
+  certManagerInstanceKeys,
+  TCertManagerLegacyInstance,
+  useCertManagerInstanceState,
+  useCertManagerLegacyInstances,
+  useSetCertManagerActiveProject
+} from "@app/hooks/api/certManagerInstance";
+import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
 export const OrgCertManagerTab = () => {
+  const queryClient = useQueryClient();
+  const { permission } = useOrgPermission();
+  const canManage = permission.can(
+    OrgPermissionCertManagerActions.ManageInstance,
+    OrgPermissionSubjects.CertManager
+  );
+
+  const { data: instanceState } = useCertManagerInstanceState();
+  const { data: legacyData, isPending } = useCertManagerLegacyInstances();
+  const setActive = useSetCertManagerActiveProject();
+  const deleteWorkspace = useDeleteWorkspace();
+
+  const instances = legacyData?.instances ?? [];
+  const isMultiInstance = Boolean(instanceState?.isMultiInstance);
+
+  const [pendingActive, setPendingActive] = useState<TCertManagerLegacyInstance | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<TCertManagerLegacyInstance | null>(null);
+
+  useEffect(() => {
+    if (pendingDelete && !instances.find((i) => i.id === pendingDelete.id)) {
+      setPendingDelete(null);
+    }
+    if (pendingActive && !instances.find((i) => i.id === pendingActive.id)) {
+      setPendingActive(null);
+    }
+  }, [instances, pendingDelete, pendingActive]);
+
+  if (isPending) {
+    return (
+      <div className="h-32">
+        <PageLoader lottieClassName="w-16" />
+      </div>
+    );
+  }
+  if (instances.length <= 1) return null;
+
+  const active = instances.find((i) => i.isActive);
+
+  const handleConfirmActive = async () => {
+    if (!pendingActive) return;
+    try {
+      await setActive.mutateAsync(pendingActive.id);
+      createNotification({
+        type: "success",
+        text: `${pendingActive.name} is now the active Certificate Manager instance for the organization.`
+      });
+      setPendingActive(null);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "Failed to switch active instance.";
+      createNotification({ type: "error", text: detail });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteWorkspace.mutateAsync({ projectID: pendingDelete.id });
+      createNotification({
+        type: "success",
+        text: `${pendingDelete.name} has been deleted.`
+      });
+      await queryClient.invalidateQueries({ queryKey: certManagerInstanceKeys.all });
+      setPendingDelete(null);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "Failed to delete project.";
+      createNotification({ type: "error", text: detail });
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Certificate Manager</CardTitle>
-        <CardDescription>
-          Pick which Certificate Manager instance the product launches into. API requests without a
-          projectId resolve to the active instance.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ActiveInstancePicker />
-      </CardContent>
-    </Card>
+    <>
+      {isMultiInstance && (
+        <Alert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <AlertTitle>Multi-project Certificate Manager will be deprecated soon</AlertTitle>
+          <AlertDescription>
+            Consolidate to a single Certificate Manager project for this organization. You can
+            change the active project below or delete projects you no longer need.
+          </AlertDescription>
+        </Alert>
+      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificate Manager</CardTitle>
+          <CardDescription>
+            Manage the Certificate Manager projects in this organization. The active project is the
+            one the product launches into and the one API requests without a projectId resolve to.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-full">Project</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {instances.map((instance) => (
+                <TableRow key={instance.id}>
+                  <TableCell className="w-full">
+                    <div className="flex items-center gap-x-2">
+                      <BoxIcon className="size-4 shrink-0 text-project" />
+                      <span className="font-mono">{instance.name}</span>
+                      <span className="font-mono text-xs text-accent">{instance.slug}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {instance.isActive ? <Badge variant="success">Active</Badge> : null}
+                  </TableCell>
+                  <TableCell>
+                    {canManage && !instance.isActive ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label={`Manage ${instance.name}`}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+                          <DropdownMenuItem onClick={() => setPendingActive(instance)}>
+                            <StarIcon />
+                            Set as active
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="danger"
+                            onClick={() => setPendingDelete(instance)}
+                          >
+                            <Trash2Icon />
+                            Delete project
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={Boolean(pendingActive)}
+        onOpenChange={(open) => {
+          if (!open) setPendingActive(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm change</DialogTitle>
+            <DialogDescription>
+              This changes the default Certificate Manager project for the entire organization.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              Every member in the organization will start landing on this project, and API requests
+              without a projectId will resolve to it.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-3">
+            <Item variant="default" size="xs" className="flex-1 border-transparent p-0">
+              <ItemMedia>
+                <BoxIcon className="size-4 text-project" />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>{active?.name ?? "—"}</ItemTitle>
+                {active?.slug ? (
+                  <ItemDescription className="font-mono">{active.slug}</ItemDescription>
+                ) : null}
+              </ItemContent>
+            </Item>
+            <ArrowRightIcon className="size-4 shrink-0 text-mineshaft-400" aria-hidden />
+            <Item variant="default" size="xs" className="flex-1 border-transparent p-0">
+              <ItemMedia>
+                <BoxIcon className="size-4 text-project" />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>{pendingActive?.name ?? "—"}</ItemTitle>
+                {pendingActive?.slug ? (
+                  <ItemDescription className="font-mono">{pendingActive.slug}</ItemDescription>
+                ) : null}
+              </ItemContent>
+            </Item>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingActive(null)}>
+              Cancel
+            </Button>
+            <Button variant="project" isPending={setActive.isPending} onClick={handleConfirmActive}>
+              Confirm change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DeleteActionModal
+        isOpen={Boolean(pendingDelete)}
+        onChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title={`Delete ${pendingDelete?.name ?? "this project"}?`}
+        subTitle="This permanently deletes the Certificate Manager project, including its certificates, profiles, applications, and approval policies. This cannot be undone."
+        deleteKey={pendingDelete?.slug ?? "delete"}
+        onDeleteApproved={handleConfirmDelete}
+        buttonText="Delete project"
+      />
+    </>
   );
 };

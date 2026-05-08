@@ -2669,7 +2669,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     certificateAuthorityService,
     resourceMetadataDAL,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    pkiApplicationDAL
   });
 
   const digicertCaFns = DigiCertCertificateAuthorityFns({

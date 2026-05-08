@@ -35,6 +35,7 @@ const ValidColumns = [
   "expiresAt",
   "ca",
   "profile",
+  "application",
   "algorithm",
   "source"
 ] as const;

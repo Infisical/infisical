@@ -382,6 +382,7 @@ export enum EventType {
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
+  ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
@@ -2988,6 +2989,17 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+  };
+}
+
+interface AssignCertToApplication {
+  type: EventType.ASSIGN_CERT_TO_APPLICATION;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId: string;
+    applicationName: string;
   };
 }
 
@@ -6856,6 +6868,7 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
+  | AssignCertToApplication
   | GetCertBody
   | GetCertPrivateKey
   | GetCertBundle

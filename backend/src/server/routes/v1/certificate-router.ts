@@ -1616,6 +1616,58 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:id/application",
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "assignCertificateToApplication",
+      tags: [ApiDocsTags.PkiCertificates],
+      description:
+        "Assign a certificate to an Application. Only certificates that aren't already attached to an Application can be assigned; once attached the binding cannot be moved.",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      body: z.object({
+        applicationId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          certificate: CertificatesSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificate, application } = await server.services.certificate.assignCertificateToApplication({
+        certificateId: req.params.id,
+        applicationId: req.body.applicationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificate.projectId,
+        event: {
+          type: EventType.ASSIGN_CERT_TO_APPLICATION,
+          metadata: {
+            certId: certificate.id,
+            cn: certificate.commonName,
+            serialNumber: certificate.serialNumber,
+            applicationId: application.id,
+            applicationName: application.name
+          }
+        }
+      });
+
+      return { certificate };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:id/certificate",
     config: {

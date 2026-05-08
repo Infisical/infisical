@@ -490,6 +490,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
+    applicationName?: string | null;
   };
 
   const findWithPrivateKeyInfo = async (
@@ -511,11 +512,13 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.ref("enrollmentType").withSchema(TableName.PkiCertificateProfile).as("enrollmentType"));
+        .select(db.ref("enrollmentType").withSchema(TableName.PkiCertificateProfile).as("enrollmentType"))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
         friendlyName,

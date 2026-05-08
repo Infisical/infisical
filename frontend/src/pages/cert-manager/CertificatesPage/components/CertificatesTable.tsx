@@ -7,6 +7,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   BanIcon,
+  BoxIcon,
   ClockIcon,
   DownloadIcon,
   EyeIcon,
@@ -85,6 +86,7 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { ActiveFilterChips } from "./ActiveFilterChips";
+import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -232,7 +234,7 @@ export const CertificatesTable = ({
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { permission } = useProjectPermission();
+  const { permission, hasProjectRole } = useProjectPermission();
 
   const canReadViews = permission.can(
     ProjectPermissionActions.Read,
@@ -255,6 +257,7 @@ export const CertificatesTable = ({
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
     getDefaultVisibleColumns(projectId)
   );
+  const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
 
   const { data: profilesData } = useListCertificateProfiles({
     limit: 100
@@ -780,6 +783,9 @@ export const CertificatesTable = ({
                 {visibleColumns.has("profile") && (
                   <TableHead className="max-w-[120px] min-w-[80px]">Profile</TableHead>
                 )}
+                {visibleColumns.has("application") && (
+                  <TableHead className="max-w-[140px] min-w-[80px]">Application</TableHead>
+                )}
                 {visibleColumns.has("algorithm") && (
                   <TableHead className="w-[90px]">Algorithm</TableHead>
                 )}
@@ -893,6 +899,11 @@ export const CertificatesTable = ({
                       {visibleColumns.has("profile") && (
                         <TableCell isTruncatable>
                           {certificate.profileName || <EmptyCell />}
+                        </TableCell>
+                      )}
+                      {visibleColumns.has("application") && (
+                        <TableCell isTruncatable>
+                          {certificate.applicationName || <EmptyCell />}
                         </TableCell>
                       )}
                       {visibleColumns.has("algorithm") && (
@@ -1225,6 +1236,19 @@ export const CertificatesTable = ({
                                     )}
                                   </ProjectPermissionCan>
                                 )}
+                              {hasProjectRole("admin") &&
+                                !certificate.applicationId &&
+                                certificate.source !== CertSource.Discovered && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssignTargetId(certificate.id);
+                                    }}
+                                  >
+                                    <BoxIcon />
+                                    Assign to Application
+                                  </DropdownMenuItem>
+                                )}
                               {(() => {
                                 const caType = caCapabilityMap[certificate.caId];
                                 const supportsRevocation =
@@ -1338,6 +1362,14 @@ export const CertificatesTable = ({
         }}
         applicationId={applicationId}
       />
+
+      {assignTargetId ? (
+        <AssignCertificateToApplicationModal
+          isOpen={Boolean(assignTargetId)}
+          onClose={() => setAssignTargetId(null)}
+          certificateId={assignTargetId}
+        />
+      ) : null}
     </div>
   );
 };

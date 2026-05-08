@@ -133,6 +133,11 @@ export type TRevokeCertDTO = {
   revocationReason: CrlReason;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TAssignCertToApplicationDTO = {
+  certificateId: string;
+  applicationId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCertBodyDTO = {
   id?: string;
   serialNumber?: string;

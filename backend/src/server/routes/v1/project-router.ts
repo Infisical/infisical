@@ -1345,7 +1345,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
-              enrollmentType: z.string().nullable().optional()
+              enrollmentType: z.string().nullable().optional(),
+              applicationName: z.string().nullable().optional()
             })
           ),
           totalCount: z.number()

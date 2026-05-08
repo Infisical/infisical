@@ -2,7 +2,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -24,6 +24,7 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
@@ -48,6 +49,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
   TCertificateFingerprints,
   TCertificateSubject,
@@ -64,8 +66,17 @@ import {
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById" | "findWithFullDetails"
+    | "findOne"
+    | "deleteById"
+    | "update"
+    | "find"
+    | "transaction"
+    | "create"
+    | "findById"
+    | "findWithFullDetails"
+    | "updateById"
   >;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -105,7 +116,8 @@ export const certificateServiceFactory = ({
   pkiSyncQueue,
   certificateAuthorityService,
   resourceMetadataDAL,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  pkiApplicationDAL
 }: TCertificateServiceFactoryDep) => {
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -974,6 +986,48 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const assignCertificateToApplication = async ({
+    certificateId,
+    applicationId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAssignCertToApplicationDTO) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with id '${certificateId}' not found.` });
+    }
+
+    if (cert.applicationId) {
+      throw new BadRequestError({
+        message: "This certificate is already assigned to an Application and cannot be moved."
+      });
+    }
+
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== cert.projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found in this project.` });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: cert.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    if (!hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only project admins can assign certificates to an Application."
+      });
+    }
+
+    const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+    return { certificate: updatedCert, application };
+  };
+
   return {
     getCert,
     getCertPrivateKey,
@@ -982,6 +1036,7 @@ export const certificateServiceFactory = ({
     getCertBody,
     importCert,
     getCertBundle,
-    getCertPkcs12
+    getCertPkcs12,
+    assignCertificateToApplication
   };
 };

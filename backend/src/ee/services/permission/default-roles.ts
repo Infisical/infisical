@@ -652,11 +652,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can(
-    [
-      ProjectPermissionApplicationActions.Read,
-      ProjectPermissionApplicationActions.List,
-      ProjectPermissionApplicationActions.Create
-    ],
+    [ProjectPermissionApplicationActions.Read, ProjectPermissionApplicationActions.List],
     ProjectPermissionSub.Application
   );
 

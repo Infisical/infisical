@@ -55,6 +55,8 @@ export type TCertificate = {
   profileName?: string | null;
   enrollmentType?: string | null;
   caType?: "internal" | "external" | null;
+  applicationId?: string | null;
+  applicationName?: string | null;
   source?: TCertificateSource;
   discoveryMetadata?: {
     issuerCommonName?: string;

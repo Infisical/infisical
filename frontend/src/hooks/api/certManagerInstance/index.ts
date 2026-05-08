@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { useOrganization } from "@app/context";
 
 const BASE_URL = "/api/v1/cert-manager/instance";
 
@@ -19,17 +20,22 @@ export type TCertManagerInstanceState = {
 
 export const certManagerInstanceKeys = {
   all: ["cert-manager-instance"] as const,
-  state: () => [...certManagerInstanceKeys.all, "state"] as const
+  state: (orgId: string) => [...certManagerInstanceKeys.all, "state", { orgId }] as const,
+  legacy: (orgId: string) => [...certManagerInstanceKeys.all, "legacy", { orgId }] as const
 };
 
-export const useCertManagerInstanceState = () =>
-  useQuery({
-    queryKey: certManagerInstanceKeys.state(),
+export const useCertManagerInstanceState = () => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg.id;
+  return useQuery({
+    queryKey: certManagerInstanceKeys.state(orgId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCertManagerInstanceState>(BASE_URL);
       return data;
-    }
+    },
+    enabled: Boolean(orgId)
   });
+};
 
 export type TCertManagerLegacyInstance = TCertManagerInstanceProject & {
   certificateCount: number;
@@ -43,16 +49,20 @@ export type TCertManagerLegacyInstancesResponse = {
   instances: TCertManagerLegacyInstance[];
 };
 
-export const useCertManagerLegacyInstances = () =>
-  useQuery({
-    queryKey: [...certManagerInstanceKeys.all, "legacy"] as const,
+export const useCertManagerLegacyInstances = () => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg.id;
+  return useQuery({
+    queryKey: certManagerInstanceKeys.legacy(orgId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCertManagerLegacyInstancesResponse>(
         `${BASE_URL}/legacy`
       );
       return data;
-    }
+    },
+    enabled: Boolean(orgId)
   });
+};
 
 export const useSetCertManagerActiveProject = () => {
   const qc = useQueryClient();

@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProjectPermission } from "@app/context";
 import {
   TPkiApplication,
   useDeletePkiApplication,
@@ -47,6 +48,8 @@ export const ApplicationsPage = () => {
   const navigate = useNavigate();
   const { data: applications, isPending } = useListPkiApplications();
   const deleteApp = useDeletePkiApplication();
+  const { hasProjectRole } = useProjectPermission();
+  const canCreateApplication = hasProjectRole("admin");
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "application",
@@ -169,12 +172,14 @@ export const ApplicationsPage = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Applications</CardTitle>
-                <CardAction>
-                  <Button variant="project" onClick={() => handlePopUpOpen("application")}>
-                    <PlusIcon />
-                    Create Application
-                  </Button>
-                </CardAction>
+                {canCreateApplication ? (
+                  <CardAction>
+                    <Button variant="project" onClick={() => handlePopUpOpen("application")}>
+                      <PlusIcon />
+                      Create Application
+                    </Button>
+                  </CardAction>
+                ) : null}
               </CardHeader>
               <CardContent>{renderApplications()}</CardContent>
             </Card>

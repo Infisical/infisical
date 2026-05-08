@@ -259,6 +259,29 @@ export const useUnifiedCertificateIssuance = () => {
   });
 };
 
+export const useAssignCertificateToApplication = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificate, object, { certificateId: string; applicationId: string }>({
+    mutationFn: async ({ certificateId, applicationId }) => {
+      const {
+        data: { certificate }
+      } = await apiRequest.post<{ certificate: TCertificate }>(
+        `/api/v1/cert-manager/certificates/${certificateId}/application`,
+        { applicationId }
+      );
+      return certificate;
+    },
+    onSuccess: (_, { certificateId }) => {
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getCertificateById(certificateId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
+      });
+    }
+  });
+};
+
 export const useTriggerCertificateRequestValidation = () => {
   const queryClient = useQueryClient();
   return useMutation<TTriggerCertificateRequestValidationResponse, object, { requestId: string }>({
