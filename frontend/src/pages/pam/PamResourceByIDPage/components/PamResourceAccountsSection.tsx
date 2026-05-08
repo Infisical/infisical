@@ -81,7 +81,9 @@ const hasAccountsWithDependencies = (resourceType: PamResourceType) =>
   resourceType === PamResourceType.Windows;
 
 const getAccountType = (account: TPamAccount): string | undefined => {
-  if (account.resource?.resourceType === PamResourceType.Windows) {
+  // AD-domain accounts surfaced on a Windows resource page have
+  // account.resource === null but still carry internalMetadata.accountType.
+  if (account.resource?.resourceType === PamResourceType.Windows || account.domain) {
     return (account as TWindowsAccount).internalMetadata?.accountType;
   }
   return undefined;
@@ -275,6 +277,16 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
     if (account.resource?.resourceType === PamResourceType.AwsIam) {
       handlePopUpOpen("awsIamReason", { account });
+    } else if (account.domainId) {
+      handlePopUpOpen("accessAccount", {
+        account,
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          projectId: resource.projectId
+        }
+      });
     } else {
       handlePopUpOpen("accessAccount", { account });
     }
@@ -529,25 +541,22 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {/* AD-joined accounts (account.domainId) still disabled; AD/RDP is a later phase. */}
-                      {!account.domainId && (
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPamAccountActions.Access}
-                          a={ProjectPermissionSub.PamAccounts}
+                      <ProjectPermissionCan
+                        I={ProjectPermissionPamAccountActions.Access}
+                        a={ProjectPermissionSub.PamAccounts}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            accessAccount(account);
+                          }}
                         >
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              accessAccount(account);
-                            }}
-                          >
-                            <LogInIcon />
-                            Connect
-                          </Button>
-                        </ProjectPermissionCan>
-                      )}
+                          <LogInIcon />
+                          Connect
+                        </Button>
+                      </ProjectPermissionCan>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">
@@ -650,6 +659,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           if (!isOpen) setAccessReason(undefined);
         }}
         account={popUp.accessAccount.data?.account}
+        resource={popUp.accessAccount.data?.resource}
         projectId={projectId!}
         reason={accessReason}
       />

@@ -48,7 +48,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
-import { safeRequest } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -350,7 +349,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const baseUrl = port ? `${host}:${port}` : host;
 
-        const res = await safeRequest
+        const res = await request
           .post<TCreateTokenReviewResponse>(
             `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
             {
@@ -370,13 +369,14 @@ export const identityKubernetesAuthServiceFactory = ({
               },
               signal: AbortSignal.timeout(10000),
               timeout: 10000,
-              allowPrivateIps: true,
-              ca: caCert || undefined,
-              rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
-                caCert,
-                identityKubernetesAuth.verifyTlsCertificate
-              ),
-              servername
+              httpsAgent: new https.Agent({
+                ca: caCert || undefined,
+                rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
+                servername
+              })
             }
           )
           .catch((err) => {

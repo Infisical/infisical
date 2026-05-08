@@ -3,6 +3,7 @@ export * from "./AccessApprovalRequestUpdatedTemplate";
 export * from "./AccountDeletionConfirmationTemplate";
 export * from "./AuditLogMigrationAlertTemplate";
 export * from "./CredentialRotationFailedTemplate";
+export * from "./EmailChangeRequestNotificationTemplate";
 export * from "./EmailMfaTemplate";
 export * from "./EmailVerificationTemplate";
 export * from "./ExternalImportFailedTemplate";

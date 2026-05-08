@@ -3,12 +3,13 @@ import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -42,6 +43,7 @@ export const triggerWebhookRequest = async (
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
   const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
+  await blockLocalAndPrivateIpAddresses(url);
   if (secretKey) {
     const webhookSign = crypto.nativeCrypto
       .createHmac("sha256", secretKey)
@@ -50,10 +52,11 @@ export const triggerWebhookRequest = async (
     headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
   }
 
-  const req = await safeRequest.post(url, payload, {
+  const req = await request.post(url, payload, {
     headers,
     timeout: WEBHOOK_TRIGGER_TIMEOUT,
-    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
+    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT),
+    maxRedirects: 0
   });
 
   return req;

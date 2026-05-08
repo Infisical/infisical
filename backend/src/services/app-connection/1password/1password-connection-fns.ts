@@ -1,15 +1,20 @@
 import { AxiosError } from "axios";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OnePassConnectionMethod } from "./1password-connection-enums";
 import { TOnePassConnection, TOnePassConnectionConfig, TOnePassVault } from "./1password-connection-types";
 
-export const getOnePassInstanceUrl = (config: TOnePassConnectionConfig) => {
-  return removeTrailingSlash(config.credentials.instanceUrl);
+export const getOnePassInstanceUrl = async (config: TOnePassConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
 };
 
 export const getOnePassConnectionListItem = () => {
@@ -21,12 +26,12 @@ export const getOnePassConnectionListItem = () => {
 };
 
 export const validateOnePassConnectionCredentials = async (config: TOnePassConnectionConfig) => {
-  const instanceUrl = getOnePassInstanceUrl(config);
+  const instanceUrl = await getOnePassInstanceUrl(config);
 
   const { apiToken } = config.credentials;
 
   try {
-    const res = await safeRequest.get(`${instanceUrl}/v1/vaults`, {
+    const res = await request.get(`${instanceUrl}/v1/vaults`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
@@ -51,10 +56,10 @@ export const validateOnePassConnectionCredentials = async (config: TOnePassConne
 };
 
 export const listOnePassVaults = async (appConnection: TOnePassConnection) => {
-  const instanceUrl = getOnePassInstanceUrl(appConnection);
+  const instanceUrl = await getOnePassInstanceUrl(appConnection);
   const { apiToken } = appConnection.credentials;
 
-  const resp = await safeRequest.get<TOnePassVault[]>(`${instanceUrl}/v1/vaults`, {
+  const resp = await request.get<TOnePassVault[]>(`${instanceUrl}/v1/vaults`, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       Accept: "application/json"

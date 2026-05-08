@@ -233,18 +233,15 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* AD-joined accounts (domain accounts) still disabled; AD/RDP is a later phase. */}
-          {!isDomainAccount && (
-            <ProjectPermissionCan
-              I={ProjectPermissionPamAccountActions.Access}
-              a={ProjectPermissionSub.PamAccounts}
-            >
-              <Button variant="neutral" onClick={handleAccess}>
-                <LogInIcon />
-                Access
-              </Button>
-            </ProjectPermissionCan>
-          )}
+          <ProjectPermissionCan
+            I={ProjectPermissionPamAccountActions.Access}
+            a={ProjectPermissionSub.PamAccounts}
+          >
+            <Button variant="neutral" onClick={handleAccess}>
+              <LogInIcon />
+              Access
+            </Button>
+          </ProjectPermissionCan>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -331,6 +328,7 @@ const PageContent = () => {
           if (!isOpen) setAccessReason(undefined);
         }}
         account={popUp.accessAccount.data?.account}
+        resource={popUp.accessAccount.data?.resource}
         projectId={projectId!}
         reason={accessReason}
       />
@@ -370,7 +368,26 @@ const PageContent = () => {
           onOpenChange={(isOpen) => handlePopUpToggle("selectResource", isOpen)}
           domainType={account.domain.domainType}
           domainId={account.domain.id}
-          onSelect={(resource) => {
+          onSelect={async (resource) => {
+            const { requiresApproval, constraints } = await checkPolicyMatch({
+              policyType: ApprovalPolicyType.PamAccess,
+              projectId: projectId!,
+              inputs: {
+                resourceName: resource.name,
+                accountName: account.name
+              }
+            });
+
+            if (requiresApproval) {
+              handlePopUpOpen("requestAccount", {
+                resourceName: resource.name,
+                accountName: account.name,
+                accountAccessed: true,
+                accessDurationMax: constraints?.accessDuration.max
+              });
+              return;
+            }
+
             handlePopUpOpen("accessAccount", { account, resource });
           }}
         />

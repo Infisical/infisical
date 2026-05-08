@@ -9,8 +9,10 @@ import {
 } from "@app/ee/services/honey-token/honey-token-provider-fns";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const HoneyTokenResponseSchema = HoneyTokensSchema.pick({
   id: true,
@@ -137,6 +139,21 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath
+          }
+        })
+        .catch(() => {});
+
       return { honeyToken, stackDeployment };
     }
   });
@@ -216,6 +233,19 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
+
       return { honeyToken };
     }
   });
@@ -242,6 +272,19 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         { honeyTokenId: req.params.id },
         req.permission
       );
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenReset,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
+
       return {
         honeyToken: {
           id: honeyToken.id,
@@ -289,6 +332,19 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            honeyTokenId,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
 
       return { honeyTokenId };
     }

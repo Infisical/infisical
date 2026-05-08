@@ -7,13 +7,13 @@ description: "One-time organization setup for AWS honey tokens."
 <Info>
   This setup is performed **once per organization** by an admin. After
   completing these steps, any project member can [create honey
-  tokens](/documentation/platform/honey-tokens/usage) without repeating this
+  tokens](/documentation/platform/honey-tokens/aws/usage) without repeating this
   process.
 </Info>
 
 ## Prerequisites
 
-- Create an [AWS App Connection](/integrations/app-connections/aws) with the following IAM permissions:
+- Create an [AWS App Connection](/integrations/app-connections/aws) at the organization level with the following IAM permissions:
 
 ```json
 {
@@ -102,7 +102,7 @@ Use **Manage** any time you need to update:
 - CloudFormation stack name
 - AWS region
 
-In the modal, you can also copy the pre-filled AWS CLI command under **Deploy CloudFormation Stack** and run it to create the stack.
+In the modal, you can also copy the pre-filled AWS CLI command under **Deploy CloudFormation Stack** and run it to deploy the stack.
 
 You can also verify directly in AWS CLI:
 
@@ -112,4 +112,4 @@ aws cloudformation describe-stacks \
   --query "Stacks[0].StackStatus"
 ```
 
-You can only [create honey tokens](/documentation/platform/honey-tokens/usage) after the stack status is **Verified**.
+You can only [create honey tokens](/documentation/platform/honey-tokens/aws/usage) after the stack status is **Verified**.

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { isValidAwsRegion } from "@app/lib/aws/region";
+import { slugSchema } from "@app/server/lib/schemas";
+
 import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
@@ -32,9 +35,12 @@ export type THoneyTokenEventMetadata = z.infer<typeof HoneyTokenEventMetadataSch
 // --- Config schemas (typed shape for the encrypted config blob per provider) ---
 
 export const AwsHoneyTokenConfigSchema = z.object({
-  webhookSigningKey: z.string().min(1),
-  stackName: z.string().min(1).max(128).default("infisical-honey-tokens"),
-  awsRegion: z.string().min(1).default("us-east-1")
+  webhookSigningKey: z
+    .string()
+    .min(1)
+    .regex(/^[a-fA-F0-9]+$/, "Signing key must be a hex string"),
+  stackName: slugSchema({ max: 128, field: "stackName" }).default("infisical-honey-tokens"),
+  awsRegion: z.string().min(1).default("us-east-1").refine(isValidAwsRegion, "Invalid AWS region")
 });
 
 export type TAwsHoneyTokenConfig = z.infer<typeof AwsHoneyTokenConfigSchema>;

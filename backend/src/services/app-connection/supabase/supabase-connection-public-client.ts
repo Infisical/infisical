@@ -1,18 +1,23 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable class-methods-use-this */
-import { AxiosRequestConfig, AxiosResponse, HttpStatusCode } from "axios";
+import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode } from "axios";
 
+import { createRequestClient } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { SupabaseConnectionMethod } from "./supabase-connection-constants";
 import { TSupabaseConnectionConfig, TSupabaseProject, TSupabaseSecret } from "./supabase-connection-types";
 
-export const getSupabaseInstanceUrl = (config: TSupabaseConnectionConfig): string => {
-  return config.credentials.instanceUrl
+export const getSupabaseInstanceUrl = async (config: TSupabaseConnectionConfig) => {
+  const instanceUrl = config.credentials.instanceUrl
     ? removeTrailingSlash(config.credentials.instanceUrl)
     : "https://api.supabase.com";
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
 };
 
 export function getSupabaseAuthHeaders(connection: TSupabaseConnectionConfig): Record<string, string> {
@@ -43,25 +48,26 @@ export function getSupabaseRatelimiter(response: AxiosResponse): {
 }
 
 class SupabasePublicClient {
-  // Route every Supabase API call through `safeRequest.request` so the
-  // (potentially self-hosted) instance URL is SSRF-validated and DNS-pinned
-  // per call. The headers/content-type are set per-request rather than
-  // baked into a long-lived client.
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = createRequestClient({
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
+
   async send<T>(
     connection: TSupabaseConnectionConfig,
     config: AxiosRequestConfig,
     retryAttempt = 0
   ): Promise<T | undefined> {
-    const response = await safeRequest.request<T>({
+    const response = await this.client.request<T>({
       ...config,
-      baseURL: getSupabaseInstanceUrl(connection),
-      url: config.url ?? "",
+      baseURL: await getSupabaseInstanceUrl(connection),
       validateStatus: (status) => (status >= 200 && status < 300) || status === HttpStatusCode.TooManyRequests,
-      headers: {
-        "Content-Type": "application/json",
-        ...config.headers,
-        ...getSupabaseAuthHeaders(connection)
-      }
+      headers: getSupabaseAuthHeaders(connection)
     });
 
     const limiter = getSupabaseRatelimiter(response);

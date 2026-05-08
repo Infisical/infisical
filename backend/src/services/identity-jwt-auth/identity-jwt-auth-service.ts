@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
+import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
@@ -33,7 +34,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -128,26 +129,26 @@ export const identityJwtAuthServiceFactory = ({
       let tokenData: Record<string, string | boolean | number> = {};
 
       if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-        // Validate the jwksUrl AND build a pinned agent in one step. JwksClient
-        // performs its own HTTP under the hood, so we hand it our pinned agent
-        // to defeat DNS rebinding on the JWKS fetch (TOCTOU window between a
-        // pre-validation and the actual connection).
-        let decryptedJwksCaCert: string | undefined;
+        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+
+        let client: JwksClient;
         if (identityJwtAuth.jwksUrl.includes("https:")) {
-          decryptedJwksCaCert = orgDataKeyDecryptor({
+          const decryptedJwksCaCert = orgDataKeyDecryptor({
             cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
           }).toString();
+
+          const requestAgent = decryptedJwksCaCert
+            ? new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: true })
+            : undefined;
+          client = new JwksClient({
+            jwksUri: identityJwtAuth.jwksUrl,
+            requestAgent
+          });
+        } else {
+          client = new JwksClient({
+            jwksUri: identityJwtAuth.jwksUrl
+          });
         }
-
-        const jwksRequestAgent = await buildSsrfSafeAgent(identityJwtAuth.jwksUrl, {
-          ca: decryptedJwksCaCert || undefined,
-          rejectUnauthorized: true
-        });
-
-        const client = new JwksClient({
-          jwksUri: identityJwtAuth.jwksUrl,
-          requestAgent: jwksRequestAgent
-        });
 
         const { kid } = decodedToken.header as { kid: string };
         const jwtSigningKey = await client.getSigningKey(kid);

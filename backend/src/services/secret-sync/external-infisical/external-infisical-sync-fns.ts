@@ -1,7 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { safeRequest } from "@app/lib/validator";
+import { request } from "@app/lib/config/request";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getExternalInfisicalAccessToken } from "@app/services/app-connection/external-infisical";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -45,6 +46,7 @@ const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredential
   const { credentials } = secretSync.connection;
   const accessToken = await getExternalInfisicalAccessToken(credentials);
   const baseUrl = credentials.instanceUrl.replace(/\/$/, "");
+  await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
   return { accessToken, baseUrl };
 };
 
@@ -54,7 +56,7 @@ const fetchRemoteSecrets = async (
 ): Promise<TRemoteSecret[]> => {
   const { destinationConfig } = secretSync;
 
-  const { data } = await safeRequest.get<{ secrets: TRemoteSecret[] }>(`${baseUrl}/api/v3/secrets/raw`, {
+  const { data } = await request.get<{ secrets: TRemoteSecret[] }>(`${baseUrl}/api/v3/secrets/raw`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     params: {
       workspaceId: destinationConfig.projectId,
@@ -75,7 +77,7 @@ const batchCreateSecrets = async (
 
   const { destinationConfig } = secretSync;
 
-  await safeRequest.post(
+  await request.post(
     `${baseUrl}/api/v3/secrets/batch/raw`,
     {
       workspaceId: destinationConfig.projectId,
@@ -102,7 +104,7 @@ const batchUpdateSecrets = async (
 
   const { destinationConfig } = secretSync;
 
-  await safeRequest.patch(
+  await request.patch(
     `${baseUrl}/api/v3/secrets/batch/raw`,
     {
       workspaceId: destinationConfig.projectId,
@@ -129,7 +131,7 @@ const batchDeleteSecrets = async (
 
   const { destinationConfig } = secretSync;
 
-  await safeRequest.delete(`${baseUrl}/api/v3/secrets/batch/raw`, {
+  await request.delete(`${baseUrl}/api/v3/secrets/batch/raw`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     data: {
       workspaceId: destinationConfig.projectId,

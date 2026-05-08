@@ -108,7 +108,13 @@ export enum PostHogEventTypes {
   PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
-  ResourceAuthMethodUpdated = "Resource Auth Method Updated"
+  ResourceAuthMethodUpdated = "Resource Auth Method Updated",
+
+  HoneyTokenCreated = "Honey Token Created",
+  HoneyTokenUpdated = "Honey Token Updated",
+  HoneyTokenRevoked = "Honey Token Revoked",
+  HoneyTokenReset = "Honey Token Reset",
+  HoneyTokenTriggered = "Honey Token Triggered"
 }
 
 export type TSecretModifiedEvent = {
@@ -836,6 +842,53 @@ export type TResourceAuthMethodEvent = {
   };
 };
 
+export type THoneyTokenCreatedEvent = {
+  event: PostHogEventTypes.HoneyTokenCreated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type THoneyTokenUpdatedEvent = {
+  event: PostHogEventTypes.HoneyTokenUpdated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenRevokedEvent = {
+  event: PostHogEventTypes.HoneyTokenRevoked;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenResetEvent = {
+  event: PostHogEventTypes.HoneyTokenReset;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenTriggeredEvent = {
+  event: PostHogEventTypes.HoneyTokenTriggered;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -907,4 +960,9 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TPamRotationRuleCreatedEvent
   | TPamRotationRuleDeletedEvent
   | TResourceAuthMethodEvent
+  | THoneyTokenCreatedEvent
+  | THoneyTokenUpdatedEvent
+  | THoneyTokenRevokedEvent
+  | THoneyTokenResetEvent
+  | THoneyTokenTriggeredEvent
 );

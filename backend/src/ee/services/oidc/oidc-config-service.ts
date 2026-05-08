@@ -23,7 +23,6 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
-  safeRequest,
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
@@ -707,19 +706,8 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      // Fetch discovery doc via safeRequest so the discovery leg is itself
-      // SSRF-validated and DNS-pinned. We then construct the Issuer manually
-      // instead of letting openid-client do its own (unpinned) HTTP via
-      // `Issuer.discover()`.
-      const { data: meta } = await safeRequest.get<{
-        issuer: string;
-        authorization_endpoint?: string;
-        token_endpoint?: string;
-        userinfo_endpoint?: string;
-        jwks_uri?: string;
-        code_challenge_methods_supported?: string[];
-      }>(oidcCfg.discoveryURL);
-      issuer = new OpenIdIssuer(meta);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
+      issuer = await Issuer.discover(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -732,6 +720,9 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,

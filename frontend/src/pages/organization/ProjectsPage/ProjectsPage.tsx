@@ -1,9 +1,13 @@
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Outlet, useMatches } from "@tanstack/react-router";
 
+import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
+import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
 import { PageHeader } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 
 import { ProjectCategoryOverview } from "./components/ProjectCategoryOverview";
 
@@ -16,6 +20,23 @@ export const ProjectsPage = () => {
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects";
   const lastMatch = matches[matches.length - 1];
   const hasChildRoute = lastMatch && lastMatch.routeId !== projectsRouteId;
+
+  const { data: announcementData } = useGetRecentAnnouncements();
+  const announcements = announcementData?.announcements;
+  const latestAnnouncement = announcements?.[0];
+  const { hasUnseen, markSeen } = useAnnouncementSeen();
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+
+  const shouldAutoOpen = Boolean(latestAnnouncement && hasUnseen(latestAnnouncement.id));
+
+  useEffect(() => {
+    if (shouldAutoOpen) setIsAnnouncementOpen(true);
+  }, [shouldAutoOpen]);
+
+  const handleAnnouncementOpenChange = (open: boolean) => {
+    setIsAnnouncementOpen(open);
+    if (!open && latestAnnouncement) markSeen(latestAnnouncement.id);
+  };
 
   if (hasChildRoute) {
     return <Outlet />;
@@ -33,6 +54,13 @@ export const ProjectsPage = () => {
         description="Your team's complete security toolkit — organized and ready when you need them."
       />
       <ProjectCategoryOverview />
+      {announcements && announcements.length > 0 && (
+        <AnnouncementModal
+          announcements={announcements}
+          isOpen={isAnnouncementOpen}
+          onOpenChange={handleAnnouncementOpenChange}
+        />
+      )}
     </div>
   );
 };

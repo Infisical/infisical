@@ -35,6 +35,7 @@ import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy } from "@app/lib/fn";
@@ -1187,7 +1188,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId);
+    const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
       environment,
       path,

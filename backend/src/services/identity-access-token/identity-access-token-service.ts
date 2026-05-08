@@ -68,7 +68,7 @@ type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityAccessTokenRevocationDAL: TIdentityAccessTokenRevocationDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod" | "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy" | "setItemWithExpiry">;
 };
 
@@ -217,7 +217,13 @@ export const identityAccessTokenServiceFactory = ({
     if (!row || row.isAccessTokenRevoked) {
       throw new UnauthorizedError({ message: "Cannot renew revoked or unknown access token" });
     }
-    const fallbackOrgId = decoded.orgId ?? row.identityOrgId ?? "";
+
+    const scopeOrgId = row.subOrganizationId || row.identityOrgId;
+    const identityOrgDetails = await orgDAL.findOne({ id: scopeOrgId });
+    const isSubOrg = Boolean(identityOrgDetails.rootOrgId);
+    const rootOrgId = isSubOrg ? identityOrgDetails.rootOrgId || identityOrgDetails.id : identityOrgDetails.id;
+    const parentOrgId = identityOrgDetails.parentOrgId || rootOrgId;
+
     return {
       authMethod: row.authMethod as IdentityAuthMethod,
       accessTokenTTL: row.accessTokenTTL,
@@ -227,9 +233,9 @@ export const identityAccessTokenServiceFactory = ({
       // legacy lifetime carries over without a free renewal-time extension.
       creationEpoch: Math.floor(row.createdAt.getTime() / 1000),
       identityName: row.identityName ?? decoded.identityName ?? "",
-      orgId: fallbackOrgId,
-      rootOrgId: decoded.rootOrgId ?? fallbackOrgId,
-      parentOrgId: decoded.parentOrgId ?? fallbackOrgId,
+      orgId: decoded?.orgId || scopeOrgId,
+      rootOrgId: decoded.rootOrgId ?? rootOrgId,
+      parentOrgId: decoded.parentOrgId ?? parentOrgId,
       clientSecretId: decoded.clientSecretId ?? "",
       numUsesLimit: row.accessTokenNumUsesLimit,
       identityAuth: decoded.identityAuth

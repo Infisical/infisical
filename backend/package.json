@@ -22,6 +22,7 @@
     "test:e2e-watch": "vitest -c vitest.e2e.config.mts --bail=1",
     "test:e2e-coverage": "vitest run --coverage -c vitest.e2e.config.mts",
     "test:bdd": "cd bdd && uv run behave",
+    "bake:announcements": "tsx ./scripts/bake-announcements.ts",
     "generate:component": "tsx ./scripts/create-backend-file.ts",
     "generate:schema": "tsx ./scripts/generate-schema-types.ts && eslint --fix --ext ts ./src/db/schemas",
     "auditlog-migration:latest": "node ./dist/db/rename-migrations-to-mjs.mjs && knex --knexfile ./dist/db/auditlog-knexfile.mjs --client pg migrate:latest",

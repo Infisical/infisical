@@ -32,11 +32,13 @@ vi.mock("@app/lib/logger", () => ({
 const createService = ({
   trustedIps = [],
   membership = { isActive: true },
+  org = { id: "org-id" },
   activeRevocations = [],
   tokenRow = null
 }: {
   trustedIps?: TIp[] | null;
   membership?: { isActive: boolean } | null;
+  org?: { id: string; rootOrgId?: string; parentOrgId?: string };
   activeRevocations?: Array<{ id: string; identityId: string; revokedAt?: Date | null; createdAt: Date }>;
   tokenRow?: Record<string, unknown> | null;
 } = {}) => {
@@ -54,7 +56,8 @@ const createService = ({
     findById: vi.fn()
   };
   const orgDAL = {
-    findEffectiveOrgMembership: vi.fn().mockResolvedValue(membership)
+    findEffectiveOrgMembership: vi.fn().mockResolvedValue(membership),
+    findOne: vi.fn().mockResolvedValue(org)
   };
   const identityAccessTokenDAL = { findOne: vi.fn().mockResolvedValue(tokenRow) };
 

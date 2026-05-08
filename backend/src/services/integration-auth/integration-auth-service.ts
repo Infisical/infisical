@@ -20,7 +20,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/er
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -1675,7 +1675,7 @@ export const integrationAuthServiceFactory = ({
     if (appId) {
       const {
         data: { buildType }
-      } = await safeRequest.get<{ buildType: TTeamCityBuildConfig[] }>(`${integrationAuth.url}/app/rest/buildTypes`, {
+      } = await request.get<{ buildType: TTeamCityBuildConfig[] }>(`${integrationAuth.url}/app/rest/buildTypes`, {
         params: {
           locator: `project:${appId}`
         },
@@ -2021,7 +2021,7 @@ export const integrationAuthServiceFactory = ({
     }
 
     // SDK doesn't support variable set...
-    const { data: variableSet } = await safeRequest.get<TOctopusDeployVariableSet>(url, {
+    const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
       headers: {
         "X-NuGet-ApiKey": accessToken,
         Accept: "application/json"

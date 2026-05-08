@@ -1,8 +1,8 @@
 import { AxiosError } from "axios";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator";
 import { getCircleCIApiUrl } from "@app/services/app-connection/circleci";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -34,7 +34,7 @@ const getProjectSlug = async (
 
   // First attempt: Try to get project details using the project ID
   try {
-    const { data: projectDetails } = await safeRequest.get<{ slug: string }>(`${apiUrl}/v2/project/${projectId}`, {
+    const { data: projectDetails } = await request.get<{ slug: string }>(`${apiUrl}/v2/project/${projectId}`, {
       headers
     });
     return projectDetails.slug;
@@ -49,7 +49,7 @@ const getProjectSlug = async (
 
   // Fallback: Construct slug from org + project name
   try {
-    const { data: collaborations } = await safeRequest.get<{ slug: string; name: string }[]>(
+    const { data: collaborations } = await request.get<{ slug: string; name: string }[]>(
       `${apiUrl}/v2/me/collaborations`,
       { headers }
     );
@@ -88,7 +88,7 @@ const listEnvVars = async (
     const url = `${apiUrl}/v2/project/${projectSlug}/envvar${nextPageToken ? `?page-token=${nextPageToken}` : ""}`;
 
     // eslint-disable-next-line no-await-in-loop
-    const response = await safeRequest.get<TCircleCIEnvVarListResponse>(url, {
+    const response = await request.get<TCircleCIEnvVarListResponse>(url, {
       headers: {
         "Circle-Token": apiToken,
         "Accept-Encoding": "application/json"
@@ -111,7 +111,7 @@ const createOrUpdateEnvVar = async (
 ) => {
   const url = `${apiUrl}/v2/project/${projectId}/envvar`;
 
-  await safeRequest.post(
+  await request.post(
     url,
     { name, value },
     {
@@ -123,7 +123,7 @@ const createOrUpdateEnvVar = async (
 const deleteEnvVar = async (projectId: string, apiToken: string, name: string, apiUrl: string) => {
   const url = `${apiUrl}/v2/project/${projectId}/envvar/${encodeURIComponent(name)}`;
 
-  await safeRequest.delete(url, {
+  await request.delete(url, {
     headers: getHeaders(apiToken)
   });
 };

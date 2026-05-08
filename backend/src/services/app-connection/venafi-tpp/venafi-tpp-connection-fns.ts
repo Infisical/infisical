@@ -9,13 +9,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { VenafiTppConnectionMethod } from "./venafi-tpp-connection-enums";
 import { TVenafiTppConnectionConfig } from "./venafi-tpp-connection-types";
-
-export type TVenafiTppGatewayRequestConfig = AxiosRequestConfig & { url: string };
 
 type TVenafiTppCredentials = {
   tppUrl: string;
@@ -48,15 +46,15 @@ const normalizeTppUrl = (tppUrl: string): string => {
 export const requestWithVenafiTppGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: TVenafiTppGatewayRequestConfig
+  requestConfig: AxiosRequestConfig
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
-  const url = new URL(requestConfig.url);
+  const url = new URL(requestConfig.url as string);
+  await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
 
-  // Non-gateway path: use safeRequest to validate and pin the connection.
   if (!gatewayId) {
-    return safeRequest.request<T>(requestConfig);
+    return request.request(requestConfig);
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });

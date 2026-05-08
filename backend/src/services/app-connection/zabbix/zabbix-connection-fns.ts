@@ -1,8 +1,9 @@
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ZabbixConnectionMethod } from "./zabbix-connection-enums";
@@ -25,6 +26,7 @@ export const getZabbixConnectionListItem = () => {
 
 export const validateZabbixConnectionCredentials = async (config: TZabbixConnectionConfig) => {
   const { apiToken, instanceUrl } = config.credentials;
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
 
   try {
     const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
@@ -38,16 +40,12 @@ export const validateZabbixConnectionCredentials = async (config: TZabbixConnect
       id: 1
     };
 
-    const response: { data: { error?: { message: string }; result?: string } } = await safeRequest.post(
-      apiUrl,
-      payload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiToken}`
-        }
+    const response: { data: { error?: { message: string }; result?: string } } = await request.post(apiUrl, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`
       }
-    );
+    });
 
     if (response.data.error) {
       throw new BadRequestError({
@@ -68,6 +66,7 @@ export const validateZabbixConnectionCredentials = async (config: TZabbixConnect
 
 export const listZabbixHosts = async (appConnection: TZabbixConnection): Promise<TZabbixHost[]> => {
   const { apiToken, instanceUrl } = appConnection.credentials;
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
 
   try {
     const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
@@ -83,7 +82,7 @@ export const listZabbixHosts = async (appConnection: TZabbixConnection): Promise
       id: 1
     };
 
-    const response: { data: TZabbixHostListResponse } = await safeRequest.post(apiUrl, payload, {
+    const response: { data: TZabbixHostListResponse } = await request.post(apiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`

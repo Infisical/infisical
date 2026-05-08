@@ -26,6 +26,7 @@ import {
   Input
 } from "@app/components/v3";
 import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
+import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
@@ -35,6 +36,7 @@ import {
   useTestHoneyTokenConnection,
   useUpsertHoneyTokenConfig
 } from "@app/hooks/api/honeyToken";
+import { slugSchema } from "@app/lib/schemas";
 
 const CF_TEMPLATE_URL =
   "https://infisical-static-assets.s3.us-east-1.amazonaws.com/honey-tokens/honey-tokens-v1.yaml";
@@ -43,11 +45,22 @@ const DEFAULT_STACK_NAME = "infisical-honey-tokens";
 const DEFAULT_AWS_REGION = "us-east-1";
 const WEBHOOK_SIGNING_KEY_BYTES = 32;
 
+const validAwsRegionSlugs = new Set(AWS_REGIONS.map((r) => r.slug));
+
+const isValidAwsRegion = (region: string) => validAwsRegionSlugs.has(region);
+
 const schema = z.object({
   connectionId: z.string().min(1, "AWS Connection is required"),
-  webhookSigningKey: z.string().min(1, "Webhook Signing Key is required"),
-  stackName: z.string().trim().min(1, "Stack name is required").max(128),
-  awsRegion: z.string().trim().min(1, "AWS region is required")
+  webhookSigningKey: z
+    .string()
+    .min(1, "Webhook Signing Key is required")
+    .regex(/^[a-fA-F0-9]+$/, "Signing key must be a hex string"),
+  stackName: slugSchema({ max: 128, field: "stackName" }),
+  awsRegion: z
+    .string()
+    .trim()
+    .min(1, "AWS region is required")
+    .refine(isValidAwsRegion, "Invalid AWS region")
 });
 
 type FormData = z.infer<typeof schema>;
@@ -131,13 +144,13 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     () =>
       [
         "aws cloudformation create-stack \\",
-        `  --region ${awsRegion || DEFAULT_AWS_REGION} \\`,
-        `  --stack-name ${stackName || DEFAULT_STACK_NAME} \\`,
-        `  --template-url ${CF_TEMPLATE_URL} \\`,
+        `  --region '${awsRegion || DEFAULT_AWS_REGION}' \\`,
+        `  --stack-name '${stackName || DEFAULT_STACK_NAME}' \\`,
+        `  --template-url '${CF_TEMPLATE_URL}' \\`,
         "  --capabilities CAPABILITY_NAMED_IAM \\",
         "  --parameters \\",
-        `    ParameterKey=WebhookUrl,ParameterValue=${webhookUrl} \\`,
-        `    ParameterKey=WebhookSigningKey,ParameterValue=${webhookSigningKey}`
+        `    ParameterKey=WebhookUrl,ParameterValue='${webhookUrl}' \\`,
+        `    ParameterKey=WebhookSigningKey,ParameterValue='${webhookSigningKey}'`
       ].join("\n"),
     [awsRegion, stackName, webhookSigningKey, webhookUrl]
   );

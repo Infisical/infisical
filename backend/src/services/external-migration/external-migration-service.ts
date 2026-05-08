@@ -100,7 +100,7 @@ export const externalMigrationServiceFactory = ({
     let gatewayDetails: TGatewayDetails | undefined;
 
     if (connection.gatewayId) {
-      const instanceUrl = getHCVaultInstanceUrl(connection);
+      const instanceUrl = await getHCVaultInstanceUrl(connection);
       const url = new URL(instanceUrl);
 
       const [targetHost] = await verifyHostInputValidity({

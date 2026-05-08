@@ -10,11 +10,18 @@ import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/componen
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
+import {
+  PamDomainType,
+  TPamDomainRelatedResource,
+  useGetPamDomainById
+} from "@app/hooks/api/pamDomain";
 
 import { PamAwsIamAccessSection } from "./PamAwsIamAccessSection";
 
 type Props = {
   account?: TPamAccount;
+  // Required for domain accounts; local accounts fall back to account.resource.
+  resource?: TPamDomainRelatedResource;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
@@ -25,6 +32,7 @@ export const PamAccessAccountModal = ({
   isOpen,
   onOpenChange,
   account,
+  resource: selectedResource,
   projectId,
   reason
 }: Props) => {
@@ -76,13 +84,29 @@ export const PamAccessAccountModal = ({
     return duration;
   }, [duration]);
 
-  const command = useMemo(() => {
-    if (!account?.resource) return "";
-    const { resource } = account;
-    const base = (verb: string) =>
-      `infisical pam ${verb} access --resource ${resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+  const targetResource = selectedResource ?? account?.resource;
 
-    switch (resource.resourceType) {
+  // Domain accounts need the AD FQDN to disambiguate from a like-named local
+  // account on the same resource. The list-accounts payload only carries the
+  // domain slug; fetch the full domain row to read connectionDetails.domain.
+  const { data: domain } = useGetPamDomainById(
+    account?.domain?.domainType ?? PamDomainType.ActiveDirectory,
+    account?.domainId || undefined,
+    { enabled: !!account?.domainId }
+  );
+
+  const command = useMemo(() => {
+    if (!account || !targetResource) return "";
+    // For AD-domain accounts the wire identity is `<fqdn>:<slug>` so the
+    // backend routes to the domain bucket; local accounts pass just `<slug>`.
+    const accountArg =
+      account.domainId && domain?.connectionDetails.domain
+        ? `${domain.connectionDetails.domain}:${account.name}`
+        : account.name;
+    const base = (verb: string) =>
+      `infisical pam ${verb} access --resource ${targetResource.name} --account ${accountArg} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+
+    switch (targetResource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
       case PamResourceType.MsSQL:
@@ -99,16 +123,16 @@ export const PamAccessAccountModal = ({
       default:
         return "";
     }
-  }, [account, projectId, cliDuration, siteURL]);
+  }, [account, targetResource, domain, projectId, cliDuration, siteURL]);
 
   if (!account) return null;
 
-  const isAwsIam = account.resource?.resourceType === PamResourceType.AwsIam;
+  const isAwsIam = targetResource?.resourceType === PamResourceType.AwsIam;
 
   const showWebAccess =
-    account.resource?.resourceType === PamResourceType.Postgres ||
-    account.resource?.resourceType === PamResourceType.SSH ||
-    account.resource?.resourceType === PamResourceType.Redis;
+    targetResource?.resourceType === PamResourceType.Postgres ||
+    targetResource?.resourceType === PamResourceType.SSH ||
+    targetResource?.resourceType === PamResourceType.Redis;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -192,8 +216,8 @@ export const PamAccessAccountModal = ({
                       params={{
                         orgId: currentOrg.id,
                         projectId,
-                        resourceType: account.resource?.resourceType ?? "",
-                        resourceId: account.resource?.id ?? "",
+                        resourceType: targetResource?.resourceType ?? "",
+                        resourceId: targetResource?.id ?? "",
                         accountId: account.id
                       }}
                       target="_blank"

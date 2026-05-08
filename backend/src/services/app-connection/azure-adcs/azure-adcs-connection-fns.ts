@@ -4,7 +4,7 @@ import https from "https";
 import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -104,25 +104,18 @@ const normalizeAdcsUrl = (url: string): string => {
   return normalizedUrl;
 };
 
-// NTLM request wrapper. We use `buildSsrfSafeAgent` to validate the target URL
-// AND pin DNS for the lifetime of the agent, while keeping the ADCS-specific
-// agent options (keepAlive for NTLM's multi-step handshake, custom CA, and a
-// no-op `checkServerIdentity` because Microsoft web-enrollment frequently
-// presents certs whose subject does not match the connection hostname).
-const createHttpsAgent = async (
-  url: string,
-  sslRejectUnauthorized: boolean,
-  sslCertificate?: string
-): Promise<https.Agent> => {
-  const agent = await buildSsrfSafeAgent(url, {
+// NTLM request wrapper
+const createHttpsAgent = (sslRejectUnauthorized: boolean, sslCertificate?: string): https.Agent => {
+  const agentOptions: https.AgentOptions = {
     rejectUnauthorized: sslRejectUnauthorized,
-    keepAlive: true,
-    ca: sslCertificate ? sslCertificate.trim() : undefined,
+    keepAlive: true, // axios-ntlm needs keepAlive for NTLM handshake
+    ca: sslCertificate ? [sslCertificate.trim()] : undefined,
+    // Disable hostname verification as Microsoft servers by default use local IPs for certificates
+    // which may not match the hostname used to connect
     checkServerIdentity: () => undefined
-  });
-  // For HTTPS URLs (the only case ADCS supports — see normalizeAdcsUrl),
-  // buildSsrfSafeAgent always returns an https.Agent.
-  return agent as https.Agent;
+  };
+
+  return new https.Agent(agentOptions);
 };
 
 const axiosNtlmRequest = async (config: AxiosNtlmConfig): Promise<AxiosNtlmResponse> => {
@@ -186,10 +179,8 @@ const testAdcsConnection = async (
 
       const shouldRejectUnauthorized = sslRejectUnauthorized;
 
-      // eslint-disable-next-line no-await-in-loop
-      const httpsAgent = await createHttpsAgent(testUrl, shouldRejectUnauthorized, sslCertificate);
+      const httpsAgent = createHttpsAgent(shouldRejectUnauthorized, sslCertificate);
 
-      // eslint-disable-next-line no-await-in-loop
       const response = await axiosNtlmRequest({
         url: testUrl,
         method: "GET",
@@ -301,12 +292,11 @@ const createNtlmClient = (
   return {
     get: async (endpoint: string, additionalHeaders: Record<string, string> = {}) => {
       const shouldRejectUnauthorized = sslRejectUnauthorized;
-      const url = `${normalizedUrl}${endpoint}`;
 
-      const httpsAgent = await createHttpsAgent(url, shouldRejectUnauthorized, sslCertificate);
+      const httpsAgent = createHttpsAgent(shouldRejectUnauthorized, sslCertificate);
 
       return axiosNtlmRequest({
-        url,
+        url: `${normalizedUrl}${endpoint}`,
         method: "GET",
         httpsAgent,
         headers: additionalHeaders,
@@ -319,12 +309,11 @@ const createNtlmClient = (
     },
     post: async (endpoint: string, body: string, additionalHeaders: Record<string, string> = {}) => {
       const shouldRejectUnauthorized = sslRejectUnauthorized;
-      const url = `${normalizedUrl}${endpoint}`;
 
-      const httpsAgent = await createHttpsAgent(url, shouldRejectUnauthorized, sslCertificate);
+      const httpsAgent = createHttpsAgent(shouldRejectUnauthorized, sslCertificate);
 
       return axiosNtlmRequest({
-        url,
+        url: `${normalizedUrl}${endpoint}`,
         method: "POST",
         httpsAgent,
         data: body,

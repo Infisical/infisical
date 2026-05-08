@@ -3,9 +3,10 @@ import crypto from "node:crypto";
 import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
@@ -153,7 +154,7 @@ const triggerPkiWebhook = async (params: {
     headers["x-infisical-signature"] = `t=${timestamp},v1=${signature}`;
   }
 
-  await safeRequest.post(url, payload, {
+  await request.post(url, payload, {
     headers,
     timeout: PKI_WEBHOOK_TIMEOUT,
     signal: AbortSignal.timeout(PKI_WEBHOOK_TIMEOUT)
@@ -213,6 +214,8 @@ export const sendWebhookNotification = async (
   eventType: PkiWebhookEventType,
   channelId: string
 ): Promise<TChannelResult> => {
+  await blockLocalAndPrivateIpAddresses(config.url);
+
   const appCfg = getConfig();
   const payload = buildWebhookPayload({
     alert: alertData,
