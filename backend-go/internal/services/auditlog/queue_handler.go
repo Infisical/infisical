@@ -37,8 +37,8 @@ func normalizeJSONPayload(payload any) any {
 	}
 }
 
-type projectDAL interface {
-	FindByID(ctx context.Context, projectID string) (*project.Project, error)
+type projectService interface {
+	GetByID(ctx context.Context, projectID string) (*project.Project, error)
 }
 
 type licenseService interface {
@@ -48,7 +48,7 @@ type licenseService interface {
 // QueueHandlerDeps holds dependencies for the audit log queue handler.
 type QueueHandlerDeps struct {
 	DAL        *DAL
-	ProjectDAL projectDAL
+	Project    projectService
 	License    licenseService
 	Config     *config.Config
 	KeyStore   keystore.KeyStore
@@ -56,23 +56,23 @@ type QueueHandlerDeps struct {
 
 // QueueHandler processes audit log tasks from the queue.
 type QueueHandler struct {
-	logger     *slog.Logger
-	dal        *DAL
-	projectDAL projectDAL
-	license    licenseService
-	config     *config.Config
-	keyStore   keystore.KeyStore
+	logger   *slog.Logger
+	dal      *DAL
+	project  projectService
+	license  licenseService
+	config   *config.Config
+	keyStore keystore.KeyStore
 }
 
 // NewQueueHandler creates a new audit log queue handler.
 func NewQueueHandler(logger *slog.Logger, deps QueueHandlerDeps) *QueueHandler {
 	return &QueueHandler{
-		logger:     logger.With(slog.String("queue_handler", "auditlog")),
-		dal:        deps.DAL,
-		projectDAL: deps.ProjectDAL,
-		license:    deps.License,
-		config:     deps.Config,
-		keyStore:   deps.KeyStore,
+		logger:   logger.With(slog.String("queue_handler", "auditlog")),
+		dal:      deps.DAL,
+		project:  deps.Project,
+		license:  deps.License,
+		config:   deps.Config,
+		keyStore: deps.KeyStore,
 	}
 }
 
@@ -94,7 +94,7 @@ func (h *QueueHandler) HandleAuditLog(ctx context.Context, dto *CreateAuditLogDT
 
 	if orgID == nil && dto.ProjectID != nil {
 		var err error
-		proj, err = h.projectDAL.FindByID(ctx, *dto.ProjectID)
+		proj, err = h.project.GetByID(ctx, *dto.ProjectID)
 		if err != nil {
 			h.logger.ErrorContext(ctx, "failed to find project for audit log",
 				slog.String("projectId", *dto.ProjectID),

@@ -11,15 +11,15 @@ import (
 )
 
 func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]byte, error) {
-	project, err := s.dal.FindProjectKmsInfo(ctx, projectID)
+	project, err := s.findProjectKmsInfo(ctx, projectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find project KMS info").WithErrf("getProjectDataKey(projectId=%s): %w", projectID, err)
 	}
 
 	// Ensure project has a KMS key (lazy create if missing).
-	kmsKeyID := project.KmsSecretManagerKeyId
+	kmsKeyID := project.KmsSecretManagerKeyID
 	if !kmsKeyID.Valid {
-		createdKmsKeyID, kmsErr := s.dal.FindOrCreateProjectKmsKey(ctx, projectID, func() ([]byte, error) {
+		createdKmsKeyID, kmsErr := s.findOrCreateProjectKmsKey(ctx, projectID, func() ([]byte, error) {
 			return s.generateEncryptedKeyMaterial()
 		})
 		if kmsErr != nil {
@@ -30,7 +30,7 @@ func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]by
 	}
 
 	// Ensure project has a data key (lazy create if missing).
-	if project.KmsSecretManagerEncryptedDataKey == nil {
+	if len(project.KmsSecretManagerEncryptedDataKey) == 0 {
 		dataKey, dataErr := s.generateProjectDataKey(ctx, projectID, kmsKeyID.V)
 		if dataErr != nil {
 			return nil, errutil.DatabaseErr("Failed to ensure project data key").WithErrf("getProjectDataKey(projectId=%s): %w", projectID, dataErr)
@@ -43,7 +43,7 @@ func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]by
 	if err != nil {
 		return nil, err
 	}
-	return decryptWithVersion(*project.KmsSecretManagerEncryptedDataKey, kmsKey)
+	return decryptWithVersion(project.KmsSecretManagerEncryptedDataKey, kmsKey)
 }
 
 // generateProjectDataKey creates the project's encrypted data key if it doesn't exist.
@@ -57,7 +57,7 @@ func (s *Service) generateProjectDataKey(ctx context.Context, projectID string, 
 		return nil, err
 	}
 
-	encryptedDataKey, err := s.dal.FindOrCreateProjectDataKey(ctx, projectID, func() ([]byte, error) {
+	encryptedDataKey, err := s.findOrCreateProjectDataKey(ctx, projectID, func() ([]byte, error) {
 		plainDataKey := make([]byte, 32)
 		if _, err := rand.Read(plainDataKey); err != nil {
 			return nil, fmt.Errorf("generating data key: %w", err)

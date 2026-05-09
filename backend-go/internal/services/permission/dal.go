@@ -6,23 +6,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/database/pg"
-	"github.com/infisical/api/internal/database/pg/gen/table"
+	"github.com/infisical/api/internal/database/pg/qb"
+	"github.com/infisical/api/internal/database/pg/sqln"
+	"github.com/infisical/api/internal/libs/fn"
 )
-
-// DAL provides data access for permission queries.
-type DAL struct {
-	db pg.DB
-}
-
-// NewDAL creates a new permission DAL.
-func NewDAL(db pg.DB) *DAL {
-	return &DAL{db: db}
-}
 
 // --- Types ---
 
@@ -34,62 +25,56 @@ const (
 	AccessScopeProject      AccessScope = "project"
 )
 
-// GetPermissionParams holds the input for the main permission query.
-type GetPermissionParams struct {
+// getPermissionParams holds the input for the main permission query.
+type getPermissionParams struct {
 	Scope     AccessScope
 	OrgID     uuid.UUID
-	ProjectID string // text in DB, empty for org scope
+	ProjectID string
 	ActorID   uuid.UUID
 	ActorType ActorType
 }
 
 // RoleInfo represents a single role assignment from the permission query.
-// Uses go-jet automatic nesting via sql:"primary_key" tag.
 type RoleInfo struct {
-	ID                     uuid.UUID      `sql:"primary_key" alias:"membership_roles.id"`
-	Role                   string         `alias:"membership_roles.role"`
-	IsTemporary            sql.Null[bool] `alias:"membership_roles.is_temporary"`
-	TemporaryAccessEndTime sql.NullTime   `alias:"membership_roles.temporary_access_end_time"`
-	// Custom role fields from LEFT JOIN roles table
-	CustomRoleSlug sql.NullString `alias:"roles.slug"`
-	Permissions    sql.NullString `alias:"roles.permissions"`
+	ID                     uuid.UUID
+	Role                   string
+	IsTemporary            sql.Null[bool]
+	TemporaryAccessEndTime sql.Null[time.Time]
+	CustomRoleSlug         sql.Null[string]
+	Permissions            sql.Null[string]
 }
 
 // AdditionalPrivilegeInfo represents an additional privilege from the permission query.
-// Uses go-jet automatic nesting via sql:"primary_key" tag.
 type AdditionalPrivilegeInfo struct {
-	ID                     uuid.UUID      `sql:"primary_key" alias:"additional_privileges.id"`
-	Permissions            sql.NullString `alias:"additional_privileges.permissions"`
-	IsTemporary            sql.Null[bool] `alias:"additional_privileges.is_temporary"`
-	TemporaryAccessEndTime sql.NullTime   `alias:"additional_privileges.temporary_access_end_time"`
+	ID                     uuid.UUID
+	Permissions            sql.Null[string]
+	IsTemporary            sql.Null[bool]
+	TemporaryAccessEndTime sql.Null[time.Time]
 }
 
 // MetadataInfo represents identity metadata key-value pair.
-// Uses go-jet automatic nesting via sql:"primary_key" tag.
 type MetadataInfo struct {
-	ID    uuid.UUID `sql:"primary_key" alias:"identity_metadata.id"`
-	Key   string    `alias:"identity_metadata.key"`
-	Value string    `alias:"identity_metadata.value"`
+	ID    uuid.UUID
+	Key   string
+	Value string
 }
 
-// PermissionData is the nested result of the permission query.
-// Go-jet automatically nests Roles, AdditionalPrivileges, and Metadata
-// based on sql:"primary_key" tags in child structs.
-type PermissionData struct {
-	ID                          uuid.UUID                 `sql:"primary_key" alias:"memberships.id"`
-	ScopeOrgID                  uuid.UUID                 `alias:"memberships.scope_org_id"`
-	OrgAuthEnforced             sql.Null[bool]            `alias:"organizations.auth_enforced"`
-	OrgGoogleSsoAuthEnforced    bool                      `alias:"organizations.google_sso_auth_enforced"`
-	BypassOrgAuthEnabled        bool                      `alias:"organizations.bypass_org_auth_enabled"`
-	ShouldUseNewPrivilegeSystem bool                      `alias:"organizations.should_use_new_privilege_system"`
-	RootOrgID                   sql.Null[uuid.UUID]       `alias:"organizations.root_org_id"`
-	Roles                       []RoleInfo                `alias:"membership_roles"`
-	AdditionalPrivileges        []AdditionalPrivilegeInfo `alias:"additional_privileges"`
-	Metadata                    []MetadataInfo            `alias:"identity_metadata"`
+// permissionData is the nested result of the permission query.
+type permissionData struct {
+	ID                          uuid.UUID
+	ScopeOrgID                  uuid.UUID
+	OrgAuthEnforced             sql.Null[bool]
+	OrgGoogleSsoAuthEnforced    bool
+	BypassOrgAuthEnabled        bool
+	ShouldUseNewPrivilegeSystem bool
+	RootOrgID                   sql.Null[uuid.UUID]
+	Roles                       []RoleInfo
+	AdditionalPrivileges        []AdditionalPrivilegeInfo
+	Metadata                    []MetadataInfo
 }
 
-// ProjectDetail holds project info needed by the permission service.
-type ProjectDetail struct {
+// projectDetail holds project info needed by the permission service.
+type projectDetail struct {
 	ID                                          string
 	Name                                        string
 	Slug                                        string
@@ -98,220 +83,314 @@ type ProjectDetail struct {
 	EnforceEncryptedSecretManagerSecretMetadata bool
 }
 
-// ServiceTokenDetail holds service token info needed by the permission service.
-type ServiceTokenDetail struct {
+// serviceTokenDetail holds service token info needed by the permission service.
+type serviceTokenDetail struct {
 	ID          string
 	ProjectID   string
 	ExpiresAt   *time.Time
-	Scopes      string   // JSON string of [{environment, secretPath}]
-	Permissions []string // e.g. ["read", "write"]
+	Scopes      string
+	Permissions []string
 }
 
-// GetPermission executes the main permission join query.
-// Uses go-jet automatic nesting to populate Roles, AdditionalPrivileges, and Metadata arrays.
-// Port of permission-dal.ts:173-366.
-func (d *DAL) GetPermission(ctx context.Context, params *GetPermissionParams) ([]PermissionData, error) {
-	memberships := table.Memberships
-	membershipRoles := table.MembershipRoles
-	organizations := table.Organizations
-	roles := table.Roles
-	additionalPrivileges := table.AdditionalPrivileges
-	identityMetadata := table.IdentityMetadata
-	groups := table.Groups
-	userGroupMembership := table.UserGroupMembership
-	identityGroupMembership := table.IdentityGroupMembership
+// permissionGrouper groups flat permission rows by membership ID.
+var permissionGrouper = sqln.Grouper[permissionData, uuid.UUID]{
+	Key: func(p *permissionData) uuid.UUID { return p.ID },
+	Merge: func(existing, row *permissionData) {
+		if len(row.Roles) > 0 {
+			existing.Roles = fn.AppendUnique(existing.Roles, row.Roles[0], func(r RoleInfo) uuid.UUID { return r.ID })
+		}
+		if len(row.AdditionalPrivileges) > 0 {
+			existing.AdditionalPrivileges = fn.AppendUnique(existing.AdditionalPrivileges, row.AdditionalPrivileges[0], func(a AdditionalPrivilegeInfo) uuid.UUID { return a.ID })
+		}
+		if len(row.Metadata) > 0 {
+			existing.Metadata = fn.AppendUnique(existing.Metadata, row.Metadata[0], func(m MetadataInfo) uuid.UUID { return m.ID })
+		}
+	},
+}
 
-	// Group subquery: find groups the actor belongs to
-	var groupSubquery postgres.SelectStatement
+// --- Query methods on Service ---
+
+// getPermission executes the main permission join query.
+func (s *Service) getPermission(ctx context.Context, params *getPermissionParams) ([]permissionData, error) {
+	// Build actor subquery for group membership
+	var groupSubquery string
 	if params.ActorType == ActorTypeUser {
-		groupSubquery = groups.SELECT(groups.ID).
-			FROM(groups.INNER_JOIN(userGroupMembership, userGroupMembership.GroupId.EQ(groups.ID))).
-			WHERE(userGroupMembership.UserId.EQ(postgres.UUID(params.ActorID)))
+		groupSubquery = `
+			SELECT g.id FROM groups g
+			INNER JOIN user_group_membership ugm ON ugm.group_id = g.id
+			WHERE ugm.user_id = @actorID
+		`
 	} else {
-		groupSubquery = groups.SELECT(groups.ID).
-			FROM(groups.INNER_JOIN(identityGroupMembership, identityGroupMembership.GroupId.EQ(groups.ID))).
-			WHERE(identityGroupMembership.IdentityId.EQ(postgres.UUID(params.ActorID)))
+		groupSubquery = `
+			SELECT g.id FROM groups g
+			INNER JOIN identity_group_membership igm ON igm.group_id = g.id
+			WHERE igm.identity_id = @actorID
+		`
 	}
 
-	// AdditionalPrivilege join condition — match on actor + scope
-	var additionalPrivilegeJoinCond postgres.BoolExpression
+	// Build WHERE conditions using qb.Where
+	where := qb.NewWhere().Add("m.scope_org_id = @orgID")
+
+	// Actor condition
+	if params.ActorType == ActorTypeUser {
+		where.Add("(m.actor_user_id = @actorID OR m.actor_group_id IN (" + groupSubquery + "))")
+	} else {
+		where.Add("(m.actor_identity_id = @actorID OR m.actor_group_id IN (" + groupSubquery + "))")
+	}
+
+	// Scope condition
+	if params.Scope == AccessScopeOrganization {
+		where.Add("m.scope = 'organization'")
+	} else {
+		where.Add("m.scope = 'project'").Add("m.scope_project_id = @projectID")
+	}
+
+	// Build additional privilege join condition
+	apJoinCond := qb.NewWhere()
 	if params.ActorType == ActorTypeIdentity {
-		additionalPrivilegeJoinCond = memberships.ActorIdentityId.EQ(additionalPrivileges.ActorIdentityId)
+		apJoinCond.Add("m.actor_identity_id = ap.actor_identity_id")
 	} else {
-		additionalPrivilegeJoinCond = memberships.ActorUserId.EQ(additionalPrivileges.ActorUserId)
+		apJoinCond.Add("m.actor_user_id = ap.actor_user_id")
 	}
 	if params.Scope == AccessScopeOrganization {
-		additionalPrivilegeJoinCond = additionalPrivilegeJoinCond.AND(memberships.ScopeOrgId.EQ(additionalPrivileges.OrgId))
+		apJoinCond.Add("m.scope_org_id = ap.org_id")
 	} else {
-		additionalPrivilegeJoinCond = additionalPrivilegeJoinCond.AND(memberships.ScopeProjectId.EQ(additionalPrivileges.ProjectId))
+		apJoinCond.Add("m.scope_project_id = ap.project_id")
 	}
 
-	// IdentityMetadata join condition — constant actor ID
-	var identityMetadataJoinCond postgres.BoolExpression
+	// Build metadata join condition
+	metaJoinCond := qb.NewWhere()
 	if params.ActorType == ActorTypeUser {
-		identityMetadataJoinCond = identityMetadata.UserId.EQ(postgres.UUID(params.ActorID)).
-			AND(memberships.ScopeOrgId.EQ(identityMetadata.OrgId))
+		metaJoinCond.Add("im.user_id = @actorID").Add("m.scope_org_id = im.org_id")
 	} else {
-		identityMetadataJoinCond = identityMetadata.IdentityId.EQ(postgres.UUID(params.ActorID))
+		metaJoinCond.Add("im.identity_id = @actorID")
 	}
 
-	// Actor filter: direct membership OR group membership
-	var actorFilter postgres.BoolExpression
-	if params.ActorType == ActorTypeUser {
-		actorFilter = memberships.ActorUserId.EQ(postgres.UUID(params.ActorID)).
-			OR(memberships.ActorGroupId.IN(groupSubquery))
-	} else {
-		actorFilter = memberships.ActorIdentityId.EQ(postgres.UUID(params.ActorID)).
-			OR(memberships.ActorGroupId.IN(groupSubquery))
+	query := `
+		SELECT
+			m.id AS membership_id,
+			m.scope_org_id,
+			o.auth_enforced,
+			o.google_sso_auth_enforced,
+			o.bypass_org_auth_enabled,
+			o.should_use_new_privilege_system,
+			o.root_org_id,
+			mr.id AS role_id,
+			mr.role,
+			mr.is_temporary AS role_is_temporary,
+			mr.temporary_access_end_time AS role_temporary_access_end_time,
+			r.slug AS custom_role_slug,
+			r.permissions AS custom_role_permissions,
+			ap.id AS ap_id,
+			ap.permissions AS ap_permissions,
+			ap.is_temporary AS ap_is_temporary,
+			ap.temporary_access_end_time AS ap_temporary_access_end_time,
+			im.id AS meta_id,
+			im.key AS meta_key,
+			im.value AS meta_value
+		FROM memberships m
+		INNER JOIN membership_roles mr ON m.id = mr.membership_id
+		INNER JOIN organizations o ON m.scope_org_id = o.id
+		LEFT JOIN roles r ON mr.custom_role_id = r.id
+		LEFT JOIN additional_privileges ap ON ` + apJoinCond.String() + `
+		LEFT JOIN identity_metadata im ON ` + metaJoinCond.String() + `
+		WHERE ` + where.String()
+
+	args := pgx.NamedArgs{
+		"orgID":     params.OrgID,
+		"actorID":   params.ActorID,
+		"projectID": params.ProjectID,
 	}
 
-	// Scope filter
-	var scopeFilter postgres.BoolExpression
-	if params.Scope == AccessScopeOrganization {
-		scopeFilter = memberships.Scope.EQ(postgres.String(string(AccessScopeOrganization)))
-	} else {
-		scopeFilter = memberships.Scope.EQ(postgres.String(string(AccessScopeProject))).
-			AND(memberships.ScopeProjectId.EQ(postgres.String(params.ProjectID)))
-	}
-
-	stmt := memberships.SELECT(
-		memberships.ID, memberships.ScopeOrgId,
-		organizations.AuthEnforced, organizations.GoogleSsoAuthEnforced, organizations.BypassOrgAuthEnabled,
-		organizations.ShouldUseNewPrivilegeSystem, organizations.RootOrgId,
-		membershipRoles.ID, membershipRoles.Role, membershipRoles.IsTemporary, membershipRoles.TemporaryAccessEndTime,
-		roles.Slug, roles.Permissions,
-		additionalPrivileges.ID, additionalPrivileges.Permissions, additionalPrivileges.IsTemporary, additionalPrivileges.TemporaryAccessEndTime,
-		identityMetadata.ID, identityMetadata.Key, identityMetadata.Value,
-	).FROM(
-		memberships.
-			INNER_JOIN(membershipRoles, memberships.ID.EQ(membershipRoles.MembershipId)).
-			INNER_JOIN(organizations, memberships.ScopeOrgId.EQ(organizations.ID)).
-			LEFT_JOIN(roles, membershipRoles.CustomRoleId.EQ(roles.ID)).
-			LEFT_JOIN(additionalPrivileges, additionalPrivilegeJoinCond).
-			LEFT_JOIN(identityMetadata, identityMetadataJoinCond),
-	).WHERE(
-		memberships.ScopeOrgId.EQ(postgres.UUID(params.OrgID)).
-			AND(actorFilter).
-			AND(scopeFilter),
-	)
-
-	// Go-jet automatically nests Roles, AdditionalPrivileges, and Metadata arrays
-	// based on sql:"primary_key" tags in the child structs.
-	var result []PermissionData
-	err := stmt.QueryContext(ctx, d.db.Replica(), &result)
+	rows, err := s.db.Replica().Query(ctx, query, args)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
-	return result, nil
+	flatRows, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (permissionData, error) {
+		var (
+			membershipID             uuid.UUID
+			scopeOrgID               uuid.UUID
+			orgAuthEnforced          sql.Null[bool]
+			orgGoogleSsoAuthEnforced bool
+			orgBypassOrgAuthEnabled  bool
+			orgShouldUseNewPrivSys   bool
+			orgRootOrgID             sql.Null[uuid.UUID]
+			roleID                   sql.Null[uuid.UUID]
+			role                     sql.Null[string]
+			roleIsTemporary          sql.Null[bool]
+			roleTemporaryEndTime     sql.Null[time.Time]
+			customRoleSlug           sql.Null[string]
+			customRolePermissions    sql.Null[string]
+			apID                     sql.Null[uuid.UUID]
+			apPermissions            sql.Null[string]
+			apIsTemporary            sql.Null[bool]
+			apTemporaryEndTime       sql.Null[time.Time]
+			metaID                   sql.Null[uuid.UUID]
+			metaKey                  sql.Null[string]
+			metaValue                sql.Null[string]
+		)
+
+		if err := row.Scan(
+			&membershipID, &scopeOrgID,
+			&orgAuthEnforced, &orgGoogleSsoAuthEnforced, &orgBypassOrgAuthEnabled,
+			&orgShouldUseNewPrivSys, &orgRootOrgID,
+			&roleID, &role, &roleIsTemporary, &roleTemporaryEndTime,
+			&customRoleSlug, &customRolePermissions,
+			&apID, &apPermissions, &apIsTemporary, &apTemporaryEndTime,
+			&metaID, &metaKey, &metaValue,
+		); err != nil {
+			return permissionData{}, err
+		}
+
+		data := permissionData{
+			ID:                          membershipID,
+			ScopeOrgID:                  scopeOrgID,
+			OrgAuthEnforced:             orgAuthEnforced,
+			OrgGoogleSsoAuthEnforced:    orgGoogleSsoAuthEnforced,
+			BypassOrgAuthEnabled:        orgBypassOrgAuthEnabled,
+			ShouldUseNewPrivilegeSystem: orgShouldUseNewPrivSys,
+			RootOrgID:                   orgRootOrgID,
+		}
+
+		if roleID.Valid {
+			data.Roles = []RoleInfo{{
+				ID:                     roleID.V,
+				Role:                   role.V,
+				IsTemporary:            roleIsTemporary,
+				TemporaryAccessEndTime: roleTemporaryEndTime,
+				CustomRoleSlug:         customRoleSlug,
+				Permissions:            customRolePermissions,
+			}}
+		}
+
+		if apID.Valid {
+			data.AdditionalPrivileges = []AdditionalPrivilegeInfo{{
+				ID:                     apID.V,
+				Permissions:            apPermissions,
+				IsTemporary:            apIsTemporary,
+				TemporaryAccessEndTime: apTemporaryEndTime,
+			}}
+		}
+
+		if metaID.Valid {
+			data.Metadata = []MetadataInfo{{
+				ID:    metaID.V,
+				Key:   metaKey.V,
+				Value: metaValue.V,
+			}}
+		}
+
+		return data, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(flatRows) == 0 {
+		return nil, nil
+	}
+
+	return sqln.GroupRows(flatRows, permissionGrouper), nil
 }
 
-// FindProjectByID returns basic project details needed for permission checks.
-func (d *DAL) FindProjectByID(ctx context.Context, projectID string) (*ProjectDetail, error) {
-	projects := table.Projects
+// findProjectByID returns basic project details needed for permission checks.
+func (s *Service) findProjectByID(ctx context.Context, projectID string) (*projectDetail, error) {
+	query := `
+		SELECT id, name, slug, org_id, type, enforce_encrypted_secret_manager_secret_metadata
+		FROM projects
+		WHERE id = @projectID
+	`
+	args := pgx.NamedArgs{"projectID": projectID}
 
-	var result struct {
-		ID                                          string         `alias:"projects.id"`
-		Name                                        string         `alias:"projects.name"`
-		Slug                                        string         `alias:"projects.slug"`
-		OrgID                                       uuid.UUID      `alias:"projects.org_id"`
-		Type                                        string         `alias:"projects.type"`
-		EnforceEncryptedSecretManagerSecretMetadata sql.Null[bool] `alias:"projects.enforce_encrypted_secret_manager_secret_metadata"`
+	row := s.db.Replica().QueryRow(ctx, query, args)
+
+	var id, name, slug string
+	var orgID uuid.UUID
+	var projectType sql.Null[string]
+	var enforceEncrypted sql.Null[bool]
+
+	err := row.Scan(&id, &name, &slug, &orgID, &projectType, &enforceEncrypted)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
 	}
-
-	err := projects.SELECT(
-		projects.ID, projects.Name, projects.Slug, projects.OrgId, projects.Type,
-		projects.EnforceEncryptedSecretManagerSecretMetadata,
-	).WHERE(
-		projects.ID.EQ(postgres.String(projectID)),
-	).QueryContext(ctx, d.db.Replica(), &result)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
-	return &ProjectDetail{
-		ID:    result.ID,
-		Name:  result.Name,
-		Slug:  result.Slug,
-		OrgID: result.OrgID,
-		Type:  result.Type,
-		EnforceEncryptedSecretManagerSecretMetadata: result.EnforceEncryptedSecretManagerSecretMetadata.Valid && result.EnforceEncryptedSecretManagerSecretMetadata.V,
+	return &projectDetail{
+		ID:    id,
+		Name:  name,
+		Slug:  slug,
+		OrgID: orgID,
+		Type:  projectType.V,
+		EnforceEncryptedSecretManagerSecretMetadata: enforceEncrypted.Valid && enforceEncrypted.V,
 	}, nil
 }
 
-// FindUserUsername returns the username for a user by ID.
-func (d *DAL) FindUserUsername(ctx context.Context, userID uuid.UUID) (string, error) {
-	users := table.Users
+// findUserUsername returns the username for a user by ID.
+func (s *Service) findUserUsername(ctx context.Context, userID uuid.UUID) (string, error) {
+	query := `SELECT username FROM users WHERE id = @userID`
+	args := pgx.NamedArgs{"userID": userID}
 
-	var result struct {
-		Username string `alias:"users.username"`
-	}
-
-	err := users.SELECT(users.Username).
-		WHERE(users.ID.EQ(postgres.UUID(userID))).
-		QueryContext(ctx, d.db.Replica(), &result)
+	var username string
+	err := s.db.Replica().QueryRow(ctx, query, args).Scan(&username)
 	if err != nil {
 		return "", err
 	}
-	return result.Username, nil
+	return username, nil
 }
 
-// FindIdentityName returns the name for an identity by ID.
-func (d *DAL) FindIdentityName(ctx context.Context, identityID uuid.UUID) (string, error) {
-	identities := table.Identities
+// findIdentityName returns the name for an identity by ID.
+func (s *Service) findIdentityName(ctx context.Context, identityID uuid.UUID) (string, error) {
+	query := `SELECT name FROM identities WHERE id = @identityID`
+	args := pgx.NamedArgs{"identityID": identityID}
 
-	var result struct {
-		Name string `alias:"identities.name"`
-	}
-
-	err := identities.SELECT(identities.Name).
-		WHERE(identities.ID.EQ(postgres.UUID(identityID))).
-		QueryContext(ctx, d.db.Replica(), &result)
+	var name string
+	err := s.db.Replica().QueryRow(ctx, query, args).Scan(&name)
 	if err != nil {
 		return "", err
 	}
-	return result.Name, nil
+	return name, nil
 }
 
-// FindServiceTokenByID returns service token details needed for permission checks.
-func (d *DAL) FindServiceTokenByID(ctx context.Context, tokenID string) (*ServiceTokenDetail, error) {
-	serviceTokens := table.ServiceTokens
+// findServiceTokenByID returns service token details needed for permission checks.
+func (s *Service) findServiceTokenByID(ctx context.Context, tokenID string) (*serviceTokenDetail, error) {
+	query := `
+		SELECT id, project_id, expires_at, scopes, permissions
+		FROM service_tokens
+		WHERE id = @tokenID
+	`
+	args := pgx.NamedArgs{"tokenID": tokenID}
 
-	var result struct {
-		ID          string       `alias:"service_tokens.id"`
-		ProjectID   string       `alias:"service_tokens.project_id"`
-		ExpiresAt   sql.NullTime `alias:"service_tokens.expires_at"`
-		Scopes      string       `alias:"service_tokens.scopes"`
-		Permissions []string     `alias:"service_tokens.permissions"`
+	row := s.db.Replica().QueryRow(ctx, query, args)
+
+	var id, projectID, scopes string
+	var expiresAt sql.Null[time.Time]
+	var permissions []string
+
+	err := row.Scan(&id, &projectID, &expiresAt, &scopes, &permissions)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
 	}
-
-	err := serviceTokens.SELECT(
-		serviceTokens.ID, serviceTokens.ProjectId, serviceTokens.ExpiresAt,
-		serviceTokens.Scopes, serviceTokens.Permissions,
-	).WHERE(
-		serviceTokens.ID.EQ(postgres.String(tokenID)),
-	).QueryContext(ctx, d.db.Replica(), &result)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
-	detail := &ServiceTokenDetail{
-		ID:          result.ID,
-		ProjectID:   result.ProjectID,
-		Scopes:      result.Scopes,
-		Permissions: result.Permissions,
+	detail := &serviceTokenDetail{
+		ID:          id,
+		ProjectID:   projectID,
+		Scopes:      scopes,
+		Permissions: permissions,
 	}
-	if result.ExpiresAt.Valid {
-		detail.ExpiresAt = &result.ExpiresAt.Time
+	if expiresAt.Valid {
+		detail.ExpiresAt = &expiresAt.V
 	}
 	return detail, nil
+}
+
+// NewDAL is kept for backward compatibility during migration.
+// Deprecated: Use service methods directly.
+func NewDAL(db pg.DB) *Service {
+	return &Service{db: db}
 }

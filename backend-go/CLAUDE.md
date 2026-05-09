@@ -140,6 +140,8 @@ args := pgx.NamedArgs{"folderID": folderID}
 rows, err := db.Replica().Query(ctx, query, args)
 ```
 
+**Table aliases**: Use clear, readable aliases — not single letters. For example, `memberships m`, `membership_roles mr`, `organizations o`, `additional_privileges ap`. Aliases should be obvious abbreviations of the table name.
+
 Scan rows using `pgx.CollectRows` or manual scanning:
 ```go
 secrets, err := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])

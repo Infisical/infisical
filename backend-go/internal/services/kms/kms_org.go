@@ -11,15 +11,15 @@ import (
 )
 
 func (s *Service) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]byte, error) {
-	org, err := s.dal.FindOrgKmsInfo(ctx, orgID)
+	org, err := s.findOrgKmsInfo(ctx, orgID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find organization KMS info").WithErrf("getOrgDataKey(orgId=%s): %w", orgID, err)
 	}
 
 	// Ensure org has a KMS key (lazy create if missing).
-	kmsKeyID := org.KmsDefaultKeyId
+	kmsKeyID := org.KmsDefaultKeyID
 	if !kmsKeyID.Valid {
-		createdKmsKeyID, kmsErr := s.dal.FindOrCreateOrgKmsKey(ctx, orgID, func() ([]byte, error) {
+		createdKmsKeyID, kmsErr := s.findOrCreateOrgKmsKey(ctx, orgID, func() ([]byte, error) {
 			return s.generateEncryptedKeyMaterial()
 		})
 		if kmsErr != nil {
@@ -30,7 +30,7 @@ func (s *Service) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]byte, e
 	}
 
 	// Ensure org has a data key (lazy create if missing).
-	if org.KmsEncryptedDataKey == nil {
+	if len(org.KmsEncryptedDataKey) == 0 {
 		dataKey, dataErr := s.generateOrgDataKey(ctx, orgID, kmsKeyID.V)
 		if dataErr != nil {
 			return nil, errutil.DatabaseErr("Failed to ensure organization data key").WithErrf("getOrgDataKey(orgId=%s): %w", orgID, dataErr)
@@ -43,7 +43,7 @@ func (s *Service) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	return decryptWithVersion(*org.KmsEncryptedDataKey, kmsKey)
+	return decryptWithVersion(org.KmsEncryptedDataKey, kmsKey)
 }
 
 // generateOrgDataKey creates the org's encrypted data key if it doesn't exist.
@@ -57,7 +57,7 @@ func (s *Service) generateOrgDataKey(ctx context.Context, orgID, kmsKeyID uuid.U
 		return nil, err
 	}
 
-	encryptedDataKey, err := s.dal.FindOrCreateOrgDataKey(ctx, orgID, func() ([]byte, error) {
+	encryptedDataKey, err := s.findOrCreateOrgDataKey(ctx, orgID, func() ([]byte, error) {
 		plainDataKey := make([]byte, 32)
 		if _, err := rand.Read(plainDataKey); err != nil {
 			return nil, fmt.Errorf("generating data key: %w", err)

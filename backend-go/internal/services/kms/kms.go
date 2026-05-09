@@ -3,23 +3,29 @@ package kms
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/crypto/cipher"
-	"github.com/infisical/api/internal/database/pg/gen/model"
+	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/database/pg/pglock"
 	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // KmsRootConfigUUID is the fixed UUID for the single kms_root_config row.
 var KmsRootConfigUUID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
-const (
+// superAdminConfigUUID is the fixed UUID for the single super_admin config row.
+var superAdminConfigUUID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
+const (
 	// KMSVersion is the version tag appended to all KMS-encrypted blobs.
 	KMSVersion = "v01"
 	// KMSVersionBlobLength is the byte length of KMSVersion.
@@ -65,32 +71,6 @@ type CreateCipherPairDTO struct {
 	OrgID     uuid.UUID // required when Type == DataKeyOrganization
 }
 
-// dal defines the subset of DAL operations this service needs.
-type dal interface {
-	// Root config.
-	FindOrCreateRootConfig(ctx context.Context, createFn func() (encryptedRootKey []byte, encryptionStrategy string, err error)) (*model.KmsRootConfig, error)
-
-	// Super admin config (for FIPS mode detection).
-	FindSuperAdminConfig(ctx context.Context) (*SuperAdminConfig, error)
-
-	// Organization find-or-create with advisory lock.
-	FindOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, generateKeyFn func() (encryptedKey []byte, err error)) (uuid.UUID, error)
-	FindOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error)
-
-	// Project find-or-create with advisory lock.
-	FindOrCreateProjectKmsKey(ctx context.Context, projectID string, createFn func() (encryptedKey []byte, err error)) (uuid.UUID, error)
-	FindOrCreateProjectDataKey(ctx context.Context, projectID string, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error)
-
-	// KMS key reads.
-	FindKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*KmsKeyWithAssociatedKms, error)
-
-	// Organization reads.
-	FindOrgKmsInfo(ctx context.Context, orgID uuid.UUID) (*OrgKmsInfo, error)
-
-	// Project reads.
-	FindProjectKmsInfo(ctx context.Context, projectID string) (*ProjectKmsInfo, error)
-}
-
 // HsmService defines the HSM operations needed by the KMS service.
 // Pass nil when HSM is not configured.
 type HsmService interface {
@@ -111,7 +91,7 @@ type Service struct {
 	rootEncryptionKey []byte // loaded during Start(), protected by mu
 
 	encryptionKey []byte     // decoded during Start(), used to decrypt root key
-	dal           dal        // database operations
+	db            pg.DB      // database operations
 	hsm           HsmService // nil when HSM is not configured
 
 	// Raw config values - decoded during Start() based on FIPS mode
@@ -122,7 +102,7 @@ type Service struct {
 
 // Deps holds the dependencies for the KMS shared service.
 type Deps struct {
-	DAL    dal
+	DB     pg.DB
 	HSM    HsmService // nil when HSM is not configured
 	Config *config.Config
 }
@@ -131,7 +111,7 @@ type Deps struct {
 // The encryption key is decoded during Start() based on FIPS mode determination.
 func NewService(deps Deps) (*Service, error) {
 	return &Service{
-		dal:                  deps.DAL,
+		db:                   deps.DB,
 		hsm:                  deps.HSM,
 		rawEncryptionKey:     deps.Config.EncryptionKey,
 		rawRootEncryptionKey: deps.Config.RootEncryptionKey,
@@ -156,7 +136,7 @@ func (s *Service) Start(ctx context.Context, hsmConfigured bool) error {
 		return fmt.Errorf("KMS: resolving encryption key: %w", err)
 	}
 
-	rootConfig, err := s.dal.FindOrCreateRootConfig(ctx, func() (encryptedRootKey []byte, encryptionStrategy string, err error) {
+	rootConfig, err := s.findOrCreateRootConfig(ctx, func() (encryptedRootKey []byte, encryptionStrategy string, err error) {
 		var newRootKey []byte
 		if hsmConfigured && s.hsm != nil {
 			var genErr error
@@ -208,7 +188,7 @@ func (s *Service) resolveEncryptionKey(ctx context.Context) error {
 
 	fipsEnabled := false
 	if s.fipsEnabledEnv {
-		superAdminConfig, err := s.dal.FindSuperAdminConfig(ctx)
+		superAdminConfig, err := s.findSuperAdminConfig(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to query super_admin config for FIPS mode: %w", err)
 		}
@@ -279,7 +259,7 @@ func (s *Service) getDataKey(ctx context.Context, dto CreateCipherPairDTO) ([]by
 // --- KMS key material ---
 
 // generateEncryptedKeyMaterial generates a random 32-byte key and encrypts it
-// with the root key (no version suffix). Used as the callback for find-or-create DAL methods.
+// with the root key (no version suffix). Used as the callback for find-or-create methods.
 func (s *Service) generateEncryptedKeyMaterial() ([]byte, error) {
 	rootKey := s.getRootKey()
 	if len(rootKey) == 0 {
@@ -302,21 +282,21 @@ func (s *Service) generateEncryptedKeyMaterial() ([]byte, error) {
 // decryptKmsKey loads a KMS key record and decrypts its key material using the root key.
 // For internal KMS keys, decrypts locally. External KMS keys are not yet supported.
 func (s *Service) decryptKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte, error) {
-	kmsKeyDoc, err := s.dal.FindKmsKeyByID(ctx, kmsKeyID)
+	kmsKeyDoc, err := s.findKmsKeyByID(ctx, kmsKeyID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErrf("decryptKmsKey(kmsKeyId=%s): %w", kmsKeyID, err)
 	}
 	return s.decryptKmsKeyMaterial(kmsKeyDoc)
 }
 
-// decryptKmsKeyMaterial decrypts the key material from a KmsKeyWithAssociatedKms record.
+// decryptKmsKeyMaterial decrypts the key material from a kmsKeyWithAssociatedKms record.
 // Branches on internal (local AES-GCM) vs external (cloud provider — not yet implemented).
-func (s *Service) decryptKmsKeyMaterial(kmsKeyDoc *KmsKeyWithAssociatedKms) ([]byte, error) {
-	if kmsKeyDoc.ExternalKms != nil {
+func (s *Service) decryptKmsKeyMaterial(kmsKeyDoc *kmsKeyWithAssociatedKms) ([]byte, error) {
+	if kmsKeyDoc.ExternalKmsID.Valid {
 		panic("external KMS not implemented")
 	}
 
-	if kmsKeyDoc.InternalKms == nil {
+	if !kmsKeyDoc.InternalKmsID.Valid {
 		return nil, fmt.Errorf("KMS: key %s has no internal or external KMS association", kmsKeyDoc.ID.String())
 	}
 
@@ -325,12 +305,12 @@ func (s *Service) decryptKmsKeyMaterial(kmsKeyDoc *KmsKeyWithAssociatedKms) ([]b
 		return nil, fmt.Errorf("KMS: root encryption key not loaded, call Start first")
 	}
 
-	if kmsKeyDoc.InternalKms.EncryptionAlgorithm != "aes-256-gcm" {
-		return nil, fmt.Errorf("KMS: unsupported encryption algorithm: %s", kmsKeyDoc.InternalKms.EncryptionAlgorithm)
+	if kmsKeyDoc.InternalEncryptionAlgorithm.V != "aes-256-gcm" {
+		return nil, fmt.Errorf("KMS: unsupported encryption algorithm: %s", kmsKeyDoc.InternalEncryptionAlgorithm.V)
 	}
 
 	// internal_kms.encrypted_key is AES-GCM encrypted with ROOT_KEY (no version suffix).
-	return cipher.SymmetricDecrypt(kmsKeyDoc.InternalKms.EncryptedKey, rootKey)
+	return cipher.SymmetricDecrypt(kmsKeyDoc.InternalEncryptedKey.V, rootKey)
 }
 
 // --- Root key encrypt/decrypt ---
@@ -353,7 +333,7 @@ func (s *Service) encryptRootKey(plainKey []byte, strategy RootKeyEncryptionStra
 	}
 }
 
-func (s *Service) decryptRootKey(rootCfg *model.KmsRootConfig) ([]byte, error) {
+func (s *Service) decryptRootKey(rootCfg *kmsRootConfigRow) ([]byte, error) {
 	strategy := StrategySoftware
 	if rootCfg.EncryptionStrategy.Valid {
 		strategy = RootKeyEncryptionStrategy(rootCfg.EncryptionStrategy.V)
@@ -406,4 +386,471 @@ func generateRandomKeyName() string {
 	b := make([]byte, 4)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+// --- Row types ---
+
+// superAdminConfigRow holds the fips-related fields from super_admin table.
+type superAdminConfigRow struct {
+	FipsEnabled bool `db:"fips_enabled"`
+}
+
+// kmsRootConfigRow holds the kms_root_config row.
+type kmsRootConfigRow struct {
+	ID                 uuid.UUID        `db:"id"`
+	EncryptedRootKey   []byte           `db:"encrypted_root_key"`
+	EncryptionStrategy sql.Null[string] `db:"encryption_strategy"`
+}
+
+// kmsKeyWithAssociatedKms is the join result of kms_keys LEFT JOIN internal_kms LEFT JOIN external_kms.
+type kmsKeyWithAssociatedKms struct {
+	ID   uuid.UUID `db:"id"`
+	Name string    `db:"name"`
+
+	// Internal KMS fields (nullable from LEFT JOIN)
+	InternalKmsID              sql.Null[uuid.UUID] `db:"internal_kms_id"`
+	InternalEncryptedKey       sql.Null[[]byte]    `db:"internal_encrypted_key"`
+	InternalEncryptionAlgorithm sql.Null[string]    `db:"internal_encryption_algorithm"`
+
+	// External KMS fields (nullable from LEFT JOIN)
+	ExternalKmsID sql.Null[uuid.UUID] `db:"external_kms_id"`
+}
+
+// orgKmsInfo holds the narrow org fields needed by the KMS service.
+type orgKmsInfo struct {
+	ID                  uuid.UUID           `db:"id"`
+	KmsDefaultKeyID     sql.Null[uuid.UUID] `db:"kms_default_key_id"`
+	KmsEncryptedDataKey []byte              `db:"kms_encrypted_data_key"`
+}
+
+// projectKmsInfo holds the narrow project fields needed by the KMS service.
+type projectKmsInfo struct {
+	ID                               string              `db:"id"`
+	OrgID                            uuid.UUID           `db:"org_id"`
+	KmsSecretManagerKeyID            sql.Null[uuid.UUID] `db:"kms_secret_manager_key_id"`
+	KmsSecretManagerEncryptedDataKey []byte              `db:"kms_secret_manager_encrypted_data_key"`
+}
+
+// --- Query methods ---
+
+// findSuperAdminConfig returns the super_admin config row if it exists.
+func (s *Service) findSuperAdminConfig(ctx context.Context) (*superAdminConfigRow, error) {
+	query := `SELECT fips_enabled FROM super_admin WHERE id = @id`
+	args := pgx.NamedArgs{"id": superAdminConfigUUID}
+
+	row := s.db.Replica().QueryRow(ctx, query, args)
+	var config superAdminConfigRow
+	err := row.Scan(&config.FipsEnabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("finding super_admin config: %w", err)
+	}
+	return &config, nil
+}
+
+// findOrCreateRootConfig atomically ensures the KMS root config row exists.
+func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (encryptedRootKey []byte, encryptionStrategy string, err error)) (*kmsRootConfigRow, error) {
+	tx, err := s.db.Primary().Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// Acquire advisory lock
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", PgLockKmsRootKeyInit); err != nil {
+		return nil, fmt.Errorf("acquiring advisory lock: %w", err)
+	}
+
+	// Check if root config already exists.
+	checkQuery := `SELECT id, encrypted_root_key, encryption_strategy FROM kms_root_config WHERE id = @id`
+	checkArgs := pgx.NamedArgs{"id": KmsRootConfigUUID}
+
+	row := tx.QueryRow(ctx, checkQuery, checkArgs)
+	var existing kmsRootConfigRow
+	err = row.Scan(&existing.ID, &existing.EncryptedRootKey, &existing.EncryptionStrategy)
+	if err == nil {
+		if cerr := tx.Commit(ctx); cerr != nil {
+			return nil, fmt.Errorf("committing root config read: %w", cerr)
+		}
+		return &existing, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("checking existing root config: %w", err)
+	}
+
+	// Config doesn't exist — invoke callback to generate the new root key.
+	encryptionRootKey, encryptionStrategy, err := createFn()
+	if err != nil {
+		return nil, fmt.Errorf("generating root config: %w", err)
+	}
+
+	// Create the initial root config row.
+	insertQuery := `
+		INSERT INTO kms_root_config (id, encrypted_root_key, encryption_strategy)
+		VALUES (@id, @encryptedRootKey, @encryptionStrategy)
+		RETURNING id, encrypted_root_key, encryption_strategy
+	`
+	insertArgs := pgx.NamedArgs{
+		"id":                 KmsRootConfigUUID,
+		"encryptedRootKey":   encryptionRootKey,
+		"encryptionStrategy": encryptionStrategy,
+	}
+
+	var result kmsRootConfigRow
+	err = tx.QueryRow(ctx, insertQuery, insertArgs).Scan(&result.ID, &result.EncryptedRootKey, &result.EncryptionStrategy)
+	if err != nil {
+		return nil, fmt.Errorf("creating root config: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("committing transaction: %w", err)
+	}
+
+	return &result, nil
+}
+
+// findKmsKeyByID loads a kms_keys row with its associated internal or external KMS material.
+func (s *Service) findKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*kmsKeyWithAssociatedKms, error) {
+	query := `
+		SELECT
+			k.id,
+			k.name,
+			ik.id AS internal_kms_id,
+			ik.encrypted_key AS internal_encrypted_key,
+			ik.encryption_algorithm AS internal_encryption_algorithm,
+			ek.id AS external_kms_id
+		FROM kms_keys k
+		LEFT JOIN internal_kms ik ON ik.kms_key_id = k.id
+		LEFT JOIN external_kms ek ON ek.kms_key_id = k.id
+		WHERE k.id = @kmsKeyID
+	`
+	args := pgx.NamedArgs{"kmsKeyID": kmsKeyID}
+
+	row := s.db.Replica().QueryRow(ctx, query, args)
+	var result kmsKeyWithAssociatedKms
+	err := row.Scan(
+		&result.ID,
+		&result.Name,
+		&result.InternalKmsID,
+		&result.InternalEncryptedKey,
+		&result.InternalEncryptionAlgorithm,
+		&result.ExternalKmsID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("finding KMS key: %w", err)
+	}
+	return &result, nil
+}
+
+// findOrgKmsInfo returns the narrow org fields needed for KMS data key operations.
+func (s *Service) findOrgKmsInfo(ctx context.Context, orgID uuid.UUID) (*orgKmsInfo, error) {
+	query := `
+		SELECT id, kms_default_key_id, kms_encrypted_data_key
+		FROM organizations
+		WHERE id = @orgID
+	`
+	args := pgx.NamedArgs{"orgID": orgID}
+
+	row := s.db.Replica().QueryRow(ctx, query, args)
+	var result orgKmsInfo
+	err := row.Scan(&result.ID, &result.KmsDefaultKeyID, &result.KmsEncryptedDataKey)
+	if err != nil {
+		return nil, fmt.Errorf("finding org KMS info: %w", err)
+	}
+	return &result, nil
+}
+
+// findOrgKmsInfoTx returns org KMS info within a transaction.
+func (s *Service) findOrgKmsInfoTx(ctx context.Context, tx pgx.Tx, orgID uuid.UUID) (*orgKmsInfo, error) {
+	query := `
+		SELECT id, kms_default_key_id, kms_encrypted_data_key
+		FROM organizations
+		WHERE id = @orgID
+	`
+	args := pgx.NamedArgs{"orgID": orgID}
+
+	row := tx.QueryRow(ctx, query, args)
+	var result orgKmsInfo
+	err := row.Scan(&result.ID, &result.KmsDefaultKeyID, &result.KmsEncryptedDataKey)
+	if err != nil {
+		return nil, fmt.Errorf("finding org KMS info: %w", err)
+	}
+	return &result, nil
+}
+
+// findProjectKmsInfo returns the narrow project fields needed for KMS data key operations.
+func (s *Service) findProjectKmsInfo(ctx context.Context, projectID string) (*projectKmsInfo, error) {
+	query := `
+		SELECT id, org_id, kms_secret_manager_key_id, kms_secret_manager_encrypted_data_key
+		FROM projects
+		WHERE id = @projectID
+	`
+	args := pgx.NamedArgs{"projectID": projectID}
+
+	row := s.db.Replica().QueryRow(ctx, query, args)
+	var result projectKmsInfo
+	err := row.Scan(&result.ID, &result.OrgID, &result.KmsSecretManagerKeyID, &result.KmsSecretManagerEncryptedDataKey)
+	if err != nil {
+		return nil, fmt.Errorf("finding project KMS info: %w", err)
+	}
+	return &result, nil
+}
+
+// findProjectKmsInfoTx returns project KMS info within a transaction.
+func (s *Service) findProjectKmsInfoTx(ctx context.Context, tx pgx.Tx, projectID string) (*projectKmsInfo, error) {
+	query := `
+		SELECT id, org_id, kms_secret_manager_key_id, kms_secret_manager_encrypted_data_key
+		FROM projects
+		WHERE id = @projectID
+	`
+	args := pgx.NamedArgs{"projectID": projectID}
+
+	row := tx.QueryRow(ctx, query, args)
+	var result projectKmsInfo
+	err := row.Scan(&result.ID, &result.OrgID, &result.KmsSecretManagerKeyID, &result.KmsSecretManagerEncryptedDataKey)
+	if err != nil {
+		return nil, fmt.Errorf("finding project KMS info: %w", err)
+	}
+	return &result, nil
+}
+
+// createKmsKeyWithInternal inserts a kms_keys row and its internal_kms material within a transaction.
+func (s *Service) createKmsKeyWithInternal(ctx context.Context, tx pgx.Tx, orgID uuid.UUID, encryptedKey []byte) (uuid.UUID, error) {
+	keyName := generateRandomKeyName()
+
+	// Insert kms_keys
+	insertKeyQuery := `
+		INSERT INTO kms_keys (name, org_id, is_reserved, key_usage)
+		VALUES (@name, @orgID, true, 'encrypt-decrypt')
+		RETURNING id
+	`
+	keyArgs := pgx.NamedArgs{
+		"name":  keyName,
+		"orgID": orgID,
+	}
+
+	var kmsKeyID uuid.UUID
+	err := tx.QueryRow(ctx, insertKeyQuery, keyArgs).Scan(&kmsKeyID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("inserting kms_keys: %w", err)
+	}
+
+	// Insert internal_kms
+	insertInternalQuery := `
+		INSERT INTO internal_kms (encrypted_key, encryption_algorithm, version, kms_key_id)
+		VALUES (@encryptedKey, 'aes-256-gcm', 1, @kmsKeyID)
+	`
+	internalArgs := pgx.NamedArgs{
+		"encryptedKey": encryptedKey,
+		"kmsKeyID":     kmsKeyID,
+	}
+
+	if _, err := tx.Exec(ctx, insertInternalQuery, internalArgs); err != nil {
+		return uuid.Nil, fmt.Errorf("inserting internal_kms: %w", err)
+	}
+
+	return kmsKeyID, nil
+}
+
+// findOrCreateOrgKmsKey atomically ensures the org has a default KMS key.
+func (s *Service) findOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, createFn func() (encryptedKey []byte, err error)) (uuid.UUID, error) {
+	lockID := fmt.Sprintf("kms-org-key:%s", orgID)
+
+	tx, err := s.db.Primary().Begin(ctx)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("beginning transaction: %w", err)
+	}
+
+	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
+	if err != nil {
+		tx.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("acquiring org key lock: %w", err)
+	}
+
+	// Re-check after lock — another request may have created it.
+	org, err := s.findOrgKmsInfoTx(ctx, tx, orgID)
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("finding org: %w", err)
+	}
+	if org.KmsDefaultKeyID.Valid {
+		if err := lock.Release(ctx); err != nil {
+			return uuid.Nil, err
+		}
+		return org.KmsDefaultKeyID.V, nil
+	}
+
+	encryptedKey, err := createFn()
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("generating KMS key: %w", err)
+	}
+
+	createdID, err := s.createKmsKeyWithInternal(ctx, tx, org.ID, encryptedKey)
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, err
+	}
+
+	// Update org with new key ID
+	updateQuery := `UPDATE organizations SET kms_default_key_id = @keyID WHERE id = @orgID`
+	updateArgs := pgx.NamedArgs{"keyID": createdID, "orgID": orgID}
+	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("updating org default key: %w", err)
+	}
+
+	if err := lock.Release(ctx); err != nil {
+		return uuid.Nil, err
+	}
+	return createdID, nil
+}
+
+// findOrCreateOrgDataKey atomically ensures the org has an encrypted data key.
+func (s *Service) findOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error) {
+	lockID := fmt.Sprintf("kms-org-data-key:%s", orgID)
+
+	tx, err := s.db.Primary().Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("beginning transaction: %w", err)
+	}
+
+	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
+	if err != nil {
+		tx.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("acquiring org data key lock: %w", err)
+	}
+
+	// Re-check after lock — another request may have created it.
+	org, err := s.findOrgKmsInfoTx(ctx, tx, orgID)
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("finding org: %w", err)
+	}
+	if len(org.KmsEncryptedDataKey) > 0 {
+		if err := lock.Release(ctx); err != nil {
+			return nil, err
+		}
+		return org.KmsEncryptedDataKey, nil
+	}
+
+	encryptedDataKey, err := createFn()
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("generating data key: %w", err)
+	}
+
+	updateQuery := `UPDATE organizations SET kms_encrypted_data_key = @dataKey WHERE id = @orgID`
+	updateArgs := pgx.NamedArgs{"dataKey": encryptedDataKey, "orgID": orgID}
+	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("setting org encrypted data key: %w", err)
+	}
+
+	if err := lock.Release(ctx); err != nil {
+		return nil, err
+	}
+	return encryptedDataKey, nil
+}
+
+// findOrCreateProjectKmsKey atomically ensures the project has a secret manager KMS key.
+func (s *Service) findOrCreateProjectKmsKey(ctx context.Context, projectID string, createFn func() (encryptedKey []byte, err error)) (uuid.UUID, error) {
+	lockID := fmt.Sprintf("kms-project-key:%s", projectID)
+
+	tx, err := s.db.Primary().Begin(ctx)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("beginning transaction: %w", err)
+	}
+
+	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
+	if err != nil {
+		tx.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("acquiring project key lock: %w", err)
+	}
+
+	// Re-check after lock — another request may have created it.
+	project, err := s.findProjectKmsInfoTx(ctx, tx, projectID)
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("finding project: %w", err)
+	}
+	if project.KmsSecretManagerKeyID.Valid {
+		if err := lock.Release(ctx); err != nil {
+			return uuid.Nil, err
+		}
+		return project.KmsSecretManagerKeyID.V, nil
+	}
+
+	encryptedKey, err := createFn()
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("generating KMS key: %w", err)
+	}
+
+	createdID, err := s.createKmsKeyWithInternal(ctx, tx, project.OrgID, encryptedKey)
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, err
+	}
+
+	updateQuery := `UPDATE projects SET kms_secret_manager_key_id = @keyID WHERE id = @projectID`
+	updateArgs := pgx.NamedArgs{"keyID": createdID, "projectID": projectID}
+	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return uuid.Nil, fmt.Errorf("updating project KMS key: %w", err)
+	}
+
+	if err := lock.Release(ctx); err != nil {
+		return uuid.Nil, err
+	}
+	return createdID, nil
+}
+
+// findOrCreateProjectDataKey atomically ensures the project has an encrypted data key.
+func (s *Service) findOrCreateProjectDataKey(ctx context.Context, projectID string, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error) {
+	lockID := fmt.Sprintf("kms-project-data-key:%s", projectID)
+
+	tx, err := s.db.Primary().Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("beginning transaction: %w", err)
+	}
+
+	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
+	if err != nil {
+		tx.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("acquiring project data key lock: %w", err)
+	}
+
+	// Re-check after lock — another request may have created it.
+	project, err := s.findProjectKmsInfoTx(ctx, tx, projectID)
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("finding project: %w", err)
+	}
+	if len(project.KmsSecretManagerEncryptedDataKey) > 0 {
+		if err := lock.Release(ctx); err != nil {
+			return nil, err
+		}
+		return project.KmsSecretManagerEncryptedDataKey, nil
+	}
+
+	encryptedDataKey, err := createFn()
+	if err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("generating data key: %w", err)
+	}
+
+	updateQuery := `UPDATE projects SET kms_secret_manager_encrypted_data_key = @dataKey WHERE id = @projectID`
+	updateArgs := pgx.NamedArgs{"dataKey": encryptedDataKey, "projectID": projectID}
+	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
+		lock.Rollback(ctx) //nolint:errcheck
+		return nil, fmt.Errorf("setting project encrypted data key: %w", err)
+	}
+
+	if err := lock.Release(ctx); err != nil {
+		return nil, err
+	}
+	return encryptedDataKey, nil
 }

@@ -69,8 +69,7 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 	err = kmsSvc.Start(context.Background(), false)
 	require.NoError(t, err)
 
-	projectDAL := project.NewDAL(stack.DB())
-	projectSvc := project.NewService(testutil.NopLogger(), project.Deps{DAL: projectDAL})
+	projectSvc := project.NewService(testutil.NopLogger(), project.Deps{DB: stack.DB()})
 
 	queueSvc := queue.NewService(testutil.NopLogger(), redisClient)
 

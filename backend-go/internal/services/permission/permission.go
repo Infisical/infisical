@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/infisical/gocasl"
 
+	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/actor"
 	"github.com/infisical/api/internal/services/permission/project"
@@ -88,31 +89,22 @@ func (r *GetProjectPermissionResult) HasRole(role string) bool {
 	return false
 }
 
-// permissionDAL defines the data-access methods required by the permission service.
-type permissionDAL interface {
-	GetPermission(ctx context.Context, params *GetPermissionParams) ([]PermissionData, error)
-	FindProjectByID(ctx context.Context, projectID string) (*ProjectDetail, error)
-	FindUserUsername(ctx context.Context, userID uuid.UUID) (string, error)
-	FindIdentityName(ctx context.Context, identityID uuid.UUID) (string, error)
-	FindServiceTokenByID(ctx context.Context, tokenID string) (*ServiceTokenDetail, error)
-}
-
 // Deps holds the dependencies for the permission shared service.
 type Deps struct {
-	DAL permissionDAL
+	DB pg.DB
 }
 
 // Service provides project and org permission checks.
 type Service struct {
 	logger *slog.Logger
-	dal    permissionDAL
+	db     pg.DB
 }
 
 // NewService creates a new permission service instance.
 func NewService(logger *slog.Logger, deps Deps) *Service {
 	return &Service{
 		logger: logger.With(slog.String("service", "permission")),
-		dal:    deps.DAL,
+		db:     deps.DB,
 	}
 }
 
@@ -150,7 +142,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// - Cache reviver for date fields
 
 	// 4. Find project
-	projectDetails, err := p.dal.FindProjectByID(ctx, args.ProjectID)
+	projectDetails, err := p.findProjectByID(ctx, args.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("finding project").WithErrf("GetProjectPermission(projectId=%s): %w", args.ProjectID, err)
 	}
@@ -172,7 +164,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	}
 
 	// 7. Query permission data
-	permissionData, err := p.dal.GetPermission(ctx, &GetPermissionParams{
+	permissionData, err := p.getPermission(ctx, &getPermissionParams{
 		Scope:     AccessScopeProject,
 		OrgID:     projectDetails.OrgID,
 		ProjectID: args.ProjectID,
@@ -213,12 +205,12 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// 13. Fetch username
 	var username string
 	if args.Actor == ActorTypeUser {
-		username, err = p.dal.FindUserUsername(ctx, args.ActorID)
+		username, err = p.findUserUsername(ctx, args.ActorID)
 		if err != nil {
 			return nil, errutil.DatabaseErr("finding user username").WithErrf("GetProjectPermission(userId=%s): %w", args.ActorID, err)
 		}
 	} else {
-		username, err = p.dal.FindIdentityName(ctx, args.ActorID)
+		username, err = p.findIdentityName(ctx, args.ActorID)
 		if err != nil {
 			return nil, errutil.DatabaseErr("finding identity name").WithErrf("GetProjectPermission(identityId=%s): %w", args.ActorID, err)
 		}
@@ -276,7 +268,7 @@ func (p *Service) getServiceTokenProjectPermission(
 	actionProjectType ActionProjectType,
 ) (*GetProjectPermissionResult, error) {
 	// 1. Find service token
-	serviceToken, err := p.dal.FindServiceTokenByID(ctx, serviceTokenID)
+	serviceToken, err := p.findServiceTokenByID(ctx, serviceTokenID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("finding service token").WithErrf("getServiceTokenProjectPermission(tokenId=%s): %w", serviceTokenID, err)
 	}
@@ -285,7 +277,7 @@ func (p *Service) getServiceTokenProjectPermission(
 	}
 
 	// 2. Verify project linked
-	serviceTokenProject, err := p.dal.FindProjectByID(ctx, serviceToken.ProjectID)
+	serviceTokenProject, err := p.findProjectByID(ctx, serviceToken.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("finding service token project").WithErrf("getServiceTokenProjectPermission(projectId=%s): %w", serviceToken.ProjectID, err)
 	}
@@ -342,7 +334,7 @@ func (p *Service) getServiceTokenProjectPermission(
 // flattenActiveRolesFromMemberships filters expired temporary roles and flattens all active
 // roles + additional privileges from memberships.
 // Exact port of permission-service.ts:125-146.
-func flattenActiveRolesFromMemberships(memberships []PermissionData) []roleWithPermissions {
+func flattenActiveRolesFromMemberships(memberships []permissionData) []roleWithPermissions {
 	now := time.Now()
 	var result []roleWithPermissions
 
@@ -351,12 +343,12 @@ func flattenActiveRolesFromMemberships(memberships []PermissionData) []roleWithP
 		for j := range membership.Roles {
 			role := &membership.Roles[j]
 			isTemporary := role.IsTemporary.Valid && role.IsTemporary.V
-			if isTemporary && (!role.TemporaryAccessEndTime.Valid || now.After(role.TemporaryAccessEndTime.Time)) {
+			if isTemporary && (!role.TemporaryAccessEndTime.Valid || now.After(role.TemporaryAccessEndTime.V)) {
 				continue
 			}
 			var permissions *string
 			if role.Permissions.Valid {
-				permissions = &role.Permissions.String
+				permissions = &role.Permissions.V
 			}
 			result = append(result, roleWithPermissions{
 				Role:        role.Role,
@@ -367,12 +359,12 @@ func flattenActiveRolesFromMemberships(memberships []PermissionData) []roleWithP
 		for j := range membership.AdditionalPrivileges {
 			additionalPrivilege := &membership.AdditionalPrivileges[j]
 			isTemporary := additionalPrivilege.IsTemporary.Valid && additionalPrivilege.IsTemporary.V
-			if isTemporary && (!additionalPrivilege.TemporaryAccessEndTime.Valid || now.After(additionalPrivilege.TemporaryAccessEndTime.Time)) {
+			if isTemporary && (!additionalPrivilege.TemporaryAccessEndTime.Valid || now.After(additionalPrivilege.TemporaryAccessEndTime.V)) {
 				continue
 			}
 			var permissions *string
 			if additionalPrivilege.Permissions.Valid {
-				permissions = &additionalPrivilege.Permissions.String
+				permissions = &additionalPrivilege.Permissions.V
 			}
 			result = append(result, roleWithPermissions{
 				Role:        project.RoleCustom,
@@ -385,7 +377,7 @@ func flattenActiveRolesFromMemberships(memberships []PermissionData) []roleWithP
 }
 
 // buildMembershipsFromPermissionData converts DAL permission data to the service result type.
-func buildMembershipsFromPermissionData(permissionData []PermissionData) []Membership {
+func buildMembershipsFromPermissionData(permissionData []permissionData) []Membership {
 	memberships := make([]Membership, 0, len(permissionData))
 	for i := range permissionData {
 		data := &permissionData[i]
@@ -394,7 +386,7 @@ func buildMembershipsFromPermissionData(permissionData []PermissionData) []Membe
 			role := &data.Roles[j]
 			membershipRole := MembershipRole{Role: role.Role}
 			if role.CustomRoleSlug.Valid {
-				membershipRole.CustomRoleSlug = role.CustomRoleSlug.String
+				membershipRole.CustomRoleSlug = role.CustomRoleSlug.V
 			}
 			membership.Roles = append(membership.Roles, membershipRole)
 		}
@@ -404,7 +396,7 @@ func buildMembershipsFromPermissionData(permissionData []PermissionData) []Membe
 }
 
 // checkProjectEnforcement returns a function that checks project-level enforcements.
-func checkProjectEnforcement(projectDetails *ProjectDetail) func(string) bool {
+func checkProjectEnforcement(projectDetails *projectDetail) func(string) bool {
 	return func(enforcement string) bool {
 		if enforcement == "enforceEncryptedSecretManagerSecretMetadata" {
 			return projectDetails.EnforceEncryptedSecretManagerSecretMetadata
