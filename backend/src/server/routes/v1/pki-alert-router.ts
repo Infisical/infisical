@@ -69,8 +69,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.internalCertManagerProjectId,
-        ...req.body
+        ...req.body,
+        projectId: req.internalCertManagerProjectId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -472,8 +472,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.internalCertManagerProjectId,
-        ...req.body
+        ...req.body,
+        projectId: req.internalCertManagerProjectId
       });
 
       return result;

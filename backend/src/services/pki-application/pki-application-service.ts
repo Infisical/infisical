@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ApplicationMembershipRole,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE,
+  ResourceType
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApplicationActions,
@@ -16,6 +22,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
+import { ActorType } from "../auth/auth-type";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
@@ -48,8 +55,8 @@ type TPkiApplicationServiceFactoryDep = {
     TPkiApplicationProfileDALFactory,
     "insertMany" | "delete" | "findByApplicationId" | "findOne" | "findProfilesInProject"
   >;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "create" | "delete" | "findResourceMembershipsForActor">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "delete">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
@@ -144,6 +151,24 @@ export const pkiApplicationServiceFactory = ({
             profileIds.map((profileId) => ({ applicationId: application.id, profileId })),
             tx
           );
+        }
+
+        if (actorOrgId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
+          const newMembership = await membershipDAL.create(
+            {
+              scope: RESOURCE_SCOPE,
+              scopeOrgId: actorOrgId,
+              scopeProjectId: projectId,
+              scopeResourceType: ResourceType.CertificateApplication,
+              scopeResourceId: application.id,
+              actorUserId: actor === ActorType.USER ? actorId : null,
+              actorIdentityId: actor === ActorType.IDENTITY ? actorId : null,
+              actorGroupId: null,
+              isActive: true
+            },
+            tx
+          );
+          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ApplicationMembershipRole.Admin }, tx);
         }
 
         return application;

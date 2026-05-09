@@ -960,7 +960,7 @@ export const pkiScepServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionApplicationEnrollmentActions.Edit,
+        ResourcePermissionApplicationEnrollmentActions.GenerateScepChallenge,
         ResourcePermissionSub.ApplicationEnrollment
       );
     } else {

@@ -18,8 +18,7 @@ export const resolveCertManagerProjectId = async (
 
   if (projects.length === 0) {
     throw new BadRequestError({
-      message:
-        "This organization has no Certificate Manager project. Contact your administrator; one should have been created automatically."
+      message: "This organization has no Certificate Manager project. Contact your administrator."
     });
   }
 

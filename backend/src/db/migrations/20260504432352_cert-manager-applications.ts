@@ -82,6 +82,8 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  await knex.raw(`CREATE INDEX IF NOT EXISTS "projects_orgid_type_idx" ON ?? ("orgId", "type")`, [TableName.Project]);
+
   if (!(await knex.schema.hasTable(TableName.PkiApplication))) {
     await knex.schema.createTable(TableName.PkiApplication, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -389,4 +391,6 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("defaultCertManagerProjectId");
     });
   }
+
+  await knex.schema.raw(`DROP INDEX IF EXISTS "projects_orgid_type_idx"`);
 }

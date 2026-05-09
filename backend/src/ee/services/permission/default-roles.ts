@@ -927,7 +927,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionApplicationEnrollmentActions.Read,
       ResourcePermissionApplicationEnrollmentActions.Edit,
       ResourcePermissionApplicationEnrollmentActions.RevealAcmeEabSecret,
-      ResourcePermissionApplicationEnrollmentActions.RotateAcmeEabSecret
+      ResourcePermissionApplicationEnrollmentActions.RotateAcmeEabSecret,
+      ResourcePermissionApplicationEnrollmentActions.GenerateScepChallenge
     ],
     ResourcePermissionSub.ApplicationEnrollment
   );
@@ -1025,7 +1026,13 @@ const buildApplicationOperatorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
 
   can([ResourcePermissionApplicationActions.Read], ResourcePermissionSub.Application);
-  can([ResourcePermissionApplicationEnrollmentActions.Read], ResourcePermissionSub.ApplicationEnrollment);
+  can(
+    [
+      ResourcePermissionApplicationEnrollmentActions.Read,
+      ResourcePermissionApplicationEnrollmentActions.GenerateScepChallenge
+    ],
+    ResourcePermissionSub.ApplicationEnrollment
+  );
   can([ResourcePermissionApprovalPolicyActions.Read], ResourcePermissionSub.ApprovalPolicies);
 
   can(

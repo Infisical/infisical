@@ -33,7 +33,8 @@ export enum ResourcePermissionApplicationEnrollmentActions {
   Read = "read",
   Edit = "edit",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
-  RotateAcmeEabSecret = "rotate-acme-eab-secret"
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  GenerateScepChallenge = "generate-scep-challenge"
 }
 
 export enum ResourcePermissionApprovalPolicyActions {

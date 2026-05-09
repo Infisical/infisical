@@ -1,7 +1,7 @@
 import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 
-import { ActionProjectType, OrganizationActionScope, TMemberships } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ResourceType, TMemberships } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -38,7 +38,7 @@ export type TGetResourcePermissionArg = {
   actor: ActorType;
   actorId: string;
   projectId: string;
-  resourceType: string;
+  resourceType: ResourceType;
   resourceId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId?: string;
