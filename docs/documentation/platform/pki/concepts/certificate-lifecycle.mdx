@@ -29,7 +29,7 @@ Enrollment can be manually completed via API or fully automated using protocols 
 
 ## Approval
 
-Certificate approval is an optional workflow that adds a human review step before certificates are issued. When an [approval policy](/documentation/platform/pki/approvals) is configured for a [certificate profile](/documentation/platform/pki/certificates/profiles), certificate requests are placed in a pending state until the required approvers review and approve them.
+Certificate approval is an optional workflow that adds a human review step before certificates are issued. When an [approval policy](/documentation/platform/pki/applications/approvals) is configured for a [certificate profile](/documentation/platform/pki/settings/profiles), certificate requests are placed in a pending state until the required approvers review and approve them.
 
 Approval workflows help organizations:
 
@@ -44,7 +44,7 @@ Once all approval steps are completed, the certificate is automatically issued a
 
 ## Deployment
 
-Certificate deployment involves installing the issued certificate on the appropriate systems and services, such as web servers, load balancers, or internal endpoints. It can also include distributing or [synchronizing certificates](/documentation/platform/pki/certificate-syncs/overview) to external systems like cloud key stores (e.g., AWS Secrets Manager, Google Secret Manager, Azure Key Vault) so they can be securely consumed by workloads running in the cloud.
+Certificate deployment involves installing the issued certificate on the appropriate systems and services, such as web servers, load balancers, or internal endpoints. It can also include distributing or [synchronizing certificates](/documentation/platform/pki/applications/certificate-syncs/overview) to external systems like cloud key stores (e.g., AWS Secrets Manager, Google Secret Manager, Azure Key Vault) so they can be securely consumed by workloads running in the cloud.
 
 Deployment can happen manually or through automated mechanisms such as configuration pipelines, agents, or webhook integrations.
 

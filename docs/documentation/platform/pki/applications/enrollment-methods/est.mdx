@@ -1,0 +1,168 @@
+---
+title: "EST Enrollment"
+sidebarTitle: "EST"
+description: "Issue certificates using the Enrollment over Secure Transport (EST) protocol for enterprise devices."
+---
+
+Use the EST enrollment method to issue and renew certificates for enterprise devices, IoT systems, and secure networks. EST provides strong mutual TLS authentication and is ideal for environments where devices have pre-installed bootstrap certificates.
+
+<Info>
+  EST enrollment is configured per Application. Your product admin sets up the certificate profile, and you configure EST enrollment within your Application.
+</Info>
+
+## When to Use EST Enrollment
+
+<CardGroup cols={2}>
+  <Card title="Enterprise Devices" icon="laptop">
+    Managed corporate laptops, workstations, and mobile devices.
+  </Card>
+  <Card title="IoT Devices" icon="microchip">
+    Industrial equipment, sensors, and embedded systems with factory certificates.
+  </Card>
+  <Card title="Network Infrastructure" icon="network-wired">
+    Switches, routers, and other network equipment with 802.1X authentication.
+  </Card>
+  <Card title="Secure Environments" icon="shield-halved">
+    Environments requiring mutual TLS authentication for certificate requests.
+  </Card>
+</CardGroup>
+
+Infisical's EST service implements [RFC 7030](https://datatracker.ietf.org/doc/html/rfc7030) with the following endpoints:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/cacerts` | Get the CA chain for certificate validation |
+| `/simpleenroll` | Request a new certificate |
+| `/simplereenroll` | Renew an existing certificate |
+
+## Prerequisites
+
+<Steps>
+  <Step title="Bootstrap certificates">
+    Your devices need a pre-installed bootstrap certificate (factory/manufacturer certificate) for initial authentication.
+    
+    <Note>
+      If your devices don't have bootstrap certificates, you can disable bootstrap validation in the EST configuration (less secure).
+    </Note>
+  </Step>
+  <Step title="Trust Infisical's EST server">
+    Devices must trust the TLS certificates used by Infisical's EST server.
+    
+    <Note>
+      For Infisical Cloud, configure devices to trust [Amazon root CA certificates](https://www.amazontrust.com/repository).
+    </Note>
+  </Step>
+</Steps>
+
+## Configure EST Enrollment
+
+<Steps>
+  <Step title="Navigate to your Application">
+    Go to **Certificate Manager → Applications** and select your Application.
+  </Step>
+  <Step title="Add EST enrollment">
+    In the **Enrollment Methods** section, click **Add Enrollment Method** and select **EST**.
+    
+    {/* SCREENSHOT: Add EST enrollment method modal */}
+    <Frame caption="Adding EST enrollment to an Application">
+      ![Adding EST enrollment](/images/pki/placeholder-screenshot.svg)
+    </Frame>
+  </Step>
+  <Step title="Select a certificate profile">
+    Choose the certificate profile that defines certificate parameters (CA, validity, constraints).
+  </Step>
+  <Step title="Configure EST settings">
+    | Setting | Description |
+    |---------|-------------|
+    | **EST Passphrase** | Password for client authentication (used as EST password on devices) |
+    | **CA Chain Certificate** | Certificate chain to validate device bootstrap certificates |
+    | **Disable Bootstrap Validation** | Skip bootstrap certificate validation (for devices without factory certs) |
+    
+    <Warning>
+      Disabling bootstrap validation removes a layer of security. Only use this for testing or controlled environments.
+    </Warning>
+  </Step>
+  <Step title="Get EST endpoints">
+    After saving, note the profile ID for constructing EST URLs:
+    
+    ```
+    https://app.infisical.com:8443/.well-known/est/{profile-id}/cacerts
+    https://app.infisical.com:8443/.well-known/est/{profile-id}/simpleenroll
+    https://app.infisical.com:8443/.well-known/est/{profile-id}/simplereenroll
+    ```
+    
+    <Info>
+      EST endpoints use port 8443 and the `.well-known/est` path as defined in RFC 7030.
+    </Info>
+  </Step>
+</Steps>
+
+## Enroll a Device
+
+Configure your EST client with the profile ID and passphrase.
+
+<Tabs>
+  <Tab title="Initial Enrollment">
+    For new devices with a bootstrap certificate:
+    
+    1. Configure the EST server URL: `https://app.infisical.com:8443/.well-known/est/{profile-id}`
+    2. Set EST username to any value (e.g., `device-001`)
+    3. Set EST password to your **EST Passphrase**
+    4. Use the bootstrap/manufacturer certificate for client authentication
+    5. Generate a CSR and call `/simpleenroll`
+    
+    ```bash
+    # Example using curl (simplified)
+    curl --cert bootstrap-cert.pem --key bootstrap-key.pem \
+      -u "device-001:<EST-passphrase>" \
+      --data-binary @device.csr \
+      -H "Content-Type: application/pkcs10" \
+      "https://app.infisical.com:8443/.well-known/est/{profile-id}/simpleenroll"
+    ```
+    
+    <Note>
+      When creating PKCS#12 bundles for client certificates, include only the leaf certificate and private key (not the full chain).
+    </Note>
+  </Tab>
+  <Tab title="Certificate Renewal">
+    For devices with an existing EST-issued certificate:
+    
+    1. Use the current EST-issued certificate for client authentication
+    2. Generate a new CSR
+    3. Call `/simplereenroll`
+    
+    ```bash
+    curl --cert current-cert.pem --key current-key.pem \
+      -u "device-001:<EST-passphrase>" \
+      --data-binary @device.csr \
+      -H "Content-Type: application/pkcs10" \
+      "https://app.infisical.com:8443/.well-known/est/{profile-id}/simplereenroll"
+    ```
+  </Tab>
+  <Tab title="Get CA Chain">
+    Retrieve the CA certificate chain for validation:
+    
+    ```bash
+    curl "https://app.infisical.com:8443/.well-known/est/{profile-id}/cacerts"
+    ```
+    
+    Use this chain to validate certificates issued by Infisical.
+  </Tab>
+</Tabs>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="SCEP Enrollment" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/scep">
+    Use SCEP for network devices and MDM systems.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View and manage certificates in your Application.
+  </Card>
+</CardGroup>

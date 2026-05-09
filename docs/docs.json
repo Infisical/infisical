@@ -722,150 +722,141 @@
                 "group": "Certificate Management",
                 "pages": [
                   "documentation/platform/pki/overview",
+                  "documentation/platform/pki/getting-started",
                   {
                     "group": "Concepts",
                     "pages": [
-                      "documentation/platform/pki/concepts/certificate-mgmt",
                       "documentation/platform/pki/concepts/certificate-lifecycle",
-                      "documentation/platform/pki/concepts/certificate-components",
-                      "documentation/platform/pki/concepts/pqc-algorithms",
-                      "documentation/platform/pki/concepts/code-signing"
+                      "documentation/platform/pki/concepts/certificate-components"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Applications",
+                "pages": [
+                  "documentation/platform/pki/applications/overview",
+                  "documentation/platform/pki/applications/certificates",
+                  {
+                    "group": "Enrollment Methods",
+                    "pages": [
+                      "documentation/platform/pki/applications/enrollment-methods/overview",
+                      "documentation/platform/pki/applications/enrollment-methods/api",
+                      "documentation/platform/pki/applications/enrollment-methods/acme",
+                      "documentation/platform/pki/applications/enrollment-methods/est",
+                      "documentation/platform/pki/applications/enrollment-methods/scep"
+                    ]
+                  },
+                  "documentation/platform/pki/applications/approvals",
+                  {
+                    "group": "Alerting",
+                    "pages": [
+                      "documentation/platform/pki/applications/alerting/overview",
+                      "documentation/platform/pki/applications/alerting/webhook-alerts",
+                      "documentation/platform/pki/applications/alerting/slack-alerts",
+                      "documentation/platform/pki/applications/alerting/pagerduty-alerts"
+                    ]
+                  },
+                  {
+                    "group": "Certificate Syncs",
+                    "pages": [
+                      "documentation/platform/pki/applications/certificate-syncs/overview",
+                      "documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager",
+                      "documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer",
+                      "documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager",
+                      "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
+                      "documentation/platform/pki/applications/certificate-syncs/chef",
+                      "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
+                      "documentation/platform/pki/applications/certificate-syncs/netscaler"
                     ]
                   },
                   {
                     "group": "Guides",
                     "pages": [
-                      "documentation/platform/pki/guides/request-cert-agent",
-                      "documentation/platform/pki/guides/request-cert-api",
-                      "documentation/platform/pki/guides/request-cert-csr",
-                      "documentation/platform/pki/guides/request-cert-acme",
-                      "documentation/platform/pki/guides/certificate-approvals"
+                      "integrations/platforms/certificate-agent",
+                      "documentation/platform/pki/applications/guides/k8s-cert-manager",
+                      "documentation/platform/pki/applications/guides/gloo-mesh",
+                      "documentation/platform/pki/applications/guides/windows-server-acme",
+                      "documentation/platform/pki/applications/guides/nginx-certbot",
+                      "documentation/platform/pki/applications/guides/apache-certbot",
+                      "documentation/platform/pki/applications/guides/tomcat-certbot",
+                      "documentation/platform/pki/applications/guides/jboss-certbot",
+                      "documentation/platform/pki/applications/guides/jamf-pro-scep"
                     ]
                   }
                 ]
               },
               {
-                "group": "Product Reference",
+                "group": "Code Signing",
                 "pages": [
+                  "documentation/platform/pki/code-signing/overview",
+                  "documentation/platform/pki/code-signing/signers",
+                  "documentation/platform/pki/code-signing/signing-policies",
+                  "documentation/platform/pki/code-signing/signing-requests",
+                  "documentation/platform/pki/code-signing/grants",
+                  "documentation/platform/pki/code-signing/pkcs11-module",
                   {
-                    "group": "Certificate Authorities",
+                    "group": "Guides",
                     "pages": [
-                      "documentation/platform/pki/ca/overview",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-jarsigner",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-apksigner",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-cosign",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-openssl",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-gpg"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Certificate Discovery",
+                "pages": [
+                  "documentation/platform/pki/discovery/overview",
+                  "documentation/platform/pki/discovery/network"
+                ]
+              },
+              {
+                "group": "Certificate Authorities",
+                "pages": [
+                  "documentation/platform/pki/ca/overview",
+                  {
+                    "group": "Internal CA",
+                    "pages": [
                       "documentation/platform/pki/ca/private-ca",
-                      "documentation/platform/pki/ca/external-ca"
+                      "documentation/platform/pki/ca/ca-renewal",
+                      "documentation/platform/pki/ca/crl-distribution"
                     ]
                   },
                   {
-                    "group": "Certificates",
+                    "group": "External CA",
                     "pages": [
-                      "documentation/platform/pki/certificates/overview",
-                      "documentation/platform/pki/certificates/profiles",
-                      "documentation/platform/pki/certificates/policies",
-                      "documentation/platform/pki/certificates/certificates"
-                    ]
-                  },
-                  {
-                    "group": "Enrollment Methods",
-                    "pages": [
-                      "documentation/platform/pki/enrollment-methods/overview",
-                      "documentation/platform/pki/enrollment-methods/api",
-                      "documentation/platform/pki/enrollment-methods/acme",
-                      "documentation/platform/pki/enrollment-methods/est",
-                      "documentation/platform/pki/enrollment-methods/scep"
-                    ]
-                  },
-                  {
-                    "group": "Discovery",
-                    "pages": [
-                      "documentation/platform/pki/discovery/overview",
-                      "documentation/platform/pki/discovery/network"
-                    ]
-                  },
-                  {
-                    "group": "Alerting",
-                    "pages": [
-                      "documentation/platform/pki/alerting/overview",
-                      "documentation/platform/pki/alerting/webhook-alerts",
-                      "documentation/platform/pki/alerting/slack-alerts",
-                      "documentation/platform/pki/alerting/pagerduty-alerts"
-                    ]
-                  },
-                  "documentation/platform/pki/approvals",
-                  {
-                    "group": "Code Signing",
-                    "pages": [
-                      "documentation/platform/pki/code-signing/overview",
-                      "documentation/platform/pki/code-signing/signers",
-                      {
-                        "group": "Approvals",
-                        "pages": [
-                          "documentation/platform/pki/code-signing/signing-policies",
-                          "documentation/platform/pki/code-signing/signing-requests",
-                          "documentation/platform/pki/code-signing/grants"
-                        ]
-                      },
-                      "documentation/platform/pki/code-signing/pkcs11-module",
-                      {
-                        "group": "Guides",
-                        "pages": [
-                          "documentation/platform/pki/code-signing/guides/pkcs11-jarsigner",
-                          "documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode",
-                          "documentation/platform/pki/code-signing/guides/pkcs11-apksigner",
-                          "documentation/platform/pki/code-signing/guides/pkcs11-cosign",
-                          "documentation/platform/pki/code-signing/guides/pkcs11-openssl",
-                          "documentation/platform/pki/code-signing/guides/pkcs11-gpg"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "Settings",
-                    "pages": [
-                      "documentation/platform/pki/settings/certificate-cleanup"
+                      "documentation/platform/pki/ca/external-ca",
+                      "documentation/platform/pki/ca/acme-ca",
+                      "documentation/platform/pki/ca/lets-encrypt",
+                      "documentation/platform/pki/ca/digicert",
+                      "documentation/platform/pki/ca/digicert-direct",
+                      "documentation/platform/pki/ca/sectigo",
+                      "documentation/platform/pki/ca/azure-adcs",
+                      "documentation/platform/pki/ca/aws-pca",
+                      "documentation/platform/pki/ca/aws-acm-public-ca",
+                      "documentation/platform/pki/ca/venafi",
+                      "documentation/platform/pki/ca/venafi-tpp"
                     ]
                   }
                 ]
               },
               {
-                "group": "Infrastructure Integrations",
+                "group": "Certificate Settings",
                 "pages": [
-                  "integrations/platforms/certificate-agent",
-                  "documentation/platform/pki/k8s-cert-manager",
-                  "documentation/platform/pki/integration-guides/gloo-mesh",
-                  "documentation/platform/pki/integration-guides/windows-server-acme",
-                  "documentation/platform/pki/integration-guides/nginx-certbot",
-                  "documentation/platform/pki/integration-guides/apache-certbot",
-                  "documentation/platform/pki/integration-guides/tomcat-certbot",
-                  "documentation/platform/pki/integration-guides/jboss-certbot",
-                  "documentation/platform/pki/integration-guides/jamf-pro-scep"
+                  "documentation/platform/pki/settings/policies",
+                  "documentation/platform/pki/settings/profiles",
+                  "documentation/platform/pki/settings/certificate-cleanup"
                 ]
               },
               {
-                "group": "Certificate Syncs",
+                "group": "Reference",
                 "pages": [
-                  "documentation/platform/pki/certificate-syncs/overview",
-                  "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
-                  "documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
-                  "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
-                  "documentation/platform/pki/certificate-syncs/azure-key-vault",
-                  "documentation/platform/pki/certificate-syncs/chef",
-                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
-                  "documentation/platform/pki/certificate-syncs/netscaler"
-                ]
-              },
-              {
-                "group": "External CA Integrations",
-                "pages": [
-                  "documentation/platform/pki/ca/acme-ca",
-                  "documentation/platform/pki/ca/lets-encrypt",
-                  "documentation/platform/pki/ca/digicert",
-                  "documentation/platform/pki/ca/digicert-direct",
-                  "documentation/platform/pki/ca/sectigo",
-                  "documentation/platform/pki/ca/azure-adcs",
-                  "documentation/platform/pki/ca/aws-pca",
-                  "documentation/platform/pki/ca/aws-acm-public-ca",
-                  "documentation/platform/pki/ca/venafi",
-                  "documentation/platform/pki/ca/venafi-tpp"
+                  "documentation/platform/pki/reference/pqc-algorithms"
                 ]
               }
             ]

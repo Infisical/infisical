@@ -4,7 +4,11 @@ sidebarTitle: "Overview"
 description: "Securely sign code and artifacts with centralized key management and approval workflows."
 ---
 
-In Infisical, Code Signing lets you digitally sign software artifacts (JARs, binaries, container images, and more) while keeping private keys secure on the server. Instead of distributing signing keys to developer workstations or CI pipelines, signing operations are performed centrally through Infisical with full audit trails and approval controls.
+Digitally sign software artifacts (JARs, binaries, container images, and more) while keeping private keys secure on the server. Instead of distributing signing keys to developer workstations or CI pipelines, signing operations are performed centrally through Infisical with full audit trails and approval controls.
+
+<Info>
+  Code Signing uses **Signers** as the organizing concept, similar to how [Applications](/documentation/platform/pki/applications/overview) work for certificates. Product Admins create Signers and assign team members (Guests) who can then request signing access.
+</Info>
 
 ## How It Works
 
@@ -55,10 +59,34 @@ The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-m
 ## Getting Started
 
 <CardGroup cols={2}>
-  <Card title="Create a Signer" href="/documentation/platform/pki/code-signing/signers">
+  <Card title="Create a Signer" icon="pen-nib" href="/documentation/platform/pki/code-signing/signers">
     Set up a code-signer and bind it to a certificate.
   </Card>
-  <Card title="Configure Signing Policies" href="/documentation/platform/pki/code-signing/signing-policies">
-    Define signing policies to control who can sign and when.
+  <Card title="Configure Signing Policies" icon="file-contract" href="/documentation/platform/pki/code-signing/signing-policies">
+    Define rules for who can sign and when.
+  </Card>
+  <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
+    Use standard signing tools with Infisical.
+  </Card>
+  <Card title="Signing Requests" icon="paper-plane" href="/documentation/platform/pki/code-signing/signing-requests">
+    Request signing access when policies are configured.
+  </Card>
+</CardGroup>
+
+## What's Next?
+
+If you're new to Code Signing, start by [creating a Signer](/documentation/platform/pki/code-signing/signers). If you need approval workflows, set up a [Signing Policy](/documentation/platform/pki/code-signing/signing-policies) first.
+
+For integration guides with specific tools, see:
+
+<CardGroup cols={3}>
+  <Card title="Cosign" icon="docker" href="/documentation/platform/pki/code-signing/guides/pkcs11-cosign">
+    Sign container images
+  </Card>
+  <Card title="jarsigner" icon="java" href="/documentation/platform/pki/code-signing/guides/pkcs11-jarsigner">
+    Sign Java JARs
+  </Card>
+  <Card title="GPG" icon="key" href="/documentation/platform/pki/code-signing/guides/pkcs11-gpg">
+    Sign with GPG
   </Card>
 </CardGroup>
