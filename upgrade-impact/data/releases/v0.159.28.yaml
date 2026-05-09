@@ -1,0 +1,56 @@
+version: v0.159.28
+releasedAt: 2026-05-08T20:34:08-04:00
+sourceTag: v0.159.28
+previousTag: v0.159.27
+impactLevel: low
+summary: Startup applies three database migrations. They add a users column, add
+  an index, and backfill org custom role permissions without required config
+  changes.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Announcements user column
+    description: Adds nullable users.lastSeenAnnouncementId for announcement
+      tracking. Existing data remains valid.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260506120000_users-last-seen-announcement.ts
+        path: backend/src/db/migrations/20260506120000_users-last-seen-announcement.ts
+        description: Adds nullable lastSeenAnnouncementId column
+  - title: Identity token index
+    description: Adds a concurrent partial index on
+      identity_access_tokens.subOrganizationId. The migration sets a 60 minute
+      statement timeout and disables transactions for index creation.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260507232033_add-identity-access-token-sub-organization-id-index.ts
+        path: backend/src/db/migrations/20260507232033_add-identity-access-token-sub-organization-id-index.ts
+        description: Creates concurrent partial index
+  - title: Org role request-access backfill
+    description: Backfills org-level custom roles to include the new project
+      request-access permission when missing. Existing roles are updated in
+      place.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260508140759_backfill-org-custom-role-project-request-access.ts
+        path: backend/src/db/migrations/20260508140759_backfill-org-custom-role-project-request-access.ts
+        description: Adds request-access to org custom roles
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-09T01:08:18.803Z
+  sourceRange:
+    from: v0.159.27
+    to: v0.159.28

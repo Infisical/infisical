@@ -14,6 +14,7 @@ import {
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
@@ -148,6 +149,13 @@ const adminConsolePermissionSchmea = z
   })
   .optional();
 
+const projectPermissionSchema = z
+  .object({
+    [OrgPermissionProjectActions.Create]: z.boolean().optional(),
+    [OrgPermissionProjectActions.RequestAccess]: z.boolean().optional()
+  })
+  .optional();
+
 const secretSharingPermissionSchema = z
   .object({
     [OrgPermissionSecretShareAction.ManageSettings]: z.boolean().optional()
@@ -183,11 +191,7 @@ export const formSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      project: z
-        .object({
-          create: z.boolean().optional()
-        })
-        .optional(),
+      project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
       member: generalPermissionSchema,
       groups: groupPermissionSchema,

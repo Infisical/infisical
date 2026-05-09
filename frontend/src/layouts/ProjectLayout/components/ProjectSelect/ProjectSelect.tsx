@@ -22,6 +22,7 @@ import {
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
+  OrgPermissionProjectActions,
   OrgPermissionSubjects,
   useOrganization,
   useProject,
@@ -182,7 +183,7 @@ const ProjectSelectInner = () => {
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
-                    I={OrgPermissionActions.Create}
+                    I={OrgPermissionProjectActions.Create}
                     a={OrgPermissionSubjects.Project}
                   >
                     {(isAllowed) => (

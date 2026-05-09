@@ -65,6 +65,63 @@ const validateReleaseAgainstGit = (release: ReleaseImpact, file: string, errors:
   }
 };
 
+const evidenceKey = (evidence: ReleaseImpact["breakingChanges"][number]["evidence"][number]) =>
+  [evidence.type, evidence.ref, evidence.path ?? "", evidence.url ?? ""].join("\u0000");
+
+const normalizeEntryKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+
+const unclearActionPatterns = [
+  /run migrations? before serving traffic/i,
+  /verify migration jobs? complete/i,
+  /account for/i,
+  /review .+ if you rely on/i,
+  /set\s+`?TRUSTED_PROXY_CIDRS`?/i,
+  /update any automation/i
+];
+
+const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: string[]) => {
+  const seenEntryTitles = new Map<string, string>();
+  const sections = [
+    ["breakingChanges", release.breakingChanges],
+    ["dbSchemaChanges", release.dbSchemaChanges],
+    ["configChanges", release.configChanges],
+    ["deploymentNotes", release.deploymentNotes],
+    ["knownIssues", release.knownIssues]
+  ] as const;
+
+  for (const [section, entries] of sections) {
+    for (const [entryIndex, entry] of entries.entries()) {
+      const titleKey = normalizeEntryKey(entry.title);
+      const entryRef = `${section}[${entryIndex}] ${entry.title}`;
+      const previousEntryRef = seenEntryTitles.get(titleKey);
+
+      if (previousEntryRef) {
+        errors.push(`${file} repeats impact entry title "${entry.title}" in ${previousEntryRef} and ${entryRef}`);
+      } else {
+        seenEntryTitles.set(titleKey, entryRef);
+      }
+
+      for (const pattern of unclearActionPatterns) {
+        if (pattern.test(entry.action)) {
+          errors.push(`${file} uses unclear operator action in ${entryRef}: ${entry.action}`);
+          break;
+        }
+      }
+
+      const seenEvidence = new Set<string>();
+      for (const evidence of entry.evidence) {
+        const key = evidenceKey(evidence);
+
+        if (seenEvidence.has(key)) {
+          errors.push(`${file} repeats evidence ${evidence.type}:${evidence.ref} in ${entryRef}`);
+        }
+
+        seenEvidence.add(key);
+      }
+    }
+  }
+};
+
 const validateReleaseFile = async (
   releasesDir: string,
   file: string,
@@ -115,6 +172,7 @@ const validateReleaseFile = async (
     errors.push(`${file} has impactLevel none but contains impact entries`);
   }
 
+  validateDuplicateContent(release, file, errors);
   validateReleaseAgainstGit(release, file, errors, skipGitChecks);
 
   return release;

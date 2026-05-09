@@ -161,6 +161,110 @@ const validationCases: ValidationCase[] = [
       }
     ],
     expectedErrors: [`${validRelease.version}.yaml contains invalid YAML`]
+  },
+  {
+    name: "rejects duplicate evidence within an impact entry",
+    index: makeIndex([
+      {
+        version: validRelease.version,
+        releasedAt: validRelease.releasedAt,
+        file: `releases/${validRelease.version}.yaml`
+      }
+    ]),
+    releases: [
+      {
+        fileName: `${validRelease.version}.yaml`,
+        release: makeRelease({
+          dbSchemaChanges: [
+            {
+              title: "Database schema migrations are included",
+              description: "This release includes a database migration.",
+              action: "Back up the database before upgrading.",
+              confidence: "high",
+              evidence: [
+                {
+                  type: "file",
+                  ref: "backend/src/db/migrations/20260429000000_example.ts",
+                  path: "backend/src/db/migrations/20260429000000_example.ts"
+                },
+                {
+                  type: "file",
+                  ref: "backend/src/db/migrations/20260429000000_example.ts",
+                  path: "backend/src/db/migrations/20260429000000_example.ts"
+                }
+              ]
+            }
+          ]
+        })
+      }
+    ],
+    expectedErrors: [`${validRelease.version}.yaml repeats evidence file:backend/src/db/migrations/20260429000000_example.ts`]
+  },
+  {
+    name: "rejects duplicate impact entry titles",
+    index: makeIndex([
+      {
+        version: validRelease.version,
+        releasedAt: validRelease.releasedAt,
+        file: `releases/${validRelease.version}.yaml`
+      }
+    ]),
+    releases: [
+      {
+        fileName: `${validRelease.version}.yaml`,
+        release: makeRelease({
+          breakingChanges: [
+            {
+              title: "Database schema migrations are included",
+              description: "The same impact is reported in another section.",
+              action: "Keep only one entry for this impact.",
+              confidence: "medium",
+              evidence: [
+                {
+                  type: "file",
+                  ref: "backend/src/db/migrations/20260429000000_example.ts",
+                  path: "backend/src/db/migrations/20260429000000_example.ts"
+                }
+              ]
+            }
+          ]
+        })
+      }
+    ],
+    expectedErrors: [`${validRelease.version}.yaml repeats impact entry title "Database schema migrations are included"`]
+  },
+  {
+    name: "rejects unclear operator actions",
+    index: makeIndex([
+      {
+        version: validRelease.version,
+        releasedAt: validRelease.releasedAt,
+        file: `releases/${validRelease.version}.yaml`
+      }
+    ]),
+    releases: [
+      {
+        fileName: `${validRelease.version}.yaml`,
+        release: makeRelease({
+          dbSchemaChanges: [
+            {
+              title: "Database schema migrations are included",
+              description: "This release includes a database migration.",
+              action: "Set TRUSTED_PROXY_CIDRS to your proxy CIDR ranges and restart.",
+              confidence: "high",
+              evidence: [
+                {
+                  type: "file",
+                  ref: "backend/src/db/migrations/20260429000000_example.ts",
+                  path: "backend/src/db/migrations/20260429000000_example.ts"
+                }
+              ]
+            }
+          ]
+        })
+      }
+    ],
+    expectedErrors: [`${validRelease.version}.yaml uses unclear operator action`]
   }
 ];
 

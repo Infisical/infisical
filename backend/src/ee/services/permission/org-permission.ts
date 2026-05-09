@@ -136,6 +136,11 @@ export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
 }
 
+export enum OrgPermissionProjectActions {
+  Create = "create",
+  RequestAccess = "request-access"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
@@ -175,7 +180,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
-  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
+  | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -233,7 +238,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Project).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_ENUM([OrgPermissionActions.Create]).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionProjectActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Role).describe("The entity this permission pertains to."),
@@ -391,7 +398,8 @@ const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.Edit, OrgPermissionSubjects.SubOrganization);
@@ -556,7 +564,8 @@ const buildMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
