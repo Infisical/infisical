@@ -3624,7 +3624,7 @@ export const secretServiceFactory = ({
     const tagIdsToCopy = attributesToCopy.tags ? (sourceSecret.tags?.map((t) => t.id) ?? []) : undefined;
     const skipMultilineEncodingToCopy = attributesToCopy.skipMultilineEncoding
       ? Boolean(sourceSecret.skipMultilineEncoding)
-      : false;
+      : undefined;
 
     const secretPayload = {
       secretValue: valueToCopy,

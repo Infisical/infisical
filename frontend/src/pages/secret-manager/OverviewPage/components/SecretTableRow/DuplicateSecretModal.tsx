@@ -1,19 +1,10 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  CheckCircleIcon,
-  CheckIcon,
-  ChevronsUpDownIcon,
-  CircleAlertIcon,
-  CopyIcon,
-  InfoIcon,
-  KeyIcon,
-  LoaderCircleIcon
-} from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { CheckIcon, ChevronsUpDownIcon, CopyIcon, KeyIcon, LoaderCircleIcon } from "lucide-react";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -79,68 +70,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-enum DuplicateStatus {
-  Success = "success",
-  Info = "info",
-  Error = "error"
-}
-
-type DuplicateResults = {
-  status: DuplicateStatus;
-  name: string;
-  id: string;
-  message: string;
-}[];
-
-const DuplicateResultsView = ({
-  results,
-  onDismiss
-}: {
-  results: DuplicateResults;
-  onDismiss: () => void;
-}) => (
-  <div className="w-full">
-    <div className="mb-2 text-sm font-medium">Results</div>
-    <div className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border bg-container px-2 py-2">
-      {results.map(({ id, name, status, message }) => {
-        let resultClassName: string;
-        let Icon: typeof CheckCircleIcon;
-
-        switch (status) {
-          case DuplicateStatus.Success:
-            Icon = CheckCircleIcon;
-            resultClassName = "text-success";
-            break;
-          case DuplicateStatus.Info:
-            Icon = InfoIcon;
-            resultClassName = "text-info";
-            break;
-          case DuplicateStatus.Error:
-          default:
-            Icon = CircleAlertIcon;
-            resultClassName = "text-danger";
-        }
-
-        return (
-          <div key={id} className="flex items-start gap-2 p-2 text-sm">
-            <Icon className={twMerge(resultClassName, "mt-0.5 size-3.5 shrink-0")} />
-            <span>
-              {name}: {message}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-    <DialogFooter>
-      <DialogClose asChild>
-        <Button variant="outline" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      </DialogClose>
-    </DialogFooter>
-  </div>
-);
-
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -180,7 +109,6 @@ const DuplicateSecretContent = ({
     }
   });
 
-  const [duplicateResults, setDuplicateResults] = useState<DuplicateResults | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -209,44 +137,50 @@ const DuplicateSecretContent = ({
       )
     );
 
-    const results: DuplicateResults = settled.map((result, idx) => {
+    const successEnvs: { name: string }[] = [];
+    const approvalEnvs: { name: string }[] = [];
+    const failures: { name: string; message: string }[] = [];
+
+    settled.forEach((result, idx) => {
       const env = targets[idx];
 
       if (result.status === "fulfilled") {
         if ("approval" in result.value) {
-          return {
-            id: env.id,
-            name: env.name,
-            status: DuplicateStatus.Info,
-            message: "A secret approval request has been generated"
-          };
+          approvalEnvs.push({ name: env.name });
+        } else {
+          successEnvs.push({ name: env.name });
         }
-        return {
-          id: env.id,
-          name: env.name,
-          status: DuplicateStatus.Success,
-          message: "Successfully duplicated secret"
-        };
+        return;
       }
 
       const reason = result.reason as {
         response?: { data?: { message?: string } };
         message?: string;
       };
-      return {
-        id: env.id,
+      failures.push({
         name: env.name,
-        status: DuplicateStatus.Error,
         message: reason?.response?.data?.message ?? reason?.message ?? "Unknown error"
-      };
+      });
     });
 
-    setDuplicateResults(results);
-  };
+    if (successEnvs.length > 0) {
+      const text =
+        successEnvs.length === 1
+          ? `Successfully duplicated secret to ${successEnvs[0].name}`
+          : `Successfully duplicated secret to ${successEnvs.length} environments`;
+      createNotification({ type: "success", text });
+    }
 
-  if (duplicateResults) {
-    return <DuplicateResultsView results={duplicateResults} onDismiss={onClose} />;
-  }
+    if (approvalEnvs.length > 0) {
+      const text =
+        approvalEnvs.length === 1
+          ? `Secret approval request generated for ${approvalEnvs[0].name}`
+          : `Secret approval request generated for ${approvalEnvs.length} environments`;
+      createNotification({ type: "info", text });
+    }
+
+    onClose();
+  };
 
   if (duplicateSecret.isPending) {
     return (
