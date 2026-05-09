@@ -53,10 +53,10 @@ const makeOracleConnection = (
 
   return {
     validate: async (connectOnly) => {
-      // When a custom CA is provided, probe the cert chain first — node-oracledb
-      // thin mode can't accept an inline CA, so tcps:// only works if the cert
-      // is already trusted by the system store.
-      if (sslEnabled && sslCertificate) {
+      // Probe TLS first to validate hostname + cert chain. The tcps:// connect
+      // string uses ssl_server_dn_match=false (required because we connect via
+      // localhost proxy), so this probe is the hostname validation layer.
+      if (sslEnabled) {
         try {
           await probeOracleTls({
             tcpHost: "localhost",
@@ -80,13 +80,12 @@ const makeOracleConnection = (
         if (error instanceof Error) {
           const msg = error.message || "";
           if (connectOnly && msg.includes("ORA-")) {
-            // Any Oracle response means the host is reachable.
             return;
           }
         }
-        // If CA was provided and probe passed, the cert is valid — the tcps://
-        // failure is likely because the CA isn't in the system trust store.
-        // Save anyway; creds will be checked on first PAM session.
+        // Probe passed so the cert is valid — tcps:// failure is likely because
+        // the custom CA isn't in the system trust store. Save anyway; creds
+        // will be checked on first PAM session.
         if (sslEnabled && sslCertificate) {
           return;
         }
