@@ -1,35 +1,43 @@
 ---
 title: "Signers"
 sidebarTitle: "Signers"
-description: "Learn how to create and manage code-signing identities."
+description: "Create and manage code-signing identities."
 ---
 
-In Infisical, a signer is a named code-signer bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Each signer represents a signing capability within a project, for example `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
+A Signer is a named code-signing identity bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Signers represent signing capabilities—for example, `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
 
-Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes. This ensures that signing keys cannot be exfiltrated from build environments.
+<Info>
+  Signers are created by product admins. Team members (Guests) are assigned to Signers and can then request signing access or sign directly (depending on policy).
+</Info>
+
+Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes.
 
 ## Key Characteristics
 
-- **Bound to a certificate**: Every signer must be linked to a certificate that has the `codeSigning` EKU.
-- **Optional signing policy**: A signer can optionally be associated with a [signing policy](/documentation/platform/pki/code-signing/signing-policies) that governs who can sign and under what conditions. Without a policy, signing is allowed without approval.
-- **Supports RSA and ECDSA**: Signers support RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) key types depending on the certificate.
-- **Tracks signing history**: Every signing operation is recorded with actor, algorithm, data hash, and grant information.
+| Feature | Description |
+|---------|-------------|
+| **Bound to certificate** | Every signer must be linked to a certificate with the `codeSigning` EKU |
+| **Optional signing policy** | Attach a [signing policy](/documentation/platform/pki/code-signing/signing-policies) to require approval before signing |
+| **RSA and ECDSA** | Supports RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) |
+| **Audit trail** | Every signing operation is recorded with actor, algorithm, and grant information |
 
-## Guide to Creating a Signer
+## Create a Signer
 
 <Steps>
-  <Step title="Issuing a code-signing certificate">
-    Before creating a signer, you need a certificate with the `codeSigning` extended key usage. Follow the [guide to issuing certificates](/documentation/platform/pki/certificates/certificates#guide-to-issuing-certificates) and specify `codeSigning` in the extended key usage field.
+  <Step title="Issue a code-signing certificate">
+    You need a certificate with the `codeSigning` extended key usage. Follow the [certificate issuance guide](/documentation/platform/pki/applications/certificates#issuing-certificates) and specify `codeSigning` in the extended key usage field.
 
     <Note>
-      Only certificates with the `codeSigning` extended key usage will be available when creating a signer. If you don't see your certificate, verify that it was issued with the correct EKU.
+      Only certificates with the `codeSigning` EKU appear when creating a signer.
     </Note>
   </Step>
-  <Step title="(Optional) Creating a signing policy">
-    If you want to require approval before signing, head to **Code Signing > Approvals > Signing Policies** and press **Create Policy**. See [Signing Policies](/documentation/platform/pki/code-signing/signing-policies) for details. Without a policy, any authorized user or identity can sign immediately.
+  <Step title="(Optional) Create a signing policy">
+    To require approval before signing, create a [Signing Policy](/documentation/platform/pki/code-signing/signing-policies) first.
+    
+    Without a policy, any authorized user or identity can sign immediately.
   </Step>
-  <Step title="Creating the signer">
-    Head to your Certificate Management Project > **Code Signing > Signers** and press **Create Signer**.
+  <Step title="Create the signer">
+    Go to **Certificate Manager → Code Signing → Signers** and click **Create Signer**.
 
     ![Create signer modal](/images/platform/pki/code-signing/signer-create.png)
 
@@ -106,3 +114,14 @@ curl --request POST \
     Yes, depending on the signing policy configuration. If the policy allows machine identity bypass, machine identities can sign without human intervention after obtaining a grant.
   </Accordion>
 </AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Configure Signing Policies" icon="file-contract" href="/documentation/platform/pki/code-signing/signing-policies">
+    Add approval workflows before signing operations.
+  </Card>
+  <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
+    Use standard signing tools with your signer.
+  </Card>
+</CardGroup>

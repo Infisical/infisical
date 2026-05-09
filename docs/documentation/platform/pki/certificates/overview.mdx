@@ -1,17 +1,31 @@
 ---
-title: "Overview"
+title: "Certificates Overview"
 sidebarTitle: "Overview"
+description: "Issue and manage X.509 certificates with Infisical."
 ---
 
-To issue a certificate with Infisical, you create a certificate profile and a certificate policy to go along with it. You then issue a certificate against
-a specific profile depending on the enrollment method associated with it.
+<Warning>
+  This page has moved. Certificate issuance is now done through [Applications](/documentation/platform/pki/applications/overview).
+</Warning>
 
-There are four components to understand:
+To issue certificates with Infisical, you need:
 
-- [Certificate Profile](/documentation/platform/pki/certificates/profiles): A configuration set specifying how certificates should be issued under that profile including the [issuing CA](/documentation/platform/pki/ca/overview), a certificate policy, and the [enrollment method](/documentation/platform/pki/enrollment-methods/overview) (such as ACME, EST, API, etc.) used to enroll certificates.
+1. **Certificate Authority** — A CA to issue certificates from. See [Certificate Authorities](/documentation/platform/pki/ca/overview).
+2. **Certificate Policy** — Rules for what certificates can contain. See [Certificate Policies](/documentation/platform/pki/settings/policies).
+3. **Certificate Profile** — Combines a CA with a policy. See [Certificate Profiles](/documentation/platform/pki/settings/profiles).
+4. **Application** — The resource where teams issue certificates. See [Applications](/documentation/platform/pki/applications/overview).
 
-- [Certificate Policy](/documentation/platform/pki/certificates/policies): A policy structure specifying the permitted attributes for requested certificates including subject naming conventions, SAN fields, key usages, and extended key usages.
-
-- [Approval Policy](/documentation/platform/pki/approvals): An optional approval workflow requiring human review before certificates are issued. Approval policies can enforce multi-step review processes with configurable approvers for each step.
-
-- [Certificate](/documentation/platform/pki/certificates/certificates): The actual X.509 certificate issued for a profile. Once issued, a certificate kept track of in the certificate inventory.
+<CardGroup cols={2}>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Issue and manage certificates for your services.
+  </Card>
+  <Card title="Enrollment Methods" icon="plug" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Configure how certificates are requested.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View, renew, and revoke certificates.
+  </Card>
+  <Card title="Getting Started" icon="rocket" href="/documentation/platform/pki/getting-started">
+    New to Certificate Manager? Start here.
+  </Card>
+</CardGroup>

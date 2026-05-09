@@ -1,37 +1,80 @@
 ---
 title: "Certificate Cleanup"
 sidebarTitle: "Certificate Cleanup"
-description: "Learn how to configure automatic cleanup of expired certificates in Infisical"
+description: "Automatically remove expired certificates to keep your inventory organized."
 ---
 
-## Concept
+Automatically remove expired certificates from your Certificate Manager. Cleanup runs daily and deletes certificates that have been expired for a configurable number of days.
 
-Certificate cleanup is a project-level setting that automatically removes expired certificates on a daily schedule.
-Over time, expired certificates accumulate and add clutter to your certificate inventory. Enabling cleanup keeps your project organized by periodically deleting certificates that have been expired for a configurable number of days.
+<Info>
+  This setting is managed by product admins and applies to all certificates in the Certificate Manager.
+</Info>
 
-## Configuring Certificate Cleanup
+## Configure Certificate Cleanup
 
-To configure certificate cleanup, head to your Certificate Management Project > Settings > **Certificate Cleanup**.
+<Steps>
+  <Step title="Navigate to settings">
+    Go to **Certificate Manager → Settings → Certificate Cleanup**.
+    
+    {/* SCREENSHOT: Certificate cleanup settings page */}
+    <Frame caption="Certificate cleanup settings">
+      ![Certificate cleanup settings](/images/pki/placeholder-screenshot.svg)
+    </Frame>
+  </Step>
+  <Step title="Enable cleanup">
+    Toggle **Enable** to turn on automatic cleanup.
+  </Step>
+  <Step title="Set retention period">
+    Configure **Delete certificates N days after expiration**:
+    
+    | Value | Behavior |
+    |-------|----------|
+    | `3` | Certificates are deleted 3 days after expiration |
+    | `7` | Certificates are deleted 7 days after expiration |
+    | `30` | Certificates are deleted 30 days after expiration |
+    
+    <Note>
+      Values must be between 1 and 30 days.
+    </Note>
+  </Step>
+  <Step title="Configure options">
+    | Option | Description |
+    |--------|-------------|
+    | **Skip Certificates with Active Syncs** | Don't delete certificates that are synced to external services (AWS ACM, Azure Key Vault, etc.) |
+    
+    <Warning>
+      Deleting synced certificates can break integrations. Enable this option if you use certificate syncs.
+    </Warning>
+  </Step>
+</Steps>
 
-![certificate cleanup settings](/images/platform/pki/settings/certificate-cleanup.png)
-
-### Fields
-
-- **Enable toggle**: Turns automatic cleanup on or off for the project. When disabled, no certificates are removed.
-- **Delete certificates N days after expiration**: The number of days a certificate must be expired before it becomes eligible for deletion. For example, setting this to `3` means certificates are removed 3 days after their `notAfter` date. Accepts values between 1 and 30.
-
-### Options
-
-- **Skip Certificates with Active Syncs**: When enabled, certificates that are synced to external services (e.g. AWS Certificate Manager, Azure Key Vault) are not removed. This prevents breaking active integrations that depend on the certificate.
-
-### Last Execution
+## Monitoring Cleanup
 
 After the cleanup job runs, the settings page displays:
 
-- **Status**: Whether the last run succeeded or encountered errors.
-- **Last Run**: The date and time of the last execution.
-- **Certificates Removed**: The number of certificates deleted in the last run.
+| Field | Description |
+|-------|-------------|
+| **Status** | Whether the last run succeeded or failed |
+| **Last Run** | Date and time of the last execution |
+| **Certificates Removed** | Number of certificates deleted |
 
 ## Permissions
 
-Only project **Admins** can view and configure certificate cleanup settings.
+Only **Product Admins** can configure certificate cleanup settings.
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Certificate Policies" icon="file-contract" href="/documentation/platform/pki/settings/policies">
+    Define constraints for certificates.
+  </Card>
+  <Card title="Certificate Profiles" icon="id-card" href="/documentation/platform/pki/settings/profiles">
+    Create profiles that link CAs with policies.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View and manage certificates in Applications.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+</CardGroup>

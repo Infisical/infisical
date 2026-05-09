@@ -1,21 +1,76 @@
 ---
 title: "Certificate Management"
 sidebarTitle: "Overview"
-description: "Manage Certificate Authorities and automate X.509 certificate lifecycle management."
+description: "Manage Certificate Authorities and automate X.509 certificate lifecycle management across your organization."
 ---
 
-Infisical can be used to create and manage Certificate Authorities (CAs) and issue digital X.509 certificates. This allows you to manage PKI infrastructure and issue certificates for end-entities such as load balancers, web servers, devices, and more.
+Infisical Certificate Manager is a centralized platform for managing X.509 certificates across your organization. Issue certificates for TLS, mTLS, and device authentication — whether from your own private CAs or external providers like DigiCert and Let's Encrypt.
 
-It helps teams automate certificate management including enrollment and renewal, and adopt secure workflows to ensure certificates remain valid, trusted, and synchronized across infrastructure.
+<Card title="Get Started" icon="rocket" href="/documentation/platform/pki/getting-started">
+  New to Certificate Manager? Start here to understand the core concepts and issue your first certificate.
+</Card>
 
-Core capabilities include:
+## Core Capabilities
 
-- [Private CA](/documentation/platform/pki/ca/private-ca): Create and manage your own private CA hierarchy including root and intermediate CAs.
-- [External CA integration](/documentation/platform/pki/ca/external-ca): Integrate with external public and private CAs including [Azure ADCS](/documentation/platform/pki/ca/azure-adcs) and [ACME-compatible CAs](/documentation/platform/pki/ca/acme-ca) like Let's Encrypt and DigiCert.
-- [Certificate Enrollment](/documentation/platform/pki/enrollment-methods/overview): Support enrollment methods including [API](/documentation/platform/pki/enrollment-methods/api), [ACME](/documentation/platform/pki/enrollment-methods/acme), [EST](/documentation/platform/pki/enrollment-methods/est), and more to automate certificate issuance for services, devices, and workloads.
-- Certificate Inventory: Track and monitor issued X.509 certificates, maintaining a comprehensive inventory of all active and expired certificates.
-- Certificate Lifecycle Automation: Automate issuance, [renewal](/documentation/platform/pki/certificates/certificates#guide-to-renewing-certificates), and [revocation](/documentation/platform/pki/certificates/certificates#guide-to-revoking-certificates) with policy-based workflows, ensuring certificates remain valid, compliant, and up to date across your infrastructure.
-- [Certificate Syncs](/documentation/platform/pki/certificate-syncs/overview): Push certificates to cloud certificate managers like [AWS Certificate Manager](/documentation/platform/pki/certificate-syncs/aws-certificate-manager) and [Azure Key Vault](/documentation/platform/pki/certificate-syncs/azure-key-vault).
-- [Certificate Discovery](/documentation/platform/pki/discovery/overview): Discover and map certificates deployed across your infrastructure, providing full visibility into your organization's certificate landscape.
-- [Certificate Alerts](/documentation/platform/pki/alerting/overview): Receive alerts and webhook events for certificate lifecycle changes such as certificate expiration.
-- [Code Signing](/documentation/platform/pki/code-signing/overview): Digitally sign software artifacts with centralized key management, approval workflows, and PKCS#11 integration for tools like jarsigner.
+<CardGroup cols={2}>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Organize certificate management by service. Each Application has its own members, enrollment methods, alerting, and certificate inventory.
+  </Card>
+  <Card title="Certificate Authorities" icon="building-columns" href="/documentation/platform/pki/ca/overview">
+    Create private CA hierarchies or integrate with external CAs like DigiCert, Let's Encrypt, AWS PCA, and Azure ADCS.
+  </Card>
+  <Card title="Certificate Enrollment" icon="plug" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Issue certificates via API, ACME, EST, or SCEP — supporting everything from Certbot to enterprise device enrollment.
+  </Card>
+  <Card title="Code Signing" icon="file-signature" href="/documentation/platform/pki/code-signing/overview">
+    Sign software artifacts with centralized key management, approval workflows, and PKCS#11 integration.
+  </Card>
+</CardGroup>
+
+## Lifecycle Automation
+
+Certificate Manager automates the certificate lifecycle from issuance to expiration:
+
+<Columns cols="3">
+  <Card title="Issuance" icon="certificate">
+    Issue certificates on-demand or through automated enrollment protocols.
+  </Card>
+  <Card title="Renewal" icon="arrows-spin">
+    Auto-renew certificates before expiration with configurable lead times.
+  </Card>
+  <Card title="Revocation" icon="ban">
+    Revoke compromised certificates and publish to CRL distribution points.
+  </Card>
+</Columns>
+
+## Visibility & Delivery
+
+<CardGroup cols={2}>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/certificate-syncs/overview">
+    Push certificates to AWS Certificate Manager, Azure Key Vault, Cloudflare, and other destinations.
+  </Card>
+  <Card title="Certificate Discovery" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Scan your infrastructure to find and inventory certificates you didn't know existed.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/alerting/overview">
+    Get notified via Slack, PagerDuty, or webhooks when certificates expire or lifecycle events occur.
+  </Card>
+  <Card title="Approval Workflows" icon="check-double" href="/documentation/platform/pki/approvals">
+    Require human review before high-value certificates are issued.
+  </Card>
+</CardGroup>
+
+## How It's Organized
+
+Certificate Manager separates shared infrastructure from team-level operations:
+
+| Level | Entities | Managed by |
+|-------|----------|------------|
+| **Organization** | Certificate Authorities, Policies, Profiles | Product admins |
+| **Application** | Enrollment, Certificates, Alerting, Syncs | Team admins & operators |
+
+This separation means product admins set up PKI once, and teams consume it through Applications without needing to understand the underlying infrastructure.
+
+<Card title="Learn the Concepts" icon="book-open" href="/documentation/platform/pki/getting-started">
+  Understand how CAs, Policies, Profiles, and Applications connect.
+</Card>

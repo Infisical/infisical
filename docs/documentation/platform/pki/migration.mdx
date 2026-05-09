@@ -1,0 +1,146 @@
+---
+title: "Migration Guide"
+sidebarTitle: "Migration"
+description: "Migrate from the legacy project-based model to the new Application-centric model."
+---
+
+If you're on the legacy project-based Certificate Manager, this guide explains what changed and how to migrate to the new Application-centric model.
+
+<Warning>
+  This guide is for existing customers on the legacy model. If you're new to Infisical Certificate Manager, start with [Getting Started](/documentation/platform/pki/getting-started).
+</Warning>
+
+## What Changed
+
+The new Certificate Manager removes the "project" concept and introduces a clearer separation between product-level infrastructure (CAs, Policies, Profiles) and resource-level operations (Applications, Signers).
+
+### Key Changes
+
+| Before | After |
+|--------|-------|
+| Certificate Management Project | Certificate Manager (Product) |
+| Certificates issued at project level | Certificates issued through Applications |
+| Profiles had enrollment methods baked in | Enrollment methods configured per Application |
+| Alerts filtered by profile/properties | Alerts configured per Application (no filters) |
+| Approval policies defined separately | Approval policies defined inside Applications (per profile) |
+| Access control at project level | Two-level access: Product level + Application/Signer level |
+
+### New Hierarchy
+
+```
+Organization
+└── Certificate Manager (Product)
+    ├── Product-Level (Admin manages)
+    │   ├── Certificate Authorities
+    │   ├── Certificate Policies
+    │   ├── Certificate Profiles
+    │   └── Requests (centralized approvals)
+    │
+    └── Resource-Level (Teams operate)
+        ├── Applications (for certificates)
+        └── Signers (for code signing)
+```
+
+### New Access Control Model
+
+**Product Level:**
+
+| Role | What they see | What they can do |
+|------|---------------|------------------|
+| **Product Admin** | Everything | Full control of CAs, Policies, Profiles, Applications, Signers |
+| **Product Auditor** | Everything | Read-only |
+| **Product Guest** | Applications, Signers, Requests | Operate within assigned resources only |
+
+**Application/Signer Level:**
+
+| Role | What they can do |
+|------|------------------|
+| **Application Admin** | Configure enrollment methods, syncs, alerts, approvals |
+| **Application Operator** | Issue, renew, revoke certificates |
+
+## Migration Steps
+
+<Steps>
+  <Step title="Review your current setup">
+    Document your existing:
+    - Certificate profiles and their enrollment methods
+    - Alert configurations and filters
+    - Approval policies
+    - Team members and their access levels
+  </Step>
+  <Step title="Create Applications (Product Admin)">
+    As a product admin, create an Application for each logical grouping of certificates (e.g., per service, per team):
+    
+    1. Go to **Certificate Manager → Applications**
+    2. Click **Create Application**
+    3. Name it after the service or team (e.g., `payments-api`, `platform-team`)
+    4. Assign team members who will operate within this Application
+  </Step>
+  <Step title="Configure enrollment methods per Application">
+    For each Application:
+    
+    1. Add the appropriate enrollment method(s) (API, ACME, EST, SCEP)
+    2. Select the certificate profile that defines what certificates look like
+    
+    <Note>
+      Profiles no longer have enrollment methods baked in. You configure enrollment at the Application level, allowing one profile to be used with different enrollment methods.
+    </Note>
+  </Step>
+  <Step title="Migrate alerts">
+    For each Application:
+    
+    1. Go to **Alerting** within the Application
+    2. Create alerts for expiration, issuance, renewal, and revocation
+    
+    <Warning>
+      Alert filters (by profile or certificate properties) are no longer supported. Alerts now apply to all certificates in the Application.
+    </Warning>
+  </Step>
+  <Step title="Migrate approval policies">
+    For each Application:
+    
+    1. When attaching a profile, configure approval requirements
+    2. Approval policies are now scoped to profile + Application
+    
+    Pending approval requests appear in the centralized **Requests** page at the product level.
+  </Step>
+  <Step title="Assign team members">
+    1. Grant **Product Guest** role to team members who need Application access
+    2. Assign them to specific Applications with **Application Admin** or **Application Operator** roles
+    
+    <Note>
+      Product Guests only see Applications and Signers they're assigned to, plus the centralized Requests page.
+    </Note>
+  </Step>
+  <Step title="Update API integrations">
+    If you use the API:
+    
+    1. Review API endpoints for any path changes
+    2. Update authentication to use the new Application context where applicable
+    3. Test your integrations in a non-production environment first
+  </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I still use certificate profiles?">
+    Yes. Profiles still exist and define what certificates look like (CA, validity, constraints). The change is that enrollment methods are now configured per Application, not per profile.
+  </Accordion>
+  <Accordion title="What happens to my existing certificates?">
+    Existing certificates remain in your inventory. You'll need to organize them into Applications for ongoing management.
+  </Accordion>
+  <Accordion title="Do I need to re-issue certificates?">
+    No. Existing certificates continue to work. The migration is about how you organize and manage them going forward.
+  </Accordion>
+  <Accordion title="Can I keep my existing alerts?">
+    You'll need to recreate alerts within Applications. The new model doesn't support profile-based or property-based alert filtering—alerts apply to all certificates in an Application.
+  </Accordion>
+  <Accordion title="What about approval workflows?">
+    Approval policies are now defined inside Applications and can be configured per profile. Pending requests appear in the centralized Requests page.
+  </Accordion>
+</AccordionGroup>
+
+## Need Help?
+
+If you encounter issues during migration or have questions, contact support@infisical.com.
