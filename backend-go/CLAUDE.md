@@ -1,6 +1,6 @@
 # backend-go
 
-Partial Go rewrite of the Node.js backend using Goa v3 + go-jet.
+Partial Go rewrite of the Node.js backend using Goa v3 + raw pgx queries.
 
 ## Commands
 
@@ -8,7 +8,6 @@ Partial Go rewrite of the Node.js backend using Goa v3 + go-jet.
 make build      # build binary
 make dev        # hot-reload via docker-compose + air
 make gen-goa    # regenerate Goa handlers (design/ → gen/)
-make gen-db     # regenerate go-jet types from DB
 make test       # integration tests (testcontainers, -race)
 make lint       # must pass before submission
 make lint-fix   # auto-fix linting issues
@@ -23,13 +22,13 @@ Never edit `gen/` directories — always regenerate.
 - **Context**: Every I/O method takes `context.Context` first. Constructors are the exception.
 - **Logger**: Pass `*slog.Logger` via constructor — never use `slog.Default()`.
 - **Interfaces**: Service Consumer defines narrow interfaces. Accept interfaces, not concrete types.
-- **DAL boundary**: Services must not import `table`, `postgres`, `qrm`. Use go-jet only.
-- **Error wrapping**: Wrap DAL errors at caller level with context:
+- **No DAL layer**: Services directly use `pg.DB` and execute raw pgx queries.
+- **Error wrapping**: Wrap database errors at service level with context:
   ```go
   errutil.DatabaseErr("Failed to load").WithErrf("FuncName(arg=%s): %w", arg, err)
   errutil.Forbidden("Access denied").WithErrf("FuncName: permission check failed")
   ```
-- **Lean code**: Inline single-use helpers. Split DAL files by functionality.
+- **Lean code**: Inline single-use helpers.
 
 ## Architecture
 
@@ -38,41 +37,113 @@ cmd/infisical/main.go           # Entry point
 internal/
 ├── config/                     # Env config via koanf
 ├── database/
-│   ├── pg/gen/                 # go-jet generated (DO NOT EDIT)
-│   ├── redis/                  # Redis client
-│   └── ormify/                 # Generic CRUD: DAL[M] with Find/Create/Update/Delete
+│   ├── pg/
+│   │   ├── pg.go               # DB interface (primary + replicas via pgxpool)
+│   │   ├── qb/                 # Query builders (Where, Insert, Update, Delete)
+│   │   ├── sqln/               # SQL nesting (GroupRows for LEFT JOIN flattening)
+│   │   └── pglock/             # PostgreSQL advisory locks
+│   └── redis/                  # Redis client
+├── libs/
+│   ├── fn/                     # Generic utilities (AppendUnique, etc.)
+│   └── errutil/                # Error types and formatting
 ├── server/
 │   ├── design/                 # Goa DSL definitions
 │   ├── gen/                    # Goa generated (DO NOT EDIT)
 │   └── api/                    # Endpoint implementations + DI wiring
 ├── services/                   # Shared business logic (auth, permission, kms)
+├── keystore/                   # Redis key-value operations
 └── testutil/                   # Test infra (testcontainers)
 ```
 
 **Two tiers:**
 - `server/api/` — Goa endpoint implementations. 1:1 with endpoints. Not imported elsewhere.
-- `services/` — Shared logic. No Goa dependency.
+- `services/` — Shared logic. No Goa dependency. Directly uses `pg.DB` for queries.
 
-**DAL**: `ormify.DAL[M]` provides `FindByID`, `Find`, `Create`, `Update`, `Delete`, `Count`.
+**Database access**: Services receive `pg.DB` and execute raw pgx queries using helper packages.
 
-**Read replicas**: `pg.DB` wraps primary + replica pools. Reads hit replicas, writes hit primary.
+**Read replicas**: `pg.DB` wraps primary + replica pools. Use `db.Primary()` for writes, `db.Replica()` for reads.
 
-### Go-Jet Nesting
+### Query Helpers
 
-For JOINs with one-to-many, use struct tags:
-
+**`qb` package** — Query builders for dynamic SQL:
 ```go
-type Secret struct {
-    ID   uuid.UUID   `sql:"primary_key" alias:"secrets_v2.id"`
-    Tags []SecretTag `alias:"secret_tags"`
-}
-type SecretTag struct {
-    ID   uuid.UUID `sql:"primary_key" alias:"secret_tags.id"`
-    Slug string    `alias:"secret_tags.slug"`
-}
+// WHERE builder (for SELECT with named args)
+args := pgx.NamedArgs{"folderID": folderID}
+where := qb.NewWhere().
+    Add("folder_id = @folderID").
+    AddIf(len(keys) > 0, "key = ANY(@keys)")
+args["keys"] = keys
+
+query := `SELECT * FROM secrets WHERE ` + where.String()
+rows, err := db.Replica().Query(ctx, query, args)
+
+// INSERT (numbered args for bulk)
+sql, args := qb.Insert("secrets", "id", "key", "folder_id").
+    Values(id1, key1, folder1).
+    Values(id2, key2, folder2).
+    Returning("*").
+    Build()
+
+// UPDATE (named args)
+sql, args := qb.Update("secrets").
+    Set("key", newKey).
+    Where("id = @id", "id", id).
+    Returning("*").
+    Build()
+
+// DELETE (named args)
+sql, args := qb.Delete("secrets").
+    Where("id = @id", "id", id).
+    Build()
 ```
 
-Go-jet auto-groups slices. Requires `sql:"primary_key"` on IDs.
+**`sqln` package** — Transform flat LEFT JOIN rows into nested structs:
+```go
+grouper := sqln.Grouper[Secret, uuid.UUID]{
+    Key: func(s *Secret) uuid.UUID { return s.ID },
+    Merge: func(existing, row *Secret) {
+        if len(row.Tags) > 0 {
+            existing.Tags = fn.AppendUnique(existing.Tags, row.Tags[0],
+                func(t Tag) uuid.UUID { return t.ID })
+        }
+    },
+}
+secrets := sqln.GroupRows(flatSecrets, grouper)
+```
+
+**`pglock` package** — PostgreSQL advisory locks:
+```go
+tx, _ := db.Primary().Begin(ctx)
+lock, err := pglock.AcquireBlockingLock(ctx, tx, "my_lock_id")
+if err != nil {
+    tx.Rollback(ctx)
+    return err
+}
+defer lock.Rollback(ctx)  // safety net
+
+// ... do work within lock ...
+
+lock.Release(ctx)  // commits transaction
+```
+
+### Writing Raw Queries
+
+Use `pgx.NamedArgs` for parameterized queries:
+```go
+query := `
+    SELECT id, key, encrypted_value
+    FROM secrets_v2
+    WHERE folder_id = @folderID AND user_id IS NULL
+    ORDER BY key ASC
+`
+args := pgx.NamedArgs{"folderID": folderID}
+rows, err := db.Replica().Query(ctx, query, args)
+```
+
+Scan rows using `pgx.CollectRows` or manual scanning:
+```go
+secrets, err := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])
+```
 
 ## Wiring a New Feature
 

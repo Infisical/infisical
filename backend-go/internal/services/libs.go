@@ -58,11 +58,10 @@ func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 		return nil, fmt.Errorf("kms start: %w", err)
 	}
 
-	licenseDAL := license.NewDAL(deps.DB)
 	licenseSvc := license.NewService(ctx, deps.Logger, license.Deps{
 		Config:   deps.Config,
+		DB:       deps.DB,
 		KeyStore: deps.KeyStore,
-		DAL:      licenseDAL,
 	})
 
 	authDAL := auth.NewDAL(deps.DB)

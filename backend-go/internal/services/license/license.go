@@ -2,16 +2,18 @@ package license
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
-	"github.com/go-resty/resty/v2"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/config"
+	"github.com/infisical/api/internal/database/pg"
 )
 
 const (
@@ -29,86 +31,6 @@ type keyStore interface {
 	DeleteItem(ctx context.Context, key string) (int64, error)
 }
 
-// dal is the narrow interface for org lookups needed by getPlan.
-type dal interface {
-	FindRootOrgDetails(ctx context.Context, orgID string) (*orgRow, error)
-}
-
-// licenseAPI wraps a resty client with token-based auth and auto-refresh.
-type licenseAPI struct {
-	client    *resty.Client
-	serverURL string
-	loginPath string
-	apiKey    string
-	mu        sync.Mutex
-}
-
-func newLicenseAPI(serverURL, loginPath, apiKey, region string) *licenseAPI {
-	api := &licenseAPI{
-		serverURL: serverURL,
-		loginPath: loginPath,
-		apiKey:    apiKey,
-	}
-
-	api.client = resty.New().
-		SetBaseURL(serverURL).
-		SetTimeout(35 * time.Second)
-
-	if region != "" {
-		api.client.SetHeader("x-region", region)
-	}
-
-	return api
-}
-
-// refreshToken authenticates with the license server and stores the token.
-func (api *licenseAPI) refreshToken(ctx context.Context) (string, error) {
-	api.mu.Lock()
-	defer api.mu.Unlock()
-
-	var result struct {
-		Token string `json:"token"`
-	}
-
-	resp, err := resty.New().R().
-		SetContext(ctx).
-		SetHeader("X-API-KEY", api.apiKey).
-		SetResult(&result).
-		Post(api.serverURL + api.loginPath)
-	if err != nil {
-		return "", fmt.Errorf("license token refresh: %w", err)
-	}
-	if resp.IsError() {
-		return "", fmt.Errorf("license token refresh: status %d", resp.StatusCode())
-	}
-
-	api.client.SetAuthToken(result.Token)
-	return result.Token, nil
-}
-
-// get performs a GET with a single retry on 401/403 (token refresh).
-func (api *licenseAPI) get(ctx context.Context, path string, result any) error {
-	resp, err := api.client.R().SetContext(ctx).SetResult(result).Get(path)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode() == 401 || resp.StatusCode() == 403 {
-		if _, refreshErr := api.refreshToken(ctx); refreshErr != nil {
-			return refreshErr
-		}
-		resp, err = api.client.R().SetContext(ctx).SetResult(result).Get(path)
-		if err != nil {
-			return err
-		}
-	}
-
-	if resp.IsError() {
-		return fmt.Errorf("license server GET %s: status %d", path, resp.StatusCode())
-	}
-	return nil
-}
-
 const syncInterval = 10 * time.Minute
 
 // Service manages license validation and feature gating.
@@ -119,8 +41,8 @@ type Service struct {
 	onPremFeatures FeatureSet
 	offlineLicense *OfflineLicenseInfo
 
+	db        pg.DB
 	keyStore  keyStore
-	dal       dal
 	cloudAPI  *licenseAPI
 	onPremAPI *licenseAPI
 
@@ -130,16 +52,16 @@ type Service struct {
 // Deps holds the dependencies for the license shared service.
 type Deps struct {
 	Config   *config.Config
+	DB       pg.DB
 	KeyStore keyStore
-	DAL      dal
 }
 
 func NewService(ctx context.Context, logger *slog.Logger, deps Deps) *Service {
 	svc := &Service{
 		logger:         logger.With(slog.String("svc", "license")),
 		onPremFeatures: DefaultFeatures(),
+		db:             deps.DB,
 		keyStore:       deps.KeyStore,
-		dal:            deps.DAL,
 	}
 
 	serverURL := deps.Config.LicenseServerURL
@@ -301,6 +223,49 @@ func (s *Service) syncOnPremFeatures(ctx context.Context) error {
 	return nil
 }
 
+// orgDetails holds the org fields needed for license lookups.
+type orgDetails struct {
+	ID         string
+	CustomerID sql.Null[string]
+	RootOrgID  sql.Null[string]
+}
+
+// findRootOrgDetails resolves the root org for the given orgID and returns its customer ID.
+// If the org has a rootOrgId, the root org is returned instead.
+func (s *Service) findRootOrgDetails(ctx context.Context, orgID string) (*orgDetails, error) {
+	query := `SELECT id, customer_id, root_org_id FROM organizations WHERE id = @orgID`
+	args := pgx.NamedArgs{"orgID": orgID}
+
+	row := s.db.Primary().QueryRow(ctx, query, args)
+
+	var org orgDetails
+	err := row.Scan(&org.ID, &org.CustomerID, &org.RootOrgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("findRootOrgDetails: %w", err)
+	}
+
+	// If the org has a root org, resolve it.
+	if org.RootOrgID.Valid && org.RootOrgID.V != "" && org.RootOrgID.V != org.ID {
+		args["orgID"] = org.RootOrgID.V
+		row = s.db.Primary().QueryRow(ctx, query, args)
+
+		var rootOrg orgDetails
+		err := row.Scan(&rootOrg.ID, &rootOrg.CustomerID, &rootOrg.RootOrgID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("findRootOrgDetails (root): %w", err)
+		}
+		return &rootOrg, nil
+	}
+
+	return &org, nil
+}
+
 // GetPlan returns the feature set for a given organization.
 // For cloud instances it uses Redis caching + license server API.
 // For on-prem instances it returns the in-memory feature set.
@@ -321,18 +286,18 @@ func (s *Service) GetPlan(ctx context.Context, orgID string) (*FeatureSet, error
 	}
 
 	// Cache miss — fetch from license server.
-	org, err := s.dal.FindRootOrgDetails(ctx, orgID)
+	org, err := s.findRootOrgDetails(ctx, orgID)
 	if err != nil {
 		return s.fallbackPlan(ctx, cacheKey), nil //nolint:nilerr // intentional fallback on DB error
 	}
-	if org == nil || !org.CustomerID.Valid || org.CustomerID.String == "" {
+	if org == nil || !org.CustomerID.Valid || org.CustomerID.V == "" {
 		return s.fallbackPlan(ctx, cacheKey), nil
 	}
 
 	var resp struct {
 		CurrentPlan FeatureSet `json:"currentPlan"`
 	}
-	endpoint := fmt.Sprintf("/api/license-server/v1/customers/%s/cloud-plan", org.CustomerID.String)
+	endpoint := fmt.Sprintf("/api/license-server/v1/customers/%s/cloud-plan", org.CustomerID.V)
 	if err := s.cloudAPI.get(ctx, endpoint, &resp); err != nil {
 		s.logger.ErrorContext(ctx, "failed to fetch cloud plan", slog.String("orgID", orgID), slog.Any("error", err))
 		return s.fallbackPlan(ctx, cacheKey), nil
