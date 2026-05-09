@@ -696,15 +696,42 @@ export const certificateV3ServiceFactory = ({
       actorId?: string;
       actorAuthMethod?: ActorAuthMethod;
       actorOrgId?: string;
-    }
+    },
+    requiredEnrollmentType?: EnrollmentType
   ): Promise<string | undefined> => {
     const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
 
     if (explicit) {
-      if (!junctions.some((j) => j.applicationId === explicit)) {
+      const junction = junctions.find((j) => j.applicationId === explicit);
+      if (!junction) {
         throw new BadRequestError({
           message: "This profile is not attached to the specified Application."
         });
+      }
+
+      if (requiredEnrollmentType) {
+        let junctionConfigId: string | null | undefined;
+        switch (requiredEnrollmentType) {
+          case EnrollmentType.API:
+            junctionConfigId = junction.apiConfigId;
+            break;
+          case EnrollmentType.EST:
+            junctionConfigId = junction.estConfigId;
+            break;
+          case EnrollmentType.ACME:
+            junctionConfigId = junction.acmeConfigId;
+            break;
+          case EnrollmentType.SCEP:
+            junctionConfigId = junction.scepConfigId;
+            break;
+          default:
+            junctionConfigId = null;
+        }
+        if (!junctionConfigId) {
+          throw new BadRequestError({
+            message: `${requiredEnrollmentType.toUpperCase()} enrollment is not configured for this profile on the Application.`
+          });
+        }
       }
 
       if (
@@ -808,12 +835,12 @@ export const certificateV3ServiceFactory = ({
       applicationId: explicitApplicationId
     });
 
-    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const applicationId = await $resolveApplicationIdForProfile(
+      profile,
+      explicitApplicationId,
+      { actor, actorId, actorAuthMethod, actorOrgId },
+      EnrollmentType.API
+    );
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
@@ -1066,6 +1093,7 @@ export const certificateV3ServiceFactory = ({
         });
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
+          internal: true,
           actor,
           actorId,
           actorAuthMethod,
@@ -1197,8 +1225,6 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
 
-    const isInternalRequest = actor === ActorType.EST_ACCOUNT;
-
     const {
       certificate,
       certificateChain,
@@ -1236,11 +1262,10 @@ export const certificateV3ServiceFactory = ({
         tx
       };
 
-      const certResult = await internalCaService.issueCertFromCa(
-        isInternalRequest
-          ? { ...baseCertParams, internal: true as const }
-          : { ...baseCertParams, actor, actorId, actorAuthMethod, actorOrgId }
-      );
+      const certResult = await internalCaService.issueCertFromCa({
+        ...baseCertParams,
+        internal: true as const
+      });
 
       const certificateRecord = await certificateDAL.findById(certResult.certificateId, tx);
       if (!certificateRecord) {
@@ -1271,6 +1296,7 @@ export const certificateV3ServiceFactory = ({
       await certificateDAL.updateById(certificateRecord.id, updateData, tx);
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
@@ -1396,12 +1422,12 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
-    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const applicationId = await $resolveApplicationIdForProfile(
+      profile,
+      explicitApplicationId,
+      { actor, actorId, actorAuthMethod, actorOrgId },
+      enrollmentType
+    );
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1683,6 +1709,7 @@ export const certificateV3ServiceFactory = ({
         await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
+          internal: true,
           actor,
           actorId,
           actorAuthMethod,
@@ -1781,12 +1808,12 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
-    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const applicationId = await $resolveApplicationIdForProfile(
+      profile,
+      explicitApplicationId,
+      { actor, actorId, actorAuthMethod, actorOrgId },
+      EnrollmentType.API
+    );
 
     let certificateRequest: TCertificateRequest;
     let extractedKeyAlgorithm: string | undefined;
@@ -2046,6 +2073,7 @@ export const certificateV3ServiceFactory = ({
       const orderId = randomUUID();
 
       const certRequest = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
@@ -2482,6 +2510,7 @@ export const certificateV3ServiceFactory = ({
         : undefined;
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
@@ -2541,6 +2570,7 @@ export const certificateV3ServiceFactory = ({
       const structuredAltNames = altNamesArray.map((san) => detectSanType(san));
 
       const certificateRequest = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,

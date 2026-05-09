@@ -781,7 +781,8 @@ export const pkiScepServiceFactory = ({
       organizationalUnit: certRequest.organizationalUnit,
       country: certRequest.country,
       state: certRequest.state,
-      locality: certRequest.locality
+      locality: certRequest.locality,
+      ...(applicationId && { applicationId })
     });
 
     // Create SCEP transaction so the client can poll via GetCertInitial

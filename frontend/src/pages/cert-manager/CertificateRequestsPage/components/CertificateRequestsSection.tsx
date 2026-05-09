@@ -4,7 +4,6 @@ import { faFilter, faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -24,7 +23,6 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionCertificateProfileActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
@@ -192,22 +190,14 @@ export const CertificateRequestsSection = ({
           </div>
         </div>
         <div className="flex gap-2">
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateProfileActions.IssueCert}
-            a={ProjectPermissionSub.CertificateProfiles}
+          <Button
+            colorSchema="primary"
+            type="submit"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => handlePopUpOpen("issueCertificate")}
           >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("issueCertificate")}
-                isDisabled={!isAllowed}
-              >
-                Request
-              </Button>
-            )}
-          </ProjectPermissionCan>
+            Request
+          </Button>
         </div>
       </div>
 

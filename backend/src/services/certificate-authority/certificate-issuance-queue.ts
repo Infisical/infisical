@@ -263,7 +263,8 @@ export const certificateIssuanceQueueFactory = ({
     organizationalUnit,
     country,
     state,
-    locality
+    locality,
+    applicationId
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -285,7 +286,8 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      applicationId
     };
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via

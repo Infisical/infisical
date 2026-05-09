@@ -11,6 +11,7 @@ export type TSubjectAlternativeName = {
 };
 
 export type TCreateCertificateRequestDTO = TProjectPermission & {
+  internal?: boolean;
   profileId?: string;
   applicationId?: string;
   caId?: string;

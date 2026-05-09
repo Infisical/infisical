@@ -135,9 +135,11 @@ export const certificateRequestServiceFactory = ({
     projectId,
     tx,
     status,
+    internal = false,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
     if (
+      !internal &&
       actor !== ActorType.ACME_ACCOUNT &&
       actor !== ActorType.PLATFORM &&
       actor !== ActorType.EST_ACCOUNT &&

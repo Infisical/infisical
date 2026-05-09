@@ -485,7 +485,8 @@ export const certificateApprovalServiceFactory = (
       organizationalUnit: certRequest.organizationalUnit || undefined,
       country: certRequest.country || undefined,
       state: certRequest.state || undefined,
-      locality: certRequest.locality || undefined
+      locality: certRequest.locality || undefined,
+      ...(certRequest.applicationId && { applicationId: certRequest.applicationId })
     });
 
     return {

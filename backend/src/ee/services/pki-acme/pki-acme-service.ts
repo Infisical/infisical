@@ -1004,7 +1004,8 @@ export const pkiAcmeServiceFactory = ({
         keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
         extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
         certificateRequestId: certRequest.id,
-        csr: csrPem
+        csr: csrPem,
+        ...(applicationId && { applicationId })
       }
     };
   };
