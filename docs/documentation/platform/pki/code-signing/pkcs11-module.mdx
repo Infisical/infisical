@@ -6,6 +6,10 @@ description: "Install and configure the Infisical PKCS#11 module for use with st
 
 The Infisical PKCS#11 module implements the PKCS#11 v2.40 standard, allowing tools like `jarsigner`, `openssl`, `cosign`, `osslsigncode`, `apksigner`, and `gpg` to use Infisical signers without code changes.
 
+<Info>
+  Before using the PKCS#11 module, ensure your Product Admin has created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If a signing policy is attached, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants).
+</Info>
+
 ## Installation
 
 Download the pre-built binary for your platform from the [releases page](https://github.com/Infisical/infisical-pkcs-11/releases):
@@ -176,6 +180,20 @@ For any issue, start by enabling debug logging in your config file to get detail
     Verify that your credentials and `project_id` are correct, and that the machine identity has been added to the project with the appropriate permissions.
   </Accordion>
   <Accordion title="CKR_GENERAL_ERROR when signing">
-    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in the Infisical UI under **Code Signing > Approvals > Grants**.
+    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in **Certificate Manager → Code Signing → Grants**.
   </Accordion>
 </AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={3}>
+  <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/code-signing/guides/pkcs11-jarsigner">
+    Sign Java artifacts with jarsigner
+  </Card>
+  <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/code-signing/guides/pkcs11-cosign">
+    Sign container images with Cosign
+  </Card>
+  <Card title="Sign with GPG" icon="key" href="/documentation/platform/pki/code-signing/guides/pkcs11-gpg">
+    Use GPG with the PKCS#11 module
+  </Card>
+</CardGroup>

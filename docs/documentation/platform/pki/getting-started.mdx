@@ -1,0 +1,61 @@
+---
+title: "Getting Started"
+sidebarTitle: "Getting Started"
+description: "Get started with Infisical Certificate Manager based on what you want to accomplish."
+---
+
+Infisical Certificate Manager helps you issue and manage X.509 certificates across your organization. This guide will help you get started based on what you need to accomplish.
+
+## What do you want to do?
+
+<CardGroup cols={2}>
+  <Card title="Issue Certificates" icon="certificate" href="/documentation/platform/pki/applications/overview">
+    Issue TLS, mTLS, or device certificates for your services and workloads using Applications.
+  </Card>
+  <Card title="Sign Code" icon="file-signature" href="/documentation/platform/pki/code-signing/overview">
+    Digitally sign software artifacts with centralized key management and approval workflows.
+  </Card>
+</CardGroup>
+
+## How Certificate Manager Works
+
+Product admins set up the infrastructure, teams issue certificates:
+
+- **[Certificate Authority](/documentation/platform/pki/ca/overview)** — The entity that signs certificates. Use an internal CA or connect an external one (DigiCert, Let's Encrypt, AWS PCA).
+- **[Certificate Policy](/documentation/platform/pki/settings/policies)** — Rules for what certificates can contain: allowed domains, validity periods, key algorithms.
+- **[Certificate Profile](/documentation/platform/pki/settings/profiles)** — Combines a CA + policy into a reusable template.
+- **[Application](/documentation/platform/pki/applications/overview)** — Where teams work. Groups certificates for a service and configures enrollment (API, ACME, EST, SCEP).
+
+## Who manages what?
+
+| Role | Responsibilities |
+|------|------------------|
+| **Product Admin** | Set up CAs, policies, profiles. Create Applications and assign team members. |
+| **Application Admin** | Configure enrollment methods, alerting, syncs within their Application. |
+| **Application Operator** | Issue, renew, and revoke certificates. |
+
+<Info>
+  **Product Admin?** Start with [Certificate Authorities](/documentation/platform/pki/ca/overview), then create [Applications](/documentation/platform/pki/applications/overview) for your teams.
+  
+  **Team member?** Ask your product admin to create an Application and assign you.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create an Application" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Set up an Application and issue your first certificate.
+  </Card>
+  <Card title="Set Up a Certificate Authority" icon="building-columns" href="/documentation/platform/pki/ca/overview">
+    Create an internal CA or connect an external CA.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="Certificate Lifecycle" icon="arrows-spin" href="/documentation/platform/pki/concepts/certificate-lifecycle">
+    Understand how certificates are issued, renewed, and revoked.
+  </Card>
+  <Card title="Certificate Components" icon="puzzle-piece" href="/documentation/platform/pki/concepts/certificate-components">
+    Learn about keys, CSRs, extensions, and certificate structure.
+  </Card>
+</CardGroup>

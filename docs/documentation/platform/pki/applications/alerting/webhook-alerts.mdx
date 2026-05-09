@@ -1,0 +1,202 @@
+---
+title: "Webhook Alerts"
+sidebarTitle: "Webhook"
+description: "Send certificate alert notifications to a webhook URL."
+---
+
+Send certificate alert notifications to any HTTP endpoint. Webhook alerts let you integrate Infisical with your own systems, automation tools, or services that aren't directly supported.
+
+<Info>
+  Alerts are configured per Application and apply to all certificates within that Application.
+</Info>
+
+## Create a Webhook Alert
+
+<Steps>
+  <Step title="Navigate to your Application">
+    Go to **Certificate Manager → Applications** and select your Application.
+  </Step>
+  <Step title="Create an alert">
+    In the **Alerting** section, click **Create Alert**.
+    
+    {/* SCREENSHOT: Create alert modal in Application */}
+    <Frame caption="Creating an alert in an Application">
+      ![Create alert](/images/pki/placeholder-screenshot.svg)
+    </Frame>
+  </Step>
+  <Step title="Configure alert settings">
+    | Setting | Description |
+    |---------|-------------|
+    | **Alert Type** | Certificate Expiration, Issuance, Renewal, or Revocation |
+    | **Alert Name** | A slug-friendly name like `tls-expiry-alert` |
+    | **Description** | Optional context about this alert |
+    | **Alert Before** | *(Expiration only)* Time before expiry to trigger, e.g., `30d` |
+  </Step>
+  <Step title="Add a webhook channel">
+    Add a **Webhook** notification channel:
+    
+    | Setting | Description |
+    |---------|-------------|
+    | **URL** | The HTTPS endpoint to receive notifications |
+    | **Signing Secret** | *(Optional)* Secret to verify webhook authenticity |
+    
+    <Note>
+      The webhook URL must use HTTPS.
+    </Note>
+  </Step>
+</Steps>
+
+## Webhook Event Types
+
+Each alert type maps to a corresponding CloudEvents event type:
+
+| Alert Type | Event Type | Subject |
+|------------|------------|---------|
+| Certificate Expiration | `com.infisical.pki.certificate.expiration` | `certificate-expiration-alert` |
+| Certificate Issuance | `com.infisical.pki.certificate.issuance` | `certificate-issuance-alert` |
+| Certificate Renewal | `com.infisical.pki.certificate.renewal` | `certificate-renewal-alert` |
+| Certificate Revocation | `com.infisical.pki.certificate.revocation` | `certificate-revocation-alert` |
+
+## Webhook Payload Format
+
+Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https://cloudevents.io/) compliant JSON payload.
+
+<Tabs>
+  <Tab title="Expiration Alert">
+    ```json
+    {
+      "specversion": "1.0",
+      "type": "com.infisical.pki.certificate.expiration",
+      "source": "/applications/<application-id>/alerts/<alert-id>",
+      "id": "<unique-event-id>",
+      "time": "2024-01-15T10:30:00.000Z",
+      "datacontenttype": "application/json",
+      "subject": "certificate-expiration-alert",
+      "data": {
+        "alert": {
+          "id": "<alert-id>",
+          "name": "tls-expiry-alert",
+          "alertBefore": "30d",
+          "applicationId": "<application-id>"
+        },
+        "certificates": [
+          {
+            "id": "<certificate-id>",
+            "serialNumber": "1234567890",
+            "commonName": "api.example.com",
+            "san": ["api.example.com", "www.api.example.com"],
+            "profileName": "TLS Server",
+            "notBefore": "2024-01-01T00:00:00.000Z",
+            "notAfter": "2024-12-31T23:59:59.000Z",
+            "status": "active",
+            "daysUntilExpiry": 30
+          }
+        ],
+        "metadata": {
+          "totalCertificates": 1,
+          "viewUrl": "https://app.infisical.com/cert-manager/applications/<application-id>/certificates"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Issuance/Renewal/Revocation">
+    These alerts are sent in real time when the certificate event occurs. Each notification contains a single certificate. The `alertBefore` field is omitted.
+    
+    For revocation alerts, the certificate object also includes `revokedAt` and `revocationReason`.
+    
+    ```json
+    {
+      "specversion": "1.0",
+      "type": "com.infisical.pki.certificate.issuance",
+      "source": "/applications/<application-id>/alerts/<alert-id>",
+      "id": "<unique-event-id>",
+      "time": "2024-06-15T14:22:00.000Z",
+      "datacontenttype": "application/json",
+      "subject": "certificate-issuance-alert",
+      "data": {
+        "alert": {
+          "id": "<alert-id>",
+          "name": "prod-issuance-notify",
+          "applicationId": "<application-id>"
+        },
+        "certificates": [
+          {
+            "id": "<certificate-id>",
+            "serialNumber": "9876543210",
+            "commonName": "api.example.com",
+            "san": ["api.example.com"],
+            "profileName": "API Server",
+            "notBefore": "2024-06-15T00:00:00.000Z",
+            "notAfter": "2025-06-15T23:59:59.000Z",
+            "status": "active",
+            "daysUntilExpiry": 365
+          }
+        ],
+        "metadata": {
+          "totalCertificates": 1,
+          "viewUrl": "https://app.infisical.com/cert-manager/applications/<application-id>/certificates"
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Webhook Signature Verification
+
+If you configure a signing secret, Infisical includes an `x-infisical-signature` header with each request:
+
+```
+x-infisical-signature: t=<timestamp>,v1=<signature>
+```
+
+| Component | Description |
+|-----------|-------------|
+| `t=<timestamp>` | Unix timestamp (milliseconds) when signed |
+| `v1=<signature>` | HMAC SHA256 signature |
+
+### Verify the Signature
+
+1. Extract timestamp and signature from the header
+2. Concatenate: `{timestamp}.{raw-body}`
+3. Compute HMAC SHA256 with your signing secret
+4. Compare with the header signature
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhookSignature(header, body, secret) {
+  const parts = header.split(',');
+  const timestamp = parts[0].replace('t=', '');
+  const signature = parts[1].replace('v1=', '');
+
+  const signaturePayload = `${timestamp}.${body}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(signaturePayload)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
+```
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Slack Alerts" icon="slack" href="/documentation/platform/pki/applications/alerting/slack-alerts">
+    Send alerts to a Slack channel.
+  </Card>
+  <Card title="PagerDuty Alerts" icon="pager" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
+    Create incidents in PagerDuty.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View and manage certificates.
+  </Card>
+</CardGroup>

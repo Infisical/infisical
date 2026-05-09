@@ -4,14 +4,18 @@ sidebarTitle: "osslsigncode"
 description: "Use the Infisical PKCS#11 module to sign Windows executables, DLLs, and MSI installers with osslsigncode."
 ---
 
-In the following steps, we explore how to sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS#11 module. osslsigncode is a cross-platform tool that lets you sign Windows binaries from Linux and macOS, making it ideal for CI/CD pipelines that don't run on Windows.
+<Info>
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+</Info>
+
+Sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS#11 module. osslsigncode is a cross-platform tool that lets you sign Windows binaries from Linux and macOS, making it ideal for CI/CD pipelines that don't run on Windows.
 
 ## Prerequisites
 
-- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) for the signer
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
+- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
-- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `osslsigncode` 2.5 or later (includes native PKCS#11 support)
 
 ## Step 1: Install osslsigncode and Dependencies
@@ -137,3 +141,14 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
     The `-pkcs11cert` URI must match your signer name exactly. Use `pkcs11-tool --module /path/to/lib --list-objects --type cert` to verify available certificate labels.
   </Accordion>
 </AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Sign with OpenSSL" icon="lock" href="/documentation/platform/pki/code-signing/guides/pkcs11-openssl">
+    General-purpose signing with OpenSSL
+  </Card>
+  <Card title="Sign Android APKs" icon="android" href="/documentation/platform/pki/code-signing/guides/pkcs11-apksigner">
+    Sign Android applications with apksigner
+  </Card>
+</CardGroup>

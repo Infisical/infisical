@@ -1,10 +1,14 @@
 ---
 title: "Signing Policies"
 sidebarTitle: "Signing Policies"
-description: "Learn how to configure signing policies for code signing operations."
+description: "Configure approval workflows for code signing operations."
 ---
 
-In Infisical, code signing policies add a human review step before signing operations can be performed, helping organizations enforce separation of duties and maintain compliance for software supply chain security.
+Signing policies add a human review step before signing operations can be performed, helping enforce separation of duties and maintain compliance for software supply chain security.
+
+<Info>
+  Signing policies are created by Product Admins and attached to Signers. When a policy is attached, team members must request and receive approval before signing.
+</Info>
 
 ## When to Use Signing Policies
 
@@ -51,7 +55,7 @@ Key features of signing policies include:
 - **Request expiration**: Set a maximum time-to-live (TTL) for pending requests.
 - **Constraints**: Configure max window duration or max signings (or both) to control the scope of each grant.
 
-To create a signing policy, head to your Certificate Management Project > **Code Signing > Approvals > Signing Policies** and press **Create Policy**.
+To create a signing policy, go to **Certificate Manager → Code Signing → Signing Policies** and click **Create Policy**.
 
 <Steps>
   <Step title="Configuring the policy">
@@ -86,3 +90,14 @@ To create a signing policy, head to your Certificate Management Project > **Code
     ![Create signing policy - review](/images/platform/pki/code-signing/approval-policy-review.png)
   </Step>
 </Steps>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Create a Signer" icon="pen-nib" href="/documentation/platform/pki/code-signing/signers">
+    Attach this policy to a signer to enforce approvals.
+  </Card>
+  <Card title="Signing Requests" icon="paper-plane" href="/documentation/platform/pki/code-signing/signing-requests">
+    Learn how requests flow through the approval process.
+  </Card>
+</CardGroup>

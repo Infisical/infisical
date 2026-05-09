@@ -43,7 +43,7 @@ A typical workflow for using Infisical with an external ACME-compatible CA consi
 2. Creating an [App Connection](/integrations/app-connections/overview) in Infisical to store credentials for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge.
 3. Registering an [External CA](/documentation/platform/pki/ca/external-ca) in Infisical with the ACME type and inputting required configuration including the **ACME Directory URL** of the upstream ACME-compatible CA and the **App Connection** for your DNS provider.
 
-Once this is complete, you can create a [certificate profile](/documentation/platform/pki/certificates/profiles) linked to the External CA proceed to request a certificate against it.
+Once this is complete, you can create a [certificate profile](/documentation/platform/pki/settings/profiles) linked to the External CA and proceed to request a certificate against it.
 
 ## Guide to Connecting Infisical to an ACME-compatible CA
 
@@ -157,7 +157,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
               Finally, press **Create** to register the ACME-compatible CA with Infisical.
 
-              Great! You’ve successfully registered an external ACME-compatible CA with Infisical. Now check out the [Certificates](/documentation/platform/pki/certificates/overview) section to learn more about how to issue X.509 certificates using the ACME-compatible CA.
+              Great! You’ve successfully registered an external ACME-compatible CA with Infisical. Now check out the [Applications](/documentation/platform/pki/applications/overview) section to learn more about how to issue X.509 certificates using the ACME-compatible CA.
           </Tab>
           <Tab title="API">
             To register an ACME CA with Infisical using the API, make a request to the [Create External CA](https://infisical.com/docs/api-reference/endpoints/certificate-authorities/acme/create) endpoint:

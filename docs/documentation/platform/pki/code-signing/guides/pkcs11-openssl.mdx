@@ -4,14 +4,18 @@ sidebarTitle: "OpenSSL"
 description: "Use the Infisical PKCS#11 module with OpenSSL's pkcs11 engine for general-purpose signing."
 ---
 
-In the following steps, we explore how to use OpenSSL with the Infisical PKCS#11 module via the `libp11` engine. OpenSSL is a versatile foundation for signing any file format. It is useful when you need raw signatures, custom signing pipelines, or integration with tools that wrap OpenSSL.
+<Info>
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+</Info>
+
+Use OpenSSL with the Infisical PKCS#11 module via the `libp11` engine for general-purpose signing. OpenSSL is a versatile foundation for signing any file format — useful when you need raw signatures, custom signing pipelines, or integration with tools that wrap OpenSSL.
 
 ## Prerequisites
 
-- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) for the signer
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
+- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
-- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - OpenSSL 1.1.1 or later
 - `libp11` (OpenSSL PKCS#11 engine)
 
@@ -197,3 +201,14 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
     OpenSSL 3.0 deprecated engines in favor of providers. The `libp11` engine still works but may show warnings. For a provider-based approach, use [`pkcs11-provider`](https://github.com/latchset/pkcs11-provider) instead.
   </Accordion>
 </AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Sign Windows Binaries" icon="windows" href="/documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode">
+    Sign Windows executables with osslsigncode
+  </Card>
+  <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/code-signing/guides/pkcs11-cosign">
+    Sign container images with Cosign
+  </Card>
+</CardGroup>
