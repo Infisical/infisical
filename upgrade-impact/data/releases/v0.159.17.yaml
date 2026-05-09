@@ -17,6 +17,7 @@ dbSchemaChanges:
       If startup fails during migration, keep the previous version running and
       inspect migration logs before retrying.
     confidence: high
+    migrationRisk: medium
     evidence:
       - type: file
         ref: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts

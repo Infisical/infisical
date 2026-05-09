@@ -14,6 +14,7 @@ dbSchemaChanges:
       point URLs. Existing data remains compatible.
     action: No manual action required; Infisical runs this migration during startup.
     confidence: high
+    migrationRisk: low
     evidence:
       - type: file
         ref: backend/src/db/migrations/20260428000635_add-internal-ca-distribution-point-urls.ts
@@ -27,6 +28,7 @@ dbSchemaChanges:
       If startup fails during migration, keep the previous version running and
       inspect migration logs before retrying.
     confidence: high
+    migrationRisk: medium
     evidence:
       - type: file
         ref: backend/src/db/migrations/20260430141040_add-verify-tls-certificate-to-identity-kubernetes-auth.ts

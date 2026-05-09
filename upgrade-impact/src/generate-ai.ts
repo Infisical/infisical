@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { ReleaseEvidenceBundle } from "./evidence.js";
 import { runGit } from "./git.js";
-import { Evidence, ImpactEntry, ImpactEntrySchema } from "./schema.js";
+import { DbSchemaChangeSchema, Evidence, ImpactEntry, ImpactEntrySchema, MigrationRisk } from "./schema.js";
 
 export const MODEL = "gpt-5.4";
 
@@ -14,7 +14,7 @@ const GeneratedDraftSchema = z.object({
   summary: z.string().min(1),
   requiresDbMigration: z.boolean(),
   breakingChanges: z.array(ImpactEntrySchema),
-  dbSchemaChanges: z.array(ImpactEntrySchema),
+  dbSchemaChanges: z.array(DbSchemaChangeSchema),
   configChanges: z.array(ImpactEntrySchema),
   deploymentNotes: z.array(ImpactEntrySchema),
   knownIssues: z.array(ImpactEntrySchema)
@@ -38,17 +38,84 @@ const evidenceForFile = (file: string, description?: string) => ({
   description
 });
 
+const migrationRiskRank: Record<MigrationRisk, number> = {
+  low: 0,
+  medium: 1,
+  high: 2
+};
+
+const maxMigrationRisk = (risks: MigrationRisk[]): MigrationRisk =>
+  risks.reduce<MigrationRisk>(
+    (highestRisk, risk) => (migrationRiskRank[risk] > migrationRiskRank[highestRisk] ? risk : highestRisk),
+    "low"
+  );
+
+const extractUpMigrationSource = (source: string) =>
+  source.match(/export\s+async\s+function\s+up[\s\S]*?(?=\nexport\s+async\s+function\s+down|$)/)?.[0] ?? source;
+
+export const classifyMigrationRisk = (source: string): MigrationRisk => {
+  const upSource = extractUpMigrationSource(source);
+
+  if (
+    /\b(dropColumn|dropTable|dropTableIfExists|renameColumn|renameTable)\b/i.test(upSource) ||
+    /\bDELETE\s+FROM\b/i.test(upSource) ||
+    /\bTRUNCATE\b/i.test(upSource) ||
+    /\.(delete|del)\s*\(/i.test(upSource)
+  ) {
+    return "high";
+  }
+
+  if (
+    /\b(dropForeign|dropIndex)\b/i.test(upSource) ||
+    /\bALTER\s+TABLE\b/i.test(upSource) ||
+    /\.(alter|update|insert)\s*\(/i.test(upSource) ||
+    /\bINSERT\s+INTO\b/i.test(upSource) ||
+    /\bUPDATE\s+.+\s+SET\b/i.test(upSource)
+  ) {
+    return "medium";
+  }
+
+  return "low";
+};
+
+const readMigrationSource = (bundle: ReleaseEvidenceBundle, file: string) => {
+  try {
+    return runGit(["show", `${bundle.tag}:${file}`]);
+  } catch {
+    return "";
+  }
+};
+
+const classifyMigrationFilesRisk = (bundle: ReleaseEvidenceBundle): MigrationRisk => {
+  if (bundle.migrationFiles.length === 0) {
+    return "low";
+  }
+
+  return maxMigrationRisk(
+    bundle.migrationFiles.map((file) => {
+      const source = readMigrationSource(bundle, file);
+      return source ? classifyMigrationRisk(source) : "medium";
+    })
+  );
+};
+
 export const deterministicDraft = (bundle: ReleaseEvidenceBundle): GeneratedDraft => {
   const dbSchemaChanges: GeneratedDraft["dbSchemaChanges"] = [];
   const configChanges: GeneratedDraft["configChanges"] = [];
   const deploymentNotes: GeneratedDraft["deploymentNotes"] = [];
 
   if (bundle.migrationFiles.length > 0) {
+    const migrationRisk = classifyMigrationFilesRisk(bundle);
+
     dbSchemaChanges.push({
       title: "Database schema migrations are included",
       description: `This release adds ${bundle.migrationFiles.length} database migration file(s). Self-hosted instances should expect the application to run migrations during startup.`,
-      action: "Back up the database before upgrading and monitor startup logs until migrations complete.",
+      action:
+        migrationRisk === "low"
+          ? "No manual action required; Infisical runs this migration during startup."
+          : "Back up the database before upgrading and monitor startup logs until migrations complete.",
       confidence: "high",
+      migrationRisk,
       evidence: bundle.migrationFiles.map((file) => evidenceForFile(file, "Added migration file"))
     });
   }
@@ -81,8 +148,10 @@ export const deterministicDraft = (bundle: ReleaseEvidenceBundle): GeneratedDraf
     impactLevel = "low";
   }
 
-  if (dbSchemaChanges.length > 0 || configChanges.length > 0) {
+  if (configChanges.length > 0) {
     impactLevel = "medium";
+  } else if (dbSchemaChanges.length > 0) {
+    impactLevel = "low";
   }
 
   let summary = "No self-hosted upgrade impact was detected from deterministic release signals.";
@@ -115,7 +184,7 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - Use active voice and simple verbs.
 - Do not say "the release", "this release", "code changes indicate", "evidence bundle", "identified", or "detected".
 - Do not mention that no Docker, Helm, Kubernetes, or database changes exist unless that absence changes the upgrade action.
-- Do not duplicate the same risk across breakingChanges, configChanges, deploymentNotes, and knownIssues. Pick one category.
+- Do not duplicate the same risk across breakingChanges, dbSchemaChanges, configChanges, deploymentNotes, and knownIssues. Pick one category.
 - Do not include the same evidence item twice in one entry.
 - Do not repeat a release note or PR URL across multiple entries when a more specific file diff can support the claim.
 - Before finalizing, audit the JSON for duplicate titles, duplicate descriptions, and duplicate evidence.
@@ -123,6 +192,11 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - Only write an action when there is a specific operator task. If there is no manual task, write "No manual action required; Infisical runs this migration during startup."
 - For additive database migrations, prefer "No manual action required; Infisical runs this migration during startup." Do not tell users to run migrations manually unless the diff proves they must.
 - If a migration failure is the only risk, say "If startup fails during migration, keep the previous version running and inspect migration logs before retrying."
+- Every dbSchemaChanges entry must include migrationRisk.
+- Set migrationRisk to "low" for additive-only migrations such as new tables, nullable columns, compatible defaults, indexes, or foreign keys that preserve existing rows.
+- Set migrationRisk to "medium" when the up migration alters existing column types or constraints, backfills or rewrites data, copies data between tables, adds non-null columns to existing tables, or may take longer locks.
+- Set migrationRisk to "high" when the up migration drops columns or tables, deletes existing rows, renames schema that existing data depends on, or otherwise removes data or rollback paths.
+- Classify migrationRisk from the up migration only; ignore destructive operations that appear only in the down rollback.
 - Do not say "run migrations before serving traffic", "verify migration jobs complete", "account for", or "review X if you rely on Y".
 - Do not tell operators to change proxy, Helm, Docker, or environment configuration unless the diff introduces a required setting or changes a default that existing deployments must respond to.
 - Optional security-hardening settings such as TRUSTED_PROXY_CIDRS are not upgrade actions when unset preserves legacy behavior.
@@ -148,7 +222,7 @@ Return only JSON matching this TypeScript shape:
   "summary": "string",
   "requiresDbMigration": boolean,
   "breakingChanges": ImpactEntry[],
-  "dbSchemaChanges": ImpactEntry[],
+  "dbSchemaChanges": DbSchemaChange[],
   "configChanges": ImpactEntry[],
   "deploymentNotes": ImpactEntry[],
   "knownIssues": ImpactEntry[]
@@ -161,6 +235,11 @@ ImpactEntry:
   "action": "string",
   "confidence": "low" | "medium" | "high",
   "evidence": Evidence[]
+}
+
+DbSchemaChange extends ImpactEntry:
+{
+  "migrationRisk": "low" | "medium" | "high"
 }
 
 Evidence:
@@ -201,16 +280,19 @@ const normalizeDraft = (draft: GeneratedDraft): GeneratedDraft => {
   const entryKey = (entry: ImpactEntry) =>
     [entry.title.trim().toLowerCase(), entry.description.trim().toLowerCase()].join("\u0000");
 
-  const normalizeEntries = (entries: ImpactEntry[]) =>
+  const normalizeEntries = <TEntry extends ImpactEntry>(entries: TEntry[]): TEntry[] =>
     entries
-      .map((entry) => ({
-        ...entry,
-        evidence: dedupeEvidence(
-          entry.evidence.map((evidence) =>
-            evidence.type === "file" && evidence.path ? { ...evidence, ref: evidence.path } : evidence
-          )
-        )
-      }))
+      .map(
+        (entry) =>
+          ({
+            ...entry,
+            evidence: dedupeEvidence(
+              entry.evidence.map((evidence) =>
+                evidence.type === "file" && evidence.path ? { ...evidence, ref: evidence.path } : evidence
+              )
+            )
+          }) as TEntry
+      )
       .filter((entry, index, normalizedEntries) => {
         const key = entryKey(entry);
         return normalizedEntries.findIndex((candidate) => entryKey(candidate) === key) === index;

@@ -15,6 +15,7 @@ dbSchemaChanges:
       column is missing.
     action: No manual action required; Infisical runs this migration during startup.
     confidence: high
+    migrationRisk: low
     evidence:
       - type: file
         ref: backend/src/db/migrations/20260417245211_pam-session-reason.ts
@@ -26,6 +27,7 @@ dbSchemaChanges:
       only if the table exists and the column is missing.
     action: No manual action required; Infisical runs this migration during startup.
     confidence: high
+    migrationRisk: low
     evidence:
       - type: file
         ref: backend/src/db/migrations/20260421135044_add-digicert-external-ca-columns.ts

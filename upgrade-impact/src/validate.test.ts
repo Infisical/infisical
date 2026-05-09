@@ -27,6 +27,7 @@ const makeRelease = (overrides: Partial<ReleaseImpact> = {}): ReleaseImpact => {
         description: "This release includes a database migration.",
         action: "Back up the database before upgrading.",
         confidence: "high",
+        migrationRisk: "medium",
         evidence: [
           {
             type: "file",
@@ -136,9 +137,43 @@ const validationCases: ValidationCase[] = [
               description: "This release includes a database migration.",
               action: "Back up the database before upgrading.",
               confidence: "high",
+              migrationRisk: "medium",
               evidence: []
             }
           ]
+        })
+      }
+    ],
+    expectedErrors: [`${validRelease.version}.yaml failed schema validation`]
+  },
+  {
+    name: "rejects a database schema change without migration risk",
+    index: makeIndex([
+      {
+        version: validRelease.version,
+        releasedAt: validRelease.releasedAt,
+        file: `releases/${validRelease.version}.yaml`
+      }
+    ]),
+    releases: [
+      {
+        fileName: `${validRelease.version}.yaml`,
+        release: makeRelease({
+          dbSchemaChanges: [
+            {
+              title: "Database schema migrations are included",
+              description: "This release includes a database migration.",
+              action: "Back up the database before upgrading.",
+              confidence: "high",
+              evidence: [
+                {
+                  type: "file",
+                  ref: "backend/src/db/migrations/20260429000000_example.ts",
+                  path: "backend/src/db/migrations/20260429000000_example.ts"
+                }
+              ]
+            }
+          ] as ReleaseImpact["dbSchemaChanges"]
         })
       }
     ],
@@ -181,6 +216,7 @@ const validationCases: ValidationCase[] = [
               description: "This release includes a database migration.",
               action: "Back up the database before upgrading.",
               confidence: "high",
+              migrationRisk: "medium",
               evidence: [
                 {
                   type: "file",
@@ -252,6 +288,7 @@ const validationCases: ValidationCase[] = [
               description: "This release includes a database migration.",
               action: "Set TRUSTED_PROXY_CIDRS to your proxy CIDR ranges and restart.",
               confidence: "high",
+              migrationRisk: "medium",
               evidence: [
                 {
                   type: "file",

@@ -4,6 +4,7 @@ export const StableVersionSchema = z.string().regex(/^v\d+\.\d+\.\d+$/, "Expecte
 
 export const ImpactLevelSchema = z.enum(["none", "low", "medium", "high"]);
 export const ConfidenceSchema = z.enum(["low", "medium", "high"]);
+export const MigrationRiskSchema = z.enum(["low", "medium", "high"]);
 
 export const EvidenceSchema = z
   .object({
@@ -39,6 +40,10 @@ export const ImpactEntrySchema = z.object({
   evidence: z.array(EvidenceSchema).min(1)
 });
 
+export const DbSchemaChangeSchema = ImpactEntrySchema.extend({
+  migrationRisk: MigrationRiskSchema
+});
+
 export const ReleaseImpactSchema = z.object({
   version: StableVersionSchema,
   releasedAt: z.string().datetime({ offset: true }),
@@ -48,7 +53,7 @@ export const ReleaseImpactSchema = z.object({
   summary: z.string().min(1),
   requiresDbMigration: z.boolean(),
   breakingChanges: z.array(ImpactEntrySchema),
-  dbSchemaChanges: z.array(ImpactEntrySchema),
+  dbSchemaChanges: z.array(DbSchemaChangeSchema),
   configChanges: z.array(ImpactEntrySchema),
   deploymentNotes: z.array(ImpactEntrySchema),
   knownIssues: z.array(ImpactEntrySchema),
@@ -78,5 +83,7 @@ export const ReleaseIndexSchema = z.object({
 
 export type Evidence = z.infer<typeof EvidenceSchema>;
 export type ImpactEntry = z.infer<typeof ImpactEntrySchema>;
+export type DbSchemaChange = z.infer<typeof DbSchemaChangeSchema>;
+export type MigrationRisk = z.infer<typeof MigrationRiskSchema>;
 export type ReleaseImpact = z.infer<typeof ReleaseImpactSchema>;
 export type ReleaseIndex = z.infer<typeof ReleaseIndexSchema>;
