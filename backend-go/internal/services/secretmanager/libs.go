@@ -13,22 +13,21 @@ type ServicesDeps struct {
 }
 
 type Services struct {
-	SecretFolder   *secretfolder.Service
-	SecretImport   *secretimport.Service
-	SecretDAL      *secret.DAL
-	EnvironmentDAL *environment.DAL
+	SecretFolder *secretfolder.Service
+	SecretImport *secretimport.Service
+	SecretDAL    *secret.DAL
+	Environment  *environment.Service
 }
 
 func NewServices(deps ServicesDeps) *Services {
 	secretFolderDAL := secretfolder.NewDAL(deps.DB)
 	secretImportDAL := secretimport.NewDAL(deps.DB)
 	secretDAL := secret.NewDAL(deps.DB)
-	environmentDAL := environment.NewDAL(deps.DB)
 
 	return &Services{
-		SecretFolder:   secretfolder.NewService(secretfolder.Deps{DAL: secretFolderDAL}),
-		SecretImport:   secretimport.NewService(secretimport.Deps{DAL: secretImportDAL}),
-		SecretDAL:      secretDAL,
-		EnvironmentDAL: environmentDAL,
+		SecretFolder: secretfolder.NewService(secretfolder.Deps{DAL: secretFolderDAL}),
+		SecretImport: secretimport.NewService(secretimport.Deps{DAL: secretImportDAL}),
+		SecretDAL:    secretDAL,
+		Environment:  environment.NewService(environment.Deps{DB: deps.DB}),
 	}
 }

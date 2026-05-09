@@ -53,7 +53,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 	}
 
 	// Load environments
-	allEnvs, err := h.secretManagerSvc.EnvironmentDAL.GetAllByProjectID(ctx, opts.ProjectID)
+	allEnvs, err := h.secretManagerSvc.Environment.GetAllByProjectID(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load environments").WithErrf("GetSecretByName(projectId=%s): %w", opts.ProjectID, err)
 	}

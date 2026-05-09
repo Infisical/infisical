@@ -130,7 +130,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 	}
 
 	// 3. Load all environments for the project (metadata only, for envID -> slug mapping)
-	allEnvs, err := h.secretManagerSvc.EnvironmentDAL.GetAllByProjectID(ctx, opts.ProjectID)
+	allEnvs, err := h.secretManagerSvc.Environment.GetAllByProjectID(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load environments").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
