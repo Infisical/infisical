@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"math/rand/v2"
@@ -12,35 +11,21 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/infisical/api/internal/config"
 )
 
-// Tx represents a database transaction executor.
-// Satisfied by *sql.Tx and keystore.Tx. Includes Exec/Query to satisfy go-jet's qrm.DB.
-type Tx interface {
-	Exec(query string, args ...any) (sql.Result, error)
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	Query(query string, args ...any) (*sql.Rows, error)
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
 type DB interface {
-	Primary() *sql.DB
-	Replica() *sql.DB
+	Primary() *pgxpool.Pool
+	Replica() *pgxpool.Pool
 	ReplicaCount() int
-	PrimaryPool() *pgxpool.Pool
-	Close() error
+	Close()
 }
 
-// pgDatabase wraps a primary pgxpool and zero or more read-replica pools,
-// exposing them as *sql.pgDatabase for compatibility with go-jet and database/sql consumers.
+// pgDatabase wraps a primary pgxpool and zero or more read-replica pools.
 type pgDatabase struct {
-	primary    *pgxpool.Pool
-	replicas   []*pgxpool.Pool
-	primarySQL *sql.DB
-	replicaSQL []*sql.DB
+	primary  *pgxpool.Pool
+	replicas []*pgxpool.Pool
 }
 
 // NewPostgresDB creates a connection pool for the primary database and optional read replicas.
@@ -53,7 +38,6 @@ func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, read
 
 	replicaPools := make([]*pgxpool.Pool, 0, len(readReplicas))
 	for i, r := range readReplicas {
-		// Fall back to primary root cert if replica doesn't have its own.
 		rootCert := r.DBRootCert
 		if rootCert == "" {
 			rootCert = primaryRootCert
@@ -61,7 +45,6 @@ func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, read
 
 		pool, err := openPool(ctx, r.DBConnectionURI, rootCert)
 		if err != nil {
-			// Close already-opened pools on failure.
 			primaryPool.Close()
 			for _, p := range replicaPools {
 				p.Close()
@@ -71,33 +54,23 @@ func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, read
 		replicaPools = append(replicaPools, pool)
 	}
 
-	// Wrap pgxpool.Pool as *sql.DB for go-jet / database/sql compatibility.
-	primarySQLDB := stdlib.OpenDBFromPool(primaryPool)
-	replicaSQLDBs := make([]*sql.DB, len(replicaPools))
-	for i, p := range replicaPools {
-		replicaSQLDBs[i] = stdlib.OpenDBFromPool(p)
-	}
-
 	return &pgDatabase{
-		primary:    primaryPool,
-		replicas:   replicaPools,
-		primarySQL: primarySQLDB,
-		replicaSQL: replicaSQLDBs,
+		primary:  primaryPool,
+		replicas: replicaPools,
 	}, nil
 }
 
-// Primary returns the primary database as *sql.DB.
-func (db *pgDatabase) Primary() *sql.DB {
-	return db.primarySQL
+// Primary returns the primary database pool for writes.
+func (db *pgDatabase) Primary() *pgxpool.Pool {
+	return db.primary
 }
 
-// Replica returns a random read-replica as *sql.DB, or the primary if no replicas are configured.
-// Matches the Node.js behavior: Math.floor(Math.random() * readReplicaDbs.length).
-func (db *pgDatabase) Replica() *sql.DB {
-	if len(db.replicaSQL) == 0 {
-		return db.primarySQL
+// Replica returns a random read-replica pool, or the primary if no replicas are configured.
+func (db *pgDatabase) Replica() *pgxpool.Pool {
+	if len(db.replicas) == 0 {
+		return db.primary
 	}
-	return db.replicaSQL[rand.IntN(len(db.replicaSQL))]
+	return db.replicas[rand.IntN(len(db.replicas))]
 }
 
 // ReplicaCount returns the number of read replicas configured.
@@ -105,24 +78,12 @@ func (db *pgDatabase) ReplicaCount() int {
 	return len(db.replicas)
 }
 
-// PrimaryPool returns the underlying primary pgxpool.Pool for operations that need it directly.
-func (db *pgDatabase) PrimaryPool() *pgxpool.Pool {
-	return db.primary
-}
-
-// Close closes all connection pools (primary + replicas) and their sql.DB wrappers.
-func (db *pgDatabase) Close() error {
-	firstErr := db.primarySQL.Close()
-	for _, s := range db.replicaSQL {
-		if err := s.Close(); err != nil && firstErr == nil {
-			firstErr = err
-		}
-	}
+// Close closes all connection pools (primary + replicas).
+func (db *pgDatabase) Close() {
 	db.primary.Close()
 	for _, r := range db.replicas {
 		r.Close()
 	}
-	return firstErr
 }
 
 // openPool creates a pgxpool.Pool from a connection URI and optional base64-encoded root CA cert.
@@ -170,7 +131,6 @@ func parseSslConfig(connURI, dbRootCert string) (string, *tls.Config, error) {
 		return connURI, nil, nil
 	}
 
-	// Decode the base64-encoded CA certificate.
 	caPEM, err := base64.StdEncoding.DecodeString(dbRootCert)
 	if err != nil {
 		return "", nil, fmt.Errorf("decoding DB_ROOT_CERT base64: %w", err)
@@ -181,8 +141,6 @@ func parseSslConfig(connURI, dbRootCert string) (string, *tls.Config, error) {
 		return "", nil, fmt.Errorf("failed to parse DB root certificate PEM")
 	}
 
-	// Default: trust the CA but don't strictly verify server identity
-	// (matches Node.js rejectUnauthorized: false with a CA present).
 	tlsCfg := &tls.Config{
 		RootCAs:            certPool,
 		InsecureSkipVerify: true,
@@ -190,18 +148,15 @@ func parseSslConfig(connURI, dbRootCert string) (string, *tls.Config, error) {
 
 	modifiedURI := connURI
 
-	// Check sslmode in the URI.
 	parsed, err := url.Parse(connURI)
 	if err == nil {
 		sslMode := parsed.Query().Get("sslmode")
 		if sslMode != "" && !strings.EqualFold(sslMode, "disable") {
-			// Strip sslmode — we handle TLS ourselves via pgx TLSConfig.
 			q := parsed.Query()
 			q.Del("sslmode")
 			parsed.RawQuery = q.Encode()
 			modifiedURI = parsed.String()
 
-			// verify-ca and verify-full → reject unauthorized (InsecureSkipVerify = false).
 			if strings.EqualFold(sslMode, "verify-ca") || strings.EqualFold(sslMode, "verify-full") {
 				tlsCfg.InsecureSkipVerify = false
 			}

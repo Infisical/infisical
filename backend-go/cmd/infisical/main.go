@@ -59,7 +59,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		logger.ErrorContext(ctx, "failed to initialize database", slog.Any("error", err))
 		return err
 	}
-	defer errutil.DeferErr(ctx, db.Close, "closing database")
+	defer db.Close()
 
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
@@ -73,7 +73,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer errutil.DeferErr(ctx, redisClient.Close, "closing redis")
 
 	// Initialize KeyStore and Queue.
-	ks := keystore.NewKeyStore(redisClient, db.Primary())
+	ks := keystore.NewKeyStore(redisClient)
 	queueSvc := queue.NewService(logger, redisClient)
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 

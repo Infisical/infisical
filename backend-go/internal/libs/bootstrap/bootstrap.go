@@ -43,7 +43,7 @@ func (r *DBReport) PrintReport(logger *slog.Logger) {
 func CheckDBConnection(ctx context.Context, db pg.DB) *DBReport {
 	report := &DBReport{}
 
-	if err := db.Primary().PingContext(ctx); err != nil {
+	if err := db.Primary().Ping(ctx); err != nil {
 		report.Primary = ConnectionStatus{Name: "primary", Ok: false, Err: fmt.Errorf("primary database: %w", err)}
 	} else {
 		report.Primary = ConnectionStatus{Name: "primary", Ok: true}
@@ -52,7 +52,7 @@ func CheckDBConnection(ctx context.Context, db pg.DB) *DBReport {
 	for i := range db.ReplicaCount() {
 		name := fmt.Sprintf("read-replica-%d", i)
 		// Ping via a random replica — if any fail the report captures it.
-		if err := db.Replica().PingContext(ctx); err != nil {
+		if err := db.Replica().Ping(ctx); err != nil {
 			report.Replicas = append(report.Replicas, ConnectionStatus{Name: name, Ok: false, Err: fmt.Errorf("%s: %w", name, err)})
 		} else {
 			report.Replicas = append(report.Replicas, ConnectionStatus{Name: name, Ok: true})

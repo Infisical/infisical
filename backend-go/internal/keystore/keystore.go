@@ -2,63 +2,13 @@ package keystore
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-// Tx represents a database transaction. *sql.Tx satisfies this interface.
-// Consumers can use lock.Tx() with DAL operations that accept this interface.
-// Includes Exec/Query (non-context variants) so Tx satisfies go-jet's qrm.DB.
-type Tx interface {
-	Exec(query string, args ...any) (sql.Result, error)
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	Query(query string, args ...any) (*sql.Rows, error)
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	Commit() error
-	Rollback() error
-}
-
-// TxStarter can begin new database transactions. *sql.DB satisfies this interface.
-type TxStarter interface {
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-}
-
-// Lock represents an acquired PostgreSQL advisory lock tied to a transaction.
-type Lock struct {
-	tx      Tx
-	ownedTx bool // true if we created the tx; false if caller provided it
-}
-
-// Tx returns the underlying transaction so it can be used with DAL operations.
-func (l *Lock) Tx() Tx {
-	return l.tx
-}
-
-// Release commits the transaction and frees the advisory lock.
-// If the transaction was provided by the caller, Release is a no-op —
-// the caller is responsible for committing/rolling back their own transaction.
-func (l *Lock) Release() error {
-	if !l.ownedTx {
-		return nil
-	}
-	return l.tx.Commit()
-}
-
-// Rollback rolls back the transaction and frees the advisory lock.
-// If the transaction was provided by the caller, Rollback is a no-op.
-func (l *Lock) Rollback() error {
-	if !l.ownedTx {
-		return nil
-	}
-	return l.tx.Rollback()
-}
-
-// KeyStore provides key-value operations backed by Redis and
-// PostgreSQL advisory locks.
+// KeyStore provides key-value operations backed by Redis.
 type KeyStore interface {
 	SetItem(ctx context.Context, key string, value string) error
 	GetItem(ctx context.Context, key string) (string, error)
@@ -72,21 +22,14 @@ type KeyStore interface {
 	// StreamAdd adds an entry to a Redis stream (XADD).
 	// Pass "*" as id to auto-generate the entry ID.
 	StreamAdd(ctx context.Context, stream string, id string, values map[string]string) (string, error)
-
-	// AcquirePgLock acquires a PostgreSQL transaction-level advisory lock (pg_advisory_xact_lock).
-	// If tx is nil, a new transaction is created and owned by the Lock (Release commits it).
-	// If tx is provided, the lock is acquired within that transaction and Release is a no-op —
-	// the caller manages the transaction lifecycle.
-	AcquirePgLock(ctx context.Context, lockID string, tx Tx) (*Lock, error)
 }
 
 type redisKeyStore struct {
 	client redis.UniversalClient
-	db     TxStarter
 }
 
-func NewKeyStore(client redis.UniversalClient, db TxStarter) KeyStore {
-	return &redisKeyStore{client: client, db: db}
+func NewKeyStore(client redis.UniversalClient) KeyStore {
+	return &redisKeyStore{client: client}
 }
 
 func (k *redisKeyStore) SetItem(ctx context.Context, key, value string) error {
@@ -134,29 +77,4 @@ func (k *redisKeyStore) StreamAdd(ctx context.Context, stream, id string, values
 		ID:     id,
 		Values: values,
 	}).Result()
-}
-
-func (k *redisKeyStore) AcquirePgLock(ctx context.Context, stringLockId string, tx Tx) (*Lock, error) {
-	ownedTx := false
-
-	lockID := stringToLockID(stringLockId)
-	if tx == nil {
-		sqlTx, err := k.db.BeginTx(ctx, nil)
-		if err != nil {
-			return nil, fmt.Errorf("beginning transaction for advisory lock: %w", err)
-		}
-		tx = sqlTx
-		ownedTx = true
-	}
-
-	if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock($1)", lockID); err != nil {
-		if ownedTx {
-			if err := tx.Rollback(); err != nil {
-				return nil, fmt.Errorf("acquiring advisory lock %d: %w", lockID, err)
-			}
-		}
-		return nil, fmt.Errorf("acquiring advisory lock %d: %w", lockID, err)
-	}
-
-	return &Lock{tx: tx, ownedTx: ownedTx}, nil
 }
