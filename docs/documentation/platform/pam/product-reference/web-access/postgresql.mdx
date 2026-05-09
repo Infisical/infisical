@@ -33,8 +33,18 @@ Once connected, you get a spreadsheet-like interface for your database where you
 - Browse tables and explore their data
 - Filter and sort to quickly find what you need
 - Edit data directly — add, update, or delete rows
+- Export results as CSV or JSON (download or copy to clipboard)
 
 ![PostgreSQL Web Access Interface](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
+
+## Tabs
+
+The interface uses tabs to keep multiple working contexts open at once. Tabs come in two kinds:
+
+- **Table tabs** — opened by clicking a table in the sidebar. Clicking a table that is already open switches to its existing tab. To open a duplicate tab for the same table, right-click the table and choose **Open in new tab**, or hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> while clicking.
+- **Query tabs** — opened with the **+ New query** button in the tab bar.
+
+Each tab uses its own database connection, so transactions are scoped to the tab they were opened in.
 
 ## SQL Queries
 
@@ -44,11 +54,7 @@ The SQL query runner lets you run arbitrary SQL against your database without le
 
 ### Usage
 
-Click the **+** button in the tab bar to open a new query tab. Each tab has its own SQL editor and results panel.
-
 Write your query in the editor and run it by clicking **Run** or pressing `Cmd+Enter` (Mac) / `Ctrl+Enter` (Windows/Linux). Results are displayed in a table below the editor with column types, primary key, and foreign key indicators.
-
-You can open multiple query tabs at once. Tabs are independent: each has its own SQL content and results.
 
 #### Multi-statement queries
 
@@ -58,6 +64,13 @@ If you run multiple statements at once, the results of the last statement are sh
 
 `INSERT`, `UPDATE`, and `DELETE` statements display the number of affected rows instead of a result table.
 
+## Exporting Data
+
+You can export the currently visible data from both table browse tabs and query result panels. Click the download icon to open the export menu with the following options:
+
+- **Download as CSV / JSON** — saves a file to your machine.
+- **Copy as CSV / JSON** — copies the data to your clipboard.
+
 ## Limits
 
 In addition to the [common session limits](/documentation/platform/pam/product-reference/web-access/overview#session-limits), the following PostgreSQL-specific limits apply:
@@ -66,6 +79,8 @@ In addition to the [common session limits](/documentation/platform/pam/product-r
 |---------|-------|
 | **Statement timeout** | 30 seconds per query |
 
+While the browser tab is in the foreground, sessions are kept alive against the [idle timeout](/documentation/platform/pam/product-reference/web-access/overview#session-limits) (10 minutes); the timeout starts counting once the tab becomes hidden. The max session duration still applies regardless.
+
 ## FAQ
 
 <AccordionGroup>
@@ -73,7 +88,7 @@ In addition to the [common session limits](/documentation/platform/pam/product-r
         Editing is only available for tables that have a primary key defined. Tables without a primary key, as well as views, are displayed in read-only mode.
     </Accordion>
     <Accordion title="Does the SQL query runner support transactions?">
-        Yes. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` to manage transactions. An active transaction is shared across all query tabs — changes made in one tab are visible in others until you commit or roll back. The toolbar will show a **Transaction open** indicator while a transaction is in progress.
+        Yes. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` to manage transactions. The toolbar will show a **Transaction open** indicator while a transaction is in progress.
     </Accordion>
     <Accordion title="Can I run only part of a query?">
         Yes. Select any portion of the SQL in the editor and click **Run Selection** (or press <kbd>⌘ Enter</kbd> / <kbd>Ctrl Enter</kbd>) to execute only the selected text.

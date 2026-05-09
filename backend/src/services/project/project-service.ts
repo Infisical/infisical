@@ -15,7 +15,11 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -272,9 +276,13 @@ export const projectServiceFactory = ({
 
     if (
       permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
-      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+      permission.cannot(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project)
     ) {
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+    }
+
+    if (type === ProjectType.AI) {
+      throw new BadRequestError({ message: "Agent Sentinel projects are not supported" });
     }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
@@ -2316,8 +2324,8 @@ export const projectServiceFactory = ({
   };
 
   const requestProjectAccess = async ({ permission, comment, projectId }: TProjectAccessRequestDTO) => {
-    // check user belong to org
-    await permissionService.getOrgPermission({
+    // check user belong to org and has permission to request project access
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
       actor: permission.type,
       actorId: permission.id,
       orgId: permission.orgId,
@@ -2325,6 +2333,10 @@ export const projectServiceFactory = ({
       actorOrgId: permission.orgId,
       scope: OrganizationActionScope.Any
     });
+    ForbiddenError.from(orgPermission).throwUnlessCan(
+      OrgPermissionProjectActions.RequestAccess,
+      OrgPermissionSubjects.Project
+    );
 
     const projectMember = await permissionService
       .getProjectPermission({

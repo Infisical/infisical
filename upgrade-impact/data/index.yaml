@@ -1,3 +1,36 @@
 schemaVersion: 1
-generatedAt: "2026-04-29T00:00:00.000Z"
-versions: []
+generatedAt: 2026-05-09T01:08:18.824Z
+versions:
+  - version: v0.159.16
+    releasedAt: 2026-04-17T17:49:54-03:00
+    file: releases/v0.159.16.yaml
+  - version: v0.159.17
+    releasedAt: 2026-04-18T12:45:00+02:00
+    file: releases/v0.159.17.yaml
+  - version: v0.159.18
+    releasedAt: 2026-04-19T14:41:52-04:00
+    file: releases/v0.159.18.yaml
+  - version: v0.159.19
+    releasedAt: 2026-04-22T03:30:00+05:30
+    file: releases/v0.159.19.yaml
+  - version: v0.159.20
+    releasedAt: 2026-04-24T12:14:15+05:30
+    file: releases/v0.159.20.yaml
+  - version: v0.159.21
+    releasedAt: 2026-04-24T10:59:55-03:00
+    file: releases/v0.159.21.yaml
+  - version: v0.159.22
+    releasedAt: 2026-04-24T22:04:21+02:00
+    file: releases/v0.159.22.yaml
+  - version: v0.159.23
+    releasedAt: 2026-04-29T11:56:04+05:30
+    file: releases/v0.159.23.yaml
+  - version: v0.159.24
+    releasedAt: 2026-04-29T16:46:24-03:00
+    file: releases/v0.159.24.yaml
+  - version: v0.159.25
+    releasedAt: 2026-04-30T19:46:57-03:00
+    file: releases/v0.159.25.yaml
+  - version: v0.159.28
+    releasedAt: 2026-05-08T20:34:08-04:00
+    file: releases/v0.159.28.yaml

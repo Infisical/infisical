@@ -44,26 +44,8 @@ export const gatewaysQueryKeys = {
         ]);
 
         return [
-          ...data.gateways.map((g) => ({
-            ...g,
-            isV1: true as const,
-            isPending: false as const,
-            hasReEnrollToken: false as const
-          })),
-          ...dataV2.map((g) => {
-            const hasHeartbeat = !!g.heartbeat;
-            const hasToken =
-              g.enrollmentTokenStatus === "pending" || g.enrollmentTokenStatus === "expired";
-            const isPending = hasToken && !hasHeartbeat;
-            const hasReEnrollToken = g.enrollmentTokenStatus === "pending" && hasHeartbeat;
-
-            return {
-              ...g,
-              isV1: false as const,
-              isPending,
-              hasReEnrollToken
-            };
-          })
+          ...data.gateways.map((g) => ({ ...g, isV1: true as const })),
+          ...dataV2.map((g) => ({ ...g, isV1: false as const }))
         ];
       }
     })

@@ -20,7 +20,7 @@ export const SSOModalHeader = ({ providerDetails, isConnected }: Props) => {
       <img
         alt={`${providerDetails.label} logo`}
         src={`/images/sso/${providerDetails.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+        className="h-10 w-10 rounded-md bg-foreground/5 p-1.5"
       />
       <div>
         <div className="flex items-center gap-x-2 text-mineshaft-300">

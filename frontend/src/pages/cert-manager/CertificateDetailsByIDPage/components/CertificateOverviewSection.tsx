@@ -81,12 +81,6 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailValue>{certificate.commonName}</DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>Friendly Name</DetailLabel>
-              <DetailValue>
-                {certificate.friendlyName || <span className="text-muted">—</span>}
-              </DetailValue>
-            </Detail>
-            <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
                 {certificate.status === CertStatus.REVOKED ? (

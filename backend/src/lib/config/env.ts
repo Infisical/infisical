@@ -10,6 +10,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
+import { ms } from "../ms";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
@@ -228,6 +229,12 @@ const envSchema = z
     // HubSpot Forms API for capturing signups
     HUBSPOT_PORTAL_ID: zpStr(z.string().optional()),
     HUBSPOT_SIGNUP_FORM_ID: zpStr(z.string().optional()),
+    // In-app announcements (Contentful). Public read-only delivery token; safe to bake in defaults.
+    // Self-hosted admins can disable outbound calls with ANNOUNCEMENTS_ENABLED=false.
+    ANNOUNCEMENTS_ENABLED: zodStrBool.default("true"),
+    CONTENTFUL_SPACE_ID: zpStr(z.string().optional()),
+    CONTENTFUL_DELIVERY_TOKEN: zpStr(z.string().optional()),
+    CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
@@ -238,6 +245,15 @@ const envSchema = z
     JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
+    MAX_MACHINE_IDENTITY_TOKEN_AGE: zpStr(
+      z
+        .string()
+        .default("90d")
+        .transform((val) => Math.floor(ms(val) / 1000))
+    ),
+    LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT: zpStr(
+      z.coerce.date().default(new Date("2026-05-04T00:00:00.000Z"))
+    ),
     // Oauth
     CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),

@@ -1,69 +1,72 @@
 import { useState } from "react";
-import {
-  faCheckCircle,
-  faClock,
-  faEye,
-  faGlobe,
-  faMagnifyingGlass,
-  faTimesCircle,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import {
+  CircleCheck,
+  CircleX,
+  Clock,
+  MoreHorizontal,
+  Search,
+  ShieldCheck,
+  Trash2
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  DeleteActionModal,
-  EmptyState,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSubjects,
   useOrganization
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteEmailDomain, useGetEmailDomains } from "@app/hooks/api";
+import { TEmailDomain, useDeleteEmailDomain, useGetEmailDomains } from "@app/hooks/api";
 
-import { EmailDomainVerificationModal } from "./EmailDomainVerificationModal";
+const STATUS_BADGE = {
+  pending: { label: "Pending", icon: Clock, variant: "info" as const },
+  verified: { label: "Verified", icon: CircleCheck, variant: "success" as const },
+  expired: { label: "Expired", icon: CircleX, variant: "danger" as const }
+};
 
-const STATUS_CONFIG = {
-  pending: {
-    label: "Pending",
-    icon: faClock,
-    className: "text-yellow-500"
-  },
-  verified: {
-    label: "Verified",
-    icon: faCheckCircle,
-    className: "text-green-500"
-  },
-  expired: {
-    label: "Expired",
-    icon: faTimesCircle,
-    className: "text-red-500"
-  }
-} as const;
+type Props = {
+  onVerifyDomain: (emailDomain: TEmailDomain) => void;
+};
 
-export const OrgEmailDomainsTable = () => {
+export const OrgEmailDomainsTable = ({ onVerifyDomain }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: emailDomains, isPending } = useGetEmailDomains(currentOrg?.id ?? "");
   const [searchDomain, setSearchDomain] = useState("");
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "removeDomain",
-    "verifyDomain"
+    "removeDomain"
   ] as const);
   const { mutateAsync: deleteEmailDomain } = useDeleteEmailDomain();
 
@@ -91,115 +94,176 @@ export const OrgEmailDomainsTable = () => {
     : [];
 
   return (
-    <div>
-      <Input
-        value={searchDomain}
-        onChange={(e) => setSearchDomain(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search domains..."
-      />
-      <TableContainer className="mt-4">
+    <div className="flex flex-col gap-4">
+      <InputGroup>
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          placeholder="Search domains"
+          value={searchDomain}
+          onChange={(e) => setSearchDomain(e.target.value)}
+        />
+      </InputGroup>
+      {!isPending && filteredDomains.length === 0 ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No email domains found</EmptyTitle>
+            <EmptyDescription>Add an email domain to setup your IDP.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
         <Table>
-          <THead>
-            <Tr>
-              <Th>Domain</Th>
-              <Th>Status</Th>
-              <Th>Verified At</Th>
-              <Th>Expires At</Th>
-              <Th aria-label="actions" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={5} innerKey="email-domains" />}
+          <TableHeader>
+            <TableRow>
+              <TableHead>Domain</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Verified at</TableHead>
+              <TableHead>Expires at</TableHead>
+              <TableHead className="w-px text-right" aria-label="Actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPending &&
+              Array.from({ length: 3 }).map((_, idx) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <TableRow key={`email-domain-skeleton-${idx}`}>
+                  <TableCell colSpan={5}>
+                    <Skeleton className="h-5 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
             {filteredDomains.map((emailDomain) => {
-              const statusConfig = STATUS_CONFIG[emailDomain.status] || STATUS_CONFIG.pending;
+              const badge = STATUS_BADGE[emailDomain.status] ?? STATUS_BADGE.pending;
+              const StatusIcon = badge.icon;
               return (
-                <Tr key={emailDomain.id}>
-                  <Td className="max-w-xs">
-                    <span className="font-medium">{emailDomain.domain}</span>
-                  </Td>
-                  <Td>
-                    <span className={twMerge("flex items-center gap-1.5", statusConfig.className)}>
-                      <FontAwesomeIcon icon={statusConfig.icon} size="sm" />
-                      {statusConfig.label}
-                    </span>
-                  </Td>
-                  <Td>
-                    {emailDomain.verifiedAt
-                      ? format(new Date(emailDomain.verifiedAt), "MMM d, yyyy")
-                      : "-"}
-                  </Td>
-                  <Td>
-                    {emailDomain.status === "pending"
-                      ? format(new Date(emailDomain.codeExpiresAt), "MMM d, yyyy")
-                      : "-"}
-                  </Td>
-                  <Td>
+                <TableRow key={emailDomain.id}>
+                  <TableCell className="font-medium text-foreground">
+                    {emailDomain.domain}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={badge.variant}>
+                      <StatusIcon />
+                      {badge.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {emailDomain.verifiedAt ? (
+                      format(new Date(emailDomain.verifiedAt), "MMM d, yyyy")
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {emailDomain.status === "pending" ? (
+                      format(new Date(emailDomain.codeExpiresAt), "MMM d, yyyy")
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       {emailDomain.status === "pending" && (
                         <OrgPermissionCan
                           I={OrgPermissionEmailDomainActions.VerifyDomain}
                           a={OrgPermissionSubjects.EmailDomains}
                         >
-                          {(isAllowed) => (
-                            <Tooltip content="View details & Verify">
-                              <IconButton
-                                ariaLabel="verify"
-                                variant="plain"
-                                onClick={() => handlePopUpOpen("verifyDomain", emailDomain)}
-                                isDisabled={!isAllowed}
-                              >
-                                <FontAwesomeIcon icon={faEye} />
-                              </IconButton>
-                            </Tooltip>
-                          )}
+                          {(isAllowed) =>
+                            isAllowed && (
+                              <Badge asChild variant="warning">
+                                <button type="button" onClick={() => onVerifyDomain(emailDomain)}>
+                                  <ShieldCheck />
+                                  Verify Domain
+                                </button>
+                              </Badge>
+                            )
+                          }
                         </OrgPermissionCan>
                       )}
-                      <OrgPermissionCan
-                        I={OrgPermissionEmailDomainActions.Delete}
-                        an={OrgPermissionSubjects.EmailDomains}
-                      >
-                        {(isAllowed) => (
-                          <Tooltip content="Delete">
-                            <IconButton
-                              ariaLabel="delete"
-                              colorSchema="danger"
-                              onClick={() =>
-                                handlePopUpOpen("removeDomain", {
-                                  id: emailDomain.id,
-                                  domain: emailDomain.domain
-                                })
-                              }
-                              isDisabled={!isAllowed}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label={`Actions for ${emailDomain.domain}`}
+                          >
+                            <MoreHorizontal />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          {emailDomain.status === "pending" && (
+                            <OrgPermissionCan
+                              I={OrgPermissionEmailDomainActions.VerifyDomain}
+                              a={OrgPermissionSubjects.EmailDomains}
                             >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </OrgPermissionCan>
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  isDisabled={!isAllowed}
+                                  onClick={() => onVerifyDomain(emailDomain)}
+                                >
+                                  <ShieldCheck />
+                                  Verify
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                          )}
+                          <OrgPermissionCan
+                            I={OrgPermissionEmailDomainActions.Delete}
+                            an={OrgPermissionSubjects.EmailDomains}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                variant="danger"
+                                isDisabled={!isAllowed}
+                                onClick={() =>
+                                  handlePopUpOpen("removeDomain", {
+                                    id: emailDomain.id,
+                                    domain: emailDomain.domain
+                                  })
+                                }
+                              >
+                                <Trash2 />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </Td>
-                </Tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </TBody>
+          </TableBody>
         </Table>
-        {filteredDomains.length === 0 && !isPending && (
-          <EmptyState title="No email domains found" icon={faGlobe} />
-        )}
-      </TableContainer>
-      <DeleteActionModal
-        isOpen={popUp.removeDomain.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove the domain "${(popUp?.removeDomain?.data as { domain?: string })?.domain}"?`}
-        onChange={(isOpen) => handlePopUpToggle("removeDomain", isOpen)}
-        onDeleteApproved={onRemoveDomain}
-      />
-      <EmailDomainVerificationModal
-        popUp={popUp}
-        handlePopUpClose={handlePopUpClose}
-        handlePopUpToggle={handlePopUpToggle}
-      />
+      )}
+      <AlertDialog
+        open={popUp.removeDomain.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("removeDomain", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              Remove domain &quot;
+              {(popUp?.removeDomain?.data as { domain?: string })?.domain}
+              &quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the domain from your organization. Any SSO login associated with this
+              domain will no longer work.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={onRemoveDomain}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

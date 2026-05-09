@@ -1,13 +1,37 @@
 import { useState } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Modal, ModalClose, ModalContent, Switch, Tooltip } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Switch
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -207,187 +231,160 @@ export const OrgGeneralAuthSection = ({
   };
 
   const isGoogleOAuthEnforced = currentOrg.googleSsoAuthEnforced;
-
-  const getActiveSsoLabel = () => {
-    if (isSamlActive) return "SAML";
-    if (isOidcActive) return "OIDC";
-    if (isLdapActive) return "LDAP";
-    return "";
-  };
+  const isAnySsoEnforced = Boolean(currentOrg?.authEnforced || isGoogleOAuthEnforced);
+  const enforcementLabel = enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google";
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <div>
-        <p className="text-xl font-medium text-gray-200">SSO Enforcement</p>
-        <p className="mt-1 mb-2 text-gray-400">
-          Manage strict enforcement of specific authentication methods for your organization.
-        </p>
-      </div>
-      <div className="flex flex-col gap-2 py-4">
-        <div className={twMerge("mt-4", (!isSamlConfigured || isGoogleOAuthEnforced) && "hidden")}>
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce SAML SSO</span>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Switch
-                  id="enforce-saml-auth"
-                  onCheckedChange={(value) =>
-                    handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
-                  }
-                  isChecked={currentOrg?.authEnforced ?? false}
-                  isDisabled={!isAllowed || currentOrg?.googleSsoAuthEnforced}
-                />
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via SAML to access this organization.
-            <br />
-            When this is enabled your organization members will only be able to login with SAML.
-          </p>
-        </div>
-
-        <div className={twMerge("mt-4", (!isOidcConfigured || isGoogleOAuthEnforced) && "hidden")}>
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Switch
-                  id="enforce-oidc-auth"
-                  isChecked={currentOrg?.authEnforced ?? false}
-                  onCheckedChange={(value) =>
-                    handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)
-                  }
-                  isDisabled={!isAllowed}
-                />
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via OIDC to access this organization.
-            <br />
-            When this is enabled your organization members will only be able to login with OIDC.
-          </p>
-        </div>
-
-        <div className={twMerge("mt-2", !isGoogleConfigured && "hidden")}>
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce Google OAuth</span>
-            </div>
-            <OrgPermissionCan
-              I={OrgPermissionActions.Edit}
-              a={OrgPermissionSubjects.Sso}
-              tooltipProps={{
-                className: "max-w-sm",
-                side: "left"
-              }}
-              allowedLabel={
-                isOidcActive || isSamlActive || isLdapActive
-                  ? `You cannot enforce Google OAuth while ${getActiveSsoLabel()} SSO is enabled. Disable ${getActiveSsoLabel()} SSO to enforce Google OAuth.`
-                  : undefined
-              }
-              renderTooltip={isOidcActive || isSamlActive || isLdapActive}
+    <>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>
+            <ShieldCheck className="size-4 text-accent" />
+            Enforcement
+            {isAnySsoEnforced && <Badge variant="success">Active</Badge>}
+          </CardTitle>
+          <CardDescription>Require all members to sign in via your IDP.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field
+              orientation="horizontal"
+              className={twMerge((!isSamlConfigured || isGoogleOAuthEnforced) && "hidden")}
             >
-              {(isAllowed) => (
-                <div>
+              <FieldContent>
+                <FieldTitle>Enforce SAML SSO</FieldTitle>
+                <FieldDescription>Only allow members to sign in via SAML.</FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+                {(isAllowed) => (
+                  <Switch
+                    id="enforce-saml-auth"
+                    variant="org"
+                    checked={currentOrg?.authEnforced ?? false}
+                    onCheckedChange={(value) =>
+                      handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
+                    }
+                    disabled={!isAllowed || currentOrg?.googleSsoAuthEnforced}
+                  />
+                )}
+              </OrgPermissionCan>
+            </Field>
+
+            <Field
+              orientation="horizontal"
+              className={twMerge((!isOidcConfigured || isGoogleOAuthEnforced) && "hidden")}
+            >
+              <FieldContent>
+                <FieldTitle>Enforce OIDC SSO</FieldTitle>
+                <FieldDescription>Only allow members to sign in via OIDC.</FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+                {(isAllowed) => (
+                  <Switch
+                    id="enforce-oidc-auth"
+                    variant="org"
+                    checked={currentOrg?.authEnforced ?? false}
+                    onCheckedChange={(value) =>
+                      handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)
+                    }
+                    disabled={!isAllowed}
+                  />
+                )}
+              </OrgPermissionCan>
+            </Field>
+
+            <Field
+              orientation="horizontal"
+              className={twMerge(
+                (!isGoogleConfigured || isSamlActive || isOidcActive || isLdapActive) && "hidden"
+              )}
+            >
+              <FieldContent>
+                <FieldTitle>Enforce Google OAuth</FieldTitle>
+                <FieldDescription>
+                  Only allow members to sign in via Google OAuth (not SAML).
+                </FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+                {(isAllowed) => (
                   <Switch
                     id="enforce-google-sso"
+                    variant="org"
+                    checked={currentOrg?.googleSsoAuthEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
                     }
-                    isChecked={currentOrg?.googleSsoAuthEnforced ?? false}
-                    isDisabled={
-                      !isAllowed ||
-                      currentOrg?.authEnforced ||
-                      isOidcActive ||
-                      isSamlActive ||
-                      isLdapActive
-                    }
+                    disabled={!isAllowed || currentOrg?.authEnforced}
                   />
-                </div>
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via Google OAuth to access this organization.
-            <br />
-            When this is enabled your organization members will only be able to login with Google
-            OAuth (not Google SAML).
-          </p>
-        </div>
-      </div>
-      <div className="mt-4 py-4">
-        <div className="mb-2 flex justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-md text-mineshaft-100">Enable Admin SSO Bypass</span>
-            <Tooltip
-              className="max-w-lg"
-              content={
-                <div>
-                  <span>
-                    When enabling admin SSO bypass, we highly recommend enabling MFA enforcement at
-                    the organization-level for security reasons.
-                  </span>
-                  <p className="mt-4">
-                    In case of a lockout, admins can use the{" "}
-                    <a
-                      target="_blank"
-                      className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href="https://infisical.com/docs/documentation/platform/sso/overview#sso-break-glass"
-                      rel="noreferrer"
-                    >
-                      Admin Login Portal
-                    </a>{" "}
-                    at{" "}
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href={`${window.location.origin}/login/admin`}
-                    >
-                      {window.location.origin}/login/admin
-                    </a>
-                  </p>
-                </div>
-              }
-            >
-              <FontAwesomeIcon
-                icon={faInfoCircle}
-                size="sm"
-                className="mt-0.5 inline-block text-mineshaft-400"
-              />
-            </Tooltip>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Switch
-                id="allow-admin-bypass"
-                isChecked={currentOrg?.bypassOrgAuthEnabled ?? false}
-                onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          <span>
-            Allow organization admins to bypass SSO login enforcement when your SSO provider is
-            unavailable, misconfigured, or inaccessible.
-          </span>
-        </p>
-      </div>
+                )}
+              </OrgPermissionCan>
+            </Field>
+
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>
+                  Enable Admin SSO Bypass
+                  <HoverCard openDelay={150} closeDelay={150}>
+                    <HoverCardTrigger asChild>
+                      <Info className="text-muted" />
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <p>
+                        Enable org-level MFA before turning this on — without a second factor, an
+                        admin password is the weakest way into the org.
+                      </p>
+                      <p className="mt-3 mb-0.5">
+                        If locked out, admins can sign in via the{" "}
+                        <a
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline underline-offset-2 hover:text-foreground"
+                          href="https://infisical.com/docs/documentation/platform/sso/overview#sso-break-glass"
+                        >
+                          Admin Login Portal
+                        </a>{" "}
+                        at{" "}
+                        <a
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline underline-offset-2 hover:text-foreground"
+                          href={`${window.location.origin}/login/admin`}
+                        >
+                          /login/admin
+                        </a>
+                        .
+                      </p>
+                    </HoverCardContent>
+                  </HoverCard>
+                </FieldTitle>
+                <FieldDescription>
+                  Admins can sign in with a password if your IDP is inaccessible.
+                </FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+                {(isAllowed) => (
+                  <Switch
+                    id="allow-admin-bypass"
+                    variant="org"
+                    checked={currentOrg?.bypassOrgAuthEnabled ?? false}
+                    onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
+                    disabled={!isAllowed}
+                  />
+                )}
+              </OrgPermissionCan>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to enforce SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
       />
-      <Modal
-        isOpen={popUp.enforceSamlSsoConfirmation.isOpen}
+
+      <Dialog
+        open={popUp.enforceSamlSsoConfirmation.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("enforceSamlSsoConfirmation", isOpen);
           setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
@@ -396,56 +393,48 @@ export const OrgGeneralAuthSection = ({
           }
         }}
       >
-        <ModalContent
-          className="max-w-2xl"
-          title={`Enforce ${enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO`}
-        >
-          <NoticeBannerV2
-            title={`Warning: This action will enforce ${enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO authentication`}
-          >
-            <p className="my-2 text-sm text-mineshaft-300">
-              All users will be required to authenticate via{" "}
-              {enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO to access
-              this organization. Other authentication methods will be disabled.
-            </p>
-            <p className="text-sm font-medium text-mineshaft-200">
-              Before proceeding, ensure your{" "}
-              {enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} provider is
-              available and properly configured to avoid access issues.
-            </p>
-          </NoticeBannerV2>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Enforce {enforcementLabel} SSO</DialogTitle>
+          </DialogHeader>
+
+          <Alert variant="warning">
+            <AlertTriangle />
+            <AlertTitle>This action will enforce {enforcementLabel} SSO authentication</AlertTitle>
+            <AlertDescription>
+              <p>
+                All users will be required to authenticate via {enforcementLabel} SSO to access this
+                organization. Other authentication methods will be disabled.
+              </p>
+              <p className="font-medium">
+                Before proceeding, ensure your {enforcementLabel} provider is available and properly
+                configured to avoid access issues.
+              </p>
+            </AlertDescription>
+          </Alert>
 
           {!currentOrg?.bypassOrgAuthEnabled && (
-            <div className="mt-4 flex items-center justify-between rounded-md bg-mineshaft-800/50 py-3 pr-1 pl-2">
-              <div className="flex-1 pr-3">
-                <p className="text-sm font-medium text-gray-200">Enable Admin SSO Bypass</p>
-                <p className="mt-1 text-sm text-gray-400">
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Enable Admin SSO Bypass</FieldTitle>
+                <FieldDescription>
                   Allow organization admins to bypass SSO login enforcement if they experience any
-                  issues with their{" "}
-                  {enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} provider
-                </p>
-              </div>
+                  issues with their {enforcementLabel} provider.
+                </FieldDescription>
+              </FieldContent>
               <Switch
                 id="bypass-enabled-modal"
-                isChecked={bypassEnabledInModal}
+                variant="org"
+                checked={bypassEnabledInModal}
                 onCheckedChange={setBypassEnabledInModal}
               />
-            </div>
+            </Field>
           )}
 
-          <div className="mt-6 flex gap-2">
-            <Button
-              onClick={handleEnforceSsoConfirm}
-              className="mr-4"
-              size="sm"
-              colorSchema="primary"
-            >
-              Enable Enforcement
-            </Button>
-            <ModalClose asChild>
+          <DialogFooter>
+            <DialogClose asChild>
               <Button
-                colorSchema="secondary"
-                variant="plain"
+                variant="ghost"
                 onClick={() => {
                   handlePopUpToggle("enforceSamlSsoConfirmation", false);
                   setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
@@ -454,10 +443,13 @@ export const OrgGeneralAuthSection = ({
               >
                 Cancel
               </Button>
-            </ModalClose>
-          </div>
-        </ModalContent>
-      </Modal>
-    </div>
+            </DialogClose>
+            <Button variant="org" onClick={handleEnforceSsoConfirm}>
+              Enable Enforcement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

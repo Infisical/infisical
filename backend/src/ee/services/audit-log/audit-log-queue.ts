@@ -35,7 +35,7 @@ const normalizeJsonPayload = (payload: unknown) => {
   if (typeof payload === "object" && payload !== null) {
     return payload;
   }
-  logger.error({ payload }, "Unexpected audit log payload type, expected object or array");
+  logger.error({ payload }, "audit-log-queue: Unexpected audit log payload type, expected object or array");
   return {};
 };
 
@@ -91,8 +91,7 @@ export const auditLogQueueServiceFactory = async ({
 
       if (!orgId && !projectId) {
         logger.error(
-          { jobId: job.id, data: job.data },
-          "audit-log-queue: Received job with neither orgId nor projectId, skipping"
+          `audit-log-queue: Received job with neither orgId nor projectId, skipping [jobId=${job.id}] [event=${job.data.event?.type}]`
         );
         return;
       }
@@ -100,6 +99,12 @@ export const auditLogQueueServiceFactory = async ({
       if (!orgId) {
         // TODO(akhilmhdh): use caching here in dal to avoid db calls
         project = await projectDAL.findById(projectId!);
+        if (!project) {
+          logger.error(
+            `audit-log-queue: projecet was deleted, skipping [jobId=${job.id}] [projectId=${projectId}] [event=${job.data.event?.type}]`
+          );
+          return;
+        }
         orgId = project.orgId;
       }
 
@@ -148,7 +153,10 @@ export const auditLogQueueServiceFactory = async ({
               data: JSON.stringify(auditLog)
             });
           } catch (error) {
-            logger.error(error, "Failed to push audit log to Redis stream for ClickHouse batch");
+            logger.error(
+              error,
+              `audit-log-queue: Failed to push audit log to Redis stream for ClickHouse batch [jobId=${job.id}] [event=${job.data.event?.type}] [orgId=${job.data.orgId}] [projectId=${job.data.projectId}]`
+            );
           }
         } else {
           await auditLogDAL.create(auditLog);
@@ -191,9 +199,9 @@ export const auditLogQueueServiceFactory = async ({
         // Only trim after successful insert
         await keyStore.streamTrim(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, lastId, true);
 
-        logger.info({ count: values.length }, "Batch inserted audit logs into ClickHouse");
+        logger.info({ count: values.length }, "audit-log-queue: Batch inserted audit logs into ClickHouse");
       } catch (error) {
-        logger.error(error, `Failed to batch insert ${values.length} audit logs into ClickHouse`);
+        logger.error(error, `audit-log-queue: Failed to batch insert ${values.length} audit logs into ClickHouse`);
       }
     });
 

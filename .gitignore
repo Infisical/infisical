@@ -64,6 +64,7 @@ yarn-error.log*
 # Editor specific
 .vscode/*
 .idea/*
+.claude/
 
 frontend-build
 

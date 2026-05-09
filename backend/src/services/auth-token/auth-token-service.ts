@@ -42,7 +42,8 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, triesLeft, expiresAt };
     }
-    case TokenType.TOKEN_EMAIL_CHANGE_OTP: {
+    case TokenType.TOKEN_EMAIL_CHANGE_OTP:
+    case TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP: {
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
       const triesLeft = 1;
       const expiresAt = new Date(new Date().getTime() + 600000);

@@ -22,7 +22,10 @@ const FAILED_ROTATIONS_LIMIT = 25;
 
 type TPamInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "countActiveByProject" | "countDailyByProject" | "findTopActorsByProject">;
+  pamSessionDAL: Pick<
+    TPamSessionDALFactory,
+    "countActiveByProjectId" | "countDailyByProjectId" | "findTopActorsByProjectId"
+  >;
   pamResourceDAL: Pick<
     TPamResourceDALFactory,
     "countByProject" | "countWithRotationByProject" | "countByProjectGroupedByType"
@@ -96,7 +99,7 @@ export const pamInsightsServiceFactory = ({
           pamAccountDAL.countByProject(projectId),
           pamAccountDAL.countFailedRotationsByProject(projectId),
           pamAccountDAL.findFailedRotationsByProject(projectId, FAILED_ROTATIONS_LIMIT),
-          pamSessionDAL.countActiveByProject(projectId),
+          pamSessionDAL.countActiveByProjectId(projectId),
           pamResourceDAL.countByProjectGroupedByType(projectId)
         ]);
 
@@ -129,7 +132,7 @@ export const pamInsightsServiceFactory = ({
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
         const startDate = getStartOfDayUtc(SESSION_ACTIVITY_DAYS - 1);
-        const rows = await pamSessionDAL.countDailyByProject(projectId, startDate);
+        const rows = await pamSessionDAL.countDailyByProjectId(projectId, startDate);
 
         const dayCounts = new Map<string, number>();
         for (let i = SESSION_ACTIVITY_DAYS - 1; i >= 0; i -= 1) {
@@ -158,7 +161,7 @@ export const pamInsightsServiceFactory = ({
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
         const startDate = getStartOfDayUtc(TOP_ACTORS_DAYS - 1);
-        const rows = await pamSessionDAL.findTopActorsByProject(projectId, startDate, TOP_ACTORS_LIMIT);
+        const rows = await pamSessionDAL.findTopActorsByProjectId(projectId, startDate, TOP_ACTORS_LIMIT);
 
         return {
           actors: rows.map((row) => ({

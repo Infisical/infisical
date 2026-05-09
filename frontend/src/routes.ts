@@ -447,7 +447,10 @@ const organizationRoutes = route("/organizations/$orgId", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", "organization/NetworkingPage/route.tsx")
+  route("/networking", [
+    index("organization/NetworkingPage/route.tsx"),
+    route("/gateways/$gatewayId", "organization/NetworkingPage/GatewayDetailsByIDPage/route.tsx")
+  ])
 ]);
 
 export const routes = rootRoute("root.tsx", [

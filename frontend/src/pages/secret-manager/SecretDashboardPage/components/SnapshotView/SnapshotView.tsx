@@ -102,7 +102,9 @@ export const SnapshotView = ({
         diffView.push({
           mode:
             rollSecret.isRotatedSecret ||
+            rollSecret.isHoneyTokenSecret ||
             secretGroupById[id]?.isRotatedSecret ||
+            secretGroupById[id]?.isHoneyTokenSecret ||
             deepCompareSecrets(rollSecret, secretGroupById[id])
               ? TDiffModes.NoChange
               : TDiffModes.Modified,

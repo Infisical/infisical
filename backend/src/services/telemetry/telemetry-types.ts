@@ -105,7 +105,16 @@ export enum PostHogEventTypes {
   PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
   PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
   PamRotationRuleCreated = "PAM Rotation Rule Created",
-  PamRotationRuleDeleted = "PAM Rotation Rule Deleted"
+  PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
+
+  ResourceAuthMethodLogin = "Resource Auth Method Login",
+  ResourceAuthMethodUpdated = "Resource Auth Method Updated",
+
+  HoneyTokenCreated = "Honey Token Created",
+  HoneyTokenUpdated = "Honey Token Updated",
+  HoneyTokenRevoked = "Honey Token Revoked",
+  HoneyTokenReset = "Honey Token Reset",
+  HoneyTokenTriggered = "Honey Token Triggered"
 }
 
 export type TSecretModifiedEvent = {
@@ -156,6 +165,7 @@ export type TUserSignedUpEvent = {
     username: string;
     email: string;
     attributionSource?: string;
+    signupMethod?: string;
   };
 };
 
@@ -822,6 +832,63 @@ export type TPamRotationRuleDeletedEvent = {
   };
 };
 
+export type TResourceAuthMethodEvent = {
+  event: PostHogEventTypes.ResourceAuthMethodLogin | PostHogEventTypes.ResourceAuthMethodUpdated;
+  properties: {
+    resourceType: "gateway";
+    resourceId: string;
+    orgId: string;
+    method: "aws" | "token";
+  };
+};
+
+export type THoneyTokenCreatedEvent = {
+  event: PostHogEventTypes.HoneyTokenCreated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type THoneyTokenUpdatedEvent = {
+  event: PostHogEventTypes.HoneyTokenUpdated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenRevokedEvent = {
+  event: PostHogEventTypes.HoneyTokenRevoked;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenResetEvent = {
+  event: PostHogEventTypes.HoneyTokenReset;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenTriggeredEvent = {
+  event: PostHogEventTypes.HoneyTokenTriggered;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -892,4 +959,10 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TPamDiscoveryEvent
   | TPamRotationRuleCreatedEvent
   | TPamRotationRuleDeletedEvent
+  | TResourceAuthMethodEvent
+  | THoneyTokenCreatedEvent
+  | THoneyTokenUpdatedEvent
+  | THoneyTokenRevokedEvent
+  | THoneyTokenResetEvent
+  | THoneyTokenTriggeredEvent
 );

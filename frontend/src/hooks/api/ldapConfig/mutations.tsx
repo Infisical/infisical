@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { oidcConfigKeys } from "@app/hooks/api/oidcConfig/queries";
+import { ssoConfigKeys } from "@app/hooks/api/ssoConfig/queries";
 
 import { ldapConfigKeys } from "./queries";
 
@@ -50,6 +52,8 @@ export const useCreateLDAPConfig = () => {
     },
     onSuccess(_, dto) {
       queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: ssoConfigKeys.getSSOConfig(dto.organizationId) });
     }
   });
 };
@@ -100,6 +104,8 @@ export const useUpdateLDAPConfig = () => {
     },
     onSuccess(_, dto) {
       queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: ssoConfigKeys.getSSOConfig(dto.organizationId) });
     }
   });
 };

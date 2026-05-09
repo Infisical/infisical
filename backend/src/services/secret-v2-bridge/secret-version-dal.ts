@@ -260,6 +260,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
 
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
+          TableName.HoneyTokenSecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.HoneyTokenSecretMapping}.secretId`
+        )
+        .leftJoin(
           TableName.SecretVersionV2Tag,
           `${TableName.SecretVersionV2}.id`,
           `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
@@ -284,7 +289,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
           db.ref("actorGroupId").withSchema("actorMembership").as("groupId"),
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("honeyTokenId").withSchema(TableName.HoneyTokenSecretMapping).as("honeyTokenId")
         );
 
       if (limit) void query.limit(limit);
@@ -313,7 +319,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
           groupId: el.groupId,
           redactedByUserEmail: el.redactedByUserEmail,
           redactedByUserName: el.redactedByUserName,
-          redactedByMembershipId: el.redactedByMembershipId
+          redactedByMembershipId: el.redactedByMembershipId,
+          isHoneyTokenSecret: Boolean(el.honeyTokenId)
         }),
         childrenMapper: [
           {

@@ -123,7 +123,8 @@ export const SecretListView = ({
       newKey,
       secretId,
       secretMetadata,
-      isRotatedSecret
+      isRotatedSecret,
+      isHoneyTokenSecret
     }: Partial<{
       secretValueHidden: boolean;
       value: string;
@@ -137,6 +138,7 @@ export const SecretListView = ({
       secretId: string;
       secretMetadata?: { key: string; value: string }[];
       isRotatedSecret?: boolean;
+      isHoneyTokenSecret?: boolean;
     }> = {}
   ) => {
     if (operation === "delete") {
@@ -166,7 +168,7 @@ export const SecretListView = ({
         projectId,
         secretPath,
         secretKey: key,
-        ...(!isRotatedSecret && {
+        ...(!(isRotatedSecret || isHoneyTokenSecret) && {
           newSecretName: newKey,
           secretValue: secretValueHidden ? secretValue : secretValue || ""
         }),
@@ -395,6 +397,7 @@ export const SecretListView = ({
           skipMultilineEncoding: modSecret.skipMultilineEncoding,
           secretMetadata,
           isRotatedSecret: orgSecret.isRotatedSecret,
+          isHoneyTokenSecret: orgSecret.isHoneyTokenSecret,
           secretValueHidden
         });
         if (cb) cb();

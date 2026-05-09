@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 
 import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
 import {
@@ -243,11 +243,16 @@ export const auditLogStreamServiceFactory = ({
             auditLog
           });
         } catch (error) {
-          logger.error(
-            error,
-            `Failed to stream audit log [auditLogId=${auditLog.id}] [provider=${provider}] [orgId=${orgId}]${error instanceof AxiosError ? `: ${error.message}` : ""}`
-          );
-          throw error;
+          if (isAxiosError(error)) {
+            logger.error(
+              `audit-log-queue: Failed to stream audit log due to request error [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}] [message=${error?.message}] [response=${JSON.stringify(error?.response?.data)}]`
+            );
+          } else {
+            logger.error(
+              error,
+              `audit-log-queue: Failed to stream audit log [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}]: ${(error as Error)?.message}`
+            );
+          }
         }
       })
     );

@@ -3,7 +3,9 @@ import * as React from "react";
 import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
+import { IconButton, type IconButtonProps } from "../IconButton";
 import { Input } from "../Input";
+import { TextArea } from "../TextArea";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -24,7 +26,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
         "has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50",
 
         // Error state.
-        "has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[[data-slot][aria-invalid=true]]:border-destructive dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40",
+        "has-[[data-slot][aria-invalid=true]]:border-danger has-[[data-slot][aria-invalid=true]]:ring-danger/40",
 
         className
       )}
@@ -75,45 +77,43 @@ function InputGroupAddon({
   );
 }
 
-// const inputGroupButtonVariants = cva("text-sm shadow-none flex gap-2 items-center", {
-//   variants: {
-//     size: {
-//       xs: "h-6 gap-1 px-2 rounded-sm [&>svg:not([class*='size-'])]:size-3.5 has-[>svg]:px-2",
-//       sm: "h-8 px-2.5 gap-1.5 rounded-md has-[>svg]:px-2.5",
-//       "icon-xs": "size-6 rounded-[calc(var(--radius)-5px)] p-0 has-[>svg]:p-0",
-//       "icon-sm": "size-8 p-0 has-[>svg]:p-0"
-//     }
-//   },
-//   defaultVariants: {
-//     size: "xs"
-//   }
-// });
+const inputGroupButtonVariants = cva("shadow-none", {
+  variants: {
+    size: {
+      xs: "size-6 rounded-[4px] [&>svg]:size-3.5",
+      sm: "size-8 [&>svg]:size-4"
+    }
+  },
+  defaultVariants: {
+    size: "xs"
+  }
+});
 
-// TODO
-// function InputGroupButton({
-//   className,
-//   type = "button",
-//   variant = "ghost",
-//   size = "xs",
-//   ...props
-// }: Omit<React.ComponentProps<typeof UnstableButton>, "size"> &
-//   VariantProps<typeof inputGroupButtonVariants>) {
-//   return (
-//     <UnstableButton
-//       type={type}
-//       data-size={size}
-//       variant={variant}
-//       className={cn(inputGroupButtonVariants({ size }), className)}
-//       {...props}
-//     />
-//   );
-// }
+type InputGroupButtonProps = Omit<IconButtonProps, "size" | "asChild"> &
+  VariantProps<typeof inputGroupButtonVariants>;
+
+const InputGroupButton = React.forwardRef<HTMLButtonElement, InputGroupButtonProps>(
+  ({ className, type = "button", variant = "ghost-muted", size = "xs", ...props }, ref) => {
+    return (
+      <IconButton
+        ref={ref}
+        type={type}
+        data-size={size}
+        variant={variant}
+        className={cn(inputGroupButtonVariants({ size }), className)}
+        {...(props as IconButtonProps)}
+      />
+    );
+  }
+);
+
+InputGroupButton.displayName = "InputGroupButton";
 
 function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       className={cn(
-        "text-muted-foreground flex items-center gap-2 text-sm [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4",
+        "flex items-center gap-2 text-sm text-muted [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -121,7 +121,7 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
-const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<typeof Input>>(
   ({ className, ...props }, ref) => {
     return (
       <Input
@@ -139,24 +139,30 @@ const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<
 
 InputGroupInput.displayName = "InputGroupInput";
 
-// function InputGroupTextarea({ className, ...props }: React.ComponentProps<"textarea">) {
-//   return (
-//     <Textarea
-//       data-slot="input-group-control"
-//       className={cn(
-//         "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
-//         className
-//       )}
-//       {...props}
-//     />
-//   );
-// }
+const InputGroupTextArea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.ComponentProps<typeof TextArea>
+>(({ className, ...props }, ref) => {
+  return (
+    <TextArea
+      ref={ref}
+      data-slot="input-group-control"
+      className={cn(
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
+        className
+      )}
+      {...props}
+    />
+  );
+});
+
+InputGroupTextArea.displayName = "InputGroupTextArea";
 
 export {
   InputGroup,
   InputGroupAddon,
-  // InputGroupButton,
+  InputGroupButton,
   InputGroupInput,
-  InputGroupText
-  // InputGroupTextarea
+  InputGroupText,
+  InputGroupTextArea
 };

@@ -1,115 +1,120 @@
 ---
 title: "Projects"
-description: "Learn more and understand the concept of Infisical projects."
+description: "Learn about Infisical projects and how to manage secrets across environments."
 ---
 
 A secrets management project in Infisical is a dedicated workspace for managing application secrets such as API keys, database credentials, configuration, etc. used by your applications.
 
 Secrets are organized into a clear hierarchy of environments, folders, and individual secrets, making it easy to manage values across different stages of your development lifecycle (e.g., development, staging, production).
 
+The short video below walks through Infisical projects — how secrets are organized into environments, folders, and the dashboard features available to manage them.
+
+<br />
+
+<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
+  <iframe
+    src="https://www.youtube.com/embed/3dPwEhCU00E"
+    title="YouTube video player"
+    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<br />
+
 ## Project environments
 
-For both visual and organizational structure, Infisical allows splitting up secrets into environments (e.g., development, staging, production). In project settings, such environments can be
-customized depending on the intended use case.
+Infisical lets you split secrets into environments (e.g., development, staging, production) for both visual and organizational structure. You can customize environments in project settings.
 
-![project secrets overview](/images/platform/project/project-environments.png)
+![Project settings page showing configured environments](/images/platform/project/project-environments.png)
 
-## Secrets Overview
+## Secrets overview
 
-The **Secrets Overview** page captures a birds-eye-view of secrets and [folders](/documentation/platform/folder) across environments.
+The **Secrets Overview** page captures a bird's-eye view of secrets and [folders](/documentation/platform/folder) across environments.
 This is useful for comparing secrets, identifying if anything is missing, and making quick changes.
 
-![project secrets overview](/images/platform/project/project-secrets-overview-open.png)
+![Secrets overview page showing secrets across all environments](/images/platform/project/secrets-overview-2.png)
 
-## Secrets Dashboard
+## Secrets dashboard
 
-The **Secrets Dashboard** page appears when you press to manage the secrets of a specific environment.
+The **Secrets Dashboard** page appears when you select a specific environment to manage its secrets.
 
-![project dashboard](/images/dashboard.png)
+![Secrets dashboard showing environment secrets](/images/platform/project/secrets-dashboard-2.png)
 
 ### Secrets
 
-To add a secret, press **Add Secret** button at the top of the dashboard.
+To add a secret, click the **Add Secret** button at the top of the dashboard.
 
-![project add secret](/images/platform/project/project-secrets-add.png)
+![Add Secret button at the top of the secrets dashboard](/images/platform/project/add-secret-2.png)
 
 For a new project, it can be convenient to populate the dashboard by dropping a `.env` file into the provided pane as shown below:
 
-![project drop env file](/images/platform/project/project-secrets-drop-env.png)
+![Dashboard showing drag-and-drop pane for importing a .env file](/images/platform/project/drop-env-2.png)
 
-To delete a secret, hover over it and press the **X** button that appears on the right side.
+To delete a secret, hover over it and click the three dots on the right side, then select **Delete secret** from the dropdown.
 
-![project delete secret](/images/platform/project/project-secrets-delete.png)
+![Three-dot menu open on a secret row with Delete secret option visible](/images/platform/project/delete-secret-2.png)
 
 To delete multiple secrets at once, hover over and select the secrets you'd like to delete
-and press the **Delete** button that appears at the top.
+and click the **Delete** button that appears at the top.
 
-![project delete secret batch](/images/platform/project/project-secrets-delete-batch.png)
+![Multiple secrets selected with the Delete button visible at the top](/images/platform/project/delete-multiple-2.png)
 
 ### Search
 
 To search for specific secrets by their key name, you can use the search bar.
 
-![project search](/images/platform/project/project-secrets-search.png)
+![Search bar at the top of the secrets dashboard](/images/platform/project/search-secrets-2.png)
 
 To assist you with finding secrets, you can also group them by similar prefixes and filter them by tags (if applicable).
 
-![project filter](/images/platform/project/project-secrets-filter.png)
+![Filter dropdown showing grouping by prefix and tag options](/images/platform/project/filter-secrets-2.png)
 
-### Hide/Un-hide
+### Reveal values
 
-To view/hide all secrets at once, toggle the hide or un-hide button.
+To view all secret values at once, toggle the **Reveal values** button.
 
-![project filter](/images/platform/project/project-secrets-unhide.png)
+![Reveal values button on the secrets dashboard](/images/platform/project/reveal-values-2.png)
 
 ### Download as .env
 
-To download/export secrets back into a `.env` file, press the download button.
+To download/export secrets back into a `.env` file, click the download button.
 
-![project download back env](/images/platform/project/project-secrets-download-env.png)
+![Download button for exporting secrets as a .env file](/images/platform/project/download-env-2.png)
 
 ### Tags
 
 To better organize similar secrets, hover over them and label them with a tag.
 
-![project tag secret](/images/platform/project/project-secrets-tag.png)
+![Tag selector appearing on hover over a secret](/images/platform/project/tags-2.png)
 
 ### Comments
 
-To provide more context about a given secret, especially for your team, hover over it and press the comment button.
+To provide more context about a given secret, especially for your team, hover over it and click the comment button.
 
-![project comment secret](/images/platform/project/project-secrets-comment.png)
+![Comment button appearing on hover over a secret](/images/platform/project/comment-2.png)
 
 ### Personal overrides
 
 Infisical employs the concept of **shared** and **personal** secrets to address the need
 for common and custom secret values, or branching, amongst members of a team during software development.
-To provide a helpful analogy: A shared value is to a `main` branch as a personal value is to a custom branch.
+To provide a helpful analogy: a shared value is to a `main` branch as a personal value is to a custom branch.
 
 Consider:
 
-- A team with users A, B, user C.
+- A team with users A, B, and C.
 - A project with an environment containing a shared secret called D with the value E.
 
 Suppose user A overrides the value of secret D with the value F.
 
 Then:
 
-- If user A fetches the secret D back, they get the value F.
-- If users B and C fetch the secret D back, they both get the value E.
+- If user A fetches secret D, they get the value F.
+- If users B and C fetch secret D, they both get the value E.
 
 <Info>
-  Please keep in mind that secret reminders won't work with personal overrides.
+  Secret reminders don't work with personal overrides.
 </Info>
 
-![project override secret](/images/platform/project/project-secrets-override.png)
-
-### Drawer
-
-To view the full details of each secret, you can hover over it and press on the ellipses button.
-
-![project secrets ellipses](/images/platform/project/project-secrets-ellipses.png)
-
-This opens up a side-drawer:
-
-![project secrets drawer](/images/platform/project/project-secrets-drawer.png)
+![Secret row showing the personal override option](/images/platform/project/override-2.png)

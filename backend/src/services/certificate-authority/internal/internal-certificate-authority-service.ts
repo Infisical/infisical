@@ -62,11 +62,11 @@ import {
   createDistinguishedName,
   createSerialNumber,
   expandInternalCa,
+  extractDnParts,
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaCredentials,
   keyAlgorithmToAlgCfg,
-  parseDistinguishedName,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -2182,7 +2182,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
-    const dn = parseDistinguishedName(csrObj.subject);
+    const dn = extractDnParts(csrObj.subjectName);
     const cn = (commonName || dn.commonName) ?? "";
 
     const { caPrivateKey, caSecret } = await getCaCredentials({
