@@ -34,7 +34,7 @@ func (s *Stack) Stop() {
 	ctx := context.Background()
 
 	if s.db != nil {
-		_ = s.db.Close()
+		s.db.Close()
 	}
 	if s.nodejs != nil {
 		if err := s.nodejs.container.Terminate(ctx); err != nil {

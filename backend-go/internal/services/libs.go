@@ -29,14 +29,14 @@ type ServicesDeps struct {
 
 // Services holds all shared services.
 type Services struct {
-	Config      *config.Config
-	AuthHandler auth.AuthHandler
-	Permission  *permission.Service
-	KMS         *kms.Service
-	License     *license.Service
-	Project     *project.Service
-	Queue       *queue.Service
-	AuditLog    *auditlog.Service
+	Config        *config.Config
+	Authenticator auth.Authenticator
+	Permission    *permission.Service
+	KMS           *kms.Service
+	License       *license.Service
+	Project       *project.Service
+	Queue         *queue.Service
+	AuditLog      *auditlog.Service
 }
 
 func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
@@ -64,8 +64,7 @@ func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 		KeyStore: deps.KeyStore,
 	})
 
-	authDAL := auth.NewDAL(deps.DB)
-	authHandler := auth.NewAuthHandler(authDAL, deps.Config.AuthSecret)
+	authenticator := auth.NewAuthenticator(deps.DB, deps.Config.AuthSecret)
 
 	projectSvc := project.NewService(deps.Logger, project.Deps{DAL: projectDAL})
 
@@ -85,13 +84,13 @@ func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 	auditLogQueueHandler.Register(deps.Queue)
 
 	return &Services{
-		Config:      deps.Config,
-		AuthHandler: authHandler,
-		Permission:  permission.NewService(deps.Logger, permission.Deps{DAL: permissionDAL}),
-		KMS:         kmsSvc,
-		License:     licenseSvc,
-		Project:     projectSvc,
-		Queue:       deps.Queue,
-		AuditLog:    auditLogSvc,
+		Config:        deps.Config,
+		Authenticator: authenticator,
+		Permission:    permission.NewService(deps.Logger, permission.Deps{DAL: permissionDAL}),
+		KMS:           kmsSvc,
+		License:       licenseSvc,
+		Project:       projectSvc,
+		Queue:         deps.Queue,
+		AuditLog:      auditLogSvc,
 	}, nil
 }

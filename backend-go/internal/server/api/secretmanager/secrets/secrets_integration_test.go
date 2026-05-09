@@ -52,8 +52,7 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 	permDAL := permission.NewDAL(stack.DB())
 	permSvc := permission.NewService(testutil.NopLogger(), permission.Deps{DAL: permDAL})
 
-	authDAL := auth.NewDAL(stack.DB())
-	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)
+	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret)
 
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
@@ -77,12 +76,12 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 
 	// Build shared services struct for handler
 	sharedSvc := &services.Services{
-		Config:      stack.Config(),
-		AuthHandler: authHandler,
-		Permission:  permSvc,
-		KMS:         kmsSvc,
-		Project:     projectSvc,
-		AuditLog:    auditlog.NewService(testutil.NopLogger(), auditlog.Deps{Queue: queueSvc, Config: stack.Config()}),
+		Config:        stack.Config(),
+		Authenticator: authenticator,
+		Permission:    permSvc,
+		KMS:           kmsSvc,
+		Project:       projectSvc,
+		AuditLog:      auditlog.NewService(testutil.NopLogger(), auditlog.Deps{Queue: queueSvc, Config: stack.Config()}),
 	}
 
 	secretManagerSvc := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})

@@ -39,12 +39,11 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	permDAL := permission.NewDAL(stack.DB())
 	permLib := permission.NewService(testutil.NopLogger(), permission.Deps{DAL: permDAL})
 
-	authDAL := auth.NewDAL(stack.DB())
-	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)
+	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret)
 
 	svc := projects.NewService(testutil.NopLogger(), projects.Deps{
-		AuthHandler: authHandler,
-		Permission:  permLib,
+		Authenticator: authenticator,
+		Permission:    permLib,
 	})
 
 	mux := testutil.NewTestMux()

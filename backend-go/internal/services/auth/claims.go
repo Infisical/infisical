@@ -1,6 +1,9 @@
 package auth
 
-import "github.com/golang-jwt/jwt/v5"
+import (
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+)
 
 // UserJWTClaims represents the JWT payload for user browser sessions.
 // Exact match of the Node.js AuthModeJwtTokenPayload.
@@ -8,11 +11,11 @@ type UserJWTClaims struct {
 	jwt.RegisteredClaims
 	AuthTokenType     AuthTokenType `json:"authTokenType"`
 	AuthMethod        string        `json:"authMethod,omitempty"`
-	UserID            string        `json:"userId"`
-	TokenVersionID    string        `json:"tokenVersionId"`
+	UserID            uuid.UUID     `json:"userId"`
+	TokenVersionID    uuid.UUID     `json:"tokenVersionId"`
 	AccessVersion     int           `json:"accessVersion"`
-	OrganizationID    string        `json:"organizationId,omitempty"`
-	SubOrganizationID string        `json:"subOrganizationId,omitempty"`
+	OrganizationID    uuid.UUID     `json:"organizationId,omitempty"`
+	SubOrganizationID uuid.UUID     `json:"subOrganizationId,omitempty"`
 	IsMfaVerified     bool          `json:"isMfaVerified,omitempty"`
 	MfaMethod         string        `json:"mfaMethod,omitempty"`
 	MCP               bool          `json:"mcp,omitempty"`
@@ -23,7 +26,7 @@ type UserJWTClaims struct {
 type IdentityJWTClaims struct {
 	jwt.RegisteredClaims
 	AuthTokenType         AuthTokenType `json:"authTokenType"`
-	IdentityID            string        `json:"identityId"`
+	IdentityID            uuid.UUID     `json:"identityId"`
 	ClientSecretID        string        `json:"clientSecretId"`
 	IdentityAccessTokenID string        `json:"identityAccessTokenId"`
 	IdentityAuth          *IdentityAuth `json:"identityAuth,omitempty"`

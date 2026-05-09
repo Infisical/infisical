@@ -15,22 +15,22 @@ type permissionGetter interface {
 }
 
 type service struct {
-	auth.AuthHandler
+	auth.Authenticator
 	logger     *slog.Logger
 	permission permissionGetter
 }
 
 // Deps holds the dependencies for the projects service.
 type Deps struct {
-	AuthHandler auth.AuthHandler
-	Permission  permissionGetter
+	Authenticator auth.Authenticator
+	Permission    permissionGetter
 }
 
 func NewService(logger *slog.Logger, deps Deps) genprojects.Service {
 	return &service{
-		AuthHandler: deps.AuthHandler,
-		logger:      logger.With(slog.String("service", "projects")),
-		permission:  deps.Permission,
+		Authenticator: deps.Authenticator,
+		logger:        logger.With(slog.String("service", "projects")),
+		permission:    deps.Permission,
 	}
 }
 

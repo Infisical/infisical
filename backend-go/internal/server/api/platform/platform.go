@@ -16,8 +16,8 @@ func NewRegistry(logger *slog.Logger, sharedLibs *services.Services) *Registry {
 	l := logger.With(slog.String("product", "platform"))
 	return &Registry{
 		Projects: projects.NewService(l, projects.Deps{
-			AuthHandler: sharedLibs.AuthHandler,
-			Permission:  sharedLibs.Permission,
+			Authenticator: sharedLibs.Authenticator,
+			Permission:    sharedLibs.Permission,
 		}),
 	}
 }

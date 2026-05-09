@@ -23,7 +23,7 @@ const secretValueHiddenMask = "<hidden-by-infisical>"
 
 // Handler implements the Goa secrets service interface.
 type Handler struct {
-	auth.AuthHandler
+	auth.Authenticator
 	logger           *slog.Logger
 	sharedSvc        *services.Services
 	secretManagerSvc *secretmanager.Services
@@ -39,7 +39,7 @@ type Deps struct {
 // NewHandler creates a new secrets handler.
 func NewHandler(deps Deps) *Handler {
 	return &Handler{
-		AuthHandler:      deps.SharedSvc.AuthHandler,
+		Authenticator:    deps.SharedSvc.Authenticator,
 		logger:           deps.Logger.With(slog.String("handler", "secrets")),
 		sharedSvc:        deps.SharedSvc,
 		secretManagerSvc: deps.SecretManagerSvc,
