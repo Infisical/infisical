@@ -51,9 +51,37 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    // akhilmhdh: case sensitive email resolution
-    let user = await userDAL.findOne({ username: sanitizedEmail });
-    if (user && user.isAccepted) {
+    // Use a transaction to read from the primary database, not a read replica.
+    // After account deletion the replica may still return the stale user record
+    // due to replication lag, which causes re-registration to incorrectly treat
+    // the email as an existing account (see #6034).
+    // The transaction is kept short (DB ops only) — side effects like SMTP are
+    // handled after the transaction commits to avoid holding a connection during
+    // network I/O.
+    const { user, isExistingAcceptedUser } = await userDAL.transaction(async (tx) => {
+      // akhilmhdh: case sensitive email resolution
+      const existingUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
+      if (existingUser && existingUser.isAccepted) {
+        return { user: null, isExistingAcceptedUser: true };
+      }
+
+      if (!existingUser) {
+        const created = await userDAL.create(
+          {
+            authMethods: [AuthMethod.EMAIL],
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            isGhost: false
+          },
+          tx
+        );
+        return { user: created, isExistingAcceptedUser: false };
+      }
+
+      return { user: existingUser, isExistingAcceptedUser: false };
+    });
+
+    if (isExistingAcceptedUser) {
       // Send informational email for existing accounts instead of throwing error
       // This prevents user enumeration vulnerability
       const appCfg = getConfig();
@@ -74,14 +102,6 @@ export const authSignupServiceFactory = ({
       return;
     }
 
-    if (!user) {
-      user = await userDAL.create({
-        authMethods: [AuthMethod.EMAIL],
-        username: sanitizedEmail,
-        email: sanitizedEmail,
-        isGhost: false
-      });
-    }
     if (!user) throw new Error("Failed to create user");
 
     const token = await tokenService.createTokenForUser({
