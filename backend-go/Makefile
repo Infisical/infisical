@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-integration test-all gen-goa gen-db dev build
+.PHONY: lint lint-fix test test-integration test-all gen-goa dev build
 
 # Run unit tests (no infra required)
 lint:
@@ -21,10 +21,6 @@ test-all:
 # Generate Goa code from design DSL
 gen-goa:
 	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
-
-# Generate go-jet database types
-gen-db:
-	go run ./cmd/dev/pg_gen/main.go
 
 # Start Go backend with hot-reload (uses root docker-compose.dev.yml)
 dev:
