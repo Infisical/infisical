@@ -55,11 +55,11 @@ func (s *Service) GetByID(ctx context.Context, projectID string) (*Project, erro
 // --- Row types ---
 
 type projectRow struct {
-	ID    string              `db:"id"`
-	Name  string              `db:"name"`
-	Slug  string              `db:"slug"`
-	OrgID uuid.UUID           `db:"org_id"`
-	Type  sql.Null[string]    `db:"type"`
+	ID    string           `db:"id"`
+	Name  string           `db:"name"`
+	Slug  string           `db:"slug"`
+	OrgID uuid.UUID        `db:"org_id"`
+	Type  sql.Null[string] `db:"type"`
 }
 
 // --- Query methods ---
@@ -67,9 +67,9 @@ type projectRow struct {
 // findBySlug returns a project by its slug within an organization.
 func (s *Service) findBySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Project, error) {
 	query := `
-		SELECT id, name, slug, org_id, type
+		SELECT id, name, slug, "orgId", type
 		FROM projects
-		WHERE slug = @slug AND org_id = @orgID
+		WHERE slug = @slug AND "orgId" = @orgID
 	`
 	args := pgx.NamedArgs{"slug": slug, "orgID": orgID}
 
@@ -100,7 +100,7 @@ func (s *Service) findBySlug(ctx context.Context, orgID uuid.UUID, slug string) 
 // findByID returns a project by its ID.
 func (s *Service) findByID(ctx context.Context, projectID string) (*Project, error) {
 	query := `
-		SELECT id, name, slug, org_id, type
+		SELECT id, name, slug, "orgId", type
 		FROM projects
 		WHERE id = @projectID
 	`

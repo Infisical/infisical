@@ -39,8 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func newPermissionService() *permission.Service {
-	dal := permission.NewDAL(stack.DB())
-	return permission.NewService(testutil.NopLogger(), permission.Deps{DAL: dal})
+	return permission.NewService(testutil.NopLogger(), permission.Deps{DB: stack.DB()})
 }
 
 func getProjectPermission(t *testing.T, actorType permission.ActorType, actorID string) *permission.GetProjectPermissionResult {

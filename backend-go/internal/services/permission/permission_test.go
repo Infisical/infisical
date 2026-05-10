@@ -561,12 +561,12 @@ func TestFlattenActiveRolesFromMemberships_ActiveRolesIncluded(t *testing.T) {
 	t.Parallel()
 
 	perms := `[[["read"],["secrets"]]]`
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			Roles: []RoleInfo{
 				{Role: project.RoleAdmin, IsTemporary: sql.Null[bool]{V: false, Valid: true}},
-				{Role: project.RoleCustom, IsTemporary: sql.Null[bool]{V: false, Valid: true}, Permissions: sql.NullString{String: perms, Valid: true}},
+				{Role: project.RoleCustom, IsTemporary: sql.Null[bool]{V: false, Valid: true}, Permissions: sql.Null[string]{V: perms, Valid: true}},
 			},
 		},
 	}
@@ -581,11 +581,11 @@ func TestFlattenActiveRolesFromMemberships_ExpiredTemporaryRoleExcluded(t *testi
 	t.Parallel()
 
 	pastTime := time.Now().Add(-1 * time.Hour)
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			Roles: []RoleInfo{
-				{Role: project.RoleAdmin, IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.NullTime{Time: pastTime, Valid: true}},
+				{Role: project.RoleAdmin, IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.Null[time.Time]{V: pastTime, Valid: true}},
 			},
 		},
 	}
@@ -598,11 +598,11 @@ func TestFlattenActiveRolesFromMemberships_ActiveTemporaryRoleIncluded(t *testin
 	t.Parallel()
 
 	futureTime := time.Now().Add(1 * time.Hour)
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			Roles: []RoleInfo{
-				{Role: project.RoleMember, IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.NullTime{Time: futureTime, Valid: true}},
+				{Role: project.RoleMember, IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.Null[time.Time]{V: futureTime, Valid: true}},
 			},
 		},
 	}
@@ -615,11 +615,11 @@ func TestFlattenActiveRolesFromMemberships_ActiveTemporaryRoleIncluded(t *testin
 func TestFlattenActiveRolesFromMemberships_TemporaryWithNilEndTimeExcluded(t *testing.T) {
 	t.Parallel()
 
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			Roles: []RoleInfo{
-				{Role: project.RoleAdmin, IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.NullTime{Valid: false}},
+				{Role: project.RoleAdmin, IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.Null[time.Time]{Valid: false}},
 			},
 		},
 	}
@@ -633,11 +633,11 @@ func TestFlattenActiveRolesFromMemberships_ExpiredAdditionalPrivilegeExcluded(t 
 
 	pastTime := time.Now().Add(-1 * time.Hour)
 	perms := `[[["read"],["secrets"]]]`
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			AdditionalPrivileges: []AdditionalPrivilegeInfo{
-				{IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.NullTime{Time: pastTime, Valid: true}, Permissions: sql.NullString{String: perms, Valid: true}},
+				{IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.Null[time.Time]{V: pastTime, Valid: true}, Permissions: sql.Null[string]{V: perms, Valid: true}},
 			},
 		},
 	}
@@ -651,11 +651,11 @@ func TestFlattenActiveRolesFromMemberships_ActiveAdditionalPrivilegeIncluded(t *
 
 	futureTime := time.Now().Add(1 * time.Hour)
 	perms := `[[["read"],["secrets"]]]`
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			AdditionalPrivileges: []AdditionalPrivilegeInfo{
-				{IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.NullTime{Time: futureTime, Valid: true}, Permissions: sql.NullString{String: perms, Valid: true}},
+				{IsTemporary: sql.Null[bool]{V: true, Valid: true}, TemporaryAccessEndTime: sql.Null[time.Time]{V: futureTime, Valid: true}, Permissions: sql.Null[string]{V: perms, Valid: true}},
 			},
 		},
 	}
@@ -669,11 +669,11 @@ func TestFlattenActiveRolesFromMemberships_NonTemporaryAdditionalPrivilegeInclud
 	t.Parallel()
 
 	perms := `[[["read"],["secrets"]]]`
-	data := []PermissionData{
+	data := []permissionData{
 		{
 			ID: uuid.New(),
 			AdditionalPrivileges: []AdditionalPrivilegeInfo{
-				{IsTemporary: sql.Null[bool]{V: false, Valid: true}, Permissions: sql.NullString{String: perms, Valid: true}},
+				{IsTemporary: sql.Null[bool]{V: false, Valid: true}, Permissions: sql.Null[string]{V: perms, Valid: true}},
 			},
 		},
 	}
@@ -740,7 +740,7 @@ func TestHasRole_EmptyMemberships(t *testing.T) {
 func TestCheckProjectEnforcement(t *testing.T) {
 	t.Parallel()
 
-	fn := checkProjectEnforcement(&ProjectDetail{
+	fn := checkProjectEnforcement(&projectDetail{
 		EnforceEncryptedSecretManagerSecretMetadata: true,
 	})
 
@@ -748,7 +748,7 @@ func TestCheckProjectEnforcement(t *testing.T) {
 	assert.False(t, fn("unknownEnforcement"))
 	assert.False(t, fn(""))
 
-	fnDisabled := checkProjectEnforcement(&ProjectDetail{
+	fnDisabled := checkProjectEnforcement(&projectDetail{
 		EnforceEncryptedSecretManagerSecretMetadata: false,
 	})
 	assert.False(t, fnDisabled("enforceEncryptedSecretManagerSecretMetadata"))

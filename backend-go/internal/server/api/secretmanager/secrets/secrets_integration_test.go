@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
@@ -49,18 +48,15 @@ func TestMain(m *testing.M) {
 func newSecretsHandler(t *testing.T) gensecrets.Service {
 	t.Helper()
 
-	permDAL := permission.NewDAL(stack.DB())
-	permSvc := permission.NewService(testutil.NopLogger(), permission.Deps{DAL: permDAL})
+	permSvc := permission.NewService(testutil.NopLogger(), permission.Deps{DB: stack.DB()})
 
 	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret)
 
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
 
-	ks := keystore.NewKeyStore(redisClient, stack.DB().Primary())
-	kmsDAL := kms.NewDAL(stack.DB(), ks)
 	kmsSvc, err := kms.NewService(kms.Deps{
-		DAL:    kmsDAL,
+		DB:     stack.DB(),
 		HSM:    nil,
 		Config: stack.Config(),
 	})

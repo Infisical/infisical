@@ -554,9 +554,9 @@ type membershipRow struct {
 // findSessionByIDAndUserID returns the session matching id + userId, or nil if not found.
 func (a Authenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, userID uuid.UUID) (*sessionRow, error) {
 	query := `
-		SELECT access_version, user_id
+		SELECT "accessVersion", "userId"
 		FROM auth_token_sessions
-		WHERE id = @sessionID AND user_id = @userID
+		WHERE id = @sessionID AND "userId" = @userID
 	`
 	args := pgx.NamedArgs{"sessionID": sessionID, "userID": userID}
 
@@ -575,7 +575,7 @@ func (a Authenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, 
 // findUserByID returns the user matching id, or nil if not found.
 func (a Authenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
 	query := `
-		SELECT id, email, username, is_accepted, super_admin, is_locked, temporary_lock_date_end
+		SELECT id, email, username, "isAccepted", "superAdmin", "isLocked", "temporaryLockDateEnd"
 		FROM users
 		WHERE id = @id
 	`
@@ -596,7 +596,7 @@ func (a Authenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow
 // findOrgByID returns the organization matching id, or nil if not found.
 func (a Authenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, error) {
 	query := `
-		SELECT id, name, root_org_id, parent_org_id
+		SELECT id, name, "rootOrgId", "parentOrgId"
 		FROM organizations
 		WHERE id = @id
 	`
@@ -617,7 +617,7 @@ func (a Authenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, 
 // findProjectByID returns the project matching id, or nil if not found.
 func (a Authenticator) findProjectByID(ctx context.Context, id string) (*projectRow, error) {
 	query := `
-		SELECT org_id
+		SELECT "orgId"
 		FROM projects
 		WHERE id = @id
 	`
@@ -639,23 +639,23 @@ func (a Authenticator) findProjectByID(ctx context.Context, id string) (*project
 func (a Authenticator) findIdentityAccessTokenByID(ctx context.Context, id string) (*identityAccessTokenRow, error) {
 	query := `
 		SELECT
-			iat.id,
-			iat.access_token_ttl,
-			iat.access_token_max_ttl,
-			iat.access_token_num_uses,
-			iat.access_token_num_uses_limit,
-			iat.access_token_last_renewed_at,
-			iat.is_access_token_revoked,
-			iat.identity_id,
-			iat.created_at,
-			iat.auth_method,
-			iat.access_token_period,
-			iat.sub_organization_id,
-			i.org_id AS identity_org_id,
-			i.name AS identity_name
-		FROM identity_access_tokens iat
-		INNER JOIN identities i ON iat.identity_id = i.id
-		WHERE iat.id = @id AND iat.is_access_token_revoked = false
+			token.id,
+			token."accessTokenTTL",
+			token."accessTokenMaxTTL",
+			token."accessTokenNumUses",
+			token."accessTokenNumUsesLimit",
+			token."accessTokenLastRenewedAt",
+			token."isAccessTokenRevoked",
+			token."identityId",
+			token."createdAt",
+			token."authMethod",
+			token."accessTokenPeriod",
+			token."subOrganizationId",
+			identity."orgId" AS identity_org_id,
+			identity.name AS identity_name
+		FROM identity_access_tokens token
+		INNER JOIN identities identity ON token."identityId" = identity.id
+		WHERE token.id = @id AND token."isAccessTokenRevoked" = false
 	`
 	args := pgx.NamedArgs{"id": id}
 
@@ -697,7 +697,7 @@ func (a Authenticator) deleteIdentityAccessTokenByID(ctx context.Context, id uui
 // findServiceTokenByID returns the service token matching id, or nil.
 func (a Authenticator) findServiceTokenByID(ctx context.Context, id string) (*serviceTokenRow, error) {
 	query := `
-		SELECT id, name, project_id, expires_at, secret_hash
+		SELECT id, name, "projectId", "expiresAt", "secretHash"
 		FROM service_tokens
 		WHERE id = @id
 	`
@@ -730,20 +730,20 @@ func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType
 	var actorCondition string
 	if actorType == actor.TypeUser {
 		actorCondition = `(
-			m.actor_user_id = @actorID
-			OR m.actor_group_id IN (
-				SELECT g.id FROM groups g
-				INNER JOIN user_group_membership ugm ON ugm.group_id = g.id
-				WHERE ugm.user_id = @actorID
+			membership."actorUserId" = @actorID
+			OR membership."actorGroupId" IN (
+				SELECT grp.id FROM groups grp
+				INNER JOIN user_group_membership ugm ON ugm."groupId" = grp.id
+				WHERE ugm."userId" = @actorID
 			)
 		)`
 	} else {
 		actorCondition = `(
-			m.actor_identity_id = @actorID
-			OR m.actor_group_id IN (
-				SELECT g.id FROM groups g
-				INNER JOIN identity_group_membership igm ON igm.group_id = g.id
-				WHERE igm.identity_id = @actorID
+			membership."actorIdentityId" = @actorID
+			OR membership."actorGroupId" IN (
+				SELECT grp.id FROM groups grp
+				INNER JOIN identity_group_membership igm ON igm."groupId" = grp.id
+				WHERE igm."identityId" = @actorID
 			)
 		)`
 	}
@@ -754,12 +754,12 @@ func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType
 	}
 
 	query := fmt.Sprintf(`
-		SELECT m.is_active
-		FROM memberships m
-		WHERE m.scope = 'organization'
-		  AND m.scope_org_id = @orgID
+		SELECT membership."isActive"
+		FROM memberships membership
+		WHERE membership.scope = 'organization'
+		  AND membership."scopeOrgId" = @orgID
 		  AND %s
-		  AND (m.status = @status OR m.status IS NULL)
+		  AND (membership.status = @status OR membership.status IS NULL)
 		LIMIT 1
 	`, actorCondition)
 
@@ -817,9 +817,9 @@ func (a Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityI
 	}
 
 	query := fmt.Sprintf(`
-		SELECT access_token_trusted_ips
+		SELECT "accessTokenTrustedIps"
 		FROM %s
-		WHERE identity_id = @identityID
+		WHERE "identityId" = @identityID
 		LIMIT 1
 	`, tableName)
 
@@ -839,12 +839,6 @@ func (a Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityI
 }
 
 // --- Helpers ---
-
-// parseUUID parses a string to uuid.UUID. Returns uuid.Nil on failure.
-func parseUUID(s string) uuid.UUID {
-	id, _ := uuid.Parse(s)
-	return id
-}
 
 // nullUUIDValid returns true when the nullable UUID is present and non-nil.
 func nullUUIDValid(n sql.Null[uuid.UUID]) bool {

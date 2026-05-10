@@ -537,7 +537,7 @@ func (n *NodeJSService) CreateUserAdditionalPrivilege(t *testing.T, userID, proj
 	// Look up the user's project membership ID from the unified memberships table.
 	var membershipID string
 	err := n.db.Primary().QueryRow(context.Background(),
-		`SELECT id FROM memberships WHERE actor_user_id = $1 AND scope_project_id = $2 AND scope = 'project'`,
+		`SELECT id FROM memberships WHERE "actorUserId" = $1 AND "scopeProjectId" = $2 AND scope = 'project'`,
 		userID, projectID).Scan(&membershipID)
 	if err != nil {
 		t.Fatalf("infra.CreateUserAdditionalPrivilege: query membership ID: %v", err)

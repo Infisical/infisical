@@ -110,7 +110,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 	}
 
 	// Find the secret by name
-	foundSecret, err := h.secretManagerSvc.SecretDAL.FindByKey(ctx, folderNode.ID, opts.SecretName, secretType, userID)
+	foundSecret, err := h.secretManagerSvc.Secret.FindByKey(ctx, folderNode.ID, opts.SecretName, secretType, userID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find secret").WithErrf("GetSecretByName(secretName=%s): %w", opts.SecretName, err)
 	}
@@ -132,7 +132,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 			// Search imports in reverse order (last import wins)
 			for i := len(chainResult.Imports) - 1; i >= 0; i-- {
 				imp := &chainResult.Imports[i]
-				importedSecret, err := h.secretManagerSvc.SecretDAL.FindByKey(ctx, imp.FolderID, opts.SecretName, secretType, userID)
+				importedSecret, err := h.secretManagerSvc.Secret.FindByKey(ctx, imp.FolderID, opts.SecretName, secretType, userID)
 				if err != nil {
 					continue
 				}
@@ -205,7 +205,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		// Add imported secrets for reference resolution
 		if len(chainResult.Imports) > 0 {
 			allFolderIDs := chainResult.AllFolderIDs()
-			importedSecrets, _ := h.secretManagerSvc.SecretDAL.FindByFolderIds(ctx, allFolderIDs, userID, nil)
+			importedSecrets, _ := h.secretManagerSvc.Secret.FindByFolderIds(ctx, allFolderIDs, userID, nil)
 			for i := range importedSecrets {
 				sec := &importedSecrets[i]
 				if sec.ID == foundSecret.ID {
@@ -234,7 +234,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 			envBySlug,
 			folderLookup,
 			h.secretManagerSvc.SecretFolder,
-			h.secretManagerSvc.SecretDAL,
+			h.secretManagerSvc.Secret,
 			cipherPair,
 			userID,
 		)

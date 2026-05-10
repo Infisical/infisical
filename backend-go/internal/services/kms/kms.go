@@ -408,8 +408,8 @@ type kmsKeyWithAssociatedKms struct {
 	Name string    `db:"name"`
 
 	// Internal KMS fields (nullable from LEFT JOIN)
-	InternalKmsID              sql.Null[uuid.UUID] `db:"internal_kms_id"`
-	InternalEncryptedKey       sql.Null[[]byte]    `db:"internal_encrypted_key"`
+	InternalKmsID               sql.Null[uuid.UUID] `db:"internal_kms_id"`
+	InternalEncryptedKey        sql.Null[[]byte]    `db:"internal_encrypted_key"`
 	InternalEncryptionAlgorithm sql.Null[string]    `db:"internal_encryption_algorithm"`
 
 	// External KMS fields (nullable from LEFT JOIN)
@@ -435,19 +435,19 @@ type projectKmsInfo struct {
 
 // findSuperAdminConfig returns the super_admin config row if it exists.
 func (s *Service) findSuperAdminConfig(ctx context.Context) (*superAdminConfigRow, error) {
-	query := `SELECT fips_enabled FROM super_admin WHERE id = @id`
+	query := `SELECT "fipsEnabled" FROM super_admin WHERE id = @id`
 	args := pgx.NamedArgs{"id": superAdminConfigUUID}
 
 	row := s.db.Replica().QueryRow(ctx, query, args)
-	var config superAdminConfigRow
-	err := row.Scan(&config.FipsEnabled)
+	var cfg superAdminConfigRow
+	err := row.Scan(&cfg.FipsEnabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("finding super_admin config: %w", err)
 	}
-	return &config, nil
+	return &cfg, nil
 }
 
 // findOrCreateRootConfig atomically ensures the KMS root config row exists.
@@ -456,7 +456,7 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 	if err != nil {
 		return nil, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback on defer is best-effort cleanup
 
 	// Acquire advisory lock
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", PgLockKmsRootKeyInit); err != nil {
@@ -464,7 +464,7 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 	}
 
 	// Check if root config already exists.
-	checkQuery := `SELECT id, encrypted_root_key, encryption_strategy FROM kms_root_config WHERE id = @id`
+	checkQuery := `SELECT id, "encryptedRootKey", "encryptionStrategy" FROM kms_root_config WHERE id = @id`
 	checkArgs := pgx.NamedArgs{"id": KmsRootConfigUUID}
 
 	row := tx.QueryRow(ctx, checkQuery, checkArgs)
@@ -488,9 +488,9 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 
 	// Create the initial root config row.
 	insertQuery := `
-		INSERT INTO kms_root_config (id, encrypted_root_key, encryption_strategy)
+		INSERT INTO kms_root_config (id, "encryptedRootKey", "encryptionStrategy")
 		VALUES (@id, @encryptedRootKey, @encryptionStrategy)
-		RETURNING id, encrypted_root_key, encryption_strategy
+		RETURNING id, "encryptedRootKey", "encryptionStrategy"
 	`
 	insertArgs := pgx.NamedArgs{
 		"id":                 KmsRootConfigUUID,
@@ -515,16 +515,16 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 func (s *Service) findKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*kmsKeyWithAssociatedKms, error) {
 	query := `
 		SELECT
-			k.id,
-			k.name,
-			ik.id AS internal_kms_id,
-			ik.encrypted_key AS internal_encrypted_key,
-			ik.encryption_algorithm AS internal_encryption_algorithm,
-			ek.id AS external_kms_id
-		FROM kms_keys k
-		LEFT JOIN internal_kms ik ON ik.kms_key_id = k.id
-		LEFT JOIN external_kms ek ON ek.kms_key_id = k.id
-		WHERE k.id = @kmsKeyID
+			kmsKey.id,
+			kmsKey.name,
+			internalKms.id AS internal_kms_id,
+			internalKms."encryptedKey" AS internal_encrypted_key,
+			internalKms."encryptionAlgorithm" AS internal_encryption_algorithm,
+			externalKms.id AS external_kms_id
+		FROM kms_keys kmsKey
+		LEFT JOIN internal_kms internalKms ON internalKms."kmsKeyId" = kmsKey.id
+		LEFT JOIN external_kms externalKms ON externalKms."kmsKeyId" = kmsKey.id
+		WHERE kmsKey.id = @kmsKeyID
 	`
 	args := pgx.NamedArgs{"kmsKeyID": kmsKeyID}
 
@@ -547,7 +547,7 @@ func (s *Service) findKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*kmsK
 // findOrgKmsInfo returns the narrow org fields needed for KMS data key operations.
 func (s *Service) findOrgKmsInfo(ctx context.Context, orgID uuid.UUID) (*orgKmsInfo, error) {
 	query := `
-		SELECT id, kms_default_key_id, kms_encrypted_data_key
+		SELECT id, "kmsDefaultKeyId", "kmsEncryptedDataKey"
 		FROM organizations
 		WHERE id = @orgID
 	`
@@ -565,7 +565,7 @@ func (s *Service) findOrgKmsInfo(ctx context.Context, orgID uuid.UUID) (*orgKmsI
 // findOrgKmsInfoTx returns org KMS info within a transaction.
 func (s *Service) findOrgKmsInfoTx(ctx context.Context, tx pgx.Tx, orgID uuid.UUID) (*orgKmsInfo, error) {
 	query := `
-		SELECT id, kms_default_key_id, kms_encrypted_data_key
+		SELECT id, "kmsDefaultKeyId", "kmsEncryptedDataKey"
 		FROM organizations
 		WHERE id = @orgID
 	`
@@ -583,7 +583,7 @@ func (s *Service) findOrgKmsInfoTx(ctx context.Context, tx pgx.Tx, orgID uuid.UU
 // findProjectKmsInfo returns the narrow project fields needed for KMS data key operations.
 func (s *Service) findProjectKmsInfo(ctx context.Context, projectID string) (*projectKmsInfo, error) {
 	query := `
-		SELECT id, org_id, kms_secret_manager_key_id, kms_secret_manager_encrypted_data_key
+		SELECT id, "orgId", "kmsSecretManagerKeyId", "kmsSecretManagerEncryptedDataKey"
 		FROM projects
 		WHERE id = @projectID
 	`
@@ -601,7 +601,7 @@ func (s *Service) findProjectKmsInfo(ctx context.Context, projectID string) (*pr
 // findProjectKmsInfoTx returns project KMS info within a transaction.
 func (s *Service) findProjectKmsInfoTx(ctx context.Context, tx pgx.Tx, projectID string) (*projectKmsInfo, error) {
 	query := `
-		SELECT id, org_id, kms_secret_manager_key_id, kms_secret_manager_encrypted_data_key
+		SELECT id, "orgId", "kmsSecretManagerKeyId", "kmsSecretManagerEncryptedDataKey"
 		FROM projects
 		WHERE id = @projectID
 	`
@@ -622,7 +622,7 @@ func (s *Service) createKmsKeyWithInternal(ctx context.Context, tx pgx.Tx, orgID
 
 	// Insert kms_keys
 	insertKeyQuery := `
-		INSERT INTO kms_keys (name, org_id, is_reserved, key_usage)
+		INSERT INTO kms_keys (name, "orgId", "isReserved", "keyUsage")
 		VALUES (@name, @orgID, true, 'encrypt-decrypt')
 		RETURNING id
 	`
@@ -639,7 +639,7 @@ func (s *Service) createKmsKeyWithInternal(ctx context.Context, tx pgx.Tx, orgID
 
 	// Insert internal_kms
 	insertInternalQuery := `
-		INSERT INTO internal_kms (encrypted_key, encryption_algorithm, version, kms_key_id)
+		INSERT INTO internal_kms ("encryptedKey", "encryptionAlgorithm", version, "kmsKeyId")
 		VALUES (@encryptedKey, 'aes-256-gcm', 1, @kmsKeyID)
 	`
 	internalArgs := pgx.NamedArgs{
@@ -665,14 +665,14 @@ func (s *Service) findOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, cr
 
 	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
 	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck
+		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("acquiring org key lock: %w", err)
 	}
 
 	// Re-check after lock — another request may have created it.
 	org, err := s.findOrgKmsInfoTx(ctx, tx, orgID)
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("finding org: %w", err)
 	}
 	if org.KmsDefaultKeyID.Valid {
@@ -684,21 +684,21 @@ func (s *Service) findOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, cr
 
 	encryptedKey, err := createFn()
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("generating KMS key: %w", err)
 	}
 
 	createdID, err := s.createKmsKeyWithInternal(ctx, tx, org.ID, encryptedKey)
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, err
 	}
 
 	// Update org with new key ID
-	updateQuery := `UPDATE organizations SET kms_default_key_id = @keyID WHERE id = @orgID`
+	updateQuery := `UPDATE organizations SET "kmsDefaultKeyId" = @keyID WHERE id = @orgID`
 	updateArgs := pgx.NamedArgs{"keyID": createdID, "orgID": orgID}
 	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("updating org default key: %w", err)
 	}
 
@@ -719,14 +719,14 @@ func (s *Service) findOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, c
 
 	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
 	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck
+		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("acquiring org data key lock: %w", err)
 	}
 
 	// Re-check after lock — another request may have created it.
 	org, err := s.findOrgKmsInfoTx(ctx, tx, orgID)
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("finding org: %w", err)
 	}
 	if len(org.KmsEncryptedDataKey) > 0 {
@@ -738,14 +738,14 @@ func (s *Service) findOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, c
 
 	encryptedDataKey, err := createFn()
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("generating data key: %w", err)
 	}
 
-	updateQuery := `UPDATE organizations SET kms_encrypted_data_key = @dataKey WHERE id = @orgID`
+	updateQuery := `UPDATE organizations SET "kmsEncryptedDataKey" = @dataKey WHERE id = @orgID`
 	updateArgs := pgx.NamedArgs{"dataKey": encryptedDataKey, "orgID": orgID}
 	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("setting org encrypted data key: %w", err)
 	}
 
@@ -766,14 +766,14 @@ func (s *Service) findOrCreateProjectKmsKey(ctx context.Context, projectID strin
 
 	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
 	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck
+		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("acquiring project key lock: %w", err)
 	}
 
 	// Re-check after lock — another request may have created it.
 	project, err := s.findProjectKmsInfoTx(ctx, tx, projectID)
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("finding project: %w", err)
 	}
 	if project.KmsSecretManagerKeyID.Valid {
@@ -785,20 +785,20 @@ func (s *Service) findOrCreateProjectKmsKey(ctx context.Context, projectID strin
 
 	encryptedKey, err := createFn()
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("generating KMS key: %w", err)
 	}
 
 	createdID, err := s.createKmsKeyWithInternal(ctx, tx, project.OrgID, encryptedKey)
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, err
 	}
 
-	updateQuery := `UPDATE projects SET kms_secret_manager_key_id = @keyID WHERE id = @projectID`
+	updateQuery := `UPDATE projects SET "kmsSecretManagerKeyId" = @keyID WHERE id = @projectID`
 	updateArgs := pgx.NamedArgs{"keyID": createdID, "projectID": projectID}
 	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("updating project KMS key: %w", err)
 	}
 
@@ -819,14 +819,14 @@ func (s *Service) findOrCreateProjectDataKey(ctx context.Context, projectID stri
 
 	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
 	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck
+		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("acquiring project data key lock: %w", err)
 	}
 
 	// Re-check after lock — another request may have created it.
 	project, err := s.findProjectKmsInfoTx(ctx, tx, projectID)
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("finding project: %w", err)
 	}
 	if len(project.KmsSecretManagerEncryptedDataKey) > 0 {
@@ -838,14 +838,14 @@ func (s *Service) findOrCreateProjectDataKey(ctx context.Context, projectID stri
 
 	encryptedDataKey, err := createFn()
 	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("generating data key: %w", err)
 	}
 
-	updateQuery := `UPDATE projects SET kms_secret_manager_encrypted_data_key = @dataKey WHERE id = @projectID`
+	updateQuery := `UPDATE projects SET "kmsSecretManagerEncryptedDataKey" = @dataKey WHERE id = @projectID`
 	updateArgs := pgx.NamedArgs{"dataKey": encryptedDataKey, "projectID": projectID}
 	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck
+		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("setting project encrypted data key: %w", err)
 	}
 

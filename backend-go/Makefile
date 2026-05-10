@@ -1,3 +1,5 @@
+.PHONY: lint lint-fix test test-integration test-all gen-goa gen-db dev build
+
 # Run unit tests (no infra required)
 lint:
 	golangci-lint run --build-tags integration

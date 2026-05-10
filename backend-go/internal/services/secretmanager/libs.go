@@ -15,19 +15,15 @@ type ServicesDeps struct {
 type Services struct {
 	SecretFolder *secretfolder.Service
 	SecretImport *secretimport.Service
-	SecretDAL    *secret.DAL
+	Secret       *secret.Service
 	Environment  *environment.Service
 }
 
 func NewServices(deps ServicesDeps) *Services {
-	secretFolderDAL := secretfolder.NewDAL(deps.DB)
-	secretImportDAL := secretimport.NewDAL(deps.DB)
-	secretDAL := secret.NewDAL(deps.DB)
-
 	return &Services{
-		SecretFolder: secretfolder.NewService(secretfolder.Deps{DAL: secretFolderDAL}),
-		SecretImport: secretimport.NewService(secretimport.Deps{DAL: secretImportDAL}),
-		SecretDAL:    secretDAL,
+		SecretFolder: secretfolder.NewService(secretfolder.Deps{DB: deps.DB}),
+		SecretImport: secretimport.NewService(secretimport.Deps{DB: deps.DB}),
+		Secret:       secret.NewService(secret.Deps{DB: deps.DB}),
 		Environment:  environment.NewService(environment.Deps{DB: deps.DB}),
 	}
 }

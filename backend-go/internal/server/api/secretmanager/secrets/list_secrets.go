@@ -193,7 +193,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 		}
 	}
 
-	secrets, err := h.secretManagerSvc.SecretDAL.FindByFolderIds(ctx, allFolderIDs, userID, dalFilters)
+	secrets, err := h.secretManagerSvc.Secret.FindByFolderIds(ctx, allFolderIDs, userID, dalFilters)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to fetch secrets").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
@@ -246,7 +246,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 			envBySlug,
 			chainResult.FolderLookup,
 			h.secretManagerSvc.SecretFolder,
-			h.secretManagerSvc.SecretDAL,
+			h.secretManagerSvc.Secret,
 			cipherPair,
 			expansionUserID,
 		)

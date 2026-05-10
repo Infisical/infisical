@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/testutil/infra"
 )
@@ -44,14 +43,8 @@ func TestMain(m *testing.M) {
 func setupService(t *testing.T) *kms.Service {
 	t.Helper()
 
-	redisClient := stack.Redis().Client()
-	t.Cleanup(func() { redisClient.Close() })
-
-	ks := keystore.NewKeyStore(redisClient, stack.DB().Primary())
-	dal := kms.NewDAL(stack.DB(), ks)
-
 	svc, err := kms.NewService(kms.Deps{
-		DAL:    dal,
+		DB:     stack.DB(),
 		HSM:    nil,
 		Config: stack.Config(),
 	})

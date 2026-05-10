@@ -64,14 +64,13 @@ func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 
 	projectSvc := project.NewService(deps.Logger, project.Deps{DB: deps.DB})
 
-	auditLogDAL := auditlog.NewDAL(deps.DB)
 	auditLogSvc := auditlog.NewService(deps.Logger, auditlog.Deps{
 		Queue:  deps.Queue,
 		Config: deps.Config,
 	})
 
 	auditLogQueueHandler := auditlog.NewQueueHandler(deps.Logger, auditlog.QueueHandlerDeps{
-		DAL:      auditLogDAL,
+		DB:       deps.DB,
 		Project:  projectSvc,
 		License:  licenseSvc,
 		Config:   deps.Config,

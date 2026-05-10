@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/config"
+	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/services/license"
@@ -18,6 +20,24 @@ import (
 )
 
 const auditLogClickHouseStreamKey = "audit-log-stream"
+
+// AuditLogRecord represents a single audit log entry for database operations.
+type AuditLogRecord struct {
+	ID            uuid.UUID
+	Actor         string
+	ActorMetadata string
+	IPAddress     sql.Null[string]
+	EventType     string
+	EventMetadata sql.Null[string]
+	UserAgent     sql.Null[string]
+	UserAgentType sql.Null[string]
+	ExpiresAt     sql.NullTime
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	OrgID         sql.Null[uuid.UUID]
+	ProjectID     sql.Null[string]
+	ProjectName   sql.Null[string]
+}
 
 // normalizeJSONPayload ensures the payload is an object for ClickHouse.
 // Arrays are wrapped in {data: [...]}, objects pass through, others become {}.
@@ -47,17 +67,17 @@ type licenseService interface {
 
 // QueueHandlerDeps holds dependencies for the audit log queue handler.
 type QueueHandlerDeps struct {
-	DAL        *DAL
-	Project    projectService
-	License    licenseService
-	Config     *config.Config
-	KeyStore   keystore.KeyStore
+	DB       pg.DB
+	Project  projectService
+	License  licenseService
+	Config   *config.Config
+	KeyStore keystore.KeyStore
 }
 
 // QueueHandler processes audit log tasks from the queue.
 type QueueHandler struct {
 	logger   *slog.Logger
-	dal      *DAL
+	db       pg.DB
 	project  projectService
 	license  licenseService
 	config   *config.Config
@@ -68,7 +88,7 @@ type QueueHandler struct {
 func NewQueueHandler(logger *slog.Logger, deps QueueHandlerDeps) *QueueHandler {
 	return &QueueHandler{
 		logger:   logger.With(slog.String("queue_handler", "auditlog")),
-		dal:      deps.DAL,
+		db:       deps.DB,
 		project:  deps.Project,
 		license:  deps.License,
 		config:   deps.Config,
@@ -216,7 +236,7 @@ func (h *QueueHandler) HandleAuditLog(ctx context.Context, dto *CreateAuditLogDT
 	}
 
 	if !h.config.DisableAuditLogStorage {
-		if err := h.dal.Create(ctx, record); err != nil {
+		if err := h.createRecord(ctx, record); err != nil {
 			h.logger.ErrorContext(ctx, "failed to insert audit log",
 				slog.String("eventType", string(dto.Event.Type())),
 				slog.Any("error", err),
@@ -226,6 +246,39 @@ func (h *QueueHandler) HandleAuditLog(ctx context.Context, dto *CreateAuditLogDT
 	}
 
 	return nil
+}
+
+func (h *QueueHandler) createRecord(ctx context.Context, record *AuditLogRecord) error {
+	query := `
+		INSERT INTO audit_logs (
+			id, actor, "actorMetadata", "ipAddress", "eventType", "eventMetadata",
+			"userAgent", "userAgentType", "expiresAt", "createdAt", "updatedAt",
+			"orgId", "projectId", "projectName"
+		) VALUES (
+			@id, @actor, @actorMetadata, @ipAddress, @eventType, @eventMetadata,
+			@userAgent, @userAgentType, @expiresAt, @createdAt, @updatedAt,
+			@orgID, @projectID, @projectName
+		)
+	`
+	args := pgx.NamedArgs{
+		"id":            record.ID,
+		"actor":         record.Actor,
+		"actorMetadata": record.ActorMetadata,
+		"ipAddress":     record.IPAddress,
+		"eventType":     record.EventType,
+		"eventMetadata": record.EventMetadata,
+		"userAgent":     record.UserAgent,
+		"userAgentType": record.UserAgentType,
+		"expiresAt":     record.ExpiresAt,
+		"createdAt":     record.CreatedAt,
+		"updatedAt":     record.UpdatedAt,
+		"orgID":         record.OrgID,
+		"projectID":     record.ProjectID,
+		"projectName":   record.ProjectName,
+	}
+
+	_, err := h.db.Primary().Exec(ctx, query, args)
+	return err
 }
 
 func toNullStr(s string) sql.Null[string] {

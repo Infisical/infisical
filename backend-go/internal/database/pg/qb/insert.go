@@ -44,7 +44,7 @@ func (b *InsertBuilder) Build() (sql string, args []any) {
 
 	for _, row := range b.values {
 		placeholders := make([]string, colCount)
-		for i := 0; i < colCount; i++ {
+		for i := range colCount {
 			placeholders[i] = fmt.Sprintf("$%d", argNum)
 			args = append(args, row[i])
 			argNum++
