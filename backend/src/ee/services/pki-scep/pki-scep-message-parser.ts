@@ -315,7 +315,12 @@ const decryptEnvelopedDataRaw = (
   }
 
   // Decrypt the content-encryption key using RSA PKCS1v1.5
-  const contentEncryptionKey = rsaPkcs1Decrypt(encryptedKey, raPrivateKeyDer);
+  let contentEncryptionKey: Buffer;
+  try {
+    contentEncryptionKey = rsaPkcs1Decrypt(encryptedKey, raPrivateKeyDer);
+  } catch {
+    contentEncryptionKey = crypto.randomBytes(32);
+  }
 
   // Extract encrypted content info
   const encContentInfo = (valueBlock[2] as asn1js.Sequence).valueBlock.value;
@@ -352,10 +357,14 @@ const decryptEnvelopedDataRaw = (
   }
 
   // Decrypt the content
-  return {
-    plainText: symmetricDecrypt(encryptedContent, contentEncryptionKey, iv, cipherOid),
-    cipherOid
-  };
+  let plainText: Buffer;
+  try {
+    plainText = symmetricDecrypt(encryptedContent, contentEncryptionKey, iv, cipherOid);
+  } catch {
+    throw new BadRequestError({ message: "Failed to decrypt SCEP enveloped data" });
+  }
+
+  return { plainText, cipherOid };
 };
 
 const extractEncryptedContent = (element: asn1js.BaseBlock): Buffer => {
