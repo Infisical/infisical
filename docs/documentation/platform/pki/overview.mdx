@@ -13,34 +13,34 @@ Infisical Certificate Manager is a centralized platform for managing X.509 certi
 ## Core Capabilities
 
 <CardGroup cols={2}>
-  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
-    Organize certificate management by service. Each Application has its own members, enrollment methods, alerting, and certificate inventory.
+  <Card title="Issue Certificates" icon="certificate" href="/documentation/platform/pki/applications/overview">
+    Issue X.509 certificates via API, ACME, EST, or SCEP for TLS, mTLS, and device authentication.
   </Card>
-  <Card title="Certificate Authorities" icon="building-columns" href="/documentation/platform/pki/ca/overview">
-    Create private CA hierarchies or integrate with external CAs like DigiCert, Let's Encrypt, AWS PCA, and Azure ADCS.
-  </Card>
-  <Card title="Certificate Enrollment" icon="plug" href="/documentation/platform/pki/applications/enrollment-methods/overview">
-    Issue certificates via API, ACME, EST, or SCEP — supporting everything from Certbot to enterprise device enrollment.
-  </Card>
-  <Card title="Code Signing" icon="file-signature" href="/documentation/platform/pki/code-signing/overview">
+  <Card title="Sign Code" icon="file-signature" href="/documentation/platform/pki/code-signing/overview">
     Sign software artifacts with centralized key management, approval workflows, and PKCS#11 integration.
+  </Card>
+  <Card title="Discover Certificates" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Scan your infrastructure to find and inventory certificates you didn't know existed.
+  </Card>
+  <Card title="Sync Certificates" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to AWS ACM, Azure Key Vault, Cloudflare, and other destinations.
   </Card>
 </CardGroup>
 
-## Visibility & Delivery
+## Lifecycle Management
 
 <CardGroup cols={2}>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/certificate-syncs/overview">
-    Push certificates to AWS Certificate Manager, Azure Key Vault, Cloudflare, and other destinations.
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Automate certificate renewal so nothing expires unexpectedly.
   </Card>
-  <Card title="Certificate Discovery" icon="radar" href="/documentation/platform/pki/discovery/overview">
-    Scan your infrastructure to find and inventory certificates you didn't know existed.
-  </Card>
-  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/alerting/overview">
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified via Slack, PagerDuty, or webhooks when certificates expire or lifecycle events occur.
   </Card>
-  <Card title="Approval Workflows" icon="check-double" href="/documentation/platform/pki/approvals">
+  <Card title="Approval Workflows" icon="check-double" href="/documentation/platform/pki/applications/approvals">
     Require human review before high-value certificates are issued.
+  </Card>
+  <Card title="Certificate Authorities" icon="building-columns" href="/documentation/platform/pki/ca/overview">
+    Create private CA hierarchies or connect external CAs like DigiCert, Let's Encrypt, and AWS PCA.
   </Card>
 </CardGroup>
 
