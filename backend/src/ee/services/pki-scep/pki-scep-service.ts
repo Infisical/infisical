@@ -81,7 +81,7 @@ type TPkiScepServiceFactoryDep = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOne">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
 };
 
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
@@ -122,7 +122,7 @@ export const pkiScepServiceFactory = ({
 
     let resolvedScepConfigId: string | null;
     if (applicationId && pkiApplicationProfileDAL) {
-      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
@@ -190,7 +190,7 @@ export const pkiScepServiceFactory = ({
 
     let resolvedScepConfigId: string | null;
     if (applicationId && pkiApplicationProfileDAL) {
-      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
@@ -943,7 +943,7 @@ export const pkiScepServiceFactory = ({
       if (!pkiApplicationProfileDAL) {
         throw new BadRequestError({ message: "Application context is not supported on this server." });
       }
-      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`

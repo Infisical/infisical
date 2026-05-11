@@ -130,7 +130,9 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       description: "Get an application by id.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
-      response: { 200: z.object({ application: PkiApplicationsSchema }) }
+      response: {
+        200: z.object({ application: PkiApplicationsSchema })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -166,7 +168,9 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       description: "Get an application by name.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ name: ApplicationNameSchema }),
-      response: { 200: z.object({ application: PkiApplicationsSchema }) }
+      response: {
+        200: z.object({ application: PkiApplicationsSchema })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -189,6 +193,47 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       });
 
       return { application };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:applicationId/my-permissions",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getPkiApplicationMyPermissions",
+      description: "Get the actor's effective resource permissions on this application.",
+      tags: [ApiDocsTags.PkiApplications],
+      params: ApplicationIdParamsSchema,
+      response: {
+        200: z.object({
+          data: z.object({
+            permissions: z.any().array(),
+            memberships: z
+              .object({
+                id: z.string(),
+                actorUserId: z.string().nullish(),
+                actorIdentityId: z.string().nullish(),
+                actorGroupId: z.string().nullish(),
+                roles: z.object({ role: z.string(), customRoleSlug: z.string().nullish() }).array()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const data = await server.services.pkiApplication.getApplicationPermissions({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.internalCertManagerProjectId,
+        applicationId: req.params.applicationId
+      });
+      return { data };
     }
   });
 

@@ -17,6 +17,7 @@ import {
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
+  applicationProjectAdminFallbackPermissions,
   cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
@@ -639,6 +640,33 @@ export const permissionServiceFactory = ({
     });
 
     return requestMemoize(memoKey, async () => {
+      const resourceMemberships = await permissionDAL.getResourceMembership({
+        projectId,
+        resourceType,
+        resourceId,
+        actorId,
+        actorType: actor
+      });
+
+      if (resourceMemberships?.length) {
+        const permissionFromRoles = flattenActiveRolesFromMemberships(
+          resourceMemberships,
+          ApplicationMembershipRole.Custom
+        );
+        const rules = buildResourcePermissionRules(permissionFromRoles);
+        const permission = createMongoAbility<ResourcePermissionSet>(rules, { conditionsMatcher });
+
+        const hasRole = (role: string) =>
+          resourceMemberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role)));
+
+        return {
+          permission,
+          memberships: resourceMemberships,
+          hasRole,
+          isImplicitAdmin: false
+        };
+      }
+
       const projectPerm = await getProjectPermission({
         actor,
         actorId,
@@ -649,47 +677,20 @@ export const permissionServiceFactory = ({
       });
 
       if (projectPerm.hasRole(ProjectMembershipRole.Admin)) {
-        const permission = createMongoAbility<ResourcePermissionSet>(applicationAdminPermissions, {
+        const permission = createMongoAbility<ResourcePermissionSet>(applicationProjectAdminFallbackPermissions, {
           conditionsMatcher
         });
         return {
           permission,
           memberships: [],
-          hasRole: (role: string) => role === ApplicationMembershipRole.Admin,
+          hasRole: () => false,
           isImplicitAdmin: true
         };
       }
 
-      const resourceMemberships = await permissionDAL.getResourceMembership({
-        projectId,
-        resourceType,
-        resourceId,
-        actorId,
-        actorType: actor
+      throw new ForbiddenRequestError({
+        message: `You are not a member of ${resourceType} '${resourceId}'.`
       });
-
-      if (!resourceMemberships?.length) {
-        throw new ForbiddenRequestError({
-          message: `You are not a member of ${resourceType} '${resourceId}'.`
-        });
-      }
-
-      const permissionFromRoles = flattenActiveRolesFromMemberships(
-        resourceMemberships,
-        ApplicationMembershipRole.Custom
-      );
-      const rules = buildResourcePermissionRules(permissionFromRoles);
-      const permission = createMongoAbility<ResourcePermissionSet>(rules, { conditionsMatcher });
-
-      const hasRole = (role: string) =>
-        resourceMemberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role)));
-
-      return {
-        permission,
-        memberships: resourceMemberships,
-        hasRole,
-        isImplicitAdmin: false
-      };
     });
   };
 

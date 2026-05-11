@@ -17,6 +17,8 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -41,17 +43,20 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
 };
 
 export type TPkiApplicationMembershipServiceFactory = ReturnType<typeof pkiApplicationMembershipServiceFactory>;
 
-const VALID_BUILTIN_ROLES = new Set<string>([
-  ApplicationMembershipRole.Admin,
-  ApplicationMembershipRole.Operator,
-  ApplicationMembershipRole.Auditor
-]);
+const BUILTIN_APPLICATION_ROLES = Object.values(ApplicationMembershipRole).filter(
+  (r) => r !== ApplicationMembershipRole.Custom
+);
 
-const isBuiltInApplicationRole = (role: string) => VALID_BUILTIN_ROLES.has(role);
+const isBuiltInApplicationRole = (role: string): role is ApplicationMembershipRole =>
+  (BUILTIN_APPLICATION_ROLES as string[]).includes(role);
+
+const unknownApplicationRoleMessage = (role: string) =>
+  `Unknown application role '${role}'. Expected one of: ${BUILTIN_APPLICATION_ROLES.join(", ")}.`;
 
 export const pkiApplicationMembershipServiceFactory = ({
   pkiApplicationDAL,
@@ -60,7 +65,8 @@ export const pkiApplicationMembershipServiceFactory = ({
   permissionService,
   userDAL,
   identityDAL,
-  groupDAL
+  groupDAL,
+  approvalPolicyDAL
 }: TPkiApplicationMembershipServiceFactoryDep) => {
   const $loadApplicationOrThrow = async (applicationId: string, projectId: string) => {
     const application = await pkiApplicationDAL.findById(applicationId);
@@ -171,7 +177,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
-        message: `Unknown application role '${role}'. Expected one of: admin, operator, auditor.`
+        message: unknownApplicationRoleMessage(role)
       });
     }
 
@@ -435,7 +441,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
-        message: `Unknown application role '${role}'. Expected one of: admin, operator, auditor.`
+        message: unknownApplicationRoleMessage(role)
       });
     }
 
@@ -502,6 +508,22 @@ export const pkiApplicationMembershipServiceFactory = ({
     const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
 
+    if (kind !== ApplicationMemberKind.Identity) {
+      const blocking = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+        projectId,
+        scopeType: ApprovalPolicyScope.PkiApplication,
+        scopeId: applicationId,
+        userId: kind === ApplicationMemberKind.User ? (membership.actorUserId ?? undefined) : undefined,
+        groupId: kind === ApplicationMemberKind.Group ? (membership.actorGroupId ?? undefined) : undefined
+      });
+      if (blocking.length > 0) {
+        const policyNames = blocking.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `Cannot remove this ${kind} from the application, they are listed as an approver on the following approval ${blocking.length === 1 ? "policy" : "policies"}: ${policyNames}. Remove them from the policy first.`
+        });
+      }
+    }
+
     await membershipDAL.transaction(async (tx) => {
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
@@ -535,7 +557,7 @@ export const pkiApplicationMembershipServiceFactory = ({
   }> => {
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
-        message: `Unknown application role '${role}'. Expected one of: admin, operator, auditor.`
+        message: unknownApplicationRoleMessage(role)
       });
     }
 

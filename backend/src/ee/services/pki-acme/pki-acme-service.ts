@@ -154,7 +154,7 @@ type TPkiAcmeServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById">;
-  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOne">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
 };
 
@@ -433,7 +433,7 @@ export const pkiAcmeServiceFactory = ({
     const profile = await validateAcmeProfile(profileId);
     let skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
     if (applicationId) {
-      const junctionRow = await pkiApplicationProfileDAL.findOne(applicationId, profile.id);
+      const junctionRow = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profile.id);
       const junctionAcmeConfig = junctionRow?.acmeConfigId
         ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
         : null;
@@ -479,7 +479,9 @@ export const pkiAcmeServiceFactory = ({
     const profile = await validateAcmeProfile(profileId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
 
-    const junctionRow = applicationId ? await pkiApplicationProfileDAL.findOne(applicationId, profile.id) : null;
+    const junctionRow = applicationId
+      ? await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profile.id)
+      : null;
     const junctionAcmeConfig = junctionRow?.acmeConfigId
       ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
       : null;

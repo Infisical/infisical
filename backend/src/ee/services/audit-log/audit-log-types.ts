@@ -325,6 +325,9 @@ export enum EventType {
   DELETE_SECRET_IMPORT = "delete-secret-import",
   UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
   UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
+  ADD_PROJECT_GROUP = "add-project-group",
+  UPDATE_PROJECT_GROUP = "update-project-group",
+  REMOVE_PROJECT_GROUP = "remove-project-group",
   SECRET_APPROVAL_MERGED = "secret-approval-merged",
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
@@ -2466,6 +2469,30 @@ interface UpdateUserDeniedPermissions {
     }[];
   };
 }
+
+interface AddProjectGroupEvent {
+  type: EventType.ADD_PROJECT_GROUP;
+  metadata: {
+    groupId: string;
+    roles: string[];
+  };
+}
+
+interface UpdateProjectGroupEvent {
+  type: EventType.UPDATE_PROJECT_GROUP;
+  metadata: {
+    groupId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveProjectGroupEvent {
+  type: EventType.REMOVE_PROJECT_GROUP;
+  metadata: {
+    groupId: string;
+  };
+}
+
 interface SecretApprovalMerge {
   type: EventType.SECRET_APPROVAL_MERGED;
   metadata: {
@@ -6829,6 +6856,9 @@ export type Event =
   | DeleteSecretImportEvent
   | UpdateUserRole
   | UpdateUserDeniedPermissions
+  | AddProjectGroupEvent
+  | UpdateProjectGroupEvent
+  | RemoveProjectGroupEvent
   | SecretApprovalMerge
   | SecretApprovalClosed
   | SecretApprovalRequest

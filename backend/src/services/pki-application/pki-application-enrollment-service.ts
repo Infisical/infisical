@@ -81,7 +81,10 @@ type TRevealEabSecretDTO = {
 
 type TPkiApplicationEnrollmentServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
-  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOne" | "transaction" | "update">;
+  pkiApplicationProfileDAL: Pick<
+    TPkiApplicationProfileDALFactory,
+    "findOneByApplicationAndProfile" | "transaction" | "update"
+  >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
@@ -110,7 +113,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+    const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
     if (!junction) {
       throw new NotFoundError({
         message: `Profile '${profileId}' is not attached to application '${applicationId}'.`

@@ -1,6 +1,9 @@
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { conditionsMatcher } from "@app/hooks/api/roles/queries";
 
 import {
   TListPkiApplicationsResponse,
@@ -8,6 +11,7 @@ import {
   TPkiApplicationEnrollmentState,
   TPkiApplicationListItem,
   TPkiApplicationMember,
+  TPkiApplicationPermissionSet,
   TPkiApplicationProfile
 } from "./types";
 
@@ -20,6 +24,8 @@ export const pkiApplicationKeys = {
     [...pkiApplicationKeys.all, "profiles", { applicationId }] as const,
   members: (applicationId: string) =>
     [...pkiApplicationKeys.all, "members", { applicationId }] as const,
+  myPermissions: (applicationId: string) =>
+    [...pkiApplicationKeys.all, "my-permissions", { applicationId }] as const,
   enrollment: (applicationId: string, profileId: string) =>
     [...pkiApplicationKeys.all, "enrollment", { applicationId, profileId }] as const
 };
@@ -47,31 +53,6 @@ export const useListPkiApplications = (
       return data;
     },
     select: (data) => data.applications,
-    ...options
-  });
-
-export const useGetPkiApplication = (
-  applicationId: string,
-  options?: Omit<
-    UseQueryOptions<
-      { application: TPkiApplication },
-      unknown,
-      TPkiApplication,
-      ReturnType<typeof pkiApplicationKeys.byId>
-    >,
-    "queryKey" | "queryFn"
-  >
-) =>
-  useQuery({
-    queryKey: pkiApplicationKeys.byId(applicationId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ application: TPkiApplication }>(
-        `${BASE_URL}/${applicationId}`
-      );
-      return data;
-    },
-    enabled: Boolean(applicationId),
-    select: (data) => data.application,
     ...options
   });
 
@@ -146,4 +127,34 @@ export const useGetPkiApplicationEnrollment = (applicationId: string, profileId:
       return data;
     },
     enabled: Boolean(applicationId && profileId)
+  });
+
+export const useGetPkiApplicationPermissions = (applicationId: string) =>
+  useQuery({
+    queryKey: pkiApplicationKeys.myPermissions(applicationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        data: {
+          permissions: PackRule<RawRuleOf<MongoAbility<TPkiApplicationPermissionSet>>>[];
+          memberships: Array<{
+            id: string;
+            actorUserId?: string | null;
+            actorIdentityId?: string | null;
+            actorGroupId?: string | null;
+            roles: Array<{ role: string; customRoleSlug?: string | null }>;
+          }>;
+        };
+      }>(`${BASE_URL}/${applicationId}/my-permissions`);
+      return data.data;
+    },
+    enabled: Boolean(applicationId),
+    select: (data) => {
+      const rules = unpackRules<RawRuleOf<MongoAbility<TPkiApplicationPermissionSet>>>(
+        data.permissions
+      );
+      const permission = createMongoAbility<TPkiApplicationPermissionSet>(rules, {
+        conditionsMatcher
+      });
+      return { permission, memberships: data.memberships };
+    }
   });

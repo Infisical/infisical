@@ -1088,6 +1088,36 @@ const buildApplicationAuditorPermissionRules = () => {
   return rules;
 };
 
+const buildApplicationProjectAdminFallbackRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+
+  can(
+    [
+      ResourcePermissionApplicationActions.Read,
+      ResourcePermissionApplicationActions.Edit,
+      ResourcePermissionApplicationActions.Delete
+    ],
+    ResourcePermissionSub.Application
+  );
+
+  can(
+    [
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete,
+      ProjectPermissionMemberActions.GrantPrivileges,
+      ProjectPermissionMemberActions.AssignRole
+    ],
+    ResourcePermissionSub.Member
+  );
+
+  can([ProjectPermissionActions.Read], ResourcePermissionSub.Role);
+
+  return rules;
+};
+
 export const applicationAdminPermissions = buildApplicationAdminPermissionRules();
 export const applicationOperatorPermissions = buildApplicationOperatorPermissionRules();
 export const applicationAuditorPermissions = buildApplicationAuditorPermissionRules();
+export const applicationProjectAdminFallbackPermissions = buildApplicationProjectAdminFallbackRules();

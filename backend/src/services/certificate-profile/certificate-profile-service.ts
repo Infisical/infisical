@@ -267,7 +267,7 @@ type TCertificateProfileServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
-  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOne">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -1358,7 +1358,7 @@ export const certificateProfileServiceFactory = ({
     }
 
     if (applicationId && pkiApplicationProfileDAL) {
-      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`

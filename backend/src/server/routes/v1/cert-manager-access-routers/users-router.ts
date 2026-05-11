@@ -173,6 +173,19 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         selector: { userId },
         data: { roles: req.body.roles }
       });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.UPDATE_USER_PROJECT_ROLE,
+          metadata: {
+            userId,
+            email: "",
+            oldRole: "",
+            newRole: req.body.roles.map((r) => r.role).join(",")
+          }
+        }
+      });
       return {
         roles: membership.roles.map((el) => ({ ...el, projectMembershipId: membership.id }))
       };

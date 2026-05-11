@@ -14,9 +14,14 @@ export const ApplicationRequestsTab = ({ applicationId, applicationName }: Props
 
   const handleViewCertificateFromRequest = (certificateId: string) => {
     navigate({
-      to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${applicationName}` as never,
-      search: { selectedTab: "certificates", search: certificateId } as never
-    } as never);
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+      params: {
+        orgId: orgId ?? "",
+        projectId: projectId ?? "",
+        applicationName
+      },
+      search: { selectedTab: "certificates", search: certificateId }
+    });
   };
 
   return (

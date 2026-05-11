@@ -41,7 +41,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findOne = async (applicationId: string, profileId: string, tx?: Knex) => {
+  const findOneByApplicationAndProfile = async (applicationId: string, profileId: string, tx?: Knex) => {
     try {
       const row = await (tx || db.replicaNode())(TableName.PkiApplicationProfile)
         .where({ applicationId, profileId })
@@ -83,7 +83,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     ...orm,
     findAllByProfileId,
     findByApplicationId,
-    findOne,
+    findOneByApplicationAndProfile,
     findProfilesInProject
   };
 };

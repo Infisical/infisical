@@ -145,10 +145,64 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Return the list of policies (with name + id) that include the given subject as an approver
+   * on any step. The subject is identified by `userId` OR `groupId` (not both). Used to block
+   * removing a member from an application while they're still wired up as a reviewer.
+   */
+  const findPoliciesWhereSubjectIsApprover = async (args: {
+    projectId: string;
+    scopeType?: string;
+    scopeId?: string;
+    userId?: string;
+    groupId?: string;
+  }) => {
+    try {
+      const dbInstance = db.replicaNode();
+
+      const baseQuery = dbInstance(TableName.ApprovalPolicies)
+        .where({ projectId: args.projectId })
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .innerJoin(
+          TableName.ApprovalPolicyStepApprovers,
+          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+          `${TableName.ApprovalPolicySteps}.id`
+        );
+
+      if (typeof args.scopeType === "string") {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
+        if (typeof args.scopeId === "string") {
+          void baseQuery.where(`${TableName.ApprovalPolicies}.scopeId`, args.scopeId);
+        }
+      }
+
+      if (args.userId) {
+        void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+      } else if (args.groupId) {
+        void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupId);
+      } else {
+        return [];
+      }
+
+      const rows = await baseQuery
+        .distinct(`${TableName.ApprovalPolicies}.id`, `${TableName.ApprovalPolicies}.name`)
+        .select<{ id: string; name: string }[]>();
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find policies where subject is approver" });
+    }
+  };
+
   return {
     ...orm,
     findStepsByPolicyId,
-    findByProjectId
+    findByProjectId,
+    findPoliciesWhereSubjectIsApprover
   };
 };
 

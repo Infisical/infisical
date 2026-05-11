@@ -91,8 +91,13 @@ export const ApplicationsPage = () => {
               className="cursor-pointer"
               onClick={() =>
                 navigate({
-                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${app.name}` as never
-                } as never)
+                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                  params: {
+                    orgId: orgId ?? "",
+                    projectId: projectId ?? "",
+                    applicationName: app.name
+                  }
+                })
               }
             >
               <TableCell className="w-full">

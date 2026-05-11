@@ -125,7 +125,6 @@ import { Route as certManagerPoliciesPageRouteImport } from './pages/cert-manage
 import { Route as certManagerDashboardPageRouteImport } from './pages/cert-manager/DashboardPage/route'
 import { Route as certManagerInventoryPageRouteImport } from './pages/cert-manager/InventoryPage/route'
 import { Route as certManagerCertificateAuthoritiesPageRouteImport } from './pages/cert-manager/CertificateAuthoritiesPage/route'
-import { Route as certManagerCertManagerAccessPageRouteImport } from './pages/cert-manager/CertManagerAccessPage/route'
 import { Route as certManagerAlertingPageRouteImport } from './pages/cert-manager/AlertingPage/route'
 import { Route as aiSettingsPageRouteImport } from './pages/ai/SettingsPage/route'
 import { Route as aiMCPPageRouteImport } from './pages/ai/MCPPage/route'
@@ -1477,13 +1476,6 @@ const certManagerCertificateAuthoritiesPageRouteRoute =
   certManagerCertificateAuthoritiesPageRouteImport.update({
     id: '/certificate-authorities',
     path: '/certificate-authorities',
-    getParentRoute: () => certManagerLayoutRoute,
-  } as any)
-
-const certManagerCertManagerAccessPageRouteRoute =
-  certManagerCertManagerAccessPageRouteImport.update({
-    id: '/cert-manager-access',
-    path: '/cert-manager-access',
     getParentRoute: () => certManagerLayoutRoute,
   } as any)
 
@@ -3347,13 +3339,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerAlertingPageRouteImport
       parentRoute: typeof certManagerLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/cert-manager-access': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/cert-manager-access'
-      path: '/cert-manager-access'
-      fullPath: '/organizations/$orgId/projects/cert-manager/$projectId/cert-manager-access'
-      preLoaderRoute: typeof certManagerCertManagerAccessPageRouteImport
-      parentRoute: typeof certManagerLayoutImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
       path: '/certificate-authorities'
@@ -5020,7 +5005,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManager
 
 interface certManagerLayoutRouteChildren {
   certManagerAlertingPageRouteRoute: typeof certManagerAlertingPageRouteRoute
-  certManagerCertManagerAccessPageRouteRoute: typeof certManagerCertManagerAccessPageRouteRoute
   certManagerCertificateAuthoritiesPageRouteRoute: typeof certManagerCertificateAuthoritiesPageRouteRoute
   certManagerInventoryPageRouteRoute: typeof certManagerInventoryPageRouteRoute
   certManagerDashboardPageRouteRoute: typeof certManagerDashboardPageRouteRoute
@@ -5049,8 +5033,6 @@ interface certManagerLayoutRouteChildren {
 
 const certManagerLayoutRouteChildren: certManagerLayoutRouteChildren = {
   certManagerAlertingPageRouteRoute: certManagerAlertingPageRouteRoute,
-  certManagerCertManagerAccessPageRouteRoute:
-    certManagerCertManagerAccessPageRouteRoute,
   certManagerCertificateAuthoritiesPageRouteRoute:
     certManagerCertificateAuthoritiesPageRouteRoute,
   certManagerInventoryPageRouteRoute: certManagerInventoryPageRouteRoute,
@@ -6279,7 +6261,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
-  '/organizations/$orgId/projects/cert-manager/$projectId/cert-manager-access': typeof certManagerCertManagerAccessPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/inventory': typeof certManagerInventoryPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/overview': typeof certManagerDashboardPageRouteRoute
@@ -6562,7 +6543,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
-  '/organizations/$orgId/projects/cert-manager/$projectId/cert-manager-access': typeof certManagerCertManagerAccessPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/inventory': typeof certManagerInventoryPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/overview': typeof certManagerDashboardPageRouteRoute
@@ -6845,7 +6825,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview': typeof aiMCPPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings': typeof aiSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting': typeof certManagerAlertingPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/cert-manager-access': typeof certManagerCertManagerAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory': typeof certManagerInventoryPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/overview': typeof certManagerDashboardPageRouteRoute
@@ -7138,7 +7117,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
-    | '/organizations/$orgId/projects/cert-manager/$projectId/cert-manager-access'
     | '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities'
     | '/organizations/$orgId/projects/cert-manager/$projectId/inventory'
     | '/organizations/$orgId/projects/cert-manager/$projectId/overview'
@@ -7420,7 +7398,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
-    | '/organizations/$orgId/projects/cert-manager/$projectId/cert-manager-access'
     | '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities'
     | '/organizations/$orgId/projects/cert-manager/$projectId/inventory'
     | '/organizations/$orgId/projects/cert-manager/$projectId/overview'
@@ -7701,7 +7678,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/cert-manager-access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/overview'
@@ -8429,7 +8405,6 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/cert-manager-access",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/overview",
@@ -8556,10 +8531,6 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting": {
       "filePath": "cert-manager/AlertingPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/cert-manager-access": {
-      "filePath": "cert-manager/CertManagerAccessPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities": {

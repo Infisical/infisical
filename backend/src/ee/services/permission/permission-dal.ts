@@ -515,7 +515,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           `${TableName.MembershipRole}.customRoleId`,
           `groupCustomRoles.id`
         )
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, "=", projectId)
         .where((bd) => {
           if (filterGroupId) {

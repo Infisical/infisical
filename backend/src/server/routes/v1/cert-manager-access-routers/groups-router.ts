@@ -7,6 +7,7 @@ import {
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -141,6 +142,17 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         selector: { groupId: req.params.groupId }
       });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.ADD_PROJECT_GROUP,
+          metadata: {
+            groupId: req.params.groupId,
+            roles: roles.map((r) => r.role)
+          }
+        }
+      });
       return {
         groupMembership: {
           ...full,
@@ -170,6 +182,17 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         data: { roles: req.body.roles },
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
       });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.UPDATE_PROJECT_GROUP,
+          metadata: {
+            groupId: req.params.groupId,
+            roles: req.body.roles.map((r) => r.role)
+          }
+        }
+      });
       return {
         roles: groupMembership.roles.map((el) => ({ ...el, projectMembershipId: groupMembership.id }))
       };
@@ -198,6 +221,14 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         permission: req.permission,
         selector: { groupId: req.params.groupId },
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
+      });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.REMOVE_PROJECT_GROUP,
+          metadata: { groupId: req.params.groupId }
+        }
       });
       return {
         groupMembership: {

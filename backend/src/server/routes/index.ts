@@ -254,6 +254,8 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
+import { certManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -394,8 +396,6 @@ import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-
 import { pkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
 import { pkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { pkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
-import { certManagerInstanceServiceFactory } from "@app/services/pki-application/cert-manager-instance-service";
-import { certManagerProjectResolverFactory } from "@app/services/pki-application/cert-manager-project-resolver";
 import { pkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { pkiApplicationEnrollmentServiceFactory } from "@app/services/pki-application/pki-application-enrollment-service";
 import { pkiApplicationMembershipServiceFactory } from "@app/services/pki-application/pki-application-membership-service";
@@ -1451,7 +1451,8 @@ export const registerRoutes = async (
     permissionService,
     userDAL,
     identityDAL,
-    groupDAL
+    groupDAL,
+    approvalPolicyDAL
   });
 
   const certManagerProjectResolver = certManagerProjectResolverFactory({

@@ -44,8 +44,8 @@ export const CodeSigningPage = () => {
             navigate({
               to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
               params: { orgId: currentProject.orgId, projectId: currentProject.id },
-              search: { selectedTab: v } as never
-            } as never)
+              search: { selectedTab: v }
+            })
           }
         >
           <TabList>

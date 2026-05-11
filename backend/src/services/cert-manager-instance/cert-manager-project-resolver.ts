@@ -8,7 +8,7 @@ type TResolverDeps = {
   projectDAL: Pick<TProjectDALFactory, "find" | "findById">;
 };
 
-export const resolveCertManagerProjectId = async (
+const resolveCertManagerProjectId = async (
   { orgDAL, projectDAL }: TResolverDeps,
   actorOrgId: string
 ): Promise<string> => {

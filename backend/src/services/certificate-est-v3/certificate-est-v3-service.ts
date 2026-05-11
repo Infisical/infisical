@@ -35,7 +35,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
-  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOne">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
 };
 
 export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3ServiceFactory>;
@@ -59,7 +59,7 @@ export const certificateEstV3ServiceFactory = ({
     applicationId?: string
   ): Promise<string | null> => {
     if (applicationId && pkiApplicationProfileDAL) {
-      const junction = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+      const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
           message: `Profile '${profileId}' is not attached to application '${applicationId}'.`

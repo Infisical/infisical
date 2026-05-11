@@ -81,9 +81,10 @@ const PageContent = () => {
             onClick={() => {
               if (applicationName) {
                 navigate({
-                  to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never,
-                  search: { selectedTab: "syncs" } as never
-                } as never);
+                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                  params: { orgId, projectId, applicationName },
+                  search: { selectedTab: "syncs" }
+                });
                 return;
               }
               navigate({

@@ -24,8 +24,11 @@ import {
 } from "@app/components/v3";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
   useDeletePkiApplication,
   useGetPkiApplicationByName,
+  useGetPkiApplicationPermissions,
   useListPkiApplicationMembers,
   useListPkiApplicationProfiles
 } from "@app/hooks/api/pkiApplications";
@@ -51,6 +54,7 @@ export const ApplicationDetailsByIDPage = () => {
   const { data: application, isPending } = useGetPkiApplicationByName(applicationName ?? "");
   const { data: profiles = [] } = useListPkiApplicationProfiles(application?.id ?? "");
   const { data: members = [] } = useListPkiApplicationMembers(application?.id ?? "");
+  const { data: permissionData } = useGetPkiApplicationPermissions(application?.id ?? "");
   const deleteApp = useDeletePkiApplication();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isIdCopied, setIsIdCopied] = useToggle(false);
@@ -60,7 +64,27 @@ export const ApplicationDetailsByIDPage = () => {
     handlePopUpToggle: handleEditPopUpToggle
   } = usePopUp(["application"] as const);
 
-  const selectedTab = search.selectedTab ?? "certificates";
+  const ability = permissionData?.permission;
+  const canViewCertificates = ability?.can(
+    PkiApplicationResourceActions.Read,
+    PkiApplicationResourceSub.Certificates
+  );
+  const canViewSyncs = ability?.can(
+    PkiApplicationResourceActions.Read,
+    PkiApplicationResourceSub.PkiSyncs
+  );
+  const canViewRequests = canViewCertificates;
+
+  const requestedTab = search.selectedTab ?? "";
+  const tabIsVisible: Record<string, boolean> = {
+    certificates: Boolean(canViewCertificates),
+    requests: Boolean(canViewRequests),
+    syncs: Boolean(canViewSyncs),
+    members: true,
+    settings: true
+  };
+  const defaultTab = canViewCertificates ? "certificates" : "members";
+  const selectedTab = tabIsVisible[requestedTab] ? requestedTab : defaultTab;
 
   const handleCopyId = () => {
     if (!application) return;
@@ -77,8 +101,9 @@ export const ApplicationDetailsByIDPage = () => {
       createNotification({ type: "success", text: `Deleted ${application.name}` });
       setIsDeleteOpen(false);
       navigate({
-        to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications` as never
-      } as never);
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications",
+        params: { orgId: orgId ?? "", projectId: projectId ?? "" }
+      });
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Failed to delete Application.";
       createNotification({ type: "error", text: detail });
@@ -103,9 +128,8 @@ export const ApplicationDetailsByIDPage = () => {
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <div className="mb-4">
               <Link
-                to={
-                  `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications` as never
-                }
+                to="/organizations/$orgId/projects/cert-manager/$projectId/applications"
+                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
                 className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
               >
                 <ChevronLeftIcon size={16} />
@@ -151,21 +175,34 @@ export const ApplicationDetailsByIDPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/applications/${application.name}`,
-                  search: { selectedTab: v } as never
-                } as never)
+                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                  params: {
+                    orgId: orgId ?? "",
+                    projectId: projectId ?? "",
+                    applicationName: application.name
+                  },
+                  search: {
+                    selectedTab: v as "certificates" | "requests" | "syncs" | "members" | "settings"
+                  }
+                })
               }
             >
               <TabList>
-                <Tab variant="project" value="certificates">
-                  Certificates
-                </Tab>
-                <Tab variant="project" value="requests">
-                  Certificate Requests
-                </Tab>
-                <Tab variant="project" value="syncs">
-                  Certificate Syncs
-                </Tab>
+                {canViewCertificates && (
+                  <Tab variant="project" value="certificates">
+                    Certificates
+                  </Tab>
+                )}
+                {canViewRequests && (
+                  <Tab variant="project" value="requests">
+                    Certificate Requests
+                  </Tab>
+                )}
+                {canViewSyncs && (
+                  <Tab variant="project" value="syncs">
+                    Certificate Syncs
+                  </Tab>
+                )}
                 <Tab variant="project" value="members">
                   Members
                 </Tab>
@@ -173,26 +210,32 @@ export const ApplicationDetailsByIDPage = () => {
                   Settings
                 </Tab>
               </TabList>
-              <TabPanel value="certificates">
-                <ApplicationCertificatesTab
-                  applicationId={application.id}
-                  applicationName={application.name}
-                  initialSearch={search.search}
-                />
-              </TabPanel>
-              <TabPanel value="requests">
-                <ApplicationRequestsTab
-                  applicationId={application.id}
-                  applicationName={application.name}
-                />
-              </TabPanel>
-              <TabPanel value="syncs">
-                <ApplicationSyncsTab
-                  applicationId={application.id}
-                  applicationName={application.name}
-                  projectId={projectId ?? ""}
-                />
-              </TabPanel>
+              {canViewCertificates && (
+                <TabPanel value="certificates">
+                  <ApplicationCertificatesTab
+                    applicationId={application.id}
+                    applicationName={application.name}
+                    initialSearch={search.search}
+                  />
+                </TabPanel>
+              )}
+              {canViewRequests && (
+                <TabPanel value="requests">
+                  <ApplicationRequestsTab
+                    applicationId={application.id}
+                    applicationName={application.name}
+                  />
+                </TabPanel>
+              )}
+              {canViewSyncs && (
+                <TabPanel value="syncs">
+                  <ApplicationSyncsTab
+                    applicationId={application.id}
+                    applicationName={application.name}
+                    projectId={projectId ?? ""}
+                  />
+                </TabPanel>
+              )}
               <TabPanel value="members">
                 <ApplicationMembersTab members={members} applicationId={application.id} />
               </TabPanel>

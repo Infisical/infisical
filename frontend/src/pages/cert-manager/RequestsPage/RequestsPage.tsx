@@ -231,9 +231,10 @@ export const RequestsPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/requests`,
-                  search: { selectedTab: v } as never
-                } as never)
+                  to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
+                  params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+                  search: { selectedTab: v as "application-requests" | "signing-requests" }
+                })
               }
             >
               <TabList>
@@ -346,12 +347,17 @@ export const RequestsPage = () => {
                                 className="cursor-pointer"
                                 onClick={() =>
                                   navigate({
-                                    to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
+                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                                    params: {
+                                      orgId: orgId ?? "",
+                                      projectId: projectId ?? "",
+                                      approvalRequestId: r.id
+                                    },
                                     search: {
                                       policyType: ApprovalPolicyType.CertRequest,
                                       from: "root-requests"
-                                    } as never
-                                  } as never)
+                                    }
+                                  })
                                 }
                               >
                                 <TableCell isTruncatable className="font-mono">
@@ -361,9 +367,12 @@ export const RequestsPage = () => {
                                 <TableCell className="font-mono text-xs">
                                   {app ? (
                                     <Link
-                                      to={
-                                        `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
-                                      }
+                                      to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                                      params={{
+                                        orgId: orgId ?? "",
+                                        projectId: projectId ?? "",
+                                        applicationName: app.name
+                                      }}
                                       className="text-foreground hover:text-project"
                                       onClick={(e) => e.stopPropagation()}
                                     >
@@ -490,12 +499,17 @@ export const RequestsPage = () => {
                                 className="cursor-pointer"
                                 onClick={() =>
                                   navigate({
-                                    to: `/organizations/${orgId}/projects/cert-manager/${projectId}/approvals/${r.id}` as never,
+                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                                    params: {
+                                      orgId: orgId ?? "",
+                                      projectId: projectId ?? "",
+                                      approvalRequestId: r.id
+                                    },
                                     search: {
                                       policyType: ApprovalPolicyType.CertCodeSigning,
                                       from: "root-requests"
-                                    } as never
-                                  } as never)
+                                    }
+                                  })
                                 }
                               >
                                 <TableCell isTruncatable className="font-mono">

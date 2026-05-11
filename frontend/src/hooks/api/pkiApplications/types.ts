@@ -1,3 +1,39 @@
+/**
+ * Mirror of backend's `ResourcePermissionSub` for type-safe `permission.can(...)` checks
+ * on the application's resource ability. Keep in sync with
+ * `backend/src/ee/services/permission/resource-permission.ts`.
+ */
+export enum PkiApplicationResourceSub {
+  Application = "certificate-application",
+  ApplicationEnrollment = "certificate-application-enrollment",
+  ApprovalPolicies = "approval-policies",
+  Certificates = "certificates",
+  PkiSyncs = "pki-syncs",
+  PkiAlerts = "pki-alerts",
+  ApprovalRequests = "approval-requests",
+  ApprovalRequestGrants = "approval-request-grants",
+  Member = "member",
+  Role = "role"
+}
+
+export enum PkiApplicationResourceActions {
+  Read = "read",
+  Edit = "edit",
+  Delete = "delete",
+  Create = "create",
+  List = "list",
+  ReadPrivateKey = "read-private-key",
+  Import = "import",
+  SyncCertificates = "sync-certificates",
+  ImportCertificates = "import-certificates",
+  RemoveCertificates = "remove-certificates",
+  RevealAcmeEabSecret = "reveal-acme-eab-secret",
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  GenerateScepChallenge = "generate-scep-challenge"
+}
+
+export type TPkiApplicationPermissionSet = [string, string];
+
 export type TPkiApplication = {
   id: string;
   projectId: string;

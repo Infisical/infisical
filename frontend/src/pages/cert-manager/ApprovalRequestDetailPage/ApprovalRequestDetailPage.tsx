@@ -129,15 +129,21 @@ const PageContent = () => {
           });
           if (applicationName) {
             navigate({
-              to: `/organizations/${currentProject.orgId}/projects/cert-manager/${currentProject.id}/applications/${applicationName}` as never,
-              search: { selectedTab: "requests" } as never
-            } as never);
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+              params: {
+                orgId: currentProject.orgId,
+                projectId: currentProject.id,
+                applicationName
+              },
+              search: { selectedTab: "requests" }
+            });
             return;
           }
           if (from === "root-requests") {
             navigate({
-              to: `/organizations/${currentProject.orgId}/projects/cert-manager/${currentProject.id}/requests` as never
-            } as never);
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
+              params: { orgId: currentProject.orgId, projectId: currentProject.id }
+            });
             return;
           }
           navigate({
@@ -260,10 +266,13 @@ const PageContent = () => {
     if (applicationName) {
       return (
         <Link
-          to={
-            `/organizations/${currentOrg.id}/projects/cert-manager/${currentProject.id}/applications/${applicationName}` as never
-          }
-          search={{ selectedTab: "requests" } as never}
+          to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+          params={{
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            applicationName
+          }}
+          search={{ selectedTab: "requests" }}
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
@@ -275,9 +284,8 @@ const PageContent = () => {
     if (from === "root-requests") {
       return (
         <Link
-          to={
-            `/organizations/${currentOrg.id}/projects/cert-manager/${currentProject.id}/requests` as never
-          }
+          to="/organizations/$orgId/projects/cert-manager/$projectId/requests"
+          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />

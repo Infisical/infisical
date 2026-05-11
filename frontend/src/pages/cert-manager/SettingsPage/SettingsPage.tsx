@@ -39,9 +39,10 @@ export const SettingsPage = () => {
           value={activeTab}
           onValueChange={(v) =>
             navigate({
-              to: `/organizations/${orgId ?? ""}/projects/cert-manager/${projectId ?? ""}/settings`,
-              search: { selectedTab: v } as never
-            } as never)
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+              params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+              search: { selectedTab: v }
+            })
           }
         >
           <TabList>

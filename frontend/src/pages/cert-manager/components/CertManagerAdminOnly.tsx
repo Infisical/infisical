@@ -16,8 +16,9 @@ export const CertManagerAdminOnly = ({ children }: Props) => {
   useEffect(() => {
     if (!isAdmin && orgId && projectId) {
       navigate({
-        to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications` as never
-      } as never);
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications",
+        params: { orgId, projectId }
+      });
     }
   }, [isAdmin, orgId, projectId, navigate]);
 

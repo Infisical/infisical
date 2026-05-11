@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 
 import {
   ActionProjectType,
@@ -53,7 +54,7 @@ type TPkiApplicationServiceFactoryDep = {
   >;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
-    "insertMany" | "delete" | "findByApplicationId" | "findOne" | "findProfilesInProject"
+    "insertMany" | "delete" | "findByApplicationId" | "findOneByApplicationAndProfile" | "findProfilesInProject"
   >;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "create" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
@@ -494,7 +495,7 @@ export const pkiApplicationServiceFactory = ({
       ProjectPermissionSub.CertificateProfiles
     );
 
-    const link = await pkiApplicationProfileDAL.findOne(applicationId, profileId);
+    const link = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
     if (!link) {
       throw new NotFoundError({
         message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
@@ -503,6 +504,37 @@ export const pkiApplicationServiceFactory = ({
 
     await pkiApplicationProfileDAL.delete({ applicationId, profileId });
     return { applicationId, profileId };
+  };
+
+  const getApplicationPermissions = async ({
+    applicationId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetPkiApplicationDTO) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+    }
+
+    const { permission, memberships } = await $loadResourcePermission(applicationId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionApplicationActions.Read,
+      ResourcePermissionSub.Application
+    );
+
+    return {
+      permissions: packRules(permission.rules),
+      memberships
+    };
   };
 
   return {
@@ -514,6 +546,7 @@ export const pkiApplicationServiceFactory = ({
     deleteApplication,
     listApplicationProfiles,
     attachProfiles,
-    detachProfile
+    detachProfile,
+    getApplicationPermissions
   };
 };
