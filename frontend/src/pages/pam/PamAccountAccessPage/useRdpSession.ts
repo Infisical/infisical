@@ -18,7 +18,8 @@ const DEFAULT_DESKTOP_SIZE = { width: 1920, height: 1080 };
 const STATUS_BAR_HEIGHT = 33;
 
 // WASM reads window.innerHeight for fit scaling, not the container
-const innerHeightDescriptor = Object.getOwnPropertyDescriptor(window, "innerHeight") ??
+const innerHeightDescriptor =
+  Object.getOwnPropertyDescriptor(window, "innerHeight") ??
   Object.getOwnPropertyDescriptor(Window.prototype, "innerHeight");
 let innerHeightOverrideCount = 0;
 

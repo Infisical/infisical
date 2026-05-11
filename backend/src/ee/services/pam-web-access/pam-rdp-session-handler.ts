@@ -40,8 +40,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
 
       releaseEarlyBuffer();
       for (const msg of earlyMessages) {
-        if (!msg.isBinary) continue;
-        if (tcpSocket.writable) {
+        if (msg.isBinary && tcpSocket.writable) {
           tcpSocket.write(msg.data);
         }
       }
