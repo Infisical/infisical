@@ -1,12 +1,18 @@
 ---
 title: "Applications"
 sidebarTitle: "Overview"
-description: "Create Applications to issue and manage certificates for your services and workloads."
+description: "Issue certificates, configure enrollment, and manage lifecycle automation for your services."
 ---
 
-An **Application** is a logical grouping for a service or workload that needs certificates. Each Application represents a distinct service in your organization — a payments API, a mobile backend, an IoT device fleet, or an internal web app.
+Applications are where teams issue and manage certificates. Within an Application, you can:
 
-Applications are the primary way teams interact with Certificate Manager. Your platform admin sets up the infrastructure (CAs, policies, profiles), creates Applications, and assigns team members to them. Once assigned, teams operate within their Applications to issue and manage certificates.
+- **Issue certificates** via API, ACME, EST, or SCEP
+- **Automate renewal** so certificates never expire unexpectedly
+- **Configure alerting** for expiration, issuance, and lifecycle events
+- **Sync certificates** to AWS ACM, Azure Key Vault, Cloudflare, and other destinations
+- **Require approvals** before high-value certificates are issued
+
+Each Application represents a service or workload in your organization — a payments API, a mobile backend, an IoT device fleet, or an internal web app. Platform admins create Applications and assign team members; teams then operate independently within their assigned Applications.
 
 ## What's in an Application?
 
