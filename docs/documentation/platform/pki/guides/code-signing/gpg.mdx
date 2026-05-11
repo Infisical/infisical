@@ -1,20 +1,20 @@
 ---
 title: "Sign Git Commits and Tags with GPG"
-sidebarTitle: "GPG"
+sidebarTitle: "Sign Git Commits with GPG"
 description: "Use the Infisical PKCS#11 module with GnuPG to sign git commits, tags, and packages."
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Platform Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
 </Info>
 
 Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git commits and tags, RPM/DEB packages, and any other artifact that uses GPG signatures — all backed by keys stored securely in Infisical.
 
 ## Prerequisites
 
-- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin (RSA keys recommended for GPG compatibility)
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Platform Admin (RSA keys recommended for GPG compatibility)
 - An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
-- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - GnuPG 2.2 or later
 - `gnupg-pkcs11-scd` (the PKCS#11 smart card daemon bridge)
@@ -223,10 +223,10 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/code-signing/guides/pkcs11-cosign">
+  <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
     Sign container images with Cosign
   </Card>
-  <Card title="Sign Windows Binaries" icon="windows" href="/documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode">
+  <Card title="Sign Windows Binaries" icon="windows" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
     Sign Windows executables with osslsigncode
   </Card>
 </CardGroup>

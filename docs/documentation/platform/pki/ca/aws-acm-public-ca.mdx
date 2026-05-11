@@ -91,8 +91,11 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
     ![External CA Form](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-form.png)
   </Step>
 
-  <Step title="Create a Certificate Profile and Issue">
-    Create a certificate profile linked to this CA, then submit a certificate request. Infisical requests the certificate from ACM, writes the required CNAME(s) to Route 53, waits for ACM to finish validation, and saves the certificate and private key.
+  <Step title="Create a Certificate Profile">
+    Go to **Certificate Manager → Certificate Profiles** and create a profile with your AWS ACM CA as the issuing CA.
+  </Step>
+  <Step title="Configure an Application and Issue a Certificate">
+    Create an [Application](/documentation/platform/pki/applications/overview), attach the profile, and configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview). Then submit a certificate request from within the Application. Infisical requests the certificate from ACM, writes the required CNAME(s) to Route 53, waits for ACM to finish validation, and saves the certificate and private key.
     ![Certificate Created](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-certificate-created.png)
   </Step>
 </Steps>

@@ -1,0 +1,46 @@
+---
+title: "Access Control"
+description: "Understand how permissions work in Certificate Manager."
+---
+
+Certificate Manager uses a layered access model that separates infrastructure management from day-to-day operations.
+
+## Organization Level
+
+**Platform Admins** manage the shared infrastructure that all teams use:
+
+- Certificate Authorities (internal and external)
+- Certificate Policies
+- Certificate Profiles
+- Creating Applications and assigning members
+- Creating Signers and assigning members
+
+This separation means teams can issue certificates and sign code without needing access to the underlying CAs or policies.
+
+## Application Access
+
+[Applications](/documentation/platform/pki/applications/overview) are where teams issue and manage certificates. Members are assigned with one of three roles:
+
+| Role | What they can do |
+|------|------------------|
+| **Admin** | Configure enrollment methods, alerting, syncs, and approval policies. Manage Application members. |
+| **Operator** | Issue, renew, and revoke certificates within the Application. |
+| **Auditor** | View certificates and Application configuration (read-only). |
+
+Only members assigned to an Application can see or interact with its certificates.
+
+## Signer Access
+
+[Signers](/documentation/platform/pki/code-signing/signers) are where teams sign code artifacts. Similar to Applications, members are assigned directly to Signers with specific permissions.
+
+Platform Admins create Signers and assign members. Assigned members can then use the Signer to sign artifacts through the PKCS#11 module or request signing through approval workflows.
+
+[Signing Policies](/documentation/platform/pki/code-signing/signing-policies) can add additional controls, requiring approval before signing operations are allowed.
+
+## Principle of Least Privilege
+
+This model follows the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege):
+
+- Platform admins set up infrastructure once
+- Teams operate within their assigned Applications and Signers
+- No one has more access than they need

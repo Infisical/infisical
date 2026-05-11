@@ -1,13 +1,17 @@
 ---
 title: "API Enrollment"
 sidebarTitle: "API"
-description: "Issue certificates programmatically via the Infisical API or UI."
+description: "Issue certificates through the Infisical UI, Agent, or API with optional server-driven auto-renewal."
 ---
 
-Issue certificates through direct API calls or the Infisical UI. API enrollment gives you full control over certificate requests and is ideal for custom integrations, CI/CD pipelines, and programmatic workflows.
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
+API enrollment is the default method for issuing certificates through the Infisical UI, the Infisical Agent, or direct API calls. It's the most flexible option — use it for manual one-off requests, automated pipelines, or server-driven auto-renewal where Infisical manages the certificate lifecycle.
 
 <Info>
-  API enrollment is configured per Application. Your product admin sets up the certificate profile, and you configure API enrollment within your Application.
+  API enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure API enrollment within your Application.
 </Info>
 
 ## When to Use API Enrollment
@@ -45,7 +49,7 @@ Issue certificates through direct API calls or the Infisical UI. API enrollment 
     Choose the certificate profile that defines what certificates will look like (CA, validity, constraints).
     
     <Note>
-      Profiles are created by product admins. If you don't see any profiles, contact your product admin.
+      Profiles are created by platform admins. If you don't see any profiles, contact your platform admin.
     </Note>
   </Step>
   <Step title="Configure auto-renewal (optional)">
@@ -65,6 +69,10 @@ Issue certificates through direct API calls or the Infisical UI. API enrollment 
 ## Issue a Certificate
 
 Once API enrollment is configured, you can issue certificates through the UI or API.
+
+<Info>
+  Certificates issued through API enrollment are tied to the Application + Profile pair. The profile determines certificate parameters (CA, policy, defaults), while the Application scopes the certificate to your service.
+</Info>
 
 <Tabs>
   <Tab title="Infisical UI">

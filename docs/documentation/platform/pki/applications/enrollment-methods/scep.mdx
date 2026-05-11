@@ -4,10 +4,14 @@ sidebarTitle: "SCEP"
 description: "Issue certificates using the Simple Certificate Enrollment Protocol (SCEP) for network devices, mobile devices, and MDM systems."
 ---
 
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
 Use the SCEP enrollment method to provision certificates to network devices, mobile devices, printers, routers, and other endpoints that support the SCEP protocol. SCEP is widely used by MDM tools like Jamf Pro, Ivanti, and Microsoft Intune.
 
 <Info>
-  SCEP enrollment is configured per Application. Your product admin sets up the certificate profile, and you configure SCEP enrollment within your Application.
+  SCEP enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure SCEP enrollment within your Application.
 </Info>
 
 ## When to Use SCEP Enrollment
@@ -117,23 +121,13 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
 
   </Step>
   <Step title="Obtain the SCEP endpoint URL">
-    Once the certificate profile is created, you can obtain the SCEP endpoint URL from the certificate profile details page.
+    After configuring SCEP enrollment, you can obtain the SCEP endpoint URL from the enrollment configuration in your Application. The URL is displayed in the enrollment details after you save the configuration.
 
-    The SCEP endpoint URL follows the structure:
+    <Info>
+      The SCEP endpoint URL is unique to this Application + Profile pair. Certificates enrolled through this URL are associated with this Application and follow the selected profile's policy.
+    </Info>
 
-    ```
-    https://app.infisical.com/scep/{profile_id}/pkiclient.exe
-    ```
-
-    Where `{profile_id}` is the UUID of the certificate profile. This is the URL you provide to your SCEP clients as the SCEP server URL.
-
-    For profiles with **dynamic challenges** enabled, you will also see a **Challenge Endpoint URL**:
-
-    ```
-    https://app.infisical.com/scep/{profile_id}/challenge
-    ```
-
-    This is the URL your MDM tool or automation calls to generate one-time challenge passwords.
+    For configurations with **dynamic challenges** enabled, you will also see a **Challenge Endpoint URL** that your MDM tool or automation calls to generate one-time challenge passwords.
 
   </Step>
   <Step title="Configure your SCEP client and enroll">
@@ -232,7 +226,7 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
           Each dynamic challenge can only be used once. If enrollment fails, generate a new challenge and retry.
         </Note>
 
-        For MDM integrations (Jamf Pro, Ivanti, etc.), the MDM tool handles this automatically via webhook. See the [Jamf Pro integration guide](/documentation/platform/pki/applications/guides/jamf-pro-scep) for details.
+        For MDM integrations (Jamf Pro, Ivanti, etc.), the MDM tool handles this automatically via webhook. See the [Jamf Pro integration guide](/documentation/platform/pki/guides/applications/jamf-pro-scep) for details.
       </Tab>
     </Tabs>
 
@@ -298,7 +292,7 @@ Infisical's SCEP server supports the following algorithms for the CMS message ex
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Jamf Pro Guide" icon="mobile" href="/documentation/platform/pki/applications/guides/jamf-pro-scep">
+  <Card title="Jamf Pro Guide" icon="mobile" href="/documentation/platform/pki/guides/applications/jamf-pro-scep">
     Set up SCEP enrollment with Jamf Pro MDM.
   </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">

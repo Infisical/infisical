@@ -13,11 +13,38 @@ Push certificates from your Application to external services automatically. When
 ## How It Works
 
 ```mermaid
-graph LR
-    C1[Certificate 1] --> S[Certificate Sync]
-    C2[Certificate 2] --> S
-    S --> A[App Connection]
-    A --> D[Destination Service]
+flowchart LR
+    subgraph Application
+        C1[Certificate 1]
+        C2[Certificate 2]
+        C3[Certificate 3]
+    end
+    
+    S[Certificate Sync]
+    AC[App Connection]
+    
+    subgraph Destination["Destination Service"]
+        D1[Certificate 1]
+        D2[Certificate 2]
+        D3[Certificate 3]
+    end
+    
+    C1 --> S
+    C2 --> S
+    C3 --> S
+    S --> AC
+    AC --> D1
+    AC --> D2
+    AC --> D3
+    
+    style C1 fill:#e1f5fe,stroke:#01579b
+    style C2 fill:#e1f5fe,stroke:#01579b
+    style C3 fill:#e1f5fe,stroke:#01579b
+    style S fill:#fff9c4,stroke:#f57f17
+    style AC fill:#e8f5e9,stroke:#2e7d32
+    style D1 fill:#f3e5f5,stroke:#7b1fa2
+    style D2 fill:#f3e5f5,stroke:#7b1fa2
+    style D3 fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 1. **Select certificates** to sync from your Application
@@ -84,41 +111,11 @@ graph LR
 |--------|-------------|
 | **Remove on expiry** | Automatically remove expired certificates from the destination |
 | **Include Root CA** | Include the root CA certificate in the chain |
-| **Certificate naming** | Control how certificate names are generated in the destination |
+| **Certificate naming** | Customize how certificates are named in the destination (default: `Infisical-{certificateId}`) |
 
-<Info>
-  Some destination services don't support automatic removal of expired certificates.
-</Info>
-
-### Certificate Naming
-
-By default, certificates are named `Infisical-{certificateId}`. You can customize this with a naming schema.
-
-**Schema placeholders:**
-- `{{certificateId}}` — The unique certificate identifier (required)
-
-**Examples:**
-- `myapp-{{certificateId}}` → `myapp-abc123def456`
-- `ssl/{{certificateId}}` → `ssl/abc123def456`
-
-**Rules:**
-- Must include exactly one `{{certificateId}}` placeholder
-- Only alphanumeric characters, dashes, underscores, and slashes allowed
-- Matching certificates will be managed by Infisical during sync operations
-
-## With Auto-Renewal
-
-Certificate Syncs work seamlessly with [server-driven auto-renewal](/documentation/platform/pki/applications/certificates#server-driven-certificate-renewal):
-
-1. Certificate approaches expiration
-2. Infisical automatically renews the certificate
-3. Renewed certificate is automatically pushed to all configured sync destinations
-
-This creates a fully automated certificate lifecycle — no manual intervention required.
-
-<Warning>
-  Changes made directly to Infisical-managed certificates in the destination service may be overwritten by future syncs.
-</Warning>
+<Note>
+  Some destinations don't support automatic removal of expired certificates. Certificates managed by Infisical may be overwritten if modified directly in the destination.
+</Note>
 
 ## What's Next?
 
