@@ -772,10 +772,26 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     wsHandler: async (connection: WebSocket, req) => {
+      // WASM sends frames before ticket validation finishes; buffer them
+      const preAuthMessages: { data: Buffer; isBinary: boolean }[] = [];
+      const preAuthHandler = (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+        let buf: Buffer;
+        if (Buffer.isBuffer(raw)) {
+          buf = raw;
+        } else if (Array.isArray(raw)) {
+          buf = Buffer.concat(raw);
+        } else {
+          buf = Buffer.from(raw);
+        }
+        preAuthMessages.push({ data: buf, isBinary });
+      };
+      connection.on("message", preAuthHandler);
+
       try {
         const ticketValue = req.query.ticket;
         const separatorIndex = ticketValue.indexOf(":");
         if (separatorIndex === -1) {
+          connection.off("message", preAuthHandler);
           connection.close(4001, "Invalid or expired ticket");
           return;
         }
@@ -790,6 +806,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         });
 
         if (!tokenRecord?.payload) {
+          connection.off("message", preAuthHandler);
           connection.close(4001, "Invalid or expired ticket");
           return;
         }
@@ -817,6 +834,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           .parse(JSON.parse(tokenRecord.payload));
 
         if (payload.accountId !== req.params.accountId) {
+          connection.off("message", preAuthHandler);
           connection.close(4001, "Invalid or expired ticket");
           return;
         }
@@ -834,9 +852,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           userId,
           actorIp: req.realIp ?? "",
           actorUserAgent: req.headers["user-agent"] ?? "",
-          reason: payload.reason
+          reason: payload.reason,
+          preAuthMessages,
+          preAuthHandler
         });
       } catch (err) {
+        connection.off("message", preAuthHandler);
         logger.error(err, "WebSocket ticket validation failed");
         connection.close(4001, "Invalid or expired ticket");
       }

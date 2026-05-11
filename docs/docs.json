@@ -947,7 +947,8 @@
                       "documentation/platform/pam/product-reference/web-access/overview",
                       "documentation/platform/pam/product-reference/web-access/postgresql",
                       "documentation/platform/pam/product-reference/web-access/redis",
-                      "documentation/platform/pam/product-reference/web-access/ssh"
+                      "documentation/platform/pam/product-reference/web-access/ssh",
+                      "documentation/platform/pam/product-reference/web-access/windows-rdp"
                     ]
                   }
                 ]

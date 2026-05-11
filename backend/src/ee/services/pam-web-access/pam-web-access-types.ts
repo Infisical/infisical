@@ -48,6 +48,8 @@ export const WS_PING_INTERVAL_MS = 30000;
 // only when the tab has been hidden/backgrounded for the full window.
 export const WS_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
+export type TEarlyBufferedMsg = { data: Buffer; isBinary: boolean };
+
 export type TSessionContext = {
   socket: WebSocket;
   relayPort: number;
@@ -57,6 +59,11 @@ export type TSessionContext = {
   sendSessionEnd: (reason: SessionEndReason) => void;
   isNearSessionExpiry: () => boolean;
   onCleanup: () => void;
+  /** Frames received before the handler took over. Drain after the relay
+   *  is up; the protocol-agnostic handler (RDP) replays them. */
+  earlyMessages: TEarlyBufferedMsg[];
+  /** Detach the early-buffer listener so the handler can install its own. */
+  releaseEarlyBuffer: () => void;
 };
 
 export type TSessionHandlerResult = {

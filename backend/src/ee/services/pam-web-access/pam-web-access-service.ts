@@ -50,12 +50,14 @@ import { TSSHAccountCredentials, TSSHResourceConnectionDetails } from "../pam-re
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { handlePostgresSession } from "./pam-postgres-session-handler";
+import { handleRdpSession } from "./pam-rdp-session-handler";
 import { handleRedisSession } from "./pam-redis-session-handler";
 import { handleSSHSession } from "./pam-ssh-session-handler";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
   SessionEndReason,
+  TEarlyBufferedMsg,
   TerminalServerMessageType,
   TIssueWebSocketTicketDTO,
   TSessionContext,
@@ -66,7 +68,7 @@ import {
   WS_PING_INTERVAL_MS
 } from "./pam-web-access-types";
 
-const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, PamResource.Redis];
+const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, PamResource.Redis, PamResource.Windows];
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
@@ -107,6 +109,8 @@ type THandleWebSocketConnectionDTO = {
   actorIp: string;
   actorUserAgent: string;
   reason?: string | null;
+  preAuthMessages: TEarlyBufferedMsg[];
+  preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
@@ -142,11 +146,7 @@ export const pamWebAccessServiceFactory = ({
     sendMessage(socket, { type: TerminalServerMessageType.SessionEnd, reason });
   };
 
-  /**
-   * Send a session_end message and close the socket only after the message has been flushed.
-   * This avoids the race where socket.close() sends a close frame before the session_end
-   * data frame reaches the client.
-   */
+  // Flushes the session_end frame before sending the WS close frame
   const sendSessionEndAndClose = (socket: WebSocket, reason: SessionEndReason): void => {
     try {
       if (socket.readyState === socket.OPEN) {
@@ -202,6 +202,13 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
+    const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
+    if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
+      throw new BadRequestError({
+        message: `You have reached the maximum of ${MAX_WEB_SESSIONS_PER_USER} active web access sessions. Close an existing session and try again.`
+      });
+    }
+
     // Approval policy check
     const approvalPolicy = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.PamAccess](ApprovalPolicyType.PamAccess);
 
@@ -232,7 +239,6 @@ export const pamWebAccessServiceFactory = ({
         });
       }
 
-      // If there isn't a policy in place, continue with checking permission
       const { permission } = await permissionService.getProjectPermission({
         actor: actor.type,
         actorId: actor.id,
@@ -255,8 +261,7 @@ export const pamWebAccessServiceFactory = ({
       );
     }
 
-    // Reason check is intentionally placed after the approval/permission gates so
-    // its distinct error code does not leak policy configuration to unauthorized actors.
+    // After auth gates so error code doesn't leak policy config to unauthorized actors
     if (account.policyId) {
       const policy = await pamAccountPolicyDAL.findById(account.policyId);
       const policyRules = (policy?.rules ?? {}) as TPolicyRules;
@@ -283,8 +288,7 @@ export const pamWebAccessServiceFactory = ({
       );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
-      // Determine which MFA method to use
-      // Priority: org-enforced > user-selected > email as fallback
+      // Priority: org-enforced > user-selected > email fallback
       const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
       const userMfaMethod = actorUser.isMfaEnabled ? (actorUser.selectedMfaMethod as MfaMethod | null) : undefined;
       const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
@@ -365,8 +369,15 @@ export const pamWebAccessServiceFactory = ({
     actorName,
     actorIp,
     actorUserAgent,
-    reason: accessReason
+    reason: accessReason,
+    preAuthMessages,
+    preAuthHandler
   }: THandleWebSocketConnectionDTO): Promise<void> => {
+    const earlyMessages: TEarlyBufferedMsg[] = preAuthMessages;
+    const releaseEarlyBuffer = () => {
+      socket.off("message", preAuthHandler);
+    };
+
     let session: { id: string } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
@@ -381,8 +392,6 @@ export const pamWebAccessServiceFactory = ({
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = async () => {
-      // Each operation is individually idempotent — null checks skip already-cleaned resources,
-      // and finally blocks ensure references are cleared even if an operation throws.
       if (expiryTimer) {
         clearTimeout(expiryTimer);
         expiryTimer = null;
@@ -396,7 +405,6 @@ export const pamWebAccessServiceFactory = ({
         idleTimer = null;
       }
 
-      // Handler cleanup (closes protocol client through the tunnel)
       if (handlerResult) {
         try {
           await handlerResult.cleanup();
@@ -407,7 +415,7 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      // Close relay tunnel (MUST come after handler cleanup)
+      // Must come after handler cleanup
       if (relayServer) {
         try {
           await relayServer.cleanup();
@@ -418,9 +426,18 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      // Best-effort ALPN session cancellation (fire-and-forget).
-      // Triggers gateway-side cleanup: log upload, and session end via API.
-      // If this fails, the scheduled queue job will expire the session at expiresAt time.
+      if (session) {
+        try {
+          await pamSessionDAL.updateById(session.id, {
+            status: PamSessionStatus.Ended,
+            endedAt: new Date()
+          });
+        } catch (err) {
+          logger.debug(err, "Error marking session ended in cleanup");
+        }
+      }
+
+      // Best-effort: triggers gateway-side cleanup (fire-and-forget)
       if (relayCerts) {
         const certs = relayCerts;
         relayCerts = null;
@@ -554,18 +571,17 @@ export const pamWebAccessServiceFactory = ({
       };
 
       // 5. START TUNNEL
+      const tunnelProtocol =
+        resource.resourceType === PamResource.Windows ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam;
       relayServer = await setupRelayServer({
-        protocol: GatewayProxyProtocol.Pam,
+        protocol: tunnelProtocol,
         relayHost: certs.relayHost,
         relay: certs.relay,
         gateway: certs.gateway,
         longLived: true
       });
 
-      // Tunnel drop detection
-      // The gateway cert expires on the gateway's clock, which may be slightly
-      // ahead of ours (clock skew). A 30s tolerance lets us correctly attribute
-      // tunnel teardowns near session end as normal completion rather than errors.
+      // 30s tolerance for clock skew between us and gateway
       const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
 
       // Bound message helpers for handlers
@@ -586,7 +602,9 @@ export const pamWebAccessServiceFactory = ({
         sendMessage: boundSendMessage,
         sendSessionEnd: boundSendSessionEnd,
         isNearSessionExpiry,
-        onCleanup: handlerCleanup
+        onCleanup: handlerCleanup,
+        earlyMessages,
+        releaseEarlyBuffer
       };
 
       // 6. CONNECT TO RESOURCE (dispatch by type)
@@ -605,6 +623,8 @@ export const pamWebAccessServiceFactory = ({
           connectionDetails: resourceConnectionDetails as TRedisResourceConnectionDetails,
           credentials: accountCredentials as TRedisAccountCredentials
         });
+      } else if (resource.resourceType === PamResource.Windows) {
+        handlerResult = await handleRdpSession(ctx);
       }
 
       // 7. ACTIVATE SESSION
@@ -645,7 +665,6 @@ export const pamWebAccessServiceFactory = ({
 
       resetIdleTimer();
 
-      // WebSocket keep-alive to survive ALB idle timeout (default 60s)
       let isAlive = true;
 
       socket.on("pong", () => {

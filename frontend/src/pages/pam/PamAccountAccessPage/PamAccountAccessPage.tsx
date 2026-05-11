@@ -5,6 +5,7 @@ import { useParams } from "@tanstack/react-router";
 import { PamResourceType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
+import { RdpContent } from "./RdpContent";
 import { ReasonGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 
@@ -135,6 +136,9 @@ const PageContent = () => {
       {(reason) => {
         if (account.resource?.resourceType === PamResourceType.Postgres) {
           return <PamDataExplorerPage reason={reason} />;
+        }
+        if (account.resource?.resourceType === PamResourceType.Windows) {
+          return <RdpContent account={account} projectId={projectId!} reason={reason} />;
         }
         return (
           <TerminalContent
