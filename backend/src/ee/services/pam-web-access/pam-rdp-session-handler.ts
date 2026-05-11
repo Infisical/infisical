@@ -54,6 +54,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
         try {
           tcpSocket.write(buf);
         } catch {
+          if (!cleanedUp) onCleanup();
           teardown();
         }
       });
@@ -63,6 +64,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
         socket.send(chunk, { binary: true }, (err) => {
           if (err) {
             logger.error(err, "rdp session: ws send failed");
+            if (!cleanedUp) onCleanup();
             teardown();
           }
         });
