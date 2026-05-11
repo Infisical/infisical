@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/config"
-	"github.com/infisical/api/internal/crypto/cipher"
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/database/pg/pglock"
+	"github.com/infisical/api/internal/libs/crypto/cipher"
 	"github.com/infisical/api/internal/libs/errutil"
 )
 

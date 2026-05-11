@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/infisical/api/internal/crypto/cipher"
+	"github.com/infisical/api/internal/libs/crypto/cipher"
 )
 
 func TestEncryptDecryptRoundTrip(t *testing.T) {

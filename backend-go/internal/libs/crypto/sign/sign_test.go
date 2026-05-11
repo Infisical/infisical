@@ -3,7 +3,7 @@ package sign_test
 import (
 	"testing"
 
-	"github.com/infisical/api/internal/crypto/sign"
+	"github.com/infisical/api/internal/libs/crypto/sign"
 )
 
 func TestRSAGenerateAndPublicKey(t *testing.T) {
