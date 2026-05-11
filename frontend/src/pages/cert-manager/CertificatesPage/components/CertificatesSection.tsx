@@ -131,23 +131,25 @@ export const CertificatesSection = ({
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
         </CardTitle>
         <CardDescription>View, filter, and manage all certificates.</CardDescription>
-        <CardAction>
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateActions.Import}
-            a={ProjectPermissionSub.Certificates}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline"
-                onClick={() => handlePopUpOpen("certificateImport")}
-                disabled={!isAllowed}
-              >
-                <ArrowRightIcon className="mr-1.5 size-4" />
-                Import
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </CardAction>
+        {!applicationId && (
+          <CardAction>
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateActions.Import}
+              a={ProjectPermissionSub.Certificates}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline"
+                  onClick={() => handlePopUpOpen("certificateImport")}
+                  disabled={!isAllowed}
+                >
+                  <ArrowRightIcon className="mr-1.5 size-4" />
+                  Import
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         <CertificatesTable
