@@ -34,6 +34,7 @@ import {
   CertKeyUsage
 } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
+import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import {
   CertSubjectAlternativeNameType,
@@ -157,6 +158,17 @@ export const CertificateIssuanceModal = ({
     includeConfigs: true
   });
 
+  const { data: appProfiles } = useListPkiApplicationProfiles(applicationId ?? "");
+
+  const availableProfiles = useMemo(() => {
+    const allProfiles = profilesData?.certificateProfiles ?? [];
+    if (!applicationId) return allProfiles;
+    const apiEnabledProfileIds = new Set(
+      (appProfiles ?? []).filter((p) => Boolean(p.apiConfigId)).map((p) => p.profileId)
+    );
+    return allProfiles.filter((p) => apiEnabledProfileIds.has(p.id));
+  }, [profilesData?.certificateProfiles, appProfiles, applicationId]);
+
   const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
   const {
@@ -191,8 +203,8 @@ export const CertificateIssuanceModal = ({
   const actualSelectedProfileId = watch("profileId");
   const watchedIsCA = watch("basicConstraints.isCA") || false;
   const actualSelectedProfile = useMemo(
-    () => profilesData?.certificateProfiles?.find((p) => p.id === actualSelectedProfileId),
-    [profilesData?.certificateProfiles, actualSelectedProfileId]
+    () => availableProfiles.find((p) => p.id === actualSelectedProfileId),
+    [availableProfiles, actualSelectedProfileId]
   );
 
   const { data: policyData } = useGetCertificatePolicyById({
@@ -585,7 +597,7 @@ export const CertificateIssuanceModal = ({
                       placeholder="Select a certificate profile"
                       position="popper"
                     >
-                      {profilesData?.certificateProfiles?.map((profile) => (
+                      {availableProfiles.map((profile) => (
                         <SelectItem key={profile.id} value={profile.id}>
                           {profile.slug}
                         </SelectItem>

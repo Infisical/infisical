@@ -400,7 +400,11 @@ export const CertificateRequestsSection = ({
         )}
       </div>
 
-      <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateIssuanceModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        applicationId={applicationId}
+      />
     </div>
   );
 };
