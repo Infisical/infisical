@@ -12,7 +12,7 @@ import (
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/secretmanager"
-	"github.com/infisical/api/internal/services/secretmanager/secrets"
+	"github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
 // Handler implements the Goa secrets service interface.
@@ -20,7 +20,7 @@ type Handler struct {
 	auth.Authenticator
 	logger     *slog.Logger
 	sharedSvc  *services.Services
-	secretsSvc *secrets.Service
+	secretsSvc *secret.Service
 }
 
 // Deps holds the dependencies for the secrets handler.
@@ -32,11 +32,10 @@ type Deps struct {
 
 // NewHandler creates a new secrets handler.
 func NewHandler(deps Deps) *Handler {
-	secretsSvc := secrets.NewService(deps.Logger, &secrets.Deps{
-		SecretService:       deps.SecretManagerSvc.Secret,
+	secretsSvc := secret.NewService(deps.Logger, &secret.Deps{
+		DB:                  deps.SecretManagerSvc.DB,
 		SecretFolderService: deps.SecretManagerSvc.SecretFolder,
 		SecretImportService: deps.SecretManagerSvc.SecretImport,
-		EnvironmentService:  deps.SecretManagerSvc.Environment,
 		KMSService:          deps.SharedSvc.KMS,
 	})
 
@@ -48,7 +47,7 @@ func NewHandler(deps Deps) *Handler {
 	}
 }
 
-// accessChecker implements secrets.AccessChecker using permission service.
+// accessChecker implements secret.AccessChecker using permission service.
 type accessChecker struct {
 	ability *gocasl.Ability
 }
@@ -62,7 +61,7 @@ func (a *accessChecker) CanReadSecretValue(env, path, key string, tagSlugs []str
 }
 
 // buildAccessChecker creates an AccessChecker from permission result.
-func buildAccessChecker(permResult *permission.GetProjectPermissionResult) secrets.AccessChecker {
+func buildAccessChecker(permResult *permission.GetProjectPermissionResult) secret.AccessChecker {
 	return &accessChecker{ability: permResult.Permission.Ability}
 }
 
@@ -86,16 +85,16 @@ func parseTagSlugs(tagSlugsStr *string) []string {
 }
 
 // parseMetadataFilter parses a pipe-delimited string of metadata filters.
-func parseMetadataFilter(metadataFilterStr *string) []secrets.MetadataFilterEntry {
+func parseMetadataFilter(metadataFilterStr *string) []secret.MetadataFilterEntry {
 	if metadataFilterStr == nil || *metadataFilterStr == "" {
 		return nil
 	}
 
 	pairs := strings.Split(*metadataFilterStr, "|")
-	result := make([]secrets.MetadataFilterEntry, 0, len(pairs))
+	result := make([]secret.MetadataFilterEntry, 0, len(pairs))
 
 	for _, pair := range pairs {
-		entry := secrets.MetadataFilterEntry{}
+		entry := secret.MetadataFilterEntry{}
 		parts := strings.SplitSeq(pair, ",")
 
 		for part := range parts {
@@ -126,7 +125,7 @@ func parseMetadataFilter(metadataFilterStr *string) []secrets.MetadataFilterEntr
 }
 
 // buildSecretRaw converts a ProcessedSecret to the API response type.
-func (h *Handler) buildSecretRaw(ps *secrets.ProcessedSecret, projectID string) *gensecrets.SecretRaw {
+func (h *Handler) buildSecretRaw(ps *secret.ProcessedSecret, projectID string) *gensecrets.SecretRaw {
 	sec := ps.Secret
 
 	tags := make([]*gensecrets.SecretTag, 0, len(sec.Tags))
@@ -181,7 +180,7 @@ func (h *Handler) buildSecretRaw(ps *secrets.ProcessedSecret, projectID string) 
 }
 
 // buildImportSecretRaw converts a ProcessedSecret to the import API response type.
-func (h *Handler) buildImportSecretRaw(ps *secrets.ProcessedSecret, projectID string) *gensecrets.ImportSecretRaw {
+func (h *Handler) buildImportSecretRaw(ps *secret.ProcessedSecret, projectID string) *gensecrets.ImportSecretRaw {
 	sec := ps.Secret
 
 	metadata := make([]*gensecrets.ResourceMetadata, 0, len(ps.Metadata))
@@ -224,10 +223,10 @@ func (h *Handler) buildImportSecretRaw(ps *secrets.ProcessedSecret, projectID st
 
 // buildImportsResponse builds the imports array for the API response.
 func (h *Handler) buildImportsResponse(
-	result *secrets.ListSecretsResult,
+	result *secret.ListSecretsResult,
 	projectID string,
 ) []*gensecrets.SecretImport {
-	secretsByImport := make(map[string][]secrets.ProcessedSecret)
+	secretsByImport := make(map[string][]secret.ProcessedSecret)
 	for i := range result.ImportedSecrets {
 		sec := &result.ImportedSecrets[i]
 		key := sec.ImportEnvironment + ":" + sec.ImportPath
@@ -237,7 +236,8 @@ func (h *Handler) buildImportsResponse(
 	imports := make([]*gensecrets.SecretImport, 0, len(result.Imports))
 	for i := range result.Imports {
 		imp := &result.Imports[i]
-		key := imp.EnvSlug + ":" + imp.Path
+		envSlug, _ := result.FolderLookup.GetEnvSlug(imp.EnvID)
+		key := envSlug + ":" + imp.Path
 		impSecrets := secretsByImport[key]
 
 		importSecrets := make([]*gensecrets.ImportSecretRaw, 0, len(impSecrets))
@@ -248,7 +248,7 @@ func (h *Handler) buildImportsResponse(
 		folderID := imp.FolderID.String()
 		imports = append(imports, &gensecrets.SecretImport{
 			SecretPath:  imp.Path,
-			Environment: imp.EnvSlug,
+			Environment: envSlug,
 			FolderID:    &folderID,
 			Secrets:     importSecrets,
 		})

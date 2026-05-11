@@ -97,7 +97,7 @@ type ResolvedImport struct {
 	FolderID uuid.UUID
 	Import   ImportEntry
 	Depth    int
-	EnvSlug  string
+	EnvID    uuid.UUID
 	Path     string
 }
 

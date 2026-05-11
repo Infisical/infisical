@@ -15,16 +15,12 @@ type FolderLoader interface {
 	LoadProjectFolders(ctx context.Context, projectID string, envIDs []uuid.UUID) (*secretfolder.FolderLookup, error)
 }
 
-type EnvironmentInfo struct {
-	ID   uuid.UUID
-	Slug string
-}
-
 type ChainResult struct {
 	FolderLookup    *secretfolder.FolderLookup
 	DirectFolderIDs []uuid.UUID
 	DirectPaths     map[uuid.UUID]string
 	Imports         []ResolvedImport
+	UsedEnvIDs      []uuid.UUID
 }
 
 func (r *ChainResult) ImportedFolderIDs() []uuid.UUID {
@@ -60,7 +56,6 @@ func (r *ChainResolver) Resolve(
 	startEnvID uuid.UUID,
 	secretPath string,
 	recursive bool,
-	envByID map[uuid.UUID]EnvironmentInfo,
 ) (*ChainResult, error) {
 	loadedEnvs := make(map[uuid.UUID]bool)
 
@@ -140,14 +135,9 @@ func (r *ChainResolver) Resolve(
 				}
 				visited[targetNode.ID] = true
 
-				env, ok := envByID[imp.ImportEnvID]
-				if !ok {
-					continue
-				}
-
 				allImports = append(allImports, ResolvedImport{
 					FolderID: targetNode.ID,
-					EnvSlug:  env.Slug,
+					EnvID:    imp.ImportEnvID,
 					Path:     imp.ImportPath,
 					Import:   imp,
 				})
@@ -158,10 +148,17 @@ func (r *ChainResolver) Resolve(
 		currentFolders = nextFolders
 	}
 
+	// Collect all used env IDs
+	usedEnvIDs := make([]uuid.UUID, 0, len(loadedEnvs))
+	for envID := range loadedEnvs {
+		usedEnvIDs = append(usedEnvIDs, envID)
+	}
+
 	return &ChainResult{
 		FolderLookup:    folderLookup,
 		DirectFolderIDs: directFolderIDs,
 		DirectPaths:     directPaths,
 		Imports:         allImports,
+		UsedEnvIDs:      usedEnvIDs,
 	}, nil
 }

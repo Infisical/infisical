@@ -32,12 +32,14 @@ func (n *FolderNode) GetPath() string {
 type FolderLookup struct {
 	byID     map[uuid.UUID]*FolderNode
 	envRoots map[uuid.UUID]*FolderNode // envID → root
+	envSlugs map[uuid.UUID]string      // envID → slug
 }
 
 func newFolderLookup(rows []folderRow) *FolderLookup {
 	l := &FolderLookup{
 		byID:     make(map[uuid.UUID]*FolderNode, len(rows)),
 		envRoots: make(map[uuid.UUID]*FolderNode),
+		envSlugs: make(map[uuid.UUID]string),
 	}
 
 	// Pass 1: create all nodes.
@@ -48,11 +50,12 @@ func newFolderLookup(rows []folderRow) *FolderLookup {
 		}
 	}
 
-	// Pass 2: link parent ↔ children, identify roots.
+	// Pass 2: link parent ↔ children, identify roots, collect env slugs.
 	for _, r := range rows {
 		node := l.byID[r.ID]
 		if !r.ParentID.Valid {
 			l.envRoots[r.EnvID] = node
+			l.envSlugs[r.EnvID] = r.EnvSlug
 			continue
 		}
 		if p, ok := l.byID[r.ParentID.V]; ok {
@@ -153,6 +156,23 @@ func splitPath(p string) []string {
 func (l *FolderLookup) Merge(other *FolderLookup) {
 	maps.Copy(l.byID, other.byID)
 	maps.Copy(l.envRoots, other.envRoots)
+	maps.Copy(l.envSlugs, other.envSlugs)
+}
+
+// GetEnvSlug returns the slug for the given environment ID.
+func (l *FolderLookup) GetEnvSlug(envID uuid.UUID) (string, bool) {
+	slug, ok := l.envSlugs[envID]
+	return slug, ok
+}
+
+// GetEnvIDBySlug returns the environment ID for the given slug.
+func (l *FolderLookup) GetEnvIDBySlug(slug string) (uuid.UUID, bool) {
+	for id, s := range l.envSlugs {
+		if s == slug {
+			return id, true
+		}
+	}
+	return uuid.UUID{}, false
 }
 
 // HasEnv reports whether folders for the given environment have been loaded.

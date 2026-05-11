@@ -16,6 +16,7 @@ type folderRow struct {
 	Name     string
 	ParentID sql.Null[uuid.UUID]
 	EnvID    uuid.UUID
+	EnvSlug  string
 }
 
 type Deps struct {
@@ -41,7 +42,7 @@ func (s *Service) LoadProjectFolders(ctx context.Context, projectID string, envI
 
 func (s *Service) getFoldersByProjectAndEnvIDs(ctx context.Context, projectID string, envIDs []uuid.UUID) ([]folderRow, error) {
 	query := `
-		SELECT folder.id, folder.name, folder."parentId", folder."envId"
+		SELECT folder.id, folder.name, folder."parentId", folder."envId", env.slug
 		FROM secret_folders folder
 		INNER JOIN project_environments env ON folder."envId" = env.id
 		WHERE env."projectId" = @projectID AND folder."envId" = ANY(@envIDs)
@@ -58,7 +59,7 @@ func (s *Service) getFoldersByProjectAndEnvIDs(ctx context.Context, projectID st
 
 	folders, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (folderRow, error) {
 		var f folderRow
-		err := row.Scan(&f.ID, &f.Name, &f.ParentID, &f.EnvID)
+		err := row.Scan(&f.ID, &f.Name, &f.ParentID, &f.EnvID, &f.EnvSlug)
 		return f, err
 	})
 	if err != nil {

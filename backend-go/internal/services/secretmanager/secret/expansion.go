@@ -1,7 +1,6 @@
-package secrets
+package secret
 
 import (
-	"maps"
 	"regexp"
 	"strings"
 
@@ -209,10 +208,9 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 		resolvedValue := ""
 		if resolvedSecret != nil {
 			if _, cyclic := visited[secretID]; !cyclic {
-				newVisited := copyVisited(visited)
-				newVisited[secretID] = struct{}{}
-
-				expandedValue, moreNeeded := e.expandValue(resolvedSecret.Value, newVisited, depth+1)
+				visited[secretID] = struct{}{}
+				expandedValue, moreNeeded := e.expandValue(resolvedSecret.Value, visited, depth+1)
+				delete(visited, secretID)
 				resolvedValue = expandedValue
 				neededRefs = append(neededRefs, moreNeeded...)
 			} else {
@@ -321,10 +319,4 @@ func (e *SecretExpander) results() []ExpandedSecret {
 
 func hasReferences(value string) bool {
 	return interpolationRegex.MatchString(value)
-}
-
-func copyVisited(visited map[string]struct{}) map[string]struct{} {
-	newVisited := make(map[string]struct{}, len(visited)+1)
-	maps.Copy(newVisited, visited)
-	return newVisited
 }

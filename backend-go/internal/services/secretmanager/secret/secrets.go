@@ -3,6 +3,7 @@ package secret
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,7 +13,14 @@ import (
 	"github.com/infisical/api/internal/database/pg/qb"
 	"github.com/infisical/api/internal/database/pg/sqln"
 	"github.com/infisical/api/internal/libs/fn"
+	"github.com/infisical/api/internal/services/kms"
+	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
+	"github.com/infisical/api/internal/services/secretmanager/secretimport"
 )
+
+const secretValueHiddenMask = "<hidden-by-infisical>"
+
+// --- Data types ---
 
 type OrderByDirection string
 
@@ -105,17 +113,82 @@ type FindByFolderIdsFilter struct {
 	ExcludeRotatedSecrets   bool
 }
 
+// AccessChecker verifies if a user can access secrets at given locations.
+// Pass nil to skip permission checks (e.g., for internal/integration use).
+type AccessChecker interface {
+	CanDescribeSecret(env, path, key string, tagSlugs []string) bool
+	CanReadSecretValue(env, path, key string, tagSlugs []string) bool
+}
+
+// DecryptedMetadata holds a decrypted metadata entry.
+type DecryptedMetadata struct {
+	Key   string
+	Value string
+}
+
+// ProcessedSecret holds a secret with its computed metadata.
+type ProcessedSecret struct {
+	Secret            *Secret
+	SecretPath        string
+	Environment       string
+	Value             string
+	Comment           string
+	Metadata          []DecryptedMetadata
+	ValueHidden       bool
+	IsImported        bool
+	ImportFolderID    uuid.UUID
+	ImportEnvironment string
+	ImportPath        string
+}
+
+// --- Dependency Interfaces ---
+
+// SecretFolderService loads folder hierarchies for a project.
+type SecretFolderService interface {
+	LoadProjectFolders(ctx context.Context, projectID string, envIDs []uuid.UUID) (*secretfolder.FolderLookup, error)
+}
+
+// SecretImportService loads import configurations for a project.
+type SecretImportService interface {
+	LoadProjectImports(ctx context.Context, projectID string) (*secretimport.ImportLookup, error)
+}
+
+// KMSService creates cipher pairs for encryption/decryption.
+type KMSService interface {
+	CreateCipherPairWithDataKey(ctx context.Context, dto kms.CreateCipherPairDTO) (*kms.CipherPair, error)
+}
+
+// --- Service ---
+
+// Deps holds the dependencies for the secrets service.
 type Deps struct {
-	DB pg.DB
+	DB                  pg.DB
+	SecretFolderService SecretFolderService
+	SecretImportService SecretImportService
+	KMSService          KMSService
 }
 
+// Service handles secret retrieval with decryption and expansion.
 type Service struct {
-	db pg.DB
+	logger              *slog.Logger
+	db                  pg.DB
+	secretFolderService SecretFolderService
+	secretImportService SecretImportService
+	kmsService          KMSService
 }
 
-func NewService(deps Deps) *Service {
-	return &Service{db: deps.DB}
+// NewService creates a new secrets service.
+func NewService(logger *slog.Logger, deps *Deps) *Service {
+	return &Service{
+		logger:              logger.With(slog.String("service", "secrets")),
+		db:                  deps.DB,
+		secretFolderService: deps.SecretFolderService,
+		secretImportService: deps.SecretImportService,
+		kmsService:          deps.KMSService,
+	}
 }
+
+// --- Data Access Methods ---
 
 var secretGrouper = sqln.Grouper[Secret, uuid.UUID]{
 	Key: func(s *Secret) uuid.UUID { return s.ID },
@@ -413,4 +486,16 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 	}
 
 	return secret, nil
+}
+
+// --- Environment Lookup Methods ---
+
+// getEnvBySlug fetches a single environment ID by project ID and slug.
+func (s *Service) getEnvBySlug(ctx context.Context, projectID, slug string) (uuid.UUID, error) {
+	query := `SELECT id FROM project_environments WHERE "projectId" = @projectID AND slug = @slug`
+	args := pgx.NamedArgs{"projectID": projectID, "slug": slug}
+
+	var envID uuid.UUID
+	err := s.db.Replica().QueryRow(ctx, query, args).Scan(&envID)
+	return envID, err
 }
