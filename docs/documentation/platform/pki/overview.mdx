@@ -27,22 +27,6 @@ Infisical Certificate Manager is a centralized platform for managing X.509 certi
   </Card>
 </CardGroup>
 
-## Lifecycle Automation
-
-Certificate Manager automates the certificate lifecycle from issuance to expiration:
-
-<Columns cols="3">
-  <Card title="Issuance" icon="certificate">
-    Issue certificates on-demand or through automated enrollment protocols.
-  </Card>
-  <Card title="Renewal" icon="arrows-spin">
-    Auto-renew certificates before expiration with configurable lead times.
-  </Card>
-  <Card title="Revocation" icon="ban">
-    Revoke compromised certificates and publish to CRL distribution points.
-  </Card>
-</Columns>
-
 ## Visibility & Delivery
 
 <CardGroup cols={2}>
@@ -66,11 +50,7 @@ Certificate Manager separates shared infrastructure from team-level operations:
 
 | Level | Entities | Managed by |
 |-------|----------|------------|
-| **Organization** | Certificate Authorities, Policies, Profiles | Product admins |
+| **Organization** | Certificate Authorities, Policies, Profiles | Platform admins |
 | **Application** | Enrollment, Certificates, Alerting, Syncs | Team admins & operators |
 
-This separation means product admins set up PKI once, and teams consume it through Applications without needing to understand the underlying infrastructure.
-
-<Card title="Learn the Concepts" icon="book-open" href="/documentation/platform/pki/getting-started">
-  Understand how CAs, Policies, Profiles, and Applications connect.
-</Card>
+This separation means platform admins set up PKI once, and teams consume it through Applications without needing to understand the underlying infrastructure.

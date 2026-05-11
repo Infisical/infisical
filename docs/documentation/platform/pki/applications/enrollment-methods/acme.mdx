@@ -4,10 +4,14 @@ sidebarTitle: "ACME"
 description: "Issue certificates using the ACME protocol with Certbot, cert-manager, and other ACME clients."
 ---
 
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
 Use the ACME enrollment method to request and renew certificates automatically using standard ACME clients. Infisical acts as an ACME server, compatible with tools like Certbot, cert-manager, and any [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/)-compliant client.
 
 <Info>
-  ACME enrollment is configured per Application. Your product admin sets up the certificate profile, and you configure ACME enrollment within your Application.
+  ACME enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure ACME enrollment within your Application.
 </Info>
 
 ## When to Use ACME Enrollment
@@ -73,6 +77,10 @@ Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your s
     | **EAB Key Identifier (KID)** | Identifies your ACME account |
     | **EAB Secret** | Authenticates your ACME client |
     
+    <Info>
+      The ACME Directory URL is unique to this Application + Profile pair. Certificates requested through this URL are associated with this Application and follow the selected profile's policy.
+    </Info>
+    
     {/* SCREENSHOT: ACME EAB credentials modal */}
     <Frame caption="ACME credentials for your client">
       ![ACME EAB credentials](/images/pki/placeholder-screenshot.svg)
@@ -107,9 +115,9 @@ Configure your ACME client with the credentials from the previous step.
     - `chain.pem` — CA chain only
     
     For web server integration, see the guides:
-    - [Nginx with Certbot](/documentation/platform/pki/applications/guides/nginx-certbot)
-    - [Apache with Certbot](/documentation/platform/pki/applications/guides/apache-certbot)
-    - [Tomcat with Certbot](/documentation/platform/pki/applications/guides/tomcat-certbot)
+    - [Nginx with Certbot](/documentation/platform/pki/guides/applications/nginx-certbot)
+    - [Apache with Certbot](/documentation/platform/pki/guides/applications/apache-certbot)
+    - [Tomcat with Certbot](/documentation/platform/pki/guides/applications/tomcat-certbot)
   </Tab>
   <Tab title="cert-manager (Kubernetes)">
     Create an ACME ClusterIssuer for cert-manager:
@@ -144,7 +152,7 @@ Configure your ACME client with the credentials from the previous step.
       --from-literal=secret="<EAB Secret>"
     ```
     
-    For full setup, see [Kubernetes cert-manager guide](/documentation/platform/pki/applications/guides/k8s-cert-manager).
+    For full setup, see [Kubernetes cert-manager guide](/documentation/platform/pki/guides/applications/k8s-cert-manager).
   </Tab>
   <Tab title="Other Clients">
     Any [RFC 8555-compliant ACME client](https://letsencrypt.org/docs/client-options/) works with Infisical. Configure your client with:
@@ -174,10 +182,10 @@ For Kubernetes, cert-manager monitors Certificate resources and renews them auto
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx Guide" icon="n" href="/documentation/platform/pki/applications/guides/nginx-certbot">
+  <Card title="Nginx Guide" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
     Set up HTTPS on Nginx with Certbot.
   </Card>
-  <Card title="Kubernetes Guide" icon="dharmachakra" href="/documentation/platform/pki/applications/guides/k8s-cert-manager">
+  <Card title="Kubernetes Guide" icon="dharmachakra" href="/documentation/platform/pki/guides/applications/k8s-cert-manager">
     Issue certificates for Kubernetes workloads.
   </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">

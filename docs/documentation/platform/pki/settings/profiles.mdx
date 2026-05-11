@@ -4,7 +4,7 @@ sidebarTitle: "Profiles"
 description: "Create reusable certificate templates that teams consume through Applications."
 ---
 
-A certificate profile combines a [Certificate Authority](/documentation/platform/pki/ca/overview) with a [Certificate Policy](/documentation/platform/pki/settings/policies) to define how certificates are issued. Profiles are reusable templates that product admins create once and teams consume through [Applications](/documentation/platform/pki/applications/overview).
+A certificate profile combines a [Certificate Authority](/documentation/platform/pki/ca/overview) with a [Certificate Policy](/documentation/platform/pki/settings/policies) to define how certificates are issued. Profiles are reusable templates that platform admins create once and teams consume through [Applications](/documentation/platform/pki/applications/overview).
 
 <Info>
   Think of a profile as the "shape" of a certificate — it defines the CA that signs it, the rules it must follow, and sensible defaults for common fields.
@@ -72,24 +72,27 @@ Defaults can be configured for:
 
 ## How Profiles Are Used
 
-Teams don't interact with profiles directly. Instead:
+Profiles are consumed through [Applications](/documentation/platform/pki/applications/overview). The workflow separates responsibilities between platform and application administrators:
 
 <Steps>
-  <Step title="Product admin creates a profile">
-    Combines a CA + policy + defaults into a reusable template.
+  <Step title="Platform Admin creates a profile">
+    Combines a CA + policy + defaults into a reusable template that defines what certificates will look like.
   </Step>
-  <Step title="Product admin creates an Application">
-    Creates an Application, attaches the profile, and assigns team members.
+  <Step title="Platform Admin creates an Application">
+    Creates an Application, attaches one or more profiles to it, and assigns team members (Application Admins, Operators, Auditors).
   </Step>
-  <Step title="Team configures enrollment">
-    Assigned team members set up API, ACME, EST, or SCEP enrollment on their Application.
+  <Step title="Application Admin configures enrollment">
+    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
   </Step>
   <Step title="Certificates are issued">
-    Requests are validated against the profile's policy and signed by the profile's CA.
+    Teams request certificates through the configured enrollment method. Requests are validated against the profile's policy and signed by the profile's CA.
   </Step>
 </Steps>
 
-This separation means one profile can serve many Applications. When you need to update certificate rules, update the profile or policy — all Applications using it get the change automatically.
+This separation means:
+- **Profiles are reusable** — one profile can serve many Applications
+- **Enrollment is scoped** — each Application configures its own enrollment methods
+- **Changes propagate** — updating a profile or policy affects all Applications using it
 
 ## FAQ
 

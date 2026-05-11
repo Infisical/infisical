@@ -1,6 +1,6 @@
 ---
 title: "JBoss/WildFly with Certbot"
-sidebarTitle: "JBoss/WildFly"
+sidebarTitle: "Set Up HTTPS for JBoss"
 description: "Issue TLS certificates for JBoss/WildFly using ACME enrollment with Certbot."
 ---
 
@@ -21,22 +21,17 @@ Set up automatic TLS certificates for your [JBoss](https://www.jboss.org/)/[Wild
 ## Guide
 
 <Steps>
-    <Step title="Obtain ACME Configuration from Infisical">
-        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/settings/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/applications/enrollment-methods/acme).
-        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+    <Step title="Get ACME Credentials from Infisical">
+        In your Application's **Enrollment Methods** section, locate your ACME enrollment and click **Reveal ACME EAB** to view the credentials:
 
-        Click the **Reveal ACME EAB** option to view the ACME configuration details.
-
-        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
-
-        From the ACME configuration, gather the following values:
-
-        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory`.
-        - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
-        - EAB Secret: A secret key that authenticates your ACME client with Infisical.
+        | Credential | Purpose |
+        |------------|---------|
+        | **ACME Directory URL** | The URL Certbot uses to communicate with Infisical |
+        | **EAB Key Identifier (KID)** | Identifies your ACME account |
+        | **EAB Secret** | Authenticates your ACME client |
 
         <Note>
-            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/settings/profiles) and should not be shared.
+            Keep your EAB credentials secure. They authenticate your ACME client with Infisical and are unique to each enrollment.
         </Note>
     </Step>
 
@@ -68,7 +63,7 @@ Set up automatic TLS certificates for your [JBoss](https://www.jboss.org/)/[Wild
         ```bash
         sudo certbot certonly \
           --standalone \
-          --server "https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory" \
+          --server "https://your-infisical-instance.com/api/v1/cert-manager/acme/applications/{application-id}/profiles/{profile-id}/directory" \
           --eab-kid "your-eab-key-identifier" \
           --eab-hmac-key "your-eab-secret" \
           -d example.infisical.com \
@@ -226,3 +221,20 @@ Set up automatic TLS certificates for your [JBoss](https://www.jboss.org/)/[Wild
     </Step>
 
 </Steps>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Nginx with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up ACME for Nginx web servers.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+  <Card title="ACME Enrollment" icon="robot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
+    Learn more about ACME enrollment configuration.
+  </Card>
+</CardGroup>

@@ -1,20 +1,20 @@
 ---
 title: "Sign Container Images with cosign"
-sidebarTitle: "cosign"
+sidebarTitle: "Sign Container Images"
 description: "Use the Infisical PKCS#11 module to sign OCI container images with Sigstore cosign."
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Platform Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
 </Info>
 
 Sign OCI container images using `cosign` (from the Sigstore project) with the Infisical PKCS#11 module. Container image signing is a critical part of securing software supply chains — it lets you verify that images in your registry were built by trusted pipelines.
 
 ## Prerequisites
 
-- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Platform Admin
 - An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
-- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `cosign` v2.0 or later, **built with PKCS#11 support** (see below)
 - Write access to an OCI-compatible container registry
@@ -175,10 +175,10 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/code-signing/guides/pkcs11-jarsigner">
+  <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
     Sign Java artifacts with jarsigner
   </Card>
-  <Card title="Sign with GPG" icon="key" href="/documentation/platform/pki/code-signing/guides/pkcs11-gpg">
+  <Card title="Sign with GPG" icon="key" href="/documentation/platform/pki/guides/code-signing/gpg">
     Sign git commits and packages with GPG
   </Card>
 </CardGroup>

@@ -1,6 +1,6 @@
 ---
 title: "Nginx with Certbot"
-sidebarTitle: "Nginx"
+sidebarTitle: "Set Up HTTPS for Nginx"
 description: "Issue TLS certificates for Nginx using ACME enrollment with Certbot."
 ---
 
@@ -52,7 +52,7 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
         ```bash
         sudo certbot certonly \
           --nginx \
-          --server "https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory" \
+          --server "https://your-infisical-instance.com/api/v1/cert-manager/acme/applications/{application-id}/profiles/{profile-id}/directory" \
           --eab-kid "your-eab-key-identifier" \
           --eab-hmac-key "your-eab-secret" \
           -d example.infisical.com \
@@ -173,7 +173,7 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Apache with Certbot" icon="server" href="/documentation/platform/pki/applications/guides/apache-certbot">
+  <Card title="Apache with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/apache-certbot">
     Set up ACME for Apache web servers.
   </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">

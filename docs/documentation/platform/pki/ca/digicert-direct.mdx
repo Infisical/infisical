@@ -53,14 +53,19 @@ Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentr
   </Tab>
 </Tabs>
 
-## Issue a certificate
+## DigiCert Validation Workflow
 
-After creating the CA and a Certificate Profile, request a certificate as you normally would. The request will move through the following states:
+When you request a certificate through a DigiCert CertCentral CA, the request moves through these states:
 
-1. **Pending Validation**: DigiCert has accepted the order. Complete the domain control validation directly in DigiCert CertCentral.
-2. Your team completes validation on the CertCentral side.
-3. Infisical re-checks DigiCert. If you don't want to wait, click **Trigger Validation** on the request row to force an immediate check. When DigiCert confirms the order, Infisical downloads the certificate and chain and moves the request to **Issued**.
-4. If DigiCert does not issue within 24 hours the request transitions to **Failed**. Complete validation on CertCentral and submit a new request.
+| State | Description |
+|-------|-------------|
+| **Pending Validation** | DigiCert has accepted the order. Complete domain control validation in DigiCert CertCentral. |
+| **Issued** | Infisical polls DigiCert and downloads the certificate once validation completes. Click **Trigger Validation** to force an immediate check. |
+| **Failed** | If DigiCert does not issue within 24 hours. Complete validation on CertCentral and submit a new request. |
+
+<Note>
+  OV and EV certificates require manual domain validation on the DigiCert CertCentral side before issuance.
+</Note>
 
 ## FAQ
 
@@ -72,3 +77,22 @@ After creating the CA and a Certificate Profile, request a certificate as you no
     administrator approval before the certificate is actually revoked on their side.
   </Accordion>
 </AccordionGroup>
+
+## What's Next
+
+Now that your DigiCert CA is configured, set up the infrastructure to issue certificates:
+
+<CardGroup cols={2}>
+  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+    Create a profile that references your DigiCert CA.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Create an Application, attach a profile, and configure enrollment.
+  </Card>
+  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Choose how certificates are requested — API, ACME, EST, or SCEP.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">
+    Issue your first certificate end-to-end.
+  </Card>
+</CardGroup>

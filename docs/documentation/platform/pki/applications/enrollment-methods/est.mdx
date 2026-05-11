@@ -4,10 +4,14 @@ sidebarTitle: "EST"
 description: "Issue certificates using the Enrollment over Secure Transport (EST) protocol for enterprise devices."
 ---
 
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
 Use the EST enrollment method to issue and renew certificates for enterprise devices, IoT systems, and secure networks. EST provides strong mutual TLS authentication and is ideal for environments where devices have pre-installed bootstrap certificates.
 
 <Info>
-  EST enrollment is configured per Application. Your product admin sets up the certificate profile, and you configure EST enrollment within your Application.
+  EST enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure EST enrollment within your Application.
 </Info>
 
 ## When to Use EST Enrollment
@@ -83,16 +87,14 @@ Infisical's EST service implements [RFC 7030](https://datatracker.ietf.org/doc/h
     </Warning>
   </Step>
   <Step title="Get EST endpoints">
-    After saving, note the profile ID for constructing EST URLs:
+    After saving, Infisical provides EST endpoint URLs that you can view in the enrollment configuration. The endpoints follow the EST standard paths:
     
-    ```
-    https://app.infisical.com:8443/.well-known/est/{profile-id}/cacerts
-    https://app.infisical.com:8443/.well-known/est/{profile-id}/simpleenroll
-    https://app.infisical.com:8443/.well-known/est/{profile-id}/simplereenroll
-    ```
+    - `/cacerts` — retrieve CA certificates
+    - `/simpleenroll` — initial enrollment
+    - `/simplereenroll` — certificate renewal
     
     <Info>
-      EST endpoints use port 8443 and the `.well-known/est` path as defined in RFC 7030.
+      The EST endpoint URL is unique to this Application + Profile pair. Certificates requested through these endpoints are associated with this Application and follow the selected profile's policy. EST endpoints use port 8443 and the `.well-known/est` path as defined in RFC 7030.
     </Info>
   </Step>
 </Steps>

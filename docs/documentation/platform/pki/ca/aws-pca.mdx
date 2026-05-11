@@ -98,8 +98,11 @@ See the [AWS Connection](/integrations/app-connections/aws) page for full setup 
     ![External CA Form](/images/platform/pki/aws-pca/aws-pca-external-ca-form.png)
   </Step>
 
-  <Step title="Create a Certificate Profile and Issue a Certificate">
-    Create a certificate profile linked to your AWS PCA CA, then submit a certificate request. The request will be sent to AWS PCA and the issued certificate will be available once the order completes.
+  <Step title="Create a Certificate Profile">
+    Go to **Certificate Manager → Certificate Profiles** and create a profile with your AWS PCA CA as the issuing CA.
+  </Step>
+  <Step title="Configure an Application and Issue a Certificate">
+    Create an [Application](/documentation/platform/pki/applications/overview), attach the profile, and configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview). Then submit a certificate request from within the Application. The request will be sent to AWS PCA and the issued certificate will be available once the order completes.
     ![Certificate Created](/images/platform/pki/aws-pca/aws-pca-certificate-created.png)
   </Step>
 </Steps>
