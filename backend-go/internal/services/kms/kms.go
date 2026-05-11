@@ -60,8 +60,18 @@ type Decryptor func(cipherTextBlob []byte) ([]byte, error)
 
 // CipherPair holds matched encrypt/decrypt functions bound to a single data key.
 type CipherPair struct {
-	Encrypt Encryptor
-	Decrypt Decryptor
+	encrypt Encryptor
+	decrypt Decryptor
+}
+
+// Encrypt encrypts plaintext using the bound data key.
+func (c *CipherPair) Encrypt(plaintext []byte) ([]byte, error) {
+	return c.encrypt(plaintext)
+}
+
+// Decrypt decrypts ciphertext using the bound data key.
+func (c *CipherPair) Decrypt(ciphertext []byte) ([]byte, error) {
+	return c.decrypt(ciphertext)
 }
 
 // CreateCipherPairDTO selects which data key to use.
@@ -220,10 +230,10 @@ func (s *Service) CreateCipherPairWithDataKey(ctx context.Context, dto CreateCip
 	}
 
 	return &CipherPair{
-		Encrypt: func(plainText []byte) ([]byte, error) {
+		encrypt: func(plainText []byte) ([]byte, error) {
 			return encryptWithVersion(plainText, dataKey)
 		},
-		Decrypt: func(cipherTextBlob []byte) ([]byte, error) {
+		decrypt: func(cipherTextBlob []byte) ([]byte, error) {
 			return decryptWithVersion(cipherTextBlob, dataKey)
 		},
 	}, nil

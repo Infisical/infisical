@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // Project holds basic project details.
@@ -50,6 +51,29 @@ func (s *Service) GetBySlug(ctx context.Context, orgID uuid.UUID, slug string) (
 // Returns nil if not found.
 func (s *Service) GetByID(ctx context.Context, projectID string) (*Project, error) {
 	return s.findByID(ctx, projectID)
+}
+
+// ResolveProjectID resolves a project ID from either workspaceID or workspaceSlug.
+// If workspaceID is provided, it is returned directly.
+// Otherwise, workspaceSlug is used to look up the project.
+func (s *Service) ResolveProjectID(ctx context.Context, orgID uuid.UUID, workspaceID, workspaceSlug *string) (string, error) {
+	if workspaceID != nil && *workspaceID != "" {
+		return *workspaceID, nil
+	}
+
+	if workspaceSlug == nil || *workspaceSlug == "" {
+		return "", errutil.BadRequest("Either workspaceId or workspaceSlug is required")
+	}
+
+	proj, err := s.findBySlug(ctx, orgID, *workspaceSlug)
+	if err != nil {
+		return "", errutil.DatabaseErr("Failed to resolve project").WithErrf("ResolveProjectID(slug=%s): %w", *workspaceSlug, err)
+	}
+	if proj == nil {
+		return "", errutil.NotFound("Project not found")
+	}
+
+	return proj.ID, nil
 }
 
 // --- Row types ---

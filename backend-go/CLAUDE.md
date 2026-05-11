@@ -67,6 +67,24 @@ internal/
 - `server/api/` — Goa endpoint implementations. 1:1 with endpoints. Not imported elsewhere.
 - `services/` — Shared logic. No Goa dependency. Directly uses `pg.DB` for queries.
 
+### Handler vs Service Responsibilities
+
+**Handlers** (`server/api/`) are thin orchestration layers. They only:
+1. Extract identity from context
+2. Call permission service to get user permissions
+3. Resolve IDs (e.g., project ID from slug) via shared services
+4. Call domain service with opts (including AccessChecker for permission filtering)
+5. Build API response from service result
+6. Create audit logs
+
+**Services** (`services/`) contain all domain logic:
+- Data fetching and aggregation
+- Decryption/encryption
+- Permission filtering (via AccessChecker interface passed in opts)
+- Business rules (import chaining, secret expansion, personal overrides)
+
+**AccessChecker pattern**: Services accept an optional `AccessChecker` interface in opts. Pass `nil` to skip permission checks (for internal/integration use). This keeps permission logic in handlers while letting services enforce it.
+
 **Database access**: Services receive `pg.DB` and execute raw pgx queries using helper packages.
 
 **Read replicas**: `pg.DB` wraps primary + replica pools. Use `db.Primary()` for writes, `db.Replica()` for reads.
