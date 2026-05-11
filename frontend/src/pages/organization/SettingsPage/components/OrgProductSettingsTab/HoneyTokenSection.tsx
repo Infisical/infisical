@@ -1,7 +1,7 @@
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Badge, Button } from "@app/components/v3";
 import { DeleteActionModal } from "@app/components/v2";
+import { Badge, Button } from "@app/components/v3";
 import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {

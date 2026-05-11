@@ -7,6 +7,7 @@ import {
   THoneyTokenConfigRecord,
   THoneyTokenConfigWithDecrypted
 } from "../honey-token/aws/honey-token-aws-config-types";
+import { THoneyTokenDALFactory } from "../honey-token/honey-token-dal";
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
 import {
   THoneyTokenConfigByType,
@@ -18,6 +19,7 @@ import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;

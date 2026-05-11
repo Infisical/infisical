@@ -145,6 +145,13 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
       OrgPermissionSubjects.HoneyTokens
     );
 
+    const activeTokenCount = await deps.honeyTokenDAL.countByOrgId(orgPermission.orgId);
+    if (activeTokenCount > 0) {
+      throw new BadRequestError({
+        message: "Cannot disconnect honey token configuration while active honey tokens exist. Revoke all honey tokens first."
+      });
+    }
+
     const providerType = assertSupportedHoneyTokenType(type);
     const provider = honeyTokenConfigProviderByType[providerType];
     if (!provider) {
