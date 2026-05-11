@@ -12,6 +12,7 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
+	"github.com/infisical/api/internal/server/middlewares"
 )
 
 type Server struct {
@@ -48,7 +49,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	var handler http.Handler = s.mux
 	// the order is other way around. Last one wraps the previous one, so request ID is set before logging.
 	handler = requestLogger(handler, s.logger)
-	handler = HTTPInfoMiddleware(handler)
+	handler = middlewares.HTTPInfoMiddleware(handler)
 	handler = requestid.Middleware(handler)
 
 	srv := &http.Server{

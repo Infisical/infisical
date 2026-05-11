@@ -53,7 +53,7 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	return mux
 }
 
-func TestGetHealth(t *testing.T) {
+func TestGetHealth_ReturnsOK(t *testing.T) {
 	mux := setupMux(t)
 
 	mux.Request(t, http.MethodGet, "/api/v1/platform/projects/health").
@@ -61,7 +61,7 @@ func TestGetHealth(t *testing.T) {
 		ExpectStatus(http.StatusOK)
 }
 
-func TestCreateProject(t *testing.T) {
+func TestCreateProject_Success(t *testing.T) {
 	mux := setupMux(t)
 
 	var result map[string]any

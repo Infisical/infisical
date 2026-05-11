@@ -8,7 +8,7 @@ import (
 	"github.com/infisical/api/internal/libs/crypto/cipher"
 )
 
-func TestEncryptDecryptRoundTrip(t *testing.T) {
+func TestSymmetricEncrypt_RoundTrip(t *testing.T) {
 	key := make([]byte, 32) // AES-256
 	if _, err := rand.Read(key); err != nil {
 		t.Fatal(err)
@@ -36,7 +36,7 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 	}
 }
 
-func TestDecryptWrongKey(t *testing.T) {
+func TestSymmetricDecrypt_WrongKey(t *testing.T) {
 	key1 := make([]byte, 32)
 	key2 := make([]byte, 32)
 	rand.Read(key1)
@@ -53,14 +53,14 @@ func TestDecryptWrongKey(t *testing.T) {
 	}
 }
 
-func TestDecryptTooShort(t *testing.T) {
+func TestSymmetricDecrypt_TooShort(t *testing.T) {
 	_, err := cipher.SymmetricDecrypt([]byte("short"), make([]byte, 32))
 	if err == nil {
 		t.Fatal("expected error for short ciphertext")
 	}
 }
 
-func TestEncryptProducesDifferentBlobs(t *testing.T) {
+func TestSymmetricEncrypt_ProducesDifferentBlobs(t *testing.T) {
 	key := make([]byte, 32)
 	rand.Read(key)
 
@@ -72,7 +72,7 @@ func TestEncryptProducesDifferentBlobs(t *testing.T) {
 	}
 }
 
-func TestAES128Key(t *testing.T) {
+func TestSymmetricEncrypt_AES128Key(t *testing.T) {
 	key := make([]byte, 16) // AES-128
 	rand.Read(key)
 

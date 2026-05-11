@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOpGlob(t *testing.T) {
+func TestOpGlob_PatternMatching(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -72,7 +72,7 @@ func TestOpGlob(t *testing.T) {
 	}
 }
 
-func TestPermissionFieldOps(t *testing.T) {
+func TestPermissionFieldOps_ContainsExpectedOperators(t *testing.T) {
 	t.Parallel()
 
 	ops := PermissionFieldOps()

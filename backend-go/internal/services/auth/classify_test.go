@@ -14,7 +14,7 @@ func makeJWT(claims map[string]any) string {
 	return header + "." + payloadEnc + ".fakesignature"
 }
 
-func TestClassifyToken(t *testing.T) {
+func TestClassifyToken_VariousInputTypes(t *testing.T) {
 	t.Run("service token", func(t *testing.T) {
 		mode := ClassifyToken("st.abc123.secretpart")
 		if mode != AuthModeServiceToken {

@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestParseTrustedIPs(t *testing.T) {
+func TestParseTrustedIPs_VariousInputs(t *testing.T) {
 	t.Run("empty string returns nil", func(t *testing.T) {
 		ips, err := parseTrustedIPs("")
 		if err != nil {
@@ -40,7 +40,7 @@ func TestParseTrustedIPs(t *testing.T) {
 	})
 }
 
-func TestCheckIPAgainstBlocklist(t *testing.T) {
+func TestCheckIPAgainstBlocklist_VariousScenarios(t *testing.T) {
 	t.Run("empty list allows all", func(t *testing.T) {
 		err := checkIPAgainstBlocklist("1.2.3.4", nil)
 		if err != nil {
@@ -140,7 +140,7 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 	})
 }
 
-func TestItoa(t *testing.T) {
+func TestItoa_ConvertsIntToString(t *testing.T) {
 	tests := []struct {
 		input    int
 		expected string

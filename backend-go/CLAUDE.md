@@ -29,6 +29,10 @@ Never edit `gen/` directories — always regenerate.
   errutil.Forbidden("Access denied").WithErrf("FuncName: permission check failed")
   ```
 - **Lean code**: Inline single-use helpers.
+- **Test naming**: Follow `Test<FunctionName>_<Scenario>` pattern. Examples:
+  - `TestSymmetricEncrypt_RoundTrip`
+  - `TestGetSecrets_FilterByTags`
+  - `TestStart_Success`
 
 ## Architecture
 
@@ -44,18 +48,22 @@ internal/
 │   │   └── pglock/             # PostgreSQL advisory locks
 │   └── redis/                  # Redis client
 ├── libs/
+│   ├── crypto/                 # Cryptographic utilities (cipher, hash, sign)
+│   ├── errutil/                # Error types and formatting
 │   ├── fn/                     # Generic utilities (AppendUnique, etc.)
-│   └── errutil/                # Error types and formatting
+│   └── logutil/                # Logging utilities (context handler)
 ├── server/
 │   ├── design/                 # Goa DSL definitions
 │   ├── gen/                    # Goa generated (DO NOT EDIT)
-│   └── api/                    # Endpoint implementations + DI wiring
+│   ├── api/                    # Endpoint implementations + DI wiring
+│   └── middlewares/            # HTTP middlewares (httpinfo, etc.)
 ├── services/                   # Shared business logic (auth, permission, kms)
 ├── keystore/                   # Redis key-value operations
 └── testutil/                   # Test infra (testcontainers)
 ```
 
 **Two tiers:**
+
 - `server/api/` — Goa endpoint implementations. 1:1 with endpoints. Not imported elsewhere.
 - `services/` — Shared logic. No Goa dependency. Directly uses `pg.DB` for queries.
 
@@ -66,6 +74,7 @@ internal/
 ### Query Helpers
 
 **`qb` package** — Query builders for dynamic SQL:
+
 ```go
 // WHERE builder (for SELECT with named args)
 args := pgx.NamedArgs{"folderID": folderID}
@@ -98,8 +107,9 @@ sql, args := qb.Delete("secrets").
 ```
 
 **`sqln` package** — Transform flat LEFT JOIN rows into nested structs:
+
 ```go
-grouper := sqln.Grouper[Secret, uuid.UUID]{
+secrets := sqln.GroupRows(flatSecrets, sqln.Grouper[Secret, uuid.UUID]{
     Key: func(s *Secret) uuid.UUID { return s.ID },
     Merge: func(existing, row *Secret) {
         if len(row.Tags) > 0 {
@@ -107,11 +117,11 @@ grouper := sqln.Grouper[Secret, uuid.UUID]{
                 func(t Tag) uuid.UUID { return t.ID })
         }
     },
-}
-secrets := sqln.GroupRows(flatSecrets, grouper)
+})
 ```
 
 **`pglock` package** — PostgreSQL advisory locks:
+
 ```go
 tx, _ := db.Primary().Begin(ctx)
 lock, err := pglock.AcquireBlockingLock(ctx, tx, "my_lock_id")
@@ -129,6 +139,7 @@ lock.Release(ctx)  // commits transaction
 ### Writing Raw Queries
 
 Use `pgx.NamedArgs` for parameterized queries:
+
 ```go
 query := `
     SELECT id, key, encrypted_value
@@ -143,6 +154,7 @@ rows, err := db.Replica().Query(ctx, query, args)
 **Table aliases**: Use clear, readable aliases — not single letters. For example, `memberships m`, `membership_roles mr`, `organizations o`, `additional_privileges ap`. Aliases should be obvious abbreviations of the table name.
 
 Scan rows using `pgx.CollectRows` or manual scanning:
+
 ```go
 secrets, err := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])
 ```

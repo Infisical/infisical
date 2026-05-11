@@ -6,7 +6,7 @@ import (
 	"github.com/infisical/api/internal/libs/crypto/sign"
 )
 
-func TestRSAGenerateAndPublicKey(t *testing.T) {
+func TestGeneratePrivateKey_RSA4096(t *testing.T) {
 	privPEM, err := sign.GeneratePrivateKey(sign.RSA4096)
 	if err != nil {
 		t.Fatalf("GeneratePrivateKey(RSA4096): %v", err)
@@ -22,7 +22,7 @@ func TestRSAGenerateAndPublicKey(t *testing.T) {
 	}
 }
 
-func TestECCGenerateAndPublicKey(t *testing.T) {
+func TestGeneratePrivateKey_ECCP256(t *testing.T) {
 	privPEM, err := sign.GeneratePrivateKey(sign.ECCP256)
 	if err != nil {
 		t.Fatalf("GeneratePrivateKey(ECCP256): %v", err)
@@ -38,7 +38,7 @@ func TestECCGenerateAndPublicKey(t *testing.T) {
 	}
 }
 
-func TestRSAPKCS1SignVerify(t *testing.T) {
+func TestSign_RSAPKCS1(t *testing.T) {
 	privPEM, _ := sign.GeneratePrivateKey(sign.RSA4096)
 	pubDER, _ := sign.PublicKeyFromPrivate(privPEM)
 	data := []byte("hello KMS")
@@ -72,7 +72,7 @@ func TestRSAPKCS1SignVerify(t *testing.T) {
 	}
 }
 
-func TestRSAPSSSignVerify(t *testing.T) {
+func TestSign_RSAPSS(t *testing.T) {
 	privPEM, _ := sign.GeneratePrivateKey(sign.RSA4096)
 	pubDER, _ := sign.PublicKeyFromPrivate(privPEM)
 	data := []byte("PSS test")
@@ -97,7 +97,7 @@ func TestRSAPSSSignVerify(t *testing.T) {
 	}
 }
 
-func TestRSAPSSRejectsDigest(t *testing.T) {
+func TestSign_RSAPSSRejectsDigest(t *testing.T) {
 	privPEM, _ := sign.GeneratePrivateKey(sign.RSA4096)
 
 	_, err := sign.Sign([]byte("data"), privPEM, sign.RSASSA_PSS_SHA256, true)
@@ -106,7 +106,7 @@ func TestRSAPSSRejectsDigest(t *testing.T) {
 	}
 }
 
-func TestECDSASignVerify(t *testing.T) {
+func TestSign_ECDSA(t *testing.T) {
 	privPEM, _ := sign.GeneratePrivateKey(sign.ECCP256)
 	pubDER, _ := sign.PublicKeyFromPrivate(privPEM)
 	data := []byte("ECDSA test")
@@ -131,7 +131,7 @@ func TestECDSASignVerify(t *testing.T) {
 	}
 }
 
-func TestAlgorithmKeyMismatch(t *testing.T) {
+func TestSign_AlgorithmKeyMismatch(t *testing.T) {
 	rsaKey, _ := sign.GeneratePrivateKey(sign.RSA4096)
 	ecKey, _ := sign.GeneratePrivateKey(sign.ECCP256)
 
@@ -148,7 +148,7 @@ func TestAlgorithmKeyMismatch(t *testing.T) {
 	}
 }
 
-func TestDigestSignVerify(t *testing.T) {
+func TestSign_WithDigest(t *testing.T) {
 	privPEM, _ := sign.GeneratePrivateKey(sign.RSA4096)
 	pubDER, _ := sign.PublicKeyFromPrivate(privPEM)
 
@@ -170,7 +170,7 @@ func TestDigestSignVerify(t *testing.T) {
 	}
 }
 
-func TestUnsupportedAlgorithm(t *testing.T) {
+func TestSign_UnsupportedAlgorithm(t *testing.T) {
 	privPEM, _ := sign.GeneratePrivateKey(sign.RSA4096)
 
 	_, err := sign.Sign([]byte("data"), privPEM, "INVALID_ALGO", false)
@@ -179,7 +179,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 	}
 }
 
-func TestUnsupportedKeyAlgorithm(t *testing.T) {
+func TestGeneratePrivateKey_UnsupportedAlgorithm(t *testing.T) {
 	_, err := sign.GeneratePrivateKey("DSA_2048")
 	if err == nil {
 		t.Fatal("expected error for unsupported key algorithm")

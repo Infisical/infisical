@@ -64,7 +64,7 @@ func startedService(t *testing.T) *kms.Service {
 // Start
 // ==========================================================================
 
-func TestStart(t *testing.T) {
+func TestStart_Success(t *testing.T) {
 	svc := setupService(t)
 	err := svc.Start(context.Background(), false)
 	require.NoError(t, err)

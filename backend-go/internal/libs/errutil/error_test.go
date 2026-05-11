@@ -14,7 +14,7 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 )
 
-func TestConstructors(t *testing.T) {
+func TestErrorConstructors_ReturnsCorrectStatusAndName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func TestConstructors(t *testing.T) {
 	}
 }
 
-func TestErrorString(t *testing.T) {
+func TestError_String(t *testing.T) {
 	t.Parallel()
 
 	t.Run("without cause", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestErrorString(t *testing.T) {
 	})
 }
 
-func TestUnwrap(t *testing.T) {
+func TestError_Unwrap(t *testing.T) {
 	t.Parallel()
 
 	cause := fmt.Errorf("root cause")
@@ -86,7 +86,7 @@ func TestUnwrap(t *testing.T) {
 	}
 }
 
-func TestErrorsAs(t *testing.T) {
+func TestError_ErrorsAs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("direct", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestErrorsAs(t *testing.T) {
 	})
 }
 
-func TestWithDetails(t *testing.T) {
+func TestError_WithDetails(t *testing.T) {
 	t.Parallel()
 
 	details := map[string]string{"field": "name"}
@@ -154,7 +154,7 @@ func TestWithDetails(t *testing.T) {
 	}
 }
 
-func TestFormatter(t *testing.T) {
+func TestNewFormatter_FormatsErrors(t *testing.T) {
 	t.Parallel()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))

@@ -56,12 +56,12 @@ func setupHSM(t *testing.T) *hsm.Service {
 	return svc
 }
 
-func TestStartServiceAndIsActive(t *testing.T) {
+func TestStartService_IsActive(t *testing.T) {
 	svc := setupHSM(t)
 	assert.True(t, svc.IsActive())
 }
 
-func TestEncryptDecryptRoundTrip(t *testing.T) {
+func TestEncrypt_RoundTrip(t *testing.T) {
 	svc := setupHSM(t)
 
 	plaintext := []byte("hello from the HSM")
@@ -77,7 +77,7 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 	assert.Equal(t, plaintext, got)
 }
 
-func TestEncryptDecryptEmptyData(t *testing.T) {
+func TestEncrypt_EmptyData(t *testing.T) {
 	svc := setupHSM(t)
 
 	blob, err := svc.Encrypt([]byte{})
@@ -88,7 +88,7 @@ func TestEncryptDecryptEmptyData(t *testing.T) {
 	assert.Equal(t, []byte{}, got)
 }
 
-func TestEncryptDecryptLargeData(t *testing.T) {
+func TestEncrypt_LargeData(t *testing.T) {
 	svc := setupHSM(t)
 
 	plaintext := make([]byte, 500)
@@ -104,7 +104,7 @@ func TestEncryptDecryptLargeData(t *testing.T) {
 	assert.Equal(t, plaintext, got)
 }
 
-func TestDecryptTamperedHMAC(t *testing.T) {
+func TestDecrypt_TamperedHMAC(t *testing.T) {
 	svc := setupHSM(t)
 
 	blob, err := svc.Encrypt([]byte("tamper test"))
@@ -117,7 +117,7 @@ func TestDecryptTamperedHMAC(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDecryptTamperedCiphertext(t *testing.T) {
+func TestDecrypt_TamperedCiphertext(t *testing.T) {
 	svc := setupHSM(t)
 
 	blob, err := svc.Encrypt([]byte("tamper ciphertext"))
@@ -130,7 +130,7 @@ func TestDecryptTamperedCiphertext(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDecryptTamperedIV(t *testing.T) {
+func TestDecrypt_TamperedIV(t *testing.T) {
 	svc := setupHSM(t)
 
 	blob, err := svc.Encrypt([]byte("tamper iv"))
@@ -143,14 +143,14 @@ func TestDecryptTamperedIV(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDecryptTooShort(t *testing.T) {
+func TestDecrypt_TooShort(t *testing.T) {
 	svc := setupHSM(t)
 
 	_, err := svc.Decrypt([]byte("short"))
 	assert.Error(t, err)
 }
 
-func TestRandomBytes(t *testing.T) {
+func TestRandomBytes_ReturnsUniqueBytes(t *testing.T) {
 	svc := setupHSM(t)
 
 	a, err := svc.RandomBytes(32)
@@ -164,7 +164,7 @@ func TestRandomBytes(t *testing.T) {
 	assert.NotEqual(t, a, b)
 }
 
-func TestEncryptProducesDifferentBlobs(t *testing.T) {
+func TestEncrypt_ProducesDifferentBlobs(t *testing.T) {
 	svc := setupHSM(t)
 
 	blob1, err := svc.Encrypt([]byte("same"))
