@@ -148,7 +148,8 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     const activeTokenCount = await deps.honeyTokenDAL.countByOrgId(orgPermission.orgId);
     if (activeTokenCount > 0) {
       throw new BadRequestError({
-        message: "Cannot disconnect honey token configuration while active honey tokens exist. Revoke all honey tokens first."
+        message:
+          "Cannot disconnect honey token configuration while active honey tokens exist. Revoke all honey tokens first."
       });
     }
 
