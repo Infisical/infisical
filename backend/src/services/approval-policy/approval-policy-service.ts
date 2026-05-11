@@ -887,10 +887,11 @@ export const approvalPolicyServiceFactory = ({
       ProjectPermissionSub.ApprovalRequests
     );
 
-    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId, {
-      scopeType: dbScopeType,
-      scopeId: dbScopeId
-    });
+    const requests = await approvalRequestDAL.findByProjectId(
+      policyType,
+      projectId,
+      scope === ApprovalPolicyScope.Project ? undefined : { scopeType: dbScopeType, scopeId: dbScopeId }
+    );
 
     if (hasReadPermission) {
       return { requests, projectId };

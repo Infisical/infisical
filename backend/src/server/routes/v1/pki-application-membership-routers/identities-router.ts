@@ -23,7 +23,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     schema: {
       hide: false,
       operationId: "listPkiApplicationIdentityMembers",
-      description: "List identity members of a application.",
+      description: "List identity members of an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(ApplicationMemberSchema) }) }
@@ -60,7 +60,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     schema: {
       hide: false,
       operationId: "addPkiApplicationIdentityMember",
-      description: "Add an identity as a member of a application.",
+      description: "Add an identity as a member of an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: IdentityParamsSchema,
       body: RoleBodySchema,
@@ -106,7 +106,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     schema: {
       hide: false,
       operationId: "updatePkiApplicationIdentityMemberRole",
-      description: "Update the role of an identity member on a application.",
+      description: "Update the role of an identity member on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: IdentityParamsSchema,
       body: RoleBodySchema,
@@ -153,7 +153,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     schema: {
       hide: false,
       operationId: "removePkiApplicationIdentityMember",
-      description: "Remove an identity from a application.",
+      description: "Remove an identity from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: IdentityParamsSchema,
       response: { 200: RemoveResponseSchema }

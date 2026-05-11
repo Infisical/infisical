@@ -45,7 +45,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "listPkiApplicationUserMembers",
-      description: "List user members of a application.",
+      description: "List user members of an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(ApplicationMemberSchema) }) }
@@ -83,7 +83,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       hide: false,
       operationId: "addPkiApplicationUserMembers",
       description:
-        "Add user members to a application by userId, email, or username. Bootstraps org and project membership for users not already present, then attaches them to the application.",
+        "Add user members to an application by userId, email, or username. Bootstraps org and project membership for users not already present, then attaches them to the application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: AddUsersBodySchema,
@@ -153,7 +153,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "updatePkiApplicationUserMemberRole",
-      description: "Update the role of a user member on a application.",
+      description: "Update the role of a user member on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: UserParamsSchema,
       body: RoleBodySchema,
@@ -201,7 +201,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "removePkiApplicationUserMember",
-      description: "Remove a user from a application.",
+      description: "Remove a user from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: UserParamsSchema,
       response: { 200: RemoveResponseSchema }

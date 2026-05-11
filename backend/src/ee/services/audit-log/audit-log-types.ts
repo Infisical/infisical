@@ -3141,6 +3141,7 @@ interface CreateCertificateInventoryView {
     filters?: Record<string, unknown>;
     columns?: string[];
     isShared?: boolean;
+    applicationId?: string;
   };
 }
 
@@ -3152,6 +3153,7 @@ interface UpdateCertificateInventoryView {
     filters?: Record<string, unknown>;
     columns?: string[];
     isShared?: boolean;
+    applicationId?: string;
   };
 }
 
@@ -3160,6 +3162,7 @@ interface DeleteCertificateInventoryView {
   metadata: {
     viewId: string;
     name: string;
+    applicationId?: string;
   };
 }
 
@@ -3736,6 +3739,7 @@ interface IssueCertificateFromProfile {
     certificateId: string;
     commonName: string;
     profileName: string;
+    applicationId?: string;
   };
 }
 
@@ -3746,6 +3750,7 @@ interface SignCertificateFromProfile {
     certificateId: string;
     profileName: string;
     commonName: string;
+    applicationId?: string;
   };
 }
 
@@ -3754,6 +3759,7 @@ interface OrderCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     profileName: string;
+    applicationId?: string;
   };
 }
 
@@ -4224,6 +4230,7 @@ interface GetPkiSyncCertificatesEvent {
     count: number;
     certificateIds: string[];
     destination: string;
+    applicationId?: string;
   };
 }
 
@@ -4292,6 +4299,7 @@ interface PkiSyncSetDefaultCertificateEvent {
     pkiSyncId: string;
     name: string;
     certificateId: string;
+    applicationId?: string;
   };
 }
 
@@ -4300,6 +4308,7 @@ interface PkiSyncClearDefaultCertificateEvent {
   metadata: {
     pkiSyncId: string;
     name: string;
+    applicationId?: string;
   };
 }
 

@@ -379,9 +379,12 @@ export const certificateApprovalServiceFactory = (
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(profile, ttl, new Date(signedCertRecord.notAfter));
 
-        const updateData: { profileId: string; renewBeforeDays?: number } = { profileId };
+        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = { profileId };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (certRequest.applicationId) {
+          updateData.applicationId = certRequest.applicationId;
         }
         await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
 
@@ -523,7 +526,8 @@ export const certificateApprovalServiceFactory = (
     },
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
-    certPolicy: NonNullable<Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>>
+    certPolicy: NonNullable<Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>>,
+    applicationId?: string | null
   ): Promise<TCertificateIssuanceResponse> => {
     const effectiveSignatureAlgorithm = certificateRequestInput.signatureAlgorithm as
       | CertSignatureAlgorithm
@@ -573,6 +577,10 @@ export const certificateApprovalServiceFactory = (
         );
       }
 
+      if (applicationId) {
+        await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
+      }
+
       return processResult;
     });
 
@@ -618,7 +626,8 @@ export const certificateApprovalServiceFactory = (
     },
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
-    certPolicy: NonNullable<Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>>
+    certPolicy: NonNullable<Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>>,
+    applicationId?: string | null
   ): Promise<TCertificateIssuanceResponse> => {
     if (!profile.caId) {
       throw new NotFoundError({ message: "Certificate Authority ID not found" });
@@ -684,9 +693,14 @@ export const certificateApprovalServiceFactory = (
           new Date(certificateRecord.notAfter)
         );
 
-        const updateData: { profileId: string; renewBeforeDays?: number } = { profileId: profile.id };
+        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          profileId: profile.id
+        };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (applicationId) {
+          updateData.applicationId = applicationId;
         }
         await certificateDAL.updateById(certificateRecord.id, updateData, tx);
 
@@ -830,11 +844,18 @@ export const certificateApprovalServiceFactory = (
           certificateRequestInput,
           certificateRequestId,
           targetProfile,
-          certPolicy
+          certPolicy,
+          certRequest.applicationId
         );
       }
 
-      return await $processCASignedRequest(certificateRequestInput, certificateRequestId, targetProfile, certPolicy);
+      return await $processCASignedRequest(
+        certificateRequestInput,
+        certificateRequestId,
+        targetProfile,
+        certPolicy,
+        certRequest.applicationId
+      );
     } catch (error) {
       await certificateRequestDAL.updateById(certificateRequestId, {
         status: CertificateRequestStatus.FAILED,

@@ -59,7 +59,7 @@ export const registerPkiApplicationEnrollmentStateRouter = async (server: Fastif
     schema: {
       hide: false,
       operationId: "getPkiApplicationEnrollment",
-      description: "Get the enrollment state for a profile on a application.",
+      description: "Get the enrollment state for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
         applicationId: z.string().uuid(),

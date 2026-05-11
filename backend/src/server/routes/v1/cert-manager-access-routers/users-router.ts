@@ -23,7 +23,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     schema: {
       hide: false,
       operationId: "listCertManagerUsers",
-      tags: [ApiDocsTags.PkiCertificates],
+      tags: [ApiDocsTags.ProjectUsers],
       description: "List Certificate Manager users.",
       response: {
         200: z.object({
@@ -59,7 +59,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getCertManagerUser",
-      params: z.object({ userId: z.string().trim().min(1) }),
+      params: z.object({ userId: z.string().trim().uuid() }),
       response: {
         200: z.object({
           membership: ProjectMembershipsSchema.extend({
@@ -89,7 +89,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     schema: {
       hide: false,
       operationId: "inviteCertManagerUsers",
-      tags: [ApiDocsTags.PkiCertificates],
+      tags: [ApiDocsTags.ProjectUsers],
       description: "Invite users to Certificate Manager.",
       body: z.object({
         emails: z
@@ -159,7 +159,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "updateCertManagerUser",
-      params: z.object({ userId: z.string().trim().min(1) }),
+      params: z.object({ userId: z.string().trim().uuid() }),
       body: RolesUpdateBodySchema,
       response: { 200: z.object({ roles: ProjectUserMembershipRolesSchema.array() }) }
     },
@@ -236,7 +236,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "removeCertManagerUser",
-      params: z.object({ userId: z.string().trim().min(1) }),
+      params: z.object({ userId: z.string().trim().uuid() }),
       response: { 200: z.object({ membership: ProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

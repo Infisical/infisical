@@ -23,7 +23,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
     schema: {
       hide: false,
       operationId: "listPkiApplicationGroupMembers",
-      description: "List group members of a application.",
+      description: "List group members of an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(ApplicationMemberSchema) }) }
@@ -60,7 +60,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
     schema: {
       hide: false,
       operationId: "addPkiApplicationGroupMember",
-      description: "Add a group as a member of a application.",
+      description: "Add a group as a member of an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: GroupParamsSchema,
       body: RoleBodySchema,
@@ -106,7 +106,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
     schema: {
       hide: false,
       operationId: "updatePkiApplicationGroupMemberRole",
-      description: "Update the role of a group member on a application.",
+      description: "Update the role of a group member on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: GroupParamsSchema,
       body: RoleBodySchema,
@@ -153,7 +153,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
     schema: {
       hide: false,
       operationId: "removePkiApplicationGroupMember",
-      description: "Remove a group from a application.",
+      description: "Remove a group from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: GroupParamsSchema,
       response: { 200: RemoveResponseSchema }

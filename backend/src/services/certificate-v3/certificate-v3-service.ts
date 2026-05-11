@@ -160,7 +160,7 @@ type TCertificateV3ServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findByProfileId" | "findAllByProfileId">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findAllByProfileId">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -767,7 +767,7 @@ export const certificateV3ServiceFactory = ({
     );
     if (!hasProfileLevelEnrollment) {
       throw new BadRequestError({
-        message: "This profile must be issued through a Application. Attach it to an Application and issue from there."
+        message: "This profile must be issued through an Application. Attach it to an Application and issue from there."
       });
     }
 
@@ -902,6 +902,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            applicationId: applicationId ?? null,
             commonName: certificateRequest.commonName || null,
             altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : null,
             keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
@@ -1182,6 +1183,17 @@ export const certificateV3ServiceFactory = ({
       );
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
+
+      try {
+        await pkiAlertV2Queue?.queueCertificateEvent({
+          certificateId: certificateData.id,
+          projectId: profile.projectId,
+          eventType: PkiAlertEventType.ISSUANCE,
+          applicationId: applicationId ?? null
+        });
+      } catch {
+        logger.debug("Failed to queue PKI issuance alert event");
+      }
 
       return {
         status: CertificateRequestStatus.ISSUED,
@@ -1522,6 +1534,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            applicationId: applicationId ?? null,
             csr,
             commonName: mappedCertificateRequest.commonName || null,
             altNames: mappedCertificateRequest.subjectAlternativeNames
@@ -1924,6 +1937,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            applicationId: applicationId ?? null,
             csr: certificateOrder.csr || null,
             commonName: certificateOrder.commonName || null,
             altNames: certificateOrder.altNames ? JSON.stringify(certificateOrder.altNames) : null,

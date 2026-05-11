@@ -2,11 +2,6 @@ import { z } from "zod";
 
 export const ApplicationIdParamsSchema = z.object({ applicationId: z.string().uuid() });
 
-export const ApplicationProfileParamsSchema = z.object({
-  applicationId: z.string().uuid(),
-  profileId: z.string().uuid()
-});
-
 export const ApplicationProfileSchema = z.object({
   applicationId: z.string().uuid(),
   profileId: z.string().uuid(),

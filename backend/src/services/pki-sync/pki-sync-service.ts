@@ -205,7 +205,7 @@ export const pkiSyncServiceFactory = ({
     if (!applicationId) {
       throw new BadRequestError({
         message:
-          "Certificate Syncs must be created inside a Application. Open the Application's Certificate Syncs tab and click Add Sync."
+          "Certificate Syncs must be created inside an Application. Open the Application's Certificate Syncs tab and click Add Sync."
       });
     }
 
@@ -709,7 +709,7 @@ export const pkiSyncServiceFactory = ({
     actor: OrgServiceActor
   ): Promise<{
     addedCertificates: TCertificateSyncs[];
-    pkiSyncInfo: { projectId: string; destination: string; name: string };
+    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
   }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
@@ -743,7 +743,8 @@ export const pkiSyncServiceFactory = ({
       pkiSyncInfo: {
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
-        name: pkiSync.name
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId
       }
     };
   };
@@ -751,7 +752,10 @@ export const pkiSyncServiceFactory = ({
   const removeCertificatesFromPkiSync = async (
     { pkiSyncId, certificateIds }: Omit<TRemoveCertificatesFromPkiSyncDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
-  ): Promise<{ removedCount: number; pkiSyncInfo: { projectId: string; destination: string; name: string } }> => {
+  ): Promise<{
+    removedCount: number;
+    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
+  }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -779,7 +783,8 @@ export const pkiSyncServiceFactory = ({
       pkiSyncInfo: {
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
-        name: pkiSync.name
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId
       }
     };
   };
@@ -790,7 +795,7 @@ export const pkiSyncServiceFactory = ({
   ): Promise<{
     certificates: TPkiSyncCertificate[];
     totalCount: number;
-    pkiSyncInfo: { projectId: string; destination: string; name: string };
+    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
   }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
@@ -845,7 +850,8 @@ export const pkiSyncServiceFactory = ({
       pkiSyncInfo: {
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
-        name: pkiSync.name
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId
       }
     };
   };
@@ -853,7 +859,7 @@ export const pkiSyncServiceFactory = ({
   const setCertificateAsDefault = async (
     { pkiSyncId, certificateId }: Omit<TSetCertificateAsDefaultDTO, "auditLogInfo">,
     actor: OrgServiceActor
-  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string } }> => {
+  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null } }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -891,14 +897,14 @@ export const pkiSyncServiceFactory = ({
 
     return {
       message: "Certificate set as default",
-      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name }
+      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name, applicationId: pkiSync.applicationId }
     };
   };
 
   const clearDefaultCertificate = async (
     { pkiSyncId }: Omit<TClearDefaultCertificateDTO, "auditLogInfo">,
     actor: OrgServiceActor
-  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string } }> => {
+  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null } }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -923,7 +929,7 @@ export const pkiSyncServiceFactory = ({
 
     return {
       message: "Default certificate cleared",
-      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name }
+      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name, applicationId: pkiSync.applicationId }
     };
   };
 

@@ -63,15 +63,6 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProfileId = async (profileId: string, tx?: Knex) => {
-    try {
-      const row = await (tx || db.replicaNode())(TableName.PkiApplicationProfile).where({ profileId }).first();
-      return row;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find application junction by profile" });
-    }
-  };
-
   const findAllByProfileId = async (profileId: string, tx?: Knex) => {
     try {
       const rows = await (tx || db.replicaNode())(TableName.PkiApplicationProfile).where({ profileId });
@@ -93,7 +84,6 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
     findAllByProfileId,
     findByApplicationId,
     findOne,
-    findProfilesInProject,
-    findByProfileId
+    findProfilesInProject
   };
 };

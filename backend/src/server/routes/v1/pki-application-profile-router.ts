@@ -16,7 +16,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     schema: {
       hide: false,
       operationId: "listPkiApplicationProfiles",
-      description: "List profiles attached to a application.",
+      description: "List profiles attached to an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: {
@@ -45,7 +45,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     schema: {
       hide: false,
       operationId: "attachPkiApplicationProfiles",
-      description: "Attach one or more profiles to a application.",
+      description: "Attach one or more profiles to an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: z.object({
@@ -90,7 +90,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     schema: {
       hide: false,
       operationId: "detachPkiApplicationProfile",
-      description: "Detach a profile from a application.",
+      description: "Detach a profile from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
         applicationId: z.string().uuid(),

@@ -150,7 +150,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             name: view.name,
             filters: req.body.filters,
             columns: req.body.columns,
-            isShared: req.body.isShared
+            isShared: req.body.isShared,
+            ...(view.applicationId && { applicationId: view.applicationId })
           }
         }
       });
@@ -209,7 +210,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             name: view.name,
             filters: req.body.filters,
             columns: req.body.columns,
-            isShared: req.body.isShared
+            isShared: req.body.isShared,
+            ...(view.applicationId && { applicationId: view.applicationId })
           }
         }
       });
@@ -254,7 +256,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
           type: EventType.DELETE_CERTIFICATE_INVENTORY_VIEW,
           metadata: {
             viewId: req.params.viewId,
-            name: view.name
+            name: view.name,
+            ...(view.applicationId && { applicationId: view.applicationId })
           }
         }
       });

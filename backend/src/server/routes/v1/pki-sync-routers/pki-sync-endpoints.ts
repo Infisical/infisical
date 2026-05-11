@@ -123,7 +123,8 @@ export const registerSyncPkiEndpoints = ({
           type: EventType.GET_PKI_SYNC,
           metadata: {
             syncId: pkiSyncId,
-            destination
+            destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -163,7 +164,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             pkiSyncId: pkiSync.id,
             name: pkiSync.name,
-            destination
+            destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -204,7 +206,8 @@ export const registerSyncPkiEndpoints = ({
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSync.name
+            name: pkiSync.name,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -245,7 +248,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             pkiSyncId,
             name: pkiSync.name,
-            destination: pkiSync.destination
+            destination: pkiSync.destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });

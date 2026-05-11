@@ -32,7 +32,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "createPkiApplication",
-      description: "Create a application.",
+      description: "Create an application.",
       tags: [ApiDocsTags.PkiApplications],
       body: z.object({
         name: ApplicationNameSchema,
@@ -127,7 +127,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "getPkiApplication",
-      description: "Get a application by id.",
+      description: "Get an application by id.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ application: PkiApplicationsSchema }) }
@@ -163,7 +163,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "getPkiApplicationByName",
-      description: "Get a application by name.",
+      description: "Get an application by name.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ name: ApplicationNameSchema }),
       response: { 200: z.object({ application: PkiApplicationsSchema }) }
@@ -199,7 +199,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "updatePkiApplication",
-      description: "Update a application.",
+      description: "Update an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: z
@@ -245,7 +245,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       operationId: "deletePkiApplication",
-      description: "Delete a application.",
+      description: "Delete an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ application: PkiApplicationsSchema }) }

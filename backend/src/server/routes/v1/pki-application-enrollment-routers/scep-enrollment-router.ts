@@ -15,7 +15,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "setPkiApplicationScepEnrollment",
-      description: "Enable or update the SCEP enrollment method for a profile on a application.",
+      description: "Enable or update the SCEP enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       body: z.object({
@@ -69,7 +69,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "clearPkiApplicationScepEnrollment",
-      description: "Disable the SCEP enrollment method for a profile on a application.",
+      description: "Disable the SCEP enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }

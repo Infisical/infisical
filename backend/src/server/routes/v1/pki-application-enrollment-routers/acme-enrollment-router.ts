@@ -14,7 +14,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "setPkiApplicationAcmeEnrollment",
-      description: "Enable or update the ACME enrollment method for a profile on a application.",
+      description: "Enable or update the ACME enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       body: z
@@ -77,7 +77,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "clearPkiApplicationAcmeEnrollment",
-      description: "Disable the ACME enrollment method for a profile on a application.",
+      description: "Disable the ACME enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
@@ -112,7 +112,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "revealPkiApplicationAcmeEabSecret",
-      description: "Reveal the ACME EAB secret for a profile on a application.",
+      description: "Reveal the ACME EAB secret for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: {
@@ -154,7 +154,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
     schema: {
       hide: false,
       operationId: "rotatePkiApplicationAcmeEabSecret",
-      description: "Rotate the ACME EAB secret for a profile on a application.",
+      description: "Rotate the ACME EAB secret for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }

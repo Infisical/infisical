@@ -46,8 +46,9 @@ describe("CertificateRequestService", () => {
     getCertPrivateKey: vi.fn() as any
   };
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission"> = {
-    getProjectPermission: vi.fn() as any
+  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
+    getProjectPermission: vi.fn() as any,
+    getResourcePermission: vi.fn() as any
   };
 
   beforeEach(() => {

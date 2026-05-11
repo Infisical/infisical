@@ -207,7 +207,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           type: EventType.GET_PKI_SYNC,
           metadata: {
             syncId: pkiSyncId,
-            destination: pkiSync.destination
+            destination: pkiSync.destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -260,7 +261,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
             syncId: pkiSyncId,
             destination: pkiSyncInfo.destination,
             count: certificates.length,
-            certificateIds: certificates.map((c) => c.certificateId)
+            certificateIds: certificates.map((c) => c.certificateId),
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
           }
         }
       });
@@ -320,7 +322,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSyncInfo.name
+            name: pkiSyncInfo.name,
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
           }
         }
       });
@@ -369,7 +372,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSyncInfo.name
+            name: pkiSyncInfo.name,
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
           }
         }
       });

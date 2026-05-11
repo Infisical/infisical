@@ -258,7 +258,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
             metadata: {
               certificateProfileId: requestBody.profileId,
-              profileName: data.profileName
+              profileName: data.profileName,
+              ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
             }
           }
         });
@@ -300,7 +301,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               certificateProfileId: requestBody.profileId,
               certificateId: data.certificateId || "",
               profileName: data.profileName,
-              commonName: extractedCsrData.commonName || ""
+              commonName: extractedCsrData.commonName || "",
+              ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
             }
           }
         });
@@ -364,7 +366,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             certificateProfileId: requestBody.profileId,
             certificateId: data.certificateId || "",
             commonName: attributes?.commonName || "",
-            profileName: data.profileName
+            profileName: data.profileName,
+            ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
           }
         }
       });
