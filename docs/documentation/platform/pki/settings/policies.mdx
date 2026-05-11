@@ -7,7 +7,7 @@ description: "Define rules and constraints for certificates issued across your o
 A certificate policy defines the rules that certificates must follow — allowed domains, validity periods, key algorithms, and more. Policies ensure that every certificate issued through Certificate Manager meets your organization's security and compliance requirements.
 
 <Info>
-  Certificate policies are created by product admins and shared across the organization. Teams consume policies through [Certificate Profiles](/documentation/platform/pki/settings/profiles).
+  Certificate policies are created by platform admins and shared across the organization. Teams consume policies through [Certificate Profiles](/documentation/platform/pki/settings/profiles).
 </Info>
 
 ## How Policies Work
@@ -18,11 +18,30 @@ This enforcement happens automatically — teams don't need to know the policy d
 
 ## Create a Certificate Policy
 
-Navigate to **Certificate Manager → Certificate Policies** and click **Create Policy**.
+Navigate to **Certificate Manager → Settings → Certificate Policies** and click **Create**.
 
 ![Certificate policy list](/images/platform/pki/certificate/cert-policy.png)
 
 ![Certificate policy modal](/images/platform/pki/certificate/cert-policy-modal.png)
+
+### Policy Presets
+
+For common use cases, select a **preset** to pre-fill all the right settings:
+
+| Preset | Use Case | Key Settings |
+|--------|----------|--------------|
+| **TLS Server Certificate** | Web servers, API endpoints, HTTPS | Server Auth, Digital Signature, DNS/IP SANs |
+| **TLS Client Certificate** | mTLS, API authentication | Client Auth, Digital Signature, Email/DNS SANs |
+| **Code Signing Certificate** | Software signing, executables | Code Signing, Digital Signature, Non-Repudiation |
+| **Device Certificate** | IoT devices, embedded systems | Client Auth, Digital Signature |
+| **User Certificate** | Personal authentication, smart cards | Client Auth, Email Protection |
+| **Email Protection Certificate** | S/MIME, email encryption | Email Protection, Digital Signature |
+| **Dual-Purpose Server Certificate** | Microservices, service mesh | Server Auth + Client Auth |
+| **Intermediate CA Certificate** | Subordinate CAs | Key Cert Sign, CRL Sign, CA constraint |
+
+<Tip>
+  For most TLS use cases, start with the **TLS Server Certificate** preset. You can customize any settings after selecting a preset.
+</Tip>
 
 ### Basic Settings
 

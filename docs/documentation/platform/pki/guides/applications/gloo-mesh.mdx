@@ -1,6 +1,6 @@
 ---
 title: "Gloo Mesh"
-sidebarTitle: "Gloo Mesh"
+sidebarTitle: "Configure Gloo Mesh Certificates"
 description: "Provision Istio intermediate CA certificates for Gloo Mesh using Infisical."
 ---
 
@@ -26,7 +26,7 @@ With this approach, you get the following benefits:
 ## General Setup
 
 The certificate provisioning workflow begins with setting up your PKI hierarchy in Infisical, where you create root and subordinate certificate authorities.
-When you deploy a `Certificate` CRD in your workload cluster, `cert-manager` uses the [ACME enrollment method](/documentation/platform/pki/applications/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/settings/profiles) to authenticate using EAB credentials and request an intermediate CA certificate.
+When you deploy a `Certificate` CRD in your workload cluster, `cert-manager` uses the [ACME enrollment method](/documentation/platform/pki/applications/enrollment-methods/acme) configured on an [Application](/documentation/platform/pki/applications/overview) to authenticate using EAB credentials and request an intermediate CA certificate.
 Infisical verifies the request against your certificate policies and returns the signed certificate.
 From there, Istio's control plane will automatically use this intermediate CA to sign leaf certificates for workloads in the service mesh, enabling secure mTLS communication across your entire Gloo Mesh infrastructure.
 

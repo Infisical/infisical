@@ -1,20 +1,20 @@
 ---
 title: "Sign JARs with jarsigner"
-sidebarTitle: "jarsigner"
+sidebarTitle: "Sign Java JARs"
 description: "Use the Infisical PKCS#11 module to sign Java artifacts with jarsigner."
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Platform Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
 </Info>
 
 Sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The module implements the PKCS#11 v2.40 standard, allowing standard signing tools to use Infisical signers without code changes.
 
 ## Prerequisites
 
-- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Platform Admin
 - An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
-- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - Java JDK 9 or later (for the `-addprovider` flag)
 
@@ -118,17 +118,17 @@ For any issue, start by enabling debug logging in your config file to get detail
     This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in the Infisical UI under **Code Signing > Approvals > Grants**.
   </Accordion>
   <Accordion title="No slots visible or authentication errors">
-    Verify that your credentials are correct and that the machine identity has been assigned to the signer with the appropriate permissions.
+    Verify that your credentials are correct and that the machine identity has been added to the Signer.
   </Accordion>
 </AccordionGroup>
 
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Sign Android APKs" icon="android" href="/documentation/platform/pki/code-signing/guides/pkcs11-apksigner">
+  <Card title="Sign Android APKs" icon="android" href="/documentation/platform/pki/guides/code-signing/apksigner">
     Sign Android applications with apksigner
   </Card>
-  <Card title="Sign with OpenSSL" icon="lock" href="/documentation/platform/pki/code-signing/guides/pkcs11-openssl">
+  <Card title="Sign with OpenSSL" icon="lock" href="/documentation/platform/pki/guides/code-signing/openssl">
     Use OpenSSL with the PKCS#11 module
   </Card>
 </CardGroup>

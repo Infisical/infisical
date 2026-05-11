@@ -1,6 +1,6 @@
 ---
 title: "Jamf Pro with SCEP"
-sidebarTitle: "Jamf Pro"
+sidebarTitle: "Enroll Devices with Jamf Pro"
 description: "Distribute certificates to managed devices using Infisical SCEP enrollment with Jamf Pro."
 ---
 
@@ -23,19 +23,23 @@ Infisical supports both **static** and **dynamic** SCEP challenges with Jamf Pro
 
 <Steps>
     <Step title="Gather SCEP details from Infisical">
-        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/settings/profiles) configured with the [SCEP enrollment method](/documentation/platform/pki/applications/enrollment-methods/scep).
+        In your Application's **Enrollment Methods** section, locate your SCEP enrollment and gather the following values:
 
-        From the certificate profile, gather the following values:
-
-        - **SCEP URL**: The SCEP endpoint URL for your certificate profile. This takes the form `https://app.infisical.com/scep/{profile_id}/pkiclient.exe`. For self-hosted instances, replace `app.infisical.com` with your instance's domain.
+        | Credential | Purpose |
+        |------------|---------|
+        | **SCEP URL** | The SCEP endpoint URL (e.g., `https://app.infisical.com/scep/applications/{application-id}/profiles/{profile-id}/pkiclient.exe`) |
 
         <Tabs>
             <Tab title="Static Challenge">
-                - **Challenge Password**: The shared secret configured on the SCEP enrollment method.
+                | Credential | Purpose |
+                |------------|---------|
+                | **Challenge Password** | The shared secret configured on the SCEP enrollment |
             </Tab>
             <Tab title="Dynamic Challenge">
-                - **Challenge Endpoint URL**: The authenticated endpoint for generating one-time challenges. This takes the form `https://app.infisical.com/scep/{profile_id}/challenge`.
-                - **Machine Identity Access Token**: An access token for a Machine Identity with permissions on the project. You can obtain this by authenticating a [Machine Identity](/documentation/platform/identities/machine-identities) configured with [Token Auth](/documentation/platform/identities/token-auth).
+                | Credential | Purpose |
+                |------------|---------|
+                | **Challenge Endpoint URL** | The authenticated endpoint for generating one-time challenges |
+                | **Machine Identity Access Token** | An access token for a [Machine Identity](/documentation/platform/identities/machine-identities) added to the Application as an Operator |
 
                 With dynamic challenges, Jamf Pro calls a webhook to fetch a one-time challenge password for each device enrollment. Configure this webhook now:
 
@@ -82,11 +86,11 @@ Infisical supports both **static** and **dynamic** SCEP challenges with Jamf Pro
     </Step>
 
     <Step title="Configure the SCEP payload">
-        Fill in the SCEP payload fields using the values from your Infisical certificate profile:
+        Fill in the SCEP payload fields using the values from your Infisical SCEP enrollment:
 
         ![SCEP configuration — URL, Name, and Subject fields](/images/platform/pki/integrations/jamf-pro/scep-config-top.png)
 
-        - **URL**: Enter your Infisical SCEP endpoint URL (e.g., `https://app.infisical.com/scep/{profile_id}/pkiclient.exe`).
+        - **URL**: Enter your Infisical SCEP endpoint URL (e.g., `https://app.infisical.com/scep/applications/{application-id}/profiles/{profile-id}/pkiclient.exe`).
         - **Name**: Enter a descriptive name for the SCEP instance (e.g., `CA-IDENT`). This value is used internally by the device to identify the SCEP configuration.
         - **Subject**: Enter the distinguished name for the certificate in X.500 format (e.g., `O=CompanyName, CN=Foo`). Adjust the subject components to match your organization's naming convention.
         - **Subject Alternative Names (Optional)**: Add any SANs if required by your certificate policy.
@@ -96,7 +100,7 @@ Infisical supports both **static** and **dynamic** SCEP challenges with Jamf Pro
         <Tabs>
             <Tab title="Static Challenge">
                 - **Challenge Type**: Select **Static** from the dropdown.
-                - **Challenge**: Enter the **Challenge Password** from your Infisical certificate profile.
+                - **Challenge**: Enter the **Challenge Password** from your Infisical SCEP enrollment.
                 - **Verify Challenge**: Re-enter the challenge password to confirm.
 
                 ![SCEP configuration — Challenge and certificate options](/images/platform/pki/integrations/jamf-pro/scep-config-challenge.png)
@@ -152,6 +156,23 @@ Infisical supports both **static** and **dynamic** SCEP challenges with Jamf Pro
 
         ![Certificate details showing the issued certificate from Infisical](/images/platform/pki/integrations/jamf-pro/mac-certificate-details.png)
 
-        You can also verify the certificate was issued by checking the **Certificates** section in your Infisical certificate management project, the certificate enrolled via Jamf Pro will appear in the list under the corresponding certificate profile.
+        You can also verify the certificate was issued by checking the **Certificates** section in your Application. The certificate enrolled via Jamf Pro will appear in the list.
     </Step>
 </Steps>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="SCEP Enrollment" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/scep">
+    Learn more about SCEP enrollment configuration.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Learn more about Applications.
+  </Card>
+</CardGroup>

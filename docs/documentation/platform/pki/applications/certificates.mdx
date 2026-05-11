@@ -4,239 +4,79 @@ sidebarTitle: "Certificates"
 description: "View and manage the certificate inventory for your Application."
 ---
 
-View and manage all certificates issued within your Application. From the certificate inventory, you can inspect details, trigger renewals, revoke compromised certificates, and export in various formats.
+The certificate inventory shows all certificates issued within your Application. From here you can inspect details, trigger renewals, revoke certificates, and export in various formats.
 
 <Info>
-  This page is for Application Admins and Operators. To issue certificates, you'll first need an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) configured for your Application.
+  To issue certificates, you'll need an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) configured for your Application.
 </Info>
 
-## Viewing Certificate Details
+## Certificate Details
 
-Click on any certificate in the inventory to open its details page.
+Click any certificate to view its details:
 
-![Certificate details page](/images/platform/pki/certificate/cert-details.png)
-
-### Certificate Information
-
-| Section | Details |
-|---------|---------|
+| Section | What's Included |
+|---------|-----------------|
 | **Overview** | Common name, status, serial number, validity period |
-| **Issuance** | Issuing CA, certificate profile, renewal chain |
 | **Subject** | DN components, Organization, OU, Country, SANs |
 | **Extensions** | Basic constraints, Key Usage, Extended Key Usage |
 | **Cryptographic** | Key algorithm, signature algorithm, fingerprints |
+| **Metadata** | Custom key-value pairs for organization and tracking |
 
-### Certificate Metadata
+Metadata is preserved across renewals and can be used to filter the certificate list.
 
-Certificates support custom key-value metadata for organization and tracking.
+## Actions
 
-<Tabs>
-  <Tab title="At Issuance">
-    Attach metadata when issuing a certificate through the issuance modal.
-    
-    ![Certificate issue metadata](/images/platform/pki/certificate/cert-issue-metadata.png)
-  </Tab>
-  <Tab title="After Issuance">
-    View and edit metadata from the certificate details page.
-    
-    ![Certificate metadata section](/images/platform/pki/certificate/cert-metadata-section.png)
-  </Tab>
-  <Tab title="Filtering">
-    Filter the certificate list by metadata key-value pairs.
-    
-    ![Certificate metadata filter](/images/platform/pki/certificate/cert-metadata-filter.png)
-  </Tab>
-</Tabs>
+From the certificate details page, use the **Options** menu:
 
-<Note>
-  When a certificate is renewed, its metadata is automatically carried over to the new certificate.
-</Note>
-
-### Management Actions
-
-From the certificate details page, use the **Options** dropdown to:
-
-- **Export Certificate** — Download in PEM or PKCS12 format
-- **Enable Auto-Renewal** — Configure server-driven renewal (API enrollment with server-generated keys)
-- **Renew Now** — Manually trigger renewal
-- **Manage PKI Syncs** — Push to cloud key stores
-- **Revoke Certificate** — Revoke with a specified reason
-- **Delete Certificate** — Remove from inventory
+| Action | Description |
+|--------|-------------|
+| **Export** | Download as PEM (individual files) or PKCS12 (single encrypted bundle) |
+| **Enable Auto-Renewal** | Infisical renews automatically before expiration |
+| **Renew Now** | Manually trigger renewal |
+| **Manage Syncs** | Push to cloud destinations (ACM, Key Vault, etc.) |
+| **Revoke** | Revoke with a reason code; certificate appears in CRL |
+| **Delete** | Remove from inventory |
 
 ## Issuing Certificates
 
-To issue a certificate, you need a [certificate profile](/documentation/platform/pki/settings/profiles) (which includes a [certificate policy](/documentation/platform/pki/settings/policies)).
+Go to **Certificates → Request** and select a certificate profile. Choose a request method:
 
-<CardGroup cols={2}>
-  <Card title="Self-Signed" icon="signature">
-    Configure the profile with `Self-Signed` issuer type. Use [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) to request.
-  </Card>
-  <Card title="CA-Issued" icon="building-columns">
-    Configure the profile with `Certificate Authority` issuer type and select the [issuing CA](/documentation/platform/pki/ca/overview). Use any [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview).
-  </Card>
-</CardGroup>
+| Method | Description |
+|--------|-------------|
+| **Managed** | Infisical generates and stores the private key |
+| **CSR** | You provide your own Certificate Signing Request |
 
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step title="Navigate to Certificate Requests">
-        Go to your Application → **Certificates** → **Certificate Requests** and click **Request**.
-        
-        ![Issue certificate](/images/platform/pki/certificate/cert-issue.png)
-      </Step>
-      <Step title="Select profile and request method">
-        Choose the certificate profile and request method:
-        
-        | Method | Description |
-        |--------|-------------|
-        | **Managed** | Infisical generates and manages the private key |
-        | **CSR** | You provide your own Certificate Signing Request |
-        
-        ![Certificate issue modal](/images/platform/pki/certificate/cert-issue-modal.png)
-      </Step>
-      <Step title="Fill in certificate details">
-        For **Managed**: Fill out subject attributes, SANs, algorithms, and TTL.
-        
-        For **CSR**: Paste your PEM-encoded CSR and specify TTL.
-        
-        ![Certificate issue modal CSR](/images/platform/pki/certificate/cert-issue-modal-csr.png)
-        
-        <Note>
-          When using CSR, subject attributes and key algorithm are extracted from your CSR. You only specify TTL.
-        </Note>
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="API">
-    Use the [API enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) to issue certificates programmatically.
-  </Tab>
-</Tabs>
+For automated issuance, configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview):
+- [API](/documentation/platform/pki/applications/enrollment-methods/api) — Direct API calls or Infisical Agent
+- [ACME](/documentation/platform/pki/applications/enrollment-methods/acme) — Certbot, cert-manager, and ACME clients
+- [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
+- [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
 
-## Renewing Certificates
+## Renewal
 
-Certificate renewal can be client-driven or server-driven depending on your enrollment method and use case.
+| Type | How It Works |
+|------|--------------|
+| **Client-driven** | The client (Certbot, cert-manager, Infisical Agent) monitors expiration and requests renewal |
+| **Server-driven** | Infisical automatically renews before expiration and pushes to [syncs](/documentation/platform/pki/applications/certificate-syncs/overview) |
 
-### Client-Driven Renewal
+Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) with Infisical-managed keys. Enable it on the [certificate profile](/documentation/platform/pki/settings/profiles) or toggle it per-certificate.
 
-The client (Infisical Agent, ACME client, etc.) monitors the certificate and requests a new one before expiration.
+## Export Formats
 
-**Examples:**
-- [ACME](/documentation/platform/pki/applications/enrollment-methods/acme) with Certbot for [Nginx](/documentation/platform/pki/applications/guides/nginx-certbot) or [Apache](/documentation/platform/pki/applications/guides/apache-certbot)
-- [cert-manager](/documentation/platform/pki/applications/guides/k8s-cert-manager) for Kubernetes workloads
+| Format | Use Case |
+|--------|----------|
+| **PEM** | Nginx, Apache, Docker, load balancers — separate files for cert, chain, and key |
+| **PKCS12** | Java apps, Windows IIS, mobile apps — single encrypted file with password |
 
-### Server-Driven Renewal
+## Revocation
 
-Infisical automatically renews certificates before expiration and pushes them to sync destinations.
+Revoke a certificate when it's compromised or no longer needed. Specify a [reason code](https://datatracker.ietf.org/doc/html/rfc5280#section-5.3.1) (key compromise, superseded, etc.).
 
-<Info>
-  Server-driven renewal is only available for certificates issued via [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) with server-generated keys.
-</Info>
+Revoked certificates are added to the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution). Verify revocation status:
 
-To enable:
-1. Select **Enable Auto-Renewal By Default** on the [certificate profile](/documentation/platform/pki/settings/profiles), OR
-2. Toggle auto-renewal manually on individual certificates after issuance
-
-Renewed certificates are automatically pushed to configured [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview).
-
-<Info>
-  Use the [Get Latest Active Certificate Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) endpoint to always fetch the most current valid certificate for a profile.
-</Info>
-
-## Downloading Certificates
-
-### Latest Profile Certificate
-
-Download the latest certificate for a profile using the [latest certificate bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) endpoint.
-
-### Specific Certificate
-
-Click **Export Certificate** from the certificate's action menu.
-
-![Export certificate option](/images/platform/pki/certificate/cert-export-option.png)
-
-<Tabs>
-  <Tab title="PEM Format">
-    Choose **PEM** format to get individual components:
-    - Certificate body
-    - Certificate chain
-    - Private key (if available)
-    
-    ![Export PEM modal](/images/platform/pki/certificate/cert-export-pem-modal.png)
-    
-    **Use with:** Apache, Nginx, Docker containers, load balancers
-    
-    ```nginx
-    server {
-        listen 443 ssl;
-        ssl_certificate /path/to/certificate.pem;
-        ssl_certificate_key /path/to/private-key.pem;
-    }
-    ```
-  </Tab>
-  <Tab title="PKCS12 Format">
-    Choose **PKCS12** for a single encrypted file containing certificate, chain, and key.
-    
-    ![Export PKCS12](/images/platform/pki/certificate/cert-export-pkcs12.png)
-    
-    **Use with:** Java applications, Windows IIS, mobile apps
-    
-    ```bash
-    # Verify contents
-    openssl pkcs12 -in certificate.p12 -nokeys -clcerts
-    
-    # Extract private key
-    openssl pkcs12 -in certificate.p12 -nocerts -out private-key.pem
-    ```
-    
-    <Accordion title="Convert to Java KeyStore (JKS)">
-      ```bash
-      keytool -importkeystore \
-          -srckeystore certificate.p12 \
-          -srcstoretype PKCS12 \
-          -srcstorepass <p12-password> \
-          -destkeystore certificate.jks \
-          -deststoretype JKS \
-          -deststorepass <jks-password>
-      ```
-    </Accordion>
-  </Tab>
-</Tabs>
-
-## Revoking Certificates
-
-Revoke a certificate when it's compromised, no longer needed, or the associated private key is lost.
-
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step title="Revoke the certificate">
-        Select **Revoke Certificate** from the certificate's action menu and specify the reason.
-        
-        ![Revoke certificate](/images/platform/pki/certificate/cert-revoke.png)
-        ![Revoke certificate modal](/images/platform/pki/certificate/cert-revoke-modal.png)
-      </Step>
-      <Step title="Verify via CRL">
-        Download the CRL from the issuing CA to verify revocation status.
-        
-        ![View CRL](/images/platform/pki/ca/ca-crl.png)
-        
-        ```bash
-        openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
-        ```
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="API">
-    ```bash
-    curl -X POST 'https://app.infisical.com/api/v1/cert-manager/certificates/<cert-id>/revoke' \
-      -H 'Authorization: Bearer <access-token>' \
-      -H 'Content-Type: application/json' \
-      -d '{"revocationReason": "UNSPECIFIED"}'
-    ```
-    
-    See [Revoke Certificate API](/api-reference/endpoints/certificates/revoke) for details.
-  </Tab>
-</Tabs>
+```bash
+openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
+```
 
 ## What's Next?
 
@@ -245,12 +85,12 @@ Revoke a certificate when it's compromised, no longer needed, or the associated 
     Push certificates to AWS ACM, Azure Key Vault, and other destinations.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
-    Get notified when certificates are about to expire.
+    Get notified before certificates expire.
   </Card>
-  <Card title="Approval Policies" icon="check-double" href="/documentation/platform/pki/applications/approvals">
-    Require human review before high-value certificates are issued.
+  <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/applications/approvals">
+    Require human review before issuance.
   </Card>
   <Card title="Enrollment Methods" icon="plug" href="/documentation/platform/pki/applications/enrollment-methods/overview">
-    Configure how certificates are requested for this Application.
+    Configure how certificates are requested.
   </Card>
 </CardGroup>

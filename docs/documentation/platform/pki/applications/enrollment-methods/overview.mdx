@@ -4,15 +4,15 @@ sidebarTitle: "Overview"
 description: "Configure how your services and devices request certificates from Certificate Manager."
 ---
 
-Enrollment methods define how certificates are requested from your Application. Each method supports different use cases — from programmatic API access to standard protocols like ACME that work with existing tooling.
+Enrollment methods define how certificates are requested from your Application. Each method supports different use cases — from UI-based issuance and the Infisical Agent to standard protocols like ACME that work with existing tooling.
 
 ## Choose an Enrollment Method
 
 <CardGroup cols={2}>
   <Card title="API" icon="code" href="/documentation/platform/pki/applications/enrollment-methods/api">
-    **Best for:** Custom integrations, scripts, CI/CD pipelines
+    **Best for:** Manual UI issuance, Infisical Agent, custom integrations
     
-    Direct HTTP API calls for full programmatic control over certificate issuance.
+    Issue certificates through the Infisical UI, Agent, or direct API calls. Supports server-driven auto-renewal.
   </Card>
   <Card title="ACME" icon="robot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
     **Best for:** Web servers, Kubernetes, standard tooling
@@ -35,10 +35,10 @@ Enrollment methods define how certificates are requested from your Application. 
 
 | Method | Protocol | Auto-Renewal | Domain Validation | Best For |
 |--------|----------|--------------|-------------------|----------|
-| **API** | REST/HTTP | Manual or via agent | None | Custom integrations |
-| **ACME** | RFC 8555 | Built-in | HTTP-01, DNS-01 | Web servers, Kubernetes |
+| **API** | REST/HTTP | Server-driven or client-driven | None | UI issuance, Agent, integrations |
+| **ACME** | RFC 8555 | Client-driven | HTTP-01 | Web servers, Kubernetes |
 | **EST** | RFC 7030 | Re-enrollment | Certificate-based | Enterprise devices |
-| **SCEP** | Draft RFC | Challenge-based | Shared secret | MDM, network devices |
+| **SCEP** | Draft RFC | Re-enrollment | Challenge password | MDM, network devices |
 
 ## How Enrollment Works
 
@@ -58,13 +58,14 @@ Enrollment methods define how certificates are requested from your Application. 
 </Steps>
 
 <Note>
-  Enrollment methods are configured per Application. This means different services can use different enrollment methods while sharing the same certificate profile.
+  Enrollment methods are configured by **Application Admins** within their Application. Each enrollment method is tied to a specific profile attached to the Application — meaning the enrollment URL (e.g., ACME directory) is unique to that Application + Profile pair.
 </Note>
 
 ## After Enrollment
 
 Once certificates are issued, you can:
 
-- **Sync certificates** to external destinations like [AWS Certificate Manager](/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager) or [Azure Key Vault](/documentation/platform/pki/applications/certificate-syncs/azure-key-vault)
-- **Set up alerting** to get notified before certificates expire
-- **View certificate inventory** in your Application dashboard
+- **[View and manage certificates](/documentation/platform/pki/applications/certificates)** in your Application's certificate inventory
+- **[Sync certificates](/documentation/platform/pki/applications/certificate-syncs/overview)** to external destinations like [AWS ACM](/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager), [Azure Key Vault](/documentation/platform/pki/applications/certificate-syncs/azure-key-vault), or [Cloudflare](/documentation/platform/pki/applications/certificate-syncs/cloudflare)
+- **[Set up alerting](/documentation/platform/pki/applications/alerting/overview)** to get notified before certificates expire
+- **[Configure approval policies](/documentation/platform/pki/applications/approvals)** to require human review before issuance

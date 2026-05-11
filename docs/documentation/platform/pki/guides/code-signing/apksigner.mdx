@@ -1,20 +1,20 @@
 ---
 title: "Sign Android APKs with apksigner"
-sidebarTitle: "apksigner"
+sidebarTitle: "Sign Android APKs"
 description: "Use the Infisical PKCS#11 module to sign Android APK and AAB files with apksigner."
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Platform Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
 </Info>
 
 Sign Android APK and Android App Bundle (AAB) files using `apksigner` with the Infisical PKCS#11 module. Since `apksigner` is a Java-based tool, it uses the same SunPKCS11 provider approach as jarsigner.
 
 ## Prerequisites
 
-- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Platform Admin
 - An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
-- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - Android SDK Build Tools 30.0.0 or later (includes `apksigner`)
 
@@ -130,10 +130,10 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
 ## What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/code-signing/guides/pkcs11-jarsigner">
+  <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
     Sign Java artifacts with jarsigner
   </Card>
-  <Card title="Sign Windows Binaries" icon="windows" href="/documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode">
+  <Card title="Sign Windows Binaries" icon="windows" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
     Sign Windows executables with osslsigncode
   </Card>
 </CardGroup>
