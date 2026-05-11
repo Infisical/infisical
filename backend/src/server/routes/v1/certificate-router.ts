@@ -1259,6 +1259,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             caName: z.string().nullable().optional(),
             caType: z.enum(["internal", "external"]).nullable().optional(),
             profileName: z.string().nullable().optional(),
+            applicationName: z.string().nullable().optional(),
             metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })

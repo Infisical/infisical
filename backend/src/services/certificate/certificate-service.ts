@@ -158,7 +158,7 @@ export const certificateServiceFactory = ({
     );
 
     // Extract additional details from the joined result while creating clean cert object
-    const { caName, profileName, ...cert } = certWithDetails;
+    const { caName, profileName, applicationName, ...cert } = certWithDetails;
 
     // Extract subject, fingerprints, and basicConstraints
     let certSubject: TCertificateSubject | undefined;
@@ -230,6 +230,7 @@ export const certificateServiceFactory = ({
         basicConstraints,
         caName,
         profileName,
+        applicationName,
         metadata: certMetadata
       }
     };

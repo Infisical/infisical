@@ -606,6 +606,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithRequestDetails = TCertificates & {
     caName?: string | null;
     profileName?: string | null;
+    applicationName?: string | null;
     caType?: "internal" | "external" | null;
   };
 
@@ -632,9 +633,11 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`,
           `${TableName.InternalCertificateAuthority}.caId`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"));
 
       if (filter.id) {
