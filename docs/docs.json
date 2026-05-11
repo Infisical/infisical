@@ -723,7 +723,7 @@
                 "pages": [
                   "documentation/platform/pki/overview",
                   {
-                    "group": "Quick Starts",
+                    "group": "Quickstarts",
                     "pages": [
                       "documentation/platform/pki/getting-started",
                       "documentation/platform/pki/quick-starts/issue-first-certificate",

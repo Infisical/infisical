@@ -44,13 +44,3 @@ Infisical Certificate Manager is a centralized platform for managing X.509 certi
   </Card>
 </CardGroup>
 
-## How It's Organized
-
-Certificate Manager separates shared infrastructure from team-level operations:
-
-| Level | Entities | Managed by |
-|-------|----------|------------|
-| **Organization** | Certificate Authorities, Policies, Profiles | Platform admins |
-| **Application** | Enrollment, Certificates, Alerting, Syncs | Team admins & operators |
-
-This separation means platform admins set up PKI once, and teams consume it through Applications without needing to understand the underlying infrastructure.
