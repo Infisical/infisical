@@ -1,11 +1,13 @@
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Badge, Button } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
 import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   HoneyTokenConfigStatus,
   HoneyTokenType,
+  useDeleteHoneyTokenConfig,
   useGetHoneyTokenConfig,
   useTestHoneyTokenConnection
 } from "@app/hooks/api/honeyToken";
@@ -13,12 +15,16 @@ import {
 import { HoneyTokenModal } from "./HoneyTokenModal";
 
 export const HoneyTokenSection = () => {
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["honeyTokenModal"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "honeyTokenModal",
+    "disconnectConfig"
+  ] as const);
 
   const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
     retry: false
   });
   const { mutateAsync: testConnection, isPending: isTesting } = useTestHoneyTokenConnection();
+  const { mutateAsync: deleteConfig } = useDeleteHoneyTokenConfig();
 
   const hasConfig = Boolean(existingConfig);
   const isConfigVerified = existingConfig?.status === HoneyTokenConfigStatus.Complete;
@@ -42,6 +48,22 @@ export const HoneyTokenSection = () => {
     } catch {
       createNotification({
         text: "Failed to test connection. Check your AWS App Connection permissions.",
+        type: "error"
+      });
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await deleteConfig(HoneyTokenType.AWS);
+      createNotification({
+        text: "Honey token configuration disconnected successfully.",
+        type: "success"
+      });
+      handlePopUpClose("disconnectConfig");
+    } catch {
+      createNotification({
+        text: "Failed to disconnect honey token configuration.",
         type: "error"
       });
     }
@@ -80,6 +102,15 @@ export const HoneyTokenSection = () => {
                   Verify Connection
                 </Button>
               )}
+              {hasConfig && (
+                <Button
+                  variant="danger"
+                  isDisabled={!isAllowed}
+                  onClick={() => handlePopUpOpen("disconnectConfig")}
+                >
+                  Disconnect
+                </Button>
+              )}
               <Button
                 variant="org"
                 isDisabled={!isAllowed}
@@ -94,6 +125,15 @@ export const HoneyTokenSection = () => {
       <HoneyTokenModal
         isOpen={popUp.honeyTokenModal.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("honeyTokenModal", isOpen)}
+      />
+      <DeleteActionModal
+        isOpen={popUp.disconnectConfig.isOpen}
+        onChange={(isOpen) => handlePopUpToggle("disconnectConfig", isOpen)}
+        title="Disconnect AWS Honey Tokens"
+        subTitle="This will remove the honey token configuration for this organization. You will need to reconfigure it to use honey tokens again."
+        deleteKey="disconnect"
+        buttonText="Disconnect"
+        onDeleteApproved={handleDisconnect}
       />
     </div>
   );

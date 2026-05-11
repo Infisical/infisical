@@ -297,5 +297,16 @@ export const honeyTokenAwsConfigProviderFactory = ({
     return { ...config, decryptedConfig };
   };
 
-  return { upsertConfig, testConnection, getConfig };
+  const deleteConfig = async ({ orgId }: { orgId: string }): Promise<void> => {
+    const existing = await honeyTokenConfigDAL.findOne({
+      orgId,
+      type: HoneyTokenType.AWS
+    });
+    if (!existing) {
+      return;
+    }
+    await honeyTokenConfigDAL.deleteById(existing.id);
+  };
+
+  return { upsertConfig, testConnection, getConfig, deleteConfig };
 };

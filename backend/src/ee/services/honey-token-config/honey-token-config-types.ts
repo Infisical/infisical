@@ -39,12 +39,17 @@ export type THoneyTokenConfigProviderGetConfigInput = {
   orgId: string;
 };
 
+export type THoneyTokenConfigProviderDeleteInput = {
+  orgId: string;
+};
+
 export type THoneyTokenConfigProvider<T extends HoneyTokenType = HoneyTokenType> = {
   upsertConfig: (input: THoneyTokenConfigProviderUpsertInput<T>) => Promise<THoneyTokenConfigRecord>;
   testConnection: (
     input: THoneyTokenConfigProviderTestConnectionInput
   ) => Promise<THoneyTokenTestConnectionResponseByType[T]>;
   getConfig: (input: THoneyTokenConfigProviderGetConfigInput) => Promise<THoneyTokenConfigWithDecrypted | undefined>;
+  deleteConfig: (input: THoneyTokenConfigProviderDeleteInput) => Promise<void>;
 };
 
 export type THoneyTokenConfigServiceUpsertInput<T extends HoneyTokenType = HoneyTokenType> = {

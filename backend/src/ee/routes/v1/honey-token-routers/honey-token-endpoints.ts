@@ -126,6 +126,29 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
   });
 
   server.route({
+    url: "/configs",
+    method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.honeyTokenConfig.deleteConfig({
+        orgPermission: req.permission,
+        type
+      });
+      return { message: "Honey token configuration deleted successfully" };
+    }
+  });
+
+  server.route({
     url: "/trigger",
     method: "POST",
     config: {
