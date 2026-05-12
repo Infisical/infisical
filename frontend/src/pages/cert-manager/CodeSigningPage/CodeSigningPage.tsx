@@ -36,7 +36,7 @@ export const CodeSigningPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Code Signing"
-          description="Manage signers and control who can sign artifacts."
+          description="Securely sign code and artifacts with centralized key management and approval workflows."
         />
         <Tabs
           value={activeTab}

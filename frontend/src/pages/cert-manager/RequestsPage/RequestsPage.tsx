@@ -223,8 +223,8 @@ export const RequestsPage = () => {
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
               scope={ProjectType.CertificateManager}
-              title="Requests"
-              description="Pending approval requests for certificate issuance and code signing. Use this inbox to approve, reject, or follow up on requests from your Applications and Signers."
+              title="Approval Requests"
+              description="Requests for certificate issuance and code signing across your Applications and Signers."
             />
 
             <Tabs

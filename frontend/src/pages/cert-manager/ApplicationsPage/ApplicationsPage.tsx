@@ -158,7 +158,7 @@ export const ApplicationsPage = () => {
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
               title="Applications"
-              description="Applications attach one or more Profiles and a team. Each Application has its own members, roles, certificates, alerts, and approval policies."
+              description="Issue certificates, configure enrollment, and manage lifecycle automation for your services."
             />
 
             <Card>

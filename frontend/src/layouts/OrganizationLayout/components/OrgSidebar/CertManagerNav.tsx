@@ -86,7 +86,7 @@ export const CertManagerNav = ({
       submenu: CERT_DISCOVERY_SUBMENU
     },
     {
-      label: "Requests",
+      label: "Approval Requests",
       icon: Inbox,
       pathSuffix: "requests",
       badgeCount: pendingRequestsCount || undefined

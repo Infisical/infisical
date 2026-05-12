@@ -265,7 +265,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
           </div>
           <p className="text-sm text-bunker-300">
             {isCertManagerView
-              ? "Create and configure connections with third-party apps for re-use across Certificate Manager."
+              ? "Create and configure connections with third-party apps for your Applications and Signers."
               : `Create and configure connections with third-party apps for re-use across your project${
                   isProjectView ? "" : "s"
                 }.`}
