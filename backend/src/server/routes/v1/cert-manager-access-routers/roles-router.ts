@@ -13,6 +13,16 @@ const CERT_MANAGER_ROLE_SLUGS = new Set([ProjectMembershipRole.Admin, ProjectMem
 const CERT_MANAGER_CUSTOM_ROLE_ERROR =
   "Certificate Manager does not support custom roles. Use the built-in Admin or Member role.";
 
+const CERT_MANAGER_ROLE_DESCRIPTIONS: Record<string, string> = {
+  [ProjectMembershipRole.Admin]: "Full administrative access over Certificate Manager",
+  [ProjectMembershipRole.Member]: "Limited read/write role in Certificate Manager"
+};
+
+const overrideDescription = <T extends { slug: string; description?: string | null }>(role: T): T => ({
+  ...role,
+  description: CERT_MANAGER_ROLE_DESCRIPTIONS[role.slug] ?? role.description
+});
+
 export const registerCertManagerAccessRolesRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -43,7 +53,9 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
         }
       });
       return {
-        roles: roles.filter((el) => CERT_MANAGER_ROLE_SLUGS.has(el.slug as ProjectMembershipRole))
+        roles: roles
+          .filter((el) => CERT_MANAGER_ROLE_SLUGS.has(el.slug as ProjectMembershipRole))
+          .map(overrideDescription)
       };
     }
   });
@@ -73,7 +85,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
           metadata: { projectId, slug: req.params.roleSlug }
         }
       });
-      return { role };
+      return { role: overrideDescription(role) };
     }
   });
 

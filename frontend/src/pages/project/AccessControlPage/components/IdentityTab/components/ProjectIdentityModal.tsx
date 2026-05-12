@@ -16,16 +16,20 @@ import {
   ModalClose,
   Switch
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   TProjectIdentity,
   useCreateProjectIdentity,
+  useCreateProjectIdentityMembership,
   useGetProjectRoles,
   useUpdateProjectIdentity,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { useCreateOrgIdentity } from "@app/hooks/api/orgIdentity/mutations";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const schema = z.object({
@@ -52,15 +56,27 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const navigate = useNavigate();
 
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
   const isUpdate = Boolean(identity);
 
+  // Roles list is sourced product-aware (cert-manager filters to Admin + Member server-side).
   const { data: roles } = useGetProjectRoles(currentProject.id, currentProject.type);
+  // For cert-manager, default to Member instead of No Access (No Access is filtered out server-side).
+  const defaultRole = isCertManager
+    ? { slug: ProjectMembershipRole.Member, name: "Member" }
+    : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
 
   const { mutateAsync: createMutateAsync } = useCreateProjectIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
   const { mutateAsync: updateMembershipMutateAsync } = useUpdateProjectIdentityMembership();
+  // Cert Manager can't create project-scoped identities — the project-level endpoint is blocked.
+  // Identities are org-scoped there, so we create the identity at the org level (No Access on the
+  // org by default), then assign it to Cert Manager with the chosen role.
+  const { mutateAsync: createOrgIdentityAsync } = useCreateOrgIdentity();
+  const { mutateAsync: assignToProjectAsync } = useCreateProjectIdentityMembership();
 
   const {
     control,
@@ -73,7 +89,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       name: identity?.name ?? "",
       hasDeleteProtection: identity?.hasDeleteProtection ?? false,
       metadata: identity?.metadata ?? [],
-      role: isUpdate ? undefined : { slug: ProjectMembershipRole.NoAccess, name: "No Access" }
+      role: isUpdate ? undefined : defaultRole
     }
   });
 
@@ -96,22 +112,40 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
 
         onClose();
       } else {
-        // create
-
-        const { id: createdId } = await createMutateAsync({
-          name,
-          projectId: currentProject.id,
-          hasDeleteProtection,
-          metadata
-        });
-
-        if (role) {
-          await updateMembershipMutateAsync({
-            roles: [{ role: role.slug }],
+        // create — branch on Cert Manager (no project-scoped identities) vs other products
+        let createdId: string;
+        if (isCertManager) {
+          const orgIdentity = await createOrgIdentityAsync({
+            name,
+            organizationId: currentOrg.id,
+            role: OrgMembershipRole.NoAccess,
+            hasDeleteProtection,
+            metadata
+          });
+          createdId = orgIdentity.id;
+          await assignToProjectAsync({
             identityId: createdId,
             projectId: currentProject.id,
-            projectType: currentProject.type
+            projectType: currentProject.type,
+            role: role?.slug
           });
+        } else {
+          const created = await createMutateAsync({
+            name,
+            projectId: currentProject.id,
+            hasDeleteProtection,
+            metadata
+          });
+          createdId = created.id;
+
+          if (role) {
+            await updateMembershipMutateAsync({
+              roles: [{ role: role.slug }],
+              identityId: createdId,
+              projectId: currentProject.id,
+              projectType: currentProject.type
+            });
+          }
         }
 
         await addMutateAsync({
@@ -139,7 +173,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       }
 
       createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} project machine identity`,
+        text: `Successfully ${isUpdate ? "updated" : "created"} machine identity`,
         type: "success"
       });
 
@@ -149,7 +183,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       const error = err as any;
       const text =
         error?.response?.data?.message ??
-        `Failed to ${isUpdate ? "update" : "create"} project machine identity`;
+        `Failed to ${isUpdate ? "update" : "create"} machine identity`;
 
       createNotification({
         text,

@@ -2441,6 +2441,12 @@ export const projectServiceFactory = ({
 
     const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
 
+    const productLabel = project.type === ProjectType.CertificateManager ? "Certificate Manager" : null;
+    const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";
+    const notificationBody = productLabel
+      ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
+      : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
+
     await notificationService.createUserNotifications(
       projectMembers
         .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
@@ -2448,8 +2454,8 @@ export const projectServiceFactory = ({
           userId: member.userId,
           orgId: project.orgId,
           type: NotificationType.PROJECT_ACCESS_REQUEST,
-          title: "Project Access Request",
-          body: `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`,
+          title: notificationTitle,
+          body: notificationBody,
           link: callbackPath
         }))
     );
@@ -2457,14 +2463,15 @@ export const projectServiceFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.ProjectAccessRequest,
       recipients: filteredProjectMembers,
-      subjectLine: "Project Access Request",
+      subjectLine: notificationTitle,
       substitutions: {
         requesterName: `${userDetails.firstName} ${userDetails.lastName}`,
         requesterEmail: userDetails.email,
         projectName: project?.name,
         orgName: org?.name,
         note: comment,
-        callback_url: `${appCfg.SITE_URL}${callbackPath}`
+        callback_url: `${appCfg.SITE_URL}${callbackPath}`,
+        ...(productLabel ? { productLabel } : {})
       }
     });
   };

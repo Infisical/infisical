@@ -17,7 +17,7 @@ export const CertManagerInstanceBanner = () => {
   const isViewingActive = activeProject?.id === projectId;
 
   const message = isViewingActive
-    ? "Multi-project Certificate Manager is being deprecated. Pick one project to keep and remove the rest."
+    ? "Certificate Manager now supports one project per organization. Select the project you want to keep and migrate the rest."
     : `This project is being retired. The active Certificate Manager project is "${activeProject?.name ?? "not set"}".`;
 
   return (
@@ -30,7 +30,7 @@ export const CertManagerInstanceBanner = () => {
         search={{ selectedTab: "product-settings" }}
         className="underline underline-offset-2 hover:text-yellow"
       >
-        Click here to manage projects.
+        Click here.
       </Link>
     </div>
   );

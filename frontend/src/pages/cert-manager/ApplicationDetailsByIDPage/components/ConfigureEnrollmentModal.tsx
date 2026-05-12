@@ -848,7 +848,7 @@ const METHOD_LABELS: Record<EnrollmentMethod, string> = {
 const METHOD_DESCRIPTIONS: Record<EnrollmentMethod, string> = {
   api: "Clients call the Infisical API directly to request certificates.",
   est: "Clients use the EST protocol (RFC 7030) over HTTPS.",
-  acme: "Clients use the ACME protocol (RFC 8555) — same flow as Let's Encrypt.",
+  acme: "Clients use the ACME protocol (RFC 8555) over HTTPS.",
   scep: "Network devices use the SCEP protocol over HTTPS."
 };
 

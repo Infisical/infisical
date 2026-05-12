@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRightIcon,
-  BoxIcon,
-  MoreHorizontalIcon,
-  StarIcon,
-  Trash2Icon,
-  TriangleAlertIcon
-} from "lucide-react";
+import { BoxIcon, MoreHorizontalIcon, StarIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
@@ -28,11 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
   PageLoader,
   Table,
   TableBody,
@@ -96,8 +84,6 @@ export const OrgCertManagerTab = () => {
     );
   }
   if (instances.length <= 1) return null;
-
-  const active = instances.find((i) => i.isActive);
 
   const handleConfirmActive = async () => {
     if (!pendingActive) return;
@@ -206,43 +192,20 @@ export const OrgCertManagerTab = () => {
           <DialogHeader>
             <DialogTitle>Confirm change</DialogTitle>
             <DialogDescription>
-              This changes the default Certificate Manager project for the entire organization.
+              This changes the default Certificate Manager for the entire organization.
             </DialogDescription>
           </DialogHeader>
 
           <Alert variant="warning">
             <TriangleAlertIcon />
             <AlertDescription>
-              Every member in the organization will start landing on this project, and API requests
-              without a projectId will resolve to it.
+              <p>
+                <span className="font-semibold">{pendingActive?.name ?? ""}</span> will become the
+                default for your organization. All members and integrations will resolve to this
+                instance going forward.
+              </p>
             </AlertDescription>
           </Alert>
-
-          <div className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-3">
-            <Item variant="default" size="xs" className="flex-1 border-transparent p-0">
-              <ItemMedia>
-                <BoxIcon className="size-4 text-project" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>{active?.name ?? "—"}</ItemTitle>
-                {active?.slug ? (
-                  <ItemDescription className="font-mono">{active.slug}</ItemDescription>
-                ) : null}
-              </ItemContent>
-            </Item>
-            <ArrowRightIcon className="size-4 shrink-0 text-mineshaft-400" aria-hidden />
-            <Item variant="default" size="xs" className="flex-1 border-transparent p-0">
-              <ItemMedia>
-                <BoxIcon className="size-4 text-project" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>{pendingActive?.name ?? "—"}</ItemTitle>
-                {pendingActive?.slug ? (
-                  <ItemDescription className="font-mono">{pendingActive.slug}</ItemDescription>
-                ) : null}
-              </ItemContent>
-            </Item>
-          </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPendingActive(null)}>

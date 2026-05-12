@@ -166,10 +166,14 @@ export const Page = () => {
             {isOwnProjectMembershipDetails ? (
               <Tooltip
                 side="right"
-                content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+                content={
+                  isCertManager
+                    ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
+                    : "You cannot modify your own membership. Ask a project admin to make changes to your membership."
+                }
               >
                 <Badge variant="info" className="ml-2">
-                  <InfoIcon /> Your project membership
+                  <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
                 </Badge>
               </Tooltip>
             ) : (
@@ -248,7 +252,9 @@ export const Page = () => {
                   })
                 }
               />
-              <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+              {!isCertManager && (
+                <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+              )}
             </div>
           </div>
           <DeleteActionModal

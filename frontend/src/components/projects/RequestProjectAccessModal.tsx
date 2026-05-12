@@ -26,8 +26,8 @@ const Content = ({ projectId, onComplete }: ContentProps) => {
         onSuccess: () => {
           createNotification({
             type: "success",
-            title: "Project Access Request Sent",
-            text: "Project admins will receive an email of your request"
+            title: "Access Request Sent",
+            text: "Admins will receive an email of your request"
           });
           onComplete();
         }

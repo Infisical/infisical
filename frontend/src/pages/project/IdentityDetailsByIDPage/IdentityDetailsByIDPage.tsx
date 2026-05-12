@@ -333,9 +333,11 @@ const Page = () => {
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
-              <IdentityProjectAdditionalPrivilegeSection
-                identityMembershipDetails={identityMembershipDetails}
-              />
+              {!isCertManager && (
+                <IdentityProjectAdditionalPrivilegeSection
+                  identityMembershipDetails={identityMembershipDetails}
+                />
+              )}
             </div>
           </div>
           <DeleteActionModal

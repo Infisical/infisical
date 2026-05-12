@@ -6,13 +6,11 @@ import { formatDistance } from "date-fns";
 import {
   CircleStopIcon,
   EyeIcon,
-  FilePlusIcon,
   InfoIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlayIcon,
   PlusIcon,
-  SettingsIcon,
   Trash2Icon
 } from "lucide-react";
 
@@ -83,7 +81,6 @@ import {
   useDetachPkiApplicationProfile
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
-import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
 import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
 import {
@@ -361,12 +358,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     "policy",
     "deletePolicy"
   ] as const);
-  const {
-    popUp: issuePopUp,
-    handlePopUpOpen: handleIssuePopUpOpen,
-    handlePopUpToggle: handleIssuePopUpToggle
-  } = usePopUp(["issueCertificate"] as const);
-  const [profileToIssue, setProfileToIssue] = useState<TPkiApplicationProfile | null>(null);
   const deletePolicy = useDeleteApprovalPolicy();
 
   const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
@@ -521,66 +512,55 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Profile</TableHead>
-                  <TableHead className="w-[25%]">Enrollment Methods</TableHead>
-                  <TableHead className="w-[25%]">Enrollment</TableHead>
-                  <TableHead className="w-[10%] text-right">Actions</TableHead>
+                  <TableHead className="w-1/2">Profile</TableHead>
+                  <TableHead className="w-1/2">Enrollment Methods</TableHead>
+                  <TableHead className="w-5" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {profiles.map((p) => {
                   const methods = methodBadges(p);
+                  const hasMethods = methods.length > 0;
                   return (
                     <TableRow key={p.profileId}>
-                      <TableCell isTruncatable className="font-mono" title={p.profileSlug}>
-                        {p.profileSlug}
-                      </TableCell>
+                      <TableCell className="font-mono">{p.profileSlug}</TableCell>
                       <TableCell>
-                        {methods.length === 0 ? (
-                          <span className="text-xs text-accent">Not configured</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {methods.map((m) => (
-                              <Badge key={m} variant="neutral">
-                                {m}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <button
+                          type="button"
                           onClick={() => setProfileToConfigure(p)}
+                          className="group -mx-2 inline-flex items-center gap-2 rounded-sm px-2 py-1 text-left transition-colors hover:bg-mineshaft-700/50"
+                          aria-label={
+                            hasMethods
+                              ? `Edit enrollment for ${p.profileSlug}`
+                              : `Configure enrollment for ${p.profileSlug}`
+                          }
                         >
-                          <SettingsIcon />
-                          {methods.length === 0 ? "Configure enrollment" : "Edit enrollment"}
-                        </Button>
+                          {hasMethods ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {methods.map((m) => (
+                                <Badge key={m} variant="neutral">
+                                  {m}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-accent">Configure</span>
+                          )}
+                          <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                        </button>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs">
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-                            {p.apiConfigId ? (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setProfileToIssue(p);
-                                  handleIssuePopUpOpen("issueCertificate");
-                                }}
-                              >
-                                <FilePlusIcon />
-                                Request Certificate
-                              </DropdownMenuItem>
-                            ) : null}
-                            {canManageProfileAttachments ? (
+                        {canManageProfileAttachments ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton variant="ghost" size="xs">
+                                <MoreHorizontalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
                               <DropdownMenuItem
                                 variant="danger"
                                 onClick={() => setProfileToDetach(p)}
@@ -588,9 +568,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                 <Trash2Icon />
                                 Detach Profile
                               </DropdownMenuItem>
-                            ) : null}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -773,16 +753,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         }}
         applicationId={application.id}
         profile={profileToConfigure}
-      />
-
-      <CertificateIssuanceModal
-        popUp={issuePopUp}
-        handlePopUpToggle={(name, state) => {
-          handleIssuePopUpToggle(name, state);
-          if (state === false) setProfileToIssue(null);
-        }}
-        profileId={profileToIssue?.profileId}
-        applicationId={application.id}
       />
     </div>
   );

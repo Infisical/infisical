@@ -196,7 +196,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         title="Remove member?"
-        subTitle="The member loses access to this Application immediately. They keep their other project memberships."
+        subTitle="The member loses access to this Application immediately. Their access to other Applications is unchanged."
         onChange={(o) => handlePopUpToggle("removeMember", o)}
         deleteKey="confirm"
         onDeleteApproved={async () => {

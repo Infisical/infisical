@@ -667,12 +667,14 @@ export const IdentityTab = withProjectPermission(
                 </TooltipTrigger>
                 <TooltipContent side="right" align="start" className="max-w-sm">
                   <p className="mb-2 text-mineshaft-300">
-                    You can add machine identities to your project in one of two ways:
+                    You can add machine identities to your{" "}
+                    {isCertManager ? "Certificate Manager" : "project"} in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
                     <li className="text-mineshaft-200">
                       <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                      Create a dedicated machine identity managed at the project-level.
+                      Create a dedicated machine identity managed at the{" "}
+                      {isCertManager ? "Certificate Manager-level" : "project-level"}.
                       <p className="mt-2">
                         This method is recommended for autonomous teams that need to manage machine
                         identity authentication.
