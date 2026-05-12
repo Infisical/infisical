@@ -65,6 +65,41 @@ This guide covers everything you need to deploy and configure Infisical Gateways
               --domain=<your-infisical-domain>
             ```
           </Tab>
+          <Tab title="Kubernetes (Helm)">
+            Install the Infisical Helm chart repository:
+            ```bash
+            helm repo add infisical https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+            helm repo update
+            ```
+
+            Create a Kubernetes Secret with your enrollment token:
+            ```bash
+            kubectl create secret generic gateway-enrollment-token \
+              --from-literal=enrollment-token=<enrollment-token>
+            ```
+
+            Install the gateway:
+            ```bash
+            helm install infisical-gateway infisical/infisical-gateway \
+              --set gateway.name=<gateway-name> \
+              --set gateway.enrollMethod=token \
+              --set gateway.token.existingSecret=gateway-enrollment-token \
+              --set gateway.domain=<your-infisical-domain>
+            ```
+
+            <Info>
+              A PersistentVolumeClaim is created by default to store enrollment credentials across pod restarts. The enrollment token is single-use. Without persistent storage, the gateway cannot restart after the initial enrollment.
+            </Info>
+
+            You can also pass the token inline (the chart creates the Secret for you):
+            ```bash
+            helm install infisical-gateway infisical/infisical-gateway \
+              --set gateway.name=<gateway-name> \
+              --set gateway.enrollMethod=token \
+              --set gateway.token.value=<enrollment-token> \
+              --set gateway.domain=<your-infisical-domain>
+            ```
+          </Tab>
         </Tabs>
       </Accordion>
       <Accordion title="AWS Auth">
@@ -87,6 +122,32 @@ This guide covers everything you need to deploy and configure Infisical Gateways
               --gateway-id=<gateway-id> \
               --domain=<your-infisical-domain>
             ```
+          </Tab>
+          <Tab title="Kubernetes (Helm)">
+            Install the Infisical Helm chart repository:
+            ```bash
+            helm repo add infisical https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+            helm repo update
+            ```
+
+            Install the gateway with [IAM Roles for Service Accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html):
+            ```bash
+            helm install infisical-gateway infisical/infisical-gateway \
+              --set gateway.name=<gateway-name> \
+              --set gateway.enrollMethod=aws \
+              --set gateway.aws.gatewayId=<gateway-id> \
+              --set gateway.domain=<your-infisical-domain> \
+              --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::<account-id>:role/<role-name> \
+              --set persistence.enabled=false
+            ```
+
+            <Info>
+              With AWS auth, persistence is optional since the gateway re-authenticates via STS on every start. You can disable it with `persistence.enabled=false` to avoid provisioning a PersistentVolumeClaim.
+            </Info>
+
+            <Info>
+              Ensure the IAM role's trust policy allows the Kubernetes service account to assume it, and that the role's ARN or account ID is in the gateway's AWS auth allowlist in the Infisical UI.
+            </Info>
           </Tab>
         </Tabs>
       </Accordion>

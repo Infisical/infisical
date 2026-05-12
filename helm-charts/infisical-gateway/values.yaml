@@ -1,16 +1,58 @@
 image:
   repository: infisical/cli
-  tag: "0.43.39"
+  tag: "0.43.84"
   pullPolicy: IfNotPresent
 
+# Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
+# Only used when gateway.enrollMethod is unset.
 secret:
-  # The secret that contains the environment variables to be used by the gateway, such as INFISICAL_API_URL and TOKEN
   name: "infisical-gateway-environment"
 
 gateway:
-  # Specify where to save PAM session recordings. This directory will always be created when the gateway starts.
-  # Defaults to /var/lib/infisical/session_recordings.
+  # Enrollment method: "token" or "aws".
+  # Leave empty to use the legacy machine identity flow (env vars from secret.name).
+  enrollMethod: ""
+
+  # Required when enrollMethod is set. Name of the gateway created in the Infisical UI.
+  name: ""
+
+  # Required when enrollMethod is set. Infisical instance URL (e.g. https://app.infisical.com).
+  domain: ""
+
+  # Token enrollment settings (enrollMethod=token)
+  token:
+    # Inline enrollment token value. Mutually exclusive with existingSecret.
+    value: ""
+    # Name of an existing K8s Secret containing the enrollment token.
+    existingSecret: ""
+    # Key within the secret that holds the enrollment token.
+    secretKey: "enrollment-token"
+
+  # AWS enrollment settings (enrollMethod=aws)
+  aws:
+    # Required when enrollMethod=aws. Gateway ID from the Infisical UI.
+    gatewayId: ""
+
+  # Name of a K8s Secret whose key-value pairs are injected as env vars.
+  # Use this to provide credentials for the enrollment method (e.g. AWS keys, GCP credentials).
+  # Not needed when credentials are provided via workload identity (IRSA, GCP Workload Identity, etc.).
+  credentialsSecretRef: ""
+
+  # Specific relay to connect to. Leave empty for automatic selection.
+  relayName: ""
+
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
+
+# Persistent storage for gateway credentials (enrollment flow only).
+# Required when enrollMethod=token so credentials survive pod restarts.
+# Optional when enrollMethod=aws since it re-authenticates via STS on every start.
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 100Mi
+  accessModes:
+    - ReadWriteOnce
+  existingClaim: ""
 
 resources:
   limits:
@@ -35,6 +77,7 @@ podAnnotations: {}
 podLabels: {}
 podSecurityContext:
   runAsNonRoot: true
+  fsGroup: 1000
 
 securityContext:
   runAsNonRoot: true
