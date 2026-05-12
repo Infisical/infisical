@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -17,6 +18,7 @@ import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/servi
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { createDistinguishedName, extractDnParts } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -352,6 +354,10 @@ export const certificateApprovalServiceFactory = (
 
     validateCaSupport(ca, "CSR signing");
 
+    const csrObj = new x509.Pkcs10CertificateRequest(csr || "");
+    const csrSubjectParsed = extractDnParts(csrObj.subjectName);
+    const subjectOverride = createDistinguishedName(csrSubjectParsed);
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =
       await certificateDAL.transaction(async (tx) => {
         const csrBasicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | undefined;
@@ -360,6 +366,7 @@ export const certificateApprovalServiceFactory = (
           isInternal: true,
           caId: ca.id,
           csr: csr || "",
+          subjectOverride,
           ttl,
           altNames: undefined,
           notBefore: normalizeDateForApi(certRequest.notBefore || undefined),
