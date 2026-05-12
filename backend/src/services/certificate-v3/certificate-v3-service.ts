@@ -2422,7 +2422,12 @@ export const certificateV3ServiceFactory = ({
         metadata: `Renewed from certificate ID: ${originalCert.id}`,
         status: CertificateRequestStatus.PENDING,
         ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined
       });
 
       certificateRequestId = certificateRequest.id;
