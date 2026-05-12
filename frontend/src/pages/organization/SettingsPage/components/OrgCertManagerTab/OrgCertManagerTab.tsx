@@ -124,17 +124,15 @@ export const OrgCertManagerTab = () => {
       {isMultiInstance && (
         <Alert variant="warning" className="mb-4">
           <TriangleAlertIcon />
-          <AlertTitle>Multi-project Certificate Manager will be deprecated soon</AlertTitle>
+          <AlertTitle>
+            Action required: Certificate Manager now supports one project per organization
+          </AlertTitle>
           <AlertDescription>
-            Consolidate to a single Certificate Manager project for this organization. You can
-            change the active project below or delete projects you no longer need.
+            Select the project you want to keep as your active instance. All members and
+            integrations will resolve to it going forward.
           </AlertDescription>
         </Alert>
       )}
-      <p className="mb-4 text-sm text-mineshaft-400">
-        The active project is the one the product launches into and the one API requests without a
-        projectId resolve to.
-      </p>
       <Table>
         <TableHeader>
           <TableRow>
