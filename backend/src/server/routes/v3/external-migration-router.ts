@@ -325,6 +325,9 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     schema: {
       operationId: "getVaultNamespacesV3",
+      querystring: z.object({
+        connectionId: z.string().uuid().optional()
+      }),
       response: {
         200: z.object({
           namespaces: z.array(z.object({ id: z.string().nullish(), name: z.string().nullish() }))
@@ -334,7 +337,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const namespaces = await server.services.migration.getVaultNamespaces({
-        actor: req.permission
+        actor: req.permission,
+        connectionId: req.query.connectionId
       });
 
       return { namespaces };
@@ -378,7 +382,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getVaultMountsV3",
       querystring: z.object({
-        namespace: z.string()
+        namespace: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -390,7 +395,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const mounts = await server.services.migration.getVaultMounts({
         actor: req.permission,
-        namespace: req.query.namespace
+        namespace: req.query.namespace,
+        connectionId: req.query.connectionId
       });
 
       return { mounts };
@@ -440,7 +446,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         environment: z.string(),
         secretPath: z.string(),
         vaultNamespace: z.string(),
-        vaultSecretPaths: z.array(z.string()).min(1)
+        vaultSecretPaths: z.array(z.string()).min(1),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -571,7 +578,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultSecretPathsV3",
       querystring: z.object({
         namespace: z.string(),
-        mountPath: z.string()
+        mountPath: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -584,7 +592,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const secretPaths = await server.services.migration.getVaultSecretPaths({
         actor: req.permission,
         namespace: req.query.namespace,
-        mountPath: req.query.mountPath
+        mountPath: req.query.mountPath,
+        connectionId: req.query.connectionId
       });
 
       return { secretPaths };
@@ -695,13 +704,24 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
   // ─── Doppler In-Platform Migration Routes ────────────────────────────────────
 
+  const assertExactlyOneDopplerSelector = (configId?: string, connectionId?: string) => {
+    if (Boolean(configId) === Boolean(connectionId)) {
+      throw new BadRequestError({
+        message: "Exactly one of configId or connectionId must be provided"
+      });
+    }
+  };
+
   server.route({
     method: "GET",
     url: "/doppler/projects",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getDopplerProjectsV3",
-      querystring: z.object({ configId: z.string().uuid() }),
+      querystring: z.object({
+        configId: z.string().uuid().optional(),
+        connectionId: z.string().uuid().optional()
+      }),
       response: {
         200: z.object({
           projects: z
@@ -717,8 +737,10 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      assertExactlyOneDopplerSelector(req.query.configId, req.query.connectionId);
       const projects = await server.services.migration.getDopplerProjects({
         configId: req.query.configId,
+        connectionId: req.query.connectionId,
         actor: req.permission
       });
       return { projects };
@@ -732,7 +754,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getDopplerEnvironmentsV3",
       querystring: z.object({
-        configId: z.string().uuid(),
+        configId: z.string().uuid().optional(),
+        connectionId: z.string().uuid().optional(),
         projectSlug: z.string().min(1)
       }),
       response: {
@@ -751,8 +774,10 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      assertExactlyOneDopplerSelector(req.query.configId, req.query.connectionId);
       const environments = await server.services.migration.getDopplerEnvironments({
         configId: req.query.configId,
+        connectionId: req.query.connectionId,
         projectSlug: req.query.projectSlug,
         actor: req.permission
       });
@@ -767,7 +792,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getDopplerConfigsV3",
       querystring: z.object({
-        configId: z.string().uuid(),
+        configId: z.string().uuid().optional(),
+        connectionId: z.string().uuid().optional(),
         projectSlug: z.string().min(1)
       }),
       response: {
@@ -786,8 +812,10 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      assertExactlyOneDopplerSelector(req.query.configId, req.query.connectionId);
       const configs = await server.services.migration.getDopplerConfigs({
         configId: req.query.configId,
+        connectionId: req.query.connectionId,
         projectSlug: req.query.projectSlug,
         actor: req.permission
       });
@@ -802,7 +830,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "importDopplerSecretsV3",
       body: z.object({
-        configId: z.string().uuid(),
+        configId: z.string().uuid().optional(),
+        connectionId: z.string().uuid().optional(),
         dopplerProject: z.string().min(1),
         dopplerEnvironment: z.string().min(1),
         targetProjectId: z.string().min(1),
@@ -815,6 +844,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      assertExactlyOneDopplerSelector(req.body.configId, req.body.connectionId);
       const result = await server.services.migration.importDopplerSecrets({
         ...req.body,
         actor: req.permission,

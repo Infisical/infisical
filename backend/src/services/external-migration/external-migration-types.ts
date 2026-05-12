@@ -147,7 +147,8 @@ export type TDeleteDopplerExternalMigrationDTO = {
 };
 
 export type TImportDopplerSecretsDTO = {
-  configId: string;
+  configId?: string;
+  connectionId?: string;
   dopplerProject: string;
   dopplerEnvironment: string;
   targetProjectId: string;

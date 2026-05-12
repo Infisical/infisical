@@ -64,7 +64,8 @@ export type TDopplerConfig = {
 };
 
 export type TImportDopplerSecretsDTO = {
-  configId: string;
+  configId?: string;
+  connectionId?: string;
   dopplerProject: string;
   dopplerEnvironment: string;
   targetProjectId: string;
@@ -83,6 +84,7 @@ export type TImportVaultSecretsDTO = {
   secretPath: string;
   vaultNamespace: string;
   vaultSecretPaths: string[];
+  connectionId?: string;
 };
 
 export type VaultKubernetesAuthRole = {

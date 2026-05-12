@@ -97,7 +97,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
-  useOrgPermission,
   useProject,
   useProjectPermission,
   useSubscription
@@ -108,13 +107,13 @@ import {
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import {
+  useCanUseAppConnectionImport,
   useLocalStorageState,
   usePagination,
   usePopUp,
@@ -138,6 +137,8 @@ import {
   useUpdateSecretImport,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   dashboardKeys,
   fetchDashboardProjectSecretsByKeys,
@@ -303,12 +304,9 @@ const OverviewPageContent = () => {
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
   const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
     ExternalMigrationProviders.Vault
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const { data: dopplerConfigs = [] } = useGetExternalMigrationConfigs(
     ExternalMigrationProviders.Doppler
   );
@@ -316,7 +314,6 @@ const OverviewPageContent = () => {
     () => dopplerConfigs.filter((c) => c.connectionId),
     [dopplerConfigs]
   );
-  const hasDopplerConnection = dopplerImportConfigs.length > 0;
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const { mutateAsync: importDopplerSecrets } = useImportDopplerSecrets();
   const prevPageSize = useRef(0);
@@ -521,6 +518,26 @@ const OverviewPageContent = () => {
   const canCreateSecrets = singleVisibleEnv
     ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
     : true;
+
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({
+    canReadSecrets,
+    canCreateSecrets
+  });
+
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
+  const { data: dopplerAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.Doppler,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
+
+  const hasVaultConnection =
+    vaultAppConnections.length > 0 || vaultConfigs.some((config) => config.connectionId);
+  const hasDopplerConnection = dopplerAppConnections.length > 0 || dopplerImportConfigs.length > 0;
 
   const singleEnvChangesCount = subscription.pitRecovery ? singleEnvCommitCount : 0;
   const isSingleEnvChangesCountLoading = subscription.pitRecovery
@@ -874,13 +891,18 @@ const OverviewPageContent = () => {
     handlePopUpOpen("addSecretImport");
   };
 
-  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+  const handleVaultImport = async (
+    vaultPaths: string[],
+    namespace: string,
+    connectionId?: string
+  ) => {
     const { status } = await importVaultSecrets({
       projectId,
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPaths: vaultPaths
+      vaultSecretPaths: vaultPaths,
+      connectionId
     });
 
     if (status === ExternalMigrationImportStatus.ApprovalRequired) {
@@ -905,10 +927,10 @@ const OverviewPageContent = () => {
   const handleDopplerImport = async (
     dopplerProject: string,
     dopplerEnvironment: string,
-    configId: string
+    selector: { configId?: string; connectionId?: string }
   ) => {
     await importDopplerSecrets({
-      configId,
+      ...selector,
       dopplerProject,
       dopplerEnvironment,
       targetProjectId: projectId,
@@ -2605,7 +2627,6 @@ const OverviewPageContent = () => {
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
                     hasDopplerConnection={hasDopplerConnection}
-                    isOrgAdmin={isOrgAdmin}
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
                     onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
                   />
@@ -3627,13 +3648,15 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
         environment={singleEnvSlug}
         secretPath={secretPath}
+        appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
-      {dopplerImportConfigs.length > 0 && (
+      {hasDopplerConnection && (
         <DopplerSecretImportModal
           isOpen={popUp.importFromDoppler.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("importFromDoppler", isOpen)}
           configs={dopplerImportConfigs}
+          appConnections={dopplerAppConnections}
           environment={singleEnvSlug}
           secretPath={secretPath}
           onImport={handleDopplerImport}

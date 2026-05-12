@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -11,6 +12,7 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
+import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   useGetVaultMounts,
   useGetVaultNamespaces,
@@ -22,45 +24,59 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   environment: string;
   secretPath: string;
-  onImport: (vaultPaths: string[], namespace: string) => void;
+  appConnections: TAvailableAppConnection[];
+  onImport: (vaultPaths: string[], namespace: string, connectionId?: string) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
   environment: string;
   secretPath: string;
-  onImport: (vaultPaths: string[], namespace: string) => void;
+  appConnections: TAvailableAppConnection[];
+  onImport: (vaultPaths: string[], namespace: string, connectionId?: string) => void;
 };
 
-const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) => {
+const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
+  const hasAppConnections = appConnections.length > 0;
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [shouldFetchPaths, setShouldFetchPaths] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
 
-  const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
+  const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
+
+  const { data: namespaces, isLoading: isLoadingNamespaces } =
+    useGetVaultNamespaces(activeConnectionId);
   const { data: secretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
     shouldFetchPaths,
     selectedNamespace ?? undefined,
-    selectedMountPath ?? undefined
+    selectedMountPath ?? undefined,
+    activeConnectionId
   );
   const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
     shouldFetchMounts,
-    selectedNamespace ?? undefined
+    selectedNamespace ?? undefined,
+    activeConnectionId
   );
 
-  // Filter to only show KV mounts
   const kvMounts = mounts?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
 
-  // Enable fetching mounts when namespace is selected
+  useEffect(() => {
+    setSelectedNamespace(null);
+    setSelectedMountPath(null);
+    setSelectedPaths([]);
+    setShouldFetchMounts(false);
+    setShouldFetchPaths(false);
+  }, [selectedConnectionId]);
+
   useEffect(() => {
     if (selectedNamespace) {
       setShouldFetchMounts(true);
     }
   }, [selectedNamespace]);
 
-  // Enable fetching paths when both namespace and mount path are selected
   useEffect(() => {
     if (selectedNamespace && selectedMountPath) {
       setShouldFetchPaths(true);
@@ -83,6 +99,11 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
       return;
     }
 
+    if (hasAppConnections && !selectedConnectionId) {
+      createNotification({ type: "error", text: "Please select an app connection" });
+      return;
+    }
+
     if (!mounts || mounts.length === 0) {
       createNotification({
         type: "error",
@@ -91,7 +112,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
       return;
     }
 
-    onImport(selectedPaths, selectedNamespace);
+    onImport(selectedPaths, selectedNamespace, activeConnectionId);
     onClose();
   };
 
@@ -115,6 +136,35 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
         </div>
       </div>
 
+      {hasAppConnections && (
+        <FormControl
+          label="App Connection"
+          className="mb-4"
+          tooltipText="Select the HashiCorp Vault app connection to use for this import."
+        >
+          <>
+            <FilterableSelect
+              value={appConnections.find((conn) => conn.id === selectedConnectionId) ?? null}
+              onChange={(value) => {
+                if (value && !Array.isArray(value)) {
+                  const conn = value as TAvailableAppConnection;
+                  setSelectedConnectionId(conn.id);
+                }
+              }}
+              options={appConnections}
+              getOptionValue={(option) => option.id}
+              getOptionLabel={(option) => option.name}
+              placeholder="Select app connection..."
+              className="w-full"
+              components={{ Option: AppConnectionOption }}
+            />
+            <p className="mt-1 text-xs text-mineshaft-400">
+              Project-scoped HashiCorp Vault app connections available to you
+            </p>
+          </>
+        </FormControl>
+      )}
+
       <FormControl
         label="Namespace"
         className="mb-4"
@@ -134,8 +184,12 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             options={namespaces || []}
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
-            isDisabled={isLoadingNamespaces}
-            placeholder="Select namespace..."
+            isDisabled={isLoadingNamespaces || (hasAppConnections && !selectedConnectionId)}
+            placeholder={
+              hasAppConnections && !selectedConnectionId
+                ? "Select an app connection first..."
+                : "Select namespace..."
+            }
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
@@ -224,6 +278,7 @@ export const VaultSecretImportModal = ({
   onOpenChange,
   environment,
   secretPath,
+  appConnections,
   onImport
 }: Props) => {
   return (
@@ -238,6 +293,7 @@ export const VaultSecretImportModal = ({
           onClose={() => onOpenChange(false)}
           environment={environment}
           secretPath={secretPath}
+          appConnections={appConnections}
           onImport={onImport}
         />
       </ModalContent>
