@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AINav } from "./AINav";
@@ -61,7 +62,11 @@ export const ProjectNav = () => {
   const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const { submenu: smApprovalsSubmenu, pendingRequestsCount: smPendingCount } =
     useApprovalSubmenu();
-  const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
+  const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
+  let projectLabel: string;
+  if (intermediateAvailable) projectLabel = "Projects";
+  else if (isSubOrganization) projectLabel = "Sub-Organization";
+  else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
@@ -159,14 +164,24 @@ export const ProjectNav = () => {
               <button
                 className="cursor-pointer hover:bg-foreground/[0.025]"
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  if (intermediateAvailable) {
+                    navigate({
+                      to: "/organizations/$orgId/projects/$type",
+                      params: {
+                        orgId: currentOrg.id,
+                        type: projectTypeToUrlSlug(currentProject.type)
+                      }
+                    });
+                    return;
+                  }
                   navigate({
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     to: "/organizations/$orgId/projects" as any,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     params: { orgId: currentOrg.id } as any
-                  })
-                }
+                  });
+                }}
               >
                 <ChevronLeft />
                 <span>{projectLabel}</span>

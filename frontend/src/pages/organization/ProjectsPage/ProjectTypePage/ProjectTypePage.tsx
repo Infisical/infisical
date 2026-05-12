@@ -147,7 +147,7 @@ const ProjectTypeContent = ({
         className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
       >
         <ChevronLeftIcon size={16} />
-        Overview
+        Organization
       </Link>
       <div className="mb-10">
         <h1 className="flex items-center text-2xl font-medium text-white underline decoration-project/90 underline-offset-4">

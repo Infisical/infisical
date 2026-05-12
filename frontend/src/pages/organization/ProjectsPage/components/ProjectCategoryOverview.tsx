@@ -115,7 +115,7 @@ export const ProjectCategoryOverview = () => {
 
   if (isProjectsLoading) {
     return (
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {Array.from({ length: 5 }).map((_, i) => (
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
@@ -141,7 +141,7 @@ export const ProjectCategoryOverview = () => {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PRODUCT_TYPES.map((type) => {
           const isCertManager = type === ProjectType.CertificateManager;
           const count = projectCountsByType[type] || 0;
