@@ -288,7 +288,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:secretName",
+    url: "/*",
     config: {
       rateLimit: secretsLimit
     },
@@ -303,7 +303,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim().describe(RAW_SECRETS.GET.secretName)
+        "*": z.string().trim().describe(RAW_SECRETS.GET.secretName)
       }),
       querystring: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.GET.projectId),
@@ -355,7 +355,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId,
         viewSecretValue: req.query.viewSecretValue,
         path: secretPath,
-        secretName: req.params.secretName,
+        secretName: req.params["*"],
         type: req.query.type,
         includeImports: req.query.includeImports,
         version: req.query.version
@@ -370,7 +370,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath: req.query.secretPath,
             secretId: secret.id,
-            secretKey: req.params.secretName,
+            secretKey: req.params["*"],
             secretVersion: secret.version,
             secretMetadata: secret.secretMetadata?.map((meta) => ({
               key: meta.key,
@@ -403,7 +403,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:secretName",
+    url: "/*",
     config: {
       rateLimit: secretsLimit
     },
@@ -418,7 +418,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName)
+        "*": SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName)
       }),
       body: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.CREATE.projectId),
@@ -469,7 +469,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: req.body.projectId,
         secretPath: req.body.secretPath,
-        secretName: req.params.secretName,
+        secretName: req.params["*"],
         type: req.body.type,
         secretValue: req.body.secretValue,
         skipMultilineEncoding: req.body.skipMultilineEncoding,
@@ -491,7 +491,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretApprovalRequestSlug: secretOperation.approval.slug,
               secretPath: req.body.secretPath,
               environment: req.body.environment,
-              secretKey: req.params.secretName,
+              secretKey: req.params["*"],
               eventType: SecretApprovalEvent.Create
             }
           }
@@ -510,7 +510,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
             secretId: secret.id,
-            secretKey: req.params.secretName,
+            secretKey: req.params["*"],
             secretVersion: secret.version,
             secretMetadata: req.body.secretMetadata?.map((meta) => ({
               key: meta.key,
@@ -561,7 +561,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:secretName",
+    url: "/*",
     config: {
       rateLimit: secretsLimit
     },
@@ -576,7 +576,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
+        "*": BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
       }),
       body: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.UPDATE.projectId),
@@ -633,7 +633,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: req.body.environment,
         projectId: req.body.projectId,
         secretPath: req.body.secretPath,
-        secretName: req.params.secretName,
+        secretName: req.params["*"],
         type: req.body.type,
         secretValue: req.body.secretValue,
         skipMultilineEncoding: req.body.skipMultilineEncoding,
@@ -659,7 +659,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretApprovalRequestSlug: secretOperation.approval.slug,
               secretPath: req.body.secretPath,
               environment: req.body.environment,
-              secretKey: req.params.secretName,
+              secretKey: req.params["*"],
               eventType: SecretApprovalEvent.Update
             }
           }
@@ -678,7 +678,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
             secretId: secret.id,
-            secretKey: req.params.secretName,
+            secretKey: req.params["*"],
             secretVersion: secret.version,
             secretMetadata: req.body.secretMetadata?.map((meta) => ({
               key: meta.key,
@@ -731,7 +731,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:secretName",
+    url: "/*",
     config: {
       rateLimit: secretsLimit
     },
@@ -746,7 +746,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().min(1).describe(RAW_SECRETS.DELETE.secretName)
+        "*": z.string().min(1).describe(RAW_SECRETS.DELETE.secretName)
       }),
       body: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.DELETE.projectId),
@@ -780,7 +780,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: req.body.environment,
         projectId: req.body.projectId,
         secretPath: req.body.secretPath,
-        secretName: req.params.secretName,
+        secretName: req.params["*"],
         type: req.body.type
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
@@ -795,7 +795,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretApprovalRequestSlug: secretOperation.approval.slug,
               secretPath: req.body.secretPath,
               environment: req.body.environment,
-              secretKey: req.params.secretName,
+              secretKey: req.params["*"],
               eventType: SecretApprovalEvent.Delete
             }
           }
@@ -815,7 +815,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
             secretId: secret.id,
-            secretKey: req.params.secretName,
+            secretKey: req.params["*"],
             secretVersion: secret.version
           }
         }
@@ -1338,7 +1338,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:secretName/reference-dependency-tree",
+    url: "/*/reference-dependency-tree",
     config: {
       rateLimit: secretsLimit
     },
@@ -1353,7 +1353,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
+        "*": z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
       }),
       querystring: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.projectId),
@@ -1373,7 +1373,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretName } = req.params;
+      const { secretName } = req.params["*"],
       const { secretPath, environment, projectId } = req.query;
 
       const { tree } = await server.services.secret.getSecretReferenceDependencyTree({
@@ -1393,7 +1393,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:secretName/secret-reference-tree",
+    url: "/*/secret-reference-tree",
     config: {
       rateLimit: secretsLimit
     },
@@ -1408,7 +1408,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
+        "*": z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
       }),
       querystring: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.projectId),
@@ -1429,7 +1429,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretName } = req.params;
+      const { secretName } = req.params["*"],
       const { secretPath, environment, projectId } = req.query;
       const { tree, value, secret } = await server.services.secret.getSecretReferenceTree({
         actorId: req.permission.id,

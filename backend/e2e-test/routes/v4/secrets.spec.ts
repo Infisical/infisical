@@ -154,6 +154,23 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
             "TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZWxpdC4gU2VkIGRvIGVpdXNtb2QgdGVtcG9yIGluY2lkaWR1bnQgdXQgbGFib3JlIGV0IGRvbG9yZSBtYWduYSBhbGlxdWEuIFV0IGVuaW0gYWQgbWluaW0gdmVuaWFtLCBxdWlzIG5vc3RydWQgZXhlcmNpdGF0aW9uCg==",
           comment: ""
         }
+      },
+      {
+        path: "/",
+        secret: {
+          // Encoding the key simulates the actual HTTP request format
+          key: encodeURIComponent("path/to/secret"),
+          value: "slash-value",
+          comment: "Testing forward slashes in keys"
+        }
+      },
+      {
+        path: "/nested1/nested2/folder",
+        secret: {
+          key: encodeURIComponent("another/key/with/slashes"),
+          value: "nested-slash-value",
+          comment: "Testing slashes in nested paths"
+        }
       }
     ];
 
