@@ -227,7 +227,7 @@ export const GatewayTab = withPermission(
                         <Tooltip
                           asChild={false}
                           className="normal-case"
-                          content="The last known healthcheck. Triggers every 1 hour."
+                          content="The last known healthcheck. Triggers every 3 minutes."
                         >
                           <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
                         </Tooltip>

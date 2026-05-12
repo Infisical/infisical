@@ -1066,7 +1066,7 @@ export const gatewayV2ServiceFactory = ({
 
     logger.warn(
       { gatewayIds: unhealthyGateways.map((g) => g.id) },
-      "Found gateways with last heartbeat over an hour ago. Sending notifications."
+      "Found gateways with stale heartbeat. Sending notifications."
     );
 
     const gatewaysByOrg = groupBy(unhealthyGateways, (gw) => gw.orgId);
@@ -1083,7 +1083,7 @@ export const gatewayV2ServiceFactory = ({
         }
 
         const gatewayNames = gateways.map((g) => `"${g.name}"`).join(", ");
-        const body = `The following gateway(s) in your organization may be offline as they haven't reported a heartbeat in over an hour: ${gatewayNames}. Please check their status.`;
+        const body = `The following gateway(s) in your organization may be offline as they haven't reported a heartbeat in over 5 minutes: ${gatewayNames}. Please check their status.`;
 
         await notificationService.createUserNotifications(
           admins.map((admin) => ({

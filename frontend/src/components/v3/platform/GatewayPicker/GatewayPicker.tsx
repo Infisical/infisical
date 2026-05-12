@@ -6,7 +6,7 @@ import { Select, SelectItem, Tooltip } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
 type GatewayPickerValue = {
@@ -60,10 +60,7 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
 
   const isOnline = (gw: (typeof v2Gateways)[number]) =>
     "heartbeat" in gw &&
-    gw.heartbeat &&
-    new Date(gw.heartbeat).getTime() > Date.now() - 60 * 60 * 1000 &&
-    (!("lastHealthCheckStatus" in gw) ||
-      gw.lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed);
+    isGatewayHealthy(gw.heartbeat, "lastHealthCheckStatus" in gw ? gw.lastHealthCheckStatus : null);
 
   return (
     <Select

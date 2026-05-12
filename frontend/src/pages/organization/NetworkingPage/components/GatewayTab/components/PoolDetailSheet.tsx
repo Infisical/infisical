@@ -41,7 +41,7 @@ import { useAddGatewayToPool, useRemoveGatewayFromPool } from "@app/hooks/api/ga
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
-import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
 
 import { PoolHealthBadge } from "./PoolHealthBadge";
 
@@ -208,14 +208,10 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 </TableRow>
               )}
               {memberGateways.map((gw) => {
-                const hasHeartbeat =
-                  "heartbeat" in gw &&
-                  gw.heartbeat &&
-                  new Date(gw.heartbeat).getTime() > Date.now() - 60 * 60 * 1000;
-                const isNotFailed =
-                  !("lastHealthCheckStatus" in gw) ||
-                  gw.lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed;
-                const isOnline = hasHeartbeat && isNotFailed;
+                const isOnline = isGatewayHealthy(
+                  gw.heartbeat,
+                  "lastHealthCheckStatus" in gw ? gw.lastHealthCheckStatus : null
+                );
 
                 return (
                   <TableRow key={gw.id}>

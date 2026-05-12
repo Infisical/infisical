@@ -28,9 +28,9 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
 import {
   GatewayAuthMethodView,
-  GatewayHealthCheckStatus,
   TGatewayV2,
   TGatewayV2WithAuthMethod
 } from "@app/hooks/api/gateways-v2/types";
@@ -42,7 +42,7 @@ const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
   if (!gateway.heartbeat && !gateway.lastHealthCheckStatus) {
     return <Badge variant="warning">Unregistered</Badge>;
   }
-  if (gateway.lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy) {
+  if (isGatewayHealthy(gateway.heartbeat, gateway.lastHealthCheckStatus)) {
     return <Badge variant="success">Healthy</Badge>;
   }
   return <Badge variant="danger">Unreachable</Badge>;

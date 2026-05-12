@@ -1,4 +1,4 @@
-export const GATEWAY_HEARTBEAT_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+export const GATEWAY_HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export const GATEWAY_ROUTING_INFO_OID = "1.3.6.1.4.1.12345.100.1";
 export const GATEWAY_ACTOR_OID = "1.3.6.1.4.1.12345.100.2";

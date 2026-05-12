@@ -2,6 +2,7 @@ import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tooltip } from "@app/components/v2";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
 import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 export const GatewayHealthStatus = ({
@@ -46,7 +47,7 @@ export const GatewayHealthStatus = ({
 
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
 
-  const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
+  const isHealthy = isGatewayHealthy(heartbeat, lastHealthCheckStatus);
 
   const tooltipContent = heartbeatDate
     ? `Last health check: ${heartbeatDate.toLocaleString()}`
