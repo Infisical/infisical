@@ -21,7 +21,7 @@ export const SettingsPage = () => {
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
   const { currentProject } = useProject();
-  const activeTab = search.selectedTab ?? "certificate-authorities";
+  const activeTab = search.selectedTab ?? "certificate-profiles";
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
@@ -46,14 +46,14 @@ export const SettingsPage = () => {
           }
         >
           <TabList>
-            <Tab variant="project" value="certificate-authorities">
-              Certificate Authorities
-            </Tab>
             <Tab variant="project" value="certificate-profiles">
               Certificate Profiles
             </Tab>
             <Tab variant="project" value="certificate-policies">
               Certificate Policies
+            </Tab>
+            <Tab variant="project" value="certificate-authorities">
+              Certificate Authorities
             </Tab>
             <Tab variant="project" value="app-connections">
               App Connections

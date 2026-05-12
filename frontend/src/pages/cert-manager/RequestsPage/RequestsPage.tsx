@@ -224,7 +224,7 @@ export const RequestsPage = () => {
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Requests"
-              description="Certificate approval requests across every Application. Use this inbox to approve, reject, or follow up on pending issuance."
+              description="Pending approval requests for certificate issuance and code signing. Use this inbox to approve, reject, or follow up on requests from your Applications and Signers."
             />
 
             <Tabs

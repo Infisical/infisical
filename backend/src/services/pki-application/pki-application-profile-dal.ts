@@ -65,7 +65,22 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
 
   const findAllByProfileId = async (profileId: string, tx?: Knex) => {
     try {
-      const rows = await (tx || db.replicaNode())(TableName.PkiApplicationProfile).where({ profileId });
+      const rows = await (tx || db.replicaNode())(TableName.PkiApplicationProfile)
+        .innerJoin(
+          TableName.PkiApplication,
+          `${TableName.PkiApplicationProfile}.applicationId`,
+          `${TableName.PkiApplication}.id`
+        )
+        .where(`${TableName.PkiApplicationProfile}.profileId`, profileId)
+        .select(
+          `${TableName.PkiApplicationProfile}.applicationId`,
+          `${TableName.PkiApplicationProfile}.profileId`,
+          `${TableName.PkiApplicationProfile}.apiConfigId`,
+          `${TableName.PkiApplicationProfile}.estConfigId`,
+          `${TableName.PkiApplicationProfile}.acmeConfigId`,
+          `${TableName.PkiApplicationProfile}.scepConfigId`,
+          `${TableName.PkiApplication}.name as applicationName`
+        );
       return rows as Array<{
         applicationId: string;
         profileId: string;
@@ -73,6 +88,7 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
         estConfigId?: string | null;
         acmeConfigId?: string | null;
         scepConfigId?: string | null;
+        applicationName: string;
       }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all application junctions for profile" });

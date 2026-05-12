@@ -86,7 +86,7 @@ export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
   title: "Access Control",
   pathSuffix: "access-management",
   defaultTab: "members",
-  activeMatch: /\/members\/|\/groups\/|\/identities\/|\/roles\//,
+  activeMatch: /\/members\/|\/groups\/|\/identities\//,
   items: [
     { label: "Users", icon: User, tab: "members", activeMatch: /\/members\// },
     { label: "Groups", icon: Users, tab: "groups", activeMatch: /\/groups\// },
@@ -95,8 +95,7 @@ export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
       icon: HardDrive,
       tab: "identities",
       activeMatch: /\/identities\//
-    },
-    { label: "Roles", icon: IdCardLanyard, tab: "roles", activeMatch: /\/roles\// }
+    }
   ]
 };
 
@@ -129,12 +128,10 @@ export const INTEGRATIONS_SUBMENU: Submenu = {
 
 export const getOrgSettingsSubmenu = ({
   isSubOrganization,
-  hasSubOrganization,
-  hasMultipleCertManagerInstances
+  hasSubOrganization
 }: {
   isSubOrganization: boolean;
   hasSubOrganization: boolean;
-  hasMultipleCertManagerInstances: boolean;
 }): Submenu => ({
   title: "Settings",
   pathSuffix: "settings",
@@ -154,9 +151,6 @@ export const getOrgSettingsSubmenu = ({
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
     { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
-    ...(hasMultipleCertManagerInstances
-      ? [{ label: "Certificate Manager", icon: ShieldCheck, tab: "cert-manager" }]
-      : []),
     ...(!isSubOrganization && hasSubOrganization
       ? [{ label: "Sub Organizations", icon: SubOrgIcon, tab: "tab-sub-organizations" }]
       : [])

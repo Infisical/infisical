@@ -20,16 +20,9 @@ import { ProfileRow } from "./ProfileRow";
 interface Props {
   onEditProfile: (profile: TCertificateProfileWithDetails) => void;
   onDeleteProfile: (profile: TCertificateProfileWithDetails) => void;
-  onRevealProfileAcmeEabSecret: (profile: TCertificateProfileWithDetails) => void;
-  onViewScepDetails: (profile: TCertificateProfileWithDetails) => void;
 }
 
-export const ProfileList = ({
-  onEditProfile,
-  onRevealProfileAcmeEabSecret,
-  onViewScepDetails,
-  onDeleteProfile
-}: Props) => {
+export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
   const { currentProject } = useProject();
 
   const { data, isLoading } = useListCertificateProfiles({
@@ -47,7 +40,6 @@ export const ProfileList = ({
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th>Enrollment Method</Th>
               <Th>Issuing CA</Th>
               <Th>Certificate Policy</Th>
               <Th className="w-5" />
@@ -55,7 +47,7 @@ export const ProfileList = ({
           </THead>
           <TBody>
             <Tr>
-              <Td colSpan={5}>
+              <Td colSpan={4}>
                 <EmptyState title="No Project Selected" />
               </Td>
             </Tr>
@@ -71,17 +63,16 @@ export const ProfileList = ({
         <THead>
           <Tr>
             <Th>Name</Th>
-            <Th>Enrollment Method</Th>
             <Th>Issuing CA</Th>
             <Th>Certificate Policy</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={5} innerKey="certificate-profiles" />}
+          {isLoading && <TableSkeleton columns={4} innerKey="certificate-profiles" />}
           {!isLoading && (!profiles || profiles.length === 0) && (
             <Tr>
-              <Td colSpan={5}>
+              <Td colSpan={4}>
                 <EmptyState title="No Certificate Profiles" />
               </Td>
             </Tr>
@@ -94,8 +85,6 @@ export const ProfileList = ({
                 key={profile.id}
                 profile={profile}
                 onEditProfile={onEditProfile}
-                onRevealProfileAcmeEabSecret={onRevealProfileAcmeEabSecret}
-                onViewScepDetails={onViewScepDetails}
                 onDeleteProfile={onDeleteProfile}
               />
             ))}

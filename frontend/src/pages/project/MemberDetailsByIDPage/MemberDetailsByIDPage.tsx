@@ -196,31 +196,33 @@ export const Page = () => {
                   >
                     Copy User ID
                   </DropdownMenuItem>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionMemberActions.AssumePrivileges}
-                    a={ProjectPermissionSub.Member}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        isDisabled={!isAllowed}
-                        onClick={() =>
-                          handlePopUpOpen("assumePrivileges", {
-                            userId: membershipDetails.user.id
-                          })
-                        }
-                      >
-                        Assume Privileges
-                        <Tooltip
-                          side="bottom"
-                          content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                  {!isCertManager && (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionMemberActions.AssumePrivileges}
+                      a={ProjectPermissionSub.Member}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenuItem
+                          isDisabled={!isAllowed}
+                          onClick={() =>
+                            handlePopUpOpen("assumePrivileges", {
+                              userId: membershipDetails.user.id
+                            })
+                          }
                         >
-                          <div>
-                            <InfoIcon className="text-muted" />
-                          </div>
-                        </Tooltip>
-                      </DropdownMenuItem>
-                    )}
-                  </ProjectPermissionCan>
+                          Assume Privileges
+                          <Tooltip
+                            side="bottom"
+                            content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                          >
+                            <div>
+                              <InfoIcon className="text-muted" />
+                            </div>
+                          </Tooltip>
+                        </DropdownMenuItem>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                   <ProjectPermissionCan
                     I={ProjectPermissionMemberActions.Delete}
                     a={ProjectPermissionSub.Member}
@@ -231,7 +233,9 @@ export const Page = () => {
                         isDisabled={!isAllowed}
                         onClick={() => handlePopUpOpen("removeMember")}
                       >
-                        Remove User From Project
+                        {isCertManager
+                          ? "Remove User From Certificate Manager"
+                          : "Remove User From Project"}
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>

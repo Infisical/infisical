@@ -1,9 +1,9 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { InfoIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -33,28 +33,23 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
-import {
-  TPkiApplication,
-  useDeletePkiApplication,
-  useListPkiApplications
-} from "@app/hooks/api/pkiApplications";
+import { TPkiApplication, useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { ConfigureProfilesModal } from "./components/ConfigureProfilesModal";
 import { PkiApplicationModal } from "./components/PkiApplicationModal";
 
 export const ApplicationsPage = () => {
   const { projectId, orgId } = useParams({ strict: false });
   const navigate = useNavigate();
   const { data: applications, isPending } = useListPkiApplications();
-  const deleteApp = useDeletePkiApplication();
   const { hasProjectRole } = useProjectPermission();
   const canCreateApplication = hasProjectRole("admin");
+  const canConfigureProfiles = canCreateApplication;
+  const [configureProfilesApp, setConfigureProfilesApp] = useState<TPkiApplication | null>(null);
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "application",
-    "deleteApplication"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["application"] as const);
 
   const renderApplications = () => {
     if (isPending) {
@@ -123,34 +118,26 @@ export const ApplicationsPage = () => {
                 {new Date(app.createdAt).toLocaleDateString()}
               </TableCell>
               <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
-                      <MoreHorizontalIcon />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePopUpOpen("application", app);
-                      }}
-                    >
-                      <PencilIcon />
-                      Edit Application
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePopUpOpen("deleteApplication", app);
-                      }}
-                    >
-                      <Trash2Icon />
-                      Delete Application
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {canConfigureProfiles ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+                        <MoreHorizontalIcon />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfigureProfilesApp(app);
+                        }}
+                      >
+                        <SlidersHorizontalIcon />
+                        Configure Profiles
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
               </TableCell>
             </TableRow>
           ))}
@@ -194,23 +181,11 @@ export const ApplicationsPage = () => {
 
       <PkiApplicationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
 
-      <DeleteActionModal
-        isOpen={popUp.deleteApplication.isOpen}
-        title={`Delete ${(popUp.deleteApplication.data as TPkiApplication | undefined)?.name ?? "Application"}?`}
-        subTitle="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in the project but lose their Application tag."
-        onChange={(isOpen) => handlePopUpToggle("deleteApplication", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
-          const app = popUp.deleteApplication.data as TPkiApplication | undefined;
-          if (!app) return;
-          try {
-            await deleteApp.mutateAsync({ applicationId: app.id });
-            createNotification({ type: "success", text: `Deleted ${app.name}` });
-            handlePopUpClose("deleteApplication");
-          } catch (err) {
-            const detail = err instanceof Error ? err.message : "Failed to delete Application.";
-            createNotification({ type: "error", text: detail });
-          }
+      <ConfigureProfilesModal
+        application={configureProfilesApp}
+        isOpen={Boolean(configureProfilesApp)}
+        onOpenChange={(open) => {
+          if (!open) setConfigureProfilesApp(null);
         }}
       />
     </>

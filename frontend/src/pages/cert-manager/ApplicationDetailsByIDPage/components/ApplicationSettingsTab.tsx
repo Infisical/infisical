@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import {
   CircleStopIcon,
@@ -52,11 +53,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
-import {
-  ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   approvalPolicyQuery,
@@ -75,10 +71,13 @@ import {
   useUpdatePkiAlertV2
 } from "@app/hooks/api/pkiAlertsV2";
 import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
   TPkiApplication,
   TPkiApplicationProfile,
   useAttachPkiApplicationProfiles,
-  useDetachPkiApplicationProfile
+  useDetachPkiApplicationProfile,
+  useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
@@ -110,12 +109,16 @@ type ApplicationPoliciesTableProps = {
   applicationId: string;
   onEdit: (policy: TApprovalPolicy) => void;
   onDelete: (policy: TApprovalPolicy) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 };
 
 const ApplicationPoliciesTable = ({
   applicationId,
   onEdit,
-  onDelete
+  onDelete,
+  canEdit,
+  canDelete
 }: ApplicationPoliciesTableProps) => {
   const { data: policies = [], isPending } = useQuery(
     approvalPolicyQuery.list({
@@ -209,11 +212,15 @@ const ApplicationPoliciesTable = ({
                       </IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                      <DropdownMenuItem onClick={() => onEdit(policy)}>
+                      <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
                         <PencilIcon />
                         Edit Policy
                       </DropdownMenuItem>
-                      <DropdownMenuItem variant="danger" onClick={() => onDelete(policy)}>
+                      <DropdownMenuItem
+                        variant="danger"
+                        isDisabled={!canDelete}
+                        onClick={() => onDelete(policy)}
+                      >
                         <Trash2Icon />
                         Delete Policy
                       </DropdownMenuItem>
@@ -233,9 +240,11 @@ type AlertRowProps = {
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
 };
 
-const AlertRow = ({ alert, onView, onEdit, onDelete }: AlertRowProps) => {
+const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
   const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
 
   const handleToggleAlert = async () => {
@@ -320,15 +329,15 @@ const AlertRow = ({ alert, onView, onEdit, onDelete }: AlertRowProps) => {
               <EyeIcon />
               View details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onEdit}>
+            <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
               <PencilIcon />
               Edit alert
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleToggleAlert}>
+            <DropdownMenuItem isDisabled={!canEdit} onClick={handleToggleAlert}>
               {alert.enabled ? <CircleStopIcon /> : <PlayIcon />}
               {alert.enabled ? "Disable" : "Enable"} alert
             </DropdownMenuItem>
-            <DropdownMenuItem variant="danger" onClick={onDelete}>
+            <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
               <Trash2Icon />
               Delete alert
             </DropdownMenuItem>
@@ -340,10 +349,41 @@ const AlertRow = ({ alert, onView, onEdit, onDelete }: AlertRowProps) => {
 };
 
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
-  const { permission } = useProjectPermission();
-  const canManageProfileAttachments = permission.can(
-    ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-    ProjectPermissionSub.CertificateProfiles
+  const { orgId, projectId } = useParams({ strict: false }) as {
+    orgId?: string;
+    projectId?: string;
+  };
+  const { data: permissionData } = useGetPkiApplicationPermissions(application.id);
+  const appAbility = permissionData?.permission;
+  const canManageProfileAttachments = Boolean(
+    appAbility?.can(
+      PkiApplicationResourceActions.ManageProfiles,
+      PkiApplicationResourceSub.Application
+    )
+  );
+  const canManagePolicies = Boolean(
+    appAbility?.can(
+      PkiApplicationResourceActions.Create,
+      PkiApplicationResourceSub.ApprovalPolicies
+    )
+  );
+  const canDeletePolicies = Boolean(
+    appAbility?.can(
+      PkiApplicationResourceActions.Delete,
+      PkiApplicationResourceSub.ApprovalPolicies
+    )
+  );
+  const canEditPolicies = Boolean(
+    appAbility?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.ApprovalPolicies)
+  );
+  const canManageAlerts = Boolean(
+    appAbility?.can(PkiApplicationResourceActions.Create, PkiApplicationResourceSub.PkiAlerts)
+  );
+  const canEditAlerts = Boolean(
+    appAbility?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.PkiAlerts)
+  );
+  const canDeleteAlerts = Boolean(
+    appAbility?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.PkiAlerts)
   );
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [profilesToAttach, setProfilesToAttach] = useState<{ value: string; label: string }[]>([]);
@@ -422,12 +462,25 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     [profileList, attachedIds]
   );
   const totalProfileCount = profileList?.certificateProfiles?.length ?? 0;
-  let attachDisabledReason: string | null = null;
+  let attachDisabledReason: ReactNode | null = null;
   if (availableProfiles.length === 0) {
     attachDisabledReason =
-      totalProfileCount === 0
-        ? "No certificate profiles exist yet. Create one in Certificate Manager → Policies first."
-        : "All certificate profiles in this project are already attached.";
+      totalProfileCount === 0 ? (
+        <span>
+          No certificate profiles exist yet. Create one in{" "}
+          <Link
+            to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+            params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+            search={{ selectedTab: "certificate-profiles" }}
+            className="text-primary underline hover:text-primary/80"
+          >
+            Certificate Profiles
+          </Link>{" "}
+          first.
+        </span>
+      ) : (
+        "All certificate profiles in this project are already attached."
+      );
   }
 
   const handleAttach = async () => {
@@ -471,8 +524,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <CardHeader>
           <CardTitle>Certificate Profiles</CardTitle>
           <CardDescription>
-            Attach the profiles this Application can issue from, then configure an enrollment method
-            (API, EST, ACME, or SCEP) on each profile.
+            Configure how this Application enrolls against each attached profile (API, EST, ACME, or
+            SCEP).
           </CardDescription>
           {canManageProfileAttachments ? (
             <CardAction>
@@ -588,7 +641,11 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             Approval workflows that gate certificate operations against this Application.
           </CardDescription>
           <CardAction>
-            <Button variant="outline" onClick={() => handlePopUpOpen("policy")}>
+            <Button
+              variant="outline"
+              onClick={() => handlePopUpOpen("policy")}
+              isDisabled={!canManagePolicies}
+            >
               <FontAwesomeIcon icon={faPlus} />
               Create Policy
             </Button>
@@ -599,6 +656,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             applicationId={application.id}
             onEdit={(policy) => handlePopUpOpen("policy", { policyId: policy.id, policy })}
             onDelete={(policy) => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
+            canEdit={canEditPolicies}
+            canDelete={canDeletePolicies}
           />
         </CardContent>
       </Card>
@@ -610,7 +669,11 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             Alert rules for certificate events scoped to {application.name}.
           </CardDescription>
           <CardAction>
-            <Button variant="outline" onClick={() => setAlertModal({ isOpen: true })}>
+            <Button
+              variant="outline"
+              onClick={() => setAlertModal({ isOpen: true })}
+              isDisabled={!canManageAlerts}
+            >
               <FontAwesomeIcon icon={faPlus} />
               Create Alert
             </Button>
@@ -656,6 +719,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                     onDelete={() =>
                       setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
                     }
+                    canEdit={canEditAlerts}
+                    canDelete={canDeleteAlerts}
                   />
                 ))}
             </TableBody>

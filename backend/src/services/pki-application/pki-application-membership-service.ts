@@ -240,10 +240,7 @@ export const pkiApplicationMembershipServiceFactory = ({
           },
           tx
         );
-        await membershipRoleDAL.create(
-          { membershipId: projectMembership.id, role: ProjectMembershipRole.NoAccess },
-          tx
-        );
+        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Member }, tx);
       }
 
       const newMembership = await membershipDAL.create(

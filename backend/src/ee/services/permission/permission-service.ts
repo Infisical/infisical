@@ -642,13 +642,26 @@ export const permissionServiceFactory = ({
         actorType: actor
       });
 
+      const projectPerm = await getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      const isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
+
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(
           resourceMemberships,
           ApplicationMembershipRole.Custom
         );
-        const rules = buildResourcePermissionRules(permissionFromRoles);
-        const permission = createMongoAbility<ResourcePermissionSet>(rules, { conditionsMatcher });
+        const resourceRules = buildResourcePermissionRules(permissionFromRoles);
+        const mergedRules = isProjectAdmin
+          ? [...resourceRules, ...applicationProjectAdminFallbackPermissions]
+          : resourceRules;
+        const permission = createMongoAbility<ResourcePermissionSet>(mergedRules, { conditionsMatcher });
 
         const hasRole = (role: string) =>
           resourceMemberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role)));
@@ -661,16 +674,7 @@ export const permissionServiceFactory = ({
         };
       }
 
-      const projectPerm = await getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      if (projectPerm.hasRole(ProjectMembershipRole.Admin)) {
+      if (isProjectAdmin) {
         const permission = createMongoAbility<ResourcePermissionSet>(applicationProjectAdminFallbackPermissions, {
           conditionsMatcher
         });

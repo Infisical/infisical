@@ -13,23 +13,17 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
-  EnrollmentType,
   TCertificateProfileWithDetails,
   useDeleteCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 
 import { CreateProfileModal } from "./CreateProfileModal";
 import { ProfileList } from "./ProfileList";
-import { RevealAcmeEabSecretModal } from "./RevealAcmeEabSecretModal";
-import { ScepDetailsModal } from "./ScepDetailsModal";
 
 export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isRevealProfileAcmeEabSecretModalOpen, setIsRevealProfileAcmeEabSecretModalOpen] =
-    useState(false);
-  const [isScepDetailsModalOpen, setIsScepDetailsModalOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
@@ -44,16 +38,6 @@ export const CertificateProfilesTab = () => {
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
-  };
-
-  const handleRevealProfileAcmeEabSecret = (profile: TCertificateProfileWithDetails) => {
-    setSelectedProfile(profile);
-    setIsRevealProfileAcmeEabSecretModalOpen(true);
-  };
-
-  const handleViewScepDetails = (profile: TCertificateProfileWithDetails) => {
-    setSelectedProfile(profile);
-    setIsScepDetailsModalOpen(true);
   };
 
   const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
@@ -107,12 +91,7 @@ export const CertificateProfilesTab = () => {
         </ProjectPermissionCan>
       </div>
 
-      <ProfileList
-        onEditProfile={handleEditProfile}
-        onRevealProfileAcmeEabSecret={handleRevealProfileAcmeEabSecret}
-        onViewScepDetails={handleViewScepDetails}
-        onDeleteProfile={handleDeleteProfile}
-      />
+      <ProfileList onEditProfile={handleEditProfile} onDeleteProfile={handleDeleteProfile} />
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
       <UpgradePlanModal
@@ -133,28 +112,6 @@ export const CertificateProfilesTab = () => {
             profile={selectedProfile}
             mode="edit"
           />
-
-          {selectedProfile.enrollmentType === EnrollmentType.ACME && (
-            <RevealAcmeEabSecretModal
-              isOpen={isRevealProfileAcmeEabSecretModalOpen}
-              onClose={() => {
-                setIsRevealProfileAcmeEabSecretModalOpen(false);
-                setSelectedProfile(null);
-              }}
-              profile={selectedProfile}
-            />
-          )}
-
-          {selectedProfile.enrollmentType === EnrollmentType.SCEP && (
-            <ScepDetailsModal
-              isOpen={isScepDetailsModalOpen}
-              onClose={() => {
-                setIsScepDetailsModalOpen(false);
-                setSelectedProfile(null);
-              }}
-              profile={selectedProfile}
-            />
-          )}
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}

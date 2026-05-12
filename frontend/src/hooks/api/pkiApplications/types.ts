@@ -29,7 +29,8 @@ export enum PkiApplicationResourceActions {
   RemoveCertificates = "remove-certificates",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
   RotateAcmeEabSecret = "rotate-acme-eab-secret",
-  GenerateScepChallenge = "generate-scep-challenge"
+  GenerateScepChallenge = "generate-scep-challenge",
+  ManageProfiles = "manage-profiles"
 }
 
 export type TPkiApplicationPermissionSet = [string, string];

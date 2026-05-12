@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import {
   Button,
   FilterableSelect,
@@ -222,6 +223,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
                 value={value}
                 getOptionValue={(option) => option.slug}
                 getOptionLabel={(option) => option.name}
+                components={{ Option: RoleOption }}
               />
             </FormControl>
           )}

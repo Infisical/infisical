@@ -565,28 +565,7 @@ export const CertificateIssuanceModal = ({
                 name="profileId"
                 render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                   <FormControl
-                    label={
-                      <div>
-                        <FormLabel
-                          isRequired
-                          label="Certificate Profile"
-                          icon={
-                            <Tooltip
-                              className="text-center"
-                              content={
-                                <span>
-                                  Certificate profiles define the policies and enrollment methods
-                                  for certificate issuance. The selected profile will enforce
-                                  validation rules and determine the CA used for signing.
-                                </span>
-                              }
-                            >
-                              <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                            </Tooltip>
-                          }
-                        />
-                      </div>
-                    }
+                    label="Certificate Profile"
                     errorText={error?.message}
                     isError={Boolean(error)}
                     isRequired
@@ -598,12 +577,20 @@ export const CertificateIssuanceModal = ({
                       className="w-full"
                       placeholder="Select a certificate profile"
                       position="popper"
+                      dropdownContainerClassName="max-w-none"
                     >
-                      {availableProfiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {profile.slug}
-                        </SelectItem>
-                      ))}
+                      {availableProfiles.length === 0 && applicationId ? (
+                        <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-mineshaft-300">
+                          Only profiles with API enrollment configured on this Application are
+                          listed here. Configure API enrollment under the Settings tab.
+                        </div>
+                      ) : (
+                        availableProfiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.slug}
+                          </SelectItem>
+                        ))
+                      )}
                     </Select>
                   </FormControl>
                 )}

@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -68,6 +69,7 @@ import {
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { CreatePolicyModal } from "../CertificatePoliciesTab/CreatePolicyModal";
+import { CaOption, CertificateAuthorityOption } from "./CertificateAuthorityOption";
 import { CertificatePolicyOption } from "./CertificatePolicyOption";
 
 const certificateDefaultsSchema = z
@@ -583,6 +585,11 @@ interface Props {
 export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { orgId, projectId } = useParams({ strict: false }) as {
+    orgId?: string;
+    projectId?: string;
+  };
+  const navigate = useNavigate();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
   const queryClient = useQueryClient();
 
@@ -1132,39 +1139,56 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   <Controller
                     control={control}
                     name="certificateAuthorityId"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Issuing CA"
-                        isRequired
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <FilterableSelect
-                          value={certificateAuthorities.find((ca) => ca.id === value) || null}
-                          onChange={(selectedCaValue) => {
-                            if (Array.isArray(selectedCaValue)) {
-                              onChange(selectedCaValue[0]?.id || "");
-                            } else if (
-                              selectedCaValue &&
-                              typeof selectedCaValue === "object" &&
-                              "id" in selectedCaValue
-                            ) {
-                              onChange(selectedCaValue.id || "");
-                            } else {
-                              onChange("");
+                    render={({ field: { onChange, value }, fieldState: { error } }) => {
+                      const hasCas = certificateAuthorities.length > 0;
+                      return (
+                        <FormControl
+                          label="Issuing CA"
+                          isRequired
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                        >
+                          <FilterableSelect
+                            value={certificateAuthorities.find((ca) => ca.id === value) || null}
+                            onChange={(selectedCaValue) => {
+                              const selected = selectedCaValue as SingleValue<CaOption>;
+                              if (selected?.id === "_create") {
+                                navigate({
+                                  to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+                                  params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+                                  search: { selectedTab: "certificate-authorities" }
+                                });
+                                return;
+                              }
+                              if (Array.isArray(selectedCaValue)) {
+                                onChange(selectedCaValue[0]?.id || "");
+                              } else if (
+                                selectedCaValue &&
+                                typeof selectedCaValue === "object" &&
+                                "id" in selectedCaValue
+                              ) {
+                                onChange(selectedCaValue.id || "");
+                              } else {
+                                onChange("");
+                              }
+                            }}
+                            getOptionLabel={(ca) => ca.name}
+                            getOptionValue={(ca) => ca.id}
+                            options={
+                              hasCas
+                                ? certificateAuthorities
+                                : ([{ id: "_create", name: "Create New CA" }] as CaOption[])
                             }
-                          }}
-                          getOptionLabel={(ca) => ca.name}
-                          getOptionValue={(ca) => ca.id}
-                          options={certificateAuthorities}
-                          groupBy="groupType"
-                          getGroupHeaderLabel={getGroupHeaderLabel}
-                          placeholder="Select a certificate authority"
-                          isDisabled={Boolean(isEdit)}
-                          className="w-full"
-                        />
-                      </FormControl>
-                    )}
+                            groupBy={hasCas ? "groupType" : undefined}
+                            getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
+                            placeholder="Select a certificate authority"
+                            isDisabled={Boolean(isEdit)}
+                            className="w-full"
+                            components={hasCas ? undefined : { Option: CertificateAuthorityOption }}
+                          />
+                        </FormControl>
+                      );
+                    }}
                   />
                 )}
 

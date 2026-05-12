@@ -74,6 +74,12 @@ export const ApplicationDetailsByIDPage = () => {
     PkiApplicationResourceSub.PkiSyncs
   );
   const canViewRequests = canViewCertificates;
+  const canEditApplication = Boolean(
+    ability?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.Application)
+  );
+  const canDeleteApplication = Boolean(
+    ability?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.Application)
+  );
 
   const requestedTab = search.selectedTab ?? "";
   const tabIsVisible: Record<string, boolean> = {
@@ -159,11 +165,18 @@ export const ApplicationDetailsByIDPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={2}>
-                  <DropdownMenuItem onClick={() => handleEditPopUpOpen("application", application)}>
+                  <DropdownMenuItem
+                    isDisabled={!canEditApplication}
+                    onClick={() => handleEditPopUpOpen("application", application)}
+                  >
                     <FontAwesomeIcon icon={faPenToSquare} />
                     Edit Application
                   </DropdownMenuItem>
-                  <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
+                  <DropdownMenuItem
+                    variant="danger"
+                    isDisabled={!canDeleteApplication}
+                    onClick={() => setIsDeleteOpen(true)}
+                  >
                     <FontAwesomeIcon icon={faTrash} />
                     Delete Application
                   </DropdownMenuItem>
@@ -190,7 +203,7 @@ export const ApplicationDetailsByIDPage = () => {
               <TabList>
                 {canViewCertificates && (
                   <Tab variant="project" value="certificates">
-                    Certificates
+                    Inventory
                   </Tab>
                 )}
                 {canViewRequests && (

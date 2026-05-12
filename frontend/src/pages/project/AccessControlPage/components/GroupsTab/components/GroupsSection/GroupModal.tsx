@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -117,6 +118,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
               getOptionLabel={(option) => option.name}
               options={roles}
               placeholder="Select role..."
+              components={{ Option: RoleOption }}
             />
           </FormControl>
         )}

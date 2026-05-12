@@ -11,7 +11,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApplicationActions,
-  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -432,18 +431,16 @@ export const pkiApplicationServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-      ProjectPermissionSub.CertificateProfiles
+      ResourcePermissionApplicationActions.ManageProfiles,
+      ResourcePermissionSub.Application
     );
 
     const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
@@ -481,18 +478,16 @@ export const pkiApplicationServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await $loadResourcePermission(applicationId, projectId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-      ProjectPermissionSub.CertificateProfiles
+      ResourcePermissionApplicationActions.ManageProfiles,
+      ResourcePermissionSub.Application
     );
 
     const link = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);

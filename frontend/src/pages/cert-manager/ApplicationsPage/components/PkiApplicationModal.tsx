@@ -24,10 +24,7 @@ import {
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   TPkiApplication,
-  useAttachPkiApplicationProfiles,
   useCreatePkiApplication,
-  useDetachPkiApplicationProfile,
-  useListPkiApplicationProfiles,
   useUpdatePkiApplication
 } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -56,11 +53,8 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
   const editing = (popUp?.application?.data as TPkiApplication | undefined) ?? null;
   const create = useCreatePkiApplication();
   const update = useUpdatePkiApplication();
-  const attachProfiles = useAttachPkiApplicationProfiles();
-  const detachProfile = useDetachPkiApplicationProfile();
 
   const { data: profilesData } = useListCertificateProfiles({ limit: 100 });
-  const { data: attachedProfiles } = useListPkiApplicationProfiles(editing?.id ?? "");
 
   const profileOptions = useMemo(
     () =>
@@ -70,11 +64,6 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
       })),
     [profilesData]
   );
-
-  const initialAttachedOptions = useMemo(() => {
-    if (!editing) return [];
-    return (attachedProfiles ?? []).map((p) => ({ value: p.profileId, label: p.profileSlug }));
-  }, [editing, attachedProfiles]);
 
   const {
     control,
@@ -91,43 +80,24 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
       reset({
         name: editing.name,
         description: editing.description ?? "",
-        profileIds: initialAttachedOptions
+        profileIds: []
       });
     } else {
       reset({ name: "", description: "", profileIds: [] });
     }
-  }, [editing, reset, initialAttachedOptions]);
+  }, [editing, reset]);
 
   const onSubmit = async (data: FormData) => {
     try {
-      const selectedIds = (data.profileIds ?? []).map((p) => p.value);
       if (editing) {
         await update.mutateAsync({
           applicationId: editing.id,
           name: data.name,
           description: data.description?.length ? data.description : null
         });
-
-        const currentIds = new Set(initialAttachedOptions.map((p) => p.value));
-        const nextIds = new Set(selectedIds);
-        const toAttach = selectedIds.filter((id) => !currentIds.has(id));
-        const toDetach = [...currentIds].filter((id) => !nextIds.has(id));
-
-        if (toAttach.length > 0) {
-          await attachProfiles.mutateAsync({
-            applicationId: editing.id,
-            profileIds: toAttach
-          });
-        }
-        // Detach mutations are independent — fire them in parallel.
-        await Promise.all(
-          toDetach.map((profileId) =>
-            detachProfile.mutateAsync({ applicationId: editing.id, profileId })
-          )
-        );
-
         createNotification({ type: "success", text: "Application updated" });
       } else {
+        const selectedIds = (data.profileIds ?? []).map((p) => p.value);
         await create.mutateAsync({
           name: data.name,
           description: data.description,
@@ -152,7 +122,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
           <DialogTitle>{editing ? "Edit Application" : "Create Application"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Update the Application's metadata and attached profiles. Changing the name will invalidate any deep links."
+              ? "Update this Application's name and description. Changing the name will invalidate any deep links."
               : "A logical grouping for a service or workload that needs certificates. Each Application has its own members, profiles, and policies."}
           </DialogDescription>
         </DialogHeader>
@@ -187,32 +157,32 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
               </Field>
             )}
           />
-          <Controller
-            control={control}
-            name="profileIds"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Certificate Profiles</FieldLabel>
-                <FieldContent>
-                  <FilterableSelect
-                    isMulti
-                    value={field.value ?? []}
-                    onChange={(val) =>
-                      field.onChange((val ?? []) as { value: string; label: string }[])
-                    }
-                    options={profileOptions}
-                    placeholder="Select profiles to attach..."
-                  />
-                </FieldContent>
-                <FieldDescription>
-                  {editing
-                    ? "Profiles this Application can issue from. Add or remove to update its attachments."
-                    : "Optionally attach existing profiles now. You can change this later."}
-                </FieldDescription>
-                {error ? <FieldError>{error.message}</FieldError> : null}
-              </Field>
-            )}
-          />
+          {!editing ? (
+            <Controller
+              control={control}
+              name="profileIds"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>Certificate Profiles</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      isMulti
+                      value={field.value ?? []}
+                      onChange={(val) =>
+                        field.onChange((val ?? []) as { value: string; label: string }[])
+                      }
+                      options={profileOptions}
+                      placeholder="Select profiles to attach..."
+                    />
+                  </FieldContent>
+                  <FieldDescription>
+                    Optionally attach existing profiles now. You can change this later.
+                  </FieldDescription>
+                  {error ? <FieldError>{error.message}</FieldError> : null}
+                </Field>
+              )}
+            />
+          ) : null}
 
           <DialogFooter>
             <Button

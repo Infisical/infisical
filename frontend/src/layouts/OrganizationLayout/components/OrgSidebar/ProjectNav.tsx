@@ -19,6 +19,7 @@ import {
   CERT_CERTIFICATES_SUBMENU,
   CERT_DISCOVERY_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
+  CERT_MANAGER_ACCESS_CONTROL_SUBMENU,
   INTEGRATIONS_SUBMENU,
   MCP_SUBMENU,
   PAM_APPROVALS_SUBMENU,
@@ -80,10 +81,12 @@ export const ProjectNav = () => {
 
   const getInitialProjectSubmenu = (): Submenu | null => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests) return null;
-    if (isOnAccessControl)
-      return currentProject.type === ProjectType.SecretManager
-        ? SECRET_MANAGER_ACCESS_CONTROL_SUBMENU
-        : PROJECT_ACCESS_CONTROL_SUBMENU;
+    if (isOnAccessControl) {
+      if (currentProject.type === ProjectType.SecretManager)
+        return SECRET_MANAGER_ACCESS_CONTROL_SUBMENU;
+      if (isCertManager) return CERT_MANAGER_ACCESS_CONTROL_SUBMENU;
+      return PROJECT_ACCESS_CONTROL_SUBMENU;
+    }
     if (isOnIntegrations && currentProject.type === ProjectType.SecretManager)
       return INTEGRATIONS_SUBMENU;
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;

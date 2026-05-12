@@ -34,7 +34,10 @@ import {
   TableRow
 } from "@app/components/v3";
 import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
   TPkiApplicationMember,
+  useGetPkiApplicationPermissions,
   useRemovePkiApplicationMember,
   useUpdatePkiApplicationMemberRole
 } from "@app/hooks/api/pkiApplications";
@@ -81,6 +84,18 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
   ] as const);
   const [isAddOpen, setIsAddOpen] = useState(false);
 
+  const { data: permissionData } = useGetPkiApplicationPermissions(applicationId);
+  const ability = permissionData?.permission;
+  const canAddMember = Boolean(
+    ability?.can(PkiApplicationResourceActions.Create, PkiApplicationResourceSub.Member)
+  );
+  const canEditMember = Boolean(
+    ability?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.Member)
+  );
+  const canDeleteMember = Boolean(
+    ability?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.Member)
+  );
+
   return (
     <>
       <Card>
@@ -90,7 +105,12 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
             Users, machine identities, and groups granted access to this Application.
           </CardDescription>
           <CardAction>
-            <Button size="sm" variant="project" onClick={() => setIsAddOpen(true)}>
+            <Button
+              size="sm"
+              variant="project"
+              onClick={() => setIsAddOpen(true)}
+              isDisabled={!canAddMember}
+            >
               <UserPlusIcon />
               Add Member
             </Button>
@@ -131,6 +151,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
                       <TableCell>
                         <Select
                           value={m.role}
+                          disabled={!canEditMember}
                           onValueChange={async (role) => {
                             try {
                               await updateRole.mutateAsync({
@@ -169,6 +190,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
                           <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
                             <DropdownMenuItem
                               variant="danger"
+                              isDisabled={!canDeleteMember}
                               onClick={() => handlePopUpOpen("removeMember", m)}
                             >
                               <Trash2Icon />

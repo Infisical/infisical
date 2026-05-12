@@ -273,7 +273,7 @@ type TCertificateProfileServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiApplicationProfileDAL?: Pick<
     TPkiApplicationProfileDALFactory,
-    "findOneByApplicationAndProfile" | "findByApplicationId"
+    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId"
   >;
 };
 
@@ -1164,6 +1164,21 @@ export const certificateProfileServiceFactory = ({
         slug: profile.slug
       })
     );
+
+    if (pkiApplicationProfileDAL) {
+      const attachments = await pkiApplicationProfileDAL.findAllByProfileId(profileId);
+      if (attachments.length > 0) {
+        const uniqueNames = Array.from(new Set(attachments.map((a) => a.applicationName))).sort();
+        const preview = uniqueNames.slice(0, 5).join(", ");
+        const remaining = uniqueNames.length - 5;
+        const list = remaining > 0 ? `${preview}, and ${remaining} more` : preview;
+        throw new BadRequestError({
+          message: `Cannot delete this certificate profile while it is attached to ${uniqueNames.length} application${
+            uniqueNames.length === 1 ? "" : "s"
+          } (${list}). Detach the profile from those applications first.`
+        });
+      }
+    }
 
     const deletedProfile = await certificateProfileDAL.deleteById(profileId);
     if (!deletedProfile) {

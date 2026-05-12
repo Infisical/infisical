@@ -12,6 +12,11 @@ import {
   CardTitle,
   PageLoader
 } from "@app/components/v3";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncsTable } from "../../IntegrationsListPage/components/PkiSyncsTab/PkiSyncTable";
@@ -25,6 +30,14 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
     enabled: Boolean(projectId),
     refetchInterval: 30000
   });
+
+  const { data: permissionData } = useGetPkiApplicationPermissions(applicationId);
+  const canCreateSync = Boolean(
+    permissionData?.permission?.can(
+      PkiApplicationResourceActions.Create,
+      PkiApplicationResourceSub.PkiSyncs
+    )
+  );
 
   const applicationSyncs = useMemo(
     () => (data ?? []).filter((sync) => sync.applicationId === applicationId),
@@ -40,7 +53,11 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
           and other destinations.
         </CardDescription>
         <CardAction>
-          <Button variant="project" onClick={() => setIsAddSyncOpen(true)}>
+          <Button
+            variant="project"
+            onClick={() => setIsAddSyncOpen(true)}
+            isDisabled={!canCreateSync}
+          >
             <PlusIcon />
             Add Sync
           </Button>

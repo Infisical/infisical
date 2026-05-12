@@ -917,7 +917,8 @@ const buildApplicationAdminPermissionRules = () => {
     [
       ResourcePermissionApplicationActions.Read,
       ResourcePermissionApplicationActions.Edit,
-      ResourcePermissionApplicationActions.Delete
+      ResourcePermissionApplicationActions.Delete,
+      ResourcePermissionApplicationActions.ManageProfiles
     ],
     ResourcePermissionSub.Application
   );
@@ -1092,11 +1093,7 @@ const buildApplicationProjectAdminFallbackRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
 
   can(
-    [
-      ResourcePermissionApplicationActions.Read,
-      ResourcePermissionApplicationActions.Edit,
-      ResourcePermissionApplicationActions.Delete
-    ],
+    [ResourcePermissionApplicationActions.Read, ResourcePermissionApplicationActions.ManageProfiles],
     ResourcePermissionSub.Application
   );
 
