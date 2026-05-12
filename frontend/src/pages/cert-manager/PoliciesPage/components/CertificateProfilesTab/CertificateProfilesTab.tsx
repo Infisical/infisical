@@ -68,8 +68,7 @@ export const CertificateProfilesTab = () => {
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/profiles" />
           </div>
           <p className="text-sm text-bunker-300">
-            Unified certificate issuance configurations combining CA, certificate policy, and
-            enrollment method
+            Unified certificate issuance configurations combining CAs and certificate policies
           </p>
         </div>
 

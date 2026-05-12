@@ -72,10 +72,14 @@ export const GroupsSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {`${productLabel} Groups`}
+            {isCertManager ? "Groups" : `${productLabel} Groups`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
           </CardTitle>
-          <CardDescription>{`Add and manage ${productLabel.toLowerCase()} groups`}</CardDescription>
+          <CardDescription>
+            {isCertManager
+              ? "Add and manage groups"
+              : `Add and manage ${productLabel.toLowerCase()} groups`}
+          </CardDescription>
           <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}

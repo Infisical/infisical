@@ -229,10 +229,14 @@ export const IdentityTab = withProjectPermission(
         <Card>
           <CardHeader>
             <CardTitle>
-              {productLabel} Machine Identities
+              {isCertManager ? "Machine Identities" : `${productLabel} Machine Identities`}
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </CardTitle>
-            <CardDescription>{`Create and manage ${productLabel.toLowerCase()} machine identities`}</CardDescription>
+            <CardDescription>
+              {isCertManager
+                ? "Create and manage machine identities"
+                : `Create and manage ${productLabel.toLowerCase()} machine identities`}
+            </CardDescription>
             <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Create}
@@ -277,7 +281,9 @@ export const IdentityTab = withProjectPermission(
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{`Filter by ${productLabel} Role`}</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+                    </DropdownMenuLabel>
                     {projectRoles?.map(({ id, slug, name }) => (
                       <DropdownMenuCheckboxItem
                         key={id}
@@ -331,7 +337,9 @@ export const IdentityTab = withProjectPermission(
                             )}
                           />
                         </TableHead>
-                        <TableHead className="w-1/3">{`${productLabel} Role`}</TableHead>
+                        <TableHead className="w-1/3">
+                          {isCertManager ? "Role" : `${productLabel} Role`}
+                        </TableHead>
                         <TableHead>Managed by</TableHead>
                         <TableHead className="w-5">
                           {isFetching ? <Spinner size="xs" /> : null}

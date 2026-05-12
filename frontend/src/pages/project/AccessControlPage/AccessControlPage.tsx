@@ -45,10 +45,10 @@ const Page = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={currentProject.type}
-          title={isCertManager ? "Certificate Manager Access Control" : "Project Access Control"}
+          title={isCertManager ? "Access Control" : "Project Access Control"}
           description={
             isCertManager
-              ? "Manage fine-grained access for users, groups, roles, and machine identities within your Certificate Manager."
+              ? "Manage fine-grained access for users, groups, and machine identities."
               : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
           }
         >

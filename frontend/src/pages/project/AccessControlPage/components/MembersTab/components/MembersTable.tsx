@@ -204,7 +204,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{`Filter by ${productLabel} Role`}</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+            </DropdownMenuLabel>
             {projectRoles?.map(({ id, slug, name }) => (
               <DropdownMenuCheckboxItem
                 key={id}
@@ -270,7 +272,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead>{`${productLabel} Role`}</TableHead>
+                <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
                 <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
