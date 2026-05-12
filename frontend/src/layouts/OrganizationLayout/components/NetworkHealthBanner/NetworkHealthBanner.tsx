@@ -79,7 +79,8 @@ export const NetworkHealthBanner = () => {
 
   const unreachableRelays = useMemo(
     () =>
-      relays?.filter((r) => r.orgId && r.heartbeat && isRelayHeartbeatStale(r.heartbeat)).length ?? 0,
+      relays?.filter((r) => r.orgId && r.heartbeat && isRelayHeartbeatStale(r.heartbeat)).length ??
+      0,
     [relays]
   );
 

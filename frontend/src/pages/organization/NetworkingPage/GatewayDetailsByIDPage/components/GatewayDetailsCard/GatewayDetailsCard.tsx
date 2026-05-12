@@ -28,12 +28,12 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import {
   GatewayAuthMethodView,
   TGatewayV2,
   TGatewayV2WithAuthMethod
 } from "@app/hooks/api/gateways-v2/types";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 import { GatewayAuthMethodModal } from "../GatewayAuthMethod/GatewayAuthMethodModal";
 import { ViewGatewayAuth } from "../GatewayAuthMethod/ViewGatewayAuth";

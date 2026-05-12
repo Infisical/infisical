@@ -7,7 +7,8 @@ export const isGatewayHealthy = (
   lastHealthCheckStatus?: GatewayHealthCheckStatus | string | null
 ): boolean => {
   if (!heartbeat) return false;
-  const isHeartbeatFresh = new Date(heartbeat).getTime() > Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS;
+  const isHeartbeatFresh =
+    new Date(heartbeat).getTime() > Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS;
   const isNotFailed =
     !lastHealthCheckStatus || lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed;
   return isHeartbeatFresh && isNotFailed;
