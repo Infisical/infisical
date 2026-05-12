@@ -19,6 +19,11 @@ import {
   useProject
 } from "@app/context";
 import { useDeleteCert, useDownloadCertPkcs12 } from "@app/hooks/api";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CertificateCertModal } from "./CertificateCertModal";
@@ -51,6 +56,13 @@ export const CertificatesSection = ({
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canImportIntoApplication = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Import,
+      PkiApplicationResourceSub.Certificates
+    )
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "issueCertificate",
@@ -130,7 +142,19 @@ export const CertificatesSection = ({
           Certificates
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
         </CardTitle>
-        <CardDescription>View, filter, and manage all certificates.</CardDescription>
+        <CardDescription>
+          {applicationId
+            ? "View, filter, and manage certificates issued through this Application."
+            : "View, filter, and manage all certificates."}
+        </CardDescription>
+        {applicationId && canImportIntoApplication && (
+          <CardAction>
+            <Button variant="outline" onClick={() => handlePopUpOpen("certificateImport")}>
+              <ArrowRightIcon className="mr-1.5 size-4" />
+              Import
+            </Button>
+          </CardAction>
+        )}
         {!applicationId && (
           <CardAction>
             <ProjectPermissionCan
@@ -160,7 +184,11 @@ export const CertificatesSection = ({
           applicationId={applicationId}
           applicationName={applicationName}
         />
-        <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateImportModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          applicationId={applicationId}
+        />
         <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CertificateExportModal
           popUp={popUp}

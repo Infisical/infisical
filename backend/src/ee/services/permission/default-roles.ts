@@ -1041,7 +1041,8 @@ const buildApplicationOperatorPermissionRules = () => {
       ResourcePermissionCertificateActions.Read,
       ResourcePermissionCertificateActions.List,
       ResourcePermissionCertificateActions.Create,
-      ResourcePermissionCertificateActions.Edit
+      ResourcePermissionCertificateActions.Edit,
+      ResourcePermissionCertificateActions.Import
     ],
     ResourcePermissionSub.Certificates
   );

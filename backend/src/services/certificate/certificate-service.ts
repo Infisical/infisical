@@ -2,13 +2,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -87,7 +91,7 @@ type TCertificateServiceFactoryDep = {
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -564,6 +568,7 @@ export const certificateServiceFactory = ({
   const importCert = async ({
     projectId: projectIdInput,
     projectSlug,
+    applicationId,
     pkiCollectionId,
     actorId,
     actorAuthMethod,
@@ -587,19 +592,41 @@ export const certificateServiceFactory = ({
     };
     const projectId = await resolveProjectId();
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (applicationId) {
+      const application = await pkiApplicationDAL.findById(applicationId);
+      if (!application || application.projectId !== projectId) {
+        throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+      }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Import,
-      ProjectPermissionSub.Certificates
-    );
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Import,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Import,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     // Check PKI collection
     if (collectionId) {
@@ -735,6 +762,7 @@ export const certificateServiceFactory = ({
             notBefore,
             notAfter,
             projectId,
+            applicationId: applicationId ?? null,
             keyUsages,
             extendedKeyUsages,
             ...parsedFields

@@ -255,7 +255,7 @@ export const RequestsPage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="my-4 flex gap-2">
+                    <div className="mb-4 flex gap-2">
                       <InputGroup className="flex-1">
                         <InputGroupAddon>
                           <SearchIcon />
@@ -413,7 +413,7 @@ export const RequestsPage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="my-4 flex gap-2">
+                    <div className="mb-4 flex gap-2">
                       <InputGroup className="flex-1">
                         <InputGroupAddon>
                           <SearchIcon />

@@ -34,6 +34,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["certificateImport"]>,
     state?: boolean
   ) => void;
+  applicationId?: string;
 };
 
 type TCertificateDetails = {
@@ -43,7 +44,7 @@ type TCertificateDetails = {
   privateKey: string;
 };
 
-export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const { currentProject } = useProject();
   const { data: cert } = useGetCert(
@@ -75,7 +76,8 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
       certificatePem,
       privateKeyPem,
       chainPem,
-      pkiCollectionId: collectionId
+      pkiCollectionId: collectionId,
+      applicationId
     });
 
     reset();

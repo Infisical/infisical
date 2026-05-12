@@ -203,7 +203,7 @@ export const ApplicationDetailsByIDPage = () => {
               <TabList>
                 {canViewCertificates && (
                   <Tab variant="project" value="certificates">
-                    Inventory
+                    Certificate Inventory
                   </Tab>
                 )}
                 {canViewRequests && (

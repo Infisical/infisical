@@ -146,6 +146,7 @@ export type TGetCertBodyDTO = {
 export type TImportCertDTO = {
   projectId?: string;
   projectSlug?: string;
+  applicationId?: string;
 
   friendlyName?: string;
   pkiCollectionId?: string;

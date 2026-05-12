@@ -86,6 +86,7 @@ export type TImportCertificateDTO = {
 
   pkiCollectionId?: string;
   friendlyName?: string;
+  applicationId?: string;
 };
 
 export type TImportCertificateResponse = {
