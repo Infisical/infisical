@@ -134,7 +134,7 @@ export type TUnifiedCertificateIssuanceDTO = {
   attributes?: {
     commonName?: string | null;
     organization?: string | null;
-    organizationUnit?: string | null;
+    organizationalUnit?: string | null;
     country?: string | null;
     state?: string | null;
     locality?: string | null;
