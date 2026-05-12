@@ -55,7 +55,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     method: "POST",
     url: "/",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       operationId: "completeMicrosoftTeamsIntegration",
@@ -140,7 +140,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     method: "POST",
     url: "/:id/installation-status",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       operationId: "checkMicrosoftTeamsInstallationStatus",
