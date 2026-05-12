@@ -19,6 +19,21 @@ const InstanceUrlSchema = z
   .describe(AppConnections.CREDENTIALS.HC_VAULT.instanceUrl);
 
 const NamespaceSchema = z.string().trim().optional().describe(AppConnections.CREDENTIALS.HC_VAULT.namespace);
+const AuthMountPathSchema = z
+  .string()
+  .trim()
+  .refine(
+    (authMountPath) =>
+      !authMountPath ||
+      (!authMountPath.startsWith("/") &&
+        !authMountPath.endsWith("/") &&
+        !authMountPath.includes("//") &&
+        !/[?#\s]/.test(authMountPath)),
+    "Auth Mount Path must be a relative Vault auth mount path"
+  )
+  .transform((authMountPath) => authMountPath || undefined)
+  .optional()
+  .describe(AppConnections.CREDENTIALS.HC_VAULT.authMountPath);
 
 export const HCVaultConnectionAccessTokenCredentialsSchema = z.object({
   instanceUrl: InstanceUrlSchema,
@@ -33,6 +48,7 @@ export const HCVaultConnectionAccessTokenCredentialsSchema = z.object({
 export const HCVaultConnectionAppRoleCredentialsSchema = z.object({
   instanceUrl: InstanceUrlSchema,
   namespace: NamespaceSchema,
+  authMountPath: AuthMountPathSchema,
   roleId: z.string().trim().min(1, "Role ID required").describe(AppConnections.CREDENTIALS.HC_VAULT.roleId),
   secretId: z.string().trim().min(1, "Secret ID required").describe(AppConnections.CREDENTIALS.HC_VAULT.secretId)
 });
@@ -66,6 +82,7 @@ export const SanitizedHCVaultConnectionSchema = z.discriminatedUnion("method", [
     credentials: HCVaultConnectionAppRoleCredentialsSchema.pick({
       namespace: true,
       instanceUrl: true,
+      authMountPath: true,
       roleId: true
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.HCVault]} (App Role)` }))

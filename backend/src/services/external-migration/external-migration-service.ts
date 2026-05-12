@@ -26,7 +26,6 @@ import {
   getHCVaultKubernetesAuthRoles,
   getHCVaultKubernetesRoles,
   getHCVaultLdapRoles,
-  getHCVaultPolicyNames,
   getHCVaultSecretsForPaths,
   HCVaultAuthType,
   JsonValue,
@@ -356,35 +355,22 @@ export const externalMigrationServiceFactory = ({
       });
     }
 
-    // Allow root namespace access when no namespace is configured on the connection
-    const isRootAccess = namespace === "root" || namespace === "/";
-    const hasNoNamespace = connection.credentials.namespace === undefined;
+    const normalizeVaultNamespace = (vaultNamespace?: string | null) => {
+      const trimmedNamespace = vaultNamespace?.trim();
 
-    if (hasNoNamespace && isRootAccess) {
-      // Skip validation for root access with no configured namespace
-    } else if (connection.credentials.namespace !== namespace) {
+      if (!trimmedNamespace || trimmedNamespace === "/" || trimmedNamespace.toLowerCase() === "root") {
+        return "";
+      }
+
+      return trimmedNamespace;
+    };
+
+    if (normalizeVaultNamespace(connection.credentials.namespace) !== normalizeVaultNamespace(namespace)) {
       throw new BadRequestError({ message: "Namespace value does not match the namespace of the connection" });
     }
 
-    const gatewayDetails = await getGatewayDetails(connection);
-
-    try {
-      await getHCVaultPolicyNames(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
-      await getHCVaultAuthMounts(
-        namespace,
-        HCVaultAuthType.Kubernetes,
-        connection,
-        gatewayService,
-        gatewayV2Service,
-        gatewayDetails
-      );
-
-      await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
-    } catch (error) {
-      throw new BadRequestError({
-        message: `Failed to establish namespace configuration. ${error instanceof Error ? error.message : "Unknown error"}`
-      });
-    }
+    // Do not require privileged sys/auth or sys/mounts access when saving the namespace configuration.
+    // The dedicated discovery endpoints surface those permission errors only when callers need mount data.
   };
 
   const createExternalMigration = async ({
@@ -624,6 +610,8 @@ export const externalMigrationServiceFactory = ({
     secretPath,
     vaultNamespace,
     vaultSecretPaths,
+    vaultMountPath,
+    vaultKvVersion,
     auditLogInfo
   }: {
     actor: OrgServiceActor;
@@ -632,12 +620,24 @@ export const externalMigrationServiceFactory = ({
     secretPath: string;
     vaultNamespace: string;
     vaultSecretPaths: string[];
+    vaultMountPath?: string;
+    vaultKvVersion?: "1" | "2";
     auditLogInfo: AuditLogInfo;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, vaultNamespace, "import vault secrets");
 
     if (!vaultSecretPaths.length) {
       throw new BadRequestError({ message: "At least one Vault secret path is required" });
+    }
+
+    if ((vaultMountPath && !vaultKvVersion) || (!vaultMountPath && vaultKvVersion)) {
+      throw new BadRequestError({ message: "Vault mount path and KV version must be provided together" });
+    }
+
+    const normalizedVaultMountPath = vaultMountPath?.trim().replace(/^\/+|\/+$/g, "");
+
+    if (vaultMountPath && !normalizedVaultMountPath) {
+      throw new BadRequestError({ message: "Vault mount path is required" });
     }
 
     const uniqueVaultSecretPaths = Array.from(new Set(vaultSecretPaths));
@@ -647,7 +647,10 @@ export const externalMigrationServiceFactory = ({
       uniqueVaultSecretPaths,
       connection,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      normalizedVaultMountPath && vaultKvVersion
+        ? { path: normalizedVaultMountPath, version: vaultKvVersion }
+        : undefined
     );
 
     const keyOrigins = new Map<string, string[]>();

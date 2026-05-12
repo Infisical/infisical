@@ -107,6 +107,26 @@ const createConcurrencyLimiter = (limit: number) => {
   };
 };
 
+const normalizeVaultPath = (path: string) => path.trim().replace(/^\/+|\/+$/g, "");
+
+const encodeVaultPath = (path: string) => normalizeVaultPath(path).split("/").map(encodeURIComponent).join("/");
+
+const normalizeVaultNamespace = (namespace?: string) => {
+  const trimmedNamespace = namespace?.trim();
+
+  if (!trimmedNamespace || trimmedNamespace === "/" || trimmedNamespace.toLowerCase() === "root") {
+    return "";
+  }
+
+  return trimmedNamespace;
+};
+
+const getVaultNamespaceHeaders = (namespace?: string) => {
+  const normalizedNamespace = normalizeVaultNamespace(namespace);
+
+  return normalizedNamespace ? { "X-Vault-Namespace": normalizedNamespace } : {};
+};
+
 export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
 
@@ -275,9 +295,10 @@ export const getHCVaultAccessToken = async (
   // Generate temporary token for AppRole method
   try {
     const { instanceUrl, roleId, secretId } = connection.credentials;
+    const authMountPath = connection.credentials.authMountPath || "approle";
 
     const tokenResp = await requestWithHCVaultGateway<TokenRespData>(connection, gatewayService, gatewayV2Service, {
-      url: `${removeTrailingSlash(instanceUrl)}/v1/auth/approle/login`,
+      url: `${removeTrailingSlash(instanceUrl)}/v1/auth/${authMountPath}/login`,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -600,7 +621,7 @@ export const listHCVaultMounts = async (
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
-        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+        ...getVaultNamespaceHeaders(targetNamespace)
       }
     },
     gatewayDetails
@@ -754,23 +775,25 @@ const fetchVaultSecretAtPath = async ({
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 }): Promise<Record<string, JsonValue>> => {
   try {
-    // Extract mount and path from the secretPath
-    // secretPath format: {mount}/{path}
-    const pathParts = secretPath.split("/");
-    const mountPath = pathParts[0];
-    const actualPath = pathParts.slice(1).join("/");
+    const normalizedSecretPath = normalizeVaultPath(secretPath);
+    const mountMatch = mounts
+      .map((mount) => ({ mount, path: normalizeVaultPath(mount.path) }))
+      .filter(({ path }) => path)
+      .sort((a, b) => b.path.length - a.path.length)
+      .find(({ path }) => normalizedSecretPath === path || normalizedSecretPath.startsWith(`${path}/`));
 
-    if (!mountPath || !actualPath) {
+    if (!normalizedSecretPath || !mountMatch) {
       throw new BadRequestError({
         message: "Invalid secret path format. Expected format: {mount}/{path}"
       });
     }
 
-    const mount = mounts.find((m) => m.path.replace(/\/$/, "") === mountPath);
+    const { mount, path: mountPath } = mountMatch;
+    const actualPath = normalizedSecretPath.slice(mountPath.length).replace(/^\/+/, "");
 
-    if (!mount) {
+    if (!actualPath) {
       throw new BadRequestError({
-        message: `Mount '${mountPath}' not found in HashiCorp Vault`
+        message: "Invalid secret path format. Expected format: {mount}/{path}"
       });
     }
 
@@ -790,11 +813,11 @@ const fetchVaultSecretAtPath = async ({
           };
         };
       }>(connection, gatewayService, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/data/${actualPath}`,
+        url: `${instanceUrl}/v1/${encodeVaultPath(mountPath)}/data/${encodeVaultPath(actualPath)}`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
-          "X-Vault-Namespace": namespace
+          ...getVaultNamespaceHeaders(namespace)
         }
       });
 
@@ -808,11 +831,11 @@ const fetchVaultSecretAtPath = async ({
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayService, gatewayV2Service, {
-      url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/${actualPath}`,
+      url: `${instanceUrl}/v1/${encodeVaultPath(mountPath)}/${encodeVaultPath(actualPath)}`,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
-        "X-Vault-Namespace": namespace
+        ...getVaultNamespaceHeaders(namespace)
       }
     });
 
@@ -841,11 +864,14 @@ export const getHCVaultSecretsForPaths = async (
   secretPaths: string[],
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  manualMount?: { path: string; version: "1" | "2" }
 ): Promise<Array<{ vaultSecretPath: string; secrets: Record<string, JsonValue> }>> => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-  const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
+  const mounts: THCVaultMount[] = manualMount
+    ? [{ path: normalizeVaultPath(manualMount.path), type: "kv", version: manualMount.version }]
+    : await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
   return Promise.all(

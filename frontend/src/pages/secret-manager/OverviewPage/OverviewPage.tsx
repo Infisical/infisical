@@ -874,13 +874,19 @@ const OverviewPageContent = () => {
     handlePopUpOpen("addSecretImport");
   };
 
-  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+  const handleVaultImport = async (
+    vaultPaths: string[],
+    namespace: string,
+    options?: { mountPath: string; kvVersion: "1" | "2" }
+  ) => {
     const { status } = await importVaultSecrets({
       projectId,
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPaths: vaultPaths
+      vaultSecretPaths: vaultPaths,
+      vaultMountPath: options?.mountPath,
+      vaultKvVersion: options?.kvVersion
     });
 
     if (status === ExternalMigrationImportStatus.ApprovalRequired) {
