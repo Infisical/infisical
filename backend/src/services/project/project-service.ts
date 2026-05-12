@@ -2324,11 +2324,19 @@ export const projectServiceFactory = ({
   };
 
   const requestProjectAccess = async ({ permission, comment, projectId }: TProjectAccessRequestDTO) => {
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (!project) {
+      throw new NotFoundError({
+        message: `Project with ID ${projectId} not found`
+      });
+    }
     // check user belong to org and has permission to request project access
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actor: permission.type,
       actorId: permission.id,
-      orgId: permission.orgId,
+      orgId: project.orgId,
       actorAuthMethod: permission.authMethod,
       actorOrgId: permission.orgId,
       scope: OrganizationActionScope.Any
@@ -2400,9 +2408,6 @@ export const projectServiceFactory = ({
     }
 
     const org = await orgDAL.findOne({ id: permission.orgId });
-    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-      projectDAL.findById(projectId)
-    );
     const userDetails = await userDAL.findById(permission.id);
     const appCfg = getConfig();
 

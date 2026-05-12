@@ -959,12 +959,12 @@ export const honeyTokenServiceFactory = ({
       })
       .find((accessKeyId): accessKeyId is string => Boolean(accessKeyId));
     if (!firstAccessKeyId) {
-      throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(firstAccessKeyId);
     if (!honeyTokenWithOrg) {
-      throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     const config = await honeyTokenConfigDAL.findOne({
@@ -973,7 +973,7 @@ export const honeyTokenServiceFactory = ({
       status: HoneyTokenConfigStatus.Complete
     });
     if (!config?.encryptedConfig) {
-      throw new NotFoundError({ message: "No honey token configuration found for this organization" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -994,7 +994,7 @@ export const honeyTokenServiceFactory = ({
       expectedBuf.byteLength !== receivedBuf.byteLength ||
       !crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
     ) {
-      throw new UnauthorizedError({ message: "Invalid webhook signature" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     /* eslint-disable no-continue */

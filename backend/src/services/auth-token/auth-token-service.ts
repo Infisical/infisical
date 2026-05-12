@@ -33,7 +33,8 @@ export const getTokenConfig = (tokenType: TokenType) => {
       // generate random 6-digit code
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
       const expiresAt = new Date(new Date().getTime() + 86400000);
-      return { token, expiresAt };
+      const triesLeft = 3;
+      return { token, expiresAt, triesLeft };
     }
     case TokenType.TOKEN_EMAIL_VERIFICATION: {
       // generate random 6-digit code
@@ -149,8 +150,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     if (!isValidToken) {
-      if (token.triesLeft) {
-        if (token.triesLeft === 1) {
+      if (token.triesLeft !== undefined && token.triesLeft !== null) {
+        if (token.triesLeft <= 1) {
           await tokenDAL.deleteTokenForUser({ type, userId, orgId: orgId || null });
         } else {
           await tokenDAL.decrementTriesField({ type, userId, orgId: orgId || null });

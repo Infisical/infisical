@@ -466,6 +466,7 @@
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
+                  "documentation/platform/insights",
                   "documentation/platform/pr-workflows",
                   "documentation/platform/access-controls/access-requests",
                   {

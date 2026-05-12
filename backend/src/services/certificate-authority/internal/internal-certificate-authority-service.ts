@@ -26,7 +26,7 @@ import {
   isPqcCryptoKey,
   PqcCryptoKey
 } from "@app/lib/crypto/pqc";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -1440,6 +1440,10 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId, tx);
     if (!parentCa.internalCa) throw new NotFoundError({ message: `Parent CA with ID '${parentCaId}' not found` });
+
+    if (intermediateCa.projectId !== parentCa.projectId) {
+      throw new ForbiddenRequestError({ message: "Intermediate and Parent CA must belong to the same project" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

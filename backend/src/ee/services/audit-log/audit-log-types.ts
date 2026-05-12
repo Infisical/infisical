@@ -481,6 +481,21 @@ export enum EventType {
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
+
+  CREATE_GROUP = "create-group",
+  UPDATE_GROUP = "update-group",
+  DELETE_GROUP = "delete-group",
+  LINK_GROUP_TO_SUB_ORG = "link-group-to-sub-org",
+  UPDATE_GROUP_ORG_MEMBERSHIP = "update-group-org-membership",
+  UNLINK_GROUP_FROM_SUB_ORG = "unlink-group-from-sub-org",
+  ADD_USER_TO_GROUP = "add-user-to-group",
+  REMOVE_USER_FROM_GROUP = "remove-user-from-group",
+  ADD_IDENTITY_TO_GROUP = "add-identity-to-group",
+  REMOVE_IDENTITY_FROM_GROUP = "remove-identity-from-group",
+  ADD_GROUP_TO_PROJECT = "add-group-to-project",
+  UPDATE_GROUP_PROJECT_MEMBERSHIP = "update-group-project-membership",
+  REMOVE_GROUP_FROM_PROJECT = "remove-group-from-project",
+
   GET_PROJECT_TEMPLATES = "get-project-templates",
   GET_PROJECT_TEMPLATE = "get-project-template",
   CREATE_PROJECT_TEMPLATE = "create-project-template",
@@ -2732,6 +2747,149 @@ interface RemoveHostFromSshHostGroupEvent {
     sshHostGroupId: string;
     sshHostId: string;
     hostname: string;
+  };
+}
+
+interface CreateGroupEvent {
+  type: EventType.CREATE_GROUP;
+  metadata: {
+    groupId: string;
+    name: string;
+    slug: string;
+    role: string;
+  };
+}
+
+interface UpdateGroupEvent {
+  type: EventType.UPDATE_GROUP;
+  metadata: {
+    groupId: string;
+    name?: string;
+    slug?: string;
+    role?: string;
+  };
+}
+
+interface DeleteGroupEvent {
+  type: EventType.DELETE_GROUP;
+  metadata: {
+    groupId: string;
+    name: string;
+    slug: string;
+  };
+}
+
+interface LinkGroupToSubOrgEvent {
+  type: EventType.LINK_GROUP_TO_SUB_ORG;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UpdateGroupOrgMembershipEvent {
+  type: EventType.UPDATE_GROUP_ORG_MEMBERSHIP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UnlinkGroupFromSubOrgEvent {
+  type: EventType.UNLINK_GROUP_FROM_SUB_ORG;
+  metadata: {
+    groupId: string;
+    groupName: string;
+  };
+}
+
+interface AddUserToGroupEvent {
+  type: EventType.ADD_USER_TO_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    userId: string;
+    username: string;
+  };
+}
+
+interface RemoveUserFromGroupEvent {
+  type: EventType.REMOVE_USER_FROM_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    userId: string;
+    username: string;
+  };
+}
+
+interface AddIdentityToGroupEvent {
+  type: EventType.ADD_IDENTITY_TO_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    identityId: string;
+  };
+}
+
+interface RemoveIdentityFromGroupEvent {
+  type: EventType.REMOVE_IDENTITY_FROM_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    identityId: string;
+  };
+}
+
+interface AddGroupToProjectEvent {
+  type: EventType.ADD_GROUP_TO_PROJECT;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UpdateGroupProjectMembershipEvent {
+  type: EventType.UPDATE_GROUP_PROJECT_MEMBERSHIP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface RemoveGroupFromProjectEvent {
+  type: EventType.REMOVE_GROUP_FROM_PROJECT;
+  metadata: {
+    groupId: string;
+    groupName: string;
   };
 }
 
@@ -6986,4 +7144,17 @@ export type Event =
   | GatewayPoolRemoveMemberEvent
   | CreateHoneyTokenEvent
   | UpdateHoneyTokenEvent
-  | RevokeHoneyTokenEvent;
+  | RevokeHoneyTokenEvent
+  | CreateGroupEvent
+  | UpdateGroupEvent
+  | DeleteGroupEvent
+  | LinkGroupToSubOrgEvent
+  | UpdateGroupOrgMembershipEvent
+  | UnlinkGroupFromSubOrgEvent
+  | AddUserToGroupEvent
+  | RemoveUserFromGroupEvent
+  | AddIdentityToGroupEvent
+  | RemoveIdentityFromGroupEvent
+  | AddGroupToProjectEvent
+  | UpdateGroupProjectMembershipEvent
+  | RemoveGroupFromProjectEvent;
