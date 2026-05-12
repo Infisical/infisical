@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,20 +16,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/actor"
 )
+
+// maxMachineIdentityTokenAge is the maximum TTL in seconds for identity access tokens.
+// Used for usage counter expiry in Redis.
+const maxMachineIdentityTokenAge = 86400 * 30 // 30 days
 
 // Authenticator implements the Goa-generated authorization interface (JWTAuth method).
 // It performs real token validation — an exact port of the Node.js inject-identity logic.
 type Authenticator struct {
 	db         pg.DB
+	keyStore   keystore.KeyStore
 	authSecret []byte
 }
 
 // NewAuthenticator creates an Authenticator with real validation backed by pg.DB.
-func NewAuthenticator(db pg.DB, authSecret string) Authenticator {
-	return Authenticator{db: db, authSecret: []byte(authSecret)}
+// keyStore can be nil for tests that don't need Redis-backed features.
+func NewAuthenticator(db pg.DB, authSecret string, keyStore keystore.KeyStore) Authenticator {
+	return Authenticator{db: db, authSecret: []byte(authSecret), keyStore: keyStore}
 }
 
 // authFailKey is a context key used to propagate the authoritative auth error
@@ -255,7 +263,9 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 }
 
 // validateIdentityAccessToken performs real identity access token validation.
-// Exact port of fnValidateIdentityAccessToken in identity-access-token-service.ts:185-239.
+// Port of fnValidateIdentityAccessTokenFast in identity-access-token-service.ts.
+// New-format tokens carry all claims in the JWT for stateless validation; legacy tokens
+// fall back to DB lookup.
 func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*Identity, error) {
 	// 1. Parse and verify JWT signature (HS256).
 	claims := &IdentityJWTClaims{}
@@ -271,26 +281,63 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
-	// 3. Find identity access token (joined with identities table).
-	accessToken, err := a.findIdentityAccessTokenByID(ctx, claims.IdentityAccessTokenID)
-	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find identity access token").WithErrf("validateIdentityAccessToken(tokenId=%s): %w", claims.IdentityAccessTokenID, err)
-	}
-	if accessToken == nil {
-		return nil, errutil.Unauthorized("No identity access token found").WithErrf("validateIdentityAccessToken(tokenId=%s): token not found in DB", claims.IdentityAccessTokenID)
-	}
+	// 3. Resolve token source - new format uses JWT claims, legacy falls back to DB.
+	var (
+		identityID   = claims.IdentityID
+		identityName string
+		authMethod   actor.IdentityAuthMethod
+		orgID        uuid.UUID
+		rootOrgID    uuid.UUID
+		parentOrgID  uuid.UUID
+	)
 
-	// 4. Belt-and-suspenders revocation check.
-	if accessToken.IsAccessTokenRevoked {
-		return nil, errutil.Unauthorized("Failed to authorize revoked access token, access token is revoked").WithErrf("validateIdentityAccessToken(tokenId=%s): token is revoked", accessToken.ID)
-	}
-
-	// 5. IP check.
-	// TODO(go): this requires passing the real IP address from the HTTP layer. For now, IP check is skipped when ipAddress is empty, matching Node.js: if (ipAddress && trustedIps).
-	if ipAddress != "" {
-		trustedIPs, err := a.findTrustedIPsByAuthMethod(ctx, accessToken.IdentityID, accessToken.AuthMethod)
+	if claims.HasFullRenewClaims() {
+		// New-format token: use claims directly (stateless validation)
+		identityName = claims.IdentityName
+		authMethod = actor.IdentityAuthMethod(claims.AuthMethod)
+		orgID = claims.OrgID
+		rootOrgID = claims.RootOrgID
+		parentOrgID = claims.ParentOrgID
+	} else {
+		// Legacy token: fall back to DB lookup
+		accessToken, err := a.findIdentityAccessTokenByID(ctx, claims.IdentityAccessTokenID)
 		if err != nil {
-			return nil, errutil.DatabaseErr("Failed to find trusted IPs").WithErrf("validateIdentityAccessToken(identityId=%s, authMethod=%s): %w", accessToken.IdentityID, accessToken.AuthMethod, err)
+			return nil, errutil.DatabaseErr("Failed to find identity access token").WithErrf("validateIdentityAccessToken(tokenId=%s): %w", claims.IdentityAccessTokenID, err)
+		}
+		if accessToken == nil {
+			return nil, errutil.Unauthorized("No identity access token found").WithErrf("validateIdentityAccessToken(tokenId=%s): token not found in DB", claims.IdentityAccessTokenID)
+		}
+		if accessToken.IsAccessTokenRevoked {
+			return nil, errutil.Unauthorized("Failed to authorize revoked access token, access token is revoked").WithErrf("validateIdentityAccessToken(tokenId=%s): token is revoked", accessToken.ID)
+		}
+
+		identityName = accessToken.IdentityName
+		authMethod = accessToken.AuthMethod
+
+		// Resolve scope org from DB row
+		var scopeOrgUUID uuid.UUID
+		if nullUUIDValid(accessToken.SubOrganizationID) {
+			scopeOrgUUID = accessToken.SubOrganizationID.V
+		} else {
+			scopeOrgUUID = accessToken.IdentityOrgID
+		}
+
+		org, err := a.findOrgByID(ctx, scopeOrgUUID)
+		if err != nil {
+			return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateIdentityAccessToken(orgId=%s): %w", scopeOrgUUID, err)
+		}
+		if org == nil {
+			return nil, errutil.NotFound("Organization not found for identity").WithErrf("validateIdentityAccessToken(orgId=%s): org not found", scopeOrgUUID)
+		}
+
+		orgID, rootOrgID, parentOrgID, _ = resolveOrgHierarchy(org)
+	}
+
+	// 4. IP check (applies to both new and legacy tokens).
+	if ipAddress != "" {
+		trustedIPs, err := a.findTrustedIPsByAuthMethod(ctx, identityID, authMethod)
+		if err != nil {
+			return nil, errutil.DatabaseErr("Failed to find trusted IPs").WithErrf("validateIdentityAccessToken(identityId=%s, authMethod=%s): %w", identityID, authMethod, err)
 		}
 		if trustedIPs != nil {
 			if ipErr := checkIPAgainstBlocklist(ipAddress, trustedIPs); ipErr != nil {
@@ -299,84 +346,44 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 		}
 	}
 
-	// 6. Resolve scope org.
-	var scopeOrgUUID uuid.UUID
-	if nullUUIDValid(accessToken.SubOrganizationID) {
-		scopeOrgUUID = accessToken.SubOrganizationID.V
-	} else {
-		scopeOrgUUID = accessToken.IdentityOrgID
-	}
-
-	// 7. Find org.
-	org, err := a.findOrgByID(ctx, scopeOrgUUID)
+	// 5. Check org membership.
+	membership, err := a.findEffectiveOrgMembership(ctx, actor.TypeIdentity, identityID, orgID, "")
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateIdentityAccessToken(orgId=%s): %w", scopeOrgUUID, err)
-	}
-	if org == nil {
-		return nil, errutil.NotFound("Organization not found for identity").WithErrf("validateIdentityAccessToken(orgId=%s): org not found", scopeOrgUUID)
-	}
-
-	// 8. Resolve org hierarchy.
-	orgID, rootOrgID, parentOrgID, orgName := resolveOrgHierarchy(org)
-
-	// 9. Check org membership.
-	membership, err := a.findEffectiveOrgMembership(ctx, actor.TypeIdentity, accessToken.IdentityID, org.ID, "")
-	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): %w", accessToken.IdentityID, org.ID, err)
+		return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): %w", identityID, orgID, err)
 	}
 	if membership == nil {
-		return nil, errutil.BadRequest("Identity does not belong to this organization").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): no membership found", accessToken.IdentityID, org.ID)
+		return nil, errutil.Unauthorized("Identity is not a member of the organization").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): no membership found", identityID, orgID)
+	}
+	if !membership.IsActive {
+		return nil, errutil.Unauthorized("Identity organization membership is inactive").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): membership inactive", identityID, orgID)
 	}
 
-	// 10. Validate usage limit.
-	// TODO(go): accessTokenQueue.getIdentityTokenDetailsInCache — read cached usage count instead of DB value
-	accessTokenNumUses := accessToken.AccessTokenNumUses
-	if accessToken.AccessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessToken.AccessTokenNumUsesLimit {
-		_ = a.deleteIdentityAccessTokenByID(ctx, accessToken.ID)
-		return nil, errutil.Unauthorized("Unable to renew because access token number of uses limit reached").WithErrf("validateIdentityAccessToken(tokenId=%s): usage limit %d reached", accessToken.ID, accessToken.AccessTokenNumUsesLimit)
+	// 5a. Revocation check (DB-based via identity_access_token_revocations table).
+	tokenID := claims.ID // jti
+	if tokenID == "" {
+		tokenID = claims.IdentityAccessTokenID
+	}
+	issuedAtMs := int64(0)
+	if claims.IssuedAt != nil {
+		issuedAtMs = claims.IssuedAt.UnixMilli()
+	}
+	if err := a.assertTokenIsNotRevoked(ctx, tokenID, identityID, issuedAtMs); err != nil {
+		return nil, err
 	}
 
-	// 11. Validate TTL.
-	if accessToken.AccessTokenTTL > 0 {
-		var base time.Time
-		if accessToken.AccessTokenLastRenewedAt.Valid {
-			base = accessToken.AccessTokenLastRenewedAt.V
-		} else if accessToken.CreatedAt.Valid {
-			base = accessToken.CreatedAt.V
-		}
-		expiry := base.Add(time.Duration(accessToken.AccessTokenTTL) * time.Second)
-		if time.Now().After(expiry) {
-			_ = a.deleteIdentityAccessTokenByID(ctx, accessToken.ID)
-			return nil, errutil.Unauthorized("Failed to renew MI access token due to TTL expiration").WithErrf("validateIdentityAccessToken(tokenId=%s): TTL expired", accessToken.ID)
-		}
-	}
-
-	// Validate Max TTL (for non-periodic tokens).
-	if accessToken.AccessTokenMaxTTL > 0 && accessToken.AccessTokenPeriod == 0 {
-		var createdAt time.Time
-		if accessToken.CreatedAt.Valid {
-			createdAt = accessToken.CreatedAt.V
-		}
-		expirationDate := createdAt.Add(time.Duration(accessToken.AccessTokenMaxTTL) * time.Second)
-		if time.Now().After(expirationDate) {
-			_ = a.deleteIdentityAccessTokenByID(ctx, accessToken.ID)
-			return nil, errutil.Unauthorized("Failed to renew MI access token due to Max TTL expiration").WithErrf("validateIdentityAccessToken(tokenId=%s): Max TTL expired", accessToken.ID)
-		}
-
-		extendToDate := time.Now().Add(time.Duration(accessToken.AccessTokenTTL) * time.Second)
-		if extendToDate.After(expirationDate) {
-			_ = a.deleteIdentityAccessTokenByID(ctx, accessToken.ID)
-			return nil, errutil.Unauthorized("Failed to renew MI access token past its Max TTL expiration").WithErrf("validateIdentityAccessToken(tokenId=%s): would exceed Max TTL", accessToken.ID)
+	// 5b. Usage tracking via keystore (numUsesLimit checks).
+	numUsesLimit := claims.NumUsesLimit
+	if numUsesLimit > 0 {
+		if err := a.checkAndDecrementUsesRemaining(ctx, identityID, tokenID, numUsesLimit); err != nil {
+			return nil, err
 		}
 	}
 
-	// TODO(go): accessTokenQueue.updateIdentityAccessTokenStatus — increment usage counter
-
-	// 12. Build identity auth info (for audit logging).
+	// 6. Build identity auth info (for audit logging).
 	identityAuthInfo := &IdentityAuthInfo{
-		IdentityID:   accessToken.IdentityID,
-		IdentityName: accessToken.IdentityName,
-		AuthMethod:   accessToken.AuthMethod,
+		IdentityID:   identityID,
+		IdentityName: identityName,
+		AuthMethod:   authMethod,
 	}
 	if claims.IdentityAuth != nil {
 		if claims.IdentityAuth.OIDC != nil {
@@ -390,18 +397,17 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 		}
 	}
 
-	// 13. Build identity.
+	// 7. Build identity.
 	return &Identity{
 		AuthMode:         AuthModeIdentityAccessToken,
 		Actor:            actor.TypeIdentity,
-		ActorID:          accessToken.IdentityID,
+		ActorID:          identityID,
 		OrgID:            orgID,
 		RootOrgID:        rootOrgID,
 		ParentOrgID:      parentOrgID,
-		OrgName:          orgName,
-		AuthMethod:       actor.AuthMethod(accessToken.AuthMethod),
+		AuthMethod:       actor.AuthMethod(authMethod),
 		IdentityAuthInfo: identityAuthInfo,
-		Name:             accessToken.IdentityName,
+		Name:             identityName,
 	}, nil
 }
 
@@ -686,14 +692,6 @@ func (a Authenticator) findIdentityAccessTokenByID(ctx context.Context, id strin
 	return &token, nil
 }
 
-// deleteIdentityAccessTokenByID deletes the token on primary. Used for expired/exceeded tokens.
-func (a Authenticator) deleteIdentityAccessTokenByID(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM identity_access_tokens WHERE id = @id`
-	args := pgx.NamedArgs{"id": id}
-	_, err := a.db.Primary().Exec(ctx, query, args)
-	return err
-}
-
 // findServiceTokenByID returns the service token matching id, or nil.
 func (a Authenticator) findServiceTokenByID(ctx context.Context, id string) (*serviceTokenRow, error) {
 	query := `
@@ -836,6 +834,134 @@ func (a Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityI
 	}
 
 	return parseTrustedIPs(trustedIPsJSON)
+}
+
+// --- Revocation and Usage Tracking ---
+
+// revocationRow holds the subset of identity_access_token_revocations used by the authenticator.
+type revocationRow struct {
+	ID        string              `db:"id"`
+	RevokedAt sql.Null[time.Time] `db:"revoked_at"`
+	CreatedAt time.Time           `db:"created_at"`
+}
+
+// assertTokenIsNotRevoked checks if the token or identity has been revoked.
+// Port of assertTokenIsNotRevoked in identity-access-token-service.ts:92-120.
+func (a Authenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID string, identityID uuid.UUID, issuedAtMs int64) error {
+	revocations, err := a.findActiveRevocationsForToken(ctx, tokenID, identityID)
+	if err != nil {
+		return errutil.DatabaseErr("Failed to check token revocation").WithErrf("assertTokenIsNotRevoked(tokenId=%s, identityId=%s): %w", tokenID, identityID, err)
+	}
+
+	for _, revocation := range revocations {
+		if revocation.ID == tokenID {
+			return errutil.Unauthorized("Failed to authorize: token has been revoked").WithErrf("assertTokenIsNotRevoked(tokenId=%s): token revoked", tokenID)
+		}
+
+		if revocation.ID == identityID.String() {
+			var revokedAtMs int64
+			if revocation.RevokedAt.Valid {
+				revokedAtMs = revocation.RevokedAt.V.UnixMilli()
+			} else {
+				revokedAtMs = revocation.CreatedAt.UnixMilli()
+			}
+			if issuedAtMs < revokedAtMs {
+				return errutil.Unauthorized("Failed to authorize: identity tokens have been revoked").WithErrf("assertTokenIsNotRevoked(identityId=%s): identity tokens revoked", identityID)
+			}
+		}
+	}
+
+	return nil
+}
+
+// findActiveRevocationsForToken returns active revocations for the token or identity.
+// Port of findActiveRevocationsForToken in identity-access-token-revocation-dal.ts:36-56.
+func (a Authenticator) findActiveRevocationsForToken(ctx context.Context, tokenID string, identityID uuid.UUID) ([]revocationRow, error) {
+	query := `
+		SELECT id, "revokedAt", "createdAt"
+		FROM identity_access_token_revocations
+		WHERE "expiresAt" > NOW()
+		  AND "identityId" = @identityID
+		  AND id IN (@tokenID, @identityIDStr)
+	`
+	args := pgx.NamedArgs{
+		"identityID":    identityID,
+		"tokenID":       tokenID,
+		"identityIDStr": identityID.String(),
+	}
+
+	rows, err := a.db.Replica().Query(ctx, query, args)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var revocations []revocationRow
+	for rows.Next() {
+		var r revocationRow
+		if err := rows.Scan(&r.ID, &r.RevokedAt, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		revocations = append(revocations, r)
+	}
+	return revocations, rows.Err()
+}
+
+// checkAndDecrementUsesRemaining checks and decrements the usage counter for the token.
+// Port of usage tracking logic in fnValidateIdentityAccessTokenFast.
+func (a Authenticator) checkAndDecrementUsesRemaining(ctx context.Context, identityID uuid.UUID, tokenID string, numUsesLimit int64) error {
+	key := identityTokenUsesRemainingKey(identityID.String(), tokenID)
+
+	// Get current usage counter
+	usesRemainingRaw, err := a.keyStore.GetItem(ctx, key)
+	if err != nil {
+		return errutil.DatabaseErr("Failed to check token usage").WithErrf("checkAndDecrementUsesRemaining(identityId=%s, tokenId=%s): %w", identityID, tokenID, err)
+	}
+
+	remainingFromState := parseUsesRemaining(usesRemainingRaw)
+
+	// null means unlimited or the Redis counter was lost; <= 0 means exhausted.
+	if remainingFromState != nil && *remainingFromState <= 0 {
+		return errutil.Unauthorized("Failed to authorize: token usage limit reached").WithErrf("checkAndDecrementUsesRemaining(tokenId=%s): usage limit exhausted", tokenID)
+	}
+
+	if remainingFromState == nil {
+		// Counter was lost (Redis flush). Re-seed from the JWT's numUsesLimit claim
+		// and allow this request; subsequent requests decrement the live counter.
+		ttl := time.Duration(maxMachineIdentityTokenAge) * time.Second
+		if err := a.keyStore.SetItemWithExpiry(ctx, key, ttl, strconv.FormatInt(numUsesLimit-1, 10)); err != nil {
+			return errutil.DatabaseErr("Failed to set token usage counter").WithErrf("checkAndDecrementUsesRemaining(tokenId=%s): %w", tokenID, err)
+		}
+	} else {
+		remaining, err := a.keyStore.IncrementBy(ctx, key, -1)
+		if err != nil {
+			return errutil.DatabaseErr("Failed to decrement token usage").WithErrf("checkAndDecrementUsesRemaining(tokenId=%s): %w", tokenID, err)
+		}
+		if remaining < 0 {
+			return errutil.Unauthorized("Failed to authorize: token usage limit reached").WithErrf("checkAndDecrementUsesRemaining(tokenId=%s): usage limit exhausted after decrement", tokenID)
+		}
+	}
+
+	return nil
+}
+
+// parseUsesRemaining parses the per-token uses-remaining value from Redis.
+// Returns nil when absent or unparseable (treated as "no constraint").
+func parseUsesRemaining(raw string) *int64 {
+	if raw == "" {
+		return nil
+	}
+	parsed, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return nil
+	}
+	return &parsed
+}
+
+// identityTokenUsesRemainingKey returns the Redis key for tracking token uses.
+// Matches Node.js KeyStorePrefixes.IdentityTokenUsesRemaining.
+func identityTokenUsesRemainingKey(identityID, tokenID string) string {
+	return fmt.Sprintf("identity-token-uses-remaining:%s:%s", identityID, tokenID)
 }
 
 // --- Helpers ---

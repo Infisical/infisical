@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/google/uuid"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -307,6 +308,21 @@ func (n *NodeJSService) CreateIdentity(t *testing.T, name string) *IdentitySeed 
 	return &IdentitySeed{
 		ID:   resp.Identity.ID,
 		Name: name,
+	}
+}
+
+// DeleteIdentity deletes a machine identity. This also revokes all tokens for the identity.
+func (n *NodeJSService) DeleteIdentity(t *testing.T, identityID string) {
+	t.Helper()
+
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		Delete("/api/v1/identities/" + identityID)
+	if err != nil {
+		t.Fatalf("infra.DeleteIdentity: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.DeleteIdentity: returned %d: %s", r.StatusCode(), r.String())
 	}
 }
 
@@ -773,6 +789,8 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 	t.Helper()
 
 	// First, create a universal auth method for the identity
+	// This response contains the clientId
+	var universalAuthResp CreateUniversalAuthResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
 		SetBody(CreateUniversalAuthRequest{
@@ -785,6 +803,7 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 			ClientSecretNumUsesLimit:      0,
 			IsClientSecretRotationEnabled: false,
 		}).
+		SetResult(&universalAuthResp).
 		Post("/api/v1/auth/universal-auth/identities/" + identityID)
 	if err != nil {
 		t.Fatalf("infra.GetIdentityAccessToken: create auth failed: %v", err)
@@ -792,6 +811,8 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 	if r.IsError() {
 		t.Fatalf("infra.GetIdentityAccessToken: create auth returned %d: %s", r.StatusCode(), r.String())
 	}
+
+	clientID := universalAuthResp.IdentityUniversalAuth.ClientID
 
 	// Then create a client secret
 	var clientSecretResp CreateClientSecretResponse
@@ -811,8 +832,7 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 		t.Fatalf("infra.GetIdentityAccessToken: create client secret returned %d: %s", r.StatusCode(), r.String())
 	}
 
-	clientID := clientSecretResp.ClientSecretData.ClientID
-	clientSecret := clientSecretResp.ClientSecretData.ClientSecretPrefix + clientSecretResp.ClientSecret
+	clientSecret := clientSecretResp.ClientSecret
 
 	// Finally, login to get the access token
 	var loginResp UniversalAuthLoginResponse
@@ -831,4 +851,103 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 	}
 
 	return loginResp.AccessToken
+}
+
+// RevokeAccessToken revokes an identity access token via the Node.js API.
+func (n *NodeJSService) RevokeAccessToken(t *testing.T, accessToken string) {
+	t.Helper()
+
+	r, err := n.client.R().
+		SetBody(map[string]string{"accessToken": accessToken}).
+		Post("/api/v1/auth/token/revoke")
+	if err != nil {
+		t.Fatalf("infra.RevokeAccessToken: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.RevokeAccessToken: returned %d: %s", r.StatusCode(), r.String())
+	}
+}
+
+// ServiceTokenScope defines the scope for a service token.
+type ServiceTokenScope struct {
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath"`
+}
+
+// CreateServiceTokenRequest is the request body for creating a service token.
+type CreateServiceTokenRequest struct {
+	Name         string              `json:"name"`
+	WorkspaceID  string              `json:"workspaceId"`
+	Scopes       []ServiceTokenScope `json:"scopes"`
+	EncryptedKey string              `json:"encryptedKey"`
+	IV           string              `json:"iv"`
+	Tag          string              `json:"tag"`
+	ExpiresIn    *int                `json:"expiresIn"`
+	Permissions  []string            `json:"permissions"`
+}
+
+// CreateServiceTokenResponse is the response from creating a service token.
+type CreateServiceTokenResponse struct {
+	ServiceToken     string `json:"serviceToken"`
+	ServiceTokenData struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"serviceTokenData"`
+}
+
+// ServiceTokenSeed holds the created service token info.
+type ServiceTokenSeed struct {
+	ID    string
+	Name  string
+	Token string
+}
+
+// CreateServiceToken creates a service token for a project.
+func (n *NodeJSService) CreateServiceToken(t *testing.T, projectID, environment string, expiresIn *int) *ServiceTokenSeed {
+	t.Helper()
+
+	var resp CreateServiceTokenResponse
+	r, err := n.client.R().
+		SetAuthToken(n.userToken).
+		SetBody(CreateServiceTokenRequest{
+			Name:        "test-service-token-" + uuid.New().String()[:8],
+			WorkspaceID: projectID,
+			Scopes: []ServiceTokenScope{
+				{Environment: environment, SecretPath: "/"},
+			},
+			EncryptedKey: "",
+			IV:           "",
+			Tag:          "",
+			ExpiresIn:    expiresIn,
+			Permissions:  []string{"read", "write"},
+		}).
+		SetResult(&resp).
+		Post("/api/v2/service-token")
+	if err != nil {
+		t.Fatalf("infra.CreateServiceToken: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateServiceToken: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &ServiceTokenSeed{
+		ID:    resp.ServiceTokenData.ID,
+		Name:  resp.ServiceTokenData.Name,
+		Token: resp.ServiceToken,
+	}
+}
+
+// DeleteServiceToken deletes a service token.
+func (n *NodeJSService) DeleteServiceToken(t *testing.T, serviceTokenID string) {
+	t.Helper()
+
+	r, err := n.client.R().
+		SetAuthToken(n.userToken).
+		Delete("/api/v2/service-token/" + serviceTokenID)
+	if err != nil {
+		t.Fatalf("infra.DeleteServiceToken: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.DeleteServiceToken: returned %d: %s", r.StatusCode(), r.String())
+	}
 }

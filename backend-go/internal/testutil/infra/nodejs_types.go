@@ -272,6 +272,14 @@ type CreateUniversalAuthRequest struct {
 	IsClientSecretRotationEnabled bool        `json:"isClientSecretRotationEnabled"`
 }
 
+// CreateUniversalAuthResponse is the response from POST /api/v1/auth/universal-auth/identities/{id}.
+type CreateUniversalAuthResponse struct {
+	IdentityUniversalAuth struct {
+		ID       string `json:"id"`
+		ClientID string `json:"clientId"`
+	} `json:"identityUniversalAuth"`
+}
+
 // CreateClientSecretRequest is the request body for POST /api/v1/auth/universal-auth/identities/{id}/client-secrets.
 type CreateClientSecretRequest struct {
 	Description  string `json:"description"`
@@ -280,9 +288,10 @@ type CreateClientSecretRequest struct {
 }
 
 // CreateClientSecretResponse is the response from POST /api/v1/auth/universal-auth/identities/{id}/client-secrets.
+// Note: clientId is NOT in this response - it's in the universal auth creation response.
 type CreateClientSecretResponse struct {
 	ClientSecretData struct {
-		ClientID           string `json:"clientId"`
+		ID                 string `json:"id"`
 		ClientSecretPrefix string `json:"clientSecretPrefix"`
 	} `json:"clientSecretData"`
 	ClientSecret string `json:"clientSecret"`

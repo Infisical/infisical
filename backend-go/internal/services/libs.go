@@ -60,7 +60,7 @@ func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 		KeyStore: deps.KeyStore,
 	})
 
-	authenticator := auth.NewAuthenticator(deps.DB, deps.Config.AuthSecret)
+	authenticator := auth.NewAuthenticator(deps.DB, deps.Config.AuthSecret, deps.KeyStore)
 
 	projectSvc := project.NewService(deps.Logger, project.Deps{DB: deps.DB})
 

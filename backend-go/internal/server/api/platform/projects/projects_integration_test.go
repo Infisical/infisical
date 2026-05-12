@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/server/api/platform/projects"
 	projectssvr "github.com/infisical/api/internal/server/gen/http/projects/server"
 	genprojects "github.com/infisical/api/internal/server/gen/projects"
@@ -38,7 +39,7 @@ func setupMux(t *testing.T) *testutil.TestMux {
 
 	permLib := permission.NewService(testutil.NopLogger(), permission.Deps{DB: stack.DB()})
 
-	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret)
+	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 
 	svc := projects.NewService(testutil.NopLogger(), projects.Deps{
 		Authenticator: authenticator,
