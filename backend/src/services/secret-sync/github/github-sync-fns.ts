@@ -322,7 +322,7 @@ export const GithubSyncFns = {
         continue;
 
       if (!(encryptedSecret.name in secretMap)) {
-        await deleteSecret(secretSync, gatewayService, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
+        await deleteSecret(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
       }
     }
   },
@@ -367,7 +367,7 @@ export const GithubSyncFns = {
 
     for await (const encryptedSecret of encryptedSecrets) {
       if (encryptedSecret.name in secretMap) {
-        await deleteSecret(secretSync, gatewayService, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
+        await deleteSecret(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
       }
     }
   }
