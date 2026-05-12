@@ -294,6 +294,12 @@ export enum TableName {
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
 
+  // Honey Tokens
+  HoneyTokenConfig = "honey_token_configs",
+  HoneyToken = "honey_tokens",
+  HoneyTokenEvent = "honey_token_events",
+  HoneyTokenSecretMapping = "honey_token_secret_mappings",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",

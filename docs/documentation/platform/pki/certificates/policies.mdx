@@ -21,7 +21,26 @@ Here's some guidance on each field:
 
 - Policy Name: A slug-friendly name for the policy such as `tls-server`.
 - Description: An optional description for the policy.
-- Subject Attributes: A list of common names that can be included in the certificate subject. Each row accepts a fixed value or pattern such as `example.com` or `*.example.com` and whether it is allowed or denied.
+- Subject Attributes: A list of X.509 distinguished name attributes that can be included in the certificate subject. The supported attribute types are:
+
+  | Attribute | Abbreviation |
+  |---|---|
+  | Common Name | CN |
+  | Organization | O |
+  | Organizational Unit | OU |
+  | Country | C |
+  | State/Province | ST |
+  | Locality | L |
+
+  For each attribute, you can configure one or more enforcement modes:
+
+  - **Require**: Values that must be present in the certificate request. The request is rejected if the attribute is missing or does not match the required pattern.
+  - **Allow**: Values that are permitted but not required. Accepts a fixed value or wildcard pattern such as `example.com` or `*.example.com`.
+  - **Deny**: Values that must not appear. The request is rejected if the attribute matches a denied pattern.
+
+  <Note>
+    Any subject attribute included in a certificate request that is not explicitly defined in the policy will be rejected. If no subject attribute rules are defined at all, any request containing subject attributes will be rejected.
+  </Note>
 - Subject Alternative Names (SANs): A list of SANs that can appear in the certificate. Each row accepts a SAN type (e.g. DNS, IP, Email, URI), a fixed value or pattern such as `example.com` or `*.example.com`, and an allow or deny flag.
 - Allowed Signature Algorithms: The set of signature algorithms permitted to sign certificates under this policy such as `SHA256-RSA`, `SHA512-RSA`, etc.
 - Allowed Key Algorithms: The set of public key algorithms permitted for certificate requests such as `RSA-2048`, `RSA-4096`, etc.

@@ -104,6 +104,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       path: el.secretPath,
       secretMetadata: el.secretMetadata,
       isRotatedSecret: el.isRotatedSecret,
+      isHoneyTokenSecret: el.isHoneyTokenSecret,
       rotationId: el.rotationId,
       reminder: el.reminder,
       isEmpty: el.isEmpty

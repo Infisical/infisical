@@ -1,6 +1,6 @@
+import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor } from "@app/lib/types";
-import { safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getDatabricksConnectionAccessToken } from "@app/services/app-connection/databricks/databricks-connection-fns";
@@ -28,7 +28,7 @@ const listDatabricksSecretScopes = async (
 
   const accessToken = await getDatabricksConnectionAccessToken(appConnection, appConnectionDAL, kmsService);
 
-  const { data } = await safeRequest.get<TDatabricksListSecretScopesResponse>(
+  const { data } = await request.get<TDatabricksListSecretScopesResponse>(
     `${removeTrailingSlash(workspaceUrl)}/api/2.0/secrets/scopes/list`,
     {
       headers: {
@@ -61,7 +61,7 @@ const listDatabricksServicePrincipals = async (
 
   while (currentPage < maxPages) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await safeRequest.get<TDatabricksListServicePrincipalsResponse>(
+    const { data } = await request.get<TDatabricksListServicePrincipalsResponse>(
       `${removeTrailingSlash(workspaceUrl)}/api/2.0/preview/scim/v2/ServicePrincipals`,
       {
         headers: {

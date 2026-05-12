@@ -467,6 +467,7 @@
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
+                  "documentation/platform/insights",
                   "documentation/platform/pr-workflows",
                   "documentation/platform/access-controls/access-requests",
                   {
@@ -526,6 +527,19 @@
                       "documentation/platform/dynamic-secrets/totp",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
+                    ]
+                  },
+                  {
+                    "group": "Honey Tokens",
+                    "pages": [
+                      "documentation/platform/honey-tokens/overview",
+                      {
+                        "group": "AWS",
+                        "pages": [
+                          "documentation/platform/honey-tokens/aws/setup",
+                          "documentation/platform/honey-tokens/aws/usage"
+                        ]
+                      }
                     ]
                   },
                   "documentation/platform/webhooks",
@@ -895,6 +909,7 @@
                           "documentation/platform/pam/getting-started/resources/mongodb",
                           "documentation/platform/pam/getting-started/resources/mssql",
                           "documentation/platform/pam/getting-started/resources/mysql",
+                          "documentation/platform/pam/getting-started/resources/oracle",
                           "documentation/platform/pam/getting-started/resources/postgresql",
                           "documentation/platform/pam/getting-started/resources/redis",
                           "documentation/platform/pam/getting-started/resources/ssh",

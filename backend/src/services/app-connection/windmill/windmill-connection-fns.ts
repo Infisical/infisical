@@ -1,17 +1,22 @@
 import { AxiosError } from "axios";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { WindmillConnectionMethod } from "./windmill-connection-enums";
 import { TWindmillConnection, TWindmillConnectionConfig, TWindmillWorkspace } from "./windmill-connection-types";
 
-export const getWindmillInstanceUrl = (config: TWindmillConnectionConfig) => {
-  return config.credentials.instanceUrl
+export const getWindmillInstanceUrl = async (config: TWindmillConnectionConfig) => {
+  const instanceUrl = config.credentials.instanceUrl
     ? removeTrailingSlash(config.credentials.instanceUrl)
     : "https://app.windmill.dev";
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
 };
 
 export const getWindmillConnectionListItem = () => {
@@ -23,11 +28,11 @@ export const getWindmillConnectionListItem = () => {
 };
 
 export const validateWindmillConnectionCredentials = async (config: TWindmillConnectionConfig) => {
-  const instanceUrl = getWindmillInstanceUrl(config);
+  const instanceUrl = await getWindmillInstanceUrl(config);
   const { accessToken } = config.credentials;
 
   try {
-    await safeRequest.get(`${instanceUrl}/api/workspaces/list`, {
+    await request.get(`${instanceUrl}/api/workspaces/list`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
@@ -47,10 +52,10 @@ export const validateWindmillConnectionCredentials = async (config: TWindmillCon
 };
 
 export const listWindmillWorkspaces = async (appConnection: TWindmillConnection) => {
-  const instanceUrl = getWindmillInstanceUrl(appConnection);
+  const instanceUrl = await getWindmillInstanceUrl(appConnection);
   const { accessToken } = appConnection.credentials;
 
-  const resp = await safeRequest.get<TWindmillWorkspace[]>(`${instanceUrl}/api/workspaces/list`, {
+  const resp = await request.get<TWindmillWorkspace[]>(`${instanceUrl}/api/workspaces/list`, {
     headers: {
       Authorization: `Bearer ${accessToken}`
     }

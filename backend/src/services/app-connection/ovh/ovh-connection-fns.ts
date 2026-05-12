@@ -2,7 +2,8 @@ import https from "https";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { validateSsrfUrl } from "@app/lib/validator/validate-url";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { validateSsrfUrl } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OVHConnectionMethod } from "./ovh-connection-enums";
@@ -25,8 +26,28 @@ export const getOvhHttpsAgent = (connection: Pick<TOvhConnection, "credentials">
   });
 };
 
+const normalizeOvhOkmsDomain = (okmsDomain: string) => {
+  const normalized = removeTrailingSlash(okmsDomain.trim());
+
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
+    throw new BadRequestError({
+      message: "OKMS domain must be a valid URL "
+    });
+  }
+
+  if (url.protocol !== "https:") {
+    throw new BadRequestError({ message: "OKMS domain must use https" });
+  }
+
+  return normalized;
+};
+
 export const validateOvhConnectionCredentials = async (config: TOvhConnectionConfig) => {
-  const { okmsDomain, okmsId } = config.credentials;
+  const okmsDomain = normalizeOvhOkmsDomain(config.credentials.okmsDomain);
+  const { okmsId } = config.credentials;
 
   await validateSsrfUrl(okmsDomain);
 
@@ -44,5 +65,8 @@ export const validateOvhConnectionCredentials = async (config: TOvhConnectionCon
     });
   }
 
-  return config.credentials;
+  return {
+    ...config.credentials,
+    okmsDomain
+  };
 };

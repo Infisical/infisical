@@ -8,9 +8,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { request } from "@app/lib/config/request";
 import { delay as delayMs } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
 import { getOktaInstanceUrl } from "@app/services/app-connection/okta";
 
 import {
@@ -63,10 +63,10 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
    * Creates a new client secret for the Okta app.
    */
   const $rotateClientSecret = async () => {
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
-      const { data } = await safeRequest.post<TOktaClientSecret>(
+      const { data } = await request.post<TOktaClientSecret>(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets`,
         {},
         {
@@ -109,10 +109,10 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
    * List client secrets.
    */
   const $listClientSecrets = async () => {
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
-      const { data } = await safeRequest.get<TOktaClientSecret[]>(
+      const { data } = await request.get<TOktaClientSecret[]>(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets`,
         {
           headers: {
@@ -134,10 +134,10 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
    * Checks if a credential with the given secretId exists.
    */
   const credentialExists = async (secretId: string): Promise<boolean> => {
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
-      const { data } = await safeRequest.get<TOktaClientSecret>(
+      const { data } = await request.get<TOktaClientSecret>(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}`,
         {
           headers: {
@@ -164,11 +164,11 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
       return; // Credential doesn't exist, nothing to revoke
     }
 
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
       // First deactivate the secret
-      await safeRequest.post(
+      await request.post(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}/lifecycle/deactivate`,
         undefined,
         {
@@ -179,7 +179,7 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
       );
 
       // Then delete it
-      await safeRequest.delete(`${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}`, {
+      await request.delete(`${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}`, {
         headers: {
           Authorization: `SSWS ${connection.credentials.apiToken}`
         }

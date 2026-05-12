@@ -118,7 +118,8 @@ Tailwind's default scale.
 | Button                   | `text-sm` (md/sm/lg), `text-xs` (xs)    | Auto via `Button` sizing                                              |
 
 Sentence case for descriptions, helper text, and empty states. Title Case for
-page titles and button labels. See §8 for voice rules on copy itself.
+page titles, card titles, dialog titles, sheet titles, button labels, badge
+labels, and dropdown menu items. See §8 for voice rules on copy itself.
 
 ## 4. Component Stylings
 
@@ -176,8 +177,8 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | Component | Reach for this when… |
 | --- | --- |
 | [`Card`](frontend/src/components/v3/generic/Card/Card.tsx) | Default section container — tables, filters, forms, empty states all live in a Card. |
-| [`Sheet`](frontend/src/components/v3/generic/Sheet/Sheet.tsx) | Right-side panel — **use for create/edit forms (not Dialog)**. |
-| [`Dialog`](frontend/src/components/v3/generic/Dialog/Dialog.tsx) | Centered modal — short interactive prompts. Prefer Sheet for forms. |
+| [`Sheet`](frontend/src/components/v3/generic/Sheet/Sheet.tsx) | Right-side panel — **use for large create/edit forms** (multiple fields, multi-step, scrollable detail). |
+| [`Dialog`](frontend/src/components/v3/generic/Dialog/Dialog.tsx) | Centered modal — **use for small create/edit forms** (1–2 fields, single confirmation prompt) and short interactive prompts. |
 | [`AlertDialog`](frontend/src/components/v3/generic/AlertDialog/AlertDialog.tsx) | Confirm an action (destructive included). Replaces `confirm()`. |
 | [`Popover`](frontend/src/components/v3/generic/Popover/Popover.tsx) | Anchored floating panel — filters, pickers, contextual UI. |
 | [`Tooltip`](frontend/src/components/v3/generic/Tooltip/Tooltip.tsx) | Small floating annotation on hover/focus. |
@@ -224,8 +225,8 @@ host component; don't override unless necessary.
 - **Page container** — `max-w-8xl` (88rem) centered, `bg-bunker-800`.
 - **Page header** — `PageHeader` with scope icon + underlined `h1` + description. See [`PageHeader.tsx`](frontend/src/components/v2/PageHeader/PageHeader.tsx). Always set `scope` to the correct hierarchy level.
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
-- **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`.
-- **Forms inside Sheets/Dialog** — create / edit flows open in a right-side Sheet or Dialog, never inline, never as a full-page route. Multi-step forms remain inside the Sheet.
+- **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
+- **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
 - **Spacing rhythm** — `gap-1.5` (intra-element), `gap-2 / gap-3` (adjacent elements), `p-4 / p-5` (section padding). Card = `p-5 gap-5`; Sheet header/footer = `p-4`.
 
 ## 6. Depth & Elevation
@@ -290,6 +291,9 @@ and the voice reflects that.
 
 - **Labels & buttons** — Title Case, imperative: "Add Secret", "Revoke
   Access", "Rotate Key".
+- **Title Case applies to** — buttons, badges, dropdown menu items, card
+  titles, dialog titles, sheet titles, page titles, tab labels, table column
+  headers. Anything that names a thing or an action is Title Case.
 - **Descriptions & helper text** — sentence case, one short sentence.
 - **Empty states** — state what's missing, then the next action:
   "No secrets yet. Add your first secret to get started."
@@ -327,11 +331,16 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > table or content in `CardContent`.
 
 **A new create/edit form:**
-> Put the form in a right-side `Sheet` (`Sheet`, `SheetContent`,
+> Pick the container by form size. **Small forms (1–2 fields, e.g. "Add
+> domain", "Rename"):** centered `Dialog` (`Dialog`, `DialogContent`,
+> `DialogHeader` with `DialogTitle` + `DialogDescription`, `DialogFooter`
+> with the action buttons). **Large or multi-step forms (many fields,
+> scrollable detail, wizards):** right-side `Sheet` (`Sheet`, `SheetContent`,
 > `SheetHeader` with `SheetTitle` + `SheetDescription`, `SheetFooter` with
-> the action buttons). Use `react-hook-form` with a Zod resolver. Each input
-> is wrapped in `Field` + `FieldLabel` + `FieldContent` + `FieldError`. Primary button is
-> variant is scope dependent `project`, secondary is `outline`, cancel is `ghost`.
+> the action buttons). Use `react-hook-form` with a Zod resolver in both
+> cases. Each input is wrapped in `Field` + `FieldLabel` + `FieldContent` +
+> `FieldError`. Primary button variant is scope dependent (`project` /
+> `org` / `sub-org`), cancel is `ghost`.
 
 **A status indicator:**
 > Use `Badge` from `@app/components/v3`. Pick the variant by intent:

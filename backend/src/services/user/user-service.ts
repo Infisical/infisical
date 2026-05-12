@@ -19,7 +19,7 @@ import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO } from "./user-types";
+import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO, TVerifyCurrentEmailOTPDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -132,7 +132,14 @@ export const userServiceFactory = ({
       throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "UpdateAuthMethods" });
     }
 
-    const updatedUser = await userDAL.updateById(userId, { authMethods });
+    // When email auth is removed, clear the stored password so no stale credential lingers.
+    // Re-enabling email auth later requires a fresh password via the setup flow.
+    const isRemovingEmailAuth = user.authMethods?.includes(AuthMethod.EMAIL) && !authMethods.includes(AuthMethod.EMAIL);
+
+    const updatedUser = await userDAL.updateById(userId, {
+      authMethods,
+      ...(isRemovingEmailAuth ? { hashedPassword: null } : {})
+    });
     return updatedUser;
   };
 
@@ -168,6 +175,13 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "RequestEmailChangeOTP" });
       }
 
+      if (!user.email) {
+        throw new BadRequestError({
+          message: "Cannot change email: no current email address is set on this account.",
+          name: "RequestEmailChangeOTP"
+        });
+      }
+
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
         throw new BadRequestError({
@@ -179,25 +193,27 @@ export const userServiceFactory = ({
       // Silently check if another user already has this email - don't send OTP if email is taken
       const existingUser = await userDAL.findOne({ username: normalizedNewEmail }, tx);
       if (!existingUser) {
-        // Generate 6-digit OTP
+        // Step 1 of 2: send OTP to the CURRENT email so the legitimate owner must approve
+        // the change before any code is sent to the new address.
         const otpCode = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          type: TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP,
           userId,
           payload: newEmail.toLowerCase()
         });
 
-        // Send OTP to NEW email address
         await smtpService.sendMail({
-          template: SmtpTemplates.EmailVerification,
-          subjectLine: "Infisical email change verification",
-          recipients: [newEmail.toLowerCase()],
+          template: SmtpTemplates.EmailChangeRequestNotification,
+          subjectLine: "Confirm your Infisical email change",
+          recipients: [user.email],
           substitutions: {
+            currentEmail: user.email,
+            requestedEmail: newEmail.toLowerCase(),
             code: otpCode
           }
         });
       }
 
-      return { success: true, message: "Verification code sent to new email address" };
+      return { success: true, message: "Verification code sent to current email address" };
     });
     // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
     const endTime = new Date();
@@ -208,6 +224,66 @@ export const userServiceFactory = ({
       });
     }
     return changeEmailOTP;
+  };
+
+  const verifyCurrentEmailOTP = async ({ userId, otpCode }: TVerifyCurrentEmailOTPDTO) => {
+    return userDAL.transaction(async (tx) => {
+      const user = await userDAL.findById(userId, tx);
+      if (!user)
+        throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "VerifyCurrentEmailOTP" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "VerifyCurrentEmailOTP" });
+      }
+
+      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
+      if (hasScimRestriction) {
+        throw new BadRequestError({
+          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
+          name: "VerifyCurrentEmailOTP"
+        });
+      }
+
+      let tokenData;
+      try {
+        tokenData = await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP,
+          userId,
+          code: otpCode
+        });
+      } catch (error) {
+        throw new BadRequestError({ message: "Invalid verification code", name: "VerifyCurrentEmailOTP" });
+      }
+
+      const newEmail = tokenData?.payload;
+      if (!newEmail) {
+        throw new BadRequestError({ message: "Invalid verification code", name: "VerifyCurrentEmailOTP" });
+      }
+
+      // Re-check availability — someone else may have claimed this email since the request was issued
+      const existingUser = await userDAL.findOne({ username: newEmail }, tx);
+      if (existingUser) {
+        throw new BadRequestError({ message: "Email is no longer available", name: "VerifyCurrentEmailOTP" });
+      }
+
+      // Step 2 of 2: now that current-email control is proven, send OTP to the NEW address
+      const newEmailOtpCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+        userId,
+        payload: newEmail
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical email change verification",
+        recipients: [newEmail],
+        substitutions: {
+          code: newEmailOtpCode
+        }
+      });
+
+      return { success: true, newEmail };
+    });
   };
 
   const updateUserEmail = async ({
@@ -221,6 +297,10 @@ export const userServiceFactory = ({
     const changedUser = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
+      }
 
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
@@ -448,6 +528,7 @@ export const userServiceFactory = ({
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,
+    verifyCurrentEmailOTP,
     updateUserEmail,
     deleteUser,
     getMe,

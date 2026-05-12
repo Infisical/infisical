@@ -32,6 +32,7 @@ import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { AxiosError } from "axios";
+import https from "https";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import RE2 from "re2";
@@ -44,7 +45,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -323,19 +324,27 @@ const syncSecretsAzureAppConfig = async ({
       message: "Invalid Azure App Configuration URL provided."
     });
 
+  await blockLocalAndPrivateIpAddresses(integration.app);
+
   const getCompleteAzureAppConfigValues = async (baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
     while (url) {
-      const res = await safeRequest.get<{ items: AzureAppConfigKeyValue[]; ["@nextLink"]: string }>(url, {
+      const res = await request.get(url, {
         baseURL,
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
-        addressFamily: 4
+        // we force IPV4 because docker setup fails with ipv6
+        httpsAgent: new https.Agent({
+          family: 4
+        })
       });
 
       result = result.concat(res.data.items);
       url = res.data?.["@nextLink"];
+      if (url) {
+        await blockLocalAndPrivateIpAddresses(url);
+      }
     }
 
     return result;
@@ -433,7 +442,7 @@ const syncSecretsAzureAppConfig = async ({
 
   for await (const key of Object.keys(secrets)) {
     if (!(key in azureAppConfigSecrets) || secrets[key]?.value !== azureAppConfigSecrets[key]) {
-      await safeRequest.put(
+      await request.put(
         `${integration.app}/kv/${key}?api-version=2023-11-01`,
         {
           value: secrets[key]?.value,
@@ -451,7 +460,10 @@ const syncSecretsAzureAppConfig = async ({
           headers: {
             Authorization: `Bearer ${accessToken}`
           },
-          addressFamily: 4
+          // we force IPV4 because docker setup fails with ipv6
+          httpsAgent: new https.Agent({
+            family: 4
+          })
         }
       );
     }
@@ -460,7 +472,7 @@ const syncSecretsAzureAppConfig = async ({
   for await (const key of Object.keys(azureAppConfigSecrets)) {
     if (!(key in secrets) || secrets[key] === null) {
       // case: delete secret
-      await safeRequest.delete(`${integration.app}/kv/${key}?api-version=2023-11-01`, {
+      await request.delete(`${integration.app}/kv/${key}?api-version=2023-11-01`, {
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
@@ -469,7 +481,10 @@ const syncSecretsAzureAppConfig = async ({
             label: metadata.azureLabel
           }
         }),
-        addressFamily: 4
+        // we force IPV4 because docker setup fails with ipv6
+        httpsAgent: new https.Agent({
+          family: 4
+        })
       });
     }
   }
@@ -507,6 +522,8 @@ const syncSecretsAzureKeyVault = async ({
     throw new BadRequestError({ message: "Azure Key Vault URI is required" });
   }
 
+  await blockLocalAndPrivateIpAddresses(integration.app);
+
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
     value: string;
@@ -531,7 +548,7 @@ const syncSecretsAzureKeyVault = async ({
   const paginateAzureKeyVaultSecrets = async (url: string) => {
     let result: GetAzureKeyVaultSecret[] = [];
     while (url) {
-      const res = await safeRequest.get<{ value: GetAzureKeyVaultSecret[]; nextLink: string }>(url, {
+      const res = await request.get(url, {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
@@ -540,6 +557,9 @@ const syncSecretsAzureKeyVault = async ({
       result = result.concat(res.data.value);
 
       url = res.data.nextLink;
+      if (url) {
+        await blockLocalAndPrivateIpAddresses(url);
+      }
     }
 
     return result;
@@ -564,7 +584,7 @@ const syncSecretsAzureKeyVault = async ({
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
 
-        const azureKeyVaultSecret = await safeRequest.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+        const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -710,9 +730,11 @@ const syncSecretsAzureKeyVault = async ({
     while (!isSecretSet && maxTries > 0) {
       // try to set secret
       try {
-        await safeRequest.put(
+        await request.put(
           `${azIntegration.app}/secrets/${key}?api-version=7.3`,
-          { value },
+          {
+            value
+          },
           {
             headers: {
               Authorization: `Bearer ${accToken}`
@@ -725,7 +747,7 @@ const syncSecretsAzureKeyVault = async ({
         const error = err as AxiosError;
         // eslint-disable-next-line
         if ((error?.response?.data as any)?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
-          await safeRequest.post(
+          await request.post(
             `${azIntegration.app}/deletedsecrets/${key}/recover?api-version=7.3`,
             {},
             {
@@ -760,7 +782,7 @@ const syncSecretsAzureKeyVault = async ({
 
   for await (const deleteSecret of deleteSecrets.filter((secret) => !secretKeysToRemoveFromDelete.has(secret.key))) {
     const { key } = deleteSecret;
-    await safeRequest.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
+    await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
@@ -2558,10 +2580,11 @@ const syncSecretsDatabricks = async ({
 }) => {
   const databricksApiUrl = `${integrationAuth.url}/api`;
 
+  await blockLocalAndPrivateIpAddresses(databricksApiUrl);
   // sync secrets to Databricks
   await Promise.all(
     Object.keys(secrets).map(async (key) =>
-      safeRequest.post(
+      request.post(
         `${databricksApiUrl}/2.0/secrets/put`,
         {
           scope: integration.app,
@@ -2580,7 +2603,7 @@ const syncSecretsDatabricks = async ({
 
   // get secrets from Databricks
   const getSecretsRes = (
-    await safeRequest.get<{ secrets: { key: string; last_updated_timestamp: number }[] }>(
+    await request.get<{ secrets: { key: string; last_updated_timestamp: number }[] }>(
       `${databricksApiUrl}/2.0/secrets/list`,
       {
         headers: {
@@ -2598,7 +2621,7 @@ const syncSecretsDatabricks = async ({
   await Promise.all(
     getSecretsRes.map(async (sec) => {
       if (!(sec.key in secrets)) {
-        return safeRequest.post(
+        return request.post(
           `${databricksApiUrl}/2.0/secrets/delete`,
           {
             scope: integration.app,
@@ -2736,7 +2759,7 @@ const syncSecretsAzureDevops = async ({
     const url: string | null =
       `${azureDevopsApiUrl}/${orgId}/${project}/_apis/distributedtask/variablegroups?api-version=7.2-preview.2`;
 
-    const response = await safeRequest.get<{ value: { name: string; id: string }[] }>(url, { headers });
+    const response = await request.get(url, { headers });
     for (const group of response.data.value) {
       const groupName = group.name;
       if (groupName === env) {
@@ -2747,6 +2770,7 @@ const syncSecretsAzureDevops = async ({
     return { groupId: "", groupName: "" };
   };
 
+  await blockLocalAndPrivateIpAddresses(azureDevopsApiUrl);
   const { groupId, groupName } = await getEnvGroupId(integration.app, integration.appId, integration.environment.name);
 
   const variables: Record<string, { value: string; isSecret: boolean }> = {};
@@ -2780,7 +2804,7 @@ const syncSecretsAzureDevops = async ({
       }
     };
 
-    const res = await safeRequest.post(url, config.data, config.headers);
+    const res = await request.post(url, config.data, config.headers);
     if (res.status !== 200) {
       throw new Error(`Azure DevOps: Failed to create variable group: ${res.statusText}`);
     }
@@ -2809,7 +2833,7 @@ const syncSecretsAzureDevops = async ({
         headers
       }
     };
-    const res = await safeRequest.put(url, config.data, config.headers);
+    const res = await request.put(url, config.data, config.headers);
     if (res.status !== 200) {
       throw new Error(`Azure DevOps: Failed to update variable group: ${res.statusText}`);
     }
@@ -2848,6 +2872,11 @@ const syncSecretsGitLab = async ({
 
   const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : IntegrationUrls.GITLAB_API_URL;
 
+  // Validate the base URL to prevent SSRF on all subsequent requests
+  if (integrationAuth.url) {
+    await blockLocalAndPrivateIpAddresses(gitLabApiUrl);
+  }
+
   const getAllEnvVariables = async (integrationAppId: string, accToken: string) => {
     const headers = {
       Authorization: `Bearer ${accToken}`,
@@ -2859,7 +2888,8 @@ const syncSecretsGitLab = async ({
     let url: string | null = `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
 
     while (url) {
-      const response = await safeRequest.get<GitLabSecret[]>(url, { headers });
+      await blockLocalAndPrivateIpAddresses(url);
+      const response = await request.get(url, { headers });
       allEnvVariables = [...allEnvVariables, ...response.data];
 
       const linkHeader = response.headers.link as string;
@@ -2957,7 +2987,7 @@ const syncSecretsGitLab = async ({
     }
 
     for await (const gitlabSecret of secretsToRemoveInGitlab) {
-      await safeRequest.delete(
+      await request.delete(
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${gitlabSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           headers: {
@@ -2971,7 +3001,7 @@ const syncSecretsGitLab = async ({
   for await (const key of Object.keys(secrets)) {
     const existingSecret = getSecretsRes.find((s) => s.key === key);
     if (!existingSecret) {
-      await safeRequest.post(
+      await request.post(
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables`,
         {
           key,
@@ -2990,7 +3020,7 @@ const syncSecretsGitLab = async ({
         }
       );
     } else if (secrets[key].value !== existingSecret.value) {
-      await safeRequest.put(
+      await request.put(
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           ...existingSecret,
@@ -3012,7 +3042,7 @@ const syncSecretsGitLab = async ({
   // delete secrets
   for await (const sec of getSecretsRes) {
     if (!(sec.key in secrets)) {
-      await safeRequest.delete(
+      await request.delete(
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${sec.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           headers: {
@@ -3559,10 +3589,13 @@ const syncSecretsTeamCity = async ({
     property: TeamCityBuildConfigParameter[];
   }
 
+  if (integrationAuth.url) {
+    await blockLocalAndPrivateIpAddresses(integrationAuth.url);
+  }
   if (integration.targetEnvironment && integration.targetEnvironmentId) {
     // case: sync to specific build-config in TeamCity project
     const res = (
-      await safeRequest.get<GetTeamCityBuildConfigParametersRes>(
+      await request.get<GetTeamCityBuildConfigParametersRes>(
         `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
         {
           headers: {
@@ -3588,7 +3621,7 @@ const syncSecretsTeamCity = async ({
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
         // case: secret does not exist in TeamCity or secret value has changed
         // -> create/update secret
-        await safeRequest.post(
+        await request.post(
           `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
           {
             name: `env.${key}`,
@@ -3610,7 +3643,7 @@ const syncSecretsTeamCity = async ({
     for await (const key of Object.keys(res)) {
       if (!(key in secrets)) {
         // delete secret
-        await safeRequest.delete(
+        await request.delete(
           `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters/env.${key}`,
           {
             headers: {
@@ -3624,7 +3657,7 @@ const syncSecretsTeamCity = async ({
   } else {
     // case: sync to TeamCity project
     const res = (
-      await safeRequest.get<{ property: TeamCitySecret[] }>(
+      await request.get<{ property: TeamCitySecret[] }>(
         `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
         {
           headers: {
@@ -3648,7 +3681,7 @@ const syncSecretsTeamCity = async ({
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
         // case: secret does not exist in TeamCity or secret value has changed
         // -> create/update secret
-        await safeRequest.post(
+        await request.post(
           `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
           {
             name: `env.${key}`,
@@ -3670,15 +3703,12 @@ const syncSecretsTeamCity = async ({
     for await (const key of Object.keys(res)) {
       if (!(key in secrets)) {
         // delete secret
-        await safeRequest.delete(
-          `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json"
-            }
+        await request.delete(`${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
           }
-        );
+        });
       }
     }
   }
@@ -3708,6 +3738,8 @@ const syncSecretsHashiCorpVault = async ({
     throw new BadRequestError({ message: "HashiCorp Vault URL is required" });
   }
 
+  await blockLocalAndPrivateIpAddresses(integrationAuth.url);
+
   interface LoginAppRoleRes {
     auth: {
       client_token: string;
@@ -3715,7 +3747,7 @@ const syncSecretsHashiCorpVault = async ({
   }
 
   // get Vault client token (could be optimized)
-  const { data } = await safeRequest.post<LoginAppRoleRes>(
+  const { data }: { data: LoginAppRoleRes } = await request.post(
     `${integrationAuth.url}/v1/auth/approle/login`,
     {
       role_id: accessId,
@@ -3730,7 +3762,7 @@ const syncSecretsHashiCorpVault = async ({
 
   const clientToken = data.auth.client_token;
 
-  await safeRequest.post(
+  await request.post(
     `${integrationAuth.url}/v1/${integration.app}/data/${integration.path}`,
     {
       data: getSecretKeyValuePair(secrets)
@@ -3965,7 +3997,7 @@ const syncSecretsBitbucket = async ({
   let variablesUrl = rootUrl;
 
   while (hasNextPage) {
-    const { data } = await safeRequest.get<VariablesResponse>(variablesUrl, {
+    const { data }: { data: VariablesResponse } = await request.get(variablesUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -3979,6 +4011,7 @@ const syncSecretsBitbucket = async ({
     }
 
     if (data.next) {
+      await blockLocalAndPrivateIpAddresses(data.next);
       variablesUrl = data.next;
     } else {
       hasNextPage = false;
@@ -4138,9 +4171,12 @@ const syncSecretsWindmill = async ({
     description?: string;
   }
   const apiUrl = integration.url ? `${integration.url}/api` : IntegrationUrls.WINDMILL_API_URL;
+  if (apiUrl) {
+    await blockLocalAndPrivateIpAddresses(apiUrl);
+  }
   // get secrets stored in windmill workspace
   const res = (
-    await safeRequest.get<WindmillSecret[]>(`${apiUrl}/w/${integration.appId}/variables/list`, {
+    await request.get<WindmillSecret[]>(`${apiUrl}/w/${integration.appId}/variables/list`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
@@ -4162,7 +4198,7 @@ const syncSecretsWindmill = async ({
         // case: secret does not exist in windmill
         // -> create secret
 
-        await safeRequest.post(
+        await request.post(
           `${apiUrl}/w/${integration.appId}/variables/create`,
           {
             path: key,
@@ -4179,7 +4215,7 @@ const syncSecretsWindmill = async ({
         );
       } else {
         // -> update secret
-        await safeRequest.post(
+        await request.post(
           `${apiUrl}/w/${integration.appId}/variables/update/${res[key].path}`,
           {
             path: key,
@@ -4201,7 +4237,7 @@ const syncSecretsWindmill = async ({
   for await (const key of Object.keys(res)) {
     if (!(key in secrets)) {
       // -> delete secret
-      await safeRequest.delete(`${apiUrl}/w/${integration.appId}/variables/delete/${res[key].path}`, {
+      await request.delete(`${apiUrl}/w/${integration.appId}/variables/delete/${res[key].path}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -4466,8 +4502,9 @@ const syncSecretsRundeck = async ({
     return;
   }
 
+  await blockLocalAndPrivateIpAddresses(integration.url);
   try {
-    const listResult = await safeRequest.get<RundeckSecretsGetRes>(
+    const listResult = await request.get<RundeckSecretsGetRes>(
       `${integration.url}/api/44/storage/${integration.path}`,
       {
         headers: {
@@ -4484,14 +4521,14 @@ const syncSecretsRundeck = async ({
   try {
     for await (const [key, value] of Object.entries(secrets)) {
       if (existingRundeckSecrets.includes(key)) {
-        await safeRequest.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+        await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
           headers: {
             "X-Rundeck-Auth-Token": accessToken,
             "Content-Type": "application/x-rundeck-data-password"
           }
         });
       } else {
-        await safeRequest.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+        await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
           headers: {
             "X-Rundeck-Auth-Token": accessToken,
             "Content-Type": "application/x-rundeck-data-password"
@@ -4502,7 +4539,7 @@ const syncSecretsRundeck = async ({
 
     for await (const existingSecret of existingRundeckSecrets) {
       if (!(existingSecret in secrets)) {
-        await safeRequest.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
+        await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
           headers: {
             "X-Rundeck-Auth-Token": accessToken
           }
@@ -4539,15 +4576,17 @@ const syncSecretsOctopusDeploy = async ({
       throw new InternalServerError({ message: `Unhandled Octopus Deploy scope: ${integration.scope}` });
   }
 
+  await blockLocalAndPrivateIpAddresses(url);
+
   // SDK doesn't support variable set...
-  const { data: variableSet } = await safeRequest.get<TOctopusDeployVariableSet>(url, {
+  const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
     headers: {
       "X-NuGet-ApiKey": accessToken,
       Accept: "application/json"
     }
   });
 
-  await safeRequest.put(
+  await request.put(
     url,
     {
       ...variableSet,

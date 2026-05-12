@@ -84,7 +84,8 @@ export const useGetSnapshotSecrets = ({ snapshotId }: TSnapshotDataProps) =>
           updatedAt: secretVersion.updatedAt,
           type: "modified",
           version: secretVersion.version,
-          isRotatedSecret: secretVersion.isRotatedSecret
+          isRotatedSecret: secretVersion.isRotatedSecret,
+          isHoneyTokenSecret: secretVersion.isHoneyTokenSecret
         };
 
         if (secretVersion.type === SecretType.Personal) {

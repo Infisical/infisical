@@ -211,7 +211,8 @@ export const pkiAlertV2ServiceFactory = ({
         await blockLocalAndPrivateIpAddresses(webhookConfig.url);
       } else if (channel.channelType === PkiAlertChannelType.SLACK) {
         const slackConfig = channel.config as TSlackChannelConfig;
-        validateSlackWebhookUrl(slackConfig.webhookUrl);
+        // eslint-disable-next-line no-await-in-loop
+        await validateSlackWebhookUrl(slackConfig.webhookUrl);
       }
     }
 
@@ -395,7 +396,8 @@ export const pkiAlertV2ServiceFactory = ({
           await blockLocalAndPrivateIpAddresses(webhookConfig.url);
         } else if (channel.channelType === PkiAlertChannelType.SLACK) {
           const slackConfig = channel.config as TSlackChannelConfig;
-          validateSlackWebhookUrl(slackConfig.webhookUrl);
+          // eslint-disable-next-line no-await-in-loop
+          await validateSlackWebhookUrl(slackConfig.webhookUrl);
         }
       }
     }

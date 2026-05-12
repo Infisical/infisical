@@ -78,6 +78,7 @@ type Props = {
     | "sub-organization"
     | "sso"
     | "email-domains"
+    | "honey-tokens"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;

@@ -179,6 +179,7 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
+    case PamResourceType.OracleDB:
       return <SqlConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.MongoDB:
       return <MongoDBConnectionDetails connectionDetails={resource.connectionDetails} />;

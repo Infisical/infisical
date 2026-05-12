@@ -71,6 +71,11 @@ import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { honeyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
+import { honeyTokenEventDALFactory } from "@app/ee/services/honey-token/honey-token-event-dal";
+import { honeyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
+import { honeyTokenConfigDALFactory } from "@app/ee/services/honey-token-config/honey-token-config-dal";
+import { honeyTokenConfigServiceFactory } from "@app/ee/services/honey-token-config/honey-token-config-service";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
@@ -222,6 +227,7 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
@@ -670,6 +676,9 @@ export const registerRoutes = async (
   const gatewayDAL = gatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
+  const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
+  const honeyTokenDAL = honeyTokenDALFactory(db);
+  const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
@@ -841,6 +850,8 @@ export const registerRoutes = async (
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
+  const announcementService = announcementServiceFactory({ userDAL, keyStore });
+
   const clickhouseAuditLogDAL = clickhouse
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
     : undefined;
@@ -926,6 +937,19 @@ export const registerRoutes = async (
     secretTagDAL,
     resourceMetadataDAL
   });
+
+  const telemetryService = telemetryServiceFactory({
+    keyStore,
+    licenseService,
+    orgDAL
+  });
+  const telemetryQueue = telemetryQueueServiceFactory({
+    keyStore,
+    telemetryDAL,
+    queueService,
+    telemetryService
+  });
+
   const scimService = scimServiceFactory({
     licenseService,
     scimDAL,
@@ -945,7 +969,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -961,18 +986,6 @@ export const registerRoutes = async (
   });
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
-
-  const telemetryService = telemetryServiceFactory({
-    keyStore,
-    licenseService,
-    orgDAL
-  });
-  const telemetryQueue = telemetryQueueServiceFactory({
-    keyStore,
-    telemetryDAL,
-    queueService,
-    telemetryService
-  });
 
   const invalidateCacheQueue = invalidateCacheQueueFactory({
     keyStore,
@@ -1038,7 +1051,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipGroupDAL,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1060,14 +1074,16 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
     authDAL,
     userDAL,
-    totpConfigDAL
+    totpConfigDAL,
+    keyStore
   });
 
   const accountRecoveryService = accountRecoveryServiceFactory({
@@ -1644,13 +1660,6 @@ export const registerRoutes = async (
     secretVersionV2BridgeDAL,
     snapshotSecretV2BridgeDAL,
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL
-  });
-  const webhookService = webhookServiceFactory({
-    permissionService,
-    webhookDAL,
-    projectEnvDAL,
-    projectDAL,
-    kmsService
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
@@ -2264,7 +2273,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
 
   const userEngagementService = userEngagementServiceFactory({
@@ -2337,6 +2347,48 @@ export const registerRoutes = async (
     projectDAL,
     appConnectionCredentialRotationService,
     identityUaDAL
+  });
+
+  const honeyTokenConfigService = honeyTokenConfigServiceFactory({
+    honeyTokenConfigDAL,
+    permissionService,
+    kmsService,
+    licenseService,
+    appConnectionDAL,
+    appConnectionService
+  });
+
+  const honeyTokenService = honeyTokenServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    honeyTokenEventDAL,
+    permissionService,
+    licenseService,
+    kmsService,
+    appConnectionDAL,
+    orgDAL,
+    projectDAL,
+    smtpService,
+    folderDAL,
+    projectBotService,
+    secretDAL: secretV2BridgeDAL,
+    secretVersionDAL: secretVersionV2BridgeDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+    secretTagDAL,
+    folderCommitService,
+    resourceMetadataDAL,
+    snapshotService,
+    secretQueueService,
+    appConnectionService,
+    telemetryService
+  });
+
+  const webhookService = webhookServiceFactory({
+    permissionService,
+    webhookDAL,
+    projectEnvDAL,
+    projectDAL,
+    kmsService
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -3318,6 +3370,8 @@ export const registerRoutes = async (
     insights: insightsService,
     pamInsights: pamInsightsService,
     githubOrgSync: githubOrgSyncConfigService,
+    honeyTokenConfig: honeyTokenConfigService,
+    honeyToken: honeyTokenService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
@@ -3325,6 +3379,7 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
+    announcement: announcementService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
     pamDomain: pamDomainService,

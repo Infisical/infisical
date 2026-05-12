@@ -42,7 +42,8 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
     session.resourceType === PamResourceType.MySQL ||
     session.resourceType === PamResourceType.MsSQL ||
     session.resourceType === PamResourceType.MongoDB ||
-    session.resourceType === PamResourceType.Redis;
+    session.resourceType === PamResourceType.Redis ||
+    session.resourceType === PamResourceType.OracleDB;
   const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
   const hasLogs = logs.length > 0;

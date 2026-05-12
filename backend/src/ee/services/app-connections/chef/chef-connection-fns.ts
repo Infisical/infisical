@@ -1,9 +1,10 @@
 import { AxiosError } from "axios";
 import crypto from "crypto";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -18,8 +19,12 @@ import {
   TUpdateChefDataBagItem
 } from "./chef-connection-types";
 
-export const getChefServerUrl = (serverUrl?: string) => {
-  return serverUrl ? removeTrailingSlash(serverUrl) : IntegrationUrls.CHEF_API_URL;
+export const getChefServerUrl = async (serverUrl?: string) => {
+  const chefServerUrl = serverUrl ? removeTrailingSlash(serverUrl) : IntegrationUrls.CHEF_API_URL;
+
+  await blockLocalAndPrivateIpAddresses(chefServerUrl);
+
+  return chefServerUrl;
 };
 
 const buildSecureUrl = (baseUrl: string, path: string): string => {
@@ -140,12 +145,12 @@ export const validateChefConnectionCredentials = async (config: TChefConnectionC
   try {
     const path = `/organizations/${inputCredentials.orgName}/users/${inputCredentials.userName}`;
 
-    const hostServerUrl = getChefServerUrl(inputCredentials.serverUrl);
+    const hostServerUrl = await getChefServerUrl(inputCredentials.serverUrl);
 
     const headers = getChefAuthHeaders("GET", path, "", inputCredentials.userName, inputCredentials.privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    await safeRequest.get(secureUrl, {
+    await request.get(secureUrl, {
       headers
     });
   } catch (error: unknown) {
@@ -171,12 +176,12 @@ export const listChefDataBags = async (appConnection: TChefConnection): Promise<
     const path = `/organizations/${orgName}/data`;
     const body = "";
 
-    const hostServerUrl = getChefServerUrl(serverUrl);
+    const hostServerUrl = await getChefServerUrl(serverUrl);
 
     const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    const res = await safeRequest.get<Record<string, string>>(secureUrl, {
+    const res = await request.get<Record<string, string>>(secureUrl, {
       headers
     });
 
@@ -207,12 +212,12 @@ export const listChefDataBagItems = async (
     const path = `/organizations/${orgName}/data/${dataBagName}`;
     const body = "";
 
-    const hostServerUrl = getChefServerUrl(serverUrl);
+    const hostServerUrl = await getChefServerUrl(serverUrl);
 
     const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    const res = await safeRequest.get<Record<string, string>>(secureUrl, {
+    const res = await request.get<Record<string, string>>(secureUrl, {
       headers
     });
 
@@ -243,12 +248,12 @@ export const getChefDataBagItem = async ({
     const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
     const body = "";
 
-    const hostServerUrl = getChefServerUrl(serverUrl);
+    const hostServerUrl = await getChefServerUrl(serverUrl);
 
     const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    const res = await safeRequest.get<TChefDataBagItemContent>(secureUrl, {
+    const res = await request.get<TChefDataBagItemContent>(secureUrl, {
       headers
     });
 
@@ -277,12 +282,12 @@ export const createChefDataBagItem = async ({
     const path = `/organizations/${orgName}/data/${dataBagName}`;
     const body = JSON.stringify(data);
 
-    const hostServerUrl = getChefServerUrl(serverUrl);
+    const hostServerUrl = await getChefServerUrl(serverUrl);
 
     const headers = getChefAuthHeaders("POST", path, body, userName, privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    await safeRequest.post(secureUrl, data, {
+    await request.post(secureUrl, data, {
       headers
     });
   } catch (error) {
@@ -310,12 +315,12 @@ export const updateChefDataBagItem = async ({
     const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
     const body = JSON.stringify(data);
 
-    const hostServerUrl = getChefServerUrl(serverUrl);
+    const hostServerUrl = await getChefServerUrl(serverUrl);
 
     const headers = getChefAuthHeaders("PUT", path, body, userName, privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    await safeRequest.put(secureUrl, data, {
+    await request.put(secureUrl, data, {
       headers
     });
   } catch (error) {
@@ -342,12 +347,12 @@ export const removeChefDataBagItem = async ({
     const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
     const body = "";
 
-    const hostServerUrl = getChefServerUrl(serverUrl);
+    const hostServerUrl = await getChefServerUrl(serverUrl);
 
     const headers = getChefAuthHeaders("DELETE", path, body, userName, privateKey);
 
     const secureUrl = buildSecureUrl(hostServerUrl, path);
-    await safeRequest.delete(secureUrl, {
+    await request.delete(secureUrl, {
       headers
     });
   } catch (error) {

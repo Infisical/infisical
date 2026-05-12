@@ -3,10 +3,11 @@ import { GitbeakerRequestError, Gitlab } from "@gitbeaker/rest";
 import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -96,7 +97,7 @@ export const refreshGitLabToken = async (
 
   try {
     const url = await getGitLabInstanceUrl(instanceUrl);
-    const { data } = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const { data } = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
@@ -164,7 +165,7 @@ export const exchangeGitLabOAuthCode = async (
     });
     const url = await getGitLabInstanceUrl(instanceUrl);
 
-    const response = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const response = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"

@@ -74,6 +74,7 @@ import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
+import { TWindowsAccountCredentials } from "../pam-resource/windows-server/windows-server-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
@@ -741,12 +742,54 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
 
-    // Find account by name within the resource
-    const account = await pamAccountDAL.findOne({
-      projectId,
-      resourceId: resource.id,
-      name: inputAccountName
-    });
+    // Wire format for AD-domain accounts is `<fqdn>:<slug>` (e.g.
+    // 'corp.example.com:administrator'). PAM slugs can't contain ':' so the
+    // separator is unambiguous. Plain `<slug>` routes to the local bucket.
+    const colonIdx = inputAccountName.indexOf(":");
+    const isDomainAccount = colonIdx !== -1;
+    const accountSlug = isDomainAccount ? inputAccountName.slice(colonIdx + 1) : inputAccountName;
+    const fqdnHint = isDomainAccount ? inputAccountName.slice(0, colonIdx) : null;
+
+    if (isDomainAccount && resource.resourceType !== PamResource.Windows) {
+      throw new BadRequestError({
+        message: `Domain account access is only supported for Windows resources`
+      });
+    }
+
+    const lookupAccount = async () => {
+      if (!isDomainAccount) {
+        return pamAccountDAL.findOne({
+          projectId,
+          resourceId: resource.id,
+          name: accountSlug
+        });
+      }
+      if (!resource.domainId) {
+        throw new BadRequestError({
+          message: `Resource '${inputResourceName}' is not joined to a domain`
+        });
+      }
+      const domain = await pamDomainDAL.findById(resource.domainId);
+      if (!domain) {
+        throw new NotFoundError({ message: `Domain with ID '${resource.domainId}' not found` });
+      }
+      const domainConn = await decryptDomainConnectionDetails({
+        projectId,
+        encryptedConnectionDetails: domain.encryptedConnectionDetails,
+        kmsService
+      });
+      if (domainConn.domain.toLowerCase() !== fqdnHint?.toLowerCase()) {
+        throw new BadRequestError({
+          message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
+        });
+      }
+      return pamAccountDAL.findOne({
+        projectId,
+        domainId: resource.domainId,
+        name: accountSlug
+      });
+    };
+    const account = await lookupAccount();
 
     if (!account) {
       throw new NotFoundError({
@@ -793,12 +836,19 @@ export const pamAccountServiceFactory = ({
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
 
+      // For domain accounts the subject scopes to {domainName, domainType} (matching
+      // create/list/etc). Using {resourceName, resourceType} would let a role keyed on
+      // a single resource authorize every domain account, and a role keyed on the
+      // domain wouldn't match because the field would be undefined.
+      const domain = isDomainAccount && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
+
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
-          resourceName: resource.name,
           accountName: account.name,
-          resourceType: resource.resourceType,
+          ...(isDomainAccount && domain
+            ? { domainName: domain.name, domainType: domain.domainType }
+            : { resourceName: resource.name, resourceType: resource.resourceType }),
           metadata: accountMeta[account.id] || []
         })
       );
@@ -984,7 +1034,8 @@ export const pamAccountServiceFactory = ({
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
       accountId: account.id,
-      resourceId: resource.id,
+      resourceId: isDomainAccount ? null : resource.id,
+      selectedResourceId: isDomainAccount ? resource.id : null,
       userId: actor.id,
       expiresAt: new Date(Date.now() + duration),
       reason: trimmedReason
@@ -1038,6 +1089,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
       case PamResource.MsSQL:
+      case PamResource.OracleDB:
       case PamResource.MongoDB:
         {
           const connectionCredentials = (await decryptResourceConnectionDetails({
@@ -1082,6 +1134,19 @@ export const pamAccountServiceFactory = ({
             kmsService,
             projectId
           })) as TSSHAccountCredentials;
+
+          metadata = {
+            username: credentials.username
+          };
+        }
+        break;
+      case PamResource.Windows:
+        {
+          const credentials = (await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          })) as TWindowsAccountCredentials;
 
           metadata = {
             username: credentials.username
@@ -1221,8 +1286,12 @@ export const pamAccountServiceFactory = ({
     const account = await pamAccountDAL.findById(session.accountId);
     if (!account) throw new NotFoundError({ message: `Account with ID '${session.accountId}' not found` });
 
-    const resource = await pamResourceDAL.findById(account.resourceId!);
-    if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+    const resourceId = session.selectedResourceId ?? account.resourceId;
+    if (!resourceId) {
+      throw new NotFoundError({ message: `Session '${sessionId}' has no associated resource` });
+    }
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
     if (resource.gatewayId) {
       const authorized =
@@ -1360,6 +1429,39 @@ export const pamAccountServiceFactory = ({
           recording: sessionRecordingSecrets
         };
       }
+    }
+
+    if (decryptedResource.resourceType === PamResource.Windows) {
+      const { hostname, ...rest } = decryptedResource.connectionDetails;
+
+      // The bridge forwards `domain` to IronRDP for NTLM CredSSP against AD.
+      let domainName: string | undefined;
+      if (account.domainId) {
+        const domain = await pamDomainDAL.findById(account.domainId);
+        if (!domain) {
+          throw new NotFoundError({ message: `Domain with ID '${account.domainId}' not found` });
+        }
+        const domainConnectionDetails = await decryptDomainConnectionDetails({
+          projectId: session.projectId,
+          encryptedConnectionDetails: domain.encryptedConnectionDetails,
+          kmsService
+        });
+        domainName = domainConnectionDetails.domain;
+      }
+
+      return {
+        credentials: {
+          ...rest,
+          host: hostname,
+          ...decryptedAccount.credentials,
+          ...(domainName ? { domain: domainName } : {})
+        },
+        policyRules,
+        projectId: project.id,
+        account,
+        sessionStarted,
+        recording: sessionRecordingSecrets
+      };
     }
 
     return {

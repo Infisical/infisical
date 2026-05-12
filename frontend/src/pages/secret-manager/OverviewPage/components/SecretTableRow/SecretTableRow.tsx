@@ -8,6 +8,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   GitBranchIcon,
+  HexagonIcon,
   ImportIcon,
   KeyIcon,
   RefreshCcwIcon,
@@ -274,6 +275,15 @@ export const SecretTableRow = ({
                   )}
                 />
               )}
+              {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
+                <HexagonIcon
+                  className={twMerge(
+                    "absolute right-2 bottom-2 !size-2.5 text-yellow",
+                    !isSelectionDisabled && "group-hover:!hidden",
+                    isSelected && "!hidden"
+                  )}
+                />
+              )}
             </>
           )}
         </TableCell>
@@ -312,6 +322,7 @@ export const SecretTableRow = ({
             environment={singleEnvSlug}
             environmentName={singleEnvName}
             isRotatedSecret={singleEnvSecret?.isRotatedSecret}
+            isHoneyTokenSecret={singleEnvSecret?.isHoneyTokenSecret}
             importedBy={importedBy}
             isSecretPresent={Boolean(singleEnvSecret)}
             comment={singleEnvSecret?.comment}
@@ -529,6 +540,14 @@ export const SecretTableRow = ({
                                   <TooltipContent>Rotated secret</TooltipContent>
                                 </Tooltip>
                               )}
+                              {secret?.isHoneyTokenSecret && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <HexagonIcon className="size-4 text-yellow" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Honey Token secret</TooltipContent>
+                                </Tooltip>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell
@@ -555,6 +574,7 @@ export const SecretTableRow = ({
                               environment={slug}
                               environmentName={name}
                               isRotatedSecret={secret?.isRotatedSecret}
+                              isHoneyTokenSecret={secret?.isHoneyTokenSecret}
                               importedBy={importedBy}
                               isSecretPresent={Boolean(secret)}
                               comment={secret?.comment}

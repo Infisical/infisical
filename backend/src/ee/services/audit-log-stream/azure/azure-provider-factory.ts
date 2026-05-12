@@ -2,7 +2,7 @@ import { RawAxiosRequestHeaders } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
 import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
@@ -42,6 +42,8 @@ export const AzureProviderFactory = () => {
   }) => {
     const { tenantId, clientId, clientSecret, dceUrl, dcrId, cltName } = credentials;
 
+    await blockLocalAndPrivateIpAddresses(dceUrl);
+
     const token = await getAzureToken(tenantId, clientId, clientSecret);
 
     const streamHeaders: RawAxiosRequestHeaders = {
@@ -49,7 +51,7 @@ export const AzureProviderFactory = () => {
       Authorization: `Bearer ${token}`
     };
 
-    await safeRequest
+    await request
       .post(
         `${dceUrl}/dataCollectionRules/${dcrId}/streams/Custom-${cltName}_CL?api-version=2023-01-01`,
         createPayload({ ping: "ok" }),
@@ -68,6 +70,8 @@ export const AzureProviderFactory = () => {
   const streamLog: TLogStreamFactoryStreamLog<TAzureProviderCredentials> = async ({ credentials, auditLog }) => {
     const { tenantId, clientId, clientSecret, dceUrl, dcrId, cltName } = credentials;
 
+    await blockLocalAndPrivateIpAddresses(dceUrl);
+
     const token = await getAzureToken(tenantId, clientId, clientSecret);
 
     const streamHeaders: RawAxiosRequestHeaders = {
@@ -75,7 +79,7 @@ export const AzureProviderFactory = () => {
       Authorization: `Bearer ${token}`
     };
 
-    await safeRequest.post(
+    await request.post(
       `${dceUrl}/dataCollectionRules/${dcrId}/streams/Custom-${cltName}_CL?api-version=2023-01-01`,
       createPayload(auditLog),
       {

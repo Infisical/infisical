@@ -1,0 +1,350 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Infisical Honey Token detection. Deploys a CloudTrail trail with CloudWatch
+  Logs subscription that forwards honey token events through an SQS queue
+  for reliable webhook delivery with automatic retries.
+
+Parameters:
+  NamePrefix:
+    Type: String
+    Default: infisical-honey-token
+    Description: Prefix for all resource names
+
+  WebhookUrl:
+    Type: String
+    Description: URL to send honey token alert webhooks to
+
+  WebhookSigningKey:
+    Type: String
+    NoEcho: true
+    Description: HMAC-SHA256 key used to sign webhook request bodies
+
+Resources:
+  # =============================================
+  # IAM roles
+  # =============================================
+  ForwarderLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: sqs-send
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt AlertQueue.Arn
+
+  AlertLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
+
+  # =============================================
+  # SQS queues
+  # =============================================
+  AlertDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${NamePrefix}-alert-dlq'
+      MessageRetentionPeriod: 1209600
+
+  AlertQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${NamePrefix}-alert-queue'
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 86400
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt AlertDeadLetterQueue.Arn
+        maxReceiveCount: 200
+
+  # =============================================
+  # Forwarder Lambda (CloudWatch Logs -> SQS)
+  # =============================================
+  ForwarderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${NamePrefix}-forwarder'
+      Role: !GetAtt ForwarderLambdaRole.Arn
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref AlertQueue
+      Code:
+        ZipFile: |
+          const { gunzipSync } = require("node:zlib");
+          const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
+
+          const sqs = new SQSClient();
+          const QUEUE_URL = process.env.QUEUE_URL;
+
+          exports.handler = async function (event) {
+            const payload = Buffer.from(event.awslogs.data, "base64");
+            const { logEvents } = JSON.parse(gunzipSync(payload).toString());
+
+            for (const e of logEvents) {
+              const alert = buildAlert(JSON.parse(e.message));
+              await sqs.send(new SendMessageCommand({
+                QueueUrl: QUEUE_URL,
+                MessageBody: JSON.stringify(alert),
+              }));
+            }
+          };
+
+          function buildAlert(detail) {
+            var userIdentity = detail.userIdentity || {};
+            return {
+              username: userIdentity.userName || "unknown",
+              eventName: detail.eventName || "unknown",
+              eventSource: detail.eventSource || "unknown",
+              sourceIp: detail.sourceIPAddress || "unknown",
+              userAgent: detail.userAgent || "unknown",
+              awsRegion: detail.awsRegion || "unknown",
+              eventTime: detail.eventTime || "unknown",
+              accountId: userIdentity.accountId || "unknown",
+              accessKeyId: userIdentity.accessKeyId || "unknown",
+              errorCode: detail.errorCode || null,
+              errorMessage: detail.errorMessage || null,
+              eventId: detail.eventID || null,
+              requestParameters: detail.requestParameters,
+            };
+          }
+
+  ForwarderLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${NamePrefix}-forwarder'
+      RetentionInDays: 30
+
+  # =============================================
+  # Alert Lambda (SQS -> Webhook)
+  # =============================================
+  AlertFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${NamePrefix}-alert'
+      Role: !GetAtt AlertLambdaRole.Arn
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          WEBHOOK_URL: !Ref WebhookUrl
+          WEBHOOK_SIGNING_KEY: !Ref WebhookSigningKey
+      Code:
+        ZipFile: |
+          const { createHmac } = require("node:crypto");
+
+          const WEBHOOK_URL = process.env.WEBHOOK_URL;
+          const WEBHOOK_SIGNING_KEY = process.env.WEBHOOK_SIGNING_KEY;
+
+          exports.handler = async function (event) {
+            for (const record of event.Records) {
+              const alert = JSON.parse(record.body);
+              const authorized = !alert.errorCode;
+              const label = authorized ? "AUTHORIZED" : "UNAUTHORIZED";
+              console.log(JSON.stringify({ level: "ALERT", message: "Honey token used (" + label + ")", ...alert }));
+
+              const body = JSON.stringify({ type: "aws", event: alert });
+              const resp = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: signedHeaders(body),
+                body,
+              });
+
+              if (!resp.ok) {
+                throw new Error("Webhook request failed with status " + resp.status);
+              }
+
+              console.log("Webhook response: " + resp.status);
+            }
+          };
+
+          function signedHeaders(body) {
+            var timestamp = Math.floor(Date.now() / 1000);
+            var signature = createHmac("sha256", WEBHOOK_SIGNING_KEY)
+              .update(timestamp + "." + body)
+              .digest("hex");
+            return {
+              "Content-Type": "application/json",
+              "X-Infisical-Signature": "t=" + timestamp + ",v1=" + signature,
+            };
+          }
+
+  AlertFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt AlertQueue.Arn
+      FunctionName: !GetAtt AlertFunction.Arn
+      BatchSize: 1
+      Enabled: true
+
+  AlertLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${NamePrefix}-alert'
+      RetentionInDays: 30
+
+  # =============================================
+  # CloudTrail S3 bucket
+  # =============================================
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-logs
+            Status: Enabled
+            ExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${CloudTrailBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  # =============================================
+  # CloudTrail CloudWatch Logs
+  # =============================================
+  CloudTrailLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/cloudtrail/${NamePrefix}'
+      RetentionInDays: 30
+
+  CloudTrailRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt CloudTrailLogGroup.Arn
+
+  # =============================================
+  # CloudTrail trail
+  # =============================================
+  HoneyTokenTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: CloudTrailBucketPolicy
+    Properties:
+      TrailName: !Sub '${NamePrefix}-trail'
+      S3BucketName: !Ref CloudTrailBucket
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      CloudWatchLogsLogGroupArn: !GetAtt CloudTrailLogGroup.Arn
+      CloudWatchLogsRoleArn: !GetAtt CloudTrailRole.Arn
+      AdvancedEventSelectors:
+        - Name: Management events only
+          FieldSelectors:
+            - Field: eventCategory
+              Equals:
+                - Management
+
+  # =============================================
+  # CloudWatch Logs subscription -> Forwarder Lambda
+  # =============================================
+  CloudWatchLogsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ForwarderFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !GetAtt CloudTrailLogGroup.Arn
+
+  HoneyTokenSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+      - CloudWatchLogsLambdaPermission
+      - HoneyTokenTrail
+    Properties:
+      FilterName: !Sub '${NamePrefix}-filter'
+      LogGroupName: !Ref CloudTrailLogGroup
+      FilterPattern: '{ $.userIdentity.userName = "inf_ht_*" }'
+      DestinationArn: !GetAtt ForwarderFunction.Arn
+
+Outputs:
+  ForwarderFunctionArn:
+    Description: ARN of the forwarder Lambda (CloudWatch Logs to SQS)
+    Value: !GetAtt ForwarderFunction.Arn
+
+  AlertFunctionArn:
+    Description: ARN of the alert Lambda (SQS to webhook)
+    Value: !GetAtt AlertFunction.Arn
+
+  AlertQueueUrl:
+    Description: URL of the SQS queue buffering honey token alerts
+    Value: !Ref AlertQueue
+
+  AlertDeadLetterQueueUrl:
+    Description: URL of the dead-letter queue for failed alerts
+    Value: !Ref AlertDeadLetterQueue
+
+  CloudTrailArn:
+    Description: ARN of the CloudTrail trail
+    Value: !GetAtt HoneyTokenTrail.Arn
+
+  CloudTrailS3Bucket:
+    Description: S3 bucket storing CloudTrail logs
+    Value: !Ref CloudTrailBucket
+
+  CloudTrailLogGroupName:
+    Description: CloudWatch log group receiving CloudTrail events from all regions
+    Value: !Ref CloudTrailLogGroup

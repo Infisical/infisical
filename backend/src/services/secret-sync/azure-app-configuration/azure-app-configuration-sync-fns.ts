@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
+import https from "https";
+
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
@@ -30,12 +32,15 @@ export const azureAppConfigurationSyncFactory = ({
     let currentUrl = url;
 
     while (currentUrl) {
-      const res = await safeRequest.get<{ items: AzureAppConfigKeyValue[]; ["@nextLink"]: string }>(currentUrl, {
+      const res = await request.get<{ items: AzureAppConfigKeyValue[]; ["@nextLink"]: string }>(currentUrl, {
         baseURL,
         headers: {
           Authorization: `Bearer ${accessToken}`
         },
-        addressFamily: 4
+        // we force IPV4 because docker setup fails with ipv6
+        httpsAgent: new https.Agent({
+          family: 4
+        })
       });
 
       result = result.concat(res.data.items);
@@ -46,7 +51,7 @@ export const azureAppConfigurationSyncFactory = ({
   };
 
   const $deleteAzureSecret = async (accessToken: string, configurationUrl: string, key: string, label?: string) => {
-    await safeRequest.delete(`${configurationUrl}/kv/${key}?api-version=2023-11-01`, {
+    await request.delete(`${configurationUrl}/kv/${key}?api-version=2023-11-01`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       },
@@ -56,7 +61,9 @@ export const azureAppConfigurationSyncFactory = ({
             label
           }
         }),
-      addressFamily: 4
+      httpsAgent: new https.Agent({
+        family: 4
+      })
     });
   };
 
@@ -104,7 +111,7 @@ export const azureAppConfigurationSyncFactory = ({
     // add the secrets to azure app config, that are in infisical
     for await (const key of Object.keys(secretMap)) {
       if (!(key in azureAppConfigSecretsLabeled) || secretMap[key]?.value !== azureAppConfigSecretsLabeled[key]) {
-        await safeRequest.put(
+        await request.put(
           `${secretSync.destinationConfig.configurationUrl}/kv/${key}?api-version=2023-11-01`,
           {
             value: secretMap[key]?.value,
@@ -122,7 +129,9 @@ export const azureAppConfigurationSyncFactory = ({
             headers: {
               Authorization: `Bearer ${accessToken}`
             },
-            addressFamily: 4
+            httpsAgent: new https.Agent({
+              family: 4
+            })
           }
         );
       }

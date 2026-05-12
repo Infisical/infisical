@@ -65,10 +65,6 @@ No IoC container. Every service is a factory function with explicit dependencies
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.
 
-### Outbound HTTP & SSRF Protection
-
-Backend HTTP requests to URLs derived from user input (webhooks, integrations, dynamic secrets, identity-auth JWKS, audit logs, ACME, etc.) go through the `safeRequest` helper (`@app/lib/validator`): URL validation, DNS pinning, no automatic redirects, internal-infrastructure blocklist. Third-party HTTP clients that build their own agent (`jwks-rsa`, `axios-ntlm`) use `buildSsrfSafeAgent`. See `backend/CLAUDE.md` for the full pattern, gateway-aware variants, and the criteria for adding a new `allowPrivateIps: true` caller.
-
 ## Keeping CLAUDE.md Up to Date
 
 When making significant changes to the codebase (new services, architectural shifts, new patterns, major refactors), update the relevant CLAUDE.md file(s) with high-level findings. This includes this root file for cross-cutting concerns, `backend/CLAUDE.md` for backend changes, and `frontend/CLAUDE.md` for frontend changes. The goal is to keep these files accurate as living documentation so future sessions start with correct context.

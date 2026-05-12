@@ -60,7 +60,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) =>
+          (req.body as { email?: string })?.email?.trim()?.toLowerCase().substring(0, 100) || req.realIp
       })
     },
     schema: {
@@ -155,7 +156,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         properties: {
           username: user.username,
           email: user.email ?? "",
-          attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource
+          attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource,
+          signupMethod: isInvitedUser ? "invite" : "email"
         }
       });
 

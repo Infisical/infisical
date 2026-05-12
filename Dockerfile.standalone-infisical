@@ -108,6 +108,17 @@ RUN npm i -g tsconfig-paths
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN npm run build
 
+# Bake in-app announcements + their images at build time so self-hosted / air-gapped
+# instances don't make any outbound calls to Contentful at runtime. No-ops silently
+# if Contentful build args are not supplied (cloud / dev builds).
+ARG CONTENTFUL_SPACE_ID
+ARG CONTENTFUL_DELIVERY_TOKEN
+ARG CONTENTFUL_ENVIRONMENT=master
+ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
+ENV CONTENTFUL_DELIVERY_TOKEN=$CONTENTFUL_DELIVERY_TOKEN
+ENV CONTENTFUL_ENVIRONMENT=$CONTENTFUL_ENVIRONMENT
+RUN npm run bake:announcements
+
 # Production dependencies (runs in parallel with backend-build)
 FROM base AS backend-prod-deps
 

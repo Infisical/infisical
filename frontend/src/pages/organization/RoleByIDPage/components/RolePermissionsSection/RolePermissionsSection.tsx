@@ -22,6 +22,7 @@ import { OrgPermissionEmailDomainRow } from "./OrgPermissionEmailDomainRow";
 import { OrgGatewayPoolPermissionRow } from "./OrgPermissionGatewayPoolRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
+import { OrgPermissionHoneyTokenRow } from "./OrgPermissionHoneyTokenRow";
 import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgPermissionMachineIdentityAuthTemplateRow } from "./OrgPermissionMachineIdentityAuthTemplateRow";
@@ -228,6 +229,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 isEditable={isCustomRole}
               />
               <OrgPermissionSecretShareRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionHoneyTokenRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

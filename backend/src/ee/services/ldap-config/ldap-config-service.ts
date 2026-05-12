@@ -34,6 +34,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -92,6 +94,7 @@ type TLdapConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -115,7 +118,8 @@ export const ldapConfigServiceFactory = ({
   smtpService,
   kmsService,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -473,6 +477,7 @@ export const ldapConfigServiceFactory = ({
         }
       });
     } else {
+      let isNewUser = false;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -490,6 +495,7 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         const newUserAlias = await userAliasDAL.create(
@@ -541,6 +547,19 @@ export const ldapConfigServiceFactory = ({
 
         return newUserAlias;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: sanitizedEmail,
+          organizationId: orgId,
+          properties: {
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            signupMethod: "ldap"
+          }
+        });
+      }
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 

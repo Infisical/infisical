@@ -14,6 +14,7 @@ import { KubernetesResourceForm } from "./KubernetesResourceForm";
 import { MongoDBResourceForm } from "./MongoDBResourceForm";
 import { MsSQLResourceForm } from "./MsSQLResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
+import { OracleDBResourceForm } from "./OracleDBResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
 import { RedisResourceForm } from "./RedisResourceForm";
 import { SSHResourceForm } from "./SSHResourceForm";
@@ -66,6 +67,8 @@ const CreateForm = ({ resourceType, closeSheet, projectId }: CreateFormProps) =>
       return <MySQLResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.MsSQL:
       return <MsSQLResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
+    case PamResourceType.OracleDB:
+      return <OracleDBResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.MongoDB:
       return <MongoDBResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.Redis:
@@ -119,6 +122,10 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.MsSQL:
       return <MsSQLResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
+    case PamResourceType.OracleDB:
+      return (
+        <OracleDBResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.MongoDB:
       return (
         <MongoDBResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />

@@ -1,7 +1,8 @@
+import https from "https";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
-import { safeRequest } from "@app/lib/validator";
+import { request } from "@app/lib/config/request";
 
 const SPIFFE_ID_REGEX = new RE2("^spiffe:\\/\\/([^/]+)(\\/.*)?");
 
@@ -30,12 +31,12 @@ const BUNDLE_FETCH_TIMEOUT_MS = 10_000;
 const MAX_BUNDLE_SIZE_BYTES = 1_048_576; // 1 MB
 
 export const fetchRemoteBundleJwks = async (url: string, caCert?: string): Promise<string> => {
-  const response = await safeRequest.get<string>(url, {
+  const response = await request.get<string>(url, {
     responseType: "text",
     timeout: BUNDLE_FETCH_TIMEOUT_MS,
     maxContentLength: MAX_BUNDLE_SIZE_BYTES,
     maxBodyLength: MAX_BUNDLE_SIZE_BYTES,
-    ...(caCert ? { ca: caCert } : {})
+    httpsAgent: caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined
   });
 
   return response.data;

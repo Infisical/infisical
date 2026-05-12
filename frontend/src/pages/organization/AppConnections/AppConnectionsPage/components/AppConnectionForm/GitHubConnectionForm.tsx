@@ -221,7 +221,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                   ? `Credentials have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
-                        : `See Docs to configure Github ${methodDetails.name} Connections.`
+                        : `See Docs to configure ${methodDetails.name.startsWith("GitHub") ? methodDetails.name : `GitHub ${methodDetails.name}`} Connections.`
                     }`
                   : error?.message
               }

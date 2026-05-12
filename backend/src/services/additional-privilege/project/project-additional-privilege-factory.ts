@@ -385,7 +385,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       }
     }
 
-    if (shouldUseNewPrivilegeSystem && permissions) {
+    if (permissions) {
       validateGrantPrivilegeSubjectActionConditions(
         shouldUseNewPrivilegeSystem,
         permissionAction,

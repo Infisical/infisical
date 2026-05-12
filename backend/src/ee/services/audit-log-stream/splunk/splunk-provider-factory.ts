@@ -1,8 +1,9 @@
 import { RawAxiosRequestHeaders } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
 import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
@@ -20,13 +21,15 @@ function createPayload(event: Record<string, unknown>) {
   };
 }
 
-function createSplunkUrl(hostname: string) {
+async function createSplunkUrl(hostname: string) {
   let parsedHostname: string;
   try {
     parsedHostname = new URL(`https://${hostname}`).hostname;
   } catch (error) {
     throw new BadRequestError({ message: `Invalid Splunk hostname provided: ${(error as Error).message}` });
   }
+
+  await blockLocalAndPrivateIpAddresses(`https://${parsedHostname}`);
 
   return `https://${parsedHostname}:8088/services/collector/event`;
 }
@@ -37,14 +40,14 @@ export const SplunkProviderFactory = () => {
   }) => {
     const { hostname, token } = credentials;
 
-    const url = createSplunkUrl(hostname);
+    const url = await createSplunkUrl(hostname);
 
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Splunk ${token}`
     };
 
-    await safeRequest
+    await request
       .post(url, createPayload({ ping: "ok" }), {
         headers: streamHeaders,
         timeout: AUDIT_LOG_STREAM_TIMEOUT
@@ -59,14 +62,14 @@ export const SplunkProviderFactory = () => {
   const streamLog: TLogStreamFactoryStreamLog<TSplunkProviderCredentials> = async ({ credentials, auditLog }) => {
     const { hostname, token } = credentials;
 
-    const url = createSplunkUrl(hostname);
+    const url = await createSplunkUrl(hostname);
 
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Splunk ${token}`
     };
 
-    await safeRequest.post(url, createPayload(auditLog), {
+    await request.post(url, createPayload(auditLog), {
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_TIMEOUT
     });

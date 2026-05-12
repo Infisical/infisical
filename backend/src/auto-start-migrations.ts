@@ -10,6 +10,7 @@ import { Logger } from "pino";
 import { getConfig } from "@app/lib/config/env";
 import { applyJitter, delay } from "@app/lib/delay";
 
+import { getMigrationBootState } from "./auto-start-migrations-fns";
 import { ensureClickHouseSchema } from "./db/clickhouse-migration-runner";
 import {
   acquireSanitizedSchemaLock,
@@ -37,13 +38,41 @@ const migrationConfig = {
   tableName: "infisical_migrations"
 };
 
-const migrationStatusCheckErrorHandler = (err: Error) => {
-  // happens for first time  in which the migration table itself is not created yet
-  //    error: select * from "infisical_migrations" - relation "infisical_migrations" does not exist
-  if (err?.message?.includes("does not exist")) {
-    return true;
-  }
-  throw err;
+const logUnknownAppliedMigrations = ({
+  databaseName,
+  logger,
+  unknownAppliedMigrationNames
+}: {
+  databaseName: string;
+  logger: Logger;
+  unknownAppliedMigrationNames: string[];
+}) => {
+  logger.warn(
+    {
+      databaseName,
+      unknownAppliedMigrationCount: unknownAppliedMigrationNames.length,
+      unknownAppliedMigrationNames: unknownAppliedMigrationNames.slice(-5)
+    },
+    `Database has migrations newer than this image [database=${databaseName}]. Skipping startup migrations.`
+  );
+};
+
+const throwInvalidMigrationHistory = ({
+  databaseName,
+  pendingMigrationNames,
+  unknownAppliedMigrationNames
+}: {
+  databaseName: string;
+  pendingMigrationNames: string[];
+  unknownAppliedMigrationNames: string[];
+}): never => {
+  throw new Error(
+    [
+      `Invalid migration history detected [database=${databaseName}].`,
+      `Unknown applied migrations: ${unknownAppliedMigrationNames.join(", ") || "none"}.`,
+      `Pending bundled migrations: ${pendingMigrationNames.join(", ") || "none"}.`
+    ].join(" ")
+  );
 };
 
 const getLockTableName = (tableName: string): string => {
@@ -345,10 +374,17 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
       logger.info("No ClickHouse client configured: Skipping ClickHouse audit_logs table creation.");
     }
 
-    const shouldRunMigration = Boolean(
-      await applicationDb.migrate.status(migrationConfig).catch(migrationStatusCheckErrorHandler)
-    ); // db.length - code.length
-    if (!shouldRunMigration) {
+    const applicationMigrationBootState = await getMigrationBootState({ db: applicationDb, migrationConfig });
+    if (applicationMigrationBootState.direction === "ahead") {
+      logUnknownAppliedMigrations({
+        databaseName: "application",
+        logger,
+        unknownAppliedMigrationNames: applicationMigrationBootState.unknownAppliedMigrationNames
+      });
+      return;
+    }
+
+    if (applicationMigrationBootState.direction === "current") {
       logger.info("No migrations pending: Skipping migration process.");
 
       if (generateSanitizedSchema) {
@@ -377,38 +413,89 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
       }
       return;
     }
+    if (applicationMigrationBootState.direction === "invalid") {
+      throwInvalidMigrationHistory({
+        databaseName: "application",
+        pendingMigrationNames: applicationMigrationBootState.pendingMigrationNames,
+        unknownAppliedMigrationNames: applicationMigrationBootState.unknownAppliedMigrationNames
+      });
+    }
 
     if (auditLogDb) {
-      await ensureMigrationTables(auditLogDb, logger);
-      logger.info("Running audit log migrations.");
-      const didPreviousInstanceRunMigration = !(await auditLogDb.migrate
-        .status(migrationConfig)
-        .catch(migrationStatusCheckErrorHandler));
-      if (didPreviousInstanceRunMigration) {
-        logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
-        return;
-      }
+      const auditLogMigrationBootState = await getMigrationBootState({ db: auditLogDb, migrationConfig });
+      if (auditLogMigrationBootState.direction === "ahead") {
+        logUnknownAppliedMigrations({
+          databaseName: "audit-log",
+          logger,
+          unknownAppliedMigrationNames: auditLogMigrationBootState.unknownAppliedMigrationNames
+        });
+      } else if (auditLogMigrationBootState.direction === "current") {
+        logger.info("No audit log migrations pending: Skipping migration process.");
+      } else if (auditLogMigrationBootState.direction === "invalid") {
+        throwInvalidMigrationHistory({
+          databaseName: "audit-log",
+          pendingMigrationNames: auditLogMigrationBootState.pendingMigrationNames,
+          unknownAppliedMigrationNames: auditLogMigrationBootState.unknownAppliedMigrationNames
+        });
+      } else {
+        await ensureMigrationTables(auditLogDb, logger);
+        logger.info("Running audit log migrations.");
 
-      // Use startup lock to ensure only one instance runs migrations at a time
-      await withStartupLock(auditLogDb, logger, async () => {
-        await auditLogDb.migrate.latest(migrationConfig);
-      });
-      logger.info("Finished audit log migrations.");
+        // Use startup lock to ensure only one instance runs migrations at a time
+        await withStartupLock(auditLogDb, logger, async () => {
+          const lockedAuditLogMigrationBootState = await getMigrationBootState({ db: auditLogDb, migrationConfig });
+          if (lockedAuditLogMigrationBootState.direction === "ahead") {
+            logUnknownAppliedMigrations({
+              databaseName: "audit-log",
+              logger,
+              unknownAppliedMigrationNames: lockedAuditLogMigrationBootState.unknownAppliedMigrationNames
+            });
+            return;
+          }
+          if (lockedAuditLogMigrationBootState.direction === "current") {
+            logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
+            return;
+          }
+          if (lockedAuditLogMigrationBootState.direction === "invalid") {
+            throwInvalidMigrationHistory({
+              databaseName: "audit-log",
+              pendingMigrationNames: lockedAuditLogMigrationBootState.pendingMigrationNames,
+              unknownAppliedMigrationNames: lockedAuditLogMigrationBootState.unknownAppliedMigrationNames
+            });
+          }
+
+          await auditLogDb.migrate.latest(migrationConfig);
+        });
+        logger.info("Finished audit log migrations.");
+      }
     }
 
     await ensureMigrationTables(applicationDb, logger);
     logger.info("Running application migrations.");
 
-    const didPreviousInstanceRunMigration = !(await applicationDb.migrate
-      .status(migrationConfig)
-      .catch(migrationStatusCheckErrorHandler));
-    if (didPreviousInstanceRunMigration) {
-      logger.info("No application migrations pending: Applied by previous instance. Skipping migration process.");
-      return;
-    }
-
     // Use startup lock to ensure only one instance runs migrations at a time
     await withStartupLock(applicationDb, logger, async () => {
+      const lockedApplicationMigrationBootState = await getMigrationBootState({ db: applicationDb, migrationConfig });
+      if (lockedApplicationMigrationBootState.direction === "ahead") {
+        logUnknownAppliedMigrations({
+          databaseName: "application",
+          logger,
+          unknownAppliedMigrationNames: lockedApplicationMigrationBootState.unknownAppliedMigrationNames
+        });
+        return;
+      }
+      if (lockedApplicationMigrationBootState.direction === "current") {
+        logger.info("No application migrations pending: Applied by previous instance. Skipping migration process.");
+        return;
+      }
+      if (lockedApplicationMigrationBootState.direction === "invalid") {
+        throwInvalidMigrationHistory({
+          databaseName: "application",
+          pendingMigrationNames: lockedApplicationMigrationBootState.pendingMigrationNames,
+          unknownAppliedMigrationNames: lockedApplicationMigrationBootState.unknownAppliedMigrationNames
+        });
+      }
+
       if (generateSanitizedSchema) await dropSanitizedSchema({ db: applicationDb, logger });
       await applicationDb.migrate.latest(migrationConfig);
     });

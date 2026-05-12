@@ -185,6 +185,18 @@ import {
   TGroups,
   TGroupsInsert,
   TGroupsUpdate,
+  THoneyTokenConfigs,
+  THoneyTokenConfigsInsert,
+  THoneyTokenConfigsUpdate,
+  THoneyTokenEvents,
+  THoneyTokenEventsInsert,
+  THoneyTokenEventsUpdate,
+  THoneyTokens,
+  THoneyTokenSecretMappings,
+  THoneyTokenSecretMappingsInsert,
+  THoneyTokenSecretMappingsUpdate,
+  THoneyTokensInsert,
+  THoneyTokensUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -1518,6 +1530,22 @@ declare module "knex/types/tables" {
       TGithubOrgSyncConfigs,
       TGithubOrgSyncConfigsInsert,
       TGithubOrgSyncConfigsUpdate
+    >;
+    [TableName.HoneyTokenConfig]: KnexOriginal.CompositeTableType<
+      THoneyTokenConfigs,
+      THoneyTokenConfigsInsert,
+      THoneyTokenConfigsUpdate
+    >;
+    [TableName.HoneyToken]: KnexOriginal.CompositeTableType<THoneyTokens, THoneyTokensInsert, THoneyTokensUpdate>;
+    [TableName.HoneyTokenEvent]: KnexOriginal.CompositeTableType<
+      THoneyTokenEvents,
+      THoneyTokenEventsInsert,
+      THoneyTokenEventsUpdate
+    >;
+    [TableName.HoneyTokenSecretMapping]: KnexOriginal.CompositeTableType<
+      THoneyTokenSecretMappings,
+      THoneyTokenSecretMappingsInsert,
+      THoneyTokenSecretMappingsUpdate
     >;
     [TableName.FolderCommit]: KnexOriginal.CompositeTableType<
       TFolderCommits,

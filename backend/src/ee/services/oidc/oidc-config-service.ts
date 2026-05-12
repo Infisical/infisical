@@ -23,7 +23,6 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
-  safeRequest,
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
@@ -43,6 +42,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -99,6 +100,7 @@ type TOidcConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -122,7 +124,8 @@ export const oidcConfigServiceFactory = ({
   auditLogService,
   kmsService,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -257,6 +260,7 @@ export const oidcConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      let isNewUser = false;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -279,6 +283,7 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         userAlias = await userAliasDAL.create(
@@ -329,6 +334,19 @@ export const oidcConfigServiceFactory = ({
 
         return newUser;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          organizationId: orgId,
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: "oidc"
+          }
+        });
+      }
     }
 
     if (manageGroupMemberships) {
@@ -688,19 +706,8 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      // Fetch discovery doc via safeRequest so the discovery leg is itself
-      // SSRF-validated and DNS-pinned. We then construct the Issuer manually
-      // instead of letting openid-client do its own (unpinned) HTTP via
-      // `Issuer.discover()`.
-      const { data: meta } = await safeRequest.get<{
-        issuer: string;
-        authorization_endpoint?: string;
-        token_endpoint?: string;
-        userinfo_endpoint?: string;
-        jwks_uri?: string;
-        code_challenge_methods_supported?: string[];
-      }>(oidcCfg.discoveryURL);
-      issuer = new OpenIdIssuer(meta);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
+      issuer = await Issuer.discover(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -713,6 +720,9 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,

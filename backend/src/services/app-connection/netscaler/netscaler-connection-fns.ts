@@ -7,13 +7,21 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { NetScalerConnectionMethod } from "./netscaler-connection-enums";
 import { TNetScalerConnectionConfig } from "./netscaler-connection-types";
 
-export type TNetScalerRequestConfig = AxiosRequestConfig & { url: string };
+export const createNetScalerHttpsAgent = (credentials: {
+  sslRejectUnauthorized?: boolean;
+  sslCertificate?: string;
+}): https.Agent => {
+  return new https.Agent({
+    rejectUnauthorized: credentials.sslRejectUnauthorized,
+    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+  });
+};
 
 export const getNetScalerConnectionListItem = () => {
   return {
@@ -26,13 +34,15 @@ export const getNetScalerConnectionListItem = () => {
 const requestWithNetScalerGateway = async <T>(
   config: TNetScalerConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: TNetScalerRequestConfig
+  requestConfig: AxiosRequestConfig
 ): Promise<T> => {
   const { gatewayId, credentials } = config;
   const { hostname, port: credPort } = credentials;
   const port = credPort ?? 443;
 
   if (gatewayId && gatewayV2Service) {
+    await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
+
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost: hostname,
@@ -54,7 +64,7 @@ const requestWithNetScalerGateway = async <T>(
         const proxyUrl = `https://localhost:${proxyPort}`;
         const finalRequestConfig: AxiosRequestConfig = {
           ...requestConfig,
-          url: requestConfig.url.replace(`https://${hostname}:${port}`, proxyUrl),
+          url: requestConfig.url?.replace(`https://${hostname}:${port}`, proxyUrl),
           headers: {
             ...requestConfig.headers,
             Host: hostname
@@ -74,10 +84,12 @@ const requestWithNetScalerGateway = async <T>(
     );
   }
 
-  const resp = await safeRequest.request<T>({
+  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
+
+  const httpsAgent = createNetScalerHttpsAgent(credentials);
+  const resp = await request.request<T>({
     ...requestConfig,
-    rejectUnauthorized: credentials.sslRejectUnauthorized,
-    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+    httpsAgent
   });
   return resp.data;
 };
@@ -142,13 +154,15 @@ export const executeNetScalerOperationWithGateway = async <T>(
     credentials: TNetScalerConnectionConfig["credentials"];
   },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined,
-  operation: (makeRequest: <R>(requestCfg: TNetScalerRequestConfig) => Promise<R>) => Promise<T>
+  operation: (makeRequest: <R>(requestCfg: AxiosRequestConfig) => Promise<R>) => Promise<T>
 ): Promise<T> => {
   const { gatewayId, credentials } = config;
   const { hostname, port: credPort } = credentials;
   const port = credPort ?? 443;
 
   if (gatewayId && gatewayV2Service) {
+    await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
+
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost: hostname,
@@ -170,10 +184,10 @@ export const executeNetScalerOperationWithGateway = async <T>(
         const proxyBaseUrl = `https://localhost:${proxyPort}`;
         const targetBaseUrl = `https://${hostname}:${port}`;
 
-        const makeRequest = async <R>(requestCfg: TNetScalerRequestConfig): Promise<R> => {
+        const makeRequest = async <R>(requestCfg: AxiosRequestConfig): Promise<R> => {
           const resp = await request.request<R>({
             ...requestCfg,
-            url: requestCfg.url.replace(targetBaseUrl, proxyBaseUrl),
+            url: requestCfg.url?.replace(targetBaseUrl, proxyBaseUrl),
             headers: {
               ...requestCfg.headers,
               Host: hostname
@@ -194,11 +208,14 @@ export const executeNetScalerOperationWithGateway = async <T>(
     );
   }
 
-  const makeRequest = async <R>(requestCfg: TNetScalerRequestConfig): Promise<R> => {
-    const resp = await safeRequest.request<R>({
+  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
+
+  const httpsAgent = createNetScalerHttpsAgent(credentials);
+
+  const makeRequest = async <R>(requestCfg: AxiosRequestConfig): Promise<R> => {
+    const resp = await request.request<R>({
       ...requestCfg,
-      rejectUnauthorized: credentials.sslRejectUnauthorized,
-      ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+      httpsAgent
     });
     return resp.data;
   };

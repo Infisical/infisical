@@ -9,7 +9,8 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { safeRequest } from "@app/lib/validator";
+import { request } from "@app/lib/config/request";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAuth0ConnectionAccessToken } from "@app/services/app-connection/auth0/auth0-connection-fns";
 
 import { generatePassword } from "../shared/utils";
@@ -27,9 +28,10 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
   const $rotateClientSecret = async () => {
     const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsService);
     const { audience } = connection.credentials;
+    await blockLocalAndPrivateIpAddresses(audience);
     const clientSecret = generatePassword();
 
-    await safeRequest.request({
+    await request.request({
       method: "PATCH",
       url: `${audience}clients/${clientId}`,
       headers: { authorization: `Bearer ${accessToken}` },
@@ -55,9 +57,10 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
   ) => {
     const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsService);
     const { audience } = connection.credentials;
+    await blockLocalAndPrivateIpAddresses(audience);
 
     // we just trigger an auth0 rotation to negate our credentials
-    await safeRequest.request({
+    await request.request({
       method: "POST",
       url: `${audience}clients/${clientId}/rotate-secret`,
       headers: { authorization: `Bearer ${accessToken}` }
