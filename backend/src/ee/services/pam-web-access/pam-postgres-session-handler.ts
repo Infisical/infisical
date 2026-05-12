@@ -278,11 +278,12 @@ export const handlePostgresSession = async (
       const snapshot = Array.from(controllers.values());
       controllers.clear();
       for (const controller of snapshot) {
-        if (!controller) continue;
-        try {
-          controller.dispose();
-        } catch (err) {
-          logger.debug(err, `Error disposing controller [sessionId=${sessionId}]`);
+        if (controller) {
+          try {
+            controller.dispose();
+          } catch (err) {
+            logger.debug(err, `Error disposing controller [sessionId=${sessionId}]`);
+          }
         }
       }
     }
