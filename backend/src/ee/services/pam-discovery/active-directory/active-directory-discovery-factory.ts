@@ -1004,7 +1004,15 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 
       // Auto-import AD domain
       const { domain } = await pamDomainDAL.transaction(async (tx) => {
-        const result = await upsertDomain(projectId, configuration, gatewayId, kmsService, pamDomainDAL, tx, gatewayPoolId);
+        const result = await upsertDomain(
+          projectId,
+          configuration,
+          gatewayId,
+          kmsService,
+          pamDomainDAL,
+          tx,
+          gatewayPoolId
+        );
         return result;
       });
 
