@@ -2142,6 +2142,11 @@ export const certificateV3ServiceFactory = ({
 
       const certificateRequest = {
         commonName: originalCert.commonName || undefined,
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined,
         keyUsages: parseKeyUsages(originalCert.keyUsages),
         extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         subjectAlternativeNames: originalCert.altNames
@@ -2358,7 +2363,12 @@ export const certificateV3ServiceFactory = ({
         status: CertificateRequestStatus.ISSUED,
         certificateId: newCert.id,
         ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
 
       // Copy metadata from original cert to new cert and cert request
