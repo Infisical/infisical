@@ -100,7 +100,8 @@ export const pamDiscoveryQueueFactory = ({
             credentials,
             effectiveGatewayId,
             discoverySource.projectId,
-            gatewayV2Service
+            gatewayV2Service,
+            discoverySource.gatewayPoolId
           );
 
           const scanDeps = {

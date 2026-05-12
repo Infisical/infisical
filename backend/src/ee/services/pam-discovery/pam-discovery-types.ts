@@ -71,7 +71,8 @@ export type TPamDiscoveryFactory<T extends TPamDiscoveryConfiguration, C extends
   credentials: C,
   gatewayId: string,
   projectId: string,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolId?: string | null
 ) => {
   validateConnection: () => Promise<void>;
   scan: (
