@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 func newSecretsHandler(t *testing.T) gensecrets.Service {
 	t.Helper()
 
-	permSvc := permission.NewService(testutil.NopLogger(), permission.Deps{DB: stack.DB()})
+	permSvc := permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 
 	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 
@@ -67,14 +67,14 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 	err = kmsSvc.Start(context.Background(), false)
 	require.NoError(t, err)
 
-	projectSvc := project.NewService(testutil.NopLogger(), project.Deps{DB: stack.DB()})
+	projectSvc := project.NewService(testutil.NopLogger(), &project.Deps{DB: stack.DB()})
 
 	queueSvc := queue.NewService(testutil.NopLogger(), redisClient)
 
-	auditLogSvc := auditlog.NewService(testutil.NopLogger(), auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
+	auditLogSvc := auditlog.NewService(testutil.NopLogger(), &auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
 
-	secretFolderSvc := secretfolder.NewService(secretfolder.Deps{DB: stack.DB()})
-	secretImportSvc := secretimport.NewService(secretimport.Deps{DB: stack.DB()})
+	secretFolderSvc := secretfolder.NewService(&secretfolder.Deps{DB: stack.DB()})
+	secretImportSvc := secretimport.NewService(&secretimport.Deps{DB: stack.DB()})
 
 	secretsSvc := secretSvc.NewService(testutil.NopLogger(), &secretSvc.Deps{
 		DB:                  stack.DB(),

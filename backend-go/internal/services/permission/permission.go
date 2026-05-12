@@ -107,7 +107,7 @@ type Service struct {
 }
 
 // NewService creates a new permission service instance.
-func NewService(logger *slog.Logger, deps Deps) *Service {
+func NewService(logger *slog.Logger, deps *Deps) *Service {
 	return &Service{
 		logger: logger.With(slog.String("service", "permission")),
 		db:     deps.DB,

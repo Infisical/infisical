@@ -118,9 +118,12 @@ func (a Authenticator) JWTAuth(ctx context.Context, token string, sc *security.J
 // validateJWT performs real JWT validation.
 // Exact port of fnValidateJwtIdentity in auth-token-service.ts:212-285.
 func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity, error) {
-	// 1. Parse and verify JWT signature (HS256).
+	// 1. Parse and verify JWT signature (HS256 only).
 	claims := &UserJWTClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(_ *jwt.Token) (any, error) {
+	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return a.authSecret, nil
 	})
 
@@ -267,9 +270,12 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 // New-format tokens carry all claims in the JWT for stateless validation; legacy tokens
 // fall back to DB lookup.
 func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*Identity, error) {
-	// 1. Parse and verify JWT signature (HS256).
+	// 1. Parse and verify JWT signature (HS256 only).
 	claims := &IdentityJWTClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(_ *jwt.Token) (any, error) {
+	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return a.authSecret, nil
 	})
 	if err != nil {

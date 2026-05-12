@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
-	permLib := permission.NewService(testutil.NopLogger(), permission.Deps{DB: stack.DB()})
+	permLib := permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 
 	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 

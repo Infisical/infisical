@@ -44,11 +44,11 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 
 	authenticator := auth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore)
 
-	permissionSvc := permission.NewService(infra.Logger, permission.Deps{DB: infra.DB})
+	permissionSvc := permission.NewService(infra.Logger, &permission.Deps{DB: infra.DB})
 
-	projectSvc := project.NewService(infra.Logger, project.Deps{DB: infra.DB})
+	projectSvc := project.NewService(infra.Logger, &project.Deps{DB: infra.DB})
 
-	auditLogSvc := auditlog.NewService(infra.Logger, auditlog.Deps{
+	auditLogSvc := auditlog.NewService(infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,
 		Config: infra.Config,
 	})

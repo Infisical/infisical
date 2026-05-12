@@ -15,9 +15,9 @@ type secretManagerServices struct {
 }
 
 func newSecretManagerServices(infra *Infra, platform *platformServices) *secretManagerServices {
-	secretFolderSvc := secretfolder.NewService(secretfolder.Deps{DB: infra.DB})
-	secretImportSvc := secretimport.NewService(secretimport.Deps{DB: infra.DB})
-	environmentSvc := environment.NewService(environment.Deps{DB: infra.DB})
+	secretFolderSvc := secretfolder.NewService(&secretfolder.Deps{DB: infra.DB})
+	secretImportSvc := secretimport.NewService(&secretimport.Deps{DB: infra.DB})
+	environmentSvc := environment.NewService(&environment.Deps{DB: infra.DB})
 
 	secretSvc := secret.NewService(infra.Logger, &secret.Deps{
 		DB:                  infra.DB,

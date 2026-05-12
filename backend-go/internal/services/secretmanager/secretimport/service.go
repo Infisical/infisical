@@ -29,7 +29,7 @@ type Service struct {
 	db pg.DB
 }
 
-func NewService(deps Deps) *Service {
+func NewService(deps *Deps) *Service {
 	return &Service{db: deps.DB}
 }
 
