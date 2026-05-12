@@ -361,6 +361,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
       PkiApplicationResourceSub.Application
     )
   );
+  const canConfigureEnrollment = Boolean(
+    appAbility?.can(
+      PkiApplicationResourceActions.Edit,
+      PkiApplicationResourceSub.ApplicationEnrollment
+    )
+  );
   const canManagePolicies = Boolean(
     appAbility?.can(
       PkiApplicationResourceActions.Create,
@@ -606,21 +612,29 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                         </button>
                       </TableCell>
                       <TableCell className="text-right">
-                        {canManageProfileAttachments ? (
+                        {canConfigureEnrollment || canManageProfileAttachments ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton variant="ghost" size="xs">
                                 <MoreHorizontalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setProfileToDetach(p)}
-                              >
-                                <Trash2Icon />
-                                Detach Profile
-                              </DropdownMenuItem>
+                            <DropdownMenuContent className="min-w-48" align="end" sideOffset={2}>
+                              {canConfigureEnrollment ? (
+                                <DropdownMenuItem onClick={() => setProfileToConfigure(p)}>
+                                  <PencilIcon />
+                                  Configure Enrollment
+                                </DropdownMenuItem>
+                              ) : null}
+                              {canManageProfileAttachments ? (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={() => setProfileToDetach(p)}
+                                >
+                                  <Trash2Icon />
+                                  Detach Profile
+                                </DropdownMenuItem>
+                              ) : null}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         ) : null}
