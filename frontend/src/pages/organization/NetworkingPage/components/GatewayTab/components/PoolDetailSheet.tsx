@@ -41,7 +41,7 @@ import { useAddGatewayToPool, useRemoveGatewayFromPool } from "@app/hooks/api/ga
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 import { PoolHealthBadge } from "./PoolHealthBadge";
 

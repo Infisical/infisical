@@ -28,7 +28,7 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import {
   GatewayAuthMethodView,
   TGatewayV2,

@@ -2,7 +2,7 @@ import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tooltip } from "@app/components/v2";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 export const GatewayHealthStatus = ({

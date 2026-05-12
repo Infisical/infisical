@@ -13,7 +13,7 @@ import {
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { relayQueryKeys } from "@app/hooks/api/relays/queries";
 import { TRelay } from "@app/hooks/api/relays/types";
 

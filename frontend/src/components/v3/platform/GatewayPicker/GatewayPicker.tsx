@@ -6,7 +6,7 @@ import { Select, SelectItem, Tooltip } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/fns";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
 type GatewayPickerValue = {
