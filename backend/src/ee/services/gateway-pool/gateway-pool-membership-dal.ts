@@ -13,13 +13,13 @@ export const gatewayPoolMembershipDalFactory = (db: TDbClient) => {
 
   const findHealthyGatewaysByPoolId = async (poolId: string): Promise<TGatewaysV2[]> => {
     try {
-      const oneHourAgo = new Date(Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS);
+      const heartbeatCutoff = new Date(Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS);
 
       const gateways = await db
         .replicaNode()(TableName.GatewayPoolMembership)
         .where(`${TableName.GatewayPoolMembership}.gatewayPoolId`, poolId)
         .join(TableName.GatewayV2, `${TableName.GatewayPoolMembership}.gatewayId`, `${TableName.GatewayV2}.id`)
-        .where(`${TableName.GatewayV2}.heartbeat`, ">", oneHourAgo)
+        .where(`${TableName.GatewayV2}.heartbeat`, ">", heartbeatCutoff)
         .where((builder) => {
           void builder
             .whereNull(`${TableName.GatewayV2}.lastHealthCheckStatus`)

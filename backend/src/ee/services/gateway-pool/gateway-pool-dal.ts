@@ -15,7 +15,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
 
   const findByOrgIdWithDetails = async (orgId: string) => {
     try {
-      const oneHourAgo = new Date(Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS);
+      const heartbeatCutoff = new Date(Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS);
 
       const pools = await db
         .replicaNode()(TableName.GatewayPool)
@@ -31,7 +31,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
           db.raw(`COUNT(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") AS "memberCount"`),
           db.raw(
             `COUNT(DISTINCT CASE WHEN ${TableName.GatewayV2}."heartbeat" > ? AND (${TableName.GatewayV2}."lastHealthCheckStatus" IS NULL OR ${TableName.GatewayV2}."lastHealthCheckStatus" != ?) THEN ${TableName.GatewayPoolMembership}."gatewayId" END) AS "healthyMemberCount"`,
-            [oneHourAgo, GatewayHealthCheckStatus.Failed]
+            [heartbeatCutoff, GatewayHealthCheckStatus.Failed]
           ),
           db.raw(
             `COALESCE(array_agg(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") FILTER (WHERE ${TableName.GatewayPoolMembership}."gatewayId" IS NOT NULL), '{}') AS "memberGatewayIds"`

@@ -61,7 +61,7 @@ The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connec
 
 ## Health Check
 
-To monitor their operational status, gateways transmit heartbeats every 3 minutes. A gateway is considered unhealthy if a heartbeat is not received within 5 minutes or if its last health check failed.
+To monitor their operational status, gateways transmit heartbeats every 3 minutes. A gateway is considered unhealthy if a heartbeat is not received within 5 minutes or if its last health check failed. Relays continue to transmit hourly heartbeats and are considered unhealthy if a heartbeat is not received within one hour.
 
 Infisical automatically notifies all organization admins of unhealthy gateway or relay statuses through email and in-app notifications.
 
