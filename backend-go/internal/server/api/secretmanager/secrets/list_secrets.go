@@ -24,7 +24,7 @@ func (h *Handler) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		return nil, errutil.Unauthorized("Authentication required")
 	}
 
-	permResult, err := h.sharedSvc.Permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
+	permResult, err := h.permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		Actor:             identity.Actor,
 		ActorID:           identity.ActorID,
 		ProjectID:         p.ProjectID,
@@ -41,7 +41,7 @@ func (h *Handler) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		behavior = secret.PersonalOverridesPriority
 	}
 
-	result, err := h.secretsSvc.ListSecrets(ctx, &secret.ListSecretsOpts{
+	result, err := h.secrets.ListSecrets(ctx, &secret.ListSecretsOpts{
 		ProjectID:                 p.ProjectID,
 		Environment:               p.Environment,
 		SecretPath:                p.SecretPath,
@@ -74,7 +74,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		return nil, errutil.Unauthorized("Authentication required")
 	}
 
-	projectID, err := h.sharedSvc.Project.ResolveProjectID(ctx, identity.OrgID, p.WorkspaceID, p.WorkspaceSlug)
+	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, p.WorkspaceID, p.WorkspaceSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		return nil, errutil.BadRequest("Environment is required")
 	}
 
-	permResult, err := h.sharedSvc.Permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
+	permResult, err := h.permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		Actor:             identity.Actor,
 		ActorID:           identity.ActorID,
 		ProjectID:         projectID,
@@ -101,7 +101,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		return nil, err
 	}
 
-	result, err := h.secretsSvc.ListSecrets(ctx, &secret.ListSecretsOpts{
+	result, err := h.secrets.ListSecrets(ctx, &secret.ListSecretsOpts{
 		ProjectID:                 projectID,
 		Environment:               *p.Environment,
 		SecretPath:                p.SecretPath,
@@ -174,7 +174,7 @@ func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, 
 		UserAgentType: info.UserAgentType,
 	}
 
-	if err := h.sharedSvc.AuditLog.CreateAuditLog(ctx, dto); err != nil {
+	if err := h.auditLog.CreateAuditLog(ctx, dto); err != nil {
 		return errutil.InternalServer("Failed to create audit log").WithErrf("createGetSecretsAuditLog: %w", err)
 	}
 

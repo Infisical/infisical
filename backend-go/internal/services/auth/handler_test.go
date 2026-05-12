@@ -475,17 +475,17 @@ func TestParseUsesRemaining(t *testing.T) {
 		{
 			name:     "valid positive number",
 			input:    "10",
-			expected: int64Ptr(10),
+			expected: new(int64(10)),
 		},
 		{
 			name:     "zero",
 			input:    "0",
-			expected: int64Ptr(0),
+			expected: new(int64(0)),
 		},
 		{
 			name:     "negative number",
 			input:    "-5",
-			expected: int64Ptr(-5),
+			expected: new(int64(-5)),
 		},
 		{
 			name:     "non-numeric returns nil",
@@ -516,11 +516,6 @@ func TestParseUsesRemaining(t *testing.T) {
 			}
 		})
 	}
-}
-
-//go:fix inline
-func int64Ptr(v int64) *int64 {
-	return new(v)
 }
 
 // =============================================================================

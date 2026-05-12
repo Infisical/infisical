@@ -15,13 +15,14 @@ import (
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
-	"github.com/infisical/api/internal/services"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/project"
-	smShared "github.com/infisical/api/internal/services/secretmanager"
+	secretSvc "github.com/infisical/api/internal/services/secretmanager/secret"
+	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
+	"github.com/infisical/api/internal/services/secretmanager/secretimport"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
 )
@@ -70,22 +71,25 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 
 	queueSvc := queue.NewService(testutil.NopLogger(), redisClient)
 
-	// Build shared services struct for handler
-	sharedSvc := &services.Services{
-		Config:        stack.Config(),
+	auditLogSvc := auditlog.NewService(testutil.NopLogger(), auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
+
+	secretFolderSvc := secretfolder.NewService(secretfolder.Deps{DB: stack.DB()})
+	secretImportSvc := secretimport.NewService(secretimport.Deps{DB: stack.DB()})
+
+	secretsSvc := secretSvc.NewService(testutil.NopLogger(), &secretSvc.Deps{
+		DB:                  stack.DB(),
+		SecretFolderService: secretFolderSvc,
+		SecretImportService: secretImportSvc,
+		KMSService:          kmsSvc,
+	})
+
+	return secrets.NewHandler(&secrets.Deps{
+		Logger:        testutil.NopLogger(),
 		Authenticator: authenticator,
 		Permission:    permSvc,
-		KMS:           kmsSvc,
 		Project:       projectSvc,
-		AuditLog:      auditlog.NewService(testutil.NopLogger(), auditlog.Deps{Queue: queueSvc, Config: stack.Config()}),
-	}
-
-	secretManagerSvc := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})
-
-	return secrets.NewHandler(secrets.Deps{
-		Logger:           testutil.NopLogger(),
-		SharedSvc:        sharedSvc,
-		SecretManagerSvc: secretManagerSvc,
+		AuditLog:      auditLogSvc,
+		Secrets:       secretsSvc,
 	})
 }
 

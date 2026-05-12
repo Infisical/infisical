@@ -20,7 +20,6 @@ import (
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/server/api"
-	"github.com/infisical/api/internal/services"
 )
 
 func main() {
@@ -77,7 +76,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	queueSvc := queue.NewService(logger, redisClient)
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 
-	registry, err := api.NewRegistry(ctx, logger, db, &services.ServicesDeps{
+	registry, err := api.NewRegistry(ctx, &api.Infra{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,

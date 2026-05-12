@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"context"
 	"log/slog"
 	"strings"
 
@@ -8,42 +9,66 @@ import (
 	"github.com/infisical/gocasl"
 
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
-	"github.com/infisical/api/internal/services"
+	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
-	"github.com/infisical/api/internal/services/secretmanager"
 	"github.com/infisical/api/internal/services/secretmanager/secret"
 )
+
+// --- Service Interfaces (consumer-defined) ---
+
+// PermissionService provides project permission checks.
+type PermissionService interface {
+	GetProjectPermission(ctx context.Context, args *permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
+}
+
+// ProjectService resolves project identifiers.
+type ProjectService interface {
+	ResolveProjectID(ctx context.Context, orgID uuid.UUID, workspaceID, workspaceSlug *string) (string, error)
+}
+
+// AuditLogService creates audit log entries.
+type AuditLogService interface {
+	CreateAuditLog(ctx context.Context, dto *auditlog.CreateAuditLogDTO) error
+}
+
+// SecretsService provides secret management operations.
+type SecretsService interface {
+	ListSecrets(ctx context.Context, opts *secret.ListSecretsOpts) (*secret.ListSecretsResult, error)
+	GetSecretByName(ctx context.Context, opts *secret.GetSecretByNameOpts) (*secret.GetSecretByNameResult, error)
+}
+
+// --- Handler ---
 
 // Handler implements the Goa secrets service interface.
 type Handler struct {
 	auth.Authenticator
 	logger     *slog.Logger
-	sharedSvc  *services.Services
-	secretsSvc *secret.Service
+	permission PermissionService
+	project    ProjectService
+	auditLog   AuditLogService
+	secrets    SecretsService
 }
 
 // Deps holds the dependencies for the secrets handler.
 type Deps struct {
-	Logger           *slog.Logger
-	SharedSvc        *services.Services
-	SecretManagerSvc *secretmanager.Services
+	Logger        *slog.Logger
+	Authenticator auth.Authenticator
+	Permission    PermissionService
+	Project       ProjectService
+	AuditLog      AuditLogService
+	Secrets       SecretsService
 }
 
 // NewHandler creates a new secrets handler.
-func NewHandler(deps Deps) *Handler {
-	secretsSvc := secret.NewService(deps.Logger, &secret.Deps{
-		DB:                  deps.SecretManagerSvc.DB,
-		SecretFolderService: deps.SecretManagerSvc.SecretFolder,
-		SecretImportService: deps.SecretManagerSvc.SecretImport,
-		KMSService:          deps.SharedSvc.KMS,
-	})
-
+func NewHandler(deps *Deps) *Handler {
 	return &Handler{
-		Authenticator: deps.SharedSvc.Authenticator,
+		Authenticator: deps.Authenticator,
 		logger:        deps.Logger.With(slog.String("handler", "secrets")),
-		sharedSvc:     deps.SharedSvc,
-		secretsSvc:    secretsSvc,
+		permission:    deps.Permission,
+		project:       deps.Project,
+		auditLog:      deps.AuditLog,
+		secrets:       deps.Secrets,
 	}
 }
 
