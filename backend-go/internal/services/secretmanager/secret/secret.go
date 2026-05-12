@@ -123,8 +123,9 @@ type AccessChecker interface {
 
 // DecryptedMetadata holds a decrypted metadata entry.
 type DecryptedMetadata struct {
-	Key   string
-	Value string
+	Key         string
+	Value       string
+	IsEncrypted bool
 }
 
 // ProcessedSecret holds a secret with its computed metadata.
@@ -558,14 +559,16 @@ func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bo
 	// Decrypt metadata
 	for _, m := range sec.SecretMetadata {
 		metaValue := m.Value
-		if len(m.EncryptedValue) > 0 {
+		isEncrypted := len(m.EncryptedValue) > 0
+		if isEncrypted {
 			if decrypted, err := cipherPair.Decrypt(m.EncryptedValue); err == nil {
 				metaValue = string(decrypted)
 			}
 		}
 		metadata = append(metadata, DecryptedMetadata{
-			Key:   m.Key,
-			Value: metaValue,
+			Key:         m.Key,
+			Value:       metaValue,
+			IsEncrypted: isEncrypted,
 		})
 	}
 

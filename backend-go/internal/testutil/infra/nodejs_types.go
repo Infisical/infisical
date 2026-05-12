@@ -169,8 +169,9 @@ type CreateUserPrivilegeRequest struct {
 
 // SecretMetadataEntry represents a metadata key-value pair for a secret.
 type SecretMetadataEntry struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key         string `json:"key"`
+	Value       string `json:"value"`
+	IsEncrypted bool   `json:"isEncrypted,omitempty"`
 }
 
 // CreateSecretRequest is the request body for POST /api/v4/secrets/{key}.

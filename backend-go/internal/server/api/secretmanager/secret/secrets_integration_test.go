@@ -927,6 +927,52 @@ func TestListSecrets_CommentAndMetadataTogether(t *testing.T) {
 	assert.Equal(t, "production", secret.SecretMetadata[0].Value)
 }
 
+func TestListSecrets_MetadataIsEncrypted(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "metadata-encryption-test")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_MIXED_METADATA", "secret-value", &infra.CreateSecretOpts{
+		Metadata: []infra.SecretMetadataEntry{
+			{Key: "plaintext", Value: "plain-value", IsEncrypted: false},
+			{Key: "sensitive", Value: "encrypted-value", IsEncrypted: true},
+		},
+	})
+
+	identity := nodejs.CreateIdentity(t, "metadata-encryption-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1)
+
+	secret := result.Secrets[0]
+	require.Len(t, secret.SecretMetadata, 2)
+
+	// Build a map for easier assertion
+	metadataMap := make(map[string]*gensecrets.ResourceMetadata)
+	for _, m := range secret.SecretMetadata {
+		metadataMap[m.Key] = m
+	}
+
+	// Plaintext metadata should have IsEncrypted = false
+	plaintext := metadataMap["plaintext"]
+	require.NotNil(t, plaintext, "plaintext metadata should exist")
+	assert.Equal(t, "plain-value", plaintext.Value)
+	assert.False(t, plaintext.IsEncrypted, "plaintext metadata should not be encrypted")
+
+	// Encrypted metadata should have IsEncrypted = true
+	sensitive := metadataMap["sensitive"]
+	require.NotNil(t, sensitive, "sensitive metadata should exist")
+	assert.Equal(t, "encrypted-value", sensitive.Value)
+	assert.True(t, sensitive.IsEncrypted, "sensitive metadata should be encrypted")
+}
+
 func TestListSecrets_FilterByTagSlugs(t *testing.T) {
 	nodejs := stack.NodeJS()
 

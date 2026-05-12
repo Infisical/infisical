@@ -164,8 +164,9 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 	metadata := make([]*gensecrets.ResourceMetadata, 0, len(ps.Metadata))
 	for _, m := range ps.Metadata {
 		metadata = append(metadata, &gensecrets.ResourceMetadata{
-			Key:   m.Key,
-			Value: m.Value,
+			Key:         m.Key,
+			Value:       m.Value,
+			IsEncrypted: m.IsEncrypted,
 		})
 	}
 
@@ -211,8 +212,9 @@ func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID 
 	metadata := make([]*gensecrets.ResourceMetadata, 0, len(ps.Metadata))
 	for _, m := range ps.Metadata {
 		metadata = append(metadata, &gensecrets.ResourceMetadata{
-			Key:   m.Key,
-			Value: m.Value,
+			Key:         m.Key,
+			Value:       m.Value,
+			IsEncrypted: m.IsEncrypted,
 		})
 	}
 
