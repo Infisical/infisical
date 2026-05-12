@@ -621,33 +621,3 @@ const buildNoAccessPermission = () => {
 };
 
 export const orgNoAccessPermissions = buildNoAccessPermission();
-
-const buildCertManagerAdminPermission = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
-
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
-  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-  can(OrgPermissionAppConnectionActions.Read, OrgPermissionSubjects.AppConnections);
-  can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
-
-  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
-  can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
-  can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
-
-  return rules;
-};
-export const orgCertManagerAdminPermissions = buildCertManagerAdminPermission();
-
-const buildCertManagerMemberPermission = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
-  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
-  return rules;
-};
-export const orgCertManagerMemberPermissions = buildCertManagerMemberPermission();

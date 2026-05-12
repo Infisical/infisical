@@ -184,8 +184,14 @@ describe("CertificateProfileService", () => {
         throwUnlessCan: vi.fn(),
         rules: []
       }
+    }),
+    getResourcePermission: vi.fn().mockResolvedValue({
+      permission: {
+        throwUnlessCan: vi.fn(),
+        rules: []
+      }
     })
-  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission">;
+  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 
   const mockKmsService = {
     encryptWithKmsKey: vi

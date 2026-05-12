@@ -155,7 +155,8 @@ export const CertificateIssuanceModal = ({
 
   const { data: profilesData } = useListCertificateProfiles({
     enrollmentType: EnrollmentType.API,
-    includeConfigs: true
+    includeConfigs: true,
+    applicationId
   });
 
   const { data: appProfiles } = useListPkiApplicationProfiles(applicationId ?? "");
@@ -208,7 +209,8 @@ export const CertificateIssuanceModal = ({
   );
 
   const { data: policyData } = useGetCertificatePolicyById({
-    policyId: actualSelectedProfile?.certificatePolicyId || ""
+    policyId: actualSelectedProfile?.certificatePolicyId || "",
+    applicationId
   });
 
   const {

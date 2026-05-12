@@ -21,14 +21,25 @@ import {
   TBody,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   TListCertificateRequestsParams,
   useListCertificateRequests
 } from "@app/hooks/api/certificates";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
 
 import { CertificateIssuanceModal } from "../../CertificatesPage/components/CertificateIssuanceModal";
 import {
@@ -78,8 +89,23 @@ export const CertificateRequestsSection = ({
   }, [debouncedSearch]);
 
   const { data: profilesData } = useListCertificateProfiles({
-    limit: 100
+    limit: 100,
+    applicationId
   });
+
+  const { permission: projectPermission } = useProjectPermission();
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canRequestCertificate = applicationId
+    ? Boolean(
+        appPermissionData?.permission?.can(
+          PkiApplicationResourceActions.Create,
+          PkiApplicationResourceSub.Certificates
+        )
+      )
+    : projectPermission.can(
+        ProjectPermissionCertificateActions.Create,
+        ProjectPermissionSub.Certificates
+      );
 
   const profileIds = useMemo(() => {
     return appliedProfileIds.length > 0 ? appliedProfileIds : undefined;
@@ -190,14 +216,26 @@ export const CertificateRequestsSection = ({
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            colorSchema="primary"
-            type="submit"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => handlePopUpOpen("issueCertificate")}
+          <Tooltip
+            content={
+              canRequestCertificate
+                ? undefined
+                : "You don't have permission to request certificates here."
+            }
+            position="left"
           >
-            Request
-          </Button>
+            <span>
+              <Button
+                colorSchema="primary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("issueCertificate")}
+                isDisabled={!canRequestCertificate}
+              >
+                Request
+              </Button>
+            </span>
+          </Tooltip>
         </div>
       </div>
 

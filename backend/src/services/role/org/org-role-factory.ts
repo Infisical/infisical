@@ -3,8 +3,6 @@ import { ForbiddenError } from "@casl/ability";
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import {
   orgAdminPermissions,
-  orgCertManagerAdminPermissions,
-  orgCertManagerMemberPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionActions,
@@ -148,26 +146,6 @@ export const newOrgRoleFactory = ({
         orgId: scopeField.value,
         description: "No access to any resources in the organization",
         permissions: orgNoAccessPermissions,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: "b10d49a9-09a9-4443-916a-4246f9ff2c73", // dummy user for zod validation in response
-        name: "Cert Manager Admin",
-        slug: "cert-manager-admin",
-        orgId: scopeField.value,
-        description: "Full administrative access over the Cert Manager product",
-        permissions: orgCertManagerAdminPermissions,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: "b10d49a9-09a9-4443-916a-4246f9ff2c74", // dummy user for zod validation in response
-        name: "Cert Manager Member",
-        slug: "cert-manager-member",
-        orgId: scopeField.value,
-        description: "Read-only access to the Cert Manager product",
-        permissions: orgCertManagerMemberPermissions,
         createdAt: new Date(),
         updatedAt: new Date()
       }

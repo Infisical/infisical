@@ -1,13 +1,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionApplicationActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
@@ -263,11 +267,14 @@ type TCertificateProfileServiceFactoryDep = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
-  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationProfileDAL?: Pick<
+    TPkiApplicationProfileDALFactory,
+    "findOneByApplicationAndProfile" | "findByApplicationId"
+  >;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -968,7 +975,8 @@ export const certificateProfileServiceFactory = ({
     search,
     enrollmentType,
     issuerType,
-    caId
+    caId,
+    applicationId
   }: {
     actor: ActorType;
     actorId: string;
@@ -981,28 +989,53 @@ export const certificateProfileServiceFactory = ({
     enrollmentType?: EnrollmentType;
     issuerType?: IssuerType;
     caId?: string;
+    applicationId?: string;
   }): Promise<{
     profiles: TCertificateProfileWithConfigs[];
     totalCount: number;
   }> => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
-    );
+    let processedRules: ReturnType<typeof getProcessedPermissionRules> | undefined;
+    let attachedProfileIds: string[] | undefined;
+    if (applicationId && pkiApplicationProfileDAL && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionApplicationActions.Read,
+        ResourcePermissionSub.Application
+      );
+      const attached = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
+      attachedProfileIds = attached.map((p) => p.profileId);
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.Read,
+        ProjectPermissionSub.CertificateProfiles
+      );
 
-    const processedRules = getProcessedPermissionRules(
-      permission,
-      ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
-    );
+      processedRules = getProcessedPermissionRules(
+        permission,
+        ProjectPermissionCertificateProfileActions.Read,
+        ProjectPermissionSub.CertificateProfiles
+      );
+    }
+
+    if (attachedProfileIds && attachedProfileIds.length === 0) {
+      return { profiles: [], totalCount: 0 };
+    }
 
     const profiles = await certificateProfileDAL.findByProjectId(
       projectId,
@@ -1012,7 +1045,8 @@ export const certificateProfileServiceFactory = ({
         search,
         enrollmentType,
         issuerType,
-        caId
+        caId,
+        profileIds: attachedProfileIds
       },
       processedRules
     );
@@ -1023,7 +1057,8 @@ export const certificateProfileServiceFactory = ({
         search,
         enrollmentType,
         issuerType,
-        caId
+        caId,
+        profileIds: attachedProfileIds
       },
       processedRules
     );

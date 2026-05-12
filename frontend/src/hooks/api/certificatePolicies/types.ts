@@ -112,4 +112,5 @@ export type TListCertificatePoliciesDTO = {
 
 export type TGetCertificatePolicyByIdDTO = {
   policyId: string;
+  applicationId?: string;
 };

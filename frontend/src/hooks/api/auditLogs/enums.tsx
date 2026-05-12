@@ -277,6 +277,8 @@ export enum EventType {
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
   DELETE_PROJECT_ROLE = "delete-project-role",
+  LIST_PROJECT_ROLES = "list-project-roles",
+  GET_PROJECT_ROLE = "get-project-role",
 
   CREATE_ORG_ROLE = "create-org-role",
   UPDATE_ORG_ROLE = "update-org-role",

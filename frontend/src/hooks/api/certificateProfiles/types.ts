@@ -176,6 +176,7 @@ export type TListCertificateProfilesDTO = {
   enrollmentType?: EnrollmentType;
   issuerType?: IssuerType;
   caId?: string;
+  applicationId?: string;
 };
 
 export type TGetCertificateProfileByIdDTO = {

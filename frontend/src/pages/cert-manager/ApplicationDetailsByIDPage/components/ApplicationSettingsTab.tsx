@@ -430,6 +430,14 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         .map((p) => ({ value: p.id, label: p.slug })),
     [profileList, attachedIds]
   );
+  const totalProfileCount = profileList?.certificateProfiles?.length ?? 0;
+  let attachDisabledReason: string | null = null;
+  if (availableProfiles.length === 0) {
+    attachDisabledReason =
+      totalProfileCount === 0
+        ? "No certificate profiles exist yet. Create one in Certificate Manager → Policies first."
+        : "All certificate profiles in this project are already attached.";
+  }
 
   const handleAttach = async () => {
     if (profilesToAttach.length === 0) return;
@@ -470,22 +478,34 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Enrollment Methods</CardTitle>
+          <CardTitle>Certificate Profiles</CardTitle>
           <CardDescription>
-            Define which profiles this Application uses and how certificates are requested from each
-            one.
+            Attach the profiles this Application can issue from, then configure an enrollment method
+            (API, EST, ACME, or SCEP) on each profile.
           </CardDescription>
           {canManageProfileAttachments ? (
             <CardAction>
-              <Button
-                size="sm"
-                variant="project"
-                onClick={() => setIsAttachOpen(true)}
-                isDisabled={availableProfiles.length === 0}
-              >
-                <PlusIcon />
-                Attach Profile
-              </Button>
+              {attachDisabledReason ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
+                    <span tabIndex={0}>
+                      <Button size="sm" variant="project" isDisabled>
+                        <PlusIcon />
+                        Attach Profile
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-xs">
+                    {attachDisabledReason}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button size="sm" variant="project" onClick={() => setIsAttachOpen(true)}>
+                  <PlusIcon />
+                  Attach Profile
+                </Button>
+              )}
             </CardAction>
           ) : null}
         </CardHeader>
@@ -494,16 +514,20 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>No profiles attached</EmptyTitle>
-                <EmptyDescription>Attach a profile to enable issuance.</EmptyDescription>
+                <EmptyDescription>
+                  Attach a certificate profile, then configure how this Application enrolls against
+                  it.
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Profile</TableHead>
-                  <TableHead>Methods</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead className="w-[40%]">Profile</TableHead>
+                  <TableHead className="w-[25%]">Enrollment Methods</TableHead>
+                  <TableHead className="w-[25%]">Enrollment</TableHead>
+                  <TableHead className="w-[10%] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -511,12 +535,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   const methods = methodBadges(p);
                   return (
                     <TableRow key={p.profileId}>
-                      <TableCell isTruncatable className="font-mono">
+                      <TableCell isTruncatable className="font-mono" title={p.profileSlug}>
                         {p.profileSlug}
                       </TableCell>
                       <TableCell>
                         {methods.length === 0 ? (
-                          <span className="text-xs text-accent">None</span>
+                          <span className="text-xs text-accent">Not configured</span>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
                             {methods.map((m) => (
@@ -528,6 +552,16 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                         )}
                       </TableCell>
                       <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setProfileToConfigure(p)}
+                        >
+                          <SettingsIcon />
+                          {methods.length === 0 ? "Configure enrollment" : "Edit enrollment"}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs">
@@ -535,10 +569,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-                            <DropdownMenuItem onClick={() => setProfileToConfigure(p)}>
-                              <SettingsIcon />
-                              Configure method
-                            </DropdownMenuItem>
                             {p.apiConfigId ? (
                               <DropdownMenuItem
                                 onClick={() => {

@@ -43,8 +43,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   orgAdminPermissions,
-  orgCertManagerAdminPermissions,
-  orgCertManagerMemberPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionSet,
@@ -71,10 +69,6 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
           return orgMemberPermissions;
         case OrgMembershipRole.NoAccess:
           return orgNoAccessPermissions;
-        case OrgMembershipRole.CertManagerAdmin:
-          return orgCertManagerAdminPermissions;
-        case OrgMembershipRole.CertManagerMember:
-          return orgCertManagerMemberPermissions;
         case OrgMembershipRole.Custom:
           return unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
             permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]

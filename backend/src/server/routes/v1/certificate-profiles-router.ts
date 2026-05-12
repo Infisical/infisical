@@ -277,6 +277,7 @@ export const registerCertificateProfilesRouter = async (
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional(),
+        applicationId: z.string().uuid().optional(),
         projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {

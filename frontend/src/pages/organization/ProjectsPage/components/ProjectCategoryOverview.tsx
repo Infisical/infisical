@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
-import { Button, Lottie, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import { Lottie } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -44,7 +44,6 @@ export const ProjectCategoryOverview = () => {
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
-  const [isJoinAdminOpen, setIsJoinAdminOpen] = useState(false);
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
 
   const projectCountsByType = useMemo(
@@ -78,21 +77,7 @@ export const ProjectCategoryOverview = () => {
     });
   };
 
-  const handleJoinAsAdmin = async () => {
-    if (!certManagerActiveProjectId) return;
-    try {
-      await orgAdminAccessProject.mutateAsync({ projectId: certManagerActiveProjectId });
-      setIsJoinAdminOpen(false);
-      navigateToCertManager(certManagerActiveProjectId);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
-      });
-    }
-  };
-
-  const handleTileClick = (type: ProjectType) => {
+  const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
     if (type === ProjectType.CertificateManager) {
@@ -101,13 +86,21 @@ export const ProjectCategoryOverview = () => {
         navigateToCertManager(certManagerActiveProjectId);
         return;
       }
-      if (
-        permission.can(
-          OrgPermissionAdminConsoleAction.AccessAllProjects,
-          OrgPermissionSubjects.AdminConsole
-        )
-      ) {
-        setIsJoinAdminOpen(true);
+      const isOrgAdmin = permission.can(
+        OrgPermissionAdminConsoleAction.AccessAllProjects,
+        OrgPermissionSubjects.AdminConsole
+      );
+      if (isOrgAdmin) {
+        try {
+          await orgAdminAccessProject.mutateAsync({ projectId: certManagerActiveProjectId });
+          navigateToCertManager(certManagerActiveProjectId);
+        } catch (err) {
+          createNotification({
+            type: "error",
+            text:
+              err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
+          });
+        }
       } else {
         setIsRequestAccessOpen(true);
       }
@@ -186,29 +179,6 @@ export const ProjectCategoryOverview = () => {
           );
         })}
       </div>
-
-      <Modal isOpen={isJoinAdminOpen} onOpenChange={setIsJoinAdminOpen}>
-        <ModalContent
-          title="Join Certificate Manager"
-          subTitle="You are not a member of Certificate Manager. Click Continue to join as an admin."
-        >
-          <div className="mt-4 flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              onClick={handleJoinAsAdmin}
-              isLoading={orgAdminAccessProject.isPending}
-            >
-              Continue
-            </Button>
-            <ModalClose asChild>
-              <Button colorSchema="secondary" variant="plain">
-                Cancel
-              </Button>
-            </ModalClose>
-          </div>
-        </ModalContent>
-      </Modal>
 
       <RequestProjectAccessModal
         isOpen={isRequestAccessOpen}

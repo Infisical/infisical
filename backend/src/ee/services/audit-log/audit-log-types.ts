@@ -622,6 +622,8 @@ export enum EventType {
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
   DELETE_PROJECT_ROLE = "delete-project-role",
+  LIST_PROJECT_ROLES = "list-project-roles",
+  GET_PROJECT_ROLE = "get-project-role",
 
   CREATE_ORG_ROLE = "create-org-role",
   UPDATE_ORG_ROLE = "update-org-role",
@@ -5206,6 +5208,21 @@ interface ProjectRoleDeleteEvent {
   };
 }
 
+interface ProjectRoleListEvent {
+  type: EventType.LIST_PROJECT_ROLES;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ProjectRoleGetEvent {
+  type: EventType.GET_PROJECT_ROLE;
+  metadata: {
+    projectId: string;
+    slug: string;
+  };
+}
+
 interface OrgRoleCreateEvent {
   type: EventType.CREATE_ORG_ROLE;
   metadata: {
@@ -7159,6 +7176,8 @@ export type Event =
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
+  | ProjectRoleListEvent
+  | ProjectRoleGetEvent
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent

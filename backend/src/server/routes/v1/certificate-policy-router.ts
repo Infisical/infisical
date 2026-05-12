@@ -308,6 +308,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       params: z.object({
         id: z.string().uuid()
       }),
+      querystring: z.object({
+        applicationId: z.string().uuid().optional()
+      }),
       response: {
         200: z.object({
           certificatePolicy: certificatePolicyResponseSchema
@@ -321,7 +324,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        policyId: req.params.id
+        policyId: req.params.id,
+        applicationId: req.query.applicationId
       });
 
       await server.services.auditLog.createAuditLog({

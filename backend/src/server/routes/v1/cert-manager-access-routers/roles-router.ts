@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -33,6 +34,14 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         data: {}
       });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.LIST_PROJECT_ROLES,
+          metadata: { projectId }
+        }
+      });
       return {
         roles: roles.filter((el) => CERT_MANAGER_ROLE_SLUGS.has(el.slug as ProjectMembershipRole))
       };
@@ -55,6 +64,14 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
         selector: { slug: req.params.roleSlug }
+      });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.GET_PROJECT_ROLE,
+          metadata: { projectId, slug: req.params.roleSlug }
+        }
       });
       return { role };
     }

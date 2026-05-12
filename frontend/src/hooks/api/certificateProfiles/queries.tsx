@@ -22,6 +22,7 @@ export const certificateProfileKeys = {
     includeConfigs?: boolean;
     enrollmentType?: string;
     expiringDays?: number;
+    applicationId?: string;
   }) => ["certificate-profiles", "list", params],
   getById: (profileId: string) => ["certificate-profiles", "get-by-id", profileId],
   getBySlug: (slug: string) => ["certificate-profiles", "get-by-slug", slug],
@@ -49,7 +50,8 @@ export const useListCertificateProfiles = ({
   offset = 0,
   search,
   includeConfigs = false,
-  enrollmentType
+  enrollmentType,
+  applicationId
 }: TListCertificateProfilesDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.list({
@@ -57,7 +59,8 @@ export const useListCertificateProfiles = ({
       offset,
       search,
       includeConfigs,
-      enrollmentType
+      enrollmentType,
+      applicationId
     }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
@@ -69,7 +72,8 @@ export const useListCertificateProfiles = ({
           offset,
           search,
           includeConfigs,
-          enrollmentType
+          enrollmentType,
+          applicationId
         }
       });
       return data;

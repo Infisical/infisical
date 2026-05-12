@@ -285,6 +285,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
   [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
+  [EventType.LIST_PROJECT_ROLES]: "List Project Roles",
+  [EventType.GET_PROJECT_ROLE]: "Get Project Role",
 
   [EventType.CREATE_ORG_ROLE]: "Create Org Role",
   [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
@@ -458,6 +460,8 @@ const sharedProjectEvents = [
   EventType.CREATE_PROJECT_ROLE,
   EventType.UPDATE_PROJECT_ROLE,
   EventType.DELETE_PROJECT_ROLE,
+  EventType.LIST_PROJECT_ROLES,
+  EventType.GET_PROJECT_ROLE,
   EventType.APPROVAL_POLICY_CREATE,
   EventType.APPROVAL_POLICY_UPDATE,
   EventType.APPROVAL_POLICY_DELETE,
