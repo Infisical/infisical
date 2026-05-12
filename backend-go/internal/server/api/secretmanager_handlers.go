@@ -3,7 +3,7 @@ package api
 import (
 	"log/slog"
 
-	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
+	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 )
 
 func newSecretManagerHandlers(
@@ -13,7 +13,7 @@ func newSecretManagerHandlers(
 ) *SecretManagerHandlers {
 	l := logger.With(slog.String("product", "secretmanager"))
 
-	secretsHandler := secrets.NewHandler(&secrets.Deps{
+	secretsHandler := secret.NewHandler(&secret.Deps{
 		Logger:        l,
 		Authenticator: platform.authenticator,
 		Permission:    platform.permission,

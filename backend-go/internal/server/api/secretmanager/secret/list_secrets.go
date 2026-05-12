@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
-	"github.com/infisical/api/internal/services/secretmanager/secret"
+	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
 func (h *Handler) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4Payload) (*gensecrets.ListSecretsResult, error) {
@@ -36,12 +36,12 @@ func (h *Handler) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		return nil, err
 	}
 
-	behavior := secret.PersonalOverridesNeverInclude
+	behavior := secretsvc.PersonalOverridesNeverInclude
 	if p.IncludePersonalOverrides {
-		behavior = secret.PersonalOverridesPriority
+		behavior = secretsvc.PersonalOverridesPriority
 	}
 
-	result, err := h.secrets.ListSecrets(ctx, &secret.ListSecretsOpts{
+	result, err := h.secrets.ListSecrets(ctx, &secretsvc.ListSecretsOpts{
 		ProjectID:                 p.ProjectID,
 		Environment:               p.Environment,
 		SecretPath:                p.SecretPath,
@@ -101,7 +101,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		return nil, err
 	}
 
-	result, err := h.secrets.ListSecrets(ctx, &secret.ListSecretsOpts{
+	result, err := h.secrets.ListSecrets(ctx, &secretsvc.ListSecretsOpts{
 		ProjectID:                 projectID,
 		Environment:               *p.Environment,
 		SecretPath:                p.SecretPath,
@@ -109,7 +109,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		ViewSecretValue:           p.ViewSecretValue,
 		ExpandSecretReferences:    p.ExpandSecretReferences,
 		Recursive:                 p.Recursive,
-		PersonalOverridesBehavior: secret.PersonalOverridesIncludeAll,
+		PersonalOverridesBehavior: secretsvc.PersonalOverridesIncludeAll,
 		TagSlugs:                  parseTagSlugs(p.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
 		AccessChecker:             buildAccessChecker(permResult),
@@ -128,7 +128,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 }
 
 func (h *Handler) buildListSecretsResponse(
-	result *secret.ListSecretsResult,
+	result *secretsvc.ListSecretsResult,
 	projectID string,
 	includeImports bool,
 ) *gensecrets.ListSecretsResult {

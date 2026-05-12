@@ -1,6 +1,6 @@
 //go:build integration
 
-package secrets_test
+package secret_test
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
-	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
+	secrets "github.com/infisical/api/internal/server/api/secretmanager/secret"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"

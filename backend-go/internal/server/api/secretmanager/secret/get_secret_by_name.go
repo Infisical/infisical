@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
-	"github.com/infisical/api/internal/services/secretmanager/secret"
+	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
 func (h *Handler) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecretByNameV4Payload) (*gensecrets.GetSecretResult, error) {
@@ -36,7 +36,7 @@ func (h *Handler) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecret
 		return nil, err
 	}
 
-	result, err := h.secrets.GetSecretByName(ctx, &secret.GetSecretByNameOpts{
+	result, err := h.secrets.GetSecretByName(ctx, &secretsvc.GetSecretByNameOpts{
 		ProjectID:              p.ProjectID,
 		Environment:            p.Environment,
 		SecretPath:             p.SecretPath,
@@ -94,7 +94,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 		return nil, err
 	}
 
-	result, err := h.secrets.GetSecretByName(ctx, &secret.GetSecretByNameOpts{
+	result, err := h.secrets.GetSecretByName(ctx, &secretsvc.GetSecretByNameOpts{
 		ProjectID:              projectID,
 		Environment:            *p.Environment,
 		SecretPath:             p.SecretPath,

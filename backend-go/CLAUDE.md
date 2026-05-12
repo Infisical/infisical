@@ -18,10 +18,11 @@ Never edit `gen/` directories — always regenerate.
 ## Code Rules
 
 - **Linting**: `make lint` must pass. No `//nolint` unless justified.
-- **Constructor**: `(logger *slog.Logger, deps Deps)` — deps struct name ends with `Deps`.
+- **Constructor**: `(logger *slog.Logger, deps *Deps)` — deps struct name ends with `Deps`, pass by pointer.
 - **Context**: Every I/O method takes `context.Context` first. Constructors are the exception.
 - **Logger**: Pass `*slog.Logger` via constructor — never use `slog.Default()`.
-- **Interfaces**: Service Consumer defines narrow interfaces. Accept interfaces, not concrete types.
+- **Interfaces**: Both handlers and services define narrow interfaces for dependencies (consumer-defined). Accept interfaces, not concrete types.
+- **Visibility**: Only expose methods or fields that are needed. Keep everything else private (lowercase).
 - **No DAL layer**: Services directly use `pg.DB` and execute raw pgx queries.
 - **Error wrapping**: Wrap database errors at service level with context:
   ```go
@@ -29,10 +30,7 @@ Never edit `gen/` directories — always regenerate.
   errutil.Forbidden("Access denied").WithErrf("FuncName: permission check failed")
   ```
 - **Lean code**: Inline single-use helpers.
-- **Test naming**: Follow `Test<FunctionName>_<Scenario>` pattern. Examples:
-  - `TestSymmetricEncrypt_RoundTrip`
-  - `TestGetSecrets_FilterByTags`
-  - `TestStart_Success`
+- **Test naming**: Follow `Test<FunctionName>_<Scenario>` pattern.
 
 ## Architecture
 
@@ -64,8 +62,25 @@ internal/
 
 **Two tiers:**
 
-- `server/api/` — Goa endpoint implementations. 1:1 with endpoints. Not imported elsewhere.
-- `services/` — Shared logic. No Goa dependency. Directly uses `pg.DB` for queries.
+- `server/api/` — DI wiring + Goa endpoint implementations. Handlers are 1:1 with endpoints.
+- `services/` — Business logic. No Goa dependency. Directly uses `pg.DB` for queries.
+
+### Wiring (Composition Root)
+
+All service and handler initialization lives in `server/api/`:
+
+```
+server/api/
+├── api.go                         # Infra, Registry, NewRegistry()
+├── platform_services.go           # newPlatformServices() — kms, auth, permission, etc.
+├── secretmanager_services.go      # newSecretManagerServices() — secret, folder, import
+├── platform_handlers.go           # newPlatformHandlers()
+├── secretmanager_handlers.go      # newSecretManagerHandlers()
+├── platform/<handler>/            # Handler implementations only
+└── secretmanager/<handler>/       # Handler implementations only
+```
+
+Pattern: initialize as local variables first, then assign to struct fields.
 
 ### Handler vs Service Responsibilities
 
@@ -181,6 +196,8 @@ secrets, err := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])
 
 1. Define API in Goa DSL (`server/design/<product>/`)
 2. `make gen-goa`
-3. Implement in `server/api/<product>/<name>/`
-4. Wire in `api.go`
-5. Add tests, run `make test && make lint`, auto fix lint command `make lint-fix`
+3. Create service in `services/<product>/<name>/` with interface-based deps
+4. Implement handler in `server/api/<product>/<name>/` with interface-based deps
+5. Add service init to `server/api/<product>_services.go`
+6. Add handler init to `server/api/<product>_handlers.go`
+7. Add tests, run `make test && make lint`

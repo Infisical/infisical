@@ -1,6 +1,6 @@
 //go:build integration
 
-package secrets_test
+package secret_test
 
 import (
 	"context"

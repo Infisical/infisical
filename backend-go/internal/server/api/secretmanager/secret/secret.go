@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
-	"github.com/infisical/api/internal/services/secretmanager/secret"
+	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
 // --- Service Interfaces (consumer-defined) ---
@@ -34,8 +34,8 @@ type AuditLogService interface {
 
 // SecretsService provides secret management operations.
 type SecretsService interface {
-	ListSecrets(ctx context.Context, opts *secret.ListSecretsOpts) (*secret.ListSecretsResult, error)
-	GetSecretByName(ctx context.Context, opts *secret.GetSecretByNameOpts) (*secret.GetSecretByNameResult, error)
+	ListSecrets(ctx context.Context, opts *secretsvc.ListSecretsOpts) (*secretsvc.ListSecretsResult, error)
+	GetSecretByName(ctx context.Context, opts *secretsvc.GetSecretByNameOpts) (*secretsvc.GetSecretByNameResult, error)
 }
 
 // --- Handler ---
@@ -72,7 +72,7 @@ func NewHandler(deps *Deps) *Handler {
 	}
 }
 
-// accessChecker implements secret.AccessChecker using permission service.
+// accessChecker implements secretsvc.AccessChecker using permission service.
 type accessChecker struct {
 	ability *gocasl.Ability
 }
@@ -86,7 +86,7 @@ func (a *accessChecker) CanReadSecretValue(env, path, key string, tagSlugs []str
 }
 
 // buildAccessChecker creates an AccessChecker from permission result.
-func buildAccessChecker(permResult *permission.GetProjectPermissionResult) secret.AccessChecker {
+func buildAccessChecker(permResult *permission.GetProjectPermissionResult) secretsvc.AccessChecker {
 	return &accessChecker{ability: permResult.Permission.Ability}
 }
 
@@ -110,16 +110,16 @@ func parseTagSlugs(tagSlugsStr *string) []string {
 }
 
 // parseMetadataFilter parses a pipe-delimited string of metadata filters.
-func parseMetadataFilter(metadataFilterStr *string) []secret.MetadataFilter {
+func parseMetadataFilter(metadataFilterStr *string) []secretsvc.MetadataFilter {
 	if metadataFilterStr == nil || *metadataFilterStr == "" {
 		return nil
 	}
 
 	pairs := strings.Split(*metadataFilterStr, "|")
-	result := make([]secret.MetadataFilter, 0, len(pairs))
+	result := make([]secretsvc.MetadataFilter, 0, len(pairs))
 
 	for _, pair := range pairs {
-		entry := secret.MetadataFilter{}
+		entry := secretsvc.MetadataFilter{}
 		parts := strings.SplitSeq(pair, ",")
 
 		for part := range parts {
@@ -150,7 +150,7 @@ func parseMetadataFilter(metadataFilterStr *string) []secret.MetadataFilter {
 }
 
 // buildSecretRaw converts a ProcessedSecret to the API response type.
-func (h *Handler) buildSecretRaw(ps *secret.ProcessedSecret, projectID string) *gensecrets.SecretRaw {
+func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) *gensecrets.SecretRaw {
 	sec := ps.Secret
 
 	tags := make([]*gensecrets.SecretTag, 0, len(sec.Tags))
@@ -205,7 +205,7 @@ func (h *Handler) buildSecretRaw(ps *secret.ProcessedSecret, projectID string) *
 }
 
 // buildImportSecretRaw converts a ProcessedSecret to the import API response type.
-func (h *Handler) buildImportSecretRaw(ps *secret.ProcessedSecret, projectID string) *gensecrets.ImportSecretRaw {
+func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) *gensecrets.ImportSecretRaw {
 	sec := ps.Secret
 
 	metadata := make([]*gensecrets.ResourceMetadata, 0, len(ps.Metadata))
@@ -248,10 +248,10 @@ func (h *Handler) buildImportSecretRaw(ps *secret.ProcessedSecret, projectID str
 
 // buildImportsResponse builds the imports array for the API response.
 func (h *Handler) buildImportsResponse(
-	result *secret.ListSecretsResult,
+	result *secretsvc.ListSecretsResult,
 	projectID string,
 ) []*gensecrets.SecretImport {
-	secretsByImport := make(map[string][]secret.ProcessedSecret)
+	secretsByImport := make(map[string][]secretsvc.ProcessedSecret)
 	for i := range result.ImportedSecrets {
 		sec := &result.ImportedSecrets[i]
 		key := sec.ImportEnvironment + ":" + sec.ImportPath

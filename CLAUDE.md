@@ -65,7 +65,11 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN, MCP_JWT) are extracted in `b
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.
 - **Node.js**: Wired in `backend/src/server/routes/index.ts` — see `backend/CLAUDE.md`.
-- **Go**: Wired in `backend-go/internal/services/services.go` via `NewRegistry()` — see `backend-go/CLAUDE.md`.
+- **Go**: Wired in `backend-go/internal/server/api/api.go` via `NewRegistry()` — see `backend-go/CLAUDE.md`.
+
+### Interface Pattern (Go)
+
+Both handlers and services define narrow interfaces for their dependencies (consumer-defined interfaces). Only expose methods or fields that are needed — keep everything else private. This enables testability and loose coupling.
 
 ### API Layer (Frontend)
 
