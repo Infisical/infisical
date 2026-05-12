@@ -540,7 +540,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   <TooltipTrigger asChild>
                     {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
                     <span tabIndex={0}>
-                      <Button size="sm" variant="project" isDisabled>
+                      <Button variant="outline" isDisabled>
                         <PlusIcon />
                         Attach Profile
                       </Button>
@@ -551,7 +551,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Button size="sm" variant="project" onClick={() => setIsAttachOpen(true)}>
+                <Button variant="outline" onClick={() => setIsAttachOpen(true)}>
                   <PlusIcon />
                   Attach Profile
                 </Button>

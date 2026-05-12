@@ -54,7 +54,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
         </CardDescription>
         <CardAction>
           <Button
-            variant="project"
+            variant="outline"
             onClick={() => setIsAddSyncOpen(true)}
             isDisabled={!canCreateSync}
           >

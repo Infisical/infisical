@@ -106,8 +106,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
           </CardDescription>
           <CardAction>
             <Button
-              size="sm"
-              variant="project"
+              variant="outline"
               onClick={() => setIsAddOpen(true)}
               isDisabled={!canAddMember}
             >
