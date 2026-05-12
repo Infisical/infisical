@@ -1386,8 +1386,19 @@ export const scimServiceFactory = ({
       createdAt: group.createdAt,
       updatedAt: group.updatedAt
     });
-    scimPatch(scimGroup, operations);
-    // remove members is a weird case not following scim convention
+
+    // Microsoft EntraID sends "replace" operations on "members" when adding users to groups
+    // instead of "add" operations. Per SCIM spec, "replace" on a multi-valued attribute replaces
+    // the entire array, which would remove all existing members. Converting to "add" ensures
+    // new members are appended rather than replacing the full list.
+    const normalizedOperations = operations.map((op) => {
+      if ((op.op === "replace" || op.op === "Replace") && op.path === "members") {
+        return { ...op, op: "add" as const };
+      }
+      return op;
+    });
+
+    scimPatch(scimGroup, normalizedOperations);
     await $replaceGroupDAL(groupId, orgId, { displayName: scimGroup.displayName, members: scimGroup.members });
 
     const updatedScimMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
