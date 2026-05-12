@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerCertificateEstRouter = async (server: FastifyZodProvider) => {
@@ -60,13 +60,10 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
   server.addHook("preHandler", async (req, res) => {
     const { authorization } = req.headers;
 
-    // Strip query string before parsing URL path to prevent bypass attacks
-    // (e.g., /simpleenroll?foo=/cacerts would otherwise match "cacerts")
-    const urlPath = req.url.split("?")[0];
-    const urlFragments = urlPath.split("/");
+    const matchedRoute = req.routeOptions?.url ?? "";
 
     // cacerts endpoint should not have any authentication
-    if (urlFragments[urlFragments.length - 1] === "cacerts") {
+    if (matchedRoute.endsWith("/cacerts")) {
       return;
     }
 
@@ -93,15 +90,14 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       return;
     }
 
-    const identifier = urlFragments.slice(-2)[0];
+    const { identifier } = (req.params as { identifier?: string }) ?? {};
+    if (!identifier) {
+      throw new NotFoundError({ message: "Certificate template or profile not found" });
+    }
 
     const identifierType = await getIdentifierType(identifier);
     if (!identifierType) {
-      res.raw.statusCode = 404;
-      res.raw.setHeader("Content-Type", "text/plain");
-      res.raw.write("Certificate template or profile not found");
-      res.raw.flushHeaders();
-      return;
+      throw new NotFoundError({ message: "Certificate template or profile not found" });
     }
 
     let estConfig;
