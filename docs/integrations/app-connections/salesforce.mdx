@@ -8,6 +8,15 @@ Infisical supports the OAuth 2.0 [Client Credentials](https://help.salesforce.co
 ## Configure a Connected App in Salesforce
 
 <Steps>
+    <Step title="Open Settings">
+        In the top-right corner, click the gear icon.
+
+        ![Gear Icon](/images/app-connections/salesforce/gear-icon.png)
+
+        Click the **Setup** option.
+        ![Open Setup](/images/app-connections/salesforce/open-setup.png)
+    </Step>
+
     <Step title="Create a Connected App">
         In Salesforce Setup, search for **External Client App Manager** and select it from the results.
         ![Search External Client App Manager](/images/app-connections/salesforce/search-app.png)
@@ -21,8 +30,11 @@ Infisical supports the OAuth 2.0 [Client Credentials](https://help.salesforce.co
     <Step title="Enable OAuth Settings">
         Under **API (Enable OAuth Settings)**:
         - Check **Enable OAuth**.
-        - Provide a callback URL (this is not used for the Client Credentials flow).
-        - Add the OAuth scopes your integration requires. For secret rotation, you must select **Manage user data via APIs (api)** and **Full access (full)**.
+        - Provide a callback URL.
+            <Note>
+                The callback URL is only used by Salesforce's OAuth Web Server Flow. Since this External Client App is used solely to rotate secrets via the Client Credentials Flow, the callback URL is never invoked — any valid URL (e.g. `https://localhost`) works.
+            </Note>
+        - Add the OAuth scopes your integration requires. For secret rotation, you must select **Manage user data via APIs (api)**.
         - Check **Enable Client Credentials Flow** and **Enable Token Exchange Flow** (along with the sub-option **Require secret for Token Exchange Flow**).
 
         ![OAuth Scopes and Flow Enablement](/images/app-connections/salesforce/oauth-scopes.png)
@@ -33,7 +45,15 @@ Infisical supports the OAuth 2.0 [Client Credentials](https://help.salesforce.co
         ![OAuth Security Settings](/images/app-connections/salesforce/oauth-security.png)
     </Step>
     <Step title="Configure the Policies">
-        Open the Connected App's **Manage** page and select the **Policies** tab. Click **Edit**, check **Enable Client Credentials Flow**, and provide a username under **Run As (Username)** to specify which user the flow runs as.
+        Go back to the **External Client App Manager** page and select the External Client App you just created. To do this, search again for **External Client App Manager**.
+
+        ![External created app](/images/app-connections/salesforce/created-external-app.png)
+
+        Click the app you just created, select the **Policies** tab, and click **Edit**.
+
+        ![Policies Tab](/images/app-connections/salesforce/policies-tab.png)
+
+        Under the **OAuth Policies** section, check **Enable Client Credentials Flow** and provide a username under **Run As (Username)** to specify which user the flow runs as.
         ![Policies](/images/app-connections/salesforce/policies.png)
     </Step>
     <Step title="Copy the Consumer Key and Consumer Secret">
@@ -44,7 +64,7 @@ Infisical supports the OAuth 2.0 [Client Credentials](https://help.salesforce.co
         ![Consumer Details](/images/app-connections/salesforce/secret-value.png)
     </Step>
     <Step title="Enable access to External Client App Consumer">
-        Under **External Client App Settings**, enable **Allow access to External Client App consumer secrets via REST API**.
+        Search again for **External Client Apps** and click the **Settings** sub-option. Under **External Client App Settings**, enable **Allow access to External Client App consumer secrets via REST API**.
         ![Allow Access to Consumer Secrets](/images/app-connections/salesforce/allow-access.png)
     </Step>
     <Step title="Identify Your My Domain URL">
