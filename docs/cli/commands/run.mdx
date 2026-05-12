@@ -168,12 +168,17 @@ $ infisical run -- npm run dev
   </Accordion>
 
   <Accordion title="--path">
-    The `--path` flag indicates which project folder secrets will be injected from.
+    The `--path` flag indicates which project folder secrets will be injected from. You can specify multiple `--path` flags to inject secrets from multiple folders at once.
 
     ```bash
-    # Example
+    # Example - single path
     infisical run --path="/nextjs" -- npm run dev
+
+    # Example - multiple paths
+    infisical run --path="/common" --path="/nextjs" -- npm run dev
     ```
+
+    When using multiple `--path` flags, secrets from all specified folders will be injected into your application process. If the same secret exists in multiple paths, the first path takes precedence.
 
   </Accordion>
 

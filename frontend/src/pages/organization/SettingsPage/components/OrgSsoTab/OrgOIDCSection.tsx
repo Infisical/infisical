@@ -1,10 +1,33 @@
-import { faInfoCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch, Tooltip } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  IconButton,
+  Switch
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -17,7 +40,11 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { OIDCModal } from "./OIDCModal";
 
-export const OrgOIDCSection = (): JSX.Element => {
+type Props = {
+  onSwitchProvider?: () => void;
+};
+
+export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
@@ -78,119 +105,135 @@ export const OrgOIDCSection = (): JSX.Element => {
   const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
 
   return (
-    <div className="mb-4 rounded-lg border-mineshaft-600 bg-mineshaft-900">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xl font-medium text-gray-200">OIDC</p>
-          <p className="mb-2 text-gray-400">Manage OIDC authentication configuration</p>
-        </div>
-
-        {!isPending && (
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Button onClick={addOidcButtonClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                Manage
-              </Button>
+    <>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>OIDC</CardTitle>
+          <CardDescription>Manage OIDC authentication configuration.</CardDescription>
+          {!isPending && (
+            <CardAction>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="sm" aria-label="OIDC configuration options">
+                    <MoreHorizontal />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+                    {(isAllowed) => (
+                      <DropdownMenuItem isDisabled={!isAllowed} onClick={addOidcButtonClick}>
+                        <Pencil />
+                        Edit Configuration
+                      </DropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
+                  {onSwitchProvider && (
+                    <DropdownMenuItem onClick={onSwitchProvider}>
+                      <ArrowLeftRight />
+                      Switch Method
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            {data && (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>Enable OIDC</FieldTitle>
+                  <FieldDescription>
+                    Allow members to authenticate into Infisical with OIDC.
+                  </FieldDescription>
+                </FieldContent>
+                {!isPending && (
+                  <OrgPermissionCan
+                    I={OrgPermissionActions.Edit}
+                    a={OrgPermissionSubjects.Sso}
+                    tooltipProps={{
+                      className: "max-w-sm",
+                      side: "left"
+                    }}
+                    allowedLabel={
+                      isGoogleOAuthEnabled
+                        ? "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
+                        : undefined
+                    }
+                    renderTooltip={isGoogleOAuthEnabled}
+                  >
+                    {(isAllowed) => (
+                      <div>
+                        <Switch
+                          id="enable-oidc-sso"
+                          variant="org"
+                          checked={data.isActive}
+                          onCheckedChange={(value) => handleOIDCToggle(value)}
+                          disabled={!isAllowed || isGoogleOAuthEnabled}
+                        />
+                      </div>
+                    )}
+                  </OrgPermissionCan>
+                )}
+              </Field>
             )}
-          </OrgPermissionCan>
-        )}
-      </div>
-      {data && (
-        <div className="py-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-md text-mineshaft-100">Enable OIDC</h2>
-            {!isPending && (
-              <OrgPermissionCan
-                I={OrgPermissionActions.Edit}
-                a={OrgPermissionSubjects.Sso}
-                tooltipProps={{
-                  className: "max-w-sm",
-                  side: "left"
-                }}
-                allowedLabel={
-                  isGoogleOAuthEnabled
-                    ? "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
-                    : undefined
-                }
-                renderTooltip={isGoogleOAuthEnabled}
-              >
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>
+                  OIDC Group Membership Mapping
+                  <HoverCard openDelay={150} closeDelay={150}>
+                    <HoverCardTrigger asChild>
+                      <Info className="text-muted" />
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-lg">
+                      <p>
+                        Sync group memberships from your OIDC provider on each sign-in. Users join
+                        groups matching their OIDC group names and leave the ones that don&apos;t.
+                        Manual group management is disabled while this is on.
+                      </p>
+                      <p className="mt-3">
+                        Requires group claims in the OIDC token.{" "}
+                        <a
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline underline-offset-2 hover:text-foreground"
+                          href="https://infisical.com/docs/documentation/platform/sso/overview"
+                        >
+                          See your OIDC provider docs for details.
+                        </a>
+                      </p>
+                      <Alert variant="warning" className="mt-3">
+                        <AlertTriangle />
+                        <AlertTitle>
+                          Changes only apply on the user&apos;s next OIDC sign-in.
+                        </AlertTitle>
+                        <AlertDescription>
+                          Enforce OIDC SSO to keep this gap small.
+                        </AlertDescription>
+                      </Alert>
+                    </HoverCardContent>
+                  </HoverCard>
+                </FieldTitle>
+                <FieldDescription>
+                  Infisical will manage user group memberships based on the OIDC provider.
+                </FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <div>
-                    <Switch
-                      id="enable-oidc-sso"
-                      onCheckedChange={(value) => handleOIDCToggle(value)}
-                      isChecked={data ? data.isActive : false}
-                      isDisabled={!isAllowed || isGoogleOAuthEnabled}
-                    />
-                  </div>
+                  <Switch
+                    id="enforce-org-auth"
+                    variant="org"
+                    checked={data?.manageGroupMemberships ?? false}
+                    onCheckedChange={(value) => handleOIDCGroupManagement(value)}
+                    disabled={!isAllowed}
+                  />
                 )}
               </OrgPermissionCan>
-            )}
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Allow members to authenticate into Infisical with OIDC
-          </p>
-        </div>
-      )}
-      <div className="py-4">
-        <div className="mb-2 flex justify-between">
-          <div className="text-md flex items-center text-mineshaft-100">
-            <span>OIDC Group Membership Mapping</span>
-            <Tooltip
-              className="max-w-lg"
-              content={
-                <>
-                  <p>
-                    When this feature is enabled, Infisical will automatically sync group
-                    memberships between the OIDC provider and Infisical. Users will be added to
-                    Infisical groups that match their OIDC group names, and removed from any
-                    Infisical groups not present in their groups claim. When enabled, manual
-                    management of Infisical group memberships will be disabled.
-                  </p>
-                  <p className="mt-4">
-                    To use this feature you must include group claims in the OIDC token.
-                  </p>
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 hover:text-mineshaft-300"
-                    href="https://infisical.com/docs/documentation/platform/sso/overview"
-                  >
-                    See your OIDC provider docs for details.
-                  </a>
-                  <p className="mt-4 text-yellow">
-                    <FontAwesomeIcon className="mr-1" icon={faWarning} />
-                    Group membership changes in the OIDC provider only sync with Infisical when a
-                    user logs in via OIDC. For example, if you remove a user from a group in the
-                    OIDC provider, this change will not be reflected in Infisical until their next
-                    OIDC login. To ensure this behavior, Infisical recommends enabling Enforce OIDC
-                    SSO.
-                  </p>
-                </>
-              }
-            >
-              <FontAwesomeIcon
-                icon={faInfoCircle}
-                size="sm"
-                className="mt-0.5 ml-1 inline-block text-mineshaft-400"
-              />
-            </Tooltip>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Switch
-                id="enforce-org-auth"
-                isChecked={data?.manageGroupMemberships ?? false}
-                onCheckedChange={(value) => handleOIDCGroupManagement(value)}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          Infisical will manage user group memberships based on the OIDC provider
-        </p>
-      </div>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
       <OIDCModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
@@ -201,6 +244,6 @@ export const OrgOIDCSection = (): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to OIDC SSO. To unlock this feature, please upgrade to Infisical Pro plan."
       />
-    </div>
+    </>
   );
 };

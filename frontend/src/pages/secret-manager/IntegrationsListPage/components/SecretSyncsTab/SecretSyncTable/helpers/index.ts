@@ -239,6 +239,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectId;
       secondaryText = `${destinationConfig.environment} - ${destinationConfig.secretPath}`;
       break;
+    case SecretSync.OVH:
+      primaryText = destinationConfig.path;
+      secondaryText = "OVH Secret Manager";
+      break;
     case SecretSync.Devin:
       primaryText = destinationConfig.orgId;
       secondaryText = "Organization";
@@ -252,6 +256,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.branch
         ? `Branch - ${destinationConfig.branch}`
         : "Repository";
+      break;
+    case SecretSync.Snowflake:
+      primaryText = destinationConfig.database;
+      secondaryText = `Schema - ${destinationConfig.schema}`;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

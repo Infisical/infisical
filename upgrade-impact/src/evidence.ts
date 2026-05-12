@@ -38,8 +38,8 @@ const githubHeaders = () => {
     "X-GitHub-Api-Version": "2022-11-28"
   };
 
-  if (process.env.GITHUB_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  if (process.env.UPGRADE_TOOL_GITHUB_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.UPGRADE_TOOL_GITHUB_TOKEN}`;
   }
 
   return headers;

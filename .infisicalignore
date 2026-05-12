@@ -61,3 +61,4 @@ backend/src/services/certificate-request/certificate-request-service.test.ts:pri
 backend/src/services/certificate-request/certificate-request-service.test.ts:private-key:248
 docs/documentation/platform/pki/enrollment-methods/api.mdx:private-key:142
 backend/src/lib/crypto/pqc/index.ts:private-key:35
+backend/src/ee/services/honey-token/honey-token-service.ts:generic-api-key:49

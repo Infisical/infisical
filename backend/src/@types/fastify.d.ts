@@ -23,6 +23,8 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
+import { THoneyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
+import { THoneyTokenConfigServiceFactory } from "@app/ee/services/honey-token-config/honey-token-config-service";
 import { TIdentityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template";
 import { TInsightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -54,6 +56,7 @@ import { TProjectEventsSSEService } from "@app/ee/services/project-events/projec
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
+import { TResourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-types";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -72,6 +75,7 @@ import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { TAnnouncementServiceFactory } from "@app/services/announcement/announcement-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
@@ -372,7 +376,10 @@ declare module "fastify" {
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;
       gatewayPool: TGatewayPoolServiceFactory;
+      resourceAuthMethod: TResourceAuthMethodServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      honeyTokenConfig: THoneyTokenConfigServiceFactory;
+      honeyToken: THoneyTokenServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;
       secretScanningV2: TSecretScanningV2ServiceFactory;
@@ -384,6 +391,7 @@ declare module "fastify" {
       projectEventsSSE: TProjectEventsSSEService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
+      announcement: TAnnouncementServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;

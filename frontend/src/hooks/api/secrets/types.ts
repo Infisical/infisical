@@ -42,6 +42,7 @@ export type SecretV3RawSanitized = {
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
@@ -73,6 +74,7 @@ export type SecretV3Raw = {
   createdAt: string;
   updatedAt: string;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   rotationId?: string;
   secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;

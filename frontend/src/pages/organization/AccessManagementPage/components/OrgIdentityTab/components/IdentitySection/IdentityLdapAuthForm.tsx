@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -27,7 +27,8 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { getObjectFromSeconds } from "@app/helpers/datetime";
+import { getObjectFromSeconds, SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import {
   MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
@@ -42,110 +43,107 @@ import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
 import { IdentityFormTab } from "./types";
 
-const schema = z
-  .object({
-    scope: z.enum(["template", "custom"]),
-    templateId: z.string().optional(),
-    url: z.string().optional(),
-    bindDN: z.string().optional(),
-    bindPass: z.string().optional(),
-    searchBase: z.string().optional(),
-    searchFilter: z.string(), // defaults to (uid={{username}})
-    ldapCaCertificate: z
-      .string()
-      .optional()
-      .transform((val) => val || undefined),
-    allowedFields: z
-      .object({
-        key: z.string().trim(),
-        value: z
-          .string()
-          .trim()
-          .transform((val) => val.replace(/\s/g, ""))
-      })
-      .array()
-      .optional(),
-
-    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token TTL cannot be greater than 315360000"
-    }),
-    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token Max TTL cannot be greater than 315360000"
-    }),
-    accessTokenNumUsesLimit: z.string(),
-    accessTokenTrustedIps: z
-      .array(
-        z.object({
-          ipAddress: z.string().max(50)
+const buildSchema = (maxAccessTokenTTL: number) =>
+  z
+    .object({
+      scope: z.enum(["template", "custom"]),
+      templateId: z.string().optional(),
+      url: z.string().optional(),
+      bindDN: z.string().optional(),
+      bindPass: z.string().optional(),
+      searchBase: z.string().optional(),
+      searchFilter: z.string(), // defaults to (uid={{username}})
+      ldapCaCertificate: z
+        .string()
+        .optional()
+        .transform((val) => val || undefined),
+      allowedFields: z
+        .object({
+          key: z.string().trim(),
+          value: z
+            .string()
+            .trim()
+            .transform((val) => val.replace(/\s/g, ""))
         })
-      )
-      .min(1),
+        .array()
+        .optional(),
 
-    lockoutEnabled: z.boolean().default(true),
-    lockoutThreshold: z
-      .string()
-      .refine(
-        (value) => Number(value) <= 30 && Number(value) >= 1,
-        "Lockout threshold must be between 1 and 30"
-      ),
-    lockoutDurationValue: z.string(),
-    lockoutDurationUnit: z.enum(["s", "m", "h", "d"], {
-      invalid_type_error: "Please select a valid time unit"
-    }),
-    lockoutCounterResetValue: z.string(),
-    lockoutCounterResetUnit: z.enum(["s", "m", "h"], {
-      invalid_type_error: "Please select a valid time unit"
+      accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+      accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+      accessTokenNumUsesLimit: z.string(),
+      accessTokenTrustedIps: z
+        .array(
+          z.object({
+            ipAddress: z.string().max(50)
+          })
+        )
+        .min(1),
+
+      lockoutEnabled: z.boolean().default(true),
+      lockoutThreshold: z
+        .string()
+        .refine(
+          (value) => Number(value) <= 30 && Number(value) >= 1,
+          "Lockout threshold must be between 1 and 30"
+        ),
+      lockoutDurationValue: z.string(),
+      lockoutDurationUnit: z.enum(["s", "m", "h", "d"], {
+        invalid_type_error: "Please select a valid time unit"
+      }),
+      lockoutCounterResetValue: z.string(),
+      lockoutCounterResetUnit: z.enum(["s", "m", "h"], {
+        invalid_type_error: "Please select a valid time unit"
+      })
     })
-  })
-  .required()
-  .superRefine((data, ctx) => {
-    superRefineLockout(data, ctx);
+    .required()
+    .superRefine((data, ctx) => {
+      superRefineLockout(data, ctx);
 
-    // Validation based on scope
-    if (data.scope === "template") {
-      if (!data.templateId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Template is required when using template scope",
-          path: ["templateId"]
-        });
+      // Validation based on scope
+      if (data.scope === "template") {
+        if (!data.templateId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Template is required when using template scope",
+            path: ["templateId"]
+          });
+        }
+        return;
       }
-      return;
-    }
 
-    if (data.scope === "custom") {
-      if (!data.url) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "LDAP URL is required when using custom scope",
-          path: ["url"]
-        });
+      if (data.scope === "custom") {
+        if (!data.url) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "LDAP URL is required when using custom scope",
+            path: ["url"]
+          });
+        }
+        if (!data.bindDN) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Bind DN is required when using custom scope",
+            path: ["bindDN"]
+          });
+        }
+        if (!data.bindPass) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Bind Pass is required when using custom scope",
+            path: ["bindPass"]
+          });
+        }
+        if (!data.searchBase) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Search Base is required when using custom scope",
+            path: ["searchBase"]
+          });
+        }
       }
-      if (!data.bindDN) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Bind DN is required when using custom scope",
-          path: ["bindDN"]
-        });
-      }
-      if (!data.bindPass) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Bind Pass is required when using custom scope",
-          path: ["bindPass"]
-        });
-      }
-      if (!data.searchBase) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Search Base is required when using custom scope",
-          path: ["searchBase"]
-        });
-      }
-    }
-  });
+    });
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -158,13 +156,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentityLdapAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -187,6 +187,8 @@ export const IdentityLdapAuthForm = ({
     enabled: isUpdate
   });
 
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+
   const {
     control,
     handleSubmit,
@@ -195,7 +197,7 @@ export const IdentityLdapAuthForm = ({
     setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       scope: "custom",
       templateId: "",
@@ -743,8 +745,9 @@ export const IdentityLdapAuthForm = ({
                 tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -757,8 +760,9 @@ export const IdentityLdapAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />

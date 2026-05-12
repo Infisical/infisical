@@ -70,8 +70,12 @@ export const ROUTE_PATHS = Object.freeze({
       )
     },
     NetworkingPage: setRoute(
-      "/organizations/$orgId/networking",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking"
+      "/organizations/$orgId/networking/",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/"
+    ),
+    GatewayDetailsByIDPage: setRoute(
+      "/organizations/$orgId/networking/gateways/$gatewayId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId"
     )
   },
   SecretManager: {

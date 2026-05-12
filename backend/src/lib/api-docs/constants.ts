@@ -88,7 +88,8 @@ export enum ApiDocsTags {
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
-  Events = "Event Subscriptions"
+  Events = "Event Subscriptions",
+  GatewaysV3 = "Gateways"
 }
 
 export const GROUPS = {
@@ -1399,6 +1400,7 @@ export const DASHBOARD = {
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1416,7 +1418,8 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
-    includeSecretRotations: "Whether to include secret rotations in the response."
+    includeSecretRotations: "Whether to include secret rotations in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response."
   }
 } as const;
 
@@ -2818,6 +2821,19 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    OVH: {
+      privateKey:
+        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+      certificate:
+        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+    },
+    SNOWFLAKE: {
+      account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
+      username: "The username (login name) used to authenticate with Snowflake.",
+      password: "The Programmatic Access Token used to authenticate with Snowflake."
+    },
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
       region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
@@ -3030,6 +3046,9 @@ export const SecretSyncs = {
       mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
       path: "The Hashicorp Vault path to sync secrets to."
     },
+    OVH: {
+      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
+    },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
@@ -3135,6 +3154,10 @@ export const SecretSyncs = {
       repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
       branch:
         "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
+    },
+    SNOWFLAKE: {
+      database: "The name of the Snowflake database to sync secrets to.",
+      schema: "The name of the Snowflake schema (within the database) to sync secrets to."
     }
   }
 };
@@ -3608,5 +3631,31 @@ export const SECRET_SHARING = {
   },
   DELETE: {
     id: "The ID of the shared secret to delete."
+  }
+} as const;
+
+export const GATEWAYS = {
+  CREATE: {
+    name: "Name of the gateway.",
+    authMethod:
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+  },
+  UPDATE: {
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+  },
+  AUTH_METHOD: {
+    stsEndpoint: "The endpoint URL for the AWS STS API.",
+    allowedPrincipalArns:
+      "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
+    allowedAccountIds:
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+  },
+  LOGIN: {
+    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;

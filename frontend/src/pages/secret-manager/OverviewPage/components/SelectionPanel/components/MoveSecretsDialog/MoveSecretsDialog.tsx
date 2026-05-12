@@ -240,7 +240,8 @@ const SingleEnvContent = ({
     const secretsToMove = Object.values(secrets)
       .map((secretRecord) => secretRecord[sourceEnv.slug])
       .filter(
-        (secret): secret is SecretV3RawSanitized => Boolean(secret) && !secret.isRotatedSecret
+        (secret): secret is SecretV3RawSanitized =>
+          Boolean(secret) && !secret.isRotatedSecret && !secret.isHoneyTokenSecret
       );
 
     const rotationsToMove = Object.values(rotations)
@@ -534,7 +535,7 @@ const MultiEnvContent = ({
 
     Object.values(secrets).forEach((secretRecord) =>
       Object.entries(secretRecord).forEach(([env, secret]) => {
-        if (secret.isRotatedSecret) return;
+        if (secret.isRotatedSecret || secret.isHoneyTokenSecret) return;
         secretsByEnv[env].push(secret);
       })
     );

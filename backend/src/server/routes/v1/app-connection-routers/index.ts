@@ -47,11 +47,13 @@ import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connecti
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
+import { registerOvhConnectionRouter } from "./ovh-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
+import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
 import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
@@ -125,8 +127,10 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
+    [AppConnection.OVH]: registerOvhConnectionRouter,
     [AppConnection.Devin]: registerDevinConnectionRouter,
     [AppConnection.Ona]: registerOnaConnectionRouter,
     [AppConnection.DigiCert]: registerDigiCertConnectionRouter,
-    [AppConnection.TravisCI]: registerTravisCIConnectionRouter
+    [AppConnection.TravisCI]: registerTravisCIConnectionRouter,
+    [AppConnection.Snowflake]: registerSnowflakeConnectionRouter
   };

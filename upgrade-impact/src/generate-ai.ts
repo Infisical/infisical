@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { ReleaseEvidenceBundle } from "./evidence.js";
 import { runGit } from "./git.js";
-import { ImpactEntry, ImpactEntrySchema } from "./schema.js";
+import { Evidence, ImpactEntry, ImpactEntrySchema } from "./schema.js";
 
 export const MODEL = "gpt-5.4";
 
@@ -27,7 +27,8 @@ const agenticLimits = {
   maxDiffCharsPerFile: 20000,
   maxFileChars: 20000,
   maxTotalToolResultChars: 220000,
-  maxCompletionTokens: 5000
+  maxCompletionTokens: 5000,
+  maxTurns: 20
 };
 
 const evidenceForFile = (file: string, description?: string) => ({
@@ -115,6 +116,19 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - Do not say "the release", "this release", "code changes indicate", "evidence bundle", "identified", or "detected".
 - Do not mention that no Docker, Helm, Kubernetes, or database changes exist unless that absence changes the upgrade action.
 - Do not duplicate the same risk across breakingChanges, configChanges, deploymentNotes, and knownIssues. Pick one category.
+- Do not include the same evidence item twice in one entry.
+- Do not repeat a release note or PR URL across multiple entries when a more specific file diff can support the claim.
+- Before finalizing, audit the JSON for duplicate titles, duplicate descriptions, and duplicate evidence.
+- Every entry title must clearly name the affected product area, for example "PAM domains migration", "PKI certificate metadata", "Kubernetes auth TLS setting", "SMTP HELO hostname", or "Platform startup migration".
+- Only write an action when there is a specific operator task. If there is no manual task, write "No manual action required; Infisical runs this migration during startup."
+- For additive database migrations, prefer "No manual action required; Infisical runs this migration during startup." Do not tell users to run migrations manually unless the diff proves they must.
+- If a migration failure is the only risk, say "If startup fails during migration, keep the previous version running and inspect migration logs before retrying."
+- Do not say "run migrations before serving traffic", "verify migration jobs complete", "account for", or "review X if you rely on Y".
+- Do not tell operators to change proxy, Helm, Docker, or environment configuration unless the diff introduces a required setting or changes a default that existing deployments must respond to.
+- Optional security-hardening settings such as TRUSTED_PROXY_CIDRS are not upgrade actions when unset preserves legacy behavior.
+- Do not tell API automation owners to update payloads when the service layer provides backwards-compatible defaults or auto-promotion.
+- For optional environment variables, nullable columns, or additive feature tables, include an entry only when existing deployments may need a decision; otherwise omit it or state that no manual action is required.
+- Before using breakingChanges, inspect whether existing records or configs are backfilled or compatibility-preserved. If compatibility exists, do not mark it breaking.
 - Use breakingChanges for changes that can make existing auth, API, startup, database, or integrations fail after upgrade.
 - Use deploymentNotes only when deployment files, self-hosting docs, Docker, Helm, Kubernetes manifests, startup/runtime, or rollout behavior changed.
 - Use configChanges only for environment variables, config files, defaults, or settings that operators must update.
@@ -167,13 +181,40 @@ Evidence rules:
 `;
 
 const normalizeDraft = (draft: GeneratedDraft): GeneratedDraft => {
+  const evidenceKey = (evidence: Evidence) =>
+    [evidence.type, evidence.ref, evidence.path ?? "", evidence.url ?? ""].join("\u0000");
+
+  const dedupeEvidence = (evidenceItems: Evidence[]) => {
+    const seen = new Set<string>();
+
+    return evidenceItems.filter((evidence) => {
+      const key = evidenceKey(evidence);
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const entryKey = (entry: ImpactEntry) =>
+    [entry.title.trim().toLowerCase(), entry.description.trim().toLowerCase()].join("\u0000");
+
   const normalizeEntries = (entries: ImpactEntry[]) =>
-    entries.map((entry) => ({
-      ...entry,
-      evidence: entry.evidence.map((evidence) =>
-        evidence.type === "file" && evidence.path ? { ...evidence, ref: evidence.path } : evidence
-      )
-    }));
+    entries
+      .map((entry) => ({
+        ...entry,
+        evidence: dedupeEvidence(
+          entry.evidence.map((evidence) =>
+            evidence.type === "file" && evidence.path ? { ...evidence, ref: evidence.path } : evidence
+          )
+        )
+      }))
+      .filter((entry, index, normalizedEntries) => {
+        const key = entryKey(entry);
+        return normalizedEntries.findIndex((candidate) => entryKey(candidate) === key) === index;
+      });
 
   return {
     ...draft,
@@ -335,7 +376,7 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
     name: "list_changed_files",
     description: "List changed files in this release, optionally filtered by category.",
     parameters: z.object({
-      category: z.enum(FILE_CATEGORIES).optional()
+      category: z.enum(FILE_CATEGORIES).nullable()
     }),
     async execute({ category }) {
       const limitError = recordToolCall();
@@ -361,9 +402,9 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
       "Return a capped git diff for a changed file in this release. Use this before making claims about file-level behavior.",
     parameters: z.object({
       file: z.string(),
-      contextLines: z.number().min(0).max(120).optional()
+      contextLines: z.number().min(0).max(120).nullable()
     }),
-    async execute({ file, contextLines = 40 }) {
+    async execute({ file, contextLines }) {
       const limitError = recordToolCall();
       if (limitError) {
         return limitError;
@@ -373,7 +414,13 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
         return { error: `File is not in changed file set: ${file}` };
       }
 
-      const diff = runGit(["diff", `--unified=${contextLines}`, `${bundle.previousTag}..${bundle.tag}`, "--", file]);
+      const diff = runGit([
+        "diff",
+        `--unified=${contextLines ?? 40}`,
+        `${bundle.previousTag}..${bundle.tag}`,
+        "--",
+        file
+      ]);
       const truncated = truncateText(diff, agenticLimits.maxDiffCharsPerFile);
 
       return recordToolResult({
@@ -463,7 +510,7 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
   });
 
   const result = await run(agent, "Generate the self-hosted upgrade impact JSON for this release.", {
-    maxTurns: 20
+    maxTurns: agenticLimits.maxTurns
   });
 
   if (!result.finalOutput) {

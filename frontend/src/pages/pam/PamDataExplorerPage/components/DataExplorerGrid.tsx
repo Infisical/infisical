@@ -12,6 +12,7 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 
 import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import { getColumnIndicator } from "../data-explorer-utils";
+import { copyData, exportData } from "../data-export";
 import type { FilterCondition, SortCondition } from "../sql-generation";
 import {
   buildCountQuery,
@@ -713,6 +714,21 @@ export const DataExplorerGrid = ({
           await fetchData(offset, pageSize, filters, sorts);
         }}
         isRefreshing={isDataLoading && hasLoaded}
+        onExport={(fmt) =>
+          exportData(
+            currentData,
+            tableColumns.map((c) => c.name),
+            fmt
+          )
+        }
+        onCopy={(fmt) =>
+          copyData(
+            currentData,
+            tableColumns.map((c) => c.name),
+            fmt
+          )
+        }
+        hasData={currentData.length > 0}
       />
 
       {!hasPrimaryKey && (

@@ -21,3 +21,8 @@ export type TUpdateUserEmailDTO = {
   userId: string;
   newEmail: string;
 };
+
+export type TVerifyCurrentEmailOTPDTO = {
+  userId: string;
+  otpCode: string;
+};

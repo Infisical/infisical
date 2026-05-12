@@ -3,6 +3,7 @@ import {
   ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
+  HexagonIcon,
   ImportIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -29,6 +30,7 @@ type Props = {
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
+  onAddHoneyToken: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
   onReplicateSecrets: () => void;
@@ -36,6 +38,7 @@ type Props = {
   onImportFromDoppler: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
+  isHoneyTokenAvailable: boolean;
   isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
@@ -49,6 +52,7 @@ export function AddResourceButtons({
   onAddFolder,
   onAddDyanamicSecret,
   onAddSecretRotation,
+  onAddHoneyToken,
   onAddSecretImport,
   onImportSecrets,
   onReplicateSecrets,
@@ -56,6 +60,7 @@ export function AddResourceButtons({
   onImportFromDoppler,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
+  isHoneyTokenAvailable,
   isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
@@ -132,6 +137,15 @@ export function AddResourceButtons({
               >
                 <RefreshCwIcon className="text-secret-rotation" />
                 Add Secret Rotation
+              </DropdownMenuItem>
+            </TooltipTrigger>
+            <TooltipContent side="left">Access restricted</TooltipContent>
+          </Tooltip>
+          <Tooltip open={!isHoneyTokenAvailable ? undefined : false}>
+            <TooltipTrigger className="block w-full">
+              <DropdownMenuItem onClick={onAddHoneyToken} isDisabled={!isHoneyTokenAvailable}>
+                <HexagonIcon className="text-yellow" />
+                Add Honey Token
               </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>

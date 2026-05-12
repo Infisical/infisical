@@ -6,4 +6,5 @@ export type ServerStatus = {
   redisConfigured: boolean;
   samlDefaultOrgSlug: string;
   auditLogStorageDisabled: boolean;
+  maxIdentityAccessTokenTTL?: number;
 };

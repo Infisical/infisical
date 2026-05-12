@@ -134,7 +134,7 @@ export const getOrgSettingsSubmenu = ({
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
-    { label: "Product Enforcements", icon: ClipboardList, tab: "product-enforcements" },
+    { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
     ...(!isSubOrganization && hasSubOrganization
       ? [{ label: "Sub Organizations", icon: SubOrgIcon, tab: "tab-sub-organizations" }]
       : [])

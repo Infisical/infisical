@@ -38,6 +38,12 @@ import {
   TMySQLResource,
   TMySQLResourceConnectionDetails
 } from "./mysql/mysql-resource-types";
+import {
+  TOracleAccount,
+  TOracleAccountCredentials,
+  TOracleResource,
+  TOracleResourceConnectionDetails
+} from "./oracle/oracle-resource-types";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource, PamResourceOrderBy } from "./pam-resource-enums";
 import {
@@ -77,7 +83,8 @@ export type TPamResource =
   | TKubernetesResource
   | TRedisResource
   | TMongoDBResource
-  | TWindowsResource;
+  | TWindowsResource
+  | TOracleResource;
 export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
@@ -88,7 +95,8 @@ export type TPamResourceConnectionDetails =
   | TAwsIamResourceConnectionDetails
   | TRedisResourceConnectionDetails
   | TMongoDBResourceConnectionDetails
-  | TWindowsResourceConnectionDetails;
+  | TWindowsResourceConnectionDetails
+  | TOracleResourceConnectionDetails;
 export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
 
 // Account types
@@ -101,7 +109,8 @@ export type TPamAccount =
   | TKubernetesAccount
   | TRedisAccount
   | TMongoDBAccount
-  | TWindowsAccount;
+  | TWindowsAccount
+  | TOracleAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -112,7 +121,8 @@ export type TPamAccountCredentials =
   | TAwsIamAccountCredentials
   | TRedisAccountCredentials
   | TMongoDBAccountCredentials
-  | TWindowsAccountCredentials;
+  | TWindowsAccountCredentials
+  | TOracleAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {

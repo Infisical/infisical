@@ -1,18 +1,34 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
-  DeleteActionModal,
-  FormControl,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
@@ -24,13 +40,13 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const LDAPFormSchema = z.object({
-  url: z.string().default(""),
-  bindDN: z.string().default(""),
-  bindPass: z.string().default(""),
-  searchBase: z.string().default(""),
+  url: z.string().trim().min(1, "URL is required"),
+  bindDN: z.string().trim().min(1, "Bind DN is required"),
+  bindPass: z.string().min(1, "Bind Pass is required"),
+  searchBase: z.string().trim().min(1, "User Search Base is required"),
+  groupSearchBase: z.string().default(""),
   searchFilter: z.string().default(""),
   uniqueUserAttribute: z.string().default(""),
-  groupSearchBase: z.string().default(""),
   groupSearchFilter: z.string().default(""),
   caCert: z.string().optional()
 });
@@ -57,6 +73,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   });
 
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
+  const [isBindPassFocused, setIsBindPassFocused] = useToggle();
 
   const handleLdapSoftDelete = async () => {
     if (!currentOrg) {
@@ -77,7 +94,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     });
 
     createNotification({
-      text: "Successfully deleted OIDC configuration.",
+      text: "Successfully deleted LDAP configuration.",
       type: "success"
     });
   };
@@ -112,9 +129,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert,
-    shouldCloseModal = true
-  }: TLDAPFormData & { shouldCloseModal?: boolean }) => {
+    caCert
+  }: TLDAPFormData) => {
     if (!currentOrg) return;
 
     if (!data) {
@@ -146,9 +162,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       });
     }
 
-    if (shouldCloseModal) {
-      handlePopUpClose("addLDAP");
-    }
+    handlePopUpClose("addLDAP");
 
     createNotification({
       text: `Successfully ${!data ? "added" : "updated"} LDAP configuration`,
@@ -157,168 +171,275 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
-    await testLDAPConnection({
-      url: watchUrl,
-      bindDN: watchBindDN,
-      bindPass: watchBindPass,
-      caCert: watchCaCert ?? ""
-    });
+    try {
+      const isConnected = await testLDAPConnection({
+        url: watchUrl,
+        bindDN: watchBindDN,
+        bindPass: watchBindPass,
+        caCert: watchCaCert ?? ""
+      });
 
-    createNotification({
-      text: "Successfully tested the LDAP connection: Bind operation was successful",
-      type: "success"
-    });
+      if (isConnected) {
+        createNotification({
+          text: "Successfully tested the LDAP connection: Bind operation was successful",
+          type: "success"
+        });
+      } else {
+        createNotification({
+          text: "Failed to connect to the LDAP server. Verify the URL, bind DN/password, and CA certificate.",
+          type: "error"
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          "Failed to test LDAP connection.",
+        type: "error"
+      });
+    }
   };
+
+  const isPending = createIsLoading || updateIsLoading;
+  const isExistingConfig = Boolean(data?.url);
 
   return (
     <>
-      <Modal
-        isOpen={popUp?.addLDAP?.isOpen}
+      <Sheet
+        open={popUp?.addLDAP?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addLDAP", isOpen);
           reset();
         }}
       >
-        <ModalContent title="Manage LDAP configuration">
-          <form onSubmit={handleSubmit(onSSOModalSubmit)}>
-            <Controller
-              control={control}
-              name="url"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="URL" errorText={error?.message} isError={Boolean(error)}>
-                  <Input {...field} placeholder="ldaps://ldap.myorg.com:636" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="bindDN"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="Bind DN" errorText={error?.message} isError={Boolean(error)}>
-                  <Input {...field} placeholder="cn=infisical,ou=Users,dc=example,dc=com" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="bindPass"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="Bind Pass" errorText={error?.message} isError={Boolean(error)}>
-                  <Input {...field} type="password" placeholder="********" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="searchBase"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="User Search Base / User DN"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Input {...field} placeholder="ou=people,dc=acme,dc=com" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="uniqueUserAttribute"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Unique User Attribute (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Input {...field} placeholder="uidNumber" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="searchFilter"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="User Search Filter (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Input {...field} placeholder="(uid={{username}})" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="groupSearchBase"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Group Search Base / Group DN (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Input {...field} placeholder="ou=groups,dc=acme,dc=com" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="groupSearchFilter"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Group Filter (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Input
-                    {...field}
-                    placeholder="(&(objectClass=posixGroup)(memberUid={{.Username}}))"
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="caCert"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="CA Certificate"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                </FormControl>
-              )}
-            />
-            <div className="mt-8 flex justify-between">
-              <div className="flex items-center">
-                <Button
-                  className="mr-4"
-                  size="sm"
-                  type="submit"
-                  isLoading={createIsLoading || updateIsLoading}
-                >
-                  {!data ? "Add" : "Update"}
+        <SheetContent className="sm:max-w-xl">
+          <form onSubmit={handleSubmit(onSSOModalSubmit)} className="flex h-full min-h-0 flex-col">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-x-2">
+                Manage LDAP Configuration
+                <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto px-4">
+              <FieldGroup className="mb-auto">
+                <Controller
+                  control={control}
+                  name="url"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-url">URL</FieldLabel>
+                      <Input
+                        id="ldap-url"
+                        placeholder="ldaps://ldap.myorg.com:636"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="bindDN"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-bind-dn">Bind DN</FieldLabel>
+                      <Input
+                        id="ldap-bind-dn"
+                        placeholder="cn=infisical,ou=Users,dc=example,dc=com"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="bindPass"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-bind-pass">Bind Pass</FieldLabel>
+                      <Input
+                        id="ldap-bind-pass"
+                        placeholder="********"
+                        type={isBindPassFocused ? "text" : "password"}
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        onFocus={() => setIsBindPassFocused.on()}
+                        {...field}
+                        onBlur={() => {
+                          field.onBlur();
+                          setIsBindPassFocused.off();
+                        }}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="searchBase"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-search-base">User Search Base / User DN</FieldLabel>
+                      <Input
+                        id="ldap-search-base"
+                        placeholder="ou=people,dc=acme,dc=com"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="uniqueUserAttribute"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-unique-user-attribute">
+                        Unique User Attribute (Optional)
+                      </FieldLabel>
+                      <Input
+                        id="ldap-unique-user-attribute"
+                        placeholder="uidNumber"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="searchFilter"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-search-filter">
+                        User Search Filter (Optional)
+                      </FieldLabel>
+                      <Input
+                        id="ldap-search-filter"
+                        placeholder="(uid={{username}})"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="groupSearchBase"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-group-search-base">
+                        Group Search Base / Group DN (Optional)
+                      </FieldLabel>
+                      <Input
+                        id="ldap-group-search-base"
+                        placeholder="ou=groups,dc=acme,dc=com"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="groupSearchFilter"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-group-search-filter">
+                        Group Filter (Optional)
+                      </FieldLabel>
+                      <Input
+                        id="ldap-group-search-filter"
+                        placeholder="(&(objectClass=posixGroup)(memberUid={{.Username}}))"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="caCert"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-ca-cert">CA Certificate</FieldLabel>
+                      <TextArea
+                        id="ldap-ca-cert"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+              <Button
+                type="button"
+                variant="outline"
+                isFullWidth
+                size="lg"
+                className="my-4"
+                onClick={handleTestLDAPConnection}
+                isDisabled={!watchUrl || !watchBindDN || !watchBindPass}
+              >
+                Test Connection
+              </Button>
+            </div>
+            <SheetFooter className="justify-between border-t">
+              <div className="flex gap-2">
+                <Button type="submit" variant="org" isPending={isPending}>
+                  {isExistingConfig ? "Update" : "Configure LDAP"}
                 </Button>
-                <Button colorSchema="secondary" onClick={handleTestLDAPConnection}>
-                  Test Connection
+                <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addLDAP")}>
+                  Cancel
                 </Button>
               </div>
               {!hideDelete && (
-                <Button colorSchema="danger" onClick={() => setIsDeletePopupOpen.on()}>
+                <Button type="button" variant="danger" onClick={() => setIsDeletePopupOpen.on()}>
                   Delete
                 </Button>
               )}
-            </div>
+            </SheetFooter>
           </form>
-        </ModalContent>
-      </Modal>
-      <DeleteActionModal
-        isOpen={isDeletePopupOpen}
-        title="Are you sure you want to delete LDAP?"
-        onChange={() => setIsDeletePopupOpen.toggle()}
-        deleteKey="confirm"
-        onDeleteApproved={handleLdapSoftDelete}
-      />
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={isDeletePopupOpen} onOpenChange={() => setIsDeletePopupOpen.toggle()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete LDAP Configuration?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This clears the LDAP connection. Members will no longer be able to sign in via LDAP
+              until it&apos;s reconfigured.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleLdapSoftDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

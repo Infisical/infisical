@@ -208,6 +208,12 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+  const isManagedSecretSelected = Object.values(selectedSecrets).some(
+    (secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret
+  );
+  const isHoneyTokenSelected = Object.values(selectedSecrets).some(
+    (secret) => secret.isHoneyTokenSecret
+  );
 
   const { permission } = useProjectPermission();
   const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
@@ -1183,7 +1189,7 @@ export const ActionBar = ({
                 leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
                 className="ml-4"
                 onClick={() => handlePopUpOpen("moveSecrets")}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || isHoneyTokenSelected}
                 size="xs"
               >
                 Move
@@ -1208,7 +1214,7 @@ export const ActionBar = ({
                 leftIcon={<FontAwesomeIcon icon={faTrash} />}
                 className="ml-2"
                 onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || isManagedSecretSelected}
                 size="xs"
               >
                 Delete

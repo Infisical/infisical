@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,6 +20,8 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import {
   useAddIdentityGcpAuth,
   useGetIdentityGcpAuth,
@@ -30,30 +32,27 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
 
-const schema = z
-  .object({
-    type: z.enum(["iam", "gce"]),
-    allowedServiceAccounts: z.string(),
-    allowedProjects: z.string(),
-    allowedZones: z.string(),
-    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token TTL cannot be greater than 315360000"
-    }),
-    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token Max TTL cannot be greater than 315360000"
-    }),
-    accessTokenNumUsesLimit: z.string(),
-    accessTokenTrustedIps: z
-      .array(
-        z.object({
-          ipAddress: z.string().max(50)
-        })
-      )
-      .min(1)
-  })
-  .required();
+const buildSchema = (maxAccessTokenTTL: number) =>
+  z
+    .object({
+      type: z.enum(["iam", "gce"]),
+      allowedServiceAccounts: z.string(),
+      allowedProjects: z.string(),
+      allowedZones: z.string(),
+      accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+      accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+      accessTokenNumUsesLimit: z.string(),
+      accessTokenTrustedIps: z
+        .array(
+          z.object({
+            ipAddress: z.string().max(50)
+          })
+        )
+        .min(1)
+    })
+    .required();
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -66,13 +65,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentityGcpAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -88,6 +89,8 @@ export const IdentityGcpAuthForm = ({
     enabled: isUpdate
   });
 
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+
   const {
     control,
     handleSubmit,
@@ -95,7 +98,7 @@ export const IdentityGcpAuthForm = ({
     formState: { isSubmitting },
     watch
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       type: "gce",
       allowedServiceAccounts: "",
@@ -293,8 +296,9 @@ export const IdentityGcpAuthForm = ({
                 label="Access Token TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -307,8 +311,9 @@ export const IdentityGcpAuthForm = ({
                 label="Access Token Max TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />

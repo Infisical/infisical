@@ -153,10 +153,12 @@
                       "integrations/app-connections/okta",
                       "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
+                      "integrations/app-connections/ovh",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
+                      "integrations/app-connections/snowflake",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
@@ -464,6 +466,7 @@
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
+                  "documentation/platform/insights",
                   "documentation/platform/pr-workflows",
                   "documentation/platform/access-controls/access-requests",
                   {
@@ -522,6 +525,19 @@
                       "documentation/platform/dynamic-secrets/totp",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
+                    ]
+                  },
+                  {
+                    "group": "Honey Tokens",
+                    "pages": [
+                      "documentation/platform/honey-tokens/overview",
+                      {
+                        "group": "AWS",
+                        "pages": [
+                          "documentation/platform/honey-tokens/aws/setup",
+                          "documentation/platform/honey-tokens/aws/usage"
+                        ]
+                      }
                     ]
                   },
                   "documentation/platform/webhooks",
@@ -609,8 +625,10 @@
                       "integrations/secret-syncs/ona",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/octopus-deploy",
+                      "integrations/secret-syncs/ovh",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
+                      "integrations/secret-syncs/snowflake",
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
@@ -889,6 +907,7 @@
                           "documentation/platform/pam/getting-started/resources/mongodb",
                           "documentation/platform/pam/getting-started/resources/mssql",
                           "documentation/platform/pam/getting-started/resources/mysql",
+                          "documentation/platform/pam/getting-started/resources/oracle",
                           "documentation/platform/pam/getting-started/resources/postgresql",
                           "documentation/platform/pam/getting-started/resources/redis",
                           "documentation/platform/pam/getting-started/resources/ssh",
@@ -2874,6 +2893,19 @@
                       "api-reference/endpoints/secret-syncs/render/sync-secrets",
                       "api-reference/endpoints/secret-syncs/render/import-secrets",
                       "api-reference/endpoints/secret-syncs/render/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Snowflake",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/snowflake/list",
+                      "api-reference/endpoints/secret-syncs/snowflake/get-by-id",
+                      "api-reference/endpoints/secret-syncs/snowflake/get-by-name",
+                      "api-reference/endpoints/secret-syncs/snowflake/create",
+                      "api-reference/endpoints/secret-syncs/snowflake/update",
+                      "api-reference/endpoints/secret-syncs/snowflake/delete",
+                      "api-reference/endpoints/secret-syncs/snowflake/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/snowflake/remove-secrets"
                     ]
                   },
                   {
