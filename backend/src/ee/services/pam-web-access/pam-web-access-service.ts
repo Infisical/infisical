@@ -74,7 +74,10 @@ type TPamWebAccessServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "countActiveWebSessions">;
+  pamSessionDAL: Pick<
+    TPamSessionDALFactory,
+    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "expireOverdueSessions"
+  >;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -415,6 +418,17 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
+      // Mark session as ended AFTER resources are freed so the session slot
+      // doesn't reopen while pg connections / relay tunnel are still alive.
+      // endSessionById is a no-op if the session is already ended.
+      if (session) {
+        try {
+          await pamSessionDAL.endSessionById(session.id);
+        } catch (err) {
+          logger.error(err, `Failed to end session in DB [sessionId=${session.id}]`);
+        }
+      }
+
       // Best-effort ALPN session cancellation (fire-and-forget).
       // Triggers gateway-side cleanup: log upload, and session end via API.
       // If this fails, the scheduled queue job will expire the session at expiresAt time.
@@ -470,6 +484,11 @@ export const pamWebAccessServiceFactory = ({
       if (!resource.gatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this resource" });
       }
+
+      // Expire any of this user's sessions that have outlived their expiresAt
+      // but are still marked active (e.g. process crash, lost BullMQ job).
+      // Done right before the cap check so stale sessions don't lock the user out.
+      await pamSessionDAL.expireOverdueSessions(userId, projectId);
 
       // Check web session limit
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
