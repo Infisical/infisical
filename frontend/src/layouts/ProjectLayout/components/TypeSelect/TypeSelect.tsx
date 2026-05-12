@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
+import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { Lottie } from "@app/components/v2";
 import {
   Command,
@@ -41,6 +42,7 @@ const TypeSelectInner = ({
   showDivider?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
+  const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
@@ -66,6 +68,8 @@ const TypeSelectInner = ({
           to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
           params: { orgId, projectId: certManagerInstance.activeProjectId }
         });
+      } else {
+        setIsCertManagerSetupOpen(true);
       }
       return;
     }
@@ -96,6 +100,8 @@ const TypeSelectInner = ({
                     projectId: certManagerInstance.activeProjectId
                   }
                 });
+              } else {
+                setIsCertManagerSetupOpen(true);
               }
             } else {
               navigate({
@@ -121,15 +127,13 @@ const TypeSelectInner = ({
                 {PRODUCT_TYPES.map((type) => {
                   const isCertManager = type === ProjectType.CertificateManager;
                   const count = projectCountsByType[type] || 0;
-                  const isCmDisabled = isCertManager && !certManagerInstance?.activeProjectId;
 
                   return (
                     <CommandItem
                       key={type}
                       value={getProjectTitle(type)}
-                      disabled={isCmDisabled}
-                      onSelect={() => !isCmDisabled && handleSelectType(type)}
-                      className={`gap-2 ${isCmDisabled ? "cursor-not-allowed opacity-40" : ""}`}
+                      onSelect={() => handleSelectType(type)}
+                      className="gap-2"
                     >
                       <Check className={currentType === type ? "opacity-100" : "opacity-0"} />
                       <Lottie className="h-4 w-4 shrink-0" icon={getProjectLottieIcon(type)} />
@@ -147,6 +151,11 @@ const TypeSelectInner = ({
           </Command>
         </PopoverContent>
       </Popover>
+
+      <CertManagerNotConfiguredModal
+        isOpen={isCertManagerSetupOpen}
+        onOpenChange={setIsCertManagerSetupOpen}
+      />
     </div>
   );
 };

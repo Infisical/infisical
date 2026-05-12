@@ -54,7 +54,9 @@ export const ApplicationDetailsByIDPage = () => {
   const { data: application, isPending } = useGetPkiApplicationByName(applicationName ?? "");
   const { data: profiles = [] } = useListPkiApplicationProfiles(application?.id ?? "");
   const { data: members = [] } = useListPkiApplicationMembers(application?.id ?? "");
-  const { data: permissionData } = useGetPkiApplicationPermissions(application?.id ?? "");
+  const { data: permissionData, isPending: isPermissionsPending } = useGetPkiApplicationPermissions(
+    application?.id ?? ""
+  );
   const deleteApp = useDeletePkiApplication();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isIdCopied, setIsIdCopied] = useToggle(false);
@@ -116,7 +118,7 @@ export const ApplicationDetailsByIDPage = () => {
     }
   };
 
-  if (isPending) {
+  if (isPending || isPermissionsPending) {
     return <PageLoader />;
   }
 

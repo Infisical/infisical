@@ -34,20 +34,19 @@ const backfillOrgCertManagerProject = async (knex: Knex, orgId: string) => {
 const backfillDefaultCertManagerProjectIdForExistingOrgs = async (knex: Knex) => {
   await knex.raw(
     `
-    WITH oldest AS (
-      SELECT "orgId", MIN("createdAt") AS oldest_at
-      FROM ?? WHERE type = ? GROUP BY "orgId"
-    ), pick AS (
-      SELECT p.id AS project_id, p."orgId"
-      FROM ?? p
-      JOIN oldest o ON p."orgId" = o."orgId" AND p."createdAt" = o.oldest_at AND p.type = ?
+    WITH pick AS (
+      SELECT "orgId", MIN(id) AS project_id
+      FROM ??
+      WHERE type = ?
+      GROUP BY "orgId"
+      HAVING COUNT(*) = 1
     )
     UPDATE ?? AS o
     SET "defaultCertManagerProjectId" = pick.project_id
     FROM pick
     WHERE o.id = pick."orgId" AND o."defaultCertManagerProjectId" IS NULL;
   `,
-    [TableName.Project, PROJECT_TYPE_CERT_MANAGER, TableName.Project, PROJECT_TYPE_CERT_MANAGER, TableName.Organization]
+    [TableName.Project, PROJECT_TYPE_CERT_MANAGER, TableName.Organization]
   );
 };
 

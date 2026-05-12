@@ -20,6 +20,7 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
+import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
   Button,
@@ -75,6 +76,7 @@ export const ProjectTypePage = () => {
   const projectType = urlSlugToProjectType(typeSlug) ?? (typeSlug as ProjectType);
 
   const { data: certManagerInstance } = useCertManagerInstanceState();
+  const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
 
   useEffect(() => {
     if (projectType === ProjectType.CertificateManager) {
@@ -84,16 +86,26 @@ export const ProjectTypePage = () => {
           params: { orgId, projectId: certManagerInstance.activeProjectId }
         });
       } else if (certManagerInstance && !certManagerInstance.activeProjectId) {
-        navigate({
-          to: "/organizations/$orgId/projects",
-          params: { orgId }
-        });
+        setIsCertManagerSetupOpen(true);
       }
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
 
   if (projectType === ProjectType.CertificateManager) {
-    return null;
+    return (
+      <CertManagerNotConfiguredModal
+        isOpen={isCertManagerSetupOpen}
+        onOpenChange={(open) => {
+          setIsCertManagerSetupOpen(open);
+          if (!open) {
+            navigate({
+              to: "/organizations/$orgId/projects",
+              params: { orgId }
+            });
+          }
+        }}
+      />
+    );
   }
 
   return <ProjectTypeContent projectType={projectType} orgId={orgId} />;

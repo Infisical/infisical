@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import { Lottie } from "@app/components/v2";
 import {
@@ -45,6 +46,7 @@ export const ProjectCategoryOverview = () => {
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
+  const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
 
   const projectCountsByType = useMemo(
     () =>
@@ -81,7 +83,10 @@ export const ProjectCategoryOverview = () => {
     const orgId = currentOrg?.id || "";
 
     if (type === ProjectType.CertificateManager) {
-      if (!certManagerActiveProjectId) return;
+      if (!certManagerActiveProjectId) {
+        setIsCertManagerSetupOpen(true);
+        return;
+      }
       if (isMemberOfCertManagerProject) {
         navigateToCertManager(certManagerActiveProjectId);
         return;
@@ -185,6 +190,11 @@ export const ProjectCategoryOverview = () => {
         onOpenChange={setIsRequestAccessOpen}
         project={requestAccessProject}
         subTitle="Requesting access to Certificate Manager. You may include an optional note for admins to review your request."
+      />
+
+      <CertManagerNotConfiguredModal
+        isOpen={isCertManagerSetupOpen}
+        onOpenChange={setIsCertManagerSetupOpen}
       />
     </>
   );
