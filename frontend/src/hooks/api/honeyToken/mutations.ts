@@ -22,6 +22,19 @@ export const useUpsertHoneyTokenConfig = () => {
   });
 };
 
+export const useDeleteHoneyTokenConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (type: HoneyTokenType) => {
+      await apiRequest.delete(`/api/v1/honey-tokens/${type}/configs`);
+    },
+    onSuccess: (_, type) => {
+      queryClient.invalidateQueries({ queryKey: honeyTokenKeys.config(type) });
+    }
+  });
+};
+
 export const useTestHoneyTokenConnection = () => {
   const queryClient = useQueryClient();
 

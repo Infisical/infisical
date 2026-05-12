@@ -128,9 +128,43 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     return provider.getConfig({ orgId: orgPermission.orgId });
   };
 
+  const deleteConfig = async <T extends HoneyTokenType>({
+    orgPermission,
+    type
+  }: THoneyTokenConfigServiceTypeInput<T>) => {
+    const { permission } = await deps.permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionHoneyTokenActions.Setup,
+      OrgPermissionSubjects.HoneyTokens
+    );
+
+    const activeTokenCount = await deps.honeyTokenDAL.countByOrgId(orgPermission.orgId);
+    if (activeTokenCount > 0) {
+      throw new BadRequestError({
+        message:
+          "Cannot disconnect honey token configuration while active honey tokens exist. Revoke all honey tokens first."
+      });
+    }
+
+    const providerType = assertSupportedHoneyTokenType(type);
+    const provider = honeyTokenConfigProviderByType[providerType];
+    if (!provider) {
+      throw new BadRequestError({ message: "Unsupported honey token type" });
+    }
+    return provider.deleteConfig({ orgId: orgPermission.orgId });
+  };
+
   return {
     upsertConfig,
     testConnection,
-    getConfig
+    getConfig,
+    deleteConfig
   };
 };

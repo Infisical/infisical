@@ -7,6 +7,7 @@ import {
   THoneyTokenConfigRecord,
   THoneyTokenConfigWithDecrypted
 } from "../honey-token/aws/honey-token-aws-config-types";
+import { THoneyTokenDALFactory } from "../honey-token/honey-token-dal";
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
 import {
   THoneyTokenConfigByType,
@@ -18,6 +19,7 @@ import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -39,12 +41,17 @@ export type THoneyTokenConfigProviderGetConfigInput = {
   orgId: string;
 };
 
+export type THoneyTokenConfigProviderDeleteInput = {
+  orgId: string;
+};
+
 export type THoneyTokenConfigProvider<T extends HoneyTokenType = HoneyTokenType> = {
   upsertConfig: (input: THoneyTokenConfigProviderUpsertInput<T>) => Promise<THoneyTokenConfigRecord>;
   testConnection: (
     input: THoneyTokenConfigProviderTestConnectionInput
   ) => Promise<THoneyTokenTestConnectionResponseByType[T]>;
   getConfig: (input: THoneyTokenConfigProviderGetConfigInput) => Promise<THoneyTokenConfigWithDecrypted | undefined>;
+  deleteConfig: (input: THoneyTokenConfigProviderDeleteInput) => Promise<void>;
 };
 
 export type THoneyTokenConfigServiceUpsertInput<T extends HoneyTokenType = HoneyTokenType> = {
