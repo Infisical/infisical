@@ -1,5 +1,6 @@
 # Binary output
 /infisical
+/main
 *.exe
 
 # Environment
