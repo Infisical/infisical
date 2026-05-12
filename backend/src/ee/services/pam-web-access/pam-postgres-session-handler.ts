@@ -87,11 +87,10 @@ export const handlePostgresSession = async (
     }
   };
 
-  const controllers = new Map<string, TPostgresConnectionController>();
-  // Reserved slots for in-flight opens — counted against the cap so a burst of
-  // open-connection messages can't all pass the check before any of them
-  // finishes inserting into `controllers`.
-  let pendingOpens = 0;
+  // Values are null while the open is in flight (slot reserved but pg.Client
+  // not yet connected). Cleanup clears the map; when the in-flight open
+  // resolves, it checks .has() and self-disposes if the slot was wiped.
+  const controllers = new Map<string, TPostgresConnectionController | null>();
 
   // Metadata requests (get-schemas / get-tables) are processed outside any
   // controller queue so sidebar refreshes don't block tab work.
@@ -100,7 +99,7 @@ export const handlePostgresSession = async (
   // --- Per-message handlers ---
 
   const openTabConnection = async (requestId: string) => {
-    if (controllers.size + pendingOpens >= MAX_CONNECTIONS_PER_WS) {
+    if (controllers.size >= MAX_CONNECTIONS_PER_WS) {
       sendResponse({
         type: PostgresServerMessageType.ConnectionOpenFailed,
         id: requestId,
@@ -109,8 +108,10 @@ export const handlePostgresSession = async (
       return;
     }
 
-    pendingOpens += 1;
     const connectionId = crypto.randomUUID();
+    // Reserve a slot before the first await so concurrent opens can't bypass
+    // the cap, and cleanup can wipe the slot to signal "session is gone."
+    controllers.set(connectionId, null);
     try {
       const controller = await createPostgresConnectionController({
         relayPort,
@@ -129,6 +130,12 @@ export const handlePostgresSession = async (
           });
         }
       });
+      if (!controllers.has(connectionId)) {
+        // Session was cleaned up (or close-connection arrived) while we were
+        // connecting. Dispose immediately — don't register, don't respond.
+        controller.dispose();
+        return;
+      }
       controllers.set(connectionId, controller);
       sendResponse({
         type: PostgresServerMessageType.ConnectionOpened,
@@ -137,6 +144,7 @@ export const handlePostgresSession = async (
         backendPid: controller.backendPid
       });
     } catch (err) {
+      controllers.delete(connectionId);
       const msg = err instanceof Error ? err.message : "Failed to open connection";
       logger.error(err, `Failed to open tab connection [sessionId=${sessionId}]`);
       sendResponse({
@@ -144,8 +152,6 @@ export const handlePostgresSession = async (
         id: requestId,
         error: msg
       });
-    } finally {
-      pendingOpens -= 1;
     }
   };
 
@@ -267,9 +273,12 @@ export const handlePostgresSession = async (
   return {
     cleanup: async () => {
       // dispose() is synchronous and fire-and-forget — no await needed.
+      // Null entries are in-flight opens; clearing the map causes their
+      // post-await .has() check to fail, so they self-dispose.
       const snapshot = Array.from(controllers.values());
       controllers.clear();
       for (const controller of snapshot) {
+        if (!controller) continue;
         try {
           controller.dispose();
         } catch (err) {

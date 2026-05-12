@@ -376,9 +376,9 @@ describe("handlePostgresSession", () => {
   });
 
   test("concurrent open-connection requests cannot bypass the cap", async () => {
-    // Simulates a client firing 25 opens at once. Without the pendingOpens
-    // counter, each check against controllers.size would see 0 before any
-    // controller finished connecting, and all 25 would succeed.
+    // Simulates a client firing 25 opens at once. Without null-slot
+    // reservation, each check against controllers.size would see 0 before
+    // any controller finished connecting, and all 25 would succeed.
     const ctx = createMockContext();
     await handlePostgresSession(ctx, mockParams);
 
@@ -418,6 +418,54 @@ describe("handlePostgresSession", () => {
     tabClients.forEach((c) => {
       expect(c.end).toHaveBeenCalled();
     });
+  });
+
+  test("in-flight opens self-dispose when cleanup runs before they resolve", async () => {
+    const ctx = createMockContext();
+    const result = await handlePostgresSession(ctx, mockParams);
+
+    // Delay the pg.Client connect for the NEXT client created so the open is
+    // still in flight when cleanup runs. Pushed AFTER handlePostgresSession so
+    // the reachability client consumes a normal (instant) script.
+    let resolveConnect!: () => void;
+    clientScripts.push({
+      connect: () =>
+        new Promise<void>((resolve) => {
+          resolveConnect = resolve;
+        })
+    });
+
+    // Kick off an open — it will be stuck at pgClient.connect().
+    const onMessage = getMessageHandler(ctx);
+    onMessage(
+      Buffer.from(
+        JSON.stringify({ type: PostgresClientMessageType.OpenConnection, id: "11111111-1111-1111-1111-111111111111" })
+      )
+    );
+
+    // Let the synchronous part of openTabConnection run (reserves the null
+    // slot), but the await hasn't resolved yet.
+    await new Promise<void>((r) => {
+      setTimeout(r, 10);
+    });
+
+    // Session tears down while the open is in flight.
+    await result.cleanup();
+
+    // Now let the connect resolve — the open should self-dispose.
+    resolveConnect();
+    await new Promise<void>((r) => {
+      setTimeout(r, 50);
+    });
+
+    // The controller's pg.Client should have been disposed (end called).
+    // The delayed client is the second one created (first is the reachability check).
+    const delayedClient = createdClients[1];
+    expect(delayedClient.end).toHaveBeenCalled();
+
+    // No connection-opened should have been sent.
+    const opened = getSentResponses(ctx).filter((r) => r.type === PostgresServerMessageType.ConnectionOpened);
+    expect(opened).toHaveLength(0);
   });
 
   test("two tab controllers have independent backendPids", async () => {
