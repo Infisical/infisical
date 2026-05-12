@@ -414,9 +414,7 @@ export const dynamicSecretServiceFactory = ({
         });
       }
 
-      if (!gateway) {
-        isGatewayV1 = false;
-      }
+      isGatewayV1 = Boolean(gateway);
 
       const { permission: orgPermission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
