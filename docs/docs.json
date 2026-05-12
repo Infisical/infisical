@@ -186,7 +186,6 @@
                 "pages": [
                   "documentation/platform/external-migrations/overview",
                   "documentation/platform/external-migrations/doppler",
-                  "documentation/platform/external-migrations/envkey",
                   "documentation/platform/external-migrations/vault"
                 ]
               },
