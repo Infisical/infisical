@@ -117,7 +117,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 	if opts.AccessChecker != nil {
 		canDescribe := opts.AccessChecker.CanDescribeSecret(secretEnv, secretPath, foundSecret.Key, tagSlugs)
 		if !canDescribe {
-			return nil, errutil.Forbidden("Permission denied to access this secret")
+			return nil, errutil.Forbidden("permission denied to access this secret")
 		}
 
 		canReadValue := opts.AccessChecker.CanReadSecretValue(secretEnv, secretPath, foundSecret.Key, tagSlugs)
@@ -133,85 +133,88 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		valueHidden = valueHidden || !canReadValue
 	}
 
-	var secretValue, secretComment string
-	if !valueHidden && foundSecret.EncryptedValue.Valid && len(foundSecret.EncryptedValue.V) > 0 {
-		if decrypted, err := cipherPair.Decrypt(foundSecret.EncryptedValue.V); err == nil {
-			secretValue = string(decrypted)
-		}
-	}
-	if valueHidden {
-		secretValue = secretValueHiddenMask
-	}
+	rawValue, displayValue, secretComment, metadata := decryptSecretFields(foundSecret, cipherPair, valueHidden)
 
-	if foundSecret.EncryptedComment.Valid && len(foundSecret.EncryptedComment.V) > 0 {
-		if decrypted, err := cipherPair.Decrypt(foundSecret.EncryptedComment.V); err == nil {
-			secretComment = string(decrypted)
-		}
-	}
-
-	var metadata []DecryptedMetadata
-	for _, m := range foundSecret.SecretMetadata {
-		value := m.Value
-		if len(m.EncryptedValue) > 0 {
-			if decrypted, err := cipherPair.Decrypt(m.EncryptedValue); err == nil {
-				value = string(decrypted)
-			}
-		}
-		metadata = append(metadata, DecryptedMetadata{
-			Key:   m.Key,
-			Value: value,
-		})
+	// Build the result secret
+	resultSecret := &ProcessedSecret{
+		Secret:      foundSecret,
+		SecretPath:  secretPath,
+		Environment: secretEnv,
+		RawValue:    rawValue,
+		Value:       displayValue,
+		Comment:     secretComment,
+		Metadata:    metadata,
+		ValueHidden: valueHidden,
 	}
 
 	// 8. Expand references if requested
-	if opts.ExpandSecretReferences && !valueHidden && secretValue != "" {
-		importLookup, _ := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
+	if opts.ExpandSecretReferences && !valueHidden && rawValue != "" {
+		importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
+		if err != nil {
+			return nil, errutil.InternalServer("Failed to load imports for expansion").WithErrf("GetSecretByName: %w", err)
+		}
 		chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderService)
-		chainResult, _ := chainResolver.Resolve(ctx, opts.ProjectID, envID, opts.SecretPath, false)
+		chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, envID, opts.SecretPath, false)
+		if err != nil {
+			return nil, errutil.InternalServer("Failed to resolve import chain for expansion").WithErrf("GetSecretByName: %w", err)
+		}
 		folderLookup.Merge(chainResult.FolderLookup)
 
-		inputs := []SecretInput{{
-			ID:         foundSecret.ID,
-			Key:        foundSecret.Key,
-			Value:      secretValue,
-			Env:        opts.Environment,
-			Path:       opts.SecretPath,
-			IsImported: false,
-		}}
-
+		// Always fetch from same folder + imported folders for relative ref resolution
+		allFolderIDs := []uuid.UUID{folderNode.ID}
 		if len(chainResult.Imports) > 0 {
-			allFolderIDs := chainResult.AllFolderIDs()
-			importedSecrets, _ := s.FindByFolderIds(ctx, allFolderIDs, opts.UserID, nil)
-			for i := range importedSecrets {
-				sec := &importedSecrets[i]
-				if sec.ID == foundSecret.ID {
-					continue
-				}
-				var val string
-				if sec.EncryptedValue.Valid && len(sec.EncryptedValue.V) > 0 {
-					if decrypted, err := cipherPair.Decrypt(sec.EncryptedValue.V); err == nil {
-						val = string(decrypted)
-					}
-				}
-				inputs = append(inputs, SecretInput{
-					ID:         sec.ID,
-					Key:        sec.Key,
-					Value:      val,
-					Env:        opts.Environment,
-					Path:       opts.SecretPath,
-					IsImported: true,
-				})
-			}
+			allFolderIDs = append(allFolderIDs, chainResult.ImportedFolderIDs()...)
 		}
 
-		expander := NewSecretExpander(inputs, ExpandOpts{
+		// Build list of secrets for expansion: main secret + context secrets
+		allSecrets := []*ProcessedSecret{resultSecret}
+
+		contextSecrets, err := s.FindByFolderIds(ctx, allFolderIDs, opts.UserID, nil)
+		if err != nil {
+			return nil, errutil.InternalServer("Failed to fetch context secrets for expansion").WithErrf("GetSecretByName: %w", err)
+		}
+
+		for i := range contextSecrets {
+			sec := &contextSecrets[i]
+			if sec.ID == foundSecret.ID {
+				continue // Skip the main secret, already added
+			}
+
+			// Determine environment and path for this context secret
+			ctxEnvSlug := secretEnv
+			ctxPath := secretPath
+			if sec.FolderID != folderNode.ID {
+				// This is from an imported folder
+				for i := range chainResult.Imports {
+					if chainResult.Imports[i].FolderID == sec.FolderID {
+						ctxEnvSlug, _ = folderLookup.GetEnvSlug(chainResult.Imports[i].EnvID)
+						ctxPath = chainResult.Imports[i].Path
+						break
+					}
+				}
+			}
+
+			ctxRawValue, ctxDisplayValue, ctxComment, ctxMetadata := decryptSecretFields(sec, cipherPair, false)
+			allSecrets = append(allSecrets, &ProcessedSecret{
+				Secret:      sec,
+				SecretPath:  ctxPath,
+				Environment: ctxEnvSlug,
+				RawValue:    ctxRawValue,
+				Value:       ctxDisplayValue,
+				Comment:     ctxComment,
+				Metadata:    ctxMetadata,
+				ValueHidden: false,
+			})
+		}
+
+		expander := NewSecretExpander(allSecrets, ExpandOpts{
 			CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
 				if opts.AccessChecker == nil {
 					return true
 				}
 				return opts.AccessChecker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, nil)
 			},
-			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
 					projectID:    opts.ProjectID,
 					folderLookup: folderLookup,
@@ -225,21 +228,10 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		if expander.HasDeniedRefs() {
 			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("GetSecretByName: denied refs: %v", expander.DeniedRefs())
 		}
-
-		if expanded, ok := expander.LookUp(foundSecret.ID); ok {
-			secretValue = expanded
-		}
+		// resultSecret.Value is already expanded in place
 	}
 
 	return &GetSecretByNameResult{
-		Secret: &ProcessedSecret{
-			Secret:      foundSecret,
-			SecretPath:  secretPath,
-			Environment: secretEnv,
-			Value:       secretValue,
-			Comment:     secretComment,
-			Metadata:    metadata,
-			ValueHidden: valueHidden,
-		},
+		Secret: resultSecret,
 	}, nil
 }

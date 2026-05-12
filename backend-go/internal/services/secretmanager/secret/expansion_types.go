@@ -1,29 +1,15 @@
 package secret
 
-import "github.com/google/uuid"
-
-// SecretInput represents a secret provided for expansion.
-// Secrets should be provided in priority order - first occurrence of each key wins.
-type SecretInput struct {
-	ID         uuid.UUID
-	Key        string
-	Value      string
-	Env        string
-	Path       string
-	IsImported bool
-}
-
-// ExpandedSecret is the output after expansion - just ID and the fully expanded value.
-type ExpandedSecret struct {
-	ID            uuid.UUID
-	ExpandedValue string
-}
-
 // AbsoluteSecretRef identifies an absolute reference like ${env.path.KEY}.
 type AbsoluteSecretRef struct {
 	Env  string
 	Path string
 	Key  string
+}
+
+// CacheKey returns a unique string key for map lookups.
+func (r AbsoluteSecretRef) CacheKey() string {
+	return r.Env + ":" + r.Path + ":" + r.Key
 }
 
 // ExpandOpts configures the expansion behavior.
@@ -36,5 +22,5 @@ type ExpandOpts struct {
 	// FetchAbsoluteSecrets fetches secrets for absolute references.
 	// Only called for refs that passed the permission check.
 	// If nil, absolute refs resolve to empty string.
-	FetchAbsoluteSecrets func(refs []AbsoluteSecretRef) []SecretInput
+	FetchAbsoluteSecrets func(refs []AbsoluteSecretRef) []*ProcessedSecret
 }

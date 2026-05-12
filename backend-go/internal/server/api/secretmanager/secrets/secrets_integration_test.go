@@ -1706,3 +1706,85 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		assert.Equal(t, "plain-value", getResult.Secret.SecretValue)
 	})
 }
+
+// =============================================================================
+// GetSecretByName Expansion Without Imports
+// =============================================================================
+
+func TestGetSecretByName_ExpandsSameFolderRefsWithoutImports(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project WITHOUT any imports
+	proj := nodejs.CreateProject(t, "no-imports-expansion-test")
+
+	// Create secrets in the same folder where B references A
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "BASE_URL", "https://api.example.com", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "ENDPOINT", "${BASE_URL}/v1/users", nil)
+
+	identity := nodejs.CreateIdentity(t, "no-imports-expansion-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	svc := newSecretsHandler(t)
+	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+		AuthMode:   auth.AuthModeIdentityAccessToken,
+		Actor:      permission.ActorTypeIdentity,
+		ActorID:    uuid.MustParse(identity.ID),
+		OrgID:      uuid.MustParse(nodejs.OrgID()),
+		AuthMethod: "",
+	})
+
+	// Get ENDPOINT with expansion - should resolve ${BASE_URL} from same folder
+	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+		SecretName:             "ENDPOINT",
+		ProjectID:              proj.ID,
+		Environment:            "dev",
+		SecretPath:             "/",
+		ViewSecretValue:        true,
+		ExpandSecretReferences: true,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey)
+	assert.Equal(t, "https://api.example.com/v1/users", result.Secret.SecretValue,
+		"should expand same-folder reference even without imports configured")
+}
+
+func TestGetSecretByName_ExpandsNestedRefsWithoutImports(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project WITHOUT any imports
+	proj := nodejs.CreateProject(t, "nested-no-imports-test")
+
+	// Create chain of references: C -> B -> A
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "HOST", "db.example.com", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "PORT", "5432", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "CONNECTION", "${HOST}:${PORT}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "FULL_DSN", "postgres://user@${CONNECTION}/mydb", nil)
+
+	identity := nodejs.CreateIdentity(t, "nested-no-imports-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	svc := newSecretsHandler(t)
+	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+		AuthMode:   auth.AuthModeIdentityAccessToken,
+		Actor:      permission.ActorTypeIdentity,
+		ActorID:    uuid.MustParse(identity.ID),
+		OrgID:      uuid.MustParse(nodejs.OrgID()),
+		AuthMethod: "",
+	})
+
+	// Get FULL_DSN with expansion - should resolve nested references
+	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+		SecretName:             "FULL_DSN",
+		ProjectID:              proj.ID,
+		Environment:            "dev",
+		SecretPath:             "/",
+		ViewSecretValue:        true,
+		ExpandSecretReferences: true,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "FULL_DSN", result.Secret.SecretKey)
+	assert.Equal(t, "postgres://user@db.example.com:5432/mydb", result.Secret.SecretValue,
+		"should expand nested references without imports")
+}

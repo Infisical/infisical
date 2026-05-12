@@ -85,16 +85,16 @@ func parseTagSlugs(tagSlugsStr *string) []string {
 }
 
 // parseMetadataFilter parses a pipe-delimited string of metadata filters.
-func parseMetadataFilter(metadataFilterStr *string) []secret.MetadataFilterEntry {
+func parseMetadataFilter(metadataFilterStr *string) []secret.MetadataFilter {
 	if metadataFilterStr == nil || *metadataFilterStr == "" {
 		return nil
 	}
 
 	pairs := strings.Split(*metadataFilterStr, "|")
-	result := make([]secret.MetadataFilterEntry, 0, len(pairs))
+	result := make([]secret.MetadataFilter, 0, len(pairs))
 
 	for _, pair := range pairs {
-		entry := secret.MetadataFilterEntry{}
+		entry := secret.MetadataFilter{}
 		parts := strings.SplitSeq(pair, ",")
 
 		for part := range parts {

@@ -7,234 +7,227 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newUUID() uuid.UUID {
-	return uuid.New()
+func newTestSecret(key, value, env, path string) *ProcessedSecret {
+	return &ProcessedSecret{
+		Secret:      &Secret{ID: uuid.New(), Key: key},
+		SecretPath:  path,
+		Environment: env,
+		RawValue:    value,
+		Value:       value,
+	}
 }
 
 func TestExpand_SimpleRelativeReference(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "hello", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "B", Value: "${A} world", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "hello", "dev", "/"),
+		newTestSecret("B", "${A} world", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Len(t, results, 2)
-	assert.Equal(t, "hello", results[0].ExpandedValue)
-	assert.Equal(t, "hello world", results[1].ExpandedValue)
+	assert.Equal(t, "hello", secrets[0].Value)
+	assert.Equal(t, "hello world", secrets[1].Value)
 }
 
 func TestExpand_ChainedRelativeReferences(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "base", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "B", Value: "${A}-middle", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "C", Value: "${B}-end", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "base", "dev", "/"),
+		newTestSecret("B", "${A}-middle", "dev", "/"),
+		newTestSecret("C", "${B}-end", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "base", results[0].ExpandedValue)
-	assert.Equal(t, "base-middle", results[1].ExpandedValue)
-	assert.Equal(t, "base-middle-end", results[2].ExpandedValue)
+	assert.Equal(t, "base", secrets[0].Value)
+	assert.Equal(t, "base-middle", secrets[1].Value)
+	assert.Equal(t, "base-middle-end", secrets[2].Value)
 }
 
 func TestExpand_ImportFallback_CurrentBoardFirst(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "DB_HOST", Value: "current-db.local", Env: "dev", Path: "/", IsImported: false},
-		{ID: newUUID(), Key: "DB_HOST", Value: "imported-db.local", Env: "staging", Path: "/", IsImported: true},
-		{ID: newUUID(), Key: "CONNECTION", Value: "host=${DB_HOST}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("DB_HOST", "current-db.local", "dev", "/"),
+		newTestSecret("DB_HOST", "imported-db.local", "staging", "/"),
+		newTestSecret("CONNECTION", "host=${DB_HOST}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "host=current-db.local", results[2].ExpandedValue)
+	assert.Equal(t, "host=current-db.local", secrets[2].Value)
 }
 
 func TestExpand_ImportFallback_FallsBackToImport(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "LOCAL_KEY", Value: "local-value", Env: "dev", Path: "/", IsImported: false},
-		{ID: newUUID(), Key: "IMPORT_ONLY", Value: "from-import", Env: "staging", Path: "/", IsImported: true},
-		{ID: newUUID(), Key: "USES_IMPORT", Value: "got=${IMPORT_ONLY}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("LOCAL_KEY", "local-value", "dev", "/"),
+		newTestSecret("IMPORT_ONLY", "from-import", "staging", "/"),
+		newTestSecret("USES_IMPORT", "got=${IMPORT_ONLY}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "got=from-import", results[2].ExpandedValue)
+	assert.Equal(t, "got=from-import", secrets[2].Value)
 }
 
 func TestExpand_ImportOrder_FirstImportWins(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "USE_IT", Value: "val=${SHARED_KEY}", Env: "dev", Path: "/", IsImported: false},
-		{ID: newUUID(), Key: "SHARED_KEY", Value: "from-import-1", Env: "staging", Path: "/", IsImported: true},
-		{ID: newUUID(), Key: "SHARED_KEY", Value: "from-import-2", Env: "prod", Path: "/", IsImported: true},
-		{ID: newUUID(), Key: "SHARED_KEY", Value: "from-import-3", Env: "qa", Path: "/", IsImported: true},
+	secrets := []*ProcessedSecret{
+		newTestSecret("USE_IT", "val=${SHARED_KEY}", "dev", "/"),
+		newTestSecret("SHARED_KEY", "from-import-1", "staging", "/"),
+		newTestSecret("SHARED_KEY", "from-import-2", "prod", "/"),
+		newTestSecret("SHARED_KEY", "from-import-3", "qa", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "val=from-import-1", results[0].ExpandedValue)
+	assert.Equal(t, "val=from-import-1", secrets[0].Value)
 }
 
 func TestExpand_ImportOrder_NestedImportOrder(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "USE_KEY", Value: "result=${NESTED_KEY}", Env: "dev", Path: "/", IsImported: false},
-		{ID: newUUID(), Key: "NESTED_KEY", Value: "staging-value", Env: "staging", Path: "/", IsImported: true},
-		{ID: newUUID(), Key: "NESTED_KEY", Value: "prod-value", Env: "prod", Path: "/", IsImported: true},
+	secrets := []*ProcessedSecret{
+		newTestSecret("USE_KEY", "result=${NESTED_KEY}", "dev", "/"),
+		newTestSecret("NESTED_KEY", "staging-value", "staging", "/"),
+		newTestSecret("NESTED_KEY", "prod-value", "prod", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "result=staging-value", results[0].ExpandedValue)
+	assert.Equal(t, "result=staging-value", secrets[0].Value)
 }
 
 func TestExpand_DuplicateKeysInCurrentBoard(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "DUP", Value: "first", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "DUP", Value: "second", Env: "dev", Path: "/sub"},
-		{ID: newUUID(), Key: "USE_DUP", Value: "got=${DUP}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("DUP", "first", "dev", "/"),
+		newTestSecret("DUP", "second", "dev", "/sub"),
+		newTestSecret("USE_DUP", "got=${DUP}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "got=first", results[2].ExpandedValue)
+	assert.Equal(t, "got=first", secrets[2].Value)
 }
 
 func TestExpand_MissingReference_EmptyString(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "before-${MISSING}-after", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "before-${MISSING}-after", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "before--after", results[0].ExpandedValue)
+	assert.Equal(t, "before--after", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_Simple(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "use=${prod.secrets.API_KEY}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "use=${prod.secrets.API_KEY}", "dev", "/"),
 	}
 
 	fetchCalled := false
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			fetchCalled = true
 			assert.Len(t, refs, 1)
 			assert.Equal(t, "prod", refs[0].Env)
 			assert.Equal(t, "/secrets", refs[0].Path)
 			assert.Equal(t, "API_KEY", refs[0].Key)
 
-			return []SecretInput{
-				{ID: newUUID(), Key: "API_KEY", Value: "secret-123", Env: "prod", Path: "/secrets"},
+			return []*ProcessedSecret{
+				newTestSecret("API_KEY", "secret-123", "prod", "/secrets"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
 	assert.True(t, fetchCalled)
-	assert.Equal(t, "use=secret-123", results[0].ExpandedValue)
+	assert.Equal(t, "use=secret-123", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_RootPath(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${prod.ROOT_KEY}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${prod.ROOT_KEY}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Equal(t, "/", refs[0].Path)
-			return []SecretInput{
-				{ID: newUUID(), Key: "ROOT_KEY", Value: "root-value", Env: "prod", Path: "/"},
+			return []*ProcessedSecret{
+				newTestSecret("ROOT_KEY", "root-value", "prod", "/"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "root-value", results[0].ExpandedValue)
+	assert.Equal(t, "root-value", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_DeepPath(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${prod.level1.level2.level3.DEEP_KEY}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${prod.level1.level2.level3.DEEP_KEY}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Equal(t, "/level1/level2/level3", refs[0].Path)
-			return []SecretInput{
-				{ID: newUUID(), Key: "DEEP_KEY", Value: "deep-value", Env: "prod", Path: "/level1/level2/level3"},
+			return []*ProcessedSecret{
+				newTestSecret("DEEP_KEY", "deep-value", "prod", "/level1/level2/level3"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "deep-value", results[0].ExpandedValue)
+	assert.Equal(t, "deep-value", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_WithNestedRelative(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "LOCAL_VAR", Value: "local-resolved", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "A", Value: "${prod.USES_LOCAL}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("LOCAL_VAR", "local-resolved", "dev", "/"),
+		newTestSecret("A", "${prod.USES_LOCAL}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
-			return []SecretInput{
-				{ID: newUUID(), Key: "USES_LOCAL", Value: "prefix-${LOCAL_VAR}-suffix", Env: "prod", Path: "/"},
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			return []*ProcessedSecret{
+				newTestSecret("USES_LOCAL", "prefix-${LOCAL_VAR}-suffix", "prod", "/"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "prefix-local-resolved-suffix", results[1].ExpandedValue)
+	assert.Equal(t, "prefix-local-resolved-suffix", secrets[1].Value)
 }
 
 func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${prod.KEY1}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${prod.KEY1}", "dev", "/"),
 	}
 
 	fetchCount := 0
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			fetchCount++
 			if fetchCount == 1 {
 				assert.Equal(t, "KEY1", refs[0].Key)
-				return []SecretInput{
-					{ID: newUUID(), Key: "KEY1", Value: "${staging.KEY2}", Env: "prod", Path: "/"},
+				return []*ProcessedSecret{
+					newTestSecret("KEY1", "${staging.KEY2}", "prod", "/"),
 				}
 			}
 			if fetchCount == 2 {
 				assert.Equal(t, "KEY2", refs[0].Key)
-				return []SecretInput{
-					{ID: newUUID(), Key: "KEY2", Value: "final-value", Env: "staging", Path: "/"},
+				return []*ProcessedSecret{
+					newTestSecret("KEY2", "final-value", "staging", "/"),
 				}
 			}
 			return nil
@@ -243,81 +236,76 @@ func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
 	assert.Equal(t, 2, fetchCount)
-	assert.Equal(t, "final-value", results[0].ExpandedValue)
+	assert.Equal(t, "final-value", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_PermissionDenied(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "allowed=${prod.ALLOWED} denied=${prod.DENIED}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "allowed=${prod.ALLOWED} denied=${prod.DENIED}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
 		CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
 			return ref.Key == "ALLOWED"
 		},
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Len(t, refs, 1)
 			assert.Equal(t, "ALLOWED", refs[0].Key)
-			return []SecretInput{
-				{ID: newUUID(), Key: "ALLOWED", Value: "yes", Env: "prod", Path: "/"},
+			return []*ProcessedSecret{
+				newTestSecret("ALLOWED", "yes", "prod", "/"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "allowed=yes denied=", results[0].ExpandedValue)
+	assert.Equal(t, "allowed=yes denied=", secrets[0].Value)
 }
 
 func TestExpand_CircularReference_Direct(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${B}", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "B", Value: "${A}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${B}", "dev", "/"),
+		newTestSecret("B", "${A}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "", results[0].ExpandedValue)
-	assert.Equal(t, "", results[1].ExpandedValue)
+	assert.Equal(t, "", secrets[0].Value)
+	assert.Equal(t, "", secrets[1].Value)
 }
 
 func TestExpand_CircularReference_SelfReference(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "prefix-${A}-suffix", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "prefix-${A}-suffix", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "prefix-prefix--suffix-suffix", results[0].ExpandedValue)
+	assert.Equal(t, "prefix-prefix--suffix-suffix", secrets[0].Value)
 }
 
 func TestExpand_CircularReference_ThreeWay(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${B}", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "B", Value: "${C}", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "C", Value: "${A}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${B}", "dev", "/"),
+		newTestSecret("B", "${C}", "dev", "/"),
+		newTestSecret("C", "${A}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "", results[0].ExpandedValue)
-	assert.Equal(t, "", results[1].ExpandedValue)
-	assert.Equal(t, "", results[2].ExpandedValue)
+	assert.Equal(t, "", secrets[0].Value)
+	assert.Equal(t, "", secrets[1].Value)
+	assert.Equal(t, "", secrets[2].Value)
 }
 
 func TestExpand_MaxDepth(t *testing.T) {
-	secrets := make([]SecretInput, 15)
+	secrets := make([]*ProcessedSecret, 15)
 	for i := range 15 {
 		key := string(rune('A' + i))
 		var value string
@@ -327,114 +315,107 @@ func TestExpand_MaxDepth(t *testing.T) {
 		} else {
 			value = "end"
 		}
-		secrets[i] = SecretInput{ID: newUUID(), Key: key, Value: value, Env: "dev", Path: "/"}
+		secrets[i] = newTestSecret(key, value, "dev", "/")
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Contains(t, results[0].ExpandedValue, "levelA-")
+	assert.Contains(t, secrets[0].Value, "levelA-")
 }
 
 func TestExpand_MultipleReferencesInSingleValue(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "HOST", Value: "localhost", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "PORT", Value: "5432", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "USER", Value: "admin", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "CONN", Value: "postgresql://${USER}@${HOST}:${PORT}/db", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("HOST", "localhost", "dev", "/"),
+		newTestSecret("PORT", "5432", "dev", "/"),
+		newTestSecret("USER", "admin", "dev", "/"),
+		newTestSecret("CONN", "postgresql://${USER}@${HOST}:${PORT}/db", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "postgresql://admin@localhost:5432/db", results[3].ExpandedValue)
+	assert.Equal(t, "postgresql://admin@localhost:5432/db", secrets[3].Value)
 }
 
 func TestExpand_MixedRelativeAndAbsolute(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "LOCAL_HOST", Value: "dev-host", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "CONN", Value: "local=${LOCAL_HOST} prod=${prod.PROD_HOST}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("LOCAL_HOST", "dev-host", "dev", "/"),
+		newTestSecret("CONN", "local=${LOCAL_HOST} prod=${prod.PROD_HOST}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
-			return []SecretInput{
-				{ID: newUUID(), Key: "PROD_HOST", Value: "prod-host", Env: "prod", Path: "/"},
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			return []*ProcessedSecret{
+				newTestSecret("PROD_HOST", "prod-host", "prod", "/"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "local=dev-host prod=prod-host", results[1].ExpandedValue)
+	assert.Equal(t, "local=dev-host prod=prod-host", secrets[1].Value)
 }
 
 func TestExpand_NoReferences(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "PLAIN", Value: "just a plain value", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "ANOTHER", Value: "no references here", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("PLAIN", "just a plain value", "dev", "/"),
+		newTestSecret("ANOTHER", "no references here", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "just a plain value", results[0].ExpandedValue)
-	assert.Equal(t, "no references here", results[1].ExpandedValue)
+	assert.Equal(t, "just a plain value", secrets[0].Value)
+	assert.Equal(t, "no references here", secrets[1].Value)
 }
 
 func TestExpand_EmptySecretsList(t *testing.T) {
-	secrets := []SecretInput{}
+	secrets := []*ProcessedSecret{}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Empty(t, results)
+	assert.Empty(t, secrets)
 }
 
 func TestExpand_EmptyValue(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "EMPTY", Value: "", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("EMPTY", "", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "", results[0].ExpandedValue)
+	assert.Equal(t, "", secrets[0].Value)
 }
 
 func TestExpand_PreservesOrder(t *testing.T) {
-	id1, id2, id3 := newUUID(), newUUID(), newUUID()
-	secrets := []SecretInput{
-		{ID: id1, Key: "FIRST", Value: "1", Env: "dev", Path: "/"},
-		{ID: id2, Key: "SECOND", Value: "2", Env: "dev", Path: "/"},
-		{ID: id3, Key: "THIRD", Value: "3", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("FIRST", "1", "dev", "/"),
+		newTestSecret("SECOND", "2", "dev", "/"),
+		newTestSecret("THIRD", "3", "dev", "/"),
 	}
+	id1, id2, id3 := secrets[0].Secret.ID, secrets[1].Secret.ID, secrets[2].Secret.ID
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, id1, results[0].ID)
-	assert.Equal(t, id2, results[1].ID)
-	assert.Equal(t, id3, results[2].ID)
+	assert.Equal(t, id1, secrets[0].Secret.ID)
+	assert.Equal(t, id2, secrets[1].Secret.ID)
+	assert.Equal(t, id3, secrets[2].Secret.ID)
 }
 
 func TestExpand_AbsoluteFetchNotCalledWhenNotNeeded(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${B}", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "B", Value: "local", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${B}", "dev", "/"),
+		newTestSecret("B", "local", "dev", "/"),
 	}
 
 	fetchCalled := false
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			fetchCalled = true
 			return nil
 		},
@@ -442,177 +423,168 @@ func TestExpand_AbsoluteFetchNotCalledWhenNotNeeded(t *testing.T) {
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
 	assert.False(t, fetchCalled)
-	assert.Equal(t, "local", results[0].ExpandedValue)
+	assert.Equal(t, "local", secrets[0].Value)
 }
 
 func TestExpand_BatchesFetchRequests(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${prod.X} ${prod.Y} ${staging.Z}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${prod.X} ${prod.Y} ${staging.Z}", "dev", "/"),
 	}
 
 	fetchCount := 0
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			fetchCount++
 			assert.Len(t, refs, 3)
-			return []SecretInput{
-				{ID: newUUID(), Key: "X", Value: "x-val", Env: "prod", Path: "/"},
-				{ID: newUUID(), Key: "Y", Value: "y-val", Env: "prod", Path: "/"},
-				{ID: newUUID(), Key: "Z", Value: "z-val", Env: "staging", Path: "/"},
+			return []*ProcessedSecret{
+				newTestSecret("X", "x-val", "prod", "/"),
+				newTestSecret("Y", "y-val", "prod", "/"),
+				newTestSecret("Z", "z-val", "staging", "/"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
 	assert.Equal(t, 1, fetchCount)
-	assert.Equal(t, "x-val y-val z-val", results[0].ExpandedValue)
+	assert.Equal(t, "x-val y-val z-val", secrets[0].Value)
 }
 
 func TestExpand_ImportedSecretReferencesLocalKey(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "KEY", Value: "current-board-value", Env: "dev", Path: "/", IsImported: false},
-		{ID: newUUID(), Key: "IMPORTED", Value: "uses ${KEY}", Env: "staging", Path: "/", IsImported: true},
+	secrets := []*ProcessedSecret{
+		newTestSecret("KEY", "current-board-value", "dev", "/"),
+		newTestSecret("IMPORTED", "uses ${KEY}", "staging", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "uses current-board-value", results[1].ExpandedValue)
+	assert.Equal(t, "uses current-board-value", secrets[1].Value)
 }
 
 func TestExpand_SpecialCharactersInValues(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "SPECIAL", Value: "has$pecial&chars=yes", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "USE", Value: "val=${SPECIAL}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("SPECIAL", "has$pecial&chars=yes", "dev", "/"),
+		newTestSecret("USE", "val=${SPECIAL}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "val=has$pecial&chars=yes", results[1].ExpandedValue)
+	assert.Equal(t, "val=has$pecial&chars=yes", secrets[1].Value)
 }
 
 func TestExpand_ReferenceKeyWithHyphensAndUnderscores(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "my-key_name", Value: "special-key-value", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "USE", Value: "${my-key_name}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("my-key_name", "special-key-value", "dev", "/"),
+		newTestSecret("USE", "${my-key_name}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "special-key-value", results[1].ExpandedValue)
+	assert.Equal(t, "special-key-value", secrets[1].Value)
 }
 
 func TestExpand_AbsoluteRefNotFound(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "prefix-${prod.NONEXISTENT}-suffix", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "prefix-${prod.NONEXISTENT}-suffix", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
-			return []SecretInput{}
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			return []*ProcessedSecret{}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "prefix--suffix", results[0].ExpandedValue)
+	assert.Equal(t, "prefix--suffix", secrets[0].Value)
 }
 
 func TestExpand_NilCallbacks(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${prod.X}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${prod.X}", "dev", "/"),
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "", results[0].ExpandedValue)
+	assert.Equal(t, "", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_TwoLevelPath(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "A", Value: "${prod.folder1.DB_PASSWORD}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "${prod.folder1.DB_PASSWORD}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Len(t, refs, 1)
 			assert.Equal(t, "prod", refs[0].Env)
 			assert.Equal(t, "/folder1", refs[0].Path)
 			assert.Equal(t, "DB_PASSWORD", refs[0].Key)
 
-			return []SecretInput{
-				{ID: newUUID(), Key: "DB_PASSWORD", Value: "super-secret", Env: "prod", Path: "/folder1"},
+			return []*ProcessedSecret{
+				newTestSecret("DB_PASSWORD", "super-secret", "prod", "/folder1"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "super-secret", results[0].ExpandedValue)
+	assert.Equal(t, "super-secret", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_MultipleDeepPaths(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "CONN", Value: "host=${prod.db.config.HOST} port=${prod.db.config.PORT} user=${staging.auth.USER}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("CONN", "host=${prod.db.config.HOST} port=${prod.db.config.PORT} user=${staging.auth.USER}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Len(t, refs, 3)
 
-			return []SecretInput{
-				{ID: newUUID(), Key: "HOST", Value: "db.prod.internal", Env: "prod", Path: "/db/config"},
-				{ID: newUUID(), Key: "PORT", Value: "5432", Env: "prod", Path: "/db/config"},
-				{ID: newUUID(), Key: "USER", Value: "admin", Env: "staging", Path: "/auth"},
+			return []*ProcessedSecret{
+				newTestSecret("HOST", "db.prod.internal", "prod", "/db/config"),
+				newTestSecret("PORT", "5432", "prod", "/db/config"),
+				newTestSecret("USER", "admin", "staging", "/auth"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "host=db.prod.internal port=5432 user=admin", results[0].ExpandedValue)
+	assert.Equal(t, "host=db.prod.internal port=5432 user=admin", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_DeepPathWithNestedAbsolute(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "FINAL", Value: "${prod.level1.level2.FIRST}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("FINAL", "${prod.level1.level2.FIRST}", "dev", "/"),
 	}
 
 	fetchCount := 0
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			fetchCount++
 			if fetchCount == 1 {
 				assert.Equal(t, "/level1/level2", refs[0].Path)
 				assert.Equal(t, "FIRST", refs[0].Key)
-				return []SecretInput{
-					{ID: newUUID(), Key: "FIRST", Value: "got-${staging.nested.path.SECOND}", Env: "prod", Path: "/level1/level2"},
+				return []*ProcessedSecret{
+					newTestSecret("FIRST", "got-${staging.nested.path.SECOND}", "prod", "/level1/level2"),
 				}
 			}
 			if fetchCount == 2 {
 				assert.Equal(t, "/nested/path", refs[0].Path)
 				assert.Equal(t, "SECOND", refs[0].Key)
-				return []SecretInput{
-					{ID: newUUID(), Key: "SECOND", Value: "final-value", Env: "staging", Path: "/nested/path"},
+				return []*ProcessedSecret{
+					newTestSecret("SECOND", "final-value", "staging", "/nested/path"),
 				}
 			}
 			return nil
@@ -621,78 +593,86 @@ func TestExpand_AbsoluteReference_DeepPathWithNestedAbsolute(t *testing.T) {
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
 	assert.Equal(t, 2, fetchCount)
-	assert.Equal(t, "got-final-value", results[0].ExpandedValue)
+	assert.Equal(t, "got-final-value", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_DeepPathMixedWithRelative(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "LOCAL_PREFIX", Value: "myapp", Env: "dev", Path: "/"},
-		{ID: newUUID(), Key: "RESULT", Value: "${LOCAL_PREFIX}-${prod.config.db.DATABASE_NAME}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("LOCAL_PREFIX", "myapp", "dev", "/"),
+		newTestSecret("RESULT", "${LOCAL_PREFIX}-${prod.config.db.DATABASE_NAME}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Equal(t, "prod", refs[0].Env)
 			assert.Equal(t, "/config/db", refs[0].Path)
 			assert.Equal(t, "DATABASE_NAME", refs[0].Key)
 
-			return []SecretInput{
-				{ID: newUUID(), Key: "DATABASE_NAME", Value: "production_db", Env: "prod", Path: "/config/db"},
+			return []*ProcessedSecret{
+				newTestSecret("DATABASE_NAME", "production_db", "prod", "/config/db"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "myapp-production_db", results[1].ExpandedValue)
+	assert.Equal(t, "myapp-production_db", secrets[1].Value)
 }
 
 func TestExpand_AbsoluteReference_SameKeyDifferentPaths(t *testing.T) {
-	secrets := []SecretInput{
-		{ID: newUUID(), Key: "COMBINED", Value: "${prod.us.east.API_KEY}-${prod.eu.west.API_KEY}", Env: "dev", Path: "/"},
+	secrets := []*ProcessedSecret{
+		newTestSecret("COMBINED", "${prod.us.east.API_KEY}-${prod.eu.west.API_KEY}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
-		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 			assert.Len(t, refs, 2)
 
-			return []SecretInput{
-				{ID: newUUID(), Key: "API_KEY", Value: "us-key-123", Env: "prod", Path: "/us/east"},
-				{ID: newUUID(), Key: "API_KEY", Value: "eu-key-456", Env: "prod", Path: "/eu/west"},
+			return []*ProcessedSecret{
+				newTestSecret("API_KEY", "us-key-123", "prod", "/us/east"),
+				newTestSecret("API_KEY", "eu-key-456", "prod", "/eu/west"),
 			}
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
-	results := expander.Secrets()
 
-	assert.Equal(t, "us-key-123-eu-key-456", results[0].ExpandedValue)
+	assert.Equal(t, "us-key-123-eu-key-456", secrets[0].Value)
 }
 
-func TestExpand_LookUp(t *testing.T) {
-	id1, id2 := newUUID(), newUUID()
-	secrets := []SecretInput{
-		{ID: id1, Key: "A", Value: "hello", Env: "dev", Path: "/"},
-		{ID: id2, Key: "B", Value: "${A} world", Env: "dev", Path: "/"},
+func TestExpand_ValueHidden_SkipsExpansion(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "hello", "dev", "/"),
+		{
+			Secret:      &Secret{ID: uuid.New(), Key: "B"},
+			SecretPath:  "/",
+			Environment: "dev",
+			RawValue:    "${A} world",
+			Value:       "<hidden>",
+			ValueHidden: true,
+		},
 	}
 
 	expander := NewSecretExpander(secrets, ExpandOpts{})
 	expander.Expand()
 
-	val1, ok1 := expander.LookUp(id1)
-	assert.True(t, ok1)
-	assert.Equal(t, "hello", val1)
+	assert.Equal(t, "hello", secrets[0].Value)
+	assert.Equal(t, "<hidden>", secrets[1].Value)
+}
 
-	val2, ok2 := expander.LookUp(id2)
-	assert.True(t, ok2)
-	assert.Equal(t, "hello world", val2)
+func TestExpand_RawValuePreserved(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("A", "hello", "dev", "/"),
+		newTestSecret("B", "${A} world", "dev", "/"),
+	}
 
-	_, ok3 := expander.LookUp(newUUID())
-	assert.False(t, ok3)
+	expander := NewSecretExpander(secrets, ExpandOpts{})
+	expander.Expand()
+
+	assert.Equal(t, "${A} world", secrets[1].RawValue)
+	assert.Equal(t, "hello world", secrets[1].Value)
 }

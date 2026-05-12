@@ -3,6 +3,7 @@ package secret
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -25,13 +26,8 @@ const (
 	PersonalOverridesPriority
 )
 
-// MetadataFilterEntry represents a single key-value filter for metadata.
-type MetadataFilterEntry struct {
-	Key   string
-	Value string
-}
-
 // ListSecretsOpts contains options for listing secrets.
+// Note: Imports are always loaded and included in the result.
 type ListSecretsOpts struct {
 	ProjectID                 string
 	Environment               string
@@ -40,11 +36,10 @@ type ListSecretsOpts struct {
 	ViewSecretValue           bool
 	ExpandSecretReferences    bool
 	Recursive                 bool
-	IncludeImports            bool
 	PersonalOverridesBehavior PersonalOverridesBehavior
 	ExpandPersonalOverrides   bool
 	TagSlugs                  []string
-	MetadataFilter            []MetadataFilterEntry
+	MetadataFilter            []MetadataFilter
 	AccessChecker             AccessChecker // nil = skip permission checks
 }
 
@@ -85,15 +80,9 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 
 	var dalFilters *FindByFolderIdsFilter
 	if len(opts.TagSlugs) > 0 || len(opts.MetadataFilter) > 0 {
-		dalFilters = &FindByFolderIdsFilter{}
-		if len(opts.TagSlugs) > 0 {
-			dalFilters.TagSlugs = opts.TagSlugs
-		}
-		if len(opts.MetadataFilter) > 0 {
-			dalFilters.MetadataFilter = make([]MetadataFilter, len(opts.MetadataFilter))
-			for i, mf := range opts.MetadataFilter {
-				dalFilters.MetadataFilter[i] = MetadataFilter(mf)
-			}
+		dalFilters = &FindByFolderIdsFilter{
+			TagSlugs:       opts.TagSlugs,
+			MetadataFilter: opts.MetadataFilter,
 		}
 	}
 
@@ -134,7 +123,8 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 
 	// 8. Expand secret references if requested
 	if opts.ExpandSecretReferences {
-		inputs := buildSecretInputsForExpansion(directSecrets, importedSecrets, chainResult.Imports)
+		// Build expansion list: direct secrets first, then imported in reverse import order
+		allSecrets := buildExpansionSecretList(directSecrets, importedSecrets, chainResult.Imports)
 
 		var expansionUserID *uuid.UUID
 		if opts.ExpandPersonalOverrides &&
@@ -143,14 +133,14 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 			expansionUserID = opts.UserID
 		}
 
-		expander := NewSecretExpander(inputs, ExpandOpts{
+		expander := NewSecretExpander(allSecrets, ExpandOpts{
 			CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
 				if opts.AccessChecker == nil {
 					return true
 				}
 				return opts.AccessChecker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, nil)
 			},
-			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []SecretInput {
+			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
 					projectID:    opts.ProjectID,
 					folderLookup: chainResult.FolderLookup,
@@ -164,8 +154,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		if expander.HasDeniedRefs() {
 			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("ListSecrets: denied refs: %v", expander.DeniedRefs())
 		}
-
-		applyExpandedValues(directSecrets, importedSecrets, expander)
+		// Values are already expanded in place - no need to copy back
 	}
 
 	return &ListSecretsResult{
@@ -252,42 +241,14 @@ func (s *Service) processSecretsWithPermissions(
 		}
 
 		valueHidden := !opts.ViewSecretValue || !canReadValue
-
-		var secretValue, secretComment string
-		if !valueHidden && sec.EncryptedValue.Valid && len(sec.EncryptedValue.V) > 0 {
-			if decrypted, err := opts.CipherPair.Decrypt(sec.EncryptedValue.V); err == nil {
-				secretValue = string(decrypted)
-			}
-		}
-		if valueHidden {
-			secretValue = secretValueHiddenMask
-		}
-
-		if sec.EncryptedComment.Valid && len(sec.EncryptedComment.V) > 0 {
-			if decrypted, err := opts.CipherPair.Decrypt(sec.EncryptedComment.V); err == nil {
-				secretComment = string(decrypted)
-			}
-		}
-
-		var metadata []DecryptedMetadata
-		for _, m := range sec.SecretMetadata {
-			value := m.Value
-			if len(m.EncryptedValue) > 0 {
-				if decrypted, err := opts.CipherPair.Decrypt(m.EncryptedValue); err == nil {
-					value = string(decrypted)
-				}
-			}
-			metadata = append(metadata, DecryptedMetadata{
-				Key:   m.Key,
-				Value: value,
-			})
-		}
+		rawValue, displayValue, secretComment, metadata := decryptSecretFields(sec, opts.CipherPair, valueHidden)
 
 		processed := ProcessedSecret{
 			Secret:            sec,
 			SecretPath:        secretPath,
 			Environment:       envSlug,
-			Value:             secretValue,
+			RawValue:          rawValue,
+			Value:             displayValue,
 			Comment:           secretComment,
 			Metadata:          metadata,
 			ValueHidden:       valueHidden,
@@ -342,78 +303,34 @@ func filterByPersonalOverridesBehavior(secretsList []ProcessedSecret, behavior P
 	}
 }
 
-// buildSecretInputsForExpansion builds SecretInput slice for the expander.
-func buildSecretInputsForExpansion(
+// buildExpansionSecretList builds a priority-ordered list for expansion.
+// Direct secrets come first, then imported secrets in reverse import order.
+// First occurrence of each key wins for relative reference resolution.
+func buildExpansionSecretList(
 	directSecrets []ProcessedSecret,
 	importedSecrets []ProcessedSecret,
 	imports []secretimport.ResolvedImport,
-) []SecretInput {
-	inputs := make([]SecretInput, 0, len(directSecrets)+len(importedSecrets))
+) []*ProcessedSecret {
+	result := make([]*ProcessedSecret, 0, len(directSecrets)+len(importedSecrets))
 
+	// Direct secrets first (highest priority)
 	for i := range directSecrets {
-		sec := &directSecrets[i]
-		if sec.ValueHidden {
-			continue
-		}
-		inputs = append(inputs, SecretInput{
-			ID:         sec.Secret.ID,
-			Key:        sec.Secret.Key,
-			Value:      sec.Value,
-			Env:        sec.Environment,
-			Path:       sec.SecretPath,
-			IsImported: false,
-		})
+		result = append(result, &directSecrets[i])
 	}
 
+	// Group imported secrets by folder for ordering
 	importedByFolderID := make(map[uuid.UUID][]*ProcessedSecret, len(imports))
 	for i := range importedSecrets {
 		sec := &importedSecrets[i]
 		importedByFolderID[sec.Secret.FolderID] = append(importedByFolderID[sec.Secret.FolderID], sec)
 	}
 
-	// Iterate imports in reverse order
+	// Imported secrets in reverse import order (later imports have higher priority)
 	for i := len(imports) - 1; i >= 0; i-- {
-		imp := &imports[i]
-		for _, sec := range importedByFolderID[imp.FolderID] {
-			if sec.ValueHidden {
-				continue
-			}
-			inputs = append(inputs, SecretInput{
-				ID:         sec.Secret.ID,
-				Key:        sec.Secret.Key,
-				Value:      sec.Value,
-				Env:        sec.Environment,
-				Path:       sec.SecretPath,
-				IsImported: true,
-			})
-		}
+		result = append(result, importedByFolderID[imports[i].FolderID]...)
 	}
 
-	return inputs
-}
-
-// applyExpandedValues updates secret values from expander results.
-func applyExpandedValues(
-	directSecrets []ProcessedSecret,
-	importedSecrets []ProcessedSecret,
-	expander *SecretExpander,
-) {
-	for i := range directSecrets {
-		if directSecrets[i].ValueHidden {
-			continue
-		}
-		if expanded, ok := expander.LookUp(directSecrets[i].Secret.ID); ok {
-			directSecrets[i].Value = expanded
-		}
-	}
-	for i := range importedSecrets {
-		if importedSecrets[i].ValueHidden {
-			continue
-		}
-		if expanded, ok := expander.LookUp(importedSecrets[i].Secret.ID); ok {
-			importedSecrets[i].Value = expanded
-		}
-	}
+	return result
 }
 
 // absoluteFetchOpts contains options for fetching absolute secret references.
@@ -425,13 +342,13 @@ type absoluteFetchOpts struct {
 }
 
 // fetchAbsoluteSecrets retrieves secrets for the given absolute references.
-func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts absoluteFetchOpts) []SecretInput {
+func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts absoluteFetchOpts) []*ProcessedSecret {
 	if len(refs) == 0 {
 		return nil
 	}
 
-	// First pass: load envs that aren't in FolderLookup yet
-	var newEnvIDs []uuid.UUID
+	// First pass: collect unique slugs that aren't in FolderLookup yet
+	var missingSlugs []string
 	seenSlugs := make(map[string]bool)
 	for i := range refs {
 		slug := refs[i].Env
@@ -441,19 +358,31 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 		seenSlugs[slug] = true
 
 		if _, ok := opts.folderLookup.GetEnvIDBySlug(slug); !ok {
-			envID, err := s.getEnvBySlug(ctx, opts.projectID, slug)
-			if err == nil {
-				newEnvIDs = append(newEnvIDs, envID)
-			}
+			missingSlugs = append(missingSlugs, slug)
 		}
 	}
 
-	if len(newEnvIDs) > 0 {
-		newLookup, err := s.secretFolderService.LoadProjectFolders(ctx, opts.projectID, newEnvIDs)
+	// Batch fetch missing env IDs in a single query
+	if len(missingSlugs) > 0 {
+		slugToEnvID, err := s.getEnvsBySlugs(ctx, opts.projectID, missingSlugs)
 		if err != nil {
+			s.logger.WarnContext(ctx, "fetchAbsoluteSecrets: failed to get envs by slugs", slog.Any("error", err))
 			return nil
 		}
-		opts.folderLookup.Merge(newLookup)
+
+		var newEnvIDs []uuid.UUID
+		for _, envID := range slugToEnvID {
+			newEnvIDs = append(newEnvIDs, envID)
+		}
+
+		if len(newEnvIDs) > 0 {
+			newLookup, err := s.secretFolderService.LoadProjectFolders(ctx, opts.projectID, newEnvIDs)
+			if err != nil {
+				s.logger.WarnContext(ctx, "fetchAbsoluteSecrets: failed to load project folders", slog.String("projectID", opts.projectID), slog.Any("error", err))
+				return nil
+			}
+			opts.folderLookup.Merge(newLookup)
+		}
 	}
 
 	// Second pass: build location map
@@ -496,10 +425,11 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 
 	rawSecrets, err := s.FindByFolderIds(ctx, folderIDs, opts.userID, nil)
 	if err != nil {
+		s.logger.WarnContext(ctx, "fetchAbsoluteSecrets: failed to find secrets by folder IDs", slog.Any("error", err))
 		return nil
 	}
 
-	var result []SecretInput
+	var result []*ProcessedSecret
 	for i := range rawSecrets {
 		sec := &rawSecrets[i]
 		loc, ok := folderToLocation[sec.FolderID]
@@ -512,22 +442,18 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 			continue
 		}
 
-		var secretValue string
-		if sec.EncryptedValue.Valid && len(sec.EncryptedValue.V) > 0 {
-			if decrypted, err := opts.cipherPair.Decrypt(sec.EncryptedValue.V); err == nil {
-				secretValue = string(decrypted)
-			}
-		}
-
 		envSlug, _ := opts.folderLookup.GetEnvSlug(loc.envID)
+		rawValue, displayValue, comment, metadata := decryptSecretFields(sec, opts.cipherPair, false)
 
-		result = append(result, SecretInput{
-			ID:         sec.ID,
-			Key:        sec.Key,
-			Value:      secretValue,
-			Env:        envSlug,
-			Path:       loc.path,
-			IsImported: true,
+		result = append(result, &ProcessedSecret{
+			Secret:      sec,
+			SecretPath:  loc.path,
+			Environment: envSlug,
+			RawValue:    rawValue,
+			Value:       displayValue,
+			Comment:     comment,
+			Metadata:    metadata,
+			ValueHidden: false,
 		})
 	}
 

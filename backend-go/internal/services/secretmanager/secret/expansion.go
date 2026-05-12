@@ -3,8 +3,6 @@ package secret
 import (
 	"regexp"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
 const maxExpansionDepth = 10
@@ -12,47 +10,42 @@ const maxExpansionDepth = 10
 var interpolationRegex = regexp.MustCompile(`\${([a-zA-Z0-9-_.]+)}`)
 
 // SecretExpander handles secret reference expansion.
+// It mutates ProcessedSecret.Value in place with expanded values.
 type SecretExpander struct {
-	inputSecrets   []SecretInput
+	secrets        []*ProcessedSecret
 	opts           ExpandOpts
-	localLookup    map[string]*SecretInput
-	absoluteLookup map[string]map[string]*SecretInput
-	currentValues  []string
+	localLookup    map[string]*ProcessedSecret            // key -> secret (first occurrence wins)
+	absoluteLookup map[string]map[string]*ProcessedSecret // "env:path" -> key -> secret
 	fullyExpanded  []bool
-	deniedRefs     map[string]struct{} // "env:path:key" -> denied by permission check
-	requestedRefs  map[string]struct{} // "env:path:key" -> already requested (avoid infinite loop)
-	idToIndex      map[uuid.UUID]int   // secret ID -> index in inputSecrets
+	deniedRefs     map[string]struct{} // cacheKey -> denied by permission check
+	requestedRefs  map[string]struct{} // cacheKey -> already requested (avoid infinite loop)
 }
 
 // NewSecretExpander creates an expander from priority-ordered secrets.
 // First occurrence of each key wins for relative reference resolution.
-func NewSecretExpander(secrets []SecretInput, opts ExpandOpts) *SecretExpander {
+// Call Expand() to mutate the secrets' Value fields in place.
+func NewSecretExpander(secrets []*ProcessedSecret, opts ExpandOpts) *SecretExpander {
 	expander := &SecretExpander{
-		inputSecrets:   secrets,
+		secrets:        secrets,
 		opts:           opts,
-		localLookup:    make(map[string]*SecretInput),
-		absoluteLookup: make(map[string]map[string]*SecretInput),
-		currentValues:  make([]string, len(secrets)),
+		localLookup:    make(map[string]*ProcessedSecret),
+		absoluteLookup: make(map[string]map[string]*ProcessedSecret),
 		fullyExpanded:  make([]bool, len(secrets)),
 		deniedRefs:     make(map[string]struct{}),
 		requestedRefs:  make(map[string]struct{}),
-		idToIndex:      make(map[uuid.UUID]int),
 	}
 
-	for i := range secrets {
-		if _, exists := expander.localLookup[secrets[i].Key]; !exists {
-			expander.localLookup[secrets[i].Key] = &secrets[i]
+	for _, sec := range secrets {
+		if _, exists := expander.localLookup[sec.Secret.Key]; !exists {
+			expander.localLookup[sec.Secret.Key] = sec
 		}
-		expander.currentValues[i] = secrets[i].Value
-		expander.idToIndex[secrets[i].ID] = i
 	}
 
 	return expander
 }
 
-// Expand performs the full expansion.
+// Expand performs the full expansion, mutating each secret's Value field.
 // It iteratively expands references, fetching absolute refs as needed.
-// After calling Expand, use Secrets() or LookUp() to retrieve results.
 func (e *SecretExpander) Expand() {
 	for {
 		needed := e.expandPass()
@@ -62,19 +55,19 @@ func (e *SecretExpander) Expand() {
 
 		var allowed []AbsoluteSecretRef
 		for _, ref := range needed {
-			key := ref.Env + ":" + ref.Path + ":" + ref.Key
+			cacheKey := ref.CacheKey()
 
 			// Skip if already requested (prevents infinite loop for not-found refs)
-			if _, requested := e.requestedRefs[key]; requested {
+			if _, requested := e.requestedRefs[cacheKey]; requested {
 				continue
 			}
 
 			if e.opts.CanAccessAbsolute == nil || e.opts.CanAccessAbsolute(ref) {
 				allowed = append(allowed, ref)
-				e.requestedRefs[key] = struct{}{}
+				e.requestedRefs[cacheKey] = struct{}{}
 			} else {
-				e.deniedRefs[key] = struct{}{}
-				e.requestedRefs[key] = struct{}{}
+				e.deniedRefs[cacheKey] = struct{}{}
+				e.requestedRefs[cacheKey] = struct{}{}
 			}
 		}
 
@@ -88,21 +81,6 @@ func (e *SecretExpander) Expand() {
 
 	e.replaceDeniedRefs()
 	e.replaceNotFoundRefs()
-}
-
-// Secrets returns all expanded secrets in the same order as input.
-func (e *SecretExpander) Secrets() []ExpandedSecret {
-	return e.results()
-}
-
-// LookUp returns the expanded value for a specific secret ID.
-// Returns empty string and false if the ID is not found.
-func (e *SecretExpander) LookUp(id uuid.UUID) (string, bool) {
-	idx, ok := e.idToIndex[id]
-	if !ok {
-		return "", false
-	}
-	return e.currentValues[idx], true
 }
 
 // DeniedRefs returns the set of absolute references that were denied due to permissions.
@@ -125,21 +103,20 @@ func (e *SecretExpander) HasDeniedRefs() bool {
 func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 	neededRefs := make(map[string]AbsoluteSecretRef)
 
-	for i := range e.inputSecrets {
-		if e.fullyExpanded[i] {
+	for i, sec := range e.secrets {
+		if e.fullyExpanded[i] || sec.ValueHidden {
 			continue
 		}
 
-		expanded, needed := e.expandValue(e.currentValues[i], make(map[string]struct{}), 0)
-		e.currentValues[i] = expanded
+		expanded, needed := e.expandValue(sec.Value, make(map[string]struct{}), 0)
+		sec.Value = expanded
 
 		if len(needed) == 0 && !hasReferences(expanded) {
 			e.fullyExpanded[i] = true
 		}
 
 		for _, ref := range needed {
-			key := ref.Env + ":" + ref.Path + ":" + ref.Key
-			neededRefs[key] = ref
+			neededRefs[ref.CacheKey()] = ref
 		}
 	}
 
@@ -152,6 +129,15 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 
 // expandValue recursively expands references in a value.
 // Returns the expanded string and any absolute refs that couldn't be resolved.
+//
+// Cycle resolution: When a circular reference is detected (e.g., A references itself),
+// one level of substitution occurs before the cycle breaks. For example:
+//   - A = "prefix-${A}-suffix"
+//   - Expands to "prefix-prefix--suffix-suffix" (not "prefix--suffix")
+//
+// This happens because the outer ${A} resolves to the inner expansion result,
+// where the cycle was detected and replaced with empty string. This is intentional
+// behavior matching the Node.js implementation.
 func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, depth int) (string, []AbsoluteSecretRef) {
 	if depth > maxExpansionDepth {
 		return value, nil
@@ -169,15 +155,28 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 		refKey := match[1]
 		parts := strings.Split(refKey, ".")
 
-		var resolvedSecret *SecretInput
+		var resolvedValue string
 		var secretID string
+		var found bool
 
 		if len(parts) == 1 {
-			resolvedSecret = e.localLookup[parts[0]]
-			if resolvedSecret != nil {
-				secretID = resolvedSecret.Env + ":" + resolvedSecret.Path + ":" + resolvedSecret.Key
+			// Relative reference: ${KEY}
+			found = true // Always replace relative refs (with empty if not found)
+			if sec := e.localLookup[parts[0]]; sec != nil {
+				secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
+
+				if _, cyclic := visited[secretID]; !cyclic {
+					visited[secretID] = struct{}{}
+					expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+					delete(visited, secretID)
+					resolvedValue = expandedValue
+					neededRefs = append(neededRefs, moreNeeded...)
+				}
+				// else: cyclic, resolvedValue stays ""
 			}
+			// else: not found, resolvedValue stays "" (missing ref becomes empty)
 		} else {
+			// Absolute reference: ${env.path.KEY}
 			env := parts[0]
 			secretKey := parts[len(parts)-1]
 			pathParts := parts[1 : len(parts)-1]
@@ -186,62 +185,56 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 				path = "/" + strings.Join(pathParts, "/")
 			}
 
-			secretID = env + ":" + path + ":" + secretKey
+			ref := AbsoluteSecretRef{Env: env, Path: path, Key: secretKey}
+			secretID = ref.CacheKey()
 			locationKey := env + ":" + path
 
 			if secrets, ok := e.absoluteLookup[locationKey]; ok {
-				if s, ok := secrets[secretKey]; ok {
-					resolvedSecret = s
+				if sec, ok := secrets[secretKey]; ok {
+					found = true
+
+					if _, cyclic := visited[secretID]; !cyclic {
+						visited[secretID] = struct{}{}
+						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+						delete(visited, secretID)
+						resolvedValue = expandedValue
+						neededRefs = append(neededRefs, moreNeeded...)
+					}
+					// else: cyclic, resolvedValue stays ""
 				}
 			}
 
-			if resolvedSecret == nil {
-				neededRefs = append(neededRefs, AbsoluteSecretRef{
-					Env:  env,
-					Path: path,
-					Key:  secretKey,
-				})
+			if !found {
+				neededRefs = append(neededRefs, ref)
 				continue
 			}
 		}
 
-		resolvedValue := ""
-		if resolvedSecret != nil {
-			if _, cyclic := visited[secretID]; !cyclic {
-				visited[secretID] = struct{}{}
-				expandedValue, moreNeeded := e.expandValue(resolvedSecret.Value, visited, depth+1)
-				delete(visited, secretID)
-				resolvedValue = expandedValue
-				neededRefs = append(neededRefs, moreNeeded...)
-			} else {
-				// Circular reference detected - use empty to break the cycle
-				resolvedValue = ""
-			}
+		if found {
+			value = strings.ReplaceAll(value, syntax, resolvedValue)
 		}
-
-		value = strings.ReplaceAll(value, syntax, resolvedValue)
 	}
 
 	return value, neededRefs
 }
 
 // addAbsoluteSecrets adds fetched absolute secrets to the lookup.
-func (e *SecretExpander) addAbsoluteSecrets(secrets []SecretInput) {
-	for i := range secrets {
-		s := &secrets[i]
-		locationKey := s.Env + ":" + s.Path
+func (e *SecretExpander) addAbsoluteSecrets(secrets []*ProcessedSecret) {
+	for _, sec := range secrets {
+		locationKey := sec.Environment + ":" + sec.SecretPath
 
 		if e.absoluteLookup[locationKey] == nil {
-			e.absoluteLookup[locationKey] = make(map[string]*SecretInput)
+			e.absoluteLookup[locationKey] = make(map[string]*ProcessedSecret)
 		}
 
-		if _, exists := e.absoluteLookup[locationKey][s.Key]; !exists {
-			e.absoluteLookup[locationKey][s.Key] = s
+		if _, exists := e.absoluteLookup[locationKey][sec.Secret.Key]; !exists {
+			e.absoluteLookup[locationKey][sec.Secret.Key] = sec
 		}
 	}
 
+	// Reset expansion state for secrets that still have references
 	for i := range e.fullyExpanded {
-		if hasReferences(e.currentValues[i]) {
+		if hasReferences(e.secrets[i].Value) {
 			e.fullyExpanded[i] = false
 		}
 	}
@@ -254,14 +247,12 @@ func (e *SecretExpander) replaceDeniedRefs() {
 
 // replaceNotFoundRefs replaces absolute refs that were requested but not found with empty string.
 func (e *SecretExpander) replaceNotFoundRefs() {
-	// Build set of refs that were requested but not found in absoluteLookup
 	notFound := make(map[string]struct{})
 	for key := range e.requestedRefs {
 		if _, denied := e.deniedRefs[key]; denied {
-			continue // Already handled by replaceDeniedRefs
+			continue
 		}
 		// Parse key back to check if it's in absoluteLookup
-		// key format: "env:path:secretKey"
 		parts := strings.SplitN(key, ":", 3)
 		if len(parts) != 3 {
 			continue
@@ -270,7 +261,7 @@ func (e *SecretExpander) replaceNotFoundRefs() {
 		locationKey := env + ":" + path
 		if secrets, ok := e.absoluteLookup[locationKey]; ok {
 			if _, found := secrets[secretKey]; found {
-				continue // Found, not missing
+				continue
 			}
 		}
 		notFound[key] = struct{}{}
@@ -280,8 +271,12 @@ func (e *SecretExpander) replaceNotFoundRefs() {
 
 // replaceAbsoluteRefsWith replaces absolute refs matching the given set with the replacement string.
 func (e *SecretExpander) replaceAbsoluteRefsWith(refs map[string]struct{}, replacement string) {
-	for i := range e.currentValues {
-		matches := interpolationRegex.FindAllStringSubmatch(e.currentValues[i], -1)
+	for _, sec := range e.secrets {
+		if sec.ValueHidden {
+			continue
+		}
+
+		matches := interpolationRegex.FindAllStringSubmatch(sec.Value, -1)
 		for _, match := range matches {
 			syntax := match[0]
 			refKey := match[1]
@@ -296,25 +291,13 @@ func (e *SecretExpander) replaceAbsoluteRefsWith(refs map[string]struct{}, repla
 					path = "/" + strings.Join(pathParts, "/")
 				}
 
-				key := env + ":" + path + ":" + secretKey
-				if _, match := refs[key]; match {
-					e.currentValues[i] = strings.ReplaceAll(e.currentValues[i], syntax, replacement)
+				ref := AbsoluteSecretRef{Env: env, Path: path, Key: secretKey}
+				if _, match := refs[ref.CacheKey()]; match {
+					sec.Value = strings.ReplaceAll(sec.Value, syntax, replacement)
 				}
 			}
 		}
 	}
-}
-
-// results builds the final output.
-func (e *SecretExpander) results() []ExpandedSecret {
-	results := make([]ExpandedSecret, len(e.inputSecrets))
-	for i, secret := range e.inputSecrets {
-		results[i] = ExpandedSecret{
-			ID:            secret.ID,
-			ExpandedValue: e.currentValues[i],
-		}
-	}
-	return results
 }
 
 func hasReferences(value string) bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -131,7 +132,8 @@ type ProcessedSecret struct {
 	Secret            *Secret
 	SecretPath        string
 	Environment       string
-	Value             string
+	RawValue          string // original decrypted value, never mutated after set
+	Value             string // final value (= RawValue initially, expanded if requested)
 	Comment           string
 	Metadata          []DecryptedMetadata
 	ValueHidden       bool
@@ -251,20 +253,19 @@ func (s *Service) FindByFolderIds(
 		}
 
 		for i := range filters.MetadataFilter {
-			where.Add(`EXISTS (SELECT 1 FROM resource_metadata metaSub WHERE metaSub."secretId" = secret.id AND metaSub.key = @metaKey` + string(rune('0'+i)) + " AND metaSub.value = @metaValue" + string(rune('0'+i)) + " AND metaSub.value IS NOT NULL)")
+			idx := strconv.Itoa(i)
+			where.Add(`EXISTS (SELECT 1 FROM resource_metadata metaSub WHERE metaSub."secretId" = secret.id AND metaSub.key = @metaKey` + idx + " AND metaSub.value = @metaValue" + idx + " AND metaSub.value IS NOT NULL)")
 		}
 	}
 
-	orderBy := "secret.id ASC"
-	if filters != nil && filters.OrderBy != nil && *filters.OrderBy == SecretsOrderByName {
+	// Build ORDER BY clause with orthogonal column and direction selection
+	orderCol, orderDir := "secret.key", "ASC"
+	if filters != nil {
 		if filters.OrderDirection != nil && *filters.OrderDirection == OrderByDirectionDESC {
-			orderBy = "secret.key DESC"
-		} else {
-			orderBy = "secret.key ASC"
+			orderDir = "DESC"
 		}
-	} else if filters != nil && filters.OrderDirection != nil && *filters.OrderDirection == OrderByDirectionDESC {
-		orderBy = "secret.id DESC"
 	}
+	orderBy := orderCol + " " + orderDir
 
 	limitClause := ""
 	if filters != nil && filters.Limit != nil {
@@ -314,8 +315,9 @@ func (s *Service) FindByFolderIds(
 			args["offset"] = offset
 		}
 		for i, meta := range filters.MetadataFilter {
-			args["metaKey"+string(rune('0'+i))] = meta.Key
-			args["metaValue"+string(rune('0'+i))] = meta.Value
+			idx := strconv.Itoa(i)
+			args["metaKey"+idx] = meta.Key
+			args["metaValue"+idx] = meta.Value
 		}
 	}
 
@@ -498,4 +500,74 @@ func (s *Service) getEnvBySlug(ctx context.Context, projectID, slug string) (uui
 	var envID uuid.UUID
 	err := s.db.Replica().QueryRow(ctx, query, args).Scan(&envID)
 	return envID, err
+}
+
+// getEnvsBySlugs fetches environment IDs for multiple slugs in a single query.
+// Returns a map of slug -> envID for found environments.
+func (s *Service) getEnvsBySlugs(ctx context.Context, projectID string, slugs []string) (map[string]uuid.UUID, error) {
+	if len(slugs) == 0 {
+		return nil, nil
+	}
+
+	query := `SELECT id, slug FROM project_environments WHERE "projectId" = @projectID AND slug = ANY(@slugs)`
+	args := pgx.NamedArgs{"projectID": projectID, "slugs": slugs}
+
+	rows, err := s.db.Replica().Query(ctx, query, args)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]uuid.UUID)
+	for rows.Next() {
+		var envID uuid.UUID
+		var slug string
+		if err := rows.Scan(&envID, &slug); err != nil {
+			return nil, err
+		}
+		result[slug] = envID
+	}
+
+	return result, rows.Err()
+}
+
+// --- Decryption Helpers ---
+
+// decryptSecretFields decrypts the value, comment, and metadata of a secret.
+// If valueHidden is true, the displayValue is replaced with the hidden mask.
+// Returns rawValue (actual decrypted), displayValue (masked if hidden), comment, and metadata.
+func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata) {
+	// Decrypt value
+	if sec.EncryptedValue.Valid && len(sec.EncryptedValue.V) > 0 {
+		if decrypted, err := cipherPair.Decrypt(sec.EncryptedValue.V); err == nil {
+			rawValue = string(decrypted)
+		}
+	}
+	displayValue = rawValue
+	if valueHidden {
+		displayValue = secretValueHiddenMask
+	}
+
+	// Decrypt comment
+	if sec.EncryptedComment.Valid && len(sec.EncryptedComment.V) > 0 {
+		if decrypted, err := cipherPair.Decrypt(sec.EncryptedComment.V); err == nil {
+			comment = string(decrypted)
+		}
+	}
+
+	// Decrypt metadata
+	for _, m := range sec.SecretMetadata {
+		metaValue := m.Value
+		if len(m.EncryptedValue) > 0 {
+			if decrypted, err := cipherPair.Decrypt(m.EncryptedValue); err == nil {
+				metaValue = string(decrypted)
+			}
+		}
+		metadata = append(metadata, DecryptedMetadata{
+			Key:   m.Key,
+			Value: metaValue,
+		})
+	}
+
+	return rawValue, displayValue, comment, metadata
 }
