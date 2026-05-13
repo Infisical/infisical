@@ -5,12 +5,11 @@ import {
   faCheck,
   faCheckCircle,
   faFilter,
-  faMagnifyingGlass,
   faRotate,
-  faSearch,
   faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -24,18 +23,24 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuTrigger,
-  EmptyState,
+  DropdownMenuTrigger
+} from "@app/components/v2";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
   Table,
-  TableContainer,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
   getUserTablePreference,
@@ -248,24 +253,24 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
 
   return (
     <div>
-      <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search PKI syncs..."
-          className="flex-1"
-        />
+      <div className="mb-4 flex items-center gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search PKI syncs..."
+          />
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              ariaLabel="Filter PKI syncs"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
+              aria-label="Filter PKI syncs"
+              variant={isTableFiltered ? "project" : "outline"}
+              size="md"
+              className={twMerge(isTableFiltered && "text-primary")}
             >
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
@@ -343,84 +348,97 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-2" />
-              <Th className="w-1/2">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(PkiSyncsOrderBy.Name)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(PkiSyncsOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Destination
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(PkiSyncsOrderBy.Destination)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(PkiSyncsOrderBy.Destination)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Destination)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4 min-w-42">
-                <div className="flex items-center">
-                  Status
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(PkiSyncsOrderBy.Status)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(PkiSyncsOrderBy.Status)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Status)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {filteredPkiSyncs.slice(offset, perPage * page).map((pkiSync) => (
-              <PkiSyncRow
-                key={pkiSync.id}
-                pkiSync={pkiSync}
-                onDelete={handleDelete}
-                onTriggerSyncCertificates={handleTriggerSync}
-                onTriggerImportCertificates={handleTriggerImportCertificates}
-                onTriggerRemoveCertificates={handleTriggerRemoveCertificates}
-                onToggleEnable={handleToggleEnableSync}
-                applicationName={applicationName}
-              />
-            ))}
-          </TBody>
-        </Table>
-        {Boolean(filteredPkiSyncs.length) && (
-          <Pagination
-            count={filteredPkiSyncs.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!filteredPkiSyncs?.length && (
-          <EmptyState
-            title={pkiSyncs.length ? "No syncs match search..." : "No syncs configured yet"}
-            icon={pkiSyncs.length ? faSearch : faRotate}
-          />
-        )}
-      </TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-2" />
+            <TableHead className="w-1/2">
+              <div className="flex items-center">
+                Name
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  className={getClassName(PkiSyncsOrderBy.Name)}
+                  aria-label="sort"
+                  onClick={() => handleSort(PkiSyncsOrderBy.Name)}
+                >
+                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Name)} />
+                </IconButton>
+              </div>
+            </TableHead>
+            <TableHead className="w-1/4">
+              <div className="flex items-center">
+                Destination
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  className={getClassName(PkiSyncsOrderBy.Destination)}
+                  aria-label="sort"
+                  onClick={() => handleSort(PkiSyncsOrderBy.Destination)}
+                >
+                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Destination)} />
+                </IconButton>
+              </div>
+            </TableHead>
+            <TableHead className="w-1/4 min-w-42">
+              <div className="flex items-center">
+                Status
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  className={getClassName(PkiSyncsOrderBy.Status)}
+                  aria-label="sort"
+                  onClick={() => handleSort(PkiSyncsOrderBy.Status)}
+                >
+                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Status)} />
+                </IconButton>
+              </div>
+            </TableHead>
+            <TableHead className="w-5" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredPkiSyncs.slice(offset, perPage * page).map((pkiSync) => (
+            <PkiSyncRow
+              key={pkiSync.id}
+              pkiSync={pkiSync}
+              onDelete={handleDelete}
+              onTriggerSyncCertificates={handleTriggerSync}
+              onTriggerImportCertificates={handleTriggerImportCertificates}
+              onTriggerRemoveCertificates={handleTriggerRemoveCertificates}
+              onToggleEnable={handleToggleEnableSync}
+              applicationName={applicationName}
+            />
+          ))}
+          {!filteredPkiSyncs?.length && (
+            <TableRow>
+              <td colSpan={5} className="p-0">
+                <Empty className="border-none">
+                  <EmptyHeader>
+                    <EmptyTitle>
+                      {pkiSyncs.length ? "No syncs match search..." : "No syncs configured yet"}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {pkiSyncs.length
+                        ? "Try adjusting your search or filters"
+                        : "Create a sync to get started"}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </td>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      {Boolean(filteredPkiSyncs.length) && (
+        <Pagination
+          count={filteredPkiSyncs.length}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={handlePerPageChange}
+        />
+      )}
       <DeletePkiSyncModal
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSync", isOpen)}
         isOpen={popUp.deleteSync.isOpen}
