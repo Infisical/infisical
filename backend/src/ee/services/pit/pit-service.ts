@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -348,6 +348,11 @@ export const pitServiceFactory = ({
     message?: string;
     environment: string;
   }) => {
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder with ID ${folderId} not found` });
+    }
+
     const { permission: userPermission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -359,7 +364,10 @@ export const pitServiceFactory = ({
 
     ForbiddenError.from(userPermission).throwUnlessCan(
       ProjectPermissionCommitsActions.PerformRollback,
-      ProjectPermissionSub.Commits
+      subject(ProjectPermissionSub.Commits, {
+        environment,
+        secretPath: folderWithPath.path
+      })
     );
 
     const latestCommit = await folderCommitService.getLatestCommit({

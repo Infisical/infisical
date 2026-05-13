@@ -475,6 +475,11 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type CommitsSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type SecretRotationsSubjectFields = {
   environment?: string;
   secretPath?: string;
@@ -673,7 +678,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
+  | [
+      ProjectPermissionCommitsActions,
+      ProjectPermissionSub.Commits | (ForcedSubject<ProjectPermissionSub.Commits> & CommitsSubjectFields)
+    ]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
@@ -897,6 +905,23 @@ const PkiSyncConditionSchema = z
   .partial();
 
 const SecretImportConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const CommitsConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1730,9 +1755,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Commits).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCommitsActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: CommitsConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z

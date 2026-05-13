@@ -17,7 +17,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -2771,9 +2770,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    const canRead = permission.can(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, {
+        environment: folder.environment.envSlug,
+        secretPath: folderWithPath.path
+      })
+    );
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
@@ -3828,9 +3831,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    const canRead = permission.can(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, {
+        environment: environment.slug,
+        secretPath
+      })
+    );
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 

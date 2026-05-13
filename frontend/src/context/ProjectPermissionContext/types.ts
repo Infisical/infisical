@@ -360,7 +360,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
-  | ProjectPermissionSub.Groups;
+  | ProjectPermissionSub.Groups
+  | ProjectPermissionSub.Commits;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
