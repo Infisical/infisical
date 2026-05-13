@@ -265,7 +265,7 @@ export const ApplicationDetailsByIDPage = () => {
       <DeleteActionModal
         isOpen={isDeleteOpen}
         title={`Delete ${application.name}?`}
-        subTitle="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in the project but lose their Application tag."
+        subTitle="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in Certificate Manager but lose their Application tag."
         onChange={(open) => setIsDeleteOpen(open)}
         deleteKey="confirm"
         onDeleteApproved={handleDelete}

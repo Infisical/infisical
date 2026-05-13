@@ -233,9 +233,7 @@ export const IdentityTab = withProjectPermission(
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </CardTitle>
             <CardDescription>
-              {isCertManager
-                ? "Create and manage machine identities"
-                : `Create and manage ${productLabel.toLowerCase()} machine identities`}
+              {`Create and manage ${productLabel.toLowerCase()} machine identities`}
             </CardDescription>
             <CardAction>
               <ProjectPermissionCan

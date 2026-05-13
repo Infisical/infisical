@@ -137,7 +137,7 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
                 label="Certificate"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Only active code signing certificates in the project are shown"
+                helperText="Only active code signing certificates in Certificate Manager are shown"
               >
                 <FilterableSelect<CertOption>
                   isLoading={isCertsLoading}
@@ -149,7 +149,7 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
                   }}
                   placeholder="Search by common name or SAN..."
                   noOptionsMessage={() =>
-                    "No active code signing certificates found in the project"
+                    "No active code signing certificates found in Certificate Manager"
                   }
                   maxMenuHeight={200}
                 />

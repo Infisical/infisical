@@ -216,6 +216,11 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
+      await server.services.pkiApplicationMembership.removeUsersFromApplicationMemberships({
+        projectId,
+        emails: req.body.emails,
+        usernames: req.body.usernames
+      });
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -256,6 +261,11 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
+      await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
+        projectId,
+        actorKind: "user",
+        actorId: userId
+      });
       const { membership } = await server.services.membershipUser.deleteMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },

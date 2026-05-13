@@ -10,7 +10,6 @@ import {
   CardAction,
   CardContent,
   CardHeader,
-  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -59,9 +58,9 @@ export const ApplicationsPage = () => {
       return (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>No applications yet</EmptyTitle>
+            <EmptyTitle>No existing applications</EmptyTitle>
             <EmptyDescription>
-              Create an Application to attach Profiles and grant access to a team.
+              Create an application to issue certificates for a workload
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -158,14 +157,13 @@ export const ApplicationsPage = () => {
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
               title="Applications"
-              description="Issue certificates, configure enrollment, and manage lifecycle automation for your services."
+              description="Issue certificates and manage lifecycle automation for your services."
             />
 
             <Card>
               <CardHeader>
-                <CardTitle>Applications</CardTitle>
                 {canCreateApplication ? (
-                  <CardAction>
+                  <CardAction className="ml-auto">
                     <Button variant="project" onClick={() => handlePopUpOpen("application")}>
                       <PlusIcon />
                       Create Application

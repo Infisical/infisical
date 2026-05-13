@@ -51,17 +51,17 @@ const APP_ROLES: AppRoleOption[] = [
   {
     slug: "admin",
     name: "Admin",
-    description: "Full management of this application and its members."
+    description: "Manage members, profiles, and approval policies for this application."
   },
   {
     slug: "operator",
     name: "Operator",
-    description: "Issue certificates and submit approval requests."
+    description: "Issue certificates and submit approval requests for this application."
   },
   {
     slug: "auditor",
     name: "Auditor",
-    description: "Read-only access to this application."
+    description: "View certificates, members, and activity on this application."
   }
 ];
 

@@ -217,6 +217,11 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
+      await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
+        projectId,
+        actorKind: "group",
+        actorId: req.params.groupId
+      });
       const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
         permission: req.permission,
         selector: { groupId: req.params.groupId },

@@ -4,17 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FormControl,
-  Modal,
-  ModalContent,
-  Select,
-  SelectItem,
-  TextArea
-} from "@app/components/v2";
-import { useProject } from "@app/context";
-import { useGetCert, useImportCertificate, useListWorkspacePkiCollections } from "@app/hooks/api";
+import { Button, FormControl, Modal, ModalContent, TextArea } from "@app/components/v2";
+import { useGetCert, useImportCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
@@ -22,8 +13,7 @@ import { CertificateContent } from "./CertificateContent";
 const schema = z.object({
   certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
   privateKeyPem: z.string().trim().min(1, "Private Key PEM is required"),
-  chainPem: z.string().trim().min(1, "Certificate Chain PEM is required"),
-  collectionId: z.string().optional()
+  chainPem: z.string().trim().min(1, "Certificate Chain PEM is required")
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -46,14 +36,9 @@ type TCertificateDetails = {
 
 export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
-  const { currentProject } = useProject();
   const { data: cert } = useGetCert(
     (popUp?.certificateImport?.data as { serialNumber: string })?.serialNumber || ""
   );
-
-  const { data } = useListWorkspacePkiCollections({
-    projectId: currentProject?.id || ""
-  });
 
   const { mutateAsync: importCertificate } = useImportCertificate();
 
@@ -66,17 +51,11 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     resolver: zodResolver(schema)
   });
 
-  const onFormSubmit = async ({
-    certificatePem,
-    privateKeyPem,
-    chainPem,
-    collectionId
-  }: FormData) => {
+  const onFormSubmit = async ({ certificatePem, privateKeyPem, chainPem }: FormData) => {
     const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
       certificatePem,
       privateKeyPem,
       chainPem,
-      pkiCollectionId: collectionId,
       applicationId
     });
 
@@ -107,33 +86,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
       <ModalContent title={`${cert ? "View" : "Import"} Certificate`}>
         {!certificateDetails ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
-            <Controller
-              control={control}
-              name="collectionId"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Certificate Collection"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isOptional
-                  className="mt-4"
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                    isDisabled={Boolean(cert)}
-                  >
-                    {(data?.collections || []).map(({ id, name }) => (
-                      <SelectItem value={id} key={`pki-collection-${id}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
             <Controller
               control={control}
               defaultValue=""

@@ -127,7 +127,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
           <DialogDescription>
             {editing
               ? "Update this Application's name and description. Changing the name will invalidate any deep links."
-              : "A logical grouping for a service or workload that needs certificates. Each Application has its own members, profiles, and policies."}
+              : "A logical grouping for a service or workload that needs certificates."}
           </DialogDescription>
         </DialogHeader>
 
@@ -141,6 +141,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <FieldContent>
                   <Input {...field} placeholder="my-service" />
                 </FieldContent>
+                <FieldDescription>Lowercase letters, numbers, and hyphens.</FieldDescription>
                 {error ? <FieldError>{error.message}</FieldError> : null}
               </Field>
             )}
@@ -179,9 +180,9 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Select profiles to attach..."
                     />
                   </FieldContent>
-                  {!profilesLoading && !profileOptions.length && (
-                    <FieldDescription className="text-yellow-500">
-                      No certificate profiles available.{" "}
+                  <FieldDescription>
+                    Select the profiles this application can issue certificates from.{" "}
+                    {!profilesLoading && !profileOptions.length && (
                       <Link
                         to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
                         params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
@@ -190,8 +191,8 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                       >
                         Create one in Settings
                       </Link>
-                    </FieldDescription>
-                  )}
+                    )}
+                  </FieldDescription>
                   {error ? <FieldError>{error.message}</FieldError> : null}
                 </Field>
               )}

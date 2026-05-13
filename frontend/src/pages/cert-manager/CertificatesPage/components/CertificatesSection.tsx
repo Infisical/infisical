@@ -144,7 +144,7 @@ export const CertificatesSection = ({
         </CardTitle>
         <CardDescription>
           {applicationId
-            ? "View, filter, and manage certificates issued through this Application."
+            ? "Filter, view, and manage certificates across this application."
             : "View, filter, and manage all certificates."}
         </CardDescription>
         {applicationId && canImportIntoApplication && (
@@ -206,7 +206,7 @@ export const CertificatesSection = ({
           isOpen={popUp.deleteCertificate.isOpen}
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-          } from the project?`}
+          }?`}
           onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>

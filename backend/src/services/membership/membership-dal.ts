@@ -54,5 +54,22 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findResourceMembershipsForActor };
+  const findResourceMembershipsForGroup = async (
+    { projectId, resourceType, groupId }: { projectId: string; resourceType: string; groupId: string },
+    tx?: Knex
+  ): Promise<TMemberships[]> => {
+    try {
+      const conn = tx || db.replicaNode();
+      return (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.scopeResourceType`, resourceType)
+        .where(`${TableName.Membership}.actorGroupId`, groupId)
+        .select(`${TableName.Membership}.*`)) as TMemberships[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find resource memberships for group" });
+    }
+  };
+
+  return { ...orm, findResourceMembershipsForActor, findResourceMembershipsForGroup };
 };

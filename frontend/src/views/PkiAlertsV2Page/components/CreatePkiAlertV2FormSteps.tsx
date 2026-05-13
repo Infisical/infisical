@@ -416,9 +416,10 @@ export const CreatePkiAlertV2FormSteps = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm text-bunker-300">Daily Alerts</span>
+                    <span className="text-sm text-bunker-300">Repeat daily until expiry</span>
                     <p className="text-xs text-bunker-400">
-                      Send notifications daily from the alert threshold until expiry
+                      Send a reminder every day from the alert threshold until the certificate
+                      expires.
                     </p>
                   </div>
                   <Switch
@@ -1000,7 +1001,7 @@ export const CreatePkiAlertV2FormSteps = ({
                 </GenericFieldLabel>
               )}
               {watchedEventType === PkiAlertEventTypeV2.EXPIRATION && (
-                <GenericFieldLabel label="Daily Alerts">
+                <GenericFieldLabel label="Repeat daily until expiry">
                   {watch("notificationConfig.enableDailyNotification") ? "Enabled" : "Disabled"}
                 </GenericFieldLabel>
               )}

@@ -114,7 +114,13 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
             roles: z.array(MembershipRoleSchema),
             lastLoginAuthMethod: z.string().nullable().optional(),
             lastLoginTime: z.date().nullable().optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true }).extend({
+            identity: IdentitiesSchema.pick({
+              name: true,
+              id: true,
+              orgId: true,
+              projectId: true,
+              hasDeleteProtection: true
+            }).extend({
               authMethods: z.array(z.string()),
               metadata: z
                 .object({
@@ -242,6 +248,11 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
+      await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
+        projectId,
+        actorKind: "identity",
+        actorId: req.params.identityId
+      });
       const { membership } = await server.services.membershipIdentity.deleteMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },

@@ -307,18 +307,13 @@ export const approvalPolicyServiceFactory = ({
   ) => {
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = await $resolveScope(scope, inputScopeId);
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
+    await $assertCanManagePolicy(
       projectId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
-    }
+      dbScopeType,
+      dbScopeId,
+      actor,
+      ResourcePermissionApprovalPolicyActions.Read
+    );
 
     const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId, {
       scopeType: dbScopeType,

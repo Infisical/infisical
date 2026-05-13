@@ -4,16 +4,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { CertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
+  GenericFieldLabel,
   Modal,
   ModalContent,
   Pagination,
   Skeleton,
-  Tab,
   Table,
   TableContainer,
-  TabList,
-  TabPanel,
-  Tabs,
   TBody,
   Td,
   Th,
@@ -45,8 +42,22 @@ interface Props {
   alertId?: string;
 }
 
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+const SectionHeader = ({ title }: { title: string }) => (
+  <h3 className="border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-100">
+    {title}
+  </h3>
+);
+
 export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) => {
-  const [activeTab, setActiveTab] = useState("overview");
   const [certificatesPage, setCertificatesPage] = useState(1);
   const certificatesPerPage = 10;
 
@@ -55,6 +66,9 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
     { enabled: !!alertId && isOpen }
   );
 
+  const showMatchingCertificates =
+    alert?.eventType && alert.eventType !== PkiAlertEventTypeV2.ISSUANCE;
+
   const { data: certificatesData, isLoading: isLoadingCertificates } =
     useGetPkiAlertV2MatchingCertificates(
       {
@@ -62,41 +76,21 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
         limit: certificatesPerPage,
         offset: (certificatesPage - 1) * certificatesPerPage
       },
-      { enabled: !!alertId && isOpen }
+      { enabled: !!alertId && isOpen && !!showMatchingCertificates }
     );
 
   useEffect(() => {
-    if (isOpen && alertId) {
-      setActiveTab("overview");
-      setCertificatesPage(1);
-    }
-  }, [isOpen, alertId]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setActiveTab("overview");
-      setCertificatesPage(1);
-    }
+    if (!isOpen) setCertificatesPage(1);
   }, [isOpen]);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  };
 
   if (isLoadingAlert) {
     return (
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent title="Certificate Alert Details" className="max-w-6xl">
-          <div className="space-y-6">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-64 w-full" />
+        <ModalContent title="Certificate Alert Details" className="max-w-3xl">
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-40 w-full" />
           </div>
         </ModalContent>
       </Modal>
@@ -106,8 +100,8 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
   if (!alert) {
     return (
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent title="Certificate Alert Details" className="max-w-6xl">
-          <div className="py-8 text-center text-gray-400">Alert not found</div>
+        <ModalContent title="Certificate Alert Details" className="max-w-3xl">
+          <p className="py-8 text-center text-sm text-mineshaft-400">Alert not found.</p>
         </ModalContent>
       </Modal>
     );
@@ -115,218 +109,187 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Certificate Alert Details" className="max-w-6xl">
+      <ModalContent
+        title="Certificate Alert Details"
+        className={showMatchingCertificates ? "max-w-5xl" : "max-w-3xl"}
+      >
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-200">{alert.name}</h2>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold text-mineshaft-100">{alert.name}</p>
+              {alert.description && (
+                <p className="mt-1 text-sm text-mineshaft-400">{alert.description}</p>
+              )}
+            </div>
             <Badge variant={alert.enabled ? "success" : "neutral"}>
               {alert.enabled ? "Enabled" : "Disabled"}
             </Badge>
           </div>
 
-          {alert.description && <p className="text-gray-300">{alert.description}</p>}
-
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabList>
-              <Tab value="overview">Overview</Tab>
-              {alert.eventType !== PkiAlertEventTypeV2.ISSUANCE && (
-                <Tab value="certificates">Matching Certificates</Tab>
+          <div className="space-y-3">
+            <SectionHeader title="Basic Information" />
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
+              <GenericFieldLabel label="Event Type">
+                {formatEventType(alert.eventType)}
+              </GenericFieldLabel>
+              {alert.eventType === PkiAlertEventTypeV2.EXPIRATION && (
+                <>
+                  <GenericFieldLabel label="Alert Before">
+                    {formatAlertBefore(alert.alertBefore, undefined)}
+                  </GenericFieldLabel>
+                  <GenericFieldLabel label="Repeat daily until expiry">
+                    {alert.notificationConfig?.enableDailyNotification ? "Enabled" : "Disabled"}
+                  </GenericFieldLabel>
+                </>
               )}
-            </TabList>
+              <GenericFieldLabel label="Created">{formatDate(alert.createdAt)}</GenericFieldLabel>
+            </div>
+          </div>
 
-            <TabPanel value="overview">
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-200">Basic Information</h3>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <div>
-                      <div className="mb-1 block text-sm font-medium text-gray-400">Event Type</div>
-                      <span className="text-gray-300">{formatEventType(alert.eventType)}</span>
-                    </div>
+          <div className="space-y-3">
+            <SectionHeader title="Filter Rules" />
+            {(alert.filters || []).length === 0 ? (
+              <p className="text-sm text-mineshaft-400/70 italic">No filter rules configured.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {(alert.filters || []).map((filter) => {
+                  const field = filter.field.replace(/_/g, " ");
+                  const operator = filter.operator.replace(/_/g, " ");
+                  const value = Array.isArray(filter.value)
+                    ? filter.value.join(", ")
+                    : String(filter.value);
+                  return (
+                    <li
+                      key={`filter-${filter.field}-${filter.operator}-${String(filter.value)}`}
+                      className="text-sm text-mineshaft-100 capitalize"
+                    >
+                      {field} {operator} {value}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
-                    {alert.eventType === PkiAlertEventTypeV2.EXPIRATION && (
-                      <>
-                        <div>
-                          <div className="mb-1 block text-sm font-medium text-gray-400">
-                            Alert Before
-                          </div>
-                          <span className="text-gray-300">
-                            {formatAlertBefore(alert.alertBefore, "Not set")}
-                          </span>
-                        </div>
-
-                        <div>
-                          <div className="mb-1 block text-sm font-medium text-gray-400">
-                            Daily Alerts
-                          </div>
-                          <span className="text-gray-300">
-                            {alert.notificationConfig?.enableDailyNotification
-                              ? "Enabled"
-                              : "Disabled"}
-                          </span>
-                        </div>
-                      </>
-                    )}
-
-                    <div>
-                      <div className="mb-1 block text-sm font-medium text-gray-400">Created</div>
-                      <span className="text-gray-300">{formatDate(alert.createdAt)}</span>
+          <div className="space-y-3">
+            <SectionHeader title="Notification Channels" />
+            {(alert.channels || []).length === 0 ? (
+              <p className="text-sm text-mineshaft-400/70 italic">
+                No notification channels configured.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(alert.channels || []).map((channel) => (
+                  <div
+                    key={channel.id}
+                    className="flex items-start gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-800/40 p-3"
+                  >
+                    <FontAwesomeIcon
+                      icon={getChannelIcon(channel.channelType)}
+                      className="mt-0.5 shrink-0 text-mineshaft-400"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-mineshaft-100">
+                          {getChannelDisplayName(channel.channelType)}
+                        </span>
+                        {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
+                          (channel.config as TPkiAlertChannelConfigWebhookResponse)
+                            ?.hasSigningSecret && (
+                            <Tooltip content="Signed webhook">
+                              <FontAwesomeIcon
+                                icon={faKey}
+                                className="text-xs text-mineshaft-400"
+                              />
+                            </Tooltip>
+                          )}
+                        {!channel.enabled && <Badge variant="neutral">Disabled</Badge>}
+                      </div>
+                      {channel.channelType === PkiAlertChannelTypeV2.EMAIL &&
+                        (() => {
+                          const config = channel.config as TPkiAlertChannelConfigEmail;
+                          const recipients = config?.recipients || [];
+                          const count = recipients.length;
+                          if (count === 0) {
+                            return <p className="mt-1 text-xs text-mineshaft-400">No recipients</p>;
+                          }
+                          const displayed = recipients.slice(0, 3).join(", ");
+                          const text = count <= 3 ? displayed : `${displayed} +${count - 3} more`;
+                          return count > 3 ? (
+                            <Tooltip content={recipients.join(", ")}>
+                              <p className="mt-1 cursor-help text-xs text-mineshaft-400">{text}</p>
+                            </Tooltip>
+                          ) : (
+                            <p className="mt-1 text-xs text-mineshaft-400">{text}</p>
+                          );
+                        })()}
+                      {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK && (
+                        <p className="mt-1 truncate text-xs text-mineshaft-400">
+                          {getWebhookHostname(
+                            (channel.config as TPkiAlertChannelConfigWebhookResponse).url
+                          )}
+                        </p>
+                      )}
+                      {channel.channelType === PkiAlertChannelTypeV2.SLACK && (
+                        <p className="mt-1 text-xs text-mineshaft-400">Slack webhook configured</p>
+                      )}
+                      {channel.channelType === PkiAlertChannelTypeV2.PAGERDUTY && (
+                        <p className="mt-1 text-xs text-mineshaft-400">
+                          PagerDuty integration configured
+                        </p>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-gray-200">Filter Rules</h3>
-                  {(alert.filters || []).length === 0 ? (
-                    <p className="text-gray-400">No filter rules configured</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {(alert.filters || []).map((filter) => {
-                        const formatFilterText = () => {
-                          const field = filter.field.replace(/_/g, " ");
-                          const operator = filter.operator.replace(/_/g, " ");
-                          const value = Array.isArray(filter.value)
-                            ? filter.value.join(", ")
-                            : String(filter.value);
-
-                          return `${field} ${operator} ${value}`;
-                        };
-
-                        return (
-                          <div
-                            key={`filter-${filter.field}-${filter.operator}-${String(filter.value)}`}
-                          >
-                            <div className="text-sm text-gray-200 capitalize">
-                              {formatFilterText()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-gray-200">Notification Channels</h3>
-                  {(alert.channels || []).length > 0 ? (
-                    <div className="space-y-3">
-                      {(alert.channels || []).map((channel) => (
-                        <div
-                          key={channel.id}
-                          className="flex items-start gap-3 rounded-md border border-mineshaft-600 p-3"
-                        >
-                          <FontAwesomeIcon
-                            icon={getChannelIcon(channel.channelType)}
-                            className="mt-1 shrink-0 text-mineshaft-400"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-mineshaft-100">
-                                {getChannelDisplayName(channel.channelType)}
-                              </span>
-                              {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
-                                (channel.config as TPkiAlertChannelConfigWebhookResponse)
-                                  ?.hasSigningSecret && (
-                                  <Tooltip content="Signed webhook">
-                                    <FontAwesomeIcon
-                                      icon={faKey}
-                                      className="text-xs text-mineshaft-400"
-                                    />
-                                  </Tooltip>
-                                )}
-                              {!channel.enabled && (
-                                <Badge variant="neutral" className="text-xs">
-                                  Disabled
-                                </Badge>
-                              )}
-                            </div>
-                            {channel.channelType === PkiAlertChannelTypeV2.EMAIL && (
-                              <div className="mt-1 text-sm text-mineshaft-400">
-                                {(() => {
-                                  const config = channel.config as TPkiAlertChannelConfigEmail;
-                                  const recipients = config?.recipients || [];
-                                  const count = recipients.length;
-                                  if (count === 0) return "No recipients";
-                                  const displayEmails = recipients.slice(0, 3);
-                                  const displayText =
-                                    count <= 3
-                                      ? displayEmails.join(", ")
-                                      : `${displayEmails.join(", ")} +${count - 3} more`;
-
-                                  if (count > 3) {
-                                    return (
-                                      <Tooltip content={recipients.join(", ")}>
-                                        <span className="cursor-help">{displayText}</span>
-                                      </Tooltip>
-                                    );
-                                  }
-                                  return displayText;
-                                })()}
-                              </div>
-                            )}
-                            {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK && (
-                              <div className="mt-1 truncate text-sm text-mineshaft-400">
-                                {getWebhookHostname(
-                                  (channel.config as TPkiAlertChannelConfigWebhookResponse).url
-                                )}
-                              </div>
-                            )}
-                            {channel.channelType === PkiAlertChannelTypeV2.SLACK && (
-                              <div className="mt-1 truncate text-sm text-mineshaft-400">
-                                Slack webhook configured
-                              </div>
-                            )}
-                            {channel.channelType === PkiAlertChannelTypeV2.PAGERDUTY && (
-                              <div className="mt-1 truncate text-sm text-mineshaft-400">
-                                PagerDuty integration configured
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-400">No notification channels configured</p>
-                  )}
-                </div>
+                ))}
               </div>
-            </TabPanel>
+            )}
+          </div>
 
-            <TabPanel value="certificates">
-              <div className="space-y-4">
-                <TableContainer>
-                  <Table>
-                    <THead>
-                      <Tr>
-                        <Th className="w-1/2">SAN / CN</Th>
-                        <Th className="w-1/6">Status</Th>
-                        <Th className="w-1/6">Not Before</Th>
-                        <Th className="w-1/6">Not After</Th>
-                      </Tr>
-                    </THead>
-                    <TBody>
-                      {(() => {
-                        if (isLoadingCertificates) {
-                          return Array.from({ length: 5 }, (_, index) => (
-                            <Tr key={`skeleton-row-${index}`}>
-                              <Td>
-                                <Skeleton className="h-4 w-32" />
-                              </Td>
-                              <Td>
-                                <Skeleton className="h-4 w-16" />
-                              </Td>
-                              <Td>
-                                <Skeleton className="h-4 w-24" />
-                              </Td>
-                              <Td>
-                                <Skeleton className="h-4 w-24" />
-                              </Td>
-                            </Tr>
-                          ));
-                        }
-
-                        if (certificatesData?.certificates?.length) {
-                          return certificatesData.certificates.map((cert) => (
+          {showMatchingCertificates && (
+            <div className="space-y-3">
+              <SectionHeader title="Matching Certificates" />
+              <TableContainer>
+                <Table>
+                  <THead>
+                    <Tr>
+                      <Th className="w-1/2">SAN / CN</Th>
+                      <Th className="w-1/6">Status</Th>
+                      <Th className="w-1/6">Not Before</Th>
+                      <Th className="w-1/6">Not After</Th>
+                    </Tr>
+                  </THead>
+                  <TBody>
+                    {(() => {
+                      if (isLoadingCertificates) {
+                        return Array.from({ length: 5 }, (_, index) => (
+                          <Tr key={`skeleton-row-${index}`}>
+                            <Td>
+                              <Skeleton className="h-4 w-32" />
+                            </Td>
+                            <Td>
+                              <Skeleton className="h-4 w-16" />
+                            </Td>
+                            <Td>
+                              <Skeleton className="h-4 w-24" />
+                            </Td>
+                            <Td>
+                              <Skeleton className="h-4 w-24" />
+                            </Td>
+                          </Tr>
+                        ));
+                      }
+                      if (certificatesData?.certificates?.length) {
+                        return certificatesData.certificates.map((cert) => {
+                          const now = new Date();
+                          const isExpired = new Date(cert.notAfter) < now;
+                          // eslint-disable-next-line no-nested-ternary
+                          const statusVariant = isExpired
+                            ? "danger"
+                            : cert.status === "active"
+                              ? "success"
+                              : "neutral";
+                          const statusLabel = isExpired ? "Expired" : cert.status;
+                          return (
                             <Tr key={cert.id} className="group h-10">
                               <Td className="max-w-0">
                                 <div className="flex items-center gap-2">
@@ -338,34 +301,12 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                                     maxLength={48}
                                     fallback="—"
                                   />
-                                  {cert.enrollmentType === "ca" && (
-                                    <Badge variant="info" className="shrink-0 text-xs">
-                                      CA
-                                    </Badge>
-                                  )}
+                                  {cert.enrollmentType === "ca" && <Badge variant="info">CA</Badge>}
                                 </div>
                               </Td>
                               <Td>
-                                <Badge
-                                  variant={(() => {
-                                    const now = new Date();
-                                    const expirationDate = new Date(cert.notAfter);
-                                    const isExpired = expirationDate < now;
-
-                                    if (isExpired) return "danger";
-                                    if (cert.status === "active") return "success";
-                                    return "neutral";
-                                  })()}
-                                  className="capitalize"
-                                >
-                                  {(() => {
-                                    const now = new Date();
-                                    const expirationDate = new Date(cert.notAfter);
-                                    const isExpired = expirationDate < now;
-
-                                    if (isExpired) return "Expired";
-                                    return cert.status;
-                                  })()}
+                                <Badge variant={statusVariant} className="capitalize">
+                                  {statusLabel}
                                 </Badge>
                               </Td>
                               <Td>
@@ -379,35 +320,33 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                                   : "-"}
                               </Td>
                             </Tr>
-                          ));
-                        }
-
-                        return (
-                          <Tr>
-                            <Td colSpan={4} className="py-8 text-center text-gray-400">
-                              No certificates will match this alert&apos;s criteria in the future
-                            </Td>
-                          </Tr>
-                        );
-                      })()}
-                    </TBody>
-                  </Table>
-                </TableContainer>
-
-                {(certificatesData?.total || 0) > 0 && (
-                  <div className="flex justify-center">
-                    <Pagination
-                      count={certificatesData?.total || 0}
-                      page={certificatesPage}
-                      onChangePage={setCertificatesPage}
-                      perPage={certificatesPerPage}
-                      onChangePerPage={() => {}}
-                    />
-                  </div>
-                )}
-              </div>
-            </TabPanel>
-          </Tabs>
+                          );
+                        });
+                      }
+                      return (
+                        <Tr>
+                          <Td colSpan={4} className="py-6 text-center text-sm text-mineshaft-400">
+                            No certificates currently match this alert&apos;s criteria.
+                          </Td>
+                        </Tr>
+                      );
+                    })()}
+                  </TBody>
+                </Table>
+              </TableContainer>
+              {(certificatesData?.total || 0) > certificatesPerPage && (
+                <div className="flex justify-center">
+                  <Pagination
+                    count={certificatesData?.total || 0}
+                    page={certificatesPage}
+                    onChangePage={setCertificatesPage}
+                    perPage={certificatesPerPage}
+                    onChangePerPage={() => {}}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </ModalContent>
     </Modal>

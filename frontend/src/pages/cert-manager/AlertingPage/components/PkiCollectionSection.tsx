@@ -63,7 +63,7 @@ export const PkiCollectionSection = () => {
         isOpen={popUp.deletePkiCollection.isOpen}
         title={`Are you sure you want to remove the alert ${
           (popUp?.deletePkiCollection?.data as { name: string })?.name || ""
-        } from the project?`}
+        }?`}
         onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

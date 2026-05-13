@@ -1,11 +1,19 @@
 import { useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
@@ -23,10 +31,6 @@ export const CertificatePoliciesTab = () => {
   const [selectedPolicy, setSelectedPolicy] = useState<TCertificatePolicy | null>(null);
 
   const deletePolicy = useDeleteCertificatePolicy();
-
-  const handleCreatePolicy = () => {
-    setIsCreateModalOpen(true);
-  };
 
   const handleEditPolicy = (policy: TCertificatePolicy) => {
     setSelectedPolicy(policy);
@@ -53,38 +57,38 @@ export const CertificatePoliciesTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-x-2">
-            <h2 className="text-xl font-semibold text-mineshaft-100">Certificate Policies</h2>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/policies" />
-          </div>
-          <p className="text-sm text-bunker-300">
-            Define certificate policies, validation rules, and attribute constraints for certificate
-            issuance
-          </p>
-        </div>
-
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificatePolicyActions.Create}
-          a={ProjectPermissionSub.CertificatePolicies}
-        >
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              colorSchema="primary"
-              type="button"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={handleCreatePolicy}
-            >
-              Create Policy
-            </Button>
-          )}
-        </ProjectPermissionCan>
-      </div>
-
-      <PolicyList onEditPolicy={handleEditPolicy} onDeletePolicy={handleDeletePolicy} />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Certificate Policies
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/policies" />
+        </CardTitle>
+        <CardDescription>
+          The rules applied when certificates are issued. Policies set things like which algorithms
+          are allowed, how the certificate can be used, how long it stays valid, and what identity
+          information it includes.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificatePolicyActions.Create}
+            a={ProjectPermissionSub.CertificatePolicies}
+          >
+            {(isAllowed) => (
+              <Button
+                variant="project"
+                isDisabled={!isAllowed}
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                <PlusIcon />
+                Create Policy
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <PolicyList onEditPolicy={handleEditPolicy} onDeletePolicy={handleDeletePolicy} />
+      </CardContent>
 
       <CreatePolicyModal
         isOpen={isCreateModalOpen}
@@ -117,6 +121,6 @@ export const CertificatePoliciesTab = () => {
           />
         </>
       )}
-    </div>
+    </Card>
   );
 };

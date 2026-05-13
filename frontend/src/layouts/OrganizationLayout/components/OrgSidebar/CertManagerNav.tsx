@@ -27,7 +27,6 @@ import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { CERT_DISCOVERY_SUBMENU, CERT_MANAGER_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const CertManagerNav = ({
@@ -92,8 +91,7 @@ export const CertManagerNav = ({
       label: "Discovery",
       icon: Search,
       pathSuffix: "discovery",
-      activeMatch: /\/discovery/,
-      submenu: CERT_DISCOVERY_SUBMENU
+      activeMatch: /\/discovery/
     },
     {
       label: "Approval Requests",
@@ -139,8 +137,7 @@ export const CertManagerNav = ({
       label: "Access Control",
       icon: Shield,
       pathSuffix: "access-management",
-      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      submenu: CERT_MANAGER_ACCESS_CONTROL_SUBMENU
+      activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     {

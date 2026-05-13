@@ -47,7 +47,7 @@ const CERT_MANAGER_ROLES = [
   {
     slug: "member",
     name: "Member",
-    description: "Limited read/write access in Certificate Manager"
+    description: "Access scoped to the Applications and Code Signers they've been added to"
   }
 ];
 

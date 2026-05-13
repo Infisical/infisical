@@ -16,6 +16,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -36,14 +37,27 @@ import {
 } from "./pki-application-types";
 
 type TPkiApplicationMembershipServiceFactoryDep = {
-  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
-  membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById" | "find">;
+  membershipDAL: Pick<
+    TMembershipDALFactory,
+    | "create"
+    | "findById"
+    | "find"
+    | "delete"
+    | "deleteById"
+    | "transaction"
+    | "findResourceMembershipsForActor"
+    | "findResourceMembershipsForGroup"
+  >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject"
+  >;
 };
 
 export type TPkiApplicationMembershipServiceFactory = ReturnType<typeof pkiApplicationMembershipServiceFactory>;
@@ -493,23 +507,19 @@ export const pkiApplicationMembershipServiceFactory = ({
     const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
 
-    if (kind !== ApplicationMemberKind.Identity) {
-      const blocking = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
-        projectId,
-        scopeType: ApprovalPolicyScope.PkiApplication,
-        scopeId: applicationId,
-        userId: kind === ApplicationMemberKind.User ? (membership.actorUserId ?? undefined) : undefined,
-        groupId: kind === ApplicationMemberKind.Group ? (membership.actorGroupId ?? undefined) : undefined
-      });
-      if (blocking.length > 0) {
-        const policyNames = blocking.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `Cannot remove this ${kind} from the application, they are listed as an approver on the following approval ${blocking.length === 1 ? "policy" : "policies"}: ${policyNames}. Remove them from the policy first.`
-        });
-      }
-    }
-
     await membershipDAL.transaction(async (tx) => {
+      if (kind !== ApplicationMemberKind.Identity) {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PkiApplication,
+            scopeId: applicationId,
+            userId: kind === ApplicationMemberKind.User ? (membership.actorUserId ?? undefined) : undefined,
+            groupId: kind === ApplicationMemberKind.Group ? (membership.actorGroupId ?? undefined) : undefined
+          },
+          tx
+        );
+      }
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
     });
@@ -611,5 +621,150 @@ export const pkiApplicationMembershipServiceFactory = ({
     return { memberships, skipped, unresolved };
   };
 
-  return { addMember, addUserMembers, listMembers, updateMemberRole, removeMember };
+  const listApplicationsForActor = async ({
+    projectId,
+    actorKind,
+    actorId
+  }: {
+    projectId: string;
+    actorKind: "user" | "identity" | "group";
+    actorId: string;
+  }): Promise<Array<{ id: string; name: string }>> => {
+    const memberships =
+      actorKind === "group"
+        ? await membershipDAL.findResourceMembershipsForGroup({
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            groupId: actorId
+          })
+        : await membershipDAL.findResourceMembershipsForActor({
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            actorType: actorKind === "user" ? ActorType.USER : ActorType.IDENTITY,
+            actorId
+          });
+
+    if (!memberships.length) return [];
+
+    const applicationIds = Array.from(
+      new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+    );
+    if (!applicationIds.length) return [];
+
+    const applications = await pkiApplicationDAL.find({ $in: { id: applicationIds } });
+    return applications.map((app) => ({ id: app.id, name: app.name }));
+  };
+
+  const removeActorFromApplicationMemberships = async ({
+    projectId,
+    actorKind,
+    actorId
+  }: {
+    projectId: string;
+    actorKind: "user" | "identity" | "group";
+    actorId: string;
+  }): Promise<{
+    applications: Array<{ id: string; name: string }>;
+    approvalPolicies: Array<{ id: string; name: string }>;
+  }> => {
+    const memberships =
+      actorKind === "group"
+        ? await membershipDAL.findResourceMembershipsForGroup({
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            groupId: actorId
+          })
+        : await membershipDAL.findResourceMembershipsForActor({
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            actorType: actorKind === "user" ? ActorType.USER : ActorType.IDENTITY,
+            actorId
+          });
+
+    const directMemberships =
+      actorKind === "group"
+        ? memberships
+        : memberships.filter((m) => (actorKind === "user" ? m.actorUserId === actorId : m.actorIdentityId === actorId));
+
+    const applicationIds = Array.from(
+      new Set(directMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+    );
+    const applications = applicationIds.length ? await pkiApplicationDAL.find({ $in: { id: applicationIds } }) : [];
+    const applicationsTouched = applications.map((app) => ({ id: app.id, name: app.name }));
+
+    let approvalPoliciesTouched: Array<{ id: string; name: string }> = [];
+
+    await membershipDAL.transaction(async (tx) => {
+      if (actorKind !== "identity" && applicationIds.length > 0) {
+        for (const applicationId of applicationIds) {
+          // eslint-disable-next-line no-await-in-loop
+          const affected = await approvalPolicyDAL.deleteStepApproversBySubject(
+            {
+              projectId,
+              scopeType: ApprovalPolicyScope.PkiApplication,
+              scopeId: applicationId,
+              userId: actorKind === "user" ? actorId : undefined,
+              groupId: actorKind === "group" ? actorId : undefined
+            },
+            tx
+          );
+          approvalPoliciesTouched = approvalPoliciesTouched.concat(affected);
+        }
+        const seen = new Set<string>();
+        approvalPoliciesTouched = approvalPoliciesTouched.filter((p) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+      }
+
+      if (directMemberships.length > 0) {
+        const membershipIds = directMemberships.map((m) => m.id);
+        await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
+        await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
+      }
+    });
+
+    return { applications: applicationsTouched, approvalPolicies: approvalPoliciesTouched };
+  };
+
+  const removeUsersFromApplicationMemberships = async ({
+    projectId,
+    emails,
+    usernames
+  }: {
+    projectId: string;
+    emails: string[];
+    usernames: string[];
+  }): Promise<void> => {
+    if (!emails.length && !usernames.length) return;
+
+    const users = await userDAL.find({
+      $in: {
+        ...(emails.length ? { email: emails } : {}),
+        ...(usernames.length ? { username: usernames } : {})
+      }
+    });
+    if (!users.length) return;
+
+    for (const user of users) {
+      // eslint-disable-next-line no-await-in-loop
+      await removeActorFromApplicationMemberships({
+        projectId,
+        actorKind: "user",
+        actorId: user.id
+      });
+    }
+  };
+
+  return {
+    addMember,
+    addUserMembers,
+    listMembers,
+    updateMemberRole,
+    removeMember,
+    listApplicationsForActor,
+    removeActorFromApplicationMemberships,
+    removeUsersFromApplicationMemberships
+  };
 };

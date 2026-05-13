@@ -3,24 +3,23 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionCertificateProfileActions
 } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { CaSection, ExternalCaSection } from "../CertificateAuthoritiesPage/components";
 import { CertificatePoliciesTab, CertificateProfilesTab } from "../PoliciesPage/components";
+import { AppConnectionsTab } from "./components/AppConnectionsTab";
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 
 export const SettingsPage = () => {
   const { orgId, projectId } = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
-  const { currentProject } = useProject();
   const activeTab = search.selectedTab ?? "certificate-profiles";
 
   return (
@@ -100,10 +99,7 @@ export const SettingsPage = () => {
               I={ProjectPermissionAppConnectionActions.Read}
               a={ProjectPermissionSub.AppConnections}
             >
-              <AppConnectionsTable
-                projectId={currentProject.id}
-                projectType={currentProject.type}
-              />
+              <AppConnectionsTab />
             </ProjectPermissionCan>
           </TabPanel>
 

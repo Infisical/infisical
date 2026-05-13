@@ -140,7 +140,7 @@ export const PkiSyncRow = ({
               });
             }}
             className={twMerge(
-              "group h-10 transition-colors duration-100 hover:bg-mineshaft-700",
+              "group h-14 transition-colors duration-100 hover:bg-mineshaft-700 [&>td]:py-2",
               syncStatus === PkiSyncStatus.Failed && "bg-red/5 hover:bg-red/10",
               isAllowed ? "cursor-pointer" : "cursor-not-allowed"
             )}

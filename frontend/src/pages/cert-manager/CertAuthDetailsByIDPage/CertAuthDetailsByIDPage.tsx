@@ -80,11 +80,12 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
       params: {
         orgId: currentOrg.id,
         projectId
-      }
+      },
+      search: { selectedTab: "certificate-authorities" }
     });
   };
 
@@ -101,11 +102,12 @@ const Page = () => {
             isAllowed ? (
               <div className="mx-auto mb-6 w-full max-w-8xl">
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
                   params={{
                     orgId: currentOrg.id,
                     projectId
                   }}
+                  search={{ selectedTab: "certificate-authorities" }}
                   className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
                 >
                   <FontAwesomeIcon icon={faChevronLeft} />
@@ -176,7 +178,7 @@ const Page = () => {
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
-        } from the project?`}
+        }?`}
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"

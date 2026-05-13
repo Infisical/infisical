@@ -68,7 +68,7 @@ export const DashboardPage = () => {
           <PageHeader
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
-            description="At-a-glance view of your certificate estate."
+            description="See the overall state of your certificates at a glance."
           />
           <CertManagerAdminOnly>
             <ProjectPermissionCan

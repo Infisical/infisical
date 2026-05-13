@@ -219,8 +219,8 @@ export const CertificateRequestsSection = ({
         <CardTitle>Certificate Requests</CardTitle>
         <CardDescription>
           {applicationId
-            ? "View, filter, and manage certificate issuance requests against this application"
-            : "Track certificate issuance requests across this project."}
+            ? "View, filter and manage certificate issuance requests against this application"
+            : "Track certificate issuance requests across Certificate Manager."}
         </CardDescription>
         <CardAction>
           <Tooltip
@@ -238,7 +238,7 @@ export const CertificateRequestsSection = ({
                 disabled={!canRequestCertificate}
               >
                 <FontAwesomeIcon icon={faPlus} className="mr-1.5 size-3.5" />
-                Request
+                Request Certificate
               </Button>
             </span>
           </Tooltip>
@@ -454,6 +454,7 @@ export const CertificateRequestsSection = ({
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
         applicationId={applicationId}
+        applicationName={applicationName}
       />
     </Card>
   );

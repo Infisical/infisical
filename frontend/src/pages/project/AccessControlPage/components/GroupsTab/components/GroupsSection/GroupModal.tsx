@@ -145,10 +145,16 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   ) : (
     <div className="flex flex-col space-y-4">
       <div className="text-sm">
-        All groups in your organization have already been added to this project.
+        Every group in your organization is already added. To add another group, create one at the
+        organization level first.
       </div>
-      <Link to={"/organizations/$orgId/access-management" as const} params={{ orgId }}>
-        <Button variant="outline_bg">Create a new group</Button>
+      <Link
+        to={"/organizations/$orgId/access-management" as const}
+        params={{ orgId }}
+        search={{ selectedTab: "groups" }}
+        className="self-end"
+      >
+        <Button variant="outline_bg">Go to organization groups -&gt;</Button>
       </Link>
     </div>
   );

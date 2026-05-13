@@ -4,7 +4,7 @@ import RE2 from "re2";
 
 import { ForbiddenRequestError } from "@app/lib/errors";
 
-const ACCESS_PATH_RE = new RE2("/(memberships|identities|identity-memberships|groups|roles)(/|$|\\?)");
+const ACCESS_PATH_RE = new RE2("/(memberships|identity-memberships|groups|roles)(/|$|\\?)");
 const PROJECT_ROUTE_PREFIX_RE = new RE2("^/api/v[12]/(projects|workspace)/");
 
 export const blockCertManagerProjectAccess: FastifyPluginAsync = fp(async (server) => {

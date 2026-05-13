@@ -15,7 +15,7 @@ const CERT_MANAGER_CUSTOM_ROLE_ERROR =
 
 const CERT_MANAGER_ROLE_DESCRIPTIONS: Record<string, string> = {
   [ProjectMembershipRole.Admin]: "Full administrative access over Certificate Manager",
-  [ProjectMembershipRole.Member]: "Limited read/write role in Certificate Manager"
+  [ProjectMembershipRole.Member]: "Access scoped to the Applications and Code Signers they've been added to"
 };
 
 const overrideDescription = <T extends { slug: string; description?: string | null }>(role: T): T => ({

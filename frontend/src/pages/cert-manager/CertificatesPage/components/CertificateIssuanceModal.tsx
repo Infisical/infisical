@@ -135,13 +135,15 @@ type Props = {
   ) => void;
   profileId?: string;
   applicationId?: string;
+  applicationName?: string;
 };
 
 export const CertificateIssuanceModal = ({
   popUp,
   handlePopUpToggle,
   profileId,
-  applicationId
+  applicationId,
+  applicationName
 }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
@@ -306,7 +308,8 @@ export const CertificateIssuanceModal = ({
                 orgId: currentOrg.id,
                 projectId: currentProject.id,
                 certificateId: response.certificate.certificateId
-              }
+              },
+              ...(applicationName && { search: { fromApplication: applicationName } })
             });
           }
         } else if (
@@ -582,7 +585,8 @@ export const CertificateIssuanceModal = ({
                       {availableProfiles.length === 0 && applicationId ? (
                         <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-mineshaft-300">
                           Only profiles with API enrollment configured on this Application are
-                          listed here. Configure API enrollment under the Settings tab.
+                          listed here. Configure API enrollment under this Application&apos;s
+                          Settings tab.
                         </div>
                       ) : (
                         availableProfiles.map((profile) => (

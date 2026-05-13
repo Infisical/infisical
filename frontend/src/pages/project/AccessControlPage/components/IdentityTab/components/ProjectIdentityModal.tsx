@@ -17,19 +17,16 @@ import {
   ModalClose,
   Switch
 } from "@app/components/v2";
-import { useOrganization, useProject } from "@app/context";
+import { useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   TProjectIdentity,
   useCreateProjectIdentity,
-  useCreateProjectIdentityMembership,
   useGetProjectRoles,
   useUpdateProjectIdentity,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
-import { useCreateOrgIdentity } from "@app/hooks/api/orgIdentity/mutations";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -57,7 +54,6 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const navigate = useNavigate();
 
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
   const isUpdate = Boolean(identity);
@@ -73,11 +69,6 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
   const { mutateAsync: updateMembershipMutateAsync } = useUpdateProjectIdentityMembership();
-  // Cert Manager can't create project-scoped identities — the project-level endpoint is blocked.
-  // Identities are org-scoped there, so we create the identity at the org level (No Access on the
-  // org by default), then assign it to Cert Manager with the chosen role.
-  const { mutateAsync: createOrgIdentityAsync } = useCreateOrgIdentity();
-  const { mutateAsync: assignToProjectAsync } = useCreateProjectIdentityMembership();
 
   const {
     control,
@@ -113,40 +104,21 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
 
         onClose();
       } else {
-        // create — branch on Cert Manager (no project-scoped identities) vs other products
-        let createdId: string;
-        if (isCertManager) {
-          const orgIdentity = await createOrgIdentityAsync({
-            name,
-            organizationId: currentOrg.id,
-            role: OrgMembershipRole.NoAccess,
-            hasDeleteProtection,
-            metadata
-          });
-          createdId = orgIdentity.id;
-          await assignToProjectAsync({
+        const created = await createMutateAsync({
+          name,
+          projectId: currentProject.id,
+          hasDeleteProtection,
+          metadata
+        });
+        const createdId = created.id;
+
+        if (role) {
+          await updateMembershipMutateAsync({
+            roles: [{ role: role.slug }],
             identityId: createdId,
             projectId: currentProject.id,
-            projectType: currentProject.type,
-            role: role?.slug
+            projectType: currentProject.type
           });
-        } else {
-          const created = await createMutateAsync({
-            name,
-            projectId: currentProject.id,
-            hasDeleteProtection,
-            metadata
-          });
-          createdId = created.id;
-
-          if (role) {
-            await updateMembershipMutateAsync({
-              roles: [{ role: role.slug }],
-              identityId: createdId,
-              projectId: currentProject.id,
-              projectType: currentProject.type
-            });
-          }
         }
 
         await addMutateAsync({

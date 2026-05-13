@@ -102,7 +102,7 @@ export const InventoryPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Inventory"
-          description="All certificates across this Certificate Manager instance — filter, view, and inspect."
+          description="Filter, view, and inspect all certificates across your infrastructure."
         />
         <CertManagerAdminOnly>
           {canReadCertificates ? (

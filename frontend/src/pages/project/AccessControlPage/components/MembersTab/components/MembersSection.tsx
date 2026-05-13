@@ -66,9 +66,7 @@ export const MembersSection = () => {
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </CardTitle>
           <CardDescription>
-            {isCertManager
-              ? "Invite and manage users"
-              : `Invite and manage ${productLabel.toLowerCase()} users`}
+            {`Invite and manage ${productLabel.toLowerCase()} users`}
           </CardDescription>
           <CardAction>
             <ProjectPermissionCan

@@ -224,7 +224,7 @@ export const RequestsPage = () => {
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
-              description="Requests for certificate issuance and code signing across your Applications and Signers."
+              description="Review pending requests for certificate issuance and code signing."
             />
 
             <Tabs
@@ -251,7 +251,7 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
                     <CardDescription>
-                      Cert-request approval workflows triggered by an Application policy.
+                      Pending certificate-issuance requests from your Applications.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -344,7 +344,7 @@ export const RequestsPage = () => {
                             return (
                               <TableRow
                                 key={r.id}
-                                className="cursor-pointer"
+                                className="cursor-pointer [&>td]:py-3"
                                 onClick={() =>
                                   navigate({
                                     to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
@@ -409,7 +409,7 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
                     <CardDescription>
-                      Code-signing approval workflows triggered by a Signer policy.
+                      Pending code-signing requests from your Signers.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -496,7 +496,7 @@ export const RequestsPage = () => {
                             return (
                               <TableRow
                                 key={r.id}
-                                className="cursor-pointer"
+                                className="cursor-pointer [&>td]:py-3"
                                 onClick={() =>
                                   navigate({
                                     to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",

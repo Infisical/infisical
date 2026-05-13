@@ -18,10 +18,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Td,
-  Tooltip,
-  Tr
+  Tooltip
 } from "@app/components/v2";
+import { TableCell, TableRow } from "@app/components/v3";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -60,8 +59,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
   });
 
   return (
-    <Tr key={profile.id} className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
-      <Td>
+    <TableRow key={profile.id}>
+      <TableCell>
         <div className="flex items-center gap-2">
           <div className="text-mineshaft-300">{profile.slug}</div>
           {profile.description && (
@@ -70,8 +69,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             </Tooltip>
           )}
         </div>
-      </Td>
-      <Td className="text-start">
+      </TableCell>
+      <TableCell className="text-start">
         <span className="text-sm text-mineshaft-300">
           {profile.issuerType === IssuerType.SELF_SIGNED
             ? "Self-signed"
@@ -81,13 +80,13 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                 caData?.configuration.commonName ||
                 profile.caId}
         </span>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <span className="text-sm text-mineshaft-300">
           {policyData?.name || profile.certificatePolicyId}
         </span>
-      </Td>
-      <Td className="text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">
             <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -141,7 +140,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             </ProjectPermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

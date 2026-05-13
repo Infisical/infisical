@@ -142,7 +142,7 @@ const ApplicationPoliciesTable = ({
         <EmptyHeader>
           <EmptyTitle>No approval policies</EmptyTitle>
           <EmptyDescription>
-            Create a policy to gate certificate operations on this Application.
+            Create one to require approval before certificates are issued for this Application.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -485,7 +485,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           first.
         </span>
       ) : (
-        "All certificate profiles in this project are already attached."
+        "All certificate profiles are already attached."
       );
   }
 
@@ -530,8 +530,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <CardHeader>
           <CardTitle>Certificate Profiles</CardTitle>
           <CardDescription>
-            Configure how this Application enrolls against each attached profile (API, EST, ACME, or
-            SCEP).
+            For each profile, configure how this application will issue certificates via API, EST,
+            ACME, or SCEP.
           </CardDescription>
           {canManageProfileAttachments ? (
             <CardAction>
@@ -652,7 +652,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <CardHeader>
           <CardTitle>Approval Policies</CardTitle>
           <CardDescription>
-            Approval workflows that gate certificate operations against this Application.
+            Require approval before certificates are issued for this Application.
           </CardDescription>
           <CardAction>
             <Button
@@ -680,7 +680,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <CardHeader>
           <CardTitle>Alerting</CardTitle>
           <CardDescription>
-            Alert rules for certificate events scoped to {application.name}.
+            Get notified about certificate events scoped to {application.name}.
           </CardDescription>
           <CardAction>
             <Button
