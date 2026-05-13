@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
+import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,6 +27,7 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { DuplicateSecretModal } from "@app/pages/secret-manager/OverviewPage/components/SecretTableRow/DuplicateSecretModal";
 import {
   BulkDeleteDialog,
   BulkTagDialog,
@@ -70,7 +71,8 @@ export const SelectionPanel = ({
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries",
     "bulkMoveSecrets",
-    "bulkTagSecrets"
+    "bulkTagSecrets",
+    "bulkDuplicateSecrets"
   ] as const);
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
@@ -314,6 +316,37 @@ export const SelectionPanel = ({
       "Rotations cannot be deleted from this view. Use the delete action on the rotation row instead.";
   }
 
+  const selectedSecretEntries = Object.values(selectedEntries[EntryType.SECRET]).flatMap((perEnv) =>
+    Object.entries(perEnv)
+  );
+  const duplicateSourceEnvSlugs = new Set(selectedSecretEntries.map(([envSlug]) => envSlug));
+
+  const isDuplicateDisabled =
+    areFoldersSelected ||
+    isHoneyTokenSelected ||
+    Boolean(selectedHoneyTokenCount) ||
+    areRotationsSelected ||
+    isManagedSecretSelected ||
+    duplicateSourceEnvSlugs.size > 1;
+
+  let duplicateDisabledReason = "Folders cannot be duplicated";
+  if (isHoneyTokenSelected || Boolean(selectedHoneyTokenCount)) {
+    duplicateDisabledReason = "Honey token secrets cannot be duplicated";
+  } else if (areRotationsSelected || isManagedSecretSelected) {
+    duplicateDisabledReason = "Rotated secrets cannot be duplicated";
+  } else if (duplicateSourceEnvSlugs.size > 1) {
+    duplicateDisabledReason = "Selected secrets must all be from the same source environment";
+  }
+
+  const duplicateSourceEnv =
+    duplicateSourceEnvSlugs.size === 1
+      ? userAvailableEnvs.find((env) => env.slug === selectedSecretEntries[0][0])
+      : undefined;
+  const duplicateSecrets = selectedSecretEntries.map(([, secret]) => ({
+    id: secret.id,
+    name: secret.key
+  }));
+
   return (
     <>
       <div
@@ -365,6 +398,23 @@ export const SelectionPanel = ({
                 </TooltipTrigger>
                 <TooltipContent>{moveDisabledReason}</TooltipContent>
               </Tooltip>
+              {selectedKeysCount > 0 && (
+                <Tooltip open={isDuplicateDisabled ? undefined : false}>
+                  <TooltipTrigger>
+                    <Button
+                      isDisabled={isDuplicateDisabled}
+                      variant="project"
+                      className="ml-2"
+                      onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
+                      size="xs"
+                    >
+                      <CopyPlus />
+                      Duplicate
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{duplicateDisabledReason}</TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip open={isDeleteDisabled ? undefined : false}>
                 <TooltipTrigger>
                   <Button
@@ -418,6 +468,20 @@ export const SelectionPanel = ({
         secretsToDeleteKeys={secretsToDeleteKeys}
         usedBySecretSyncsFiltered={usedBySecretSyncsFiltered}
       />
+      {duplicateSourceEnv && (
+        <DuplicateSecretModal
+          isOpen={popUp.bulkDuplicateSecrets.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("bulkDuplicateSecrets", isOpen);
+            if (!isOpen) {
+              resetSelectedEntries();
+            }
+          }}
+          secrets={duplicateSecrets}
+          secretPath={secretPath}
+          sourceEnvironment={{ slug: duplicateSourceEnv.slug, name: duplicateSourceEnv.name }}
+        />
+      )}
     </>
   );
 };

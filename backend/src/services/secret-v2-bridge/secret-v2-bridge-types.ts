@@ -365,7 +365,7 @@ export type TDuplicateSecretDTO = {
   sourceSecretPath: string;
   destinationEnvironment: string;
   destinationSecretPath: string;
-  secretId: string;
+  secretIds: string[];
   shouldOverwrite: boolean;
   attributesToCopy: TDuplicateSecretAttributes;
 } & Omit<TProjectPermission, "projectId">;

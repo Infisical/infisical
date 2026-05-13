@@ -1877,8 +1877,7 @@ export const SecretEditTableRow = ({
       <DuplicateSecretModal
         isOpen={popUp.duplicateSecret.isOpen}
         onOpenChange={(open) => handlePopUpToggle("duplicateSecret", open)}
-        secretId={secretId}
-        secretName={secretName}
+        secrets={secretId ? [{ id: secretId, name: secretName }] : []}
         secretPath={secretPath}
         sourceEnvironment={{ slug: environment, name: environmentName }}
       />

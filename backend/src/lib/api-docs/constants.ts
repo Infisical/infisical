@@ -1350,7 +1350,8 @@ export const RAW_SECRETS = {
     sourceSecretPath: "The folder path of the source secret.",
     destinationEnvironment: "The slug of the destination environment.",
     destinationSecretPath: "The folder path where the secret will be duplicated to.",
-    secretId: "The ID of the source secret to duplicate. Rotation and honey-token secrets cannot be duplicated.",
+    secretIds:
+      "Array of source secret IDs to duplicate. All secrets must belong to the source environment and path. Rotation and honey-token secrets cannot be duplicated. Maximum 50 secrets per request.",
     shouldOverwrite:
       "When true, overwrite an existing secret with the same key at the destination. When false (default), the request fails if the destination already has a secret with that key.",
     attributesToCopy:

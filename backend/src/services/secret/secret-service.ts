@@ -3491,13 +3491,13 @@ export const secretServiceFactory = ({
     };
   };
 
-  const duplicateSecret = async ({
+  const duplicateSecrets = async ({
     projectId: inputProjectId,
     sourceEnvironment,
     sourceSecretPath,
     destinationEnvironment,
     destinationSecretPath,
-    secretId,
+    secretIds,
     shouldOverwrite,
     attributesToCopy,
     actor,
@@ -3517,6 +3517,10 @@ export const secretServiceFactory = ({
       });
     }
     const projectId = project.id;
+
+    if (sourceSecretPath === destinationSecretPath && sourceEnvironment === destinationEnvironment) {
+      throw new BadRequestError({ message: "Cannot duplicate secrets to the same path" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -3542,63 +3546,75 @@ export const secretServiceFactory = ({
       });
     }
 
-    const [sourceSecret] = await secretV2BridgeDAL.find({
-      type: SecretType.Shared,
-      folderId: sourceFolder.id,
-      [`${TableName.SecretV2}.id` as "id"]: secretId
+    const uniqueSecretIds = Array.from(new Set(secretIds));
+    const sourceSecrets = await secretV2BridgeDAL.find({
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: uniqueSecretIds
+      },
+      [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared,
+      [`${TableName.SecretV2}.folderId` as "folderId"]: sourceFolder.id
     });
-    if (!sourceSecret) {
+    if (sourceSecrets.length !== uniqueSecretIds.length) {
+      const foundIds = new Set(sourceSecrets.map((s) => s.id));
+      const missingId = uniqueSecretIds.find((id) => !foundIds.has(id));
       throw new NotFoundError({
-        message: `Secret with ID '${secretId}' not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
+        message: `Secret with ID '${missingId}' not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
       });
     }
-    if (sourceSecret.isRotatedSecret) {
-      throw new BadRequestError({ message: `Cannot duplicate rotated secret: ${sourceSecret.key}` });
-    }
-    if (sourceSecret.isHoneyTokenSecret) {
-      throw new BadRequestError({ message: `Cannot duplicate honey token secret: ${sourceSecret.key}` });
-    }
 
-    if (sourceSecretPath === destinationSecretPath && sourceEnvironment === destinationEnvironment) {
-      throw new BadRequestError({ message: `Cannot duplicate secret to the same path: ${sourceSecret.key}` });
-    }
+    for (const sourceSecret of sourceSecrets) {
+      if (sourceSecret.isRotatedSecret) {
+        throw new BadRequestError({ message: `Cannot duplicate rotated secret: ${sourceSecret.key}` });
+      }
+      if (sourceSecret.isHoneyTokenSecret) {
+        throw new BadRequestError({ message: `Cannot duplicate honey token secret: ${sourceSecret.key}` });
+      }
 
-    const sourceTagSlugs = sourceSecret.tags?.map((t) => t.slug) ?? [];
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment: sourceEnvironment,
-      secretPath: sourceSecretPath,
-      secretName: sourceSecret.key,
-      secretTags: sourceTagSlugs
-    });
-    if (attributesToCopy.value) {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      const sourceTagSlugs = sourceSecret.tags?.map((t) => t.slug) ?? [];
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment: sourceEnvironment,
         secretPath: sourceSecretPath,
         secretName: sourceSecret.key,
         secretTags: sourceTagSlugs
       });
+      if (attributesToCopy.value) {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment: sourceEnvironment,
+          secretPath: sourceSecretPath,
+          secretName: sourceSecret.key,
+          secretTags: sourceTagSlugs
+        });
+      }
     }
 
-    const [existingAtDest] = await secretV2BridgeDAL.find({
-      folderId: destinationFolder.id,
-      type: SecretType.Shared,
-      [`${TableName.SecretV2}.key` as "key"]: sourceSecret.key
+    const existingAtDestRows = await secretV2BridgeDAL.find({
+      $in: {
+        [`${TableName.SecretV2}.key` as "key"]: sourceSecrets.map((s) => s.key)
+      },
+      [`${TableName.SecretV2}.folderId` as "folderId"]: destinationFolder.id,
+      [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
     });
+    const existingByKey = new Map(existingAtDestRows.map((row) => [row.key, row]));
 
-    if (existingAtDest && !shouldOverwrite) {
-      throw new BadRequestError({
-        message: `Secret with key '${sourceSecret.key}' already exists at destination. Set shouldOverwrite to true to replace it.`
-      });
-    }
-    if (existingAtDest?.isRotatedSecret) {
-      throw new BadRequestError({
-        message: `Cannot duplicate to '${destinationFolder.path}' because the destination key '${sourceSecret.key}' is managed by a secret rotation.`
-      });
-    }
-    if (existingAtDest?.isHoneyTokenSecret) {
-      throw new BadRequestError({
-        message: `Cannot duplicate to '${destinationFolder.path}' because the destination key '${sourceSecret.key}' is a honey token secret.`
-      });
+    for (const sourceSecret of sourceSecrets) {
+      const existingAtDest = existingByKey.get(sourceSecret.key);
+      if (existingAtDest) {
+        if (!shouldOverwrite) {
+          throw new BadRequestError({
+            message: `Secret with key '${sourceSecret.key}' already exists at destination. Set shouldOverwrite to true to replace it.`
+          });
+        }
+        if (existingAtDest.isRotatedSecret) {
+          throw new BadRequestError({
+            message: `Cannot duplicate to '${destinationFolder.path}' because the destination key '${sourceSecret.key}' is managed by a secret rotation.`
+          });
+        }
+        if (existingAtDest.isHoneyTokenSecret) {
+          throw new BadRequestError({
+            message: `Cannot duplicate to '${destinationFolder.path}' because the destination key '${sourceSecret.key}' is a honey token secret.`
+          });
+        }
+      }
     }
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -3606,37 +3622,33 @@ export const secretServiceFactory = ({
       projectId
     });
 
-    const valueToCopy =
-      attributesToCopy.value && sourceSecret.encryptedValue
-        ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedValue }).toString()
-        : undefined;
-    let commentToCopy: string | undefined;
-    if (attributesToCopy.comment) {
-      commentToCopy = sourceSecret.encryptedComment
-        ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedComment }).toString()
-        : undefined;
-    }
-    const secretMetadataToCopy = attributesToCopy.metadata
-      ? (sourceSecret.secretMetadata?.map((el) => ({
-          key: el.key,
-          value: el.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-            : (el.value ?? ""),
-          isEncrypted: Boolean(el.encryptedValue)
-        })) ?? [])
-      : undefined;
-    const tagIdsToCopy = attributesToCopy.tags ? (sourceSecret.tags?.map((t) => t.id) ?? []) : undefined;
-    const skipMultilineEncodingToCopy = attributesToCopy.skipMultilineEncoding
-      ? Boolean(sourceSecret.skipMultilineEncoding)
-      : undefined;
+    const buildSecretPayload = (sourceSecret: (typeof sourceSecrets)[number]) => ({
+      secretKey: sourceSecret.key,
+      secretValue:
+        attributesToCopy.value && sourceSecret.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedValue }).toString()
+          : undefined,
+      secretComment:
+        attributesToCopy.comment && sourceSecret.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedComment }).toString()
+          : undefined,
+      skipMultilineEncoding: attributesToCopy.skipMultilineEncoding
+        ? Boolean(sourceSecret.skipMultilineEncoding)
+        : undefined,
+      tagIds: attributesToCopy.tags ? (sourceSecret.tags?.map((t) => t.id) ?? []) : undefined,
+      secretMetadata: attributesToCopy.metadata
+        ? (sourceSecret.secretMetadata?.map((el) => ({
+            key: el.key,
+            value: el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : (el.value ?? ""),
+            isEncrypted: Boolean(el.encryptedValue)
+          })) ?? [])
+        : undefined
+    });
 
-    const secretPayload = {
-      secretValue: valueToCopy,
-      secretComment: commentToCopy,
-      skipMultilineEncoding: skipMultilineEncodingToCopy,
-      tagIds: tagIdsToCopy,
-      secretMetadata: secretMetadataToCopy
-    };
+    const sourcesToUpdate = sourceSecrets.filter((s) => existingByKey.has(s.key));
+    const sourcesToCreate = sourceSecrets.filter((s) => !existingByKey.has(s.key));
 
     const destFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
       projectId,
@@ -3645,14 +3657,14 @@ export const secretServiceFactory = ({
     );
 
     if (destFolderPolicy && actor === ActorType.USER) {
-      const op = existingAtDest ? SecretOperations.Update : SecretOperations.Create;
       const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
         projectId,
         environment: destinationEnvironment,
         secretPath: destinationSecretPath,
         policy: destFolderPolicy,
         data: {
-          [op]: [{ secretKey: sourceSecret.key, ...secretPayload }]
+          [SecretOperations.Create]: sourcesToCreate.map(buildSecretPayload),
+          [SecretOperations.Update]: sourcesToUpdate.map(buildSecretPayload)
         },
         actor,
         actorId,
@@ -3662,30 +3674,47 @@ export const secretServiceFactory = ({
 
       return {
         projectId,
-        approval,
-        sourceSecretKey: sourceSecret.key
+        results: sourceSecrets.map((sourceSecret) => ({
+          sourceSecretId: sourceSecret.id,
+          sourceSecretKey: sourceSecret.key,
+          approval
+        }))
       };
     }
 
-    const baseSecretArgs = {
+    const baseManyArgs = {
       projectId,
       environment: destinationEnvironment,
       secretPath: destinationSecretPath,
-      secretName: sourceSecret.key,
-      type: SecretType.Shared,
       actor,
       actorId,
       actorAuthMethod,
-      actorOrgId,
-      ...secretPayload
-    };
+      actorOrgId
+    } as const;
 
-    const destinationSecret = existingAtDest
-      ? await secretV2BridgeService.updateSecret(baseSecretArgs)
-      : await secretV2BridgeService.createSecret({
-          ...baseSecretArgs,
-          secretValue: baseSecretArgs.secretValue ?? ""
-        });
+    const [createdSecrets, updatedSecrets] = await Promise.all([
+      sourcesToCreate.length
+        ? secretV2BridgeService.createManySecret({
+            ...baseManyArgs,
+            secrets: sourcesToCreate.map((sourceSecret) => {
+              const { secretKey, secretValue, ...rest } = buildSecretPayload(sourceSecret);
+              return { secretKey, secretValue: secretValue ?? "", ...rest };
+            })
+          })
+        : Promise.resolve([] as Awaited<ReturnType<typeof secretV2BridgeService.createManySecret>>),
+      sourcesToUpdate.length
+        ? secretV2BridgeService.updateManySecret({
+            ...baseManyArgs,
+            mode: SecretUpdateMode.FailOnNotFound,
+            secrets: sourcesToUpdate.map(buildSecretPayload)
+          })
+        : Promise.resolve([] as Awaited<ReturnType<typeof secretV2BridgeService.updateManySecret>>)
+    ]);
+
+    const destinationIdByKey = new Map<string, string>([
+      ...createdSecrets.map((s): [string, string] => [s.secretKey, s.id]),
+      ...updatedSecrets.map((s): [string, string] => [s.secretKey, s.id])
+    ]);
 
     await snapshotService.performSnapshot(destinationFolder.id);
     await secretQueueService.syncSecrets({
@@ -3699,8 +3728,11 @@ export const secretServiceFactory = ({
 
     return {
       projectId,
-      destinationSecretId: destinationSecret.id,
-      sourceSecretKey: sourceSecret.key
+      results: sourceSecrets.map((sourceSecret) => ({
+        sourceSecretId: sourceSecret.id,
+        sourceSecretKey: sourceSecret.key,
+        destinationSecretId: destinationIdByKey.get(sourceSecret.key) as string
+      }))
     };
   };
 
@@ -3846,7 +3878,7 @@ export const secretServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
-    duplicateSecret,
+    duplicateSecrets,
     startSecretV2Migration,
     getSecretsCount,
     getSecretsCountMultiEnv,

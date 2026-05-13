@@ -918,7 +918,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "duplicateSecretV4",
       tags: [ApiDocsTags.Secrets],
-      description: "Duplicate a static secret into another environment",
+      description: "Duplicate one or more static secrets into another environment",
       security: [
         {
           bearerAuth: []
@@ -940,67 +940,74 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .default("/")
           .transform(removeTrailingSlash)
           .describe(RAW_SECRETS.DUPLICATE_SECRET.destinationSecretPath),
-        secretId: z.string().trim().uuid().describe(RAW_SECRETS.DUPLICATE_SECRET.secretId),
+        secretIds: z.array(z.string().trim().uuid()).min(1).max(50).describe(RAW_SECRETS.DUPLICATE_SECRET.secretIds),
         shouldOverwrite: z.boolean().default(false).describe(RAW_SECRETS.DUPLICATE_SECRET.shouldOverwrite),
         attributesToCopy: DuplicateSecretAttributesSchema.describe(RAW_SECRETS.DUPLICATE_SECRET.attributesToCopy)
       }),
       response: {
-        200: z.union([
-          z.object({
-            destinationSecretId: z.string(),
-            sourceSecretKey: z.string()
-          }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("Returned when the destination has an active secret-approval policy.")
-        ])
+        200: z.object({
+          results: z.array(
+            z.union([
+              z.object({
+                sourceSecretId: z.string(),
+                sourceSecretKey: z.string(),
+                destinationSecretId: z.string()
+              }),
+              z
+                .object({
+                  sourceSecretId: z.string(),
+                  sourceSecretKey: z.string(),
+                  approval: SecretApprovalRequestsSchema
+                })
+                .describe("Returned when the destination has an active secret-approval policy.")
+            ])
+          )
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { destinationSecretId, approval, sourceSecretKey, projectId } =
-        await server.services.secret.duplicateSecret({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          ...req.body
-        });
-
-      await server.services.auditLog.createAuditLog({
-        projectId,
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.DUPLICATE_SECRET,
-          metadata: {
-            sourceEnvironment: req.body.sourceEnvironment,
-            sourceSecretPath: req.body.sourceSecretPath,
-            sourceSecretId: req.body.secretId,
-            sourceSecretKey,
-            destinationEnvironment: req.body.destinationEnvironment,
-            destinationSecretPath: req.body.destinationSecretPath,
-            destinationSecretId,
-            approvalRequestId: approval?.id,
-            shouldOverwrite: req.body.shouldOverwrite,
-            attributesCopied: {
-              value: req.body.attributesToCopy.value,
-              comment: req.body.attributesToCopy.comment,
-              tags: req.body.attributesToCopy.tags,
-              metadata: req.body.attributesToCopy.metadata,
-              skipMultilineEncoding: req.body.attributesToCopy.skipMultilineEncoding
-            }
-          }
-        }
+      const { projectId, results } = await server.services.secret.duplicateSecrets({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
       });
 
-      if (approval) {
-        return { approval };
-      }
-
-      return {
-        destinationSecretId,
-        sourceSecretKey
+      const attributesCopied = {
+        value: req.body.attributesToCopy.value,
+        comment: req.body.attributesToCopy.comment,
+        tags: req.body.attributesToCopy.tags,
+        metadata: req.body.attributesToCopy.metadata,
+        skipMultilineEncoding: req.body.attributesToCopy.skipMultilineEncoding
       };
+
+      await Promise.all(
+        results.map((result) =>
+          server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.DUPLICATE_SECRET,
+              metadata: {
+                sourceEnvironment: req.body.sourceEnvironment,
+                sourceSecretPath: req.body.sourceSecretPath,
+                sourceSecretId: result.sourceSecretId,
+                sourceSecretKey: result.sourceSecretKey,
+                destinationEnvironment: req.body.destinationEnvironment,
+                destinationSecretPath: req.body.destinationSecretPath,
+                destinationSecretId: "destinationSecretId" in result ? result.destinationSecretId : undefined,
+                approvalRequestId: "approval" in result ? result.approval.id : undefined,
+                shouldOverwrite: req.body.shouldOverwrite,
+                attributesCopied
+              }
+            }
+          })
+        )
+      );
+
+      return { results };
     }
   });
 

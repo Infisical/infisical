@@ -61,11 +61,12 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+export type DuplicateSecretTarget = { id: string; name: string };
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  secretId?: string;
-  secretName: string;
+  secrets: DuplicateSecretTarget[];
   secretPath: string;
   sourceEnvironment: { slug: string; name: string };
 };
@@ -81,8 +82,7 @@ type EnvironmentOption = {
 };
 
 const DuplicateSecretContent = ({
-  secretId,
-  secretName,
+  secrets,
   secretPath,
   sourceEnvironment,
   onClose
@@ -110,13 +110,16 @@ const DuplicateSecretContent = ({
   const includeSelection = watch("include");
   const hasSelectedIncludeOption = Object.values(includeSelection).some(Boolean);
   const availableEnvs = environments.filter((env) => env.slug !== sourceEnvironment.slug);
+  const hasSecretsToDuplicate = secrets.length > 0;
 
   const handleFormSubmit = async (data: FormValues) => {
-    if (!secretId || data.environmentIds.length === 0) return;
+    if (!hasSecretsToDuplicate || data.environmentIds.length === 0) return;
 
     const targets = data.environmentIds
       .map((id) => availableEnvs.find((env) => env.id === id))
       .filter((env): env is (typeof availableEnvs)[number] => Boolean(env));
+
+    const secretIds = secrets.map((s) => s.id);
 
     const settled = await Promise.allSettled(
       targets.map((env) =>
@@ -126,7 +129,7 @@ const DuplicateSecretContent = ({
           sourceSecretPath: secretPath,
           destinationEnvironment: env.slug,
           destinationSecretPath: secretPath,
-          secretId,
+          secretIds,
           shouldOverwrite: data.shouldOverwrite,
           attributesToCopy: data.include
         })
@@ -141,7 +144,8 @@ const DuplicateSecretContent = ({
       const env = targets[idx];
 
       if (result.status === "fulfilled") {
-        if ("approval" in result.value) {
+        const hasApproval = result.value.results.some((entry) => "approval" in entry);
+        if (hasApproval) {
           approvalEnvs.push({ name: env.name });
         } else {
           successEnvs.push({ name: env.name });
@@ -160,10 +164,11 @@ const DuplicateSecretContent = ({
     });
 
     if (successEnvs.length > 0) {
+      const secretLabel = secrets.length === 1 ? "secret" : `${secrets.length} secrets`;
       const text =
         successEnvs.length === 1
-          ? `Successfully duplicated secret to ${successEnvs[0].name}`
-          : `Successfully duplicated secret to ${successEnvs.length} environments`;
+          ? `Successfully duplicated ${secretLabel} to ${successEnvs[0].name}`
+          : `Successfully duplicated ${secretLabel} to ${successEnvs.length} environments`;
       createNotification({ type: "success", text });
     }
 
@@ -171,7 +176,7 @@ const DuplicateSecretContent = ({
       const text =
         approvalEnvs.length === 1
           ? `Secret approval request generated for ${approvalEnvs[0].name}`
-          : `Secret approval request generated for ${approvalEnvs.length} environments`;
+          : `Secret approval requests generated for ${approvalEnvs.length} environments`;
       createNotification({ type: "info", text });
     }
 
@@ -192,23 +197,35 @@ const DuplicateSecretContent = ({
       <Field>
         <FieldLabel>Source</FieldLabel>
         <FieldContent>
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,40%)] items-center gap-2 overflow-hidden rounded-md border border-border bg-container px-3 py-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-sm text-foreground">
-              <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
-              {secretPath !== "/" && (
-                <span className="text-muted-foreground/60 truncate">{secretPath}</span>
-              )}
-              <span className="truncate">{secretName}</span>
-            </div>
-            <Badge
-              variant="info"
-              className="max-w-full min-w-0 justify-self-end"
-              isTruncatable
-              title={sourceEnvironment.name}
-            >
-              <span className="block max-w-full">{sourceEnvironment.name}</span>
-            </Badge>
+          <div className="max-h-48 thin-scrollbar divide-y divide-border overflow-y-auto rounded-md border border-border bg-container">
+            {secrets.map((s) => (
+              <div
+                key={s.id}
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,40%)] items-center gap-2 px-3 py-2"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-sm text-foreground">
+                  <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
+                  {secretPath !== "/" && (
+                    <span className="text-muted-foreground/60 truncate">{secretPath}</span>
+                  )}
+                  <span className="truncate">{s.name}</span>
+                </div>
+                <Badge
+                  variant="info"
+                  className="max-w-full min-w-0 justify-self-end"
+                  isTruncatable
+                  title={sourceEnvironment.name}
+                >
+                  <span className="block max-w-full">{sourceEnvironment.name}</span>
+                </Badge>
+              </div>
+            ))}
           </div>
+          {secrets.length > 1 && (
+            <FieldDescription>
+              {secrets.length} secrets will be duplicated into each selected destination.
+            </FieldDescription>
+          )}
         </FieldContent>
       </Field>
 
@@ -326,7 +343,10 @@ const DuplicateSecretContent = ({
           type="submit"
           variant="project"
           isDisabled={
-            selectedEnvIds.length === 0 || !secretId || isSubmitting || !hasSelectedIncludeOption
+            selectedEnvIds.length === 0 ||
+            !hasSecretsToDuplicate ||
+            isSubmitting ||
+            !hasSelectedIncludeOption
           }
           isPending={isSubmitting}
         >
@@ -345,7 +365,8 @@ export const DuplicateSecretModal = ({ isOpen, onOpenChange, ...props }: Props) 
           <DialogTitle>Duplicate Secret</DialogTitle>
         </div>
         <DialogDescription>
-          Copy this secret and its metadata into one or more environments.
+          Copy the selected secret{props.secrets.length > 1 ? "s" : ""} and their metadata into one
+          or more environments.
         </DialogDescription>
       </DialogHeader>
       <DuplicateSecretContent {...props} onClose={() => onOpenChange(false)} />

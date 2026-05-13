@@ -279,17 +279,20 @@ export type TDuplicateSecretDTO = {
   sourceSecretPath: string;
   destinationEnvironment: string;
   destinationSecretPath: string;
-  secretId: string;
+  secretIds: string[];
   shouldOverwrite: boolean;
   attributesToCopy: TDuplicateSecretAttributes;
 };
 
-export type TDuplicateSecretResponse =
+export type TDuplicateSecretResult =
   | {
-      destinationSecretId: string;
+      sourceSecretId: string;
       sourceSecretKey: string;
+      destinationSecretId: string;
     }
   | {
+      sourceSecretId: string;
+      sourceSecretKey: string;
       approval: {
         id: string;
         slug: string;
@@ -297,6 +300,10 @@ export type TDuplicateSecretResponse =
         committerUserId: string;
       };
     };
+
+export type TDuplicateSecretResponse = {
+  results: TDuplicateSecretResult[];
+};
 
 export type TGetSecretReferenceTreeDTO = {
   secretKey: string;

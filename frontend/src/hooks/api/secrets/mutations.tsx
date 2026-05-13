@@ -545,7 +545,7 @@ export const useDuplicateSecret = ({
           directory: destinationSecretPath
         })
       });
-      if ("approval" in data) {
+      if (data.results.some((result) => "approval" in result)) {
         queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
         queryClient.invalidateQueries({
           queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
