@@ -99,7 +99,7 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-muted"
           >
             <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Certificate Manager Roles" : "Project Roles"}
+            {isCertManager ? "Roles" : "Project Roles"}
           </Link>
           <PageHeader
             scope={currentProject.type}

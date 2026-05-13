@@ -139,7 +139,7 @@ export const MemberRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{isCertManager ? "Certificate Manager Roles" : "Project Roles"}</CardTitle>
+          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -50,11 +51,14 @@ type Props = {
 };
 
 export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { projectId, orgId } = useParams({ strict: false });
   const editing = (popUp?.application?.data as TPkiApplication | undefined) ?? null;
   const create = useCreatePkiApplication();
   const update = useUpdatePkiApplication();
 
-  const { data: profilesData } = useListCertificateProfiles({ limit: 100 });
+  const { data: profilesData, isPending: profilesLoading } = useListCertificateProfiles({
+    limit: 100
+  });
 
   const profileOptions = useMemo(
     () =>
@@ -175,16 +179,26 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Select profiles to attach..."
                     />
                   </FieldContent>
-                  <FieldDescription>
-                    Optionally attach existing profiles now. You can change this later.
-                  </FieldDescription>
+                  {!profilesLoading && !profileOptions.length && (
+                    <FieldDescription className="text-yellow-500">
+                      No certificate profiles available.{" "}
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                        params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                        search={{ selectedTab: "certificate-profiles" }}
+                        className="underline hover:text-yellow-400"
+                      >
+                        Create one in Settings
+                      </Link>
+                    </FieldDescription>
+                  )}
                   {error ? <FieldError>{error.message}</FieldError> : null}
                 </Field>
               )}
             />
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button
               type="button"
               variant="ghost"

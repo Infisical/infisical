@@ -1,9 +1,17 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
@@ -48,28 +56,22 @@ export const CodeSigningPolicyTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center">
-        <div className="flex-1">
-          <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Signing Policies</p>
-          </div>
-          <p className="text-sm text-bunker-300">
-            Define policies that require approval before signing operations
-          </p>
-        </div>
-
-        <Button
-          variant="outline_bg"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => handlePopUpOpen("policy")}
-        >
-          Create Policy
-        </Button>
-      </div>
-
-      <CodeSigningPoliciesTable handlePopUpOpen={handlePopUpOpen} />
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Signing Policies</CardTitle>
+        <CardDescription>
+          Define policies that require approval before signing operations
+        </CardDescription>
+        <CardAction>
+          <Button variant="outline" onClick={() => handlePopUpOpen("policy")}>
+            <PlusIcon />
+            Create Policy
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <CodeSigningPoliciesTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <CodeSigningPolicyModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
@@ -78,6 +80,6 @@ export const CodeSigningPolicyTab = () => {
         onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
         onDeleteApproved={handleDeletePolicy}
       />
-    </div>
+    </Card>
   );
 };

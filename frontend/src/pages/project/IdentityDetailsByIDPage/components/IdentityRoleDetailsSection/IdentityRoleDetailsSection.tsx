@@ -132,7 +132,7 @@ export const IdentityRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{isCertManager ? "Certificate Manager Roles" : "Project Roles"}</CardTitle>
+          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this machine identity</CardDescription>
           {hasRoles && (
             <CardAction>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -28,7 +29,10 @@ type Props = {
 };
 
 export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Props) => {
-  const { data: profilesData } = useListCertificateProfiles({ limit: 100 });
+  const { projectId, orgId } = useParams({ strict: false });
+  const { data: profilesData, isPending: profilesLoading } = useListCertificateProfiles({
+    limit: 100
+  });
   const { data: attachedProfiles } = useListPkiApplicationProfiles(application?.id ?? "");
 
   const attachProfiles = useAttachPkiApplicationProfiles();
@@ -102,6 +106,19 @@ export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Pr
             options={profileOptions}
             placeholder="Select profiles..."
           />
+          {!profilesLoading && !profileOptions.length && (
+            <p className="mt-3 text-xs text-yellow-500">
+              No certificate profiles available.{" "}
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                search={{ selectedTab: "certificate-profiles" }}
+                className="underline hover:text-yellow-400"
+              >
+                Create one in Settings
+              </Link>
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
