@@ -883,9 +883,7 @@ export type THoneyTokenResetEvent = {
 export type THoneyTokenTriggeredEvent = {
   event: PostHogEventTypes.HoneyTokenTriggered;
   properties: {
-    honeyTokenId: string;
     type: string;
-    projectId: string;
   };
 };
 
