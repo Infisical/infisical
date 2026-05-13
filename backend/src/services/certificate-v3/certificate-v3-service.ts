@@ -2233,16 +2233,30 @@ export const certificateV3ServiceFactory = ({
 
       if (!internal) {
         const projectId = profile?.projectId || originalCert.projectId;
-        const { permission } = await permissionService.getProjectPermission({
-          actor,
-          actorId,
-          projectId,
-          actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
-        });
 
-        if (profile) {
+        if (originalCert.applicationId) {
+          const { permission } = await permissionService.getResourcePermission({
+            actor,
+            actorId,
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            resourceId: originalCert.applicationId,
+            actorAuthMethod,
+            actorOrgId
+          });
+          ForbiddenError.from(permission).throwUnlessCan(
+            ResourcePermissionCertificateActions.Create,
+            ResourcePermissionSub.Certificates
+          );
+        } else if (profile) {
+          const { permission } = await permissionService.getProjectPermission({
+            actor,
+            actorId,
+            projectId,
+            actorAuthMethod,
+            actorOrgId,
+            actionProjectType: ActionProjectType.CertificateManager
+          });
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionCertificateProfileActions.IssueCert,
             subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
