@@ -2,20 +2,25 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, Tooltip } from "@app/components/v2";
-import { useOrgPermission } from "@app/context";
+import { ProjectPermissionSub, useOrgPermission, useProject } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
-import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
+import { useCanUseAppConnectionImport } from "@app/hooks";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 type Props = {
   onClick: () => void;
 };
 
 export const LoadFromVaultBanner = ({ onClick }: Props) => {
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
+  const { projectId } = useProject();
+  const canUseAppConnectionImport = useCanUseAppConnectionImport(ProjectPermissionSub.Secrets);
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const hasVaultConnection = vaultAppConnections.length > 0;
 
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
@@ -30,7 +35,7 @@ export const LoadFromVaultBanner = ({ onClick }: Props) => {
         <Tooltip
           content={
             !isOrgAdmin
-              ? "Only organization admins can import configurations from HashiCorp Vault"
+              ? "Only authorized users can import configurations from HashiCorp Vault"
               : undefined
           }
         >

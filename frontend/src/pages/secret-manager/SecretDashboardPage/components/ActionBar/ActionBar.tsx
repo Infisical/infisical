@@ -87,11 +87,8 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { useGetExternalMigrationConfigs, useImportVaultSecrets } from "@app/hooks/api/migration";
-import {
-  ExternalMigrationImportStatus,
-  ExternalMigrationProviders
-} from "@app/hooks/api/migration/types";
+import { useImportVaultSecrets } from "@app/hooks/api/migration";
+import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -217,9 +214,6 @@ export const ActionBar = ({
   );
 
   const { permission } = useProjectPermission();
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
-  );
   const vaultSecretSubject = useMemo(
     () =>
       subject(ProjectPermissionSub.Secrets, {
@@ -230,20 +224,13 @@ export const ActionBar = ({
       }),
     [environment, secretPath]
   );
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    canReadSecrets: permission.can(
-      ProjectPermissionSecretActions.DescribeSecret,
-      vaultSecretSubject
-    ),
-    canCreateSecrets: permission.can(ProjectPermissionSecretActions.Create, vaultSecretSubject)
-  });
+  const canUseAppConnectionImport = useCanUseAppConnectionImport(vaultSecretSubject);
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,
     { enabled: canUseAppConnectionImport }
   );
-  const hasVaultConnection =
-    vaultAppConnections.length > 0 || vaultConfigs.some((config) => config.connectionId);
+  const hasVaultConnection = vaultAppConnections.length > 0;
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     if (isBatchMode) {

@@ -22,7 +22,11 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { ProjectPermissionSub, useProject } from "@app/context";
+import { useCanUseAppConnectionImport } from "@app/hooks";
 import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { VaultDatabaseRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -96,6 +100,14 @@ export const CassandraInputForm = ({
   isSingleEnvironmentMode
 }: Props) => {
   const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
+
+  const { projectId } = useProject();
+  const canUseAppConnectionImport = useCanUseAppConnectionImport(ProjectPermissionSub.Secrets);
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
 
   const {
     control,
@@ -554,6 +566,7 @@ export const CassandraInputForm = ({
         <VaultCassandraImportModal
           isOpen={isVaultImportModalOpen}
           onOpenChange={setIsVaultImportModalOpen}
+          appConnections={vaultAppConnections}
           onImport={handleVaultImport}
         />
       </form>

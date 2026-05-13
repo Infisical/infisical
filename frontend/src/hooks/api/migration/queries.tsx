@@ -7,7 +7,6 @@ import {
   TDopplerConfig,
   TDopplerEnvironment,
   TDopplerProject,
-  TExternalMigrationConfig,
   VaultDatabaseRole,
   VaultKubernetesAuthRole,
   VaultKubernetesRole,
@@ -19,18 +18,22 @@ export const externalMigrationQueryKeys = {
     "custom-migration-available",
     provider
   ],
-  configs: (provider: ExternalMigrationProviders) => ["external-migration-configs", provider],
   vaultNamespaces: (connectionId?: string) => ["vault-namespaces", connectionId],
-  vaultPolicies: (namespace?: string) => ["vault-policies", namespace],
+  vaultPolicies: (namespace?: string, connectionId?: string) => [
+    "vault-policies",
+    namespace,
+    connectionId
+  ],
   vaultMounts: (namespace?: string, connectionId?: string) => [
     "vault-mounts",
     namespace,
     connectionId
   ],
-  vaultAuthMounts: (namespace?: string, authType?: string) => [
+  vaultAuthMounts: (namespace?: string, authType?: string, connectionId?: string) => [
     "vault-auth-mounts",
     namespace,
-    authType
+    authType,
+    connectionId
   ],
   vaultSecretPaths: (namespace?: string, mountPath?: string, connectionId?: string) => [
     "vault-secret-paths",
@@ -38,42 +41,40 @@ export const externalMigrationQueryKeys = {
     mountPath,
     connectionId
   ],
-  vaultKubernetesAuthRoles: (namespace?: string, mountPath?: string) => [
+  vaultKubernetesAuthRoles: (namespace?: string, mountPath?: string, connectionId?: string) => [
     "vault-kubernetes-auth-roles",
     namespace,
-    mountPath
+    mountPath,
+    connectionId
   ],
-  vaultKubernetesRoles: (namespace?: string, mountPath?: string) => [
+  vaultKubernetesRoles: (namespace?: string, mountPath?: string, connectionId?: string) => [
     "vault-kubernetes-roles",
     namespace,
-    mountPath
+    mountPath,
+    connectionId
   ],
-  vaultDatabaseRoles: (namespace?: string, mountPath?: string) => [
+  vaultDatabaseRoles: (namespace?: string, mountPath?: string, connectionId?: string) => [
     "vault-database-roles",
     namespace,
-    mountPath
+    mountPath,
+    connectionId
   ],
-  vaultLdapRoles: (namespace?: string, mountPath?: string) => [
+  vaultLdapRoles: (namespace?: string, mountPath?: string, connectionId?: string) => [
     "vault-ldap-roles",
     namespace,
-    mountPath
-  ],
-  dopplerProjects: (configId?: string, connectionId?: string) => [
-    "doppler-projects",
-    configId,
+    mountPath,
     connectionId
   ],
-  dopplerEnvironments: (configId?: string, projectSlug?: string, connectionId?: string) => [
+  dopplerProjects: (connectionId?: string) => ["doppler-projects", connectionId],
+  dopplerEnvironments: (connectionId?: string, projectSlug?: string) => [
     "doppler-environments",
-    configId,
-    projectSlug,
-    connectionId
+    connectionId,
+    projectSlug
   ],
-  dopplerConfigs: (configId?: string, projectSlug?: string, connectionId?: string) => [
+  dopplerConfigs: (connectionId?: string, projectSlug?: string) => [
     "doppler-configs",
-    configId,
-    projectSlug,
-    connectionId
+    connectionId,
+    projectSlug
   ]
 };
 
@@ -84,18 +85,6 @@ export const useHasCustomMigrationAvailable = (provider: ExternalMigrationProvid
       apiRequest.get<{ enabled: boolean }>(
         `/api/v3/external-migration/custom-migration-enabled/${provider}`
       )
-  });
-};
-
-export const useGetExternalMigrationConfigs = (provider: ExternalMigrationProviders) => {
-  return useQuery({
-    queryKey: externalMigrationQueryKeys.configs(provider),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ configs: TExternalMigrationConfig[] }>(
-        `/api/v3/external-migration/${provider}/configs`
-      );
-      return data.configs;
-    }
   });
 };
 
@@ -113,15 +102,16 @@ export const useGetVaultNamespaces = (connectionId?: string) => {
   });
 };
 
-export const useGetVaultPolicies = (enabled = true, namespace?: string) => {
+export const useGetVaultPolicies = (enabled = true, namespace?: string, connectionId?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultPolicies(namespace),
+    queryKey: externalMigrationQueryKeys.vaultPolicies(namespace, connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         policies: Array<{ name: string; rules: string }>;
       }>("/api/v3/external-migration/vault/policies", {
         params: {
-          namespace
+          namespace,
+          ...(connectionId ? { connectionId } : {})
         }
       });
 
@@ -179,16 +169,22 @@ export const useGetVaultSecretPaths = (
   });
 };
 
-export const useGetVaultAuthMounts = (enabled = true, namespace?: string, authType?: string) => {
+export const useGetVaultAuthMounts = (
+  enabled = true,
+  namespace?: string,
+  authType?: string,
+  connectionId?: string
+) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultAuthMounts(namespace, authType),
+    queryKey: externalMigrationQueryKeys.vaultAuthMounts(namespace, authType, connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         mounts: Array<{ path: string; type: string }>;
       }>("/api/v3/external-migration/vault/auth-mounts", {
         params: {
           namespace,
-          ...(authType && { authType })
+          ...(authType && { authType }),
+          ...(connectionId ? { connectionId } : {})
         }
       });
 
@@ -201,10 +197,15 @@ export const useGetVaultAuthMounts = (enabled = true, namespace?: string, authTy
 export const useGetVaultKubernetesAuthRoles = (
   enabled = true,
   namespace?: string,
-  mountPath?: string
+  mountPath?: string,
+  connectionId?: string
 ) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultKubernetesAuthRoles(namespace, mountPath),
+    queryKey: externalMigrationQueryKeys.vaultKubernetesAuthRoles(
+      namespace,
+      mountPath,
+      connectionId
+    ),
     queryFn: async () => {
       if (!namespace || !mountPath) {
         throw new Error("Both namespace and mountPath are required");
@@ -215,7 +216,8 @@ export const useGetVaultKubernetesAuthRoles = (
       }>("/api/v3/external-migration/vault/auth-roles/kubernetes", {
         params: {
           namespace,
-          mountPath
+          mountPath,
+          ...(connectionId ? { connectionId } : {})
         }
       });
 
@@ -228,10 +230,11 @@ export const useGetVaultKubernetesAuthRoles = (
 export const useGetVaultKubernetesRoles = (
   enabled = true,
   namespace?: string,
-  mountPath?: string
+  mountPath?: string,
+  connectionId?: string
 ) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultKubernetesRoles(namespace, mountPath),
+    queryKey: externalMigrationQueryKeys.vaultKubernetesRoles(namespace, mountPath, connectionId),
     queryFn: async () => {
       if (!namespace || !mountPath) {
         throw new Error("Both namespace and mountPath are required");
@@ -242,7 +245,8 @@ export const useGetVaultKubernetesRoles = (
       }>("/api/v3/external-migration/vault/kubernetes-roles", {
         params: {
           namespace,
-          mountPath
+          mountPath,
+          ...(connectionId ? { connectionId } : {})
         }
       });
 
@@ -255,10 +259,11 @@ export const useGetVaultKubernetesRoles = (
 export const useGetVaultDatabaseRoles = (
   enabled = true,
   namespace?: string,
-  mountPath?: string
+  mountPath?: string,
+  connectionId?: string
 ) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultDatabaseRoles(namespace, mountPath),
+    queryKey: externalMigrationQueryKeys.vaultDatabaseRoles(namespace, mountPath, connectionId),
     queryFn: async () => {
       if (!namespace || !mountPath) {
         throw new Error("Both namespace and mountPath are required");
@@ -269,7 +274,8 @@ export const useGetVaultDatabaseRoles = (
       }>("/api/v3/external-migration/vault/database-roles", {
         params: {
           namespace,
-          mountPath
+          mountPath,
+          ...(connectionId ? { connectionId } : {})
         }
       });
 
@@ -279,9 +285,14 @@ export const useGetVaultDatabaseRoles = (
   });
 };
 
-export const useGetVaultLdapRoles = (enabled = true, namespace?: string, mountPath?: string) => {
+export const useGetVaultLdapRoles = (
+  enabled = true,
+  namespace?: string,
+  mountPath?: string,
+  connectionId?: string
+) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultLdapRoles(namespace, mountPath),
+    queryKey: externalMigrationQueryKeys.vaultLdapRoles(namespace, mountPath, connectionId),
     queryFn: async () => {
       if (!namespace || !mountPath) {
         throw new Error("Both namespace and mountPath are required");
@@ -292,7 +303,8 @@ export const useGetVaultLdapRoles = (enabled = true, namespace?: string, mountPa
       }>("/api/v3/external-migration/vault/ldap-roles", {
         params: {
           namespace,
-          mountPath
+          mountPath,
+          ...(connectionId ? { connectionId } : {})
         }
       });
 
@@ -302,58 +314,50 @@ export const useGetVaultLdapRoles = (enabled = true, namespace?: string, mountPa
   });
 };
 
-export const useGetDopplerProjects = (configId?: string, connectionId?: string) => {
+export const useGetDopplerProjects = (connectionId?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.dopplerProjects(configId, connectionId),
+    queryKey: externalMigrationQueryKeys.dopplerProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ projects: TDopplerProject[] }>(
         "/api/v3/external-migration/doppler/projects",
         {
-          params: connectionId ? { connectionId } : { configId }
+          params: { connectionId }
         }
       );
       return data.projects;
     },
-    enabled: !!configId || !!connectionId
+    enabled: !!connectionId
   });
 };
 
-export const useGetDopplerEnvironments = (
-  configId?: string,
-  projectSlug?: string,
-  connectionId?: string
-) => {
+export const useGetDopplerEnvironments = (connectionId?: string, projectSlug?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.dopplerEnvironments(configId, projectSlug, connectionId),
+    queryKey: externalMigrationQueryKeys.dopplerEnvironments(connectionId, projectSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ environments: TDopplerEnvironment[] }>(
         "/api/v3/external-migration/doppler/environments",
         {
-          params: connectionId ? { connectionId, projectSlug } : { configId, projectSlug }
+          params: { connectionId, projectSlug }
         }
       );
       return data.environments;
     },
-    enabled: (!!configId || !!connectionId) && !!projectSlug
+    enabled: !!connectionId && !!projectSlug
   });
 };
 
-export const useGetDopplerConfigs = (
-  configId?: string,
-  projectSlug?: string,
-  connectionId?: string
-) => {
+export const useGetDopplerConfigs = (connectionId?: string, projectSlug?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.dopplerConfigs(configId, projectSlug, connectionId),
+    queryKey: externalMigrationQueryKeys.dopplerConfigs(connectionId, projectSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ configs: TDopplerConfig[] }>(
         "/api/v3/external-migration/doppler/doppler-configs",
         {
-          params: connectionId ? { connectionId, projectSlug } : { configId, projectSlug }
+          params: { connectionId, projectSlug }
         }
       );
       return data.configs;
     },
-    enabled: (!!configId || !!connectionId) && !!projectSlug
+    enabled: !!connectionId && !!projectSlug
   });
 };

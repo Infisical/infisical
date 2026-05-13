@@ -37,15 +37,16 @@ import {
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
 } from "@app/hooks/api";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import {
+  useListAppConnections,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections/queries";
 import {
   IdentityKubernetesAuthTokenReviewMode,
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
-import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
-import {
-  ExternalMigrationProviders,
-  VaultKubernetesAuthRole
-} from "@app/hooks/api/migration/types";
+import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -168,10 +169,19 @@ export const IdentityKubernetesAuthForm = ({
   const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
     "importFromVault"
   ] as const);
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
+  const { data: projectVaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId ?? "",
+    { enabled: Boolean(projectId) }
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { data: orgAppConnections = [] } = useListAppConnections(undefined, {
+    enabled: !projectId
+  });
+  const vaultAppConnections = useMemo(() => {
+    if (projectId) return projectVaultAppConnections;
+    return orgAppConnections.filter((c) => c.app === AppConnection.HCVault && !c.projectId);
+  }, [projectId, projectVaultAppConnections, orgAppConnections]);
+  const hasVaultConnection = vaultAppConnections.length > 0;
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
@@ -929,6 +939,7 @@ export const IdentityKubernetesAuthForm = ({
       <VaultKubernetesAuthImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handleImportPopUpToggle("importFromVault", isOpen)}
+        appConnections={vaultAppConnections}
         onImport={handleImportFromVault}
       />
     </form>

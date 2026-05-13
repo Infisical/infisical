@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { AppConnectionOption } from "@app/components/app-connections";
+import {
+  defaultVaultConnectionId,
+  VaultConnectionAndNamespaceFields
+} from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -15,7 +18,6 @@ import {
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   useGetVaultMounts,
-  useGetVaultNamespaces,
   useGetVaultSecretPaths
 } from "@app/hooks/api/migration/queries";
 
@@ -38,7 +40,9 @@ type ContentProps = {
 
 const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
+    defaultVaultConnectionId(appConnections)
+  );
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
@@ -47,8 +51,6 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
 
-  const { data: namespaces, isLoading: isLoadingNamespaces } =
-    useGetVaultNamespaces(activeConnectionId);
   const { data: secretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
     shouldFetchPaths,
     selectedNamespace ?? undefined,
@@ -63,13 +65,20 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   const kvMounts = mounts?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
 
-  useEffect(() => {
+  const handleConnectionChange = (id: string) => {
+    setSelectedConnectionId(id);
     setSelectedNamespace(null);
     setSelectedMountPath(null);
     setSelectedPaths([]);
     setShouldFetchMounts(false);
     setShouldFetchPaths(false);
-  }, [selectedConnectionId]);
+  };
+
+  const handleNamespaceChange = (ns: string) => {
+    setSelectedNamespace(ns);
+    setSelectedMountPath(null);
+    setSelectedPaths([]);
+  };
 
   useEffect(() => {
     if (selectedNamespace) {
@@ -136,67 +145,15 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
         </div>
       </div>
 
-      {hasAppConnections && (
-        <FormControl
-          label="App Connection"
-          className="mb-4"
-          tooltipText="Select the HashiCorp Vault app connection to use for this import."
-        >
-          <>
-            <FilterableSelect
-              value={appConnections.find((conn) => conn.id === selectedConnectionId) ?? null}
-              onChange={(value) => {
-                if (value && !Array.isArray(value)) {
-                  const conn = value as TAvailableAppConnection;
-                  setSelectedConnectionId(conn.id);
-                }
-              }}
-              options={appConnections}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-              placeholder="Select app connection..."
-              className="w-full"
-              components={{ Option: AppConnectionOption }}
-            />
-            <p className="mt-1 text-xs text-mineshaft-400">
-              Project-scoped HashiCorp Vault app connections available to you
-            </p>
-          </>
-        </FormControl>
-      )}
-
-      <FormControl
-        label="Namespace"
-        className="mb-4"
-        tooltipText="Select the Vault namespace containing the secrets you want to import."
-      >
-        <>
-          <FilterableSelect
-            value={namespaces?.find((ns) => ns.name === selectedNamespace)}
-            onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                const namespace = value as { id: string; name: string };
-                setSelectedNamespace(namespace.name);
-                setSelectedMountPath(null);
-                setSelectedPaths([]);
-              }
-            }}
-            options={namespaces || []}
-            getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
-            isDisabled={isLoadingNamespaces || (hasAppConnections && !selectedConnectionId)}
-            placeholder={
-              hasAppConnections && !selectedConnectionId
-                ? "Select an app connection first..."
-                : "Select namespace..."
-            }
-            className="w-full"
-          />
-          <p className="mt-1 text-xs text-mineshaft-400">
-            Select the Vault namespace to fetch available mounts
-          </p>
-        </>
-      </FormControl>
+      <VaultConnectionAndNamespaceFields
+        appConnections={appConnections}
+        connectionId={selectedConnectionId}
+        onConnectionIdChange={handleConnectionChange}
+        namespace={selectedNamespace}
+        onNamespaceChange={handleNamespaceChange}
+        namespaceTooltip="Select the Vault namespace containing the secrets you want to import."
+        namespaceHelpText="Select the Vault namespace to fetch available mounts"
+      />
 
       <FormControl
         label="Secrets Engine"

@@ -26,11 +26,15 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { useCanUseAppConnectionImport } from "@app/hooks";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { VaultDatabaseRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -179,6 +183,14 @@ export const SqlDatabaseInputForm = ({
   isSingleEnvironmentMode
 }: Props) => {
   const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
+
+  const { projectId } = useProject();
+  const canUseAppConnectionImport = useCanUseAppConnectionImport(ProjectPermissionSub.Secrets);
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
 
   const {
     control,
@@ -943,6 +955,7 @@ export const SqlDatabaseInputForm = ({
       <VaultSqlDatabaseImportModal
         isOpen={isVaultImportModalOpen}
         onOpenChange={setIsVaultImportModalOpen}
+        appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
     </div>

@@ -4,43 +4,6 @@ export enum ExternalMigrationProviders {
   Doppler = "doppler"
 }
 
-export type TExternalMigrationConfig = {
-  id: string;
-  orgId: string;
-  provider: string;
-  connectionId: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type TExternalMigrationVaultInput = {
-  provider: ExternalMigrationProviders.Vault;
-  config: { namespace: string };
-};
-
-export type TExternalMigrationDopplerInput = {
-  provider: ExternalMigrationProviders.Doppler;
-  config: Record<string, never>;
-};
-
-export type TExternalMigrationInput = TExternalMigrationVaultInput | TExternalMigrationDopplerInput;
-
-export type TCreateExternalMigrationConfigDTO = {
-  connectionId: string;
-  input: TExternalMigrationInput;
-};
-
-export type TUpdateExternalMigrationConfigDTO = {
-  id: string;
-  connectionId: string | null;
-  input: TExternalMigrationInput;
-};
-
-export type TDeleteExternalMigrationConfigDTO = {
-  provider: ExternalMigrationProviders;
-  id: string;
-};
-
 export type TDopplerProject = {
   id: string;
   slug: string;
@@ -64,8 +27,7 @@ export type TDopplerConfig = {
 };
 
 export type TImportDopplerSecretsDTO = {
-  configId?: string;
-  connectionId?: string;
+  connectionId: string;
   dopplerProject: string;
   dopplerEnvironment: string;
   targetProjectId: string;
