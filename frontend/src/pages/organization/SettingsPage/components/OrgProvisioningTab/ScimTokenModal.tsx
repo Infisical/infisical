@@ -26,10 +26,10 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useCreateScimToken, useDeleteScimToken, useGetScimTokens } from "@app/hooks/api";
+import { useGetSSOConfig } from "@app/hooks/api/ssoConfig/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -60,10 +60,10 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
   const [token, setToken] = useState("");
 
   const [isScimUrlCopied, setIsScimUrlCopied] = useToggle(false);
-  const [isAzureScimUrlCopied, setIsAzureScimUrlCopied] = useToggle(false);
   const [isScimTokenCopied, setIsScimTokenCopied] = useToggle(false);
 
   const { data, isPending } = useGetScimTokens(currentOrg?.id ?? "");
+  const { data: ssoConfig } = useGetSSOConfig(currentOrg?.id ?? "");
   const { mutateAsync: createScimTokenMutateAsync } = useCreateScimToken();
   const { mutateAsync: deleteScimTokenMutateAsync } = useDeleteScimToken();
 
@@ -86,16 +86,12 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
       timer = setTimeout(() => setIsScimUrlCopied.off(), 2000);
     }
 
-    if (isAzureScimUrlCopied) {
-      timer = setTimeout(() => setIsAzureScimUrlCopied.off(), 2000);
-    }
-
     if (isScimTokenCopied) {
       timer = setTimeout(() => setIsScimTokenCopied.off(), 2000);
     }
 
     return () => clearTimeout(timer);
-  }, [isScimTokenCopied, isScimUrlCopied, isAzureScimUrlCopied]);
+  }, [isScimTokenCopied, isScimUrlCopied]);
 
   const onFormSubmit = async ({ description, ttlDays }: FormData) => {
     if (!currentOrg?.id) return;
@@ -131,8 +127,11 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
   };
 
   const hasToken = Boolean(token);
-  const scimUrl = `${window.origin}/api/v1/scim`;
-  const azureScimUrl = `${scimUrl}?aadOptscim062020`;
+  const isAzureSaml = ssoConfig?.authProvider === "azure-saml";
+  // Microsoft Entra ID needs the `aadOptscim062020` flag on the tenant URL to
+  // send SCIM 2.0 compliant PATCH requests:
+  // https://learn.microsoft.com/en-us/entra/identity/app-provisioning/application-provisioning-config-problem-scim-compatibility#flags-to-alter-the-scim-behavior
+  const scimUrl = `${window.origin}/api/v1/scim${isAzureSaml ? "?aadOptscim062020" : ""}`;
 
   return (
     <Modal
@@ -145,7 +144,7 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
     >
       <ModalContent title="Manage SCIM credentials">
         <h2 className="mb-4">SCIM URL</h2>
-        <div className="mb-4 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+        <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
           <p className="mr-4 break-all">{scimUrl}</p>
           <IconButton
             ariaLabel="copy icon"
@@ -162,50 +161,6 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
             </span>
           </IconButton>
         </div>
-        <h2 className="mb-4">Microsoft Entra ID (Azure) Tenant URL</h2>
-        <div className="mb-2 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-          <p className="mr-4 break-all">{azureScimUrl}</p>
-          <IconButton
-            ariaLabel="copy azure scim url"
-            colorSchema="secondary"
-            className="group relative"
-            onClick={() => {
-              navigator.clipboard.writeText(azureScimUrl);
-              setIsAzureScimUrlCopied.on();
-            }}
-          >
-            <FontAwesomeIcon icon={isAzureScimUrlCopied ? faCheck : faCopy} />
-            <span className="group-hover:animate-fade-in absolute -top-20 -left-8 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex">
-              {t("common.click-to-copy")}
-            </span>
-          </IconButton>
-        </div>
-        <NoticeBannerV2
-          title="Use this URL when configuring Microsoft Entra ID (Azure)"
-          className="mb-8"
-        >
-          <p className="text-sm text-bunker-300">
-            The{" "}
-            <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs text-mineshaft-100">
-              aadOptscim062020
-            </code>{" "}
-            query parameter opts Microsoft Entra ID into a more SCIM 2.0 compliant PATCH behavior
-            (e.g. sending boolean values for the{" "}
-            <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs text-mineshaft-100">
-              active
-            </code>{" "}
-            attribute and using lowercase operation names). See the{" "}
-            <a
-              href="https://learn.microsoft.com/en-us/entra/identity/app-provisioning/application-provisioning-config-problem-scim-compatibility#flags-to-alter-the-scim-behavior"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline underline-offset-2"
-            >
-              Microsoft documentation
-            </a>{" "}
-            for details.
-          </p>
-        </NoticeBannerV2>
         <h2 className="mb-4">New SCIM Token</h2>
         {hasToken ? (
           <div>

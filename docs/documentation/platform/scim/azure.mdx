@@ -43,16 +43,15 @@ Prerequisites:
         Next, set the following fields:
         
         - Provisioning Mode: Select **Automatic**.
-        - Tenant URL: Input the **Microsoft Entra ID (Azure) Tenant URL** from Step 1
-          (the SCIM URL with the `?aadOptscim062020` query parameter appended).
+        - Tenant URL: Input the **SCIM URL** from Step 1. When Microsoft Entra ID (Azure)
+          SAML is configured for your organization, Infisical automatically appends the
+          `?aadOptscim062020` feature flag to this URL.
         - Secret Token: Input the **New SCIM Token** from Step 1.
 
         <Info>
             The `aadOptscim062020` feature flag opts Microsoft Entra ID into a more SCIM 2.0
             compliant PATCH behavior — including sending booleans (instead of strings) for the
-            `active` attribute and using lowercase `op` values. Infisical's SCIM endpoint expects
-            this compliant behavior, so we recommend always using the Tenant URL that includes
-            the flag when configuring Microsoft Entra ID. See Microsoft's documentation on
+            `active` attribute and using lowercase `op` values. See Microsoft's documentation on
             [flags to alter the SCIM behavior](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/application-provisioning-config-problem-scim-compatibility#flags-to-alter-the-scim-behavior)
             for more details.
         </Info>
