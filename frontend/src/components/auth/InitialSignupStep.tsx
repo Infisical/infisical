@@ -29,7 +29,7 @@ interface InitialSignupStepProps {
   email: string;
   setEmail: (value: string) => void;
 
-  incrementStep: () => void;
+  incrementStep: (cooldownSeconds: number) => void;
 }
 
 export default function InitialSignupStep({
@@ -54,9 +54,9 @@ export default function InitialSignupStep({
     }
 
     setEmailError(false);
-    await mutateAsync({ email: email.toLowerCase() });
+    const { cooldownSeconds } = await mutateAsync({ email: email.toLowerCase() });
     setEmail(email.toLowerCase());
-    incrementStep();
+    incrementStep(cooldownSeconds);
   };
 
   const handleSocialSignup = (method: LoginMethod) => {

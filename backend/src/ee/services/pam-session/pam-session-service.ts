@@ -306,7 +306,7 @@ export const pamSessionServiceFactory = ({
       void (async () => {
         let relayConn: net.Socket | null = null;
         try {
-          const user = await userDAL.findById(actor.id);
+          const user = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
           const certs = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId: session.gatewayId,
             sessionId,

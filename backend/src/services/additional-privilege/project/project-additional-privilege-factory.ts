@@ -427,7 +427,9 @@ export const newProjectAdditionalPrivilegesFactory = ({
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
         if (actorType === ActorType.USER) {
-          const targetUser = await userDAL.findById(actorId);
+          const targetUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () =>
+            userDAL.findById(actorId)
+          );
           targetIdentifier = targetUser?.email ?? undefined;
         } else {
           targetIdentifier = actorId;
@@ -471,7 +473,9 @@ export const newProjectAdditionalPrivilegesFactory = ({
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
         if (actorType === ActorType.USER) {
-          const targetUser = await userDAL.findById(actorId);
+          const targetUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () =>
+            userDAL.findById(actorId)
+          );
           targetIdentifier = targetUser?.email ?? undefined;
         } else {
           targetIdentifier = actorId;

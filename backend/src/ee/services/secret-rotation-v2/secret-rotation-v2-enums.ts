@@ -16,7 +16,8 @@ export enum SecretRotation {
   WindowsLocalAccount = "windows-local-account",
   OpenRouterApiKey = "open-router-api-key",
   HpIloLocalAccount = "hp-ilo-local-account",
-  SupabaseApiKey = "supabase-api-key"
+  SupabaseApiKey = "supabase-api-key",
+  DatadogApplicationKeySecret = "datadog-application-key-secret"
 }
 
 export enum SecretRotationStatus {

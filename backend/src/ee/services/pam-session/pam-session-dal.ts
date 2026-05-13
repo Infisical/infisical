@@ -26,7 +26,13 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.PamResource, function joinResource() {
         this.on(sessionResourceOn);
       })
-      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
+        this.on(
+          `${TableName.GatewayV2}.id`,
+          "=",
+          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
+        );
+      })
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
@@ -79,7 +85,13 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.PamResource, function joinResource() {
         this.on(sessionResourceOn);
       })
-      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
+        this.on(
+          `${TableName.GatewayV2}.id`,
+          "=",
+          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
+        );
+      })
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
       .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))

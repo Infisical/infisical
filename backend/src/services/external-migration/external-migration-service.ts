@@ -7,6 +7,7 @@ import {
 } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -76,6 +77,10 @@ type TExternalMigrationServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickRandomHealthyGateway"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -87,6 +92,7 @@ export const externalMigrationServiceFactory = ({
   userDAL,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   secretService,
   auditLogService,
   appConnectionService,
@@ -96,7 +102,12 @@ export const externalMigrationServiceFactory = ({
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
 
-    if (connection.gatewayId) {
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+
+    if (effectiveGatewayId) {
       const instanceUrl = await getHCVaultInstanceUrl(connection);
       const url = new URL(instanceUrl);
 
@@ -110,7 +121,7 @@ export const externalMigrationServiceFactory = ({
       const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
 
       const gatewayV2Details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-        gatewayId: connection.gatewayId,
+        gatewayId: effectiveGatewayId,
         targetHost,
         targetPort
       });
@@ -125,7 +136,7 @@ export const externalMigrationServiceFactory = ({
           }
         };
       } else {
-        const gatewayV1Details = await gatewayService.fnGetGatewayClientTlsByGatewayId(connection.gatewayId);
+        const gatewayV1Details = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId);
         if (gatewayV1Details) {
           gatewayDetails = {
             gatewayVersion: GatewayVersion.V1,
@@ -204,9 +215,19 @@ export const externalMigrationServiceFactory = ({
       projectId: null
     });
 
+    const connectionGatewayId = migrationConfig.connection.gatewayId as string | null | undefined;
+    const connectionGatewayPoolId = migrationConfig.connection.gatewayPoolId as string | null | undefined;
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connectionGatewayId,
+      gatewayPoolId: connectionGatewayPoolId
+    });
+
     return {
       ...migrationConfig.connection,
-      credentials
+      credentials,
+      gatewayId: effectiveGatewayId,
+      gatewayPoolId: null
     } as THCVaultConnection;
   };
 
@@ -273,6 +294,7 @@ export const externalMigrationServiceFactory = ({
     mappingType,
     vaultUrl,
     gatewayId,
+    gatewayPoolId,
     actor,
     actorId,
     actorOrgId,
@@ -293,13 +315,28 @@ export const externalMigrationServiceFactory = ({
 
     const user = await userDAL.findById(actorId);
 
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
+    let effectiveGatewayId: string | null = gatewayId ?? null;
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actorOrgId,
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+      });
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      effectiveGatewayId = picked.id;
+    }
+
     const vaultData = await importVaultDataFn(
       {
         vaultAccessToken,
         vaultNamespace,
         vaultUrl,
         mappingType,
-        gatewayId,
+        gatewayId: effectiveGatewayId ?? undefined,
         orgId: actorOrgId
       },
       {

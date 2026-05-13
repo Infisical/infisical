@@ -1027,12 +1027,10 @@ export const honeyTokenServiceFactory = ({
       void telemetryService
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenTriggered,
-          distinctId: `honey-token-${honeyToken.id}`,
-          organizationId: honeyTokenWithOrg.orgId,
+          distinctId: "anonymous-honey-token-trigger",
+          anonymous: true,
           properties: {
-            honeyTokenId: honeyToken.id,
-            type: honeyToken.type,
-            projectId: honeyToken.projectId
+            type: honeyToken.type
           }
         })
         .catch(() => {});

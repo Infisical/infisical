@@ -8,6 +8,7 @@ import handlebars from "handlebars";
 
 import { TCertificates } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -68,6 +69,7 @@ type TPkiSyncQueueFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 type PkiSyncActionJob = Job<
@@ -100,7 +102,8 @@ export const pkiSyncQueueFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateSyncDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -461,7 +464,8 @@ export const pkiSyncQueueFactory = ({
         kmsService,
         certificateDAL,
         certificateSyncDAL,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       });
 
       logger.info(
@@ -727,7 +731,8 @@ export const pkiSyncQueueFactory = ({
           certificateSyncDAL,
           certificateDAL,
           certificateMap,
-          gatewayV2Service
+          gatewayV2Service,
+          gatewayPoolService
         }
       );
 

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
+import { gatewayPoolsQueryKeys } from "../gateway-pools/queries";
 import { pkiDiscoveryKeys, pkiInstallationKeys } from "./queries";
 import {
   TCreatePkiDiscoveryDTO,
@@ -28,6 +29,7 @@ export const useCreatePkiDiscovery = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
       createNotification({
         text: "Successfully created discovery job",
         type: "success"
@@ -49,6 +51,7 @@ export const useUpdatePkiDiscovery = () => {
     onSuccess: (discovery) => {
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.list(discovery.projectId) });
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.discovery(discovery.id) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
       createNotification({
         text: "Successfully updated discovery job",
         type: "success"
@@ -69,6 +72,7 @@ export const useDeletePkiDiscovery = () => {
     onSuccess: (discovery) => {
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.list(discovery.projectId) });
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.discovery(discovery.id) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
       createNotification({
         text: "Successfully deleted discovery job",
         type: "success"

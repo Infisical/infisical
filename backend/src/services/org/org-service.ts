@@ -23,6 +23,7 @@ import {
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -829,6 +830,15 @@ export const orgServiceFactory = ({
 
       userRole = OrgMembershipRole.Custom;
       userRoleId = customRole.id;
+    }
+
+    if (role) {
+      const [permissionRole] = await permissionService.getOrgPermissionByRoles([role], orgId);
+      assertPermissionBoundary(
+        permission,
+        permissionRole.permission,
+        "Cannot assign a role exceeding your own privileges to an org member"
+      );
     }
     const membership = await orgDAL.transaction(async (tx) => {
       // this is because if isActive is undefined then this would fail due to knexjs error

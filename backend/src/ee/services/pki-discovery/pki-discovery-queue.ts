@@ -1,3 +1,4 @@
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
@@ -28,6 +29,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TPkiDiscoveryQueueFactory = ReturnType<typeof pkiDiscoveryQueueFactory>;
@@ -44,7 +46,8 @@ export const pkiDiscoveryQueueFactory = ({
   kmsService,
   queueService,
   gatewayV2Service,
-  gatewayV2DAL
+  gatewayV2DAL,
+  gatewayPoolService
 }: TPkiDiscoveryQueueFactoryDep) => {
   const startPkiDiscoveryScanQueue = () => {
     queueService.start(QueueName.PkiDiscoveryScan, async (job) => {
@@ -71,7 +74,8 @@ export const pkiDiscoveryQueueFactory = ({
             projectDAL,
             kmsService,
             gatewayV2Service,
-            gatewayV2DAL
+            gatewayV2DAL,
+            gatewayPoolService
           };
 
           switch (discoveryType) {

@@ -148,19 +148,21 @@ export type TListPamResourcesDTO = {
 
 export type TCreatePamResourceDTO = Pick<
   TPamResource,
-  "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
+  "name" | "connectionDetails" | "resourceType" | "projectId"
 > & {
+  gatewayId?: string;
+  gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
 };
 
 export type { TSessionSummaryConfig };
 
-export type TUpdatePamResourceDTO = Partial<
-  Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
-> & {
+export type TUpdatePamResourceDTO = Partial<Pick<TPamResource, "name" | "connectionDetails">> & {
   resourceId: string;
   resourceType: PamResourceType;
+  gatewayId?: string;
+  gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
   rotationAccountCredentials?: { username: string; password: string } | null;

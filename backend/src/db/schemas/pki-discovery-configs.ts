@@ -23,7 +23,8 @@ export const PkiDiscoveryConfigsSchema = z.object({
   lastScanMessage: z.string().nullable().optional(),
   lastScannedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiDiscoveryConfigs = z.infer<typeof PkiDiscoveryConfigsSchema>;

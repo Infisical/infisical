@@ -22,12 +22,14 @@ export const registerPamDomainEndpoints = <T extends TPamDomain>({
     projectId: T["projectId"];
     connectionDetails: T["connectionDetails"];
     gatewayId?: string;
+    gatewayPoolId?: string;
     name: T["name"];
     metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   updateDomainSchema: z.ZodType<{
     connectionDetails?: T["connectionDetails"];
     gatewayId?: string;
+    gatewayPoolId?: string;
     name?: T["name"];
     metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;

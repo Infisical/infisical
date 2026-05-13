@@ -1,3 +1,4 @@
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
@@ -35,6 +36,7 @@ type TPamDiscoveryQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TPamDiscoveryQueueFactory = ReturnType<typeof pamDiscoveryQueueFactory>;
@@ -52,7 +54,8 @@ export const pamDiscoveryQueueFactory = ({
   kmsService,
   queueService,
   gatewayV2Service,
-  gatewayV2DAL
+  gatewayV2DAL,
+  gatewayPoolService
 }: TPamDiscoveryQueueFactoryDep) => {
   const startPamDiscoveryQueue = () => {
     queueService.start(QueueName.PamDiscoveryScan, async (job) => {
@@ -79,13 +82,26 @@ export const pamDiscoveryQueueFactory = ({
 
           const configuration = discoverySource.discoveryConfiguration as TPamDiscoveryConfiguration;
 
+          const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+            gatewayId: discoverySource.gatewayId,
+            gatewayPoolId: discoverySource.gatewayPoolId
+          });
+          if (!effectiveGatewayId) {
+            logger.error(
+              { discoverySourceId, triggeredBy },
+              "PAM Discovery Source has no gateway or gateway pool, skipping scan"
+            );
+            return;
+          }
+
           const factory = PAM_DISCOVERY_FACTORY_MAP[discoveryType](
             discoveryType,
             configuration,
             credentials,
-            discoverySource.gatewayId,
+            effectiveGatewayId,
             discoverySource.projectId,
-            gatewayV2Service
+            gatewayV2Service,
+            discoverySource.gatewayPoolId
           );
 
           const scanDeps = {

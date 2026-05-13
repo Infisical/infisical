@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -119,6 +120,7 @@ type TSecretSyncQueueFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
@@ -166,6 +168,7 @@ export const secretSyncQueueFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   notificationService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
@@ -434,7 +437,8 @@ export const secretSyncQueueFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      gatewayPoolService
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -580,7 +584,8 @@ export const secretSyncQueueFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       });
 
       syncResult = result ?? undefined;
@@ -830,7 +835,8 @@ export const secretSyncQueueFactory = ({
           appConnectionDAL,
           kmsService,
           gatewayService,
-          gatewayV2Service
+          gatewayV2Service,
+          gatewayPoolService
         }
       );
 

@@ -39,7 +39,13 @@ const createService = ({
   trustedIps?: TIp[] | null;
   membership?: { isActive: boolean } | null;
   org?: { id: string; rootOrgId?: string; parentOrgId?: string };
-  activeRevocations?: Array<{ id: string; identityId: string; revokedAt?: Date | null; createdAt: Date }>;
+  activeRevocations?: Array<{
+    id: string;
+    identityId: string;
+    revokedAt?: Date | null;
+    createdAt: Date;
+    scope?: string | null;
+  }>;
   tokenRow?: Record<string, unknown> | null;
 } = {}) => {
   const keyStore = {
@@ -69,7 +75,14 @@ const createService = ({
     keyStore: keyStore as never
   });
 
-  return { service, keyStore, identityDAL, orgDAL, identityAccessTokenDAL, identityAccessTokenRevocationDAL };
+  return {
+    service,
+    keyStore,
+    identityDAL,
+    orgDAL,
+    identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL
+  };
 };
 
 const createTokenClaims = (
