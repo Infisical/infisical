@@ -9,17 +9,17 @@ import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Field,
   FieldContent,
   FieldDescription,
-  FieldLabel
+  FieldLabel,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { useProject } from "@app/context";
@@ -193,152 +193,157 @@ const DuplicateSecretContent = ({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)}>
-      <Field>
-        <FieldLabel>Source</FieldLabel>
-        <FieldContent>
-          <div className="max-h-48 thin-scrollbar divide-y divide-border overflow-y-auto rounded-md border border-border bg-container">
-            {secrets.map((s) => (
-              <div
-                key={s.id}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,40%)] items-center gap-2 px-3 py-2"
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-sm text-foreground">
-                  <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
-                  {secretPath !== "/" && (
-                    <span className="text-muted-foreground/60 truncate">{secretPath}</span>
-                  )}
-                  <span className="truncate">{s.name}</span>
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-1 flex-col">
+      <div className="flex flex-col gap-4 px-4 pb-4">
+        <Field>
+          <FieldLabel>Source</FieldLabel>
+          <FieldContent className="gap-3">
+            <div className="flex items-center gap-7 rounded-md border border-border bg-container px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-xs text-accent">Environment</div>
+                <div className="mt-1 text-sm font-medium">
+                  <Badge variant="info" isTruncatable title={sourceEnvironment.name}>
+                    {sourceEnvironment.name}
+                  </Badge>
                 </div>
-                <Badge
-                  variant="info"
-                  className="max-w-full min-w-0 justify-self-end"
-                  isTruncatable
-                  title={sourceEnvironment.name}
-                >
-                  <span className="block max-w-full">{sourceEnvironment.name}</span>
-                </Badge>
               </div>
-            ))}
-          </div>
-          {secrets.length > 1 && (
-            <FieldDescription>
-              {secrets.length} secrets will be duplicated into each selected destination.
-            </FieldDescription>
-          )}
-        </FieldContent>
-      </Field>
+              <div className="h-8 w-px bg-border" />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-accent">Path</div>
+                <div className="mt-1 truncate font-mono text-sm text-foreground" title={secretPath}>
+                  {secretPath}
+                </div>
+              </div>
+            </div>
 
-      <Controller
-        control={control}
-        name="environmentIds"
-        render={({ field: { value, onChange } }) => {
-          const options: EnvironmentOption[] = availableEnvs.map((env) => ({
-            id: env.id,
-            name: env.name,
-            slug: env.slug
-          }));
-          const selectedOptions = options.filter((option) => value.includes(option.id));
+            <div>
+              <div className="mb-1.5 text-xs text-accent">Secrets ({secrets.length})</div>
+              <div className="max-h-48 thin-scrollbar divide-y divide-border overflow-y-auto rounded-md border border-border bg-container">
+                {secrets.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex min-w-0 items-center gap-2 px-3 py-2 text-sm text-foreground"
+                  >
+                    <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
+                    <span className="truncate">{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </FieldContent>
+        </Field>
 
-          return (
-            <Field className="mt-4">
-              <FieldLabel>Target Environments</FieldLabel>
+        <Controller
+          control={control}
+          name="environmentIds"
+          render={({ field: { value, onChange } }) => {
+            const options: EnvironmentOption[] = availableEnvs.map((env) => ({
+              id: env.id,
+              name: env.name,
+              slug: env.slug
+            }));
+            const selectedOptions = options.filter((option) => value.includes(option.id));
+
+            return (
+              <Field>
+                <FieldLabel>Target Environments</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    isMulti
+                    options={options}
+                    value={selectedOptions}
+                    onChange={(nextOptions) =>
+                      onChange(
+                        (nextOptions as MultiValue<EnvironmentOption>).map((option) => option.id)
+                      )
+                    }
+                    placeholder="Search environments..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                    filterOption={(candidate, input) => {
+                      const normalizedQuery = input.trim().toLowerCase();
+                      if (!normalizedQuery) return true;
+
+                      return (
+                        candidate.data.name.toLowerCase().includes(normalizedQuery) ||
+                        candidate.data.slug.toLowerCase().includes(normalizedQuery)
+                      );
+                    }}
+                  />
+                  <FieldDescription>Pick one or more destinations.</FieldDescription>
+                </FieldContent>
+              </Field>
+            );
+          }}
+        />
+
+        <Controller
+          control={control}
+          name="include"
+          render={({ field: { value, onChange } }) => (
+            <Field>
+              <FieldLabel>Include properties</FieldLabel>
               <FieldContent>
-                <FilterableSelect
-                  isMulti
-                  options={options}
-                  value={selectedOptions}
-                  onChange={(nextOptions) =>
-                    onChange(
-                      (nextOptions as MultiValue<EnvironmentOption>).map((option) => option.id)
-                    )
-                  }
-                  placeholder="Search environments..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                  filterOption={(candidate, input) => {
-                    const normalizedQuery = input.trim().toLowerCase();
-                    if (!normalizedQuery) return true;
-
+                <div className="divide-y divide-border rounded-md border border-border">
+                  {INCLUDE_OPTIONS.map((opt) => {
+                    const id = `duplicate-include-${opt.key}`;
                     return (
-                      candidate.data.name.toLowerCase().includes(normalizedQuery) ||
-                      candidate.data.slug.toLowerCase().includes(normalizedQuery)
+                      <label
+                        key={opt.key}
+                        htmlFor={id}
+                        className="flex cursor-pointer items-start gap-3 p-3"
+                      >
+                        <Checkbox
+                          id={id}
+                          variant="project"
+                          isChecked={value[opt.key]}
+                          onCheckedChange={() => onChange({ ...value, [opt.key]: !value[opt.key] })}
+                          className="mt-0.5"
+                        />
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm text-foreground">{opt.label}</span>
+                          <span className="text-xs text-muted">{opt.description}</span>
+                        </div>
+                      </label>
                     );
-                  }}
-                />
-                <FieldDescription>Pick one or more destinations.</FieldDescription>
+                  })}
+                </div>
               </FieldContent>
             </Field>
-          );
-        }}
-      />
+          )}
+        />
 
-      <Controller
-        control={control}
-        name="include"
-        render={({ field: { value, onChange } }) => (
-          <Field className="mt-4">
-            <FieldLabel>Include properties</FieldLabel>
-            <FieldContent>
-              <div className="divide-y divide-border rounded-md border border-border">
-                {INCLUDE_OPTIONS.map((opt) => {
-                  const id = `duplicate-include-${opt.key}`;
-                  return (
-                    <label
-                      key={opt.key}
-                      htmlFor={id}
-                      className="flex cursor-pointer items-start gap-3 p-3"
-                    >
-                      <Checkbox
-                        id={id}
-                        variant="project"
-                        isChecked={value[opt.key]}
-                        onCheckedChange={() => onChange({ ...value, [opt.key]: !value[opt.key] })}
-                        className="mt-0.5"
-                      />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-sm text-foreground">{opt.label}</span>
-                        <span className="text-xs text-muted">{opt.description}</span>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </FieldContent>
-          </Field>
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="shouldOverwrite"
-        render={({ field: { onBlur, value, onChange } }) => (
-          <Field className="mt-4">
-            <Field orientation="horizontal">
-              <Checkbox
-                id="duplicate-overwrite"
-                isChecked={value}
-                onCheckedChange={onChange}
-                onBlur={onBlur}
-                variant="project"
-              />
-              <FieldLabel htmlFor="duplicate-overwrite" className="cursor-pointer">
-                Overwrite existing secret
-              </FieldLabel>
+        <Controller
+          control={control}
+          name="shouldOverwrite"
+          render={({ field: { onBlur, value, onChange } }) => (
+            <Field>
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="duplicate-overwrite"
+                  isChecked={value}
+                  onCheckedChange={onChange}
+                  onBlur={onBlur}
+                  variant="project"
+                />
+                <FieldLabel htmlFor="duplicate-overwrite" className="cursor-pointer">
+                  Overwrite existing secret
+                </FieldLabel>
+              </Field>
+              <FieldDescription>
+                {value
+                  ? "Secrets with conflicting keys at the destination will be overwritten"
+                  : "Secrets with conflicting keys at the destination will not be overwritten"}
+              </FieldDescription>
             </Field>
-            <FieldDescription>
-              {value
-                ? "Secrets with conflicting keys at the destination will be overwritten"
-                : "Secrets with conflicting keys at the destination will not be overwritten"}
-            </FieldDescription>
-          </Field>
-        )}
-      />
+          )}
+        />
+      </div>
 
-      <DialogFooter className="mt-6">
-        <DialogClose asChild>
+      <SheetFooter>
+        <SheetClose asChild>
           <Button variant="outline">Cancel</Button>
-        </DialogClose>
+        </SheetClose>
         <Button
           type="submit"
           variant="project"
@@ -352,24 +357,22 @@ const DuplicateSecretContent = ({
         >
           <PlusIcon /> Duplicate
         </Button>
-      </DialogFooter>
+      </SheetFooter>
     </form>
   );
 };
 
 export const DuplicateSecretModal = ({ isOpen, onOpenChange, ...props }: Props) => (
-  <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-xl">
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <DialogTitle>Duplicate Secret</DialogTitle>
-        </div>
-        <DialogDescription>
+  <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <SheetContent className="overflow-y-auto sm:max-w-xl">
+      <SheetHeader>
+        <SheetTitle>Duplicate Secret</SheetTitle>
+        <SheetDescription>
           Copy the selected secret{props.secrets.length > 1 ? "s" : ""} and their metadata into one
           or more environments.
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
       <DuplicateSecretContent {...props} onClose={() => onOpenChange(false)} />
-    </DialogContent>
-  </Dialog>
+    </SheetContent>
+  </Sheet>
 );
