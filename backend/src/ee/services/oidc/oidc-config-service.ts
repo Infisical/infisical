@@ -272,6 +272,21 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!newUser) {
+          if (!serverCfg.allowSignUp) {
+            throw new BadRequestError({ message: "Sign up disabled", name: "OIDC login" });
+          }
+
+          if (serverCfg.allowedSignUpDomain) {
+            const domain = sanitizedEmail.split("@")[1];
+            const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
+            if (!allowedDomains.includes(domain)) {
+              throw new BadRequestError({
+                message: `Email with a domain (@${domain}) is not supported`,
+                name: "OIDC login"
+              });
+            }
+          }
+
           newUser = await userDAL.create(
             {
               email: sanitizedEmail,

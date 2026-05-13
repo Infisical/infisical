@@ -484,6 +484,21 @@ export const ldapConfigServiceFactory = ({
         newUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
 
         if (!newUser) {
+          if (!serverCfg.allowSignUp) {
+            throw new BadRequestError({ message: "Sign up disabled", name: "LDAP login" });
+          }
+
+          if (serverCfg.allowedSignUpDomain) {
+            const domain = sanitizedEmail.split("@")[1];
+            const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
+            if (!allowedDomains.includes(domain)) {
+              throw new BadRequestError({
+                message: `Email with a domain (@${domain}) is not supported`,
+                name: "LDAP login"
+              });
+            }
+          }
+
           newUser = await userDAL.create(
             {
               username: sanitizedEmail,
