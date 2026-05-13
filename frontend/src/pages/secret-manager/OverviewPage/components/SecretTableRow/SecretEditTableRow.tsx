@@ -1669,13 +1669,13 @@ export const SecretEditTableRow = ({
                 >
                   {(isAllowed) => (
                     <Tooltip
-                      open={isCreatable || !isAllowed ? undefined : false}
+                      open={isManagedSecret || isCreatable || !isAllowed ? undefined : false}
                       disableHoverableContent
                     >
                       <TooltipTrigger className="block w-full">
                         <DropdownMenuItem
                           onClick={() => handlePopUpOpen("duplicateSecret")}
-                          isDisabled={isCreatable || !secretId || !isAllowed}
+                          isDisabled={isManagedSecret || isCreatable || !secretId || !isAllowed}
                         >
                           <CopyPlus />
                           Duplicate Secret
@@ -1686,7 +1686,11 @@ export const SecretEditTableRow = ({
                           ? "Access Denied"
                           : isCreatable
                             ? "Create Secret First"
-                            : "Duplicate Secret"}
+                            : isHoneyTokenSecret
+                              ? "Cannot Duplicate Honey Token Secret"
+                              : isRotatedSecret
+                                ? "Cannot Duplicate Rotated Secret"
+                                : "Duplicate Secret"}
                       </TooltipContent>
                     </Tooltip>
                   )}

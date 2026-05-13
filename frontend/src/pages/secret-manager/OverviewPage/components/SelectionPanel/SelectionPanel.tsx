@@ -347,6 +347,25 @@ export const SelectionPanel = ({
     name: secret.key
   }));
 
+  const duplicateSourceEnvSlugForPermission =
+    selectedKeysCount > 0 && duplicateSourceEnvSlugs.size === 1
+      ? selectedSecretEntries[0]?.[0]
+      : undefined;
+  const canCreateInDuplicateSourceEnv = Boolean(
+    duplicateSourceEnvSlugForPermission &&
+      permission.can(
+        ProjectPermissionSecretActions.Create,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: duplicateSourceEnvSlugForPermission,
+          secretPath,
+          secretName: "*",
+          secretTags: ["*"]
+        })
+      )
+  );
+  const shouldShowBulkDuplicate =
+    selectedKeysCount > 0 && (duplicateSourceEnvSlugs.size !== 1 || canCreateInDuplicateSourceEnv);
+
   return (
     <>
       <div
@@ -382,55 +401,55 @@ export const SelectionPanel = ({
             </Tooltip>
           )}
           {shouldShowDelete && (
-            <>
-              <Tooltip open={isMoveDisabled ? undefined : false}>
-                <TooltipTrigger>
-                  <Button
-                    isDisabled={isMoveDisabled}
-                    variant="project"
-                    className="ml-2"
-                    onClick={() => handlePopUpOpen("bulkMoveSecrets")}
-                    size="xs"
-                  >
-                    <FolderInputIcon />
-                    Move
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{moveDisabledReason}</TooltipContent>
-              </Tooltip>
-              {selectedKeysCount > 0 && (
-                <Tooltip open={isDuplicateDisabled ? undefined : false}>
-                  <TooltipTrigger>
-                    <Button
-                      isDisabled={isDuplicateDisabled}
-                      variant="project"
-                      className="ml-2"
-                      onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
-                      size="xs"
-                    >
-                      <CopyPlus />
-                      Duplicate
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{duplicateDisabledReason}</TooltipContent>
-                </Tooltip>
-              )}
-              <Tooltip open={isDeleteDisabled ? undefined : false}>
-                <TooltipTrigger>
-                  <Button
-                    isDisabled={isDeleteDisabled}
-                    variant="danger"
-                    className="ml-2"
-                    onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-                    size="xs"
-                  >
-                    <TrashIcon />
-                    Delete
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{deleteDisabledReason}</TooltipContent>
-              </Tooltip>
-            </>
+            <Tooltip open={isMoveDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isMoveDisabled}
+                  variant="project"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                  size="xs"
+                >
+                  <FolderInputIcon />
+                  Move
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{moveDisabledReason}</TooltipContent>
+            </Tooltip>
+          )}
+          {shouldShowBulkDuplicate && (
+            <Tooltip open={isDuplicateDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isDuplicateDisabled}
+                  variant="project"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
+                  size="xs"
+                >
+                  <CopyPlus />
+                  Duplicate
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{duplicateDisabledReason}</TooltipContent>
+            </Tooltip>
+          )}
+          {shouldShowDelete && (
+            <Tooltip open={isDeleteDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isDeleteDisabled}
+                  variant="danger"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                  size="xs"
+                >
+                  <TrashIcon />
+                  Delete
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{deleteDisabledReason}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

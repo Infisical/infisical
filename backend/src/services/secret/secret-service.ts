@@ -3519,7 +3519,7 @@ export const secretServiceFactory = ({
     const projectId = project.id;
 
     if (sourceSecretPath === destinationSecretPath && sourceEnvironment === destinationEnvironment) {
-      throw new BadRequestError({ message: "Cannot duplicate secrets to the same path" });
+      throw new BadRequestError({ message: "Cannot duplicate secrets to the same environment and path" });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -3692,39 +3692,46 @@ export const secretServiceFactory = ({
       actorOrgId
     } as const;
 
-    const [createdSecrets, updatedSecrets] = await Promise.all([
-      sourcesToCreate.length
-        ? secretV2BridgeService.createManySecret({
+    const { createdSecrets, updatedSecrets } = await secretDAL.transaction(async (tx) => {
+      const created = sourcesToCreate.length
+        ? await secretV2BridgeService.createManySecret({
             ...baseManyArgs,
+            tx,
+            skipPostProcessing: true,
             secrets: sourcesToCreate.map((sourceSecret) => {
               const { secretKey, secretValue, ...rest } = buildSecretPayload(sourceSecret);
               return { secretKey, secretValue: secretValue ?? "", ...rest };
             })
           })
-        : Promise.resolve([] as Awaited<ReturnType<typeof secretV2BridgeService.createManySecret>>),
-      sourcesToUpdate.length
-        ? secretV2BridgeService.updateManySecret({
+        : ([] as Awaited<ReturnType<typeof secretV2BridgeService.createManySecret>>);
+
+      const updated = sourcesToUpdate.length
+        ? await secretV2BridgeService.updateManySecret({
             ...baseManyArgs,
+            tx,
+            skipPostProcessing: true,
             mode: SecretUpdateMode.FailOnNotFound,
             secrets: sourcesToUpdate.map(buildSecretPayload)
           })
-        : Promise.resolve([] as Awaited<ReturnType<typeof secretV2BridgeService.updateManySecret>>)
-    ]);
+        : ([] as Awaited<ReturnType<typeof secretV2BridgeService.updateManySecret>>);
+
+      return { createdSecrets: created, updatedSecrets: updated };
+    });
+
+    await snapshotService.performSnapshot(destinationFolder.id);
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: destinationFolder.path,
+      projectId,
+      orgId: project.orgId,
+      environmentSlug: destinationFolder.environment.slug
+    });
 
     const destinationIdByKey = new Map<string, string>([
       ...createdSecrets.map((s): [string, string] => [s.secretKey, s.id]),
       ...updatedSecrets.map((s): [string, string] => [s.secretKey, s.id])
     ]);
-
-    await snapshotService.performSnapshot(destinationFolder.id);
-    await secretQueueService.syncSecrets({
-      projectId: project.id,
-      orgId: project.orgId,
-      secretPath: destinationFolder.path,
-      environmentSlug: destinationFolder.environment.slug,
-      actorId,
-      actor
-    });
 
     return {
       projectId,
