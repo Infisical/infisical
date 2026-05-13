@@ -24,14 +24,13 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3";
-import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
@@ -47,6 +46,7 @@ import {
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
 import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import { useCanUseAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -181,9 +181,8 @@ export const IdentityKubernetesAuthForm = ({
     if (projectId) return projectVaultAppConnections;
     return orgAppConnections.filter((c) => c.app === AppConnection.HCVault && !c.projectId);
   }, [projectId, projectVaultAppConnections, orgAppConnections]);
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({ scope: "org-identity" });
   const hasVaultConnection = vaultAppConnections.length > 0;
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
 
@@ -465,8 +464,8 @@ export const IdentityKubernetesAuthForm = ({
               </div>
               <Tooltip
                 content={
-                  !isOrgAdmin
-                    ? "Only organization admins can import configurations from HashiCorp Vault"
+                  !canUseAppConnectionImport
+                    ? "You don't have permission to import configurations from HashiCorp Vault"
                     : undefined
                 }
               >
@@ -481,7 +480,7 @@ export const IdentityKubernetesAuthForm = ({
                     />
                   }
                   onClick={() => handleImportPopUpToggle("importFromVault", true)}
-                  isDisabled={!isOrgAdmin}
+                  isDisabled={!canUseAppConnectionImport}
                 >
                   Load from Vault
                 </Button>

@@ -502,9 +502,10 @@ const OverviewPageContent = () => {
     ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
     : true;
 
-  const canUseAppConnectionImport = useCanUseAppConnectionImport(
-    singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
-  );
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({
+    scope: "project-secret",
+    subject: singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
+  });
 
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,

@@ -13,7 +13,10 @@ type Props = {
 
 export const LoadFromVaultBanner = ({ onClick }: Props) => {
   const { projectId } = useProject();
-  const canUseAppConnectionImport = useCanUseAppConnectionImport(ProjectPermissionSub.Secrets);
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({
+    scope: "project-secret",
+    subject: ProjectPermissionSub.Secrets
+  });
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,

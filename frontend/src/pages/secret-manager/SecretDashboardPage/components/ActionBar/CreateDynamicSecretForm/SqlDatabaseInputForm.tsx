@@ -185,7 +185,10 @@ export const SqlDatabaseInputForm = ({
   const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
 
   const { projectId } = useProject();
-  const canUseAppConnectionImport = useCanUseAppConnectionImport(ProjectPermissionSub.Secrets);
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({
+    scope: "project-secret",
+    subject: ProjectPermissionSub.Secrets
+  });
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,

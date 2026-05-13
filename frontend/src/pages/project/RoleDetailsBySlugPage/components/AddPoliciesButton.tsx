@@ -12,8 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub, useOrgPermission } from "@app/context";
-import { OrgMembershipRole } from "@app/helpers/roles";
+import { ProjectPermissionSub } from "@app/context";
 import { useCanUseAppConnectionImport, usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -44,16 +43,17 @@ export const AddPoliciesButton = ({
     "importFromVault"
   ] as const);
 
-  const { hasOrgRole } = useOrgPermission();
-  const canUseAppConnectionImport = useCanUseAppConnectionImport(ProjectPermissionSub.Secrets);
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({
+    scope: "project-secret",
+    subject: ProjectPermissionSub.Secrets
+  });
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId ?? "",
     { enabled: Boolean(projectId) && canUseAppConnectionImport }
   );
   const hasVaultConnection = vaultAppConnections.length > 0;
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-  const isVaultImportDisabled = isDisabled || !isOrgAdmin;
+  const isVaultImportDisabled = isDisabled;
 
   return (
     <div>

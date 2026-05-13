@@ -131,11 +131,14 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
                 : null
             }
             onChange={(value) => {
+              console.log("value!!!", value);
               if (value && !Array.isArray(value)) {
                 const mount = value as { path: string; type: string };
                 setSelectedMountPath(mount.path.replace(/\/$/, ""));
+                console.log("selectedMountPath", selectedMountPath);
                 setSelectedRole(null);
               } else {
+                console.log("selectedMountPath else", selectedMountPath);
                 setSelectedMountPath(null);
               }
             }}

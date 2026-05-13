@@ -224,7 +224,10 @@ export const ActionBar = ({
       }),
     [environment, secretPath]
   );
-  const canUseAppConnectionImport = useCanUseAppConnectionImport(vaultSecretSubject);
+  const canUseAppConnectionImport = useCanUseAppConnectionImport({
+    scope: "project-secret",
+    subject: vaultSecretSubject
+  });
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,
