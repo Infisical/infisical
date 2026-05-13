@@ -58,7 +58,7 @@ export const CertManagerNav = ({
     }),
     enabled: isCertManagerAdmin && Boolean(projectId)
   });
-  const { data: pendingRequestsCount = 0 } = useQuery({
+  const { data: pendingCertRequestsCount = 0 } = useQuery({
     ...approvalRequestQuery.list({
       scope: ApprovalPolicyScope.Project,
       scopeId: projectId,
@@ -67,6 +67,16 @@ export const CertManagerNav = ({
     enabled: Boolean(projectId),
     select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
   });
+  const { data: pendingSigningRequestsCount = 0 } = useQuery({
+    ...approvalRequestQuery.list({
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId,
+      policyType: ApprovalPolicyType.CertCodeSigning
+    }),
+    enabled: Boolean(projectId),
+    select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
+  });
+  const pendingRequestsCount = pendingCertRequestsCount + pendingSigningRequestsCount;
 
   const hasLegacyAlerts =
     Boolean(v2AlertsData?.alerts?.some((a) => !a.applicationId)) ||

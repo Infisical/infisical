@@ -56,83 +56,77 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
   }, [policies]);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Policy Name</TableHead>
-          <TableHead>Approval Steps</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead className="w-5" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {isPoliciesLoading &&
-          Array.from({ length: 3 }).map((_, i) => (
-            <TableRow key={`policy-skeleton-${i + 1}`}>
-              {Array.from({ length: 4 }).map((__, j) => (
-                <TableCell key={`policy-skeleton-cell-${j + 1}`}>
-                  <Skeleton className="h-4 w-full" />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        {!isPoliciesLoading &&
-          sortedPolicies.map((policy) => (
-            <TableRow key={policy.id} className="group">
-              <TableCell>
-                <div className="text-sm font-medium text-foreground">{policy.name}</div>
-              </TableCell>
-              <TableCell>
-                <span className="text-sm text-accent">
-                  {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
-                </span>
-              </TableCell>
-              <TableCell>
-                <span className="text-sm text-accent">
-                  {format(new Date(policy.createdAt), "MMM d, yyyy")}
-                </span>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton variant="ghost" size="xs" aria-label="More options">
-                      <MoreHorizontalIcon />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" sideOffset={2}>
-                    <DropdownMenuItem
-                      onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-                    >
-                      <PencilIcon />
-                      Edit Policy
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="danger"
-                      onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
-                    >
-                      <Trash2Icon />
-                      Delete Policy
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        {!isPoliciesLoading && !sortedPolicies.length && (
+    <>
+      <Table>
+        <TableHeader>
           <TableRow>
-            <td colSpan={4} className="p-0">
-              <Empty className="border-none">
-                <EmptyHeader>
-                  <EmptyTitle>No signing policies found</EmptyTitle>
-                  <EmptyDescription>
-                    Create a policy to require approval before signing operations
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </td>
+            <TableHead>Policy Name</TableHead>
+            <TableHead>Approval Steps</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="w-5" />
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {isPoliciesLoading &&
+            Array.from({ length: 3 }).map((_, i) => (
+              <TableRow key={`cs-policy-skeleton-${i + 1}`}>
+                {Array.from({ length: 4 }).map((__, j) => (
+                  <TableCell key={`cs-policy-skeleton-cell-${j + 1}`}>
+                    <Skeleton className="h-4 w-full" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          {!isPoliciesLoading &&
+            sortedPolicies.map((policy) => (
+              <TableRow key={policy.id} className="group">
+                <TableCell isTruncatable>
+                  <span className="font-medium text-foreground">{policy.name}</span>
+                </TableCell>
+                <TableCell className="text-accent">
+                  {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-accent">
+                  {format(new Date(policy.createdAt), "MMM d, yyyy")}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+                        <MoreHorizontalIcon />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+                      <DropdownMenuItem
+                        onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
+                      >
+                        <PencilIcon />
+                        Edit Policy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="danger"
+                        onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
+                      >
+                        <Trash2Icon />
+                        Delete Policy
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+      {!isPoliciesLoading && !sortedPolicies.length && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No signing policies yet</EmptyTitle>
+            <EmptyDescription>
+              Create a policy to require approval before signing operations.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </>
   );
 };

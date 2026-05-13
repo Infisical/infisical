@@ -5,6 +5,7 @@ import {
   BanIcon,
   CheckCircleIcon,
   ClipboardCopyIcon,
+  KeyRoundIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -58,6 +59,7 @@ import {
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { RequestSigningAccessModal } from "../../ApprovalsPage/components/CodeSigningRequestsTab/RequestSigningAccessModal";
 import { EditSignerModal } from "../../SignerDetailPage/components/EditSignerModal";
 
 type Props = {
@@ -76,6 +78,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const [debouncedSearch] = useDebounce(search, 300);
   const [deleteSignerId, setDeleteSignerId] = useState<string | null>(null);
   const [editSigner, setEditSigner] = useState<TSigner | null>(null);
+  const [requestAccessSigner, setRequestAccessSigner] = useState<TSigner | null>(null);
 
   const { data, isLoading } = useListSigners({
     projectId,
@@ -199,6 +202,17 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             <ClipboardCopyIcon />
                             Copy ID
                           </DropdownMenuItem>
+                          {signer.approvalPolicyId ? (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRequestAccessSigner(signer);
+                              }}
+                            >
+                              <KeyRoundIcon />
+                              Request Signing Access
+                            </DropdownMenuItem>
+                          ) : null}
                           <ProjectPermissionCan
                             I={ProjectPermissionCodeSigningActions.Edit}
                             a={ProjectPermissionSub.CodeSigners}
@@ -302,6 +316,13 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           projectId={projectId}
         />
       )}
+      <RequestSigningAccessModal
+        isOpen={Boolean(requestAccessSigner)}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccessSigner(null);
+        }}
+        signer={requestAccessSigner ?? undefined}
+      />
     </>
   );
 };

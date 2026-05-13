@@ -1,44 +1,45 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  faCheckCircle,
-  faChevronRight,
-  faFilter,
-  faInfo,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  CircleCheckIcon,
+  FilterIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  XIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownSubMenu,
-  DropdownSubMenuContent,
-  DropdownSubMenuTrigger,
-  FormControl,
-  Modal,
-  ModalContent,
-  TextArea
-} from "@app/components/v2";
+import { FormControl, TextArea } from "@app/components/v2";
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -66,7 +67,7 @@ import {
   CodeSigningGrantAttributes,
   useRevokeApprovalGrant
 } from "@app/hooks/api/approvalGrants";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership/queries";
 
 const revokeGrantSchema = z.object({
@@ -105,7 +106,8 @@ export const CodeSigningGrantsTab = () => {
   const { data: grants = [], isPending: isGrantsLoading } = useQuery(
     approvalGrantQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      id: projectId
     })
   );
 
@@ -210,81 +212,13 @@ export const CodeSigningGrantsTab = () => {
   const isTableFiltered = filter !== ApprovalGrantStatus.Active;
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
         <CardTitle>Signing Grants</CardTitle>
-        <CardDescription>View and revoke signing access grants</CardDescription>
+        <CardDescription>View and revoke signing access grants.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-4 flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                aria-label="Filter Grants"
-                variant={isTableFiltered ? "project" : "outline"}
-                size="md"
-                className={twMerge(isTableFiltered && "text-primary")}
-              >
-                <FontAwesomeIcon icon={faFilter} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="p-0">
-              <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={(evt) => {
-                  evt.preventDefault();
-                  setFilter(ApprovalGrantStatus.Active);
-                }}
-                icon={
-                  filter === ApprovalGrantStatus.Active && <FontAwesomeIcon icon={faCheckCircle} />
-                }
-                iconPos="right"
-              >
-                Active Grants
-              </DropdownMenuItem>
-              <DropdownSubMenu>
-                <DropdownSubMenuTrigger
-                  iconPos="right"
-                  icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
-                >
-                  Inactive Grants
-                </DropdownSubMenuTrigger>
-                <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                    Filter by Status
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={(evt) => {
-                      evt.preventDefault();
-                      setFilter(ApprovalGrantStatus.Expired);
-                    }}
-                    icon={
-                      filter === ApprovalGrantStatus.Expired && (
-                        <FontAwesomeIcon icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
-                  >
-                    Expired
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(evt) => {
-                      evt.preventDefault();
-                      setFilter(ApprovalGrantStatus.Revoked);
-                    }}
-                    icon={
-                      filter === ApprovalGrantStatus.Revoked && (
-                        <FontAwesomeIcon icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
-                  >
-                    Revoked
-                  </DropdownMenuItem>
-                </DropdownSubMenuContent>
-              </DropdownSubMenu>
-            </DropdownMenuContent>
-          </DropdownMenu>
           <InputGroup className="flex-1">
             <InputGroupAddon>
               <SearchIcon />
@@ -295,7 +229,65 @@ export const CodeSigningGrantsTab = () => {
               placeholder="Search signing grants..."
             />
           </InputGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                aria-label="Filter Grants"
+                variant={isTableFiltered ? "project" : "outline"}
+                size="md"
+                className={twMerge(isTableFiltered && "text-primary")}
+              >
+                <FilterIcon className="size-4" />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={(evt) => {
+                  evt.preventDefault();
+                  setFilter(ApprovalGrantStatus.Active);
+                }}
+              >
+                Active Grants
+                {filter === ApprovalGrantStatus.Active && (
+                  <CircleCheckIcon className="ml-auto size-4" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  Inactive Grants
+                  <ChevronRightIcon className="ml-auto size-4" />
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={(evt) => {
+                      evt.preventDefault();
+                      setFilter(ApprovalGrantStatus.Expired);
+                    }}
+                  >
+                    Expired
+                    {filter === ApprovalGrantStatus.Expired && (
+                      <CircleCheckIcon className="ml-auto size-4" />
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(evt) => {
+                      evt.preventDefault();
+                      setFilter(ApprovalGrantStatus.Revoked);
+                    }}
+                  >
+                    Revoked
+                    {filter === ApprovalGrantStatus.Revoked && (
+                      <CircleCheckIcon className="ml-auto size-4" />
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -309,10 +301,10 @@ export const CodeSigningGrantsTab = () => {
           </TableHeader>
           <TableBody>
             {isGrantsLoading &&
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`grant-skeleton-${i + 1}`}>
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={`cs-grant-skeleton-${i + 1}`}>
                   {Array.from({ length: 6 }).map((__, j) => (
-                    <TableCell key={`grant-skeleton-cell-${j + 1}`}>
+                    <TableCell key={`cs-grant-skeleton-cell-${j + 1}`}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                   ))}
@@ -325,73 +317,52 @@ export const CodeSigningGrantsTab = () => {
 
                 return (
                   <TableRow key={grant.id} className="group">
-                    <TableCell>{getGranteeName(grant)}</TableCell>
+                    <TableCell isTruncatable>{getGranteeName(grant)}</TableCell>
+                    <TableCell isTruncatable>{attrs.signerName || "-"}</TableCell>
                     <TableCell>
-                      <span className="text-sm text-mineshaft-200">{attrs.signerName || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          isActive
-                            ? getStatusBadgeColor(ApprovalGrantStatus.Active)
-                            : getStatusBadgeColor(grant.status)
-                        }
-                        className="capitalize"
-                      >
+                      <Badge variant={getStatusBadgeColor(grant.status)} className="capitalize">
                         {isActive ? "Active" : grant.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-mineshaft-400">
-                        {format(new Date(grant.createdAt), "MMM d, yyyy")}
-                      </span>
+                    <TableCell className="whitespace-nowrap text-accent">
+                      {format(new Date(grant.createdAt), "MMM d, yyyy")}
                     </TableCell>
-                    <TableCell>
-                      {grant.expiresAt ? (
-                        <span className="text-sm text-mineshaft-400">
-                          {format(new Date(grant.expiresAt), "MMM d, yyyy")}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-mineshaft-500">Never</span>
-                      )}
+                    <TableCell className="whitespace-nowrap text-accent">
+                      {grant.expiresAt ? format(new Date(grant.expiresAt), "MMM d, yyyy") : "Never"}
                     </TableCell>
-                    <TableCell
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {isActive && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="More options">
+                            <IconButton variant="ghost" size="xs" aria-label="Grant actions">
                               <MoreHorizontalIcon />
                             </IconButton>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
+                          <DropdownMenuContent align="end" className="min-w-40" sideOffset={2}>
                             {grant.requestId && (
-                              <Link
-                                to="/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId"
-                                params={{
-                                  orgId: currentOrg.id,
-                                  projectId: currentProject.id,
-                                  approvalRequestId: grant.requestId
-                                }}
-                                search={{
-                                  policyType: ApprovalPolicyType.CertCodeSigning
-                                }}
-                              >
-                                <DropdownMenuItem icon={<FontAwesomeIcon icon={faInfo} />}>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  to="/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId"
+                                  params={{
+                                    orgId: currentOrg.id,
+                                    projectId: currentProject.id,
+                                    approvalRequestId: grant.requestId
+                                  }}
+                                  search={{ policyType: ApprovalPolicyType.CertCodeSigning }}
+                                >
+                                  <InfoIcon />
                                   Request Details
-                                </DropdownMenuItem>
-                              </Link>
+                                </Link>
+                              </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
+                              variant="danger"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openRevokeModal(grant.id);
                               }}
-                              icon={<FontAwesomeIcon icon={faXmark} />}
                             >
+                              <XIcon />
                               Revoke Grant
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -401,28 +372,24 @@ export const CodeSigningGrantsTab = () => {
                   </TableRow>
                 );
               })}
-            {!isGrantsLoading && !filteredGrants?.length && (
-              <TableRow>
-                <td colSpan={6} className="p-0">
-                  <Empty className="border-none">
-                    <EmptyHeader>
-                      <EmptyTitle>
-                        {grants.length
-                          ? "No signing grants match search..."
-                          : "No signing grants found"}
-                      </EmptyTitle>
-                      <EmptyDescription>
-                        {grants.length
-                          ? "Try adjusting your search or filters"
-                          : "Grants will appear here when users are granted signing access"}
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                </td>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
+
+        {!isGrantsLoading && !filteredGrants.length && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {grants.length ? "No signing grants match search" : "No signing grants yet"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {grants.length
+                  ? "Try clearing your filters or search."
+                  : "Approved signing requests will appear here as active grants."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+
         {Boolean(filteredGrants.length) && (
           <Pagination
             count={filteredGrants.length}
@@ -434,11 +401,14 @@ export const CodeSigningGrantsTab = () => {
         )}
       </CardContent>
 
-      <Modal isOpen={revokeModalOpen} onOpenChange={(open) => !open && closeRevokeModal()}>
-        <ModalContent
-          title="Revoke Signing Grant"
-          subTitle="Are you sure you want to revoke this signing grant? This action cannot be undone."
-        >
+      <Dialog open={revokeModalOpen} onOpenChange={(open) => !open && closeRevokeModal()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader className="gap-3">
+            <DialogTitle>Revoke Signing Grant</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to revoke this signing grant? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleSubmit(handleRevokeGrant)}>
             <FormControl
               label="Revocation Reason (Optional)"
@@ -451,22 +421,17 @@ export const CodeSigningGrantsTab = () => {
                 rows={4}
               />
             </FormControl>
-            <div className="mt-6 flex items-center space-x-4">
-              <Button
-                colorSchema="danger"
-                type="submit"
-                isLoading={isRevoking}
-                isDisabled={isRevoking}
-              >
-                Revoke Grant
-              </Button>
-              <Button variant="outline_bg" onClick={closeRevokeModal} isDisabled={isRevoking}>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeRevokeModal} isDisabled={isRevoking}>
                 Cancel
               </Button>
-            </div>
+              <Button variant="danger" type="submit" isPending={isRevoking} isDisabled={isRevoking}>
+                Revoke Grant
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

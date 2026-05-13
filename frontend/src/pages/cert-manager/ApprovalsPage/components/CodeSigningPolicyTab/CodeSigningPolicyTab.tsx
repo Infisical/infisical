@@ -56,14 +56,14 @@ export const CodeSigningPolicyTab = () => {
   };
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
         <CardTitle>Signing Policies</CardTitle>
         <CardDescription>
-          Define policies that require approval before signing operations
+          Define policies that require approval before signing operations.
         </CardDescription>
         <CardAction>
-          <Button variant="outline" onClick={() => handlePopUpOpen("policy")}>
+          <Button variant="project" onClick={() => handlePopUpOpen("policy")}>
             <PlusIcon />
             Create Policy
           </Button>

@@ -28,7 +28,8 @@ export const approvalGrantQuery = {
           grants: TApprovalGrant[];
         }>(`/api/v1/approval-policies/${params.policyType}/grants`, {
           params: {
-            projectId: params.projectId
+            scope: params.scope,
+            id: params.id
           }
         });
         return data.grants;

@@ -105,11 +105,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
             Users, machine identities, and groups granted access to this Application.
           </CardDescription>
           <CardAction>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddOpen(true)}
-              isDisabled={!canAddMember}
-            >
+            <Button variant="outline" onClick={() => setIsAddOpen(true)} isDisabled={!canAddMember}>
               <UserPlusIcon />
               Add Member
             </Button>
