@@ -127,6 +127,7 @@ type TSendTriggerNotificationInput = {
 type THandleTriggerInput = {
   type: HoneyTokenType;
   signature: string | undefined;
+  rawBody: string;
   payload: unknown;
 };
 
@@ -933,8 +934,8 @@ export const honeyTokenServiceFactory = ({
     }
   };
 
-  const handleTrigger = async ({ type, signature, payload }: THandleTriggerInput) => {
-    logger.info({ payload, signature, type }, `Honey token trigger received [type=${type}]`);
+  const handleTrigger = async ({ type, signature, rawBody, payload }: THandleTriggerInput) => {
+    logger.info({ signature, type }, `Honey token trigger received [type=${type}]`);
 
     const providerType = assertSupportedHoneyTokenType(type);
     if (providerType !== HoneyTokenType.AWS) {
@@ -990,10 +991,9 @@ export const honeyTokenServiceFactory = ({
     const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
     const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
 
-    const bodyString = JSON.stringify(payload);
     const expectedSignature = crypto.nativeCrypto
       .createHmac("sha256", storedConfig.webhookSigningKey)
-      .update(`${timestamp}.${bodyString}`)
+      .update(`${timestamp}.${rawBody}`)
       .digest("hex");
     const expectedBuf = Buffer.from(expectedSignature, "hex");
     const receivedBuf = Buffer.from(signatureHash, "hex");
