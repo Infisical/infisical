@@ -182,6 +182,9 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGitHubApps,
+  TGitHubAppsInsert,
+  TGitHubAppsUpdate,
   TGithubOrgSyncConfigs,
   TGithubOrgSyncConfigsInsert,
   TGithubOrgSyncConfigsUpdate,
@@ -1561,6 +1564,7 @@ declare module "knex/types/tables" {
       TSecretReminderRecipientsInsert,
       TSecretReminderRecipientsUpdate
     >;
+    [TableName.GitHubApp]: KnexOriginal.CompositeTableType<TGitHubApps, TGitHubAppsInsert, TGitHubAppsUpdate>;
     [TableName.GithubOrgSyncConfig]: KnexOriginal.CompositeTableType<
       TGithubOrgSyncConfigs,
       TGithubOrgSyncConfigsInsert,
