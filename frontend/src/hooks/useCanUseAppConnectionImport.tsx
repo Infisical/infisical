@@ -17,15 +17,9 @@ export const useCanUseAppConnectionImport = (secretSubject: SecretSubjectArg) =>
   return useMemo(
     () =>
       permission.can(
-        ProjectPermissionAppConnectionActions.Read,
+        ProjectPermissionAppConnectionActions.Connect,
         ProjectPermissionSub.AppConnections
-      ) &&
-      permission.can(
-        ProjectPermissionAppConnectionActions.Create,
-        ProjectPermissionSub.AppConnections
-      ) &&
-      permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject) &&
-      permission.can(ProjectPermissionSecretActions.Create, secretSubject),
+      ) && permission.can(ProjectPermissionSecretActions.Create, secretSubject),
     [permission, secretSubject]
   );
 };

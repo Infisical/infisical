@@ -731,9 +731,7 @@ export const externalMigrationServiceFactory = ({
     connectionId?: string;
     actor: OrgServiceActor;
   }) => {
-    const appConnection = connectionId
-      ? await getDopplerConnectionForImport(connectionId, targetProjectId, actor)
-      : await resolveDopplerConnection(actor, { configId });
+    const appConnection = await resolveDopplerConnection(actor, { configId, connectionId });
     return listDopplerProjects(appConnection);
   };
 
@@ -778,7 +776,9 @@ export const externalMigrationServiceFactory = ({
     actor,
     auditLogInfo
   }: TImportDopplerSecretsDTO) => {
-    const appConnection = await resolveDopplerConnection(actor, { configId, connectionId });
+    const appConnection = connectionId
+      ? await getDopplerConnectionForImport(connectionId, targetProjectId, actor)
+      : await resolveDopplerConnection(actor, { configId });
 
     const dopplerSecrets = await getDopplerSecrets(appConnection, dopplerProject, dopplerEnvironment);
 

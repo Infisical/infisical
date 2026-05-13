@@ -2,8 +2,7 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, Tooltip } from "@app/components/v2";
-import { ProjectPermissionSub, useOrgPermission, useProject } from "@app/context";
-import { OrgMembershipRole } from "@app/helpers/roles";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { useCanUseAppConnectionImport } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -22,9 +21,6 @@ export const LoadFromVaultBanner = ({ onClick }: Props) => {
   );
   const hasVaultConnection = vaultAppConnections.length > 0;
 
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-
   if (hasVaultConnection) {
     return (
       <div className="mb-4 flex items-center justify-between rounded-md border border-primary-400/30 bg-primary/10 px-3 py-2.5">
@@ -34,7 +30,7 @@ export const LoadFromVaultBanner = ({ onClick }: Props) => {
         </div>
         <Tooltip
           content={
-            !isOrgAdmin
+            !canUseAppConnectionImport
               ? "Only authorized users can import configurations from HashiCorp Vault"
               : undefined
           }
@@ -44,7 +40,7 @@ export const LoadFromVaultBanner = ({ onClick }: Props) => {
             size="xs"
             type="button"
             onClick={onClick}
-            isDisabled={!isOrgAdmin}
+            isDisabled={!canUseAppConnectionImport}
             leftIcon={
               <img src="/images/integrations/Vault.png" alt="HashiCorp Vault" className="h-4 w-4" />
             }

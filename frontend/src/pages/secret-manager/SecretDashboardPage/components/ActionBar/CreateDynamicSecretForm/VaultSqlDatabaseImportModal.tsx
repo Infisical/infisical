@@ -194,7 +194,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
-            Choose a database role from the selected mount to load its configuration
+            Choose a database dynamic role from the selected mount to load its configuration
           </p>
         </>
       </FormControl>

@@ -97,7 +97,7 @@ export const AddPoliciesButton = ({
               Add From Template
             </DropdownMenuItem>
             {hasVaultConnection && (
-              <Tooltip open={!isOrgAdmin ? undefined : false}>
+              <Tooltip open={!canUseAppConnectionImport ? undefined : false}>
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     onClick={() => {
@@ -111,7 +111,7 @@ export const AddPoliciesButton = ({
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  Only organization admins can import policies from HashiCorp Vault
+                  Only authorized users can import policies from HashiCorp Vault
                 </TooltipContent>
               </Tooltip>
             )}
