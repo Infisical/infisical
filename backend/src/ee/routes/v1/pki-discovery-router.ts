@@ -221,7 +221,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       response: {
         200: PkiDiscoveryConfigsSchema.extend({
           linkedInstallationsCount: z.number().optional(),
-          gatewayName: z.string().nullable().optional()
+          gatewayName: z.string().nullable().optional(),
+          gatewayPoolName: z.string().nullable().optional()
         })
       }
     },

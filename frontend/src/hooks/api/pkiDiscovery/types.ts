@@ -48,6 +48,7 @@ export type TPkiDiscovery = {
   gatewayId: string | null;
   gatewayPoolId: string | null;
   gatewayName: string | null;
+  gatewayPoolName: string | null;
   isActive: boolean;
   lastScanStatus: PkiDiscoveryScanStatus | null;
   lastScanJobId: string | null;

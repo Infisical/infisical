@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -48,6 +49,7 @@ type TPkiDiscoveryServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
@@ -73,6 +75,7 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryScanHistoryDAL,
   permissionService,
   gatewayV2DAL,
+  gatewayPoolDAL,
   gatewayPoolService,
   queuePkiDiscoveryScan
 }: TPkiDiscoveryServiceFactoryDep) => {
@@ -322,14 +325,20 @@ export const pkiDiscoveryServiceFactory = ({
     );
 
     let gatewayName: string | null = null;
+    let gatewayPoolName: string | null = null;
     if (discovery.gatewayId) {
       const gateway = await gatewayV2DAL.findOne({ id: discovery.gatewayId });
       if (gateway) {
         gatewayName = gateway.name;
       }
+    } else if (discovery.gatewayPoolId) {
+      const pool = await gatewayPoolDAL.findById(discovery.gatewayPoolId);
+      if (pool) {
+        gatewayPoolName = pool.name;
+      }
     }
 
-    return { ...discovery, gatewayName };
+    return { ...discovery, gatewayName, gatewayPoolName };
   };
 
   const listDiscoveries = async ({

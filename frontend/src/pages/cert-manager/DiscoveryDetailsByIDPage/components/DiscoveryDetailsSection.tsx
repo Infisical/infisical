@@ -64,6 +64,12 @@ export const DiscoveryDetailsSection = ({ discovery }: Props) => {
               <DetailValue>{discovery.gatewayName}</DetailValue>
             </Detail>
           )}
+          {discovery.gatewayPoolName && (
+            <Detail>
+              <DetailLabel>Gateway Pool</DetailLabel>
+              <DetailValue>{discovery.gatewayPoolName}</DetailValue>
+            </Detail>
+          )}
           <Detail>
             <DetailLabel>Last Scanned</DetailLabel>
             <DetailValue>
