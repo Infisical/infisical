@@ -23,6 +23,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "getSshCertificateTemplate",
+      description: "Get SSH certificate template",
       tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
@@ -64,6 +66,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "createSshCertificateTemplate",
+      description: "Create SSH certificate template",
       tags: [ApiDocsTags.SshCertificateTemplates],
       body: z
         .object({
@@ -146,6 +150,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "updateSshCertificateTemplate",
+      description: "Update SSH certificate template",
       tags: [ApiDocsTags.SshCertificateTemplates],
       body: z.object({
         status: z.nativeEnum(SshCertTemplateStatus).optional(),
@@ -231,6 +237,8 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "deleteSshCertificateTemplate",
+      description: "Delete SSH certificate template",
       tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(SSH_CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
