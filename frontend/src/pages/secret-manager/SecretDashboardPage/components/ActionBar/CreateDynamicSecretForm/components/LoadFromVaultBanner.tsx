@@ -24,7 +24,7 @@ export const LoadFromVaultBanner = ({ onClick }: Props) => {
   );
   const hasVaultConnection = vaultAppConnections.length > 0;
 
-  if (hasVaultConnection) {
+  if (hasVaultConnection && canUseAppConnectionImport) {
     return (
       <div className="mb-4 flex items-center justify-between rounded-md border border-primary-400/30 bg-primary/10 px-3 py-2.5">
         <div className="flex items-center gap-2 text-sm">

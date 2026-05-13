@@ -456,7 +456,7 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          {hasVaultConnection && !isUpdate && (
+          {hasVaultConnection && canUseAppConnectionImport && !isUpdate && (
             <div className="mb-4 flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 p-3">
               <div className="flex items-start gap-2 text-sm">
                 <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
