@@ -163,7 +163,7 @@ export const TaxIDModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props
             >
               Add
             </Button>
-            <Button colorSchema="secondary" variant="plain">
+            <Button colorSchema="secondary" variant="plain" onClick={() => handlePopUpClose("addTaxID")}>
               Cancel
             </Button>
           </div>
