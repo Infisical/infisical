@@ -77,15 +77,20 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   // never marked ended (e.g. process crash, Redis flush losing the BullMQ job).
   // Scoped to a specific user+project so the query runs at the point of
   // contention (cap check) rather than as a global background sweep.
-  const expireOverdueSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
+  const expireOverdueSessions = async (
+    userId: string,
+    projectId: string,
+    tx?: Knex
+  ): Promise<{ id: string; projectId: string }[]> => {
     const now = new Date();
-    const updatedCount = await (tx || db)(TableName.PamSession)
+    const rows = await (tx || db)(TableName.PamSession)
       .where("userId", userId)
       .where("projectId", projectId)
       .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
       .where("expiresAt", "<", now)
-      .update({ status: PamSessionStatus.Ended, endedAt: now });
-    return updatedCount;
+      .update({ status: PamSessionStatus.Ended, endedAt: now })
+      .returning(["id", "projectId"]);
+    return rows as { id: string; projectId: string }[];
   };
 
   const findByProjectId = async (projectId: string, tx?: Knex) => {
