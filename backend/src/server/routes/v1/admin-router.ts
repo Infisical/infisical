@@ -50,6 +50,7 @@ const SanitizedSuperAdminSchema = z.object({
   fipsEnabled: z.boolean().optional(),
   isMigrationModeOn: z.boolean().optional(),
   isSecretScanningDisabled: z.boolean().optional(),
+  isSecretSharingDisabled: z.boolean().optional(),
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
@@ -97,7 +98,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthMethod: config.defaultAuthOrgAuthMethod,
             enabledLoginMethods: config.enabledLoginMethods,
             authConsentContent: config.authConsentContent,
-            pageFrameContent: config.pageFrameContent
+            pageFrameContent: config.pageFrameContent,
+            isSecretSharingDisabled: serverEnvs.DISABLE_SECRET_SHARING
           }
         };
       }
@@ -108,6 +110,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
+          isSecretSharingDisabled: serverEnvs.DISABLE_SECRET_SHARING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense
