@@ -3375,10 +3375,6 @@
               {
                 "group": "Doppler",
                 "pages": [
-                  "api-reference/endpoints/external-migrations/doppler/get-configs",
-                  "api-reference/endpoints/external-migrations/doppler/create-config",
-                  "api-reference/endpoints/external-migrations/doppler/update-config",
-                  "api-reference/endpoints/external-migrations/doppler/delete-config",
                   "api-reference/endpoints/external-migrations/doppler/get-projects",
                   "api-reference/endpoints/external-migrations/doppler/get-environments",
                   "api-reference/endpoints/external-migrations/doppler/import-secrets"
