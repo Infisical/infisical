@@ -16,10 +16,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
-import {
-  useGetVaultDatabaseRoles,
-  useGetVaultMounts
-} from "@app/hooks/api/migration/queries";
+import { useGetVaultDatabaseRoles, useGetVaultMounts } from "@app/hooks/api/migration/queries";
 import { VaultDatabaseRole } from "@app/hooks/api/migration/types";
 
 type Props = {

@@ -16,10 +16,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
-import {
-  useGetVaultMounts,
-  useGetVaultSecretPaths
-} from "@app/hooks/api/migration/queries";
+import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
 
 type Props = {
   isOpen: boolean;
