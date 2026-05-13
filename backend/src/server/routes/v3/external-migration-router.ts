@@ -1,15 +1,11 @@
 import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import {
-  ExternalMigrationConfigSchema,
-  ExternalMigrationProviders
-} from "@app/services/external-migration/external-migration-schemas";
+import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
 import {
   ExternalMigrationImportStatus,
   VaultMappingType
@@ -126,199 +122,6 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/:provider/configs",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      operationId: "getExternalMigrationConfigsV3",
-      params: z.object({
-        provider: z.nativeEnum(ExternalMigrationProviders)
-      }),
-      response: {
-        200: z.object({
-          configs: z
-            .object({
-              id: z.string(),
-              orgId: z.string(),
-              provider: z.string(),
-              connectionId: z.string().nullish(),
-              createdAt: z.date(),
-              updatedAt: z.date()
-            })
-            .array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const configs = await server.services.migration.getExternalMigrationConfigs({
-        actor: req.permission,
-        provider: req.params.provider
-      });
-
-      return { configs };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:provider/configs",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "createExternalMigrationV3",
-      params: z.object({
-        provider: z.nativeEnum(ExternalMigrationProviders)
-      }),
-      body: z.object({
-        connectionId: z.string(),
-        input: ExternalMigrationConfigSchema
-      }),
-      response: {
-        200: z.object({
-          config: z.object({
-            id: z.string(),
-            orgId: z.string(),
-            provider: z.string(),
-            connectionId: z.string().nullish(),
-            createdAt: z.date(),
-            updatedAt: z.date()
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const config = await server.services.migration.createExternalMigration({
-        config: req.body.input,
-        connectionId: req.body.connectionId,
-        actor: req.permission
-      });
-
-      await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.EXTERNAL_MIGRATION_CREATE,
-          metadata: {
-            configId: config.id,
-            provider: req.params.provider,
-            connectionId: req.body.connectionId
-          }
-        }
-      });
-
-      return { config };
-    }
-  });
-
-  server.route({
-    method: "PUT",
-    url: "/:provider/configs/:id",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "updateExternalMigrationV3",
-      params: z.object({
-        provider: z.nativeEnum(ExternalMigrationProviders),
-        id: z.string()
-      }),
-      body: z.object({
-        connectionId: z.string().nullable(),
-        input: ExternalMigrationConfigSchema
-      }),
-      response: {
-        200: z.object({
-          config: z.object({
-            id: z.string(),
-            orgId: z.string(),
-            provider: z.string(),
-            connectionId: z.string().nullish(),
-            createdAt: z.date(),
-            updatedAt: z.date()
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const config = await server.services.migration.updateExternalMigration({
-        id: req.params.id,
-        config: req.body.input,
-        connectionId: req.body.connectionId,
-        actor: req.permission
-      });
-
-      await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.EXTERNAL_MIGRATION_UPDATE,
-          metadata: {
-            configId: req.params.id,
-            provider: req.params.provider,
-            connectionId: req.body.connectionId
-          }
-        }
-      });
-
-      return { config };
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/:provider/configs/:id",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "deleteExternalMigrationV3",
-      params: z.object({
-        provider: z.nativeEnum(ExternalMigrationProviders),
-        id: z.string()
-      }),
-      response: {
-        200: z.object({
-          config: z.object({
-            id: z.string(),
-            orgId: z.string(),
-            provider: z.string(),
-            connectionId: z.string().nullish(),
-            createdAt: z.date(),
-            updatedAt: z.date()
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const config = await server.services.migration.deleteExternalMigration({
-        id: req.params.id,
-        actor: req.permission
-      });
-
-      await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.EXTERNAL_MIGRATION_DELETE,
-          metadata: {
-            configId: req.params.id,
-            provider: req.params.provider
-          }
-        }
-      });
-
-      return { config };
-    }
-  });
-
-  server.route({
-    method: "GET",
     url: "/vault/namespaces",
     config: {
       rateLimit: readLimit
@@ -354,7 +157,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "getVaultPoliciesV3",
       querystring: z.object({
-        namespace: z.string()
+        namespace: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -366,7 +170,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const policies = await server.services.migration.getVaultPolicies({
         actor: req.permission,
-        namespace: req.query.namespace
+        namespace: req.query.namespace,
+        connectionId: req.query.connectionId
       });
 
       return { policies };
@@ -413,7 +218,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultAuthMountsV3",
       querystring: z.object({
         namespace: z.string(),
-        authType: z.string().optional()
+        authType: z.string().optional(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -426,7 +232,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const mounts = await server.services.migration.getVaultAuthMounts({
         actor: req.permission,
         namespace: req.query.namespace,
-        authType: req.query.authType
+        authType: req.query.authType,
+        connectionId: req.query.connectionId
       });
 
       return { mounts };
@@ -477,7 +284,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultKubernetesRolesV3",
       querystring: z.object({
         namespace: z.string(),
-        mountPath: z.string()
+        mountPath: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -511,7 +319,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const roles = await server.services.migration.getVaultKubernetesRoles({
         actor: req.permission,
         namespace: req.query.namespace,
-        mountPath: req.query.mountPath
+        mountPath: req.query.mountPath,
+        connectionId: req.query.connectionId
       });
 
       return { roles };
@@ -528,7 +337,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultDatabaseRolesV3",
       querystring: z.object({
         namespace: z.string(),
-        mountPath: z.string()
+        mountPath: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -561,7 +371,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const roles = await server.services.migration.getVaultDatabaseRoles({
         actor: req.permission,
         namespace: req.query.namespace,
-        mountPath: req.query.mountPath
+        mountPath: req.query.mountPath,
+        connectionId: req.query.connectionId
       });
 
       return { roles };
@@ -610,7 +421,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultKubernetesAuthRolesV3",
       querystring: z.object({
         namespace: z.string(),
-        mountPath: z.string()
+        mountPath: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
 
       response: {
@@ -649,7 +461,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const roles = await server.services.migration.getVaultKubernetesAuthRoles({
         actor: req.permission,
         namespace: req.query.namespace,
-        mountPath: req.query.mountPath
+        mountPath: req.query.mountPath,
+        connectionId: req.query.connectionId
       });
 
       return { roles };
@@ -666,7 +479,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "getVaultLdapRolesV3",
       querystring: z.object({
         namespace: z.string(),
-        mountPath: z.string()
+        mountPath: z.string(),
+        connectionId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -695,7 +509,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const roles = await server.services.migration.getVaultLdapRoles({
         actor: req.permission,
         namespace: req.query.namespace,
-        mountPath: req.query.mountPath
+        mountPath: req.query.mountPath,
+        connectionId: req.query.connectionId
       });
 
       return { roles };

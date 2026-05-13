@@ -2,7 +2,7 @@ import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { ExternalMigrationProviders, TExternalMigrationConfig } from "./external-migration-schemas";
+import { ExternalMigrationProviders } from "./external-migration-schemas";
 
 export enum KvVersion {
   V1 = "1",
@@ -130,22 +130,6 @@ export enum ExternalMigrationImportStatus {
   ApprovalRequired = "approval-required"
 }
 
-export type TCreateDopplerExternalMigrationDTO = {
-  connectionId: string;
-  actor: OrgServiceActor;
-};
-
-export type TUpdateDopplerExternalMigrationDTO = {
-  id: string;
-  connectionId: string | null;
-  actor: OrgServiceActor;
-};
-
-export type TDeleteDopplerExternalMigrationDTO = {
-  id: string;
-  actor: OrgServiceActor;
-};
-
 export type TImportDopplerSecretsDTO = {
   configId?: string;
   connectionId?: string;
@@ -156,35 +140,4 @@ export type TImportDopplerSecretsDTO = {
   targetSecretPath: string;
   actor: OrgServiceActor;
   auditLogInfo: AuditLogInfo;
-};
-
-export type TCreateVaultExternalMigrationDTO = {
-  namespace: string;
-  connectionId: string;
-  actor: OrgServiceActor;
-};
-
-export type TUpdateVaultExternalMigrationDTO = {
-  id: string;
-  namespace: string;
-  connectionId: string | null;
-  actor: OrgServiceActor;
-};
-
-export type TCreateExternalMigrationDTO = {
-  config: TExternalMigrationConfig;
-  connectionId: string;
-  actor: OrgServiceActor;
-};
-
-export type TUpdateExternalMigrationDTO = {
-  id: string;
-  config: TExternalMigrationConfig;
-  connectionId: string | null;
-  actor: OrgServiceActor;
-};
-
-export type TDeleteExternalMigrationDTO = {
-  id: string;
-  actor: OrgServiceActor;
 };
