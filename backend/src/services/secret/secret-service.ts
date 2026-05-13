@@ -3559,6 +3559,10 @@ export const secretServiceFactory = ({
       throw new BadRequestError({ message: `Cannot duplicate honey token secret: ${sourceSecret.key}` });
     }
 
+    if (sourceSecretPath === destinationSecretPath && sourceEnvironment === destinationEnvironment) {
+      throw new BadRequestError({ message: `Cannot duplicate secret to the same path: ${sourceSecret.key}` });
+    }
+
     const sourceTagSlugs = sourceSecret.tags?.map((t) => t.slug) ?? [];
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment: sourceEnvironment,
@@ -3605,12 +3609,12 @@ export const secretServiceFactory = ({
     const valueToCopy =
       attributesToCopy.value && sourceSecret.encryptedValue
         ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedValue }).toString()
-        : "";
+        : undefined;
     let commentToCopy: string | undefined;
     if (attributesToCopy.comment) {
       commentToCopy = sourceSecret.encryptedComment
         ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedComment }).toString()
-        : "";
+        : undefined;
     }
     const secretMetadataToCopy = attributesToCopy.metadata
       ? (sourceSecret.secretMetadata?.map((el) => ({
@@ -3678,7 +3682,10 @@ export const secretServiceFactory = ({
 
     const destinationSecret = existingAtDest
       ? await secretV2BridgeService.updateSecret(baseSecretArgs)
-      : await secretV2BridgeService.createSecret(baseSecretArgs);
+      : await secretV2BridgeService.createSecret({
+          ...baseSecretArgs,
+          secretValue: baseSecretArgs.secretValue ?? ""
+        });
 
     await snapshotService.performSnapshot(destinationFolder.id);
     await secretQueueService.syncSecrets({

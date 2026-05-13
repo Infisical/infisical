@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import type { MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckIcon, ChevronsUpDownIcon, CopyIcon, KeyIcon, LoaderCircleIcon } from "lucide-react";
+import { KeyIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -9,12 +9,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
   Dialog,
   DialogClose,
   DialogContent,
@@ -25,12 +19,9 @@ import {
   Field,
   FieldContent,
   FieldDescription,
-  FieldLabel,
-  Popover,
-  PopoverContent,
-  PopoverTrigger
+  FieldLabel
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { useProject } from "@app/context";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
@@ -83,6 +74,12 @@ type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
   onClose: () => void;
 };
 
+type EnvironmentOption = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 const DuplicateSecretContent = ({
   secretId,
   secretName,
@@ -109,10 +106,9 @@ const DuplicateSecretContent = ({
     }
   });
 
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-
   const selectedEnvIds = watch("environmentIds");
+  const includeSelection = watch("include");
+  const hasSelectedIncludeOption = Object.values(includeSelection).some(Boolean);
   const availableEnvs = environments.filter((env) => env.slug !== sourceEnvironment.slug);
 
   const handleFormSubmit = async (data: FormValues) => {
@@ -191,44 +187,27 @@ const DuplicateSecretContent = ({
     );
   }
 
-  const selectedEnvCount = selectedEnvIds.length;
-  const singleSelectedEnvName =
-    selectedEnvCount === 1
-      ? (availableEnvs.find((e) => e.id === selectedEnvIds[0])?.name ?? null)
-      : null;
-
-  let triggerLabel: string;
-  if (selectedEnvCount === 0) {
-    triggerLabel = "Search environments...";
-  } else if (selectedEnvCount === 1) {
-    triggerLabel = singleSelectedEnvName ?? "1 environment";
-  } else {
-    triggerLabel = `${selectedEnvCount} environments`;
-  }
-
-  let actionLabel: string;
-  if (selectedEnvCount === 0) {
-    actionLabel = "Duplicate to ...";
-  } else if (selectedEnvCount === 1) {
-    actionLabel = `Duplicate to ${singleSelectedEnvName ?? "environment"}`;
-  } else {
-    actionLabel = `Duplicate to ${selectedEnvCount} environments`;
-  }
-
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Field>
         <FieldLabel>Source</FieldLabel>
         <FieldContent>
-          <div className="flex items-center justify-between rounded-md border border-border bg-container px-3 py-2">
-            <div className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,40%)] items-center gap-2 overflow-hidden rounded-md border border-border bg-container px-3 py-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-sm text-foreground">
               <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
               {secretPath !== "/" && (
                 <span className="text-muted-foreground/60 truncate">{secretPath}</span>
               )}
               <span className="truncate">{secretName}</span>
             </div>
-            <Badge variant="info">{sourceEnvironment.name}</Badge>
+            <Badge
+              variant="info"
+              className="max-w-full min-w-0 justify-self-end"
+              isTruncatable
+              title={sourceEnvironment.name}
+            >
+              <span className="block max-w-full">{sourceEnvironment.name}</span>
+            </Badge>
           </div>
         </FieldContent>
       </Field>
@@ -237,70 +216,39 @@ const DuplicateSecretContent = ({
         control={control}
         name="environmentIds"
         render={({ field: { value, onChange } }) => {
-          const toggleEnv = (envId: string) => {
-            if (value.includes(envId)) {
-              onChange(value.filter((id) => id !== envId));
-            } else {
-              onChange([...value, envId]);
-            }
-          };
+          const options: EnvironmentOption[] = availableEnvs.map((env) => ({
+            id: env.id,
+            name: env.name,
+            slug: env.slug
+          }));
+          const selectedOptions = options.filter((option) => value.includes(option.id));
 
           return (
             <Field className="mt-4">
               <FieldLabel>Target Environments</FieldLabel>
               <FieldContent>
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={popoverOpen}
-                      isFullWidth
-                      className="justify-between font-normal"
-                    >
-                      <span
-                        className={cn("truncate", value.length === 0 && "text-muted-foreground")}
-                      >
-                        {triggerLabel}
-                      </span>
-                      <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    className="w-[var(--radix-popover-trigger-width)] p-0"
-                  >
-                    <Command>
-                      <CommandInput
-                        value={searchValue}
-                        onValueChange={setSearchValue}
-                        placeholder="Filter environments"
-                      />
-                      <CommandList>
-                        <CommandEmpty>No environment found.</CommandEmpty>
-                        <CommandGroup>
-                          {availableEnvs.map((env) => (
-                            <CommandItem
-                              key={env.id}
-                              value={env.id}
-                              keywords={[env.name, env.slug]}
-                              onSelect={toggleEnv}
-                              title={env.name}
-                            >
-                              <CheckIcon
-                                className={cn(
-                                  "h-4 w-4 shrink-0",
-                                  value.includes(env.id) ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              <span className="truncate">{env.name}</span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <FilterableSelect
+                  isMulti
+                  options={options}
+                  value={selectedOptions}
+                  onChange={(nextOptions) =>
+                    onChange(
+                      (nextOptions as MultiValue<EnvironmentOption>).map((option) => option.id)
+                    )
+                  }
+                  placeholder="Search environments..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                  filterOption={(candidate, input) => {
+                    const normalizedQuery = input.trim().toLowerCase();
+                    if (!normalizedQuery) return true;
+
+                    return (
+                      candidate.data.name.toLowerCase().includes(normalizedQuery) ||
+                      candidate.data.slug.toLowerCase().includes(normalizedQuery)
+                    );
+                  }}
+                />
                 <FieldDescription>Pick one or more destinations.</FieldDescription>
               </FieldContent>
             </Field>
@@ -313,7 +261,7 @@ const DuplicateSecretContent = ({
         name="include"
         render={({ field: { value, onChange } }) => (
           <Field className="mt-4">
-            <FieldLabel>Include values</FieldLabel>
+            <FieldLabel>Include properties</FieldLabel>
             <FieldContent>
               <div className="divide-y divide-border rounded-md border border-border">
                 {INCLUDE_OPTIONS.map((opt) => {
@@ -333,7 +281,7 @@ const DuplicateSecretContent = ({
                       />
                       <div className="flex flex-col gap-0.5">
                         <span className="text-sm text-foreground">{opt.label}</span>
-                        <span className="text-muted-foreground text-xs">{opt.description}</span>
+                        <span className="text-xs text-muted">{opt.description}</span>
                       </div>
                     </label>
                   );
@@ -377,11 +325,12 @@ const DuplicateSecretContent = ({
         <Button
           type="submit"
           variant="project"
-          isDisabled={selectedEnvIds.length === 0 || !secretId || isSubmitting}
+          isDisabled={
+            selectedEnvIds.length === 0 || !secretId || isSubmitting || !hasSelectedIncludeOption
+          }
           isPending={isSubmitting}
         >
-          <CopyIcon />
-          {actionLabel}
+          <PlusIcon /> Duplicate
         </Button>
       </DialogFooter>
     </form>
@@ -393,9 +342,6 @@ export const DuplicateSecretModal = ({ isOpen, onOpenChange, ...props }: Props) 
     <DialogContent className="max-w-xl">
       <DialogHeader>
         <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-md border border-project/25 bg-project/10 text-project">
-            <CopyIcon className="size-3.5" />
-          </span>
           <DialogTitle>Duplicate Secret</DialogTitle>
         </div>
         <DialogDescription>

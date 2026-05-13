@@ -7,6 +7,7 @@ import {
   ClipboardCheckIcon,
   CodeXmlIcon,
   CopyIcon,
+  CopyPlus,
   EditIcon,
   EllipsisIcon,
   EyeOffIcon,
@@ -1676,7 +1677,7 @@ export const SecretEditTableRow = ({
                           onClick={() => handlePopUpOpen("duplicateSecret")}
                           isDisabled={isCreatable || !secretId || !isAllowed}
                         >
-                          <CopyIcon />
+                          <CopyPlus />
                           Duplicate Secret
                         </DropdownMenuItem>
                       </TooltipTrigger>
