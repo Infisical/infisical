@@ -66,15 +66,109 @@ export function parseDotEnv(src: ArrayBuffer | string) {
   return object;
 }
 
+/**
+ * Recursively flattens a nested JSON object into dot notation.
+ * Example:
+ * { a: { b: 1 } } → { "a.b": 1 }
+ *
+ * Arrays are also flattened using index notation:
+ * { arr: [1, 2] } → { "arr.0": 1, "arr.1": 2 }
+ */
+
+function flattenObject(
+  obj: any,
+  parentKey = "",
+  result: Record<string, any> = {}
+) {
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+
+    // skip null / undefined
+    if (value == null) continue;
+
+    const newKey = parentKey ? `${parentKey}.${key}` : key;
+
+    // handle nested objects
+    if (typeof value === "object" && !Array.isArray(value)) {
+      if (newKey in result) {
+        throw new Error(
+          `Key collision: "${newKey}" is produced by both a flat key and a nested path.`
+        );
+      }
+      flattenObject(value, newKey, result);
+
+      // handle arrays (IMPORTANT FIX)
+    } else if (Array.isArray(value)) {
+      value.forEach((item, index) => {
+        const itemKey = `${newKey}.${index}`;
+
+        if (typeof item === "object" && item !== null) {
+          flattenObject(item, itemKey, result);
+        } else {
+          if (itemKey in result) {
+            throw new Error(
+              `Key collision: "${itemKey}" is produced by both a flat key and a nested path.`
+            );
+          }
+          result[itemKey] = item;
+        }
+      });
+
+      // handle primitive values
+    } else {
+      if (newKey in result) {
+        throw new Error(
+          `Key collision: "${newKey}" is produced by both a flat key and a nested path.`
+        );
+      }
+      result[newKey] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Parses JSON secrets into a flat key-value structure.
+ * 
+ * Supports nested objects by flattening them into dot notation
+ * so they can be imported as individual secrets.
+ *
+ * All values are converted to strings to match secret storage format.
+ */
+
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
-  const formatedData: Record<string, string> = JSON.parse(file);
+
+  let parsed: Record<string, any>;
+
+  try {
+    parsed = JSON.parse(file);
+  } catch {
+    throw new Error("Invalid JSON file.");
+  }
+
+  let flattened: Record<string, any>;
+
+  try {
+    flattened = flattenObject(parsed);
+  } catch (e) {
+    throw new Error(
+      e instanceof Error
+        ? e.message
+        : "Failed to flatten JSON secrets."
+    );
+  }
+
   const env: Record<string, { value: string; comments: string[] }> = {};
-  Object.keys(formatedData).forEach((key) => {
-    if (typeof formatedData[key] === "string") {
-      env[key] = { value: formatedData[key], comments: [] };
-    }
+  
+  Object.keys(flattened).forEach((key) => {
+    env[key] = {
+      value: String(flattened[key]),
+      comments: []
+    };
   });
+
   return env;
 };
 
