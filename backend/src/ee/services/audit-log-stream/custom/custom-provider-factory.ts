@@ -14,7 +14,7 @@ export const CustomProviderFactory = () => {
   }) => {
     const { url, headers } = credentials;
 
-    // await blockLocalAndPrivateIpAddresses(url);
+    await blockLocalAndPrivateIpAddresses(url);
 
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
     if (headers.length) {
