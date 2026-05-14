@@ -961,33 +961,38 @@ export const honeyTokenServiceFactory = ({
     }
 
     const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
-    if (!honeyTokenWithOrg) {
-      throw new UnauthorizedError({ message: "Invalid webhook request" });
+
+    let webhookSigningKey: string | null = null;
+    if (honeyTokenWithOrg) {
+      const config = await honeyTokenConfigDAL.findOne({
+        orgId: honeyTokenWithOrg.orgId,
+        type: HoneyTokenType.AWS,
+        status: HoneyTokenConfigStatus.Complete
+      });
+
+      if (config?.encryptedConfig) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: honeyTokenWithOrg.orgId
+        });
+        const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
+        const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
+        webhookSigningKey = storedConfig.webhookSigningKey;
+      }
     }
 
-    const config = await honeyTokenConfigDAL.findOne({
-      orgId: honeyTokenWithOrg.orgId,
-      type: HoneyTokenType.AWS,
-      status: HoneyTokenConfigStatus.Complete
-    });
-    if (!config?.encryptedConfig) {
-      throw new UnauthorizedError({ message: "Invalid webhook request" });
-    }
-
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: honeyTokenWithOrg.orgId
-    });
-    const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
-    const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
-
+    // Always compute HMAC to prevent timing side-channel that reveals token existence
+    const dummySigningKey = "0".repeat(64);
     const expectedSignature = crypto.nativeCrypto
-      .createHmac("sha256", storedConfig.webhookSigningKey)
+      .createHmac("sha256", webhookSigningKey ?? dummySigningKey)
       .update(`${timestamp}.${rawBody}`)
       .digest("hex");
     const expectedBuf = Buffer.from(expectedSignature, "hex");
     const receivedBuf = Buffer.from(signatureHash, "hex");
+
     if (
+      !honeyTokenWithOrg ||
+      !webhookSigningKey ||
       expectedBuf.byteLength !== receivedBuf.byteLength ||
       !crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
     ) {
