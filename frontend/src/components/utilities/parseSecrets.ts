@@ -1,6 +1,8 @@
 const LINE =
   /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
 
+export const VALID_KEY_REGEX = /^[A-Za-z0-9._-]+$/;
+
 /**
  * Return text that is the buffer parsed
  * @param {ArrayBuffer} src - source buffer
@@ -32,6 +34,10 @@ export function parseDotEnv(src: ArrayBuffer | string) {
         // eslint-disable-next-line no-cond-assign
         while ((match = LINE.exec(line)) !== null) {
           const key = match[1];
+
+          if (!VALID_KEY_REGEX.test(key)) {
+            continue;
+          }
 
           // Default undefined or null to empty string
           let value = match[2] || "";
@@ -66,11 +72,25 @@ export function parseDotEnv(src: ArrayBuffer | string) {
   return object;
 }
 
-export const parseJson = (src: ArrayBuffer | string) => {
+/**
+ * Parse a JSON secret object into a normalized key/value structure.
+ *
+ * - Only accepts keys that match ASCII-safe regex: /^[A-Za-z0-9._-]+$/
+ * - Keys containing Unicode or invalid characters will be ignored
+ * - Only string values are included in the output
+ *
+ * @param {ArrayBuffer | string} src - Raw JSON content as a string or ArrayBuffer
+ * @returns {Record<string, { value: string; comments: string[] }>} 
+ *          A normalized map of secret keys and their string values
+ */
+export const parseJson = (src: ArrayBuffer | string): Record<string, { value: string; comments: string[] }> => {
   const file = src.toString();
   const formatedData: Record<string, string> = JSON.parse(file);
   const env: Record<string, { value: string; comments: string[] }> = {};
   Object.keys(formatedData).forEach((key) => {
+    if (!VALID_KEY_REGEX.test(key)) {
+      return;
+    }
     if (typeof formatedData[key] === "string") {
       env[key] = { value: formatedData[key], comments: [] };
     }
@@ -104,6 +124,12 @@ export function parseYaml(src: ArrayBuffer | string) {
       const keyMatch = lines[i].match(/^([\w.-]+)\s*:\s*(.*)$/);
       if (keyMatch) {
         const [, key, rawValue] = keyMatch;
+
+        if (!VALID_KEY_REGEX.test(key)) {
+          i += 1;
+          continue;
+        }
+
         let value = rawValue.trim();
 
         // Multiline string handling
