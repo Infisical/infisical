@@ -5,14 +5,14 @@ description: "Use the Infisical PKCS#11 module with GnuPG to sign git commits, t
 ---
 
 <Info>
-  This guide assumes your Platform Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
 </Info>
 
 Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git commits and tags, RPM/DEB packages, and any other artifact that uses GPG signatures — all backed by keys stored securely in Infisical.
 
 ## Prerequisites
 
-- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Platform Admin (RSA keys recommended for GPG compatibility)
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin (RSA keys recommended for GPG compatibility)
 - An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured

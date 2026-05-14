@@ -4,7 +4,7 @@ sidebarTitle: "Profiles"
 description: "Create reusable certificate templates that teams consume through Applications."
 ---
 
-A certificate profile combines a [Certificate Authority](/documentation/platform/pki/ca/overview) with a [Certificate Policy](/documentation/platform/pki/settings/policies) to define how certificates are issued. Profiles are reusable templates that platform admins create once and teams consume through [Applications](/documentation/platform/pki/applications/overview).
+A certificate profile combines a [Certificate Authority](/documentation/platform/pki/ca/overview) with a [Certificate Policy](/documentation/platform/pki/settings/policies) to define how certificates are issued. Profiles are reusable templates that product admins create once and teams consume through [Applications](/documentation/platform/pki/applications/overview).
 
 <Info>
   Think of a profile as the "shape" of a certificate — it defines the CA that signs it, the rules it must follow, and sensible defaults for common fields.
@@ -64,13 +64,13 @@ Defaults can be configured for:
 
 ## How Profiles Are Used
 
-Profiles are consumed through [Applications](/documentation/platform/pki/applications/overview). The workflow separates responsibilities between platform and application administrators:
+Profiles are consumed through [Applications](/documentation/platform/pki/applications/overview). The workflow separates responsibilities between product and application administrators:
 
 <Steps>
-  <Step title="Platform Admin creates a profile">
+  <Step title="Product Admin creates a profile">
     Combines a CA + policy + defaults into a reusable template that defines what certificates will look like.
   </Step>
-  <Step title="Platform Admin creates an Application">
+  <Step title="Product Admin creates an Application">
     Creates an Application, attaches one or more profiles to it, and assigns team members (Application Admins, Operators, Auditors).
   </Step>
   <Step title="Application Admin configures enrollment">

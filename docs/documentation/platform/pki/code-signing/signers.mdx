@@ -7,7 +7,7 @@ description: "Create and manage code-signing identities."
 A Signer is a named code-signing identity bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Signers represent signing capabilities—for example, `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
 
 <Info>
-  Signers are created by platform admins. Team members are assigned to Signers and can then request signing access or sign directly (depending on policy).
+  Signers are created by product admins. Team members are assigned to Signers and can then request signing access or sign directly (depending on policy).
 </Info>
 
 Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes.

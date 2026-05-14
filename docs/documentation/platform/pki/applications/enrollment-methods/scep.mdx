@@ -11,7 +11,7 @@ description: "Issue certificates using the Simple Certificate Enrollment Protoco
 Use the SCEP enrollment method to provision certificates to network devices, mobile devices, printers, routers, and other endpoints that support the SCEP protocol. SCEP is widely used by MDM tools like Jamf Pro, Ivanti, and Microsoft Intune.
 
 <Info>
-  SCEP enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Platform Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
+  SCEP enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Product Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
 ## When to Use SCEP Enrollment
@@ -97,7 +97,7 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
     Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable SCEP enrollment for.
     
     <Note>
-      Profiles are attached by Platform Admins. If you don't see any profiles, ask your Platform Admin to attach one. The profile must use a **CA-issued** issuer type for SCEP enrollment.
+      Profiles are attached by Product Admins. If you don't see any profiles, ask your Product Admin to attach one. The profile must use a **CA-issued** issuer type for SCEP enrollment.
     </Note>
   </Step>
   <Step title="Add SCEP enrollment">

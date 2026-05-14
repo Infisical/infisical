@@ -5,14 +5,14 @@ description: "Use the Infisical PKCS#11 module to sign Java artifacts with jarsi
 ---
 
 <Info>
-  This guide assumes your Platform Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
 </Info>
 
 Sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The module implements the PKCS#11 v2.40 standard, allowing standard signing tools to use Infisical signers without code changes.
 
 ## Prerequisites
 
-- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Platform Admin
+- A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
 - An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured

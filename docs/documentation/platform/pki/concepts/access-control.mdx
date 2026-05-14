@@ -5,9 +5,9 @@ description: "Understand how permissions work in Certificate Manager."
 
 Certificate Manager uses a layered access model that separates infrastructure management from day-to-day operations.
 
-## Organization Level
+## Product Level
 
-**Platform Admins** manage the shared infrastructure that all teams use:
+**Product Admins** manage the shared infrastructure that all teams use:
 
 - Certificate Authorities (internal and external)
 - Certificate Policies
@@ -33,7 +33,7 @@ Only members assigned to an Application can see or interact with its certificate
 
 [Signers](/documentation/platform/pki/code-signing/signers) are where teams sign code artifacts. Similar to Applications, members are assigned directly to Signers with specific permissions.
 
-Platform Admins create Signers and assign members. Assigned members can then use the Signer to sign artifacts through the PKCS#11 module or request signing through approval workflows.
+Product Admins create Signers and assign members. Assigned members can then use the Signer to sign artifacts through the PKCS#11 module or request signing through approval workflows.
 
 [Signing Policies](/documentation/platform/pki/code-signing/signing-policies) can add additional controls, requiring approval before signing operations are allowed.
 
@@ -41,6 +41,6 @@ Platform Admins create Signers and assign members. Assigned members can then use
 
 This model follows the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege):
 
-- Platform admins set up infrastructure once
+- Product admins set up infrastructure once
 - Teams operate within their assigned Applications and Signers
 - No one has more access than they need
