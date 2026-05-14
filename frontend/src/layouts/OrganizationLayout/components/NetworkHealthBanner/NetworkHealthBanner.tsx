@@ -209,7 +209,7 @@ export const NetworkHealthBanner = () => {
       <div className="flex w-full items-center px-4 py-2 text-sm text-red-200">
         <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2.5 text-base text-red-400" />
         <span className="font-medium">
-          {alerts.length} alerts in your organization requires attetion.
+          {alerts.length} alerts in your organization require attention.
         </span>
         <IconButton
           className="ml-2 p-0 text-red-200 hover:text-red-100"

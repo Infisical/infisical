@@ -38,7 +38,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "incrementBy" | "setExpiry" | "getItems" | "setItemWithExpiryNX">;
+  keyStore: Pick<TKeyStoreFactory, "incrementByWithExpiry" | "getItems" | "setItemWithExpiryNX" | "deleteItem">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
@@ -288,13 +288,9 @@ export const auditLogStreamServiceFactory = ({
     try {
       const nowMinuteBucket = Math.floor(Date.now() / 60000);
 
-      // Increment the current minute's bucket, anchoring its TTL on the first write so it
-      // self-expires after the window passes without any cleanup needed on the success path.
+      // Atomically increment the current minute's bucket and anchor its TTL on first write.
       const currentBucketKey = KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket);
-      const bucketCount = await keyStore.incrementBy(currentBucketKey, 1);
-      if (bucketCount === 1) {
-        await keyStore.setExpiry(currentBucketKey, BUCKET_TTL_SECONDS);
-      }
+      await keyStore.incrementByWithExpiry(currentBucketKey, 1, BUCKET_TTL_SECONDS);
 
       // Sum all buckets in the window with a single MGET round-trip.
       const bucketKeys = Array.from({ length: FAILURE_WINDOW_MINUTES }, (_, i) =>
@@ -306,19 +302,18 @@ export const auditLogStreamServiceFactory = ({
       if (windowFailureCount < FAILURE_THRESHOLD) return;
 
       // NX lock ensures only one worker fires the alert within the cooldown window.
-      const acquired = await keyStore.setItemWithExpiryNX(
-        KeyStorePrefixes.AuditLogStreamAlertSent(streamId),
-        FAILURE_ALERT_COOLDOWN_SECONDS,
-        "1"
-      );
+      const alertKey = KeyStorePrefixes.AuditLogStreamAlertSent(streamId);
+      const acquired = await keyStore.setItemWithExpiryNX(alertKey, FAILURE_ALERT_COOLDOWN_SECONDS, "1");
       if (!acquired) return;
 
-      void notifyStreamFailure(orgId, streamId, provider, windowFailureCount).catch((notifyErr) =>
+      await notifyStreamFailure(orgId, streamId, provider, windowFailureCount).catch(async (notifyErr) => {
         logger.error(
           notifyErr,
           `Failed to send audit log stream failure notification [streamId=${streamId}] [orgId=${orgId}]`
-        )
-      );
+        );
+        // Release the lock so the next threshold breach can retry delivery.
+        await keyStore.deleteItem(alertKey).catch(() => {});
+      });
     } catch (trackingErr) {
       logger.error(
         trackingErr,

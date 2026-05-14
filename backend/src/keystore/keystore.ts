@@ -209,6 +209,7 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
   listPush: (key: string, value: string) => Promise<number>;
@@ -377,6 +378,20 @@ export const keyStoreFactory = (
   const decrementByOrDelete = async (key: string): Promise<number> => {
     const result = await primaryRedis.eval(DECREMENT_OR_DELETE_SCRIPT, 1, key);
     return Number(result);
+  }
+
+  // Atomically increment key and set TTL on first write (Lua ensures INCRBY + EXPIRE are one operation).
+  const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
+    const result = await primaryRedis.eval(
+      `local v = redis.call('INCRBY', KEYS[1], ARGV[1])
+if v == tonumber(ARGV[1]) then redis.call('EXPIRE', KEYS[1], ARGV[2]) end
+return v`,
+      1,
+      key,
+      String(value),
+      String(expiryInSeconds)
+    );
+    return result as number;
   };
 
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
@@ -510,6 +525,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    incrementByWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },
