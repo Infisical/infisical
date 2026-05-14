@@ -51,7 +51,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  userDAL: Pick<TUserDALFactory, "find">;
+  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   approvalPolicyDAL: Pick<
@@ -739,12 +739,7 @@ export const pkiApplicationMembershipServiceFactory = ({
   }): Promise<void> => {
     if (!emails.length && !usernames.length) return;
 
-    const users = await userDAL.find({
-      $in: {
-        ...(emails.length ? { email: emails } : {}),
-        ...(usernames.length ? { username: usernames } : {})
-      }
-    });
+    const users = await userDAL.findByEmailsOrUsernames({ emails, usernames });
     if (!users.length) return;
 
     for (const user of users) {
