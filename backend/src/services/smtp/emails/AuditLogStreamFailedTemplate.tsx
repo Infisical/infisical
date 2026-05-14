@@ -50,6 +50,6 @@ AuditLogStreamFailedTemplate.PreviewProps = {
   provider: "Datadog",
   windowFailureCount: 12,
   windowMinutes: 5,
-  streamUrl: "https://app.infisical.com/org/example-org/audit-log-streams",
+  streamUrl: "https://app.infisical.com/organizations/example-org/settings?selectedTab=tag-audit-log-streams",
   siteUrl: "https://app.infisical.com"
 } as AuditLogStreamFailedTemplateProps;

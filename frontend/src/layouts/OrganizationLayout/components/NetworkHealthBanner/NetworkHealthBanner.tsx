@@ -52,11 +52,16 @@ type AlertItem = {
 
 type SingleAlertRowProps = {
   alert: AlertItem;
+  isChild?: boolean;
 };
 
-const SingleAlertRow = ({ alert }: SingleAlertRowProps) => (
-  <div className="flex w-full items-center px-4 py-2 text-sm text-red-200">
-    <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2.5 text-base text-red-400" />
+const SingleAlertRow = ({ alert, isChild }: SingleAlertRowProps) => (
+  <div
+    className={`flex w-full items-center py-2 pr-4 text-sm text-red-200 ${isChild ? "pl-10" : "px-4"}`}
+  >
+    {!isChild && (
+      <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2.5 text-base text-red-400" />
+    )}
     {alert.message}
     {alert.linkLabel && alert.linkTo && (
       <Link
@@ -160,20 +165,22 @@ export const NetworkHealthBanner = () => {
       });
     }
 
-    failedStreamNotifications
-      .filter((n) => !dismissedAlertIds.has(n.id))
-      .forEach((n) => {
-        items.push({
-          id: n.id,
-          message: "Error streaming audit logs.",
-          linkLabel: "View log stream",
-          linkTo: `/organizations/${currentOrg.id}/settings`,
-          onDismiss: () => {
-            updateNotification({ notificationId: n.id, isRead: true });
-            setDismissedAlertIds((prev) => new Set([...prev, n.id]));
-          }
-        });
+    const visibleStreamNotifications = failedStreamNotifications.filter(
+      (n) => !dismissedAlertIds.has(n.id)
+    );
+    if (visibleStreamNotifications.length > 0) {
+      const ids = visibleStreamNotifications.map((n) => n.id);
+      items.push({
+        id: "audit-log-stream-failed",
+        message: "Error streaming audit logs.",
+        linkLabel: "View log stream",
+        linkTo: visibleStreamNotifications[0].link ?? undefined,
+        onDismiss: () => {
+          ids.forEach((id) => updateNotification({ notificationId: id, isRead: true }));
+          setDismissedAlertIds((prev) => new Set([...prev, ...ids]));
+        }
       });
+    }
 
     return items;
   }, [
@@ -201,7 +208,9 @@ export const NetworkHealthBanner = () => {
     <div className="w-full border-b border-red-500/50 bg-red-500/20">
       <div className="flex w-full items-center px-4 py-2 text-sm text-red-200">
         <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2.5 text-base text-red-400" />
-        <span className="font-medium">{alerts.length} errors in your organization</span>
+        <span className="font-medium">
+          {alerts.length} alerts in your organization requires attetion.
+        </span>
         <IconButton
           className="ml-2 p-0 text-red-200 hover:text-red-100"
           ariaLabel={isExpanded ? "Collapse alerts" : "Expand alerts"}
@@ -223,7 +232,7 @@ export const NetworkHealthBanner = () => {
         <div>
           {alerts.map((alert) => (
             <div key={alert.id} className="border-t border-red-500/30">
-              <SingleAlertRow alert={alert} />
+              <SingleAlertRow alert={alert} isChild />
             </div>
           ))}
         </div>

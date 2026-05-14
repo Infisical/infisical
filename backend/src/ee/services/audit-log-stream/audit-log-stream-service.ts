@@ -254,7 +254,8 @@ export const auditLogStreamServiceFactory = ({
     }
 
     const adminEmails = activeAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
-    const streamUrl = `${appCfg.SITE_URL}/org/${orgId}/settings`;
+    const streamPath = `/organizations/${orgId}/settings?selectedTab=tag-audit-log-streams`;
+    const streamUrl = `${appCfg.SITE_URL}${streamPath}`;
 
     await notificationService.createUserNotifications(
       activeAdmins.map((admin) => ({
@@ -263,7 +264,7 @@ export const auditLogStreamServiceFactory = ({
         type: NotificationType.AUDIT_LOG_STREAM_FAILED,
         title: "Audit Log Stream Failure",
         body: `Your **${provider}** audit log stream has failed ${failureCount} times in the last ${FAILURE_WINDOW_MINUTES} minutes. Audit logs may not be reaching their destination.`,
-        link: streamUrl
+        link: streamPath
       }))
     );
     await smtpService
