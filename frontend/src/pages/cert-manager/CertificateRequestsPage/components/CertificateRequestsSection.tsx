@@ -416,7 +416,7 @@ export const CertificateRequestsSection = ({
               !isError &&
               certificateRequestsData?.certificateRequests?.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-accent">
+                  <TableCell colSpan={6} className="py-8 text-center text-foreground">
                     {isTableFiltered
                       ? "No certificate requests found matching your filters"
                       : "No certificate requests found"}
