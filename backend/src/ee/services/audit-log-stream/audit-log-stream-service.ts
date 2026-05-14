@@ -283,7 +283,7 @@ export const auditLogStreamServiceFactory = ({
       );
   };
 
-  const evaluateErrorSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
+  const evaluateErrorBucketSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
     try {
       const nowMinuteBucket = Math.floor(Date.now() / 60000);
 
@@ -353,7 +353,7 @@ export const auditLogStreamServiceFactory = ({
             );
           }
 
-          await evaluateErrorSlidingWindow(orgId, id, provider);
+          await evaluateErrorBucketSlidingWindow(orgId, id, provider);
         }
       })
     );
