@@ -46,7 +46,7 @@ import {
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
 import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
-import { useCanUseAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
+import { useCanUseOrgAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -181,7 +181,7 @@ export const IdentityKubernetesAuthForm = ({
     if (projectId) return projectVaultAppConnections;
     return orgAppConnections.filter((c) => c.app === AppConnection.HCVault && !c.projectId);
   }, [projectId, projectVaultAppConnections, orgAppConnections]);
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({ scope: "org-identity" });
+  const canUseAppConnectionImport = useCanUseOrgAppConnectionImport();
   const hasVaultConnection = vaultAppConnections.length > 0;
 
   const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);

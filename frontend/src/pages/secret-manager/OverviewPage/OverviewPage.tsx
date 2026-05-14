@@ -114,7 +114,7 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import {
-  useCanUseAppConnectionImport,
+  useCanUseProjectAppConnectionImport,
   useLocalStorageState,
   usePagination,
   usePopUp,
@@ -504,10 +504,9 @@ const OverviewPageContent = () => {
     ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
     : true;
 
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    scope: "project-secret",
-    subject: singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
-  });
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
+  );
 
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,

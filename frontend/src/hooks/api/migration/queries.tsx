@@ -200,10 +200,6 @@ export const useGetVaultKubernetesAuthRoles = (
   mountPath?: string,
   connectionId?: string
 ) => {
-  console.log("namespace", namespace);
-  console.log("mountPath", mountPath);
-  console.log("connectionId", connectionId);
-  console.log("enabled", enabled);
   return useQuery({
     queryKey: externalMigrationQueryKeys.vaultKubernetesAuthRoles(
       namespace,

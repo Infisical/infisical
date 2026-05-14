@@ -25,7 +25,7 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
-import { useCanUseAppConnectionImport } from "@app/hooks";
+import { useCanUseProjectAppConnectionImport } from "@app/hooks";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -182,10 +182,9 @@ export const KubernetesInputForm = ({
   const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
 
   const { projectId } = useProject();
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    scope: "project-secret",
-    subject: ProjectPermissionSub.Secrets
-  });
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
+  );
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,

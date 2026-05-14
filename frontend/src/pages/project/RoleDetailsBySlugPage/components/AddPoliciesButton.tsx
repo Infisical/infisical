@@ -13,7 +13,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
-import { useCanUseAppConnectionImport, usePopUp } from "@app/hooks";
+import { useCanUseProjectAppConnectionImport, usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -43,10 +43,9 @@ export const AddPoliciesButton = ({
     "importFromVault"
   ] as const);
 
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    scope: "project-secret",
-    subject: ProjectPermissionSub.Secrets
-  });
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
+  );
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId ?? "",

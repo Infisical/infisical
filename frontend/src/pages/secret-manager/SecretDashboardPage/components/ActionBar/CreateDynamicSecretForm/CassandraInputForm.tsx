@@ -23,7 +23,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionSub, useProject } from "@app/context";
-import { useCanUseAppConnectionImport } from "@app/hooks";
+import { useCanUseProjectAppConnectionImport } from "@app/hooks";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -102,10 +102,9 @@ export const CassandraInputForm = ({
   const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
 
   const { projectId } = useProject();
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    scope: "project-secret",
-    subject: ProjectPermissionSub.Secrets
-  });
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
+  );
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,

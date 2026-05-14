@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub, useProject } from "@app/context";
-import { useCanUseAppConnectionImport } from "@app/hooks";
+import { useCanUseProjectAppConnectionImport } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -13,10 +13,9 @@ type Props = {
 
 export const LoadFromVaultBanner = ({ onClick }: Props) => {
   const { projectId } = useProject();
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    scope: "project-secret",
-    subject: ProjectPermissionSub.Secrets
-  });
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
+  );
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,

@@ -72,7 +72,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
-import { useCanUseAppConnectionImport, usePopUp } from "@app/hooks";
+import { useCanUseProjectAppConnectionImport, usePopUp } from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretBatch,
@@ -224,10 +224,7 @@ export const ActionBar = ({
       }),
     [environment, secretPath]
   );
-  const canUseAppConnectionImport = useCanUseAppConnectionImport({
-    scope: "project-secret",
-    subject: vaultSecretSubject
-  });
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(vaultSecretSubject);
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
     AppConnection.HCVault,
     projectId,
