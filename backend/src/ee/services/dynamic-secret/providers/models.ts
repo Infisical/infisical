@@ -719,6 +719,37 @@ export const DynamicSecretCouchbaseSchema = z.object({
   })
 });
 
+export const DynamicSecretMilvusSchema = z.object({
+  host: z.string().trim().min(1).describe("Milvus endpoint host, including the URL scheme (e.g. http://localhost)"),
+  port: z.number(),
+  username: z.string().trim().min(1).describe("Admin username used to manage Milvus users and roles"),
+  password: z.string().trim().min(1).describe("Admin password used to manage Milvus users and roles"),
+  database: z.string().trim().min(1).default("default").describe("Default Milvus database used for privilege grants"),
+  privileges: z
+    .array(
+      z.object({
+        objectType: z
+          .string()
+          .trim()
+          .min(1)
+          .describe('Milvus object type (e.g. "Collection", "Database", "Global", "User", "Cluster")'),
+        objectName: z.string().trim().min(1).default("*").describe('Name of the target object, or "*" to apply to all'),
+        privilege: z
+          .string()
+          .trim()
+          .min(1)
+          .describe('Milvus privilege name or built-in privilege group (e.g. "Search", "COLL_RO", "DB_Admin")'),
+        dbName: z.string().trim().min(1).optional().describe("Optional database override for this privilege")
+      })
+    )
+    .default([])
+    .describe(
+      "Privileges granted to an ephemeral role bound to the lease user. Leave empty to create the user with only the built-in public role."
+    ),
+  ca: z.string().optional(),
+  sslRejectUnauthorized: z.boolean().default(true)
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Clickhouse = "clickhouse",
@@ -743,6 +774,7 @@ export enum DynamicSecretProviders {
   GcpIam = "gcp-iam",
   Github = "github",
   Couchbase = "couchbase",
+  Milvus = "milvus",
   Ssh = "ssh"
 }
 
@@ -782,6 +814,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Couchbase), inputs: DynamicSecretCouchbaseSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Milvus), inputs: DynamicSecretMilvusSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ssh), inputs: DynamicSecretSshSchema })
 ]);
 

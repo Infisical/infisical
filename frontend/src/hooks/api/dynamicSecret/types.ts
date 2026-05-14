@@ -42,6 +42,7 @@ export enum DynamicSecretProviders {
   Github = "github",
   Couchbase = "couchbase",
   Clickhouse = "clickhouse",
+  Milvus = "milvus",
   Ssh = "ssh"
 }
 
@@ -72,6 +73,14 @@ export enum DynamicSecretAwsIamCredentialType {
   IamUser = "iam-user",
   TemporaryCredentials = "temporary-credentials"
 }
+
+export const MILVUS_OBJECT_TYPES = [
+  { label: "Collection", value: "Collection" },
+  { label: "Database", value: "Database" },
+  { label: "Global", value: "Global" },
+  { label: "Cluster", value: "Cluster" },
+  { label: "User", value: "User" }
+] as const;
 
 export type TDynamicSecretProvider =
   | {
@@ -469,6 +478,24 @@ export type TDynamicSecretProvider =
           };
           allowedSymbols?: string;
         };
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Milvus;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        password: string;
+        database?: string;
+        privileges: Array<{
+          objectType: string;
+          objectName: string;
+          privilege: string;
+          dbName?: string;
+        }>;
+        ca?: string;
+        sslRejectUnauthorized?: boolean;
       };
     }
   | {
