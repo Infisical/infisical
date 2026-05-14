@@ -21,7 +21,7 @@ jobs:
               id: extract_version
               run: echo "::set-output name=version::${GITHUB_REF_NAME}"
             - name: ☁️ Checkout source
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
             - name: 📦 Install dependencies to test all dependencies
@@ -37,18 +37,18 @@ jobs:
                   echo "Output Value: ${{ steps.version.outputs.increment }}"
             - name: Save commit hashes for tag
               id: commit
-              uses: pr-mpt/actions-commit-hash@v2
+              run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
             - name: 🔧 Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+              uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
             - name: 🐋 Login to Docker Hub
-              uses: docker/login-action@v3
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
             - name: Set up Depot CLI
-              uses: depot/setup-action@v1
+              uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
             - name: 📦 Build backend and export to Docker
-              uses: depot/build-push-action@v1
+              uses: depot/build-push-action@f78af826a1c272c4b60c485e934974b515094928 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
                   token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -67,7 +67,7 @@ jobs:
                       DD_GIT_COMMIT_SHA=${{ github.sha }}
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
-              uses: snyk/actions/docker@master
+              uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
               env:
                 SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
               with:
@@ -84,7 +84,7 @@ jobs:
               id: extract_version
               run: echo "::set-output name=version::${GITHUB_REF_NAME}"
             - name: ☁️ Checkout source
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
             - name: 📦 Install dependencies to test all dependencies
@@ -100,18 +100,18 @@ jobs:
                   echo "Output Value: ${{ steps.version.outputs.increment }}"
             - name: Save commit hashes for tag
               id: commit
-              uses: pr-mpt/actions-commit-hash@v2
+              run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
             - name: 🔧 Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+              uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
             - name: 🐋 Login to Docker Hub
-              uses: docker/login-action@v3
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
             - name: Set up Depot CLI
-              uses: depot/setup-action@v1
+              uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
             - name: 📦 Build backend and export to Docker
-              uses: depot/build-push-action@v1
+              uses: depot/build-push-action@f78af826a1c272c4b60c485e934974b515094928 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
                   token: ${{ secrets.DEPOT_PROJECT_TOKEN }}

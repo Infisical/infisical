@@ -9,13 +9,8 @@ summary: Identity auth now always verifies TLS certificates for OIDC, JWT JWKS,
 requiresDbMigration: false
 breakingChanges:
   - title: Identity auth TLS verification
-    description: OIDC, JWT JWKS, and Kubernetes auth now enforce TLS certificate
-      verification. Logins can fail if your identity provider or Kubernetes API
-      uses an untrusted CA or a certificate hostname that does not match the
-      configured host.
-    action: Add the issuing CA certificate to the auth method configuration and
-      ensure the configured host matches the certificate SAN or CN before
-      upgrading.
+    description: TLS certificate verification is now enforced for OIDC, JWT JWKS, and Kubernetes auth endpoints. Previously, these authentication flows accepted untrusted certificates. If your endpoints use publicly signed certificates, they will continue to work using the system's default CA trust store.
+    action: If you use self-signed or internal CA certificates for any identity auth endpoint (OIDC issuer, JWT JWKS URL, or Kubernetes API), add the issuing CA certificate to the corresponding auth method configuration. Also verify that all configured hostnames match the certificate's Subject Alternative Name (SAN) or Common Name (CN).
     confidence: high
     evidence:
       - type: file

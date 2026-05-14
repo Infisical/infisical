@@ -107,6 +107,7 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
+import { DatadogConnectionMethod, getDatadogConnectionListItem, validateDatadogConnectionCredentials } from "./datadog";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
@@ -327,7 +328,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
     getTravisCIConnectionListItem(),
-    getSnowflakeConnectionListItem()
+    getSnowflakeConnectionListItem(),
+    getDatadogConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -490,7 +492,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -582,6 +585,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AnthropicConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -712,7 +716,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
   [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
-  [AppConnection.Snowflake]: platformManagedCredentialsNotSupported
+  [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
+  [AppConnection.Datadog]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

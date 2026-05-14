@@ -563,7 +563,7 @@ export const importVaultDataFn = async (
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   }
 ) => {
-  await blockLocalAndPrivateIpAddresses(vaultUrl);
+  await blockLocalAndPrivateIpAddresses(vaultUrl, Boolean(gatewayId));
 
   if (mappingType === VaultMappingType.Namespace && !vaultNamespace) {
     throw new BadRequestError({

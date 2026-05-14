@@ -58,7 +58,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity" | "markPerTokenRevocation"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "markPerTokenRevocation"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -424,7 +424,10 @@ export const identityTokenAuthServiceFactory = ({
     // Detaching the auth method must invalidate any tokens already issued
     // through it; without this, leaked tokens authenticate up to MAX_AGE
     // even after the admin pulled the auth method.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.TOKEN_AUTH
+    });
 
     return revokedIdentityTokenAuth;
   };

@@ -1,6 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import ms from "ms";
 import { z } from "zod";
 
@@ -15,14 +14,13 @@ import {
   Button,
   FormControl,
   Input,
-  Select,
-  SelectItem,
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
-import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
+import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const passwordRequirementsSchema = z
@@ -57,7 +55,8 @@ const formSchema = z.object({
       passwordRequirements: passwordRequirementsSchema.optional(),
       creationStatement: z.string().min(1),
       revocationStatement: z.string().min(1),
-      gatewayId: z.string().optional().nullable()
+      gatewayId: z.string().optional().nullable(),
+      gatewayPoolId: z.string().optional().nullable()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -112,6 +111,7 @@ export const EditDynamicSecretVerticaForm = ({
   const {
     control,
     watch,
+    setValue,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
@@ -130,11 +130,10 @@ export const EditDynamicSecretVerticaForm = ({
     }
   });
 
-  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
   const updateDynamicSecret = useUpdateDynamicSecret();
 
   const selectedGatewayId = watch("inputs.gatewayId");
-  const isGatewayInActive = gateways?.findIndex((el) => el.id === selectedGatewayId) === -1;
+  const selectedGatewayPoolId = watch("inputs.gatewayPoolId");
 
   const handleUpdateDynamicSecret = async ({
     inputs,
@@ -157,7 +156,8 @@ export const EditDynamicSecretVerticaForm = ({
         defaultTTL,
         inputs: {
           ...inputs,
-          gatewayId: isGatewayInActive ? null : inputs.gatewayId
+          gatewayId: inputs.gatewayId ?? null,
+          gatewayPoolId: inputs.gatewayPoolId ?? null
         },
         newName: newName === dynamicSecret.name ? undefined : newName,
         usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
@@ -234,53 +234,28 @@ export const EditDynamicSecretVerticaForm = ({
                 a={OrgPermissionSubjects.Gateway}
               >
                 {(isAllowed) => (
-                  <Controller
-                    control={control}
-                    name="inputs.gatewayId"
-                    defaultValue=""
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message) || isGatewayInActive}
-                        errorText={
-                          isGatewayInActive && selectedGatewayId
-                            ? `Project Gateway ${selectedGatewayId} is removed`
-                            : error?.message
-                        }
-                        label="Gateway"
-                        helperText=""
-                      >
-                        <Tooltip
-                          isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
-                        >
-                          <div>
-                            <Select
-                              isDisabled={!isAllowed}
-                              value={value || undefined}
-                              onValueChange={onChange}
-                              className="w-full border border-mineshaft-500"
-                              dropdownContainerClassName="max-w-none"
-                              isLoading={isGatewaysLoading}
-                              placeholder="Default: Internet Gateway"
-                              position="popper"
-                            >
-                              <SelectItem
-                                value={null as unknown as string}
-                                onClick={() => onChange(undefined)}
-                              >
-                                Internet Gateway
-                              </SelectItem>
-                              {gateways?.map((el) => (
-                                <SelectItem value={el.id} key={el.id}>
-                                  {el.name}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </div>
-                        </Tooltip>
-                      </FormControl>
-                    )}
-                  />
+                  <FormControl label="Gateway">
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <GatewayPicker
+                          isDisabled={!isAllowed}
+                          value={{
+                            gatewayId: selectedGatewayId ?? null,
+                            gatewayPoolId: selectedGatewayPoolId ?? null
+                          }}
+                          onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                            setValue("inputs.gatewayId", newGwId ?? null, { shouldDirty: true });
+                            setValue("inputs.gatewayPoolId", newPoolId ?? null, {
+                              shouldDirty: true
+                            });
+                          }}
+                        />
+                      </div>
+                    </Tooltip>
+                  </FormControl>
                 )}
               </OrgPermissionCan>
             </div>

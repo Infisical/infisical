@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 
 import { dynamicSecretKeys } from "./queries";
 import {
@@ -28,6 +29,7 @@ export const useCreateDynamicSecret = () => {
       queryClient.invalidateQueries({
         queryKey: dynamicSecretKeys.list({ path, projectSlug, environmentSlug })
       });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -52,6 +54,7 @@ export const useUpdateDynamicSecret = () => {
       queryClient.invalidateQueries({
         queryKey: dynamicSecretKeys.details({ path, projectSlug, environmentSlug, name })
       });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -73,6 +76,7 @@ export const useDeleteDynamicSecret = () => {
       queryClient.invalidateQueries({
         queryKey: dynamicSecretKeys.list({ path, projectSlug, environmentSlug })
       });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };

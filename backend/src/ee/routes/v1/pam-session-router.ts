@@ -6,6 +6,7 @@ import { PolicyRulesResponseSchema } from "@app/ee/services/pam-account-policy";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MongoDBSessionCredentialsSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import { OracleSessionCredentialsSchema } from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
@@ -15,8 +16,8 @@ import {
   PamSessionCommandLogSchema,
   SanitizedSessionListItemSchema,
   SanitizedSessionSchema,
-  SessionLogsPageSchema,
-  TerminalEventSchema
+  SessionEventSchema,
+  SessionLogsPageSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -29,6 +30,7 @@ const SessionCredentialsSchema = z.union([
   SSHSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
   MySQLSessionCredentialsSchema,
+  OracleSessionCredentialsSchema,
   MongoDBSessionCredentialsSchema,
   KubernetesSessionCredentialsSchema,
   RedisSessionCredentialsSchema,
@@ -142,7 +144,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
+        logs: z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema]))
       }),
       response: {
         200: z.object({
@@ -408,7 +410,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
+      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema]));
       try {
         EventBatchSchema.parse(JSON.parse(req.body.toString()));
       } catch (e) {

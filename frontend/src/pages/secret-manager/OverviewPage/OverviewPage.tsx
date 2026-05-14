@@ -109,6 +109,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
 import { OrgMembershipRole } from "@app/helpers/roles";
+import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -165,6 +166,7 @@ import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
+import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import {
@@ -677,6 +679,7 @@ const OverviewPageContent = () => {
   const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
   const { mutate: updateSecretImport } = useUpdateSecretImport();
   const { mutateAsync: deleteWsEnvironment } = useDeleteWsEnvironment();
+  const { mutateAsync: checkSecretRotationCredentials } = useCheckSecretRotationV2Credentials();
 
   // Batch mode state and hooks
   const [isOverviewBatchMode, setIsOverviewBatchMode] = useState(
@@ -3154,6 +3157,17 @@ const OverviewPageContent = () => {
                               onDelete={(secretRotation) =>
                                 handlePopUpOpen("deleteSecretRotation", secretRotation)
                               }
+                              onCheckActiveCredentials={async (secretRotation) => {
+                                await checkSecretRotationCredentials({
+                                  rotationId: secretRotation.id,
+                                  type: secretRotation.type
+                                });
+                                createNotification({
+                                  type: "success",
+                                  title: "Credentials verified",
+                                  text: `Successfully authenticated to ${SECRET_ROTATION_MAP[secretRotation.type].name} with the current rotated credentials for ${secretRotation.name}`
+                                });
+                              }}
                             />
                           ))}
                           {honeyTokenNames.map((honeyTokenName, index) => (
@@ -3261,11 +3275,7 @@ const OverviewPageContent = () => {
         <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
           <SheetHeader className="border-b">
             <SheetTitle>Create Secret</SheetTitle>
-            <SheetDescription>
-              {filteredEnvs.length === 1
-                ? `Create a secret in ${filteredEnvs[0].name}`
-                : "Create a secret across multiple environments"}
-            </SheetDescription>
+            <SheetDescription>Create a secret across one or more environments</SheetDescription>
           </SheetHeader>
           <CreateSecretForm
             secretPath={secretPath}

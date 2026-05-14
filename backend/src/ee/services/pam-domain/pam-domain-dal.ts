@@ -110,10 +110,35 @@ export const pamDomainDALFactory = (db: TDbClient) => {
     return byDomainId;
   };
 
+  const findByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamDomain)
+      .leftJoin(TableName.Project, `${TableName.PamDomain}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamDomain}.gatewayPoolId`, gatewayPoolId)
+      .select(
+        db.ref("id").withSchema(TableName.PamDomain),
+        db.ref("name").withSchema(TableName.PamDomain),
+        db.ref("projectId").withSchema(TableName.PamDomain),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamDomain)
+      .where(`${TableName.PamDomain}.gatewayPoolId`, gatewayPoolId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...orm,
     findById,
     findByProjectId,
-    findMetadataByDomainIds
+    findMetadataByDomainIds,
+    findByGatewayPoolId,
+    countByGatewayPoolId
   };
 };

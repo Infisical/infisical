@@ -18,6 +18,7 @@ Infisical is an open-source secret management platform. Monorepo layout:
 infisical/
 ├── backend/               # Fastify 4 API server (see backend/CLAUDE.md)
 ├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
+├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
@@ -31,6 +32,7 @@ infisical/
 
 - **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
 - **`frontend/`** — React 18 SPA, Vite 6, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
+- **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 
 Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.

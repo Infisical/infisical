@@ -5,8 +5,8 @@ import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
@@ -33,7 +33,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
   serviceTokenService: Pick<TServiceTokenServiceFactory, "notifyExpiringTokens">;
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   orgService: TOrgServiceFactory;
   userNotificationDAL: Pick<TUserNotificationDALFactory, "pruneNotifications">;
   keyValueStoreDAL: Pick<TKeyValueStoreDALFactory, "pruneExpiredKeys">;
@@ -49,7 +49,7 @@ export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyRe
 export const dailyResourceCleanUpQueueServiceFactory = ({
   auditLogDAL,
   auditLogService,
-  queueService,
+  cronJob,
   snapshotDAL,
   secretVersionDAL,
   secretFolderVersionDAL,
@@ -74,14 +74,14 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     logger.warn("Daily Resource Clean Up is in development mode.");
   }
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
-
-    queueService.start(QueueName.DailyResourceCleanUp, async () => {
-      try {
-        logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.DailyResourceCleanup,
+      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.DailyResourceCleanup}]: task started`);
         await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
         await secretSharingDAL.pruneExpiredSharedSecrets();
         await secretSharingDAL.pruneExpiredSecretRequests();
@@ -103,38 +103,19 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await approvalRequestGrantsDAL.markExpiredGrants();
         await identityAccessTokenRevocationDAL.removeExpiredRevocations();
         await auditLogDAL.pruneAuditLog();
-        logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
-      } catch (error) {
-        logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
-        throw error;
       }
     });
 
-    await queueService.upsertJobScheduler(
-      QueueName.DailyResourceCleanUp,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyResourceCleanUp}`,
-      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
-      { name: QueueJobs.DailyResourceCleanUp }
-    );
-
-    // Hourly cleanup routine
-    queueService.start(QueueName.FrequentResourceCleanUp, async () => {
-      try {
-        logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
+    cronJob.register({
+      name: CronJobName.FrequentResourceCleanup,
+      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
+      runHashTtlS: 2 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
-        logger.info(`${QueueName.FrequentResourceCleanUp}: queue task completed`);
-      } catch (error) {
-        logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
-        throw error;
       }
     });
-
-    await queueService.upsertJobScheduler(
-      QueueName.FrequentResourceCleanUp,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.FrequentResourceCleanUp}`,
-      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *" },
-      { name: QueueJobs.FrequentResourceCleanUp }
-    );
   };
 
   return {

@@ -13,7 +13,8 @@ export const IdentityAccessTokenRevocationsSchema = z.object({
   expiresAt: z.date(),
   revokedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  scope: z.string().nullable().optional()
 });
 
 export type TIdentityAccessTokenRevocations = z.infer<typeof IdentityAccessTokenRevocationsSchema>;

@@ -130,7 +130,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     setAppliedMetadataEntries([]);
   };
 
-  const { data: domainData } = useGetPamDomainById(
+  const { data: domainData, isPending: isDomainPending } = useGetPamDomainById(
     PamDomainType.ActiveDirectory,
     resource.domainId || undefined,
     { enabled: !!resource.domainId }
@@ -256,19 +256,24 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
+    const accountIdentity =
+      account.domainId && domainData?.connectionDetails.domain
+        ? `${domainData.connectionDetails.domain}:${account.name}`
+        : account.name;
+
     const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
         resourceName: resource.name,
-        accountName: account.name
+        accountName: accountIdentity
       }
     });
 
     if (requiresApproval) {
       handlePopUpOpen("requestAccount", {
         resourceName: resource.name,
-        accountName: account.name,
+        accountName: accountIdentity,
         accountAccessed: true,
         accessDurationMax: constraints?.accessDuration.max
       });
@@ -548,6 +553,10 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         <Button
                           variant="ghost"
                           size="xs"
+                          isDisabled={
+                            !!account.domainId &&
+                            (isDomainPending || !domainData?.connectionDetails.domain)
+                          }
                           onClick={(e) => {
                             e.stopPropagation();
                             accessAccount(account);

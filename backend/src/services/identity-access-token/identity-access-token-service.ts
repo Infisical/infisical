@@ -93,27 +93,50 @@ export const identityAccessTokenServiceFactory = ({
     tokenId,
     identityId,
     issuedAtMs,
+    clientSecretId,
+    authMethod,
     messagePrefix = "Failed to authorize"
   }: {
     tokenId: string;
     identityId: string;
     issuedAtMs: number;
+    clientSecretId?: string;
+    authMethod?: string;
     messagePrefix?: "Failed to authorize" | "Cannot renew";
   }) => {
+    const scopes: string[] = [];
+    if (clientSecretId) scopes.push(clientSecretId);
+    if (authMethod) scopes.push(authMethod);
+
     const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForToken({
       tokenId,
-      identityId
+      identityId,
+      scopes
     });
 
     for (const revocation of activeRevocations) {
-      if (revocation.id === tokenId) {
-        throw new UnauthorizedError({ message: `${messagePrefix}: token has been revoked` });
-      }
-
-      if (revocation.id === identityId) {
+      // Legacy markers have scope=null and key off polymorphic `id`.
+      if (revocation.scope === null || revocation.scope === undefined) {
+        if (revocation.id === tokenId) {
+          throw new UnauthorizedError({ message: `${messagePrefix}: token has been revoked` });
+        }
+        if (revocation.id === identityId) {
+          const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
+          if (issuedAtMs < revokedAtMs) {
+            throw new UnauthorizedError({ message: `${messagePrefix}: identity tokens have been revoked` });
+          }
+        }
+      } else {
+        // Scoped marker: scope holds the value the JWT must NOT match
+        // (clientSecretId for UA tokens, authMethod for any token).
         const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
         if (issuedAtMs < revokedAtMs) {
-          throw new UnauthorizedError({ message: `${messagePrefix}: identity tokens have been revoked` });
+          if (clientSecretId && revocation.scope === clientSecretId) {
+            throw new UnauthorizedError({ message: `${messagePrefix}: client secret has been revoked` });
+          }
+          if (authMethod && revocation.scope === authMethod) {
+            throw new UnauthorizedError({ message: `${messagePrefix}: auth method has been revoked` });
+          }
         }
       }
     }
@@ -281,7 +304,9 @@ export const identityAccessTokenServiceFactory = ({
       assertTokenIsNotRevoked({
         tokenId,
         identityId: token.identityId,
-        issuedAtMs
+        issuedAtMs,
+        clientSecretId: source.clientSecretId,
+        authMethod: source.authMethod
       }),
       keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId))
     ]);
@@ -385,6 +410,8 @@ export const identityAccessTokenServiceFactory = ({
         tokenId,
         identityId: decodedToken.identityId,
         issuedAtMs: decodedToken.iat * 1000,
+        clientSecretId: source.clientSecretId,
+        authMethod: source.authMethod,
         messagePrefix: "Cannot renew"
       }),
       keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(decodedToken.identityId, tokenId))
@@ -524,11 +551,57 @@ export const identityAccessTokenServiceFactory = ({
     });
   };
 
+  // Scoped revoke for Universal Auth client secret deletion: rejects every JWT
+  // carrying this clientSecretId with iat < revokedAt. Stored in the polymorphic
+  // revocation table with a synthetic id and scope = clientSecretId.
+  const revokeAllTokensForClientSecret = async ({
+    identityId,
+    clientSecretId
+  }: {
+    identityId: string;
+    clientSecretId: string;
+  }) => {
+    const appCfg = getConfig();
+    const revokedAt = new Date();
+
+    await identityAccessTokenRevocationDAL.insertRevocation({
+      id: crypto.nativeCrypto.randomUUID(),
+      identityId,
+      scope: clientSecretId,
+      revokedAt,
+      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+    });
+  };
+
+  // Scoped revoke for auth-method removal: rejects every JWT issued via the
+  // removed method with iat < revokedAt. Tokens issued via other methods on
+  // the same identity stay valid.
+  const revokeTokensForIdentityAuthMethod = async ({
+    identityId,
+    authMethod
+  }: {
+    identityId: string;
+    authMethod: IdentityAuthMethod;
+  }) => {
+    const appCfg = getConfig();
+    const revokedAt = new Date();
+
+    await identityAccessTokenRevocationDAL.insertRevocation({
+      id: crypto.nativeCrypto.randomUUID(),
+      identityId,
+      scope: authMethod,
+      revokedAt,
+      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+    });
+  };
+
   return {
     issueIdentityAccessToken,
     renewAccessToken,
     revokeAccessToken,
     revokeAllTokensForIdentity,
+    revokeAllTokensForClientSecret,
+    revokeTokensForIdentityAuthMethod,
     markPerTokenRevocation,
     fnValidateIdentityAccessTokenFast
   };

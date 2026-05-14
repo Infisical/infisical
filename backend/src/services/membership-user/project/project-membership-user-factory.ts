@@ -175,7 +175,9 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
-    const targetUser = await userDAL.findById(dto.selector.userId);
+    const targetUser = await requestMemoize(requestMemoKeys.userFindById(dto.selector.userId), () =>
+      userDAL.findById(dto.selector.userId)
+    );
     if (!targetUser) {
       throw new NotFoundError({ message: `User not found for project membership update` });
     }

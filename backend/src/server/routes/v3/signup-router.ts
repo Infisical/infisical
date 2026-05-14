@@ -27,7 +27,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          message: z.string()
+          message: z.string(),
+          cooldownSeconds: z.number()
         })
       }
     },
@@ -50,8 +51,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           });
         }
       }
-      await server.services.signup.beginEmailSignupProcess(email);
-      return { message: `Sent an email verification code to ${email}` };
+      const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess(email);
+      return { message: `Sent an email verification code to ${email}`, cooldownSeconds };
     }
   });
 
@@ -60,7 +61,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) =>
+          (req.body as { email?: string })?.email?.trim()?.toLowerCase().substring(0, 100) || req.realIp
       })
     },
     schema: {

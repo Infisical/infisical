@@ -41,6 +41,7 @@ const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
   [DynamicSecretProviders.AwsIam]: "AWS IAM",
   [DynamicSecretProviders.Redis]: "Redis",
   [DynamicSecretProviders.AwsElastiCache]: "AWS ElastiCache",
+  [DynamicSecretProviders.AwsMemoryDb]: "AWS MemoryDB",
   [DynamicSecretProviders.MongoAtlas]: "Mongo Atlas",
   [DynamicSecretProviders.ElasticSearch]: "Elastic Search",
   [DynamicSecretProviders.MongoDB]: "Mongo DB",

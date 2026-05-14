@@ -188,7 +188,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
                   "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
               }
             ),
-          caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
+          caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.caCert),
           verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           tokenReviewMode: z

@@ -37,6 +37,11 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TDatadogApplicationKeySecretRotation,
+  TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse,
+  TDatadogApplicationKeySecretRotationOption
+} from "./datadog-application-key-secret-rotation";
+import {
   TDbtServiceTokenRotation,
   TDbtServiceTokenRotationGeneratedCredentialsResponse,
   TDbtServiceTokenRotationOption
@@ -109,6 +114,7 @@ export type TSecretRotationV2 = (
   | TOpenRouterApiKeyRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
+  | TDatadogApplicationKeySecretRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -128,7 +134,8 @@ export type TSecretRotationV2Option =
   | TWindowsLocalAccountRotationOption
   | TOpenRouterApiKeyRotationOption
   | THpIloRotationOption
-  | TSupabaseApiKeyRotationOption;
+  | TSupabaseApiKeyRotationOption
+  | TDatadogApplicationKeySecretRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -152,7 +159,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TWindowsLocalAccountRotationGeneratedCredentialsResponse
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse
   | THpIloRotationGeneratedCredentialsResponse
-  | TSupabaseApiKeyRotationGeneratedCredentialsResponse;
+  | TSupabaseApiKeyRotationGeneratedCredentialsResponse
+  | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -225,6 +233,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationOption;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
+  [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -246,6 +255,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationGeneratedCredentialsResponse;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)
@@ -264,4 +274,9 @@ export type TReconcileLocalAccountRotationResponse = {
   message: string;
   reconciled: boolean;
   secretRotation: TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation | THpIloRotation;
+};
+
+export type TCheckSecretRotationV2CredentialsDTO = {
+  rotationId: string;
+  type: SecretRotation;
 };

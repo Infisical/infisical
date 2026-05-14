@@ -1,6 +1,7 @@
 import { Client, ConnectConfig } from "ssh2";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
@@ -161,9 +162,20 @@ export const getSshConnectionClient = async (
 export const executeWithPotentialGateway = async <T>(
   config: TSshConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (targetHost: string, targetPort: number) => Promise<T>
+  operation: (targetHost: string, targetPort: number) => Promise<T>,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<T> => {
-  const { gatewayId, credentials } = config;
+  const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   if (gatewayId) {
     await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, true);

@@ -153,8 +153,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
-        projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
+        projectName: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .describe(PROJECTS.CREATE.projectName),
+        projectDescription: z
+          .string()
+          .trim()
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.CREATE.projectDescription),
         slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
@@ -426,7 +435,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         description: z
           .string()
           .trim()
-          .max(256, { message: "Description must be 256 or fewer characters" })
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),

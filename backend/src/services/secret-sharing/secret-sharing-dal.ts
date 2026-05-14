@@ -5,7 +5,6 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 
 import { SecretSharingType } from "./secret-sharing-types";
 
@@ -88,7 +87,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   };
 
   const pruneExpiredSharedSecrets = async (tx?: Knex) => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret started`);
+    logger.info(`daily-resource-cleanup: pruning expired shared secret started`);
     try {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -97,7 +96,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         .where("expiresAt", "<", sevenDaysAgo)
         .andWhere("type", SecretSharingType.Share)
         .del();
-      logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret completed`);
+      logger.info(`daily-resource-cleanup: pruning expired shared secret completed`);
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "pruneExpiredSharedSecrets" });
@@ -105,7 +104,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   };
 
   const pruneExpiredSecretRequests = async (tx?: Knex) => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired secret requests started`);
+    logger.info(`daily-resource-cleanup: pruning expired secret requests started`);
     try {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -116,7 +115,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         .andWhere("type", SecretSharingType.Request)
         .delete();
 
-      logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired secret requests completed`);
+      logger.info(`daily-resource-cleanup: pruning expired secret requests completed`);
 
       return docs;
     } catch (error) {

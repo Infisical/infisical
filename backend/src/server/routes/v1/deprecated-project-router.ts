@@ -188,7 +188,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         description: z
           .string()
           .trim()
-          .max(256, { message: "Description must be 256 or fewer characters" })
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
