@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { FileKeyIcon, LockIcon, ScanSearchIcon, UsersIcon, VaultIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
-import { Lottie } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -18,12 +18,7 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import {
-  getProjectDescription,
-  getProjectLottieIcon,
-  getProjectTitle,
-  projectTypeToUrlSlug
-} from "@app/helpers/project";
+import { getProjectDescription, getProjectTitle, projectTypeToUrlSlug } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
@@ -36,6 +31,25 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.SecretScanning,
   ProjectType.PAM
 ];
+
+const getProductIcon = (type: ProjectType) => {
+  const iconProps = { className: "h-6 w-6 text-org" };
+
+  switch (type) {
+    case ProjectType.SecretManager:
+      return <VaultIcon {...iconProps} />;
+    case ProjectType.CertificateManager:
+      return <FileKeyIcon {...iconProps} />;
+    case ProjectType.KMS:
+      return <LockIcon {...iconProps} />;
+    case ProjectType.SecretScanning:
+      return <ScanSearchIcon {...iconProps} />;
+    case ProjectType.PAM:
+      return <UsersIcon {...iconProps} />;
+    default:
+      return <VaultIcon {...iconProps} />;
+  }
+};
 
 const formatNumber = (num: number): string => {
   return num.toLocaleString();
@@ -81,26 +95,31 @@ export const ProjectCategoryOverview = () => {
       case ProjectType.SecretManager:
         return [
           { label: "secrets", value: productStats.secretManager.secretsCount },
+          { label: "environments", value: productStats.secretManager.environmentsCount },
           { label: "projects", value: productStats.secretManager.projectsCount }
         ];
       case ProjectType.CertificateManager:
         return [
           { label: "certificates", value: productStats.certificateManager.certificatesCount },
-          { label: "CAs", value: productStats.certificateManager.certificateAuthoritiesCount }
+          { label: "CAs", value: productStats.certificateManager.certificateAuthoritiesCount },
+          { label: "signers", value: productStats.certificateManager.signersCount }
         ];
       case ProjectType.KMS:
         return [
           { label: "keys", value: productStats.kms.keysCount },
+          { label: "clients", value: productStats.kms.clientsCount },
           { label: "projects", value: productStats.kms.projectsCount }
         ];
       case ProjectType.SecretScanning:
         return [
           { label: "data sources", value: productStats.secretScanning.dataSourcesCount },
+          { label: "resources", value: productStats.secretScanning.resourcesCount },
           { label: "projects", value: productStats.secretScanning.projectsCount }
         ];
       case ProjectType.PAM:
         return [
           { label: "accounts", value: productStats.pam.accountsCount },
+          { label: "resources", value: productStats.pam.resourcesCount },
           { label: "projects", value: productStats.pam.projectsCount }
         ];
       default:
@@ -199,27 +218,28 @@ export const ProjectCategoryOverview = () => {
             >
               <CardHeader>
                 <CardTitle className="flex items-start justify-between">
-                  <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
-                    <Lottie className="h-7 w-7 shrink-0" icon={getProjectLottieIcon(type)} />
+                  <div className="rounded-md border border-org/20 bg-org/10 p-2">
+                    {getProductIcon(type)}
                   </div>
                 </CardTitle>
-                <CardDescription className="mt-3 text-lg font-semibold text-foreground">
+                <CardDescription className="mt-2 text-lg font-semibold text-foreground">
                   {getProjectTitle(type)}
                 </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <p className="line-clamp-2 text-sm leading-relaxed text-accent">
+                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                   {getProjectDescription(type)}
                 </p>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
                 {stats.length > 0 && (
-                  <div className="flex items-center gap-4 border-t border-mineshaft-600 pt-3 text-sm">
-                    {stats.map((stat) => (
-                      <span key={stat.label} className="text-mineshaft-300">
-                        <span className="font-semibold text-foreground">
-                          {formatNumber(stat.value)}
-                        </span>{" "}
-                        {stat.label}
-                      </span>
+                  <div className="flex items-center gap-4 border-t border-mineshaft-600 pt-3">
+                    {stats.map((stat, index) => (
+                      <div key={stat.label} className="flex items-center gap-4">
+                        <span className="text-mineshaft-400">
+                          <span className="font-medium text-white">{formatNumber(stat.value)}</span>{" "}
+                          <span className="text-sm">{stat.label}</span>
+                        </span>
+                        {index < stats.length - 1 && <div className="h-4 w-px bg-mineshaft-500" />}
+                      </div>
                     ))}
                   </div>
                 )}
