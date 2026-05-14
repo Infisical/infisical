@@ -12,7 +12,7 @@ Applications are where teams issue and manage certificates. Within an Applicatio
 - **Sync certificates** to AWS ACM, Azure Key Vault, Cloudflare, and other destinations
 - **Require approvals** before high-value certificates are issued
 
-Each Application represents a service or workload in your organization — a payments API, a mobile backend, an IoT device fleet, or an internal web app. Platform admins create Applications and assign team members; teams then operate independently within their assigned Applications.
+Each Application represents a service or workload in your organization — a payments API, a mobile backend, an IoT device fleet, or an internal web app. Product admins create Applications and assign team members; teams then operate independently within their assigned Applications.
 
 ## What's in an Application?
 
@@ -54,7 +54,7 @@ Members are assigned to Applications with one of three roles:
 ## Create an Application
 
 <Info>
-  **Platform Admins** create Applications and assign team members to them. If you're a team member waiting for access, ask your platform admin to create an Application and add you.
+  **Product Admins** create Applications and assign team members to them. If you're a team member waiting for access, ask your product admin to create an Application and add you.
 </Info>
 
 <Steps>
@@ -89,7 +89,7 @@ Members are assigned to Applications with one of three roles:
 
 <AccordionGroup>
   <Accordion title="What's the difference between an Application and a Certificate Profile?">
-    A **Certificate Profile** defines what certificates look like — the CA, policy, and constraints. It's a reusable template created by platform admins.
+    A **Certificate Profile** defines what certificates look like — the CA, policy, and constraints. It's a reusable template created by product admins.
     
     An **Application** is where a team consumes that profile. One profile can be used by many Applications, each with their own members, enrollment methods, and alerting.
   </Accordion>
