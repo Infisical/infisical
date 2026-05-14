@@ -93,7 +93,7 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
             label="Certificate Profiles"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Policy applies to certificates issued from these profiles"
+            helperText="Policy applies to certificates issued from these selected profiles"
           >
             <FilterableSelect
               isMulti
