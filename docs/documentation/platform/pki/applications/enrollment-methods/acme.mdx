@@ -11,7 +11,7 @@ description: "Issue certificates using the ACME protocol with Certbot, cert-mana
 Use the ACME enrollment method to request and renew certificates automatically using standard ACME clients. Infisical acts as an ACME server, compatible with tools like Certbot, cert-manager, and any [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/)-compliant client.
 
 <Info>
-  ACME enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure ACME enrollment within your Application.
+  ACME enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Platform Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
 ## When to Use ACME Enrollment
@@ -41,16 +41,15 @@ Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your s
   <Step title="Navigate to your Application">
     Go to **Certificate Manager → Applications** and select your Application.
   </Step>
-  <Step title="Add ACME enrollment">
-    In the **Enrollment Methods** section, click **Add Enrollment Method** and select **ACME**.
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable ACME enrollment for.
     
-    {/* SCREENSHOT: Add ACME enrollment method modal */}
-    <Frame caption="Adding ACME enrollment to an Application">
-      ![Adding ACME enrollment](/images/pki/placeholder-screenshot.svg)
-    </Frame>
+    <Note>
+      Profiles are attached by Platform Admins. If you don't see any profiles, ask your Platform Admin to attach one.
+    </Note>
   </Step>
-  <Step title="Select a certificate profile">
-    Choose the certificate profile that defines certificate parameters (CA, validity, constraints).
+  <Step title="Add ACME enrollment">
+    In the modal, click **Add enrollment method** and select **ACME**.
   </Step>
   <Step title="Configure domain validation">
     By default, Infisical verifies domain ownership using the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge).
@@ -80,11 +79,6 @@ Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your s
     <Info>
       The ACME Directory URL is unique to this Application + Profile pair. Certificates requested through this URL are associated with this Application and follow the selected profile's policy.
     </Info>
-    
-    {/* SCREENSHOT: ACME EAB credentials modal */}
-    <Frame caption="ACME credentials for your client">
-      ![ACME EAB credentials](/images/pki/placeholder-screenshot.svg)
-    </Frame>
   </Step>
 </Steps>
 

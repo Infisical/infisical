@@ -27,36 +27,28 @@ Store certificates in Chef data bags for distribution to nodes via Chef Infra. C
 <Tabs>
     <Tab title="Infisical UI">
         1. In your Application, go to **Certificate Syncs** and click **Create Sync**.
-        ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
 
         2. Select the **Chef** option.
-        ![Select Chef](/images/platform/pki/certificate-syncs/chef/select-chef-option.png)
 
-        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
-        ![Configure Destination](/images/platform/pki/certificate-syncs/chef/chef-destination.png)
-
+        3. Configure the **Destination**:
             - **Chef Connection**: The Chef Connection to authenticate with.
-            - **Data Bag Name**: The name of the Chef data bag where certificates will be stored.
+            - **Data Bag Name**: The name of the Chef data bag for storing certificates.
 
-        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
-        ![Configure Options](/images/platform/pki/certificate-syncs/chef/chef-options.png)
+        4. Configure the **Sync Options**:
+            - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
+            - **Preserve Data Bag Item on Renewal**: Update the existing data bag item on renewal instead of creating a new one.
+            - **Include Root CA**: Include the Root CA certificate in the chain.
+            - **Certificate Name Schema**: Customize item names using `{{certificateId}}` placeholder.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-            - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
-            - **Preserve Data Bag Item on Renewal**: Only applies to certificate renewals. When a certificate is renewed in Infisical, this option controls how the renewed certificate is handled. If enabled, the renewed certificate will update the existing data bag item, preserving the same item name. If disabled, the renewed certificate will be created as a new data bag item with a new name.
-            - **Include Root CA**: If enabled, the Root CA certificate will be included in the certificate chain when syncing to Chef data bags. If disabled, only intermediate certificates will be included.
-            - **Certificate Name Schema** (Optional): Customize how certificate item names are generated in Chef data bags. Use `{{certificateId}}` as a placeholder for the certificate ID.
-            - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
-
-        5. Configure the **Field Mappings** to customize how certificate data is stored in Chef data bag items, then click **Next**.
-        ![Configure Field Mappings](/images/platform/pki/certificate-syncs/chef/chef-field-mappings.png)
-
-            - **Certificate Field**: The field name where the certificate will be stored in the data bag item (default: `certificate`)
-            - **Private Key Field**: The field name where the private key will be stored in the data bag item (default: `private_key`)
-            - **Certificate Chain Field**: The field name where the full certificate chain excluding the root CA certificate will be stored (default: `certificate_chain`)
-            - **CA Certificate Field**: The field name where the root CA certificate will be stored (default: `ca_certificate`)
+        5. Configure the **Field Mappings**:
+            - **Certificate Field**: Field name for the certificate (default: `certificate`)
+            - **Private Key Field**: Field name for the private key (default: `private_key`)
+            - **Certificate Chain Field**: Field name for the chain (default: `certificate_chain`)
+            - **CA Certificate Field**: Field name for the root CA (default: `ca_certificate`)
 
         <Tip>
-            **Chef Data Bag Item Structure**: Certificates are stored in Chef data bags as items with the following structure (field names can be customized via field mappings):
+            Certificates are stored as data bag items:
             ```json
             {
               "id": "certificate-item-name",
@@ -66,33 +58,15 @@ Store certificates in Chef data bags for distribution to nodes via Chef Infra. C
               "ca_certificate": "-----BEGIN CERTIFICATE-----\n..."
             }
             ```
-
-            **Example with Custom Field Mappings**:
-            ```json
-            {
-              "id": "certificate-item-name",
-              "ssl_cert": "-----BEGIN CERTIFICATE-----\n...",
-              "ssl_key": "-----BEGIN PRIVATE KEY-----\n...",
-              "ssl_chain": "-----BEGIN CERTIFICATE-----\n...",
-              "ssl_ca": "-----BEGIN CERTIFICATE-----\n..."
-            }
-            ```
         </Tip>
 
-        6. Configure the **Details** of your Chef Certificate Sync, then click **Next**.
-        ![Configure Details](/images/platform/pki/certificate-syncs/chef/chef-details.png)
+        6. Configure the **Details**:
+            - **Name**: The name of your sync (slug-friendly).
+            - **Description**: Optional description.
 
-            - **Name**: The name of your sync. Must be slug-friendly.
-            - **Description**: An optional description for your sync.
+        7. Select which certificates should be synced.
 
-        7. Select which certificates should be synced to Chef.
-        ![Select Certificates](/images/platform/pki/certificate-syncs/chef/chef-certificates.png)
-
-        8. Review your Chef Certificate Sync configuration, then click **Create Sync**.
-        ![Confirm Configuration](/images/platform/pki/certificate-syncs/chef/chef-review.png)
-
-        9. If enabled, your Chef Certificate Sync will begin syncing your certificates to the destination endpoint.
-        ![Sync Certificates](/images/platform/pki/certificate-syncs/chef/chef-synced.png)
+        8. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create a **Chef Certificate Sync**, make an API request to the [Create Chef Certificate Sync](/api-reference/endpoints/pki/syncs/chef/create) API endpoint.

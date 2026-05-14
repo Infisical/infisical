@@ -11,7 +11,7 @@ description: "Issue certificates through the Infisical UI, Agent, or API with op
 API enrollment is the default method for issuing certificates through the Infisical UI, the Infisical Agent, or direct API calls. It's the most flexible option — use it for manual one-off requests, automated pipelines, or server-driven auto-renewal where Infisical manages the certificate lifecycle.
 
 <Info>
-  API enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure API enrollment within your Application.
+  API enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Platform Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
 ## When to Use API Enrollment
@@ -37,20 +37,15 @@ API enrollment is the default method for issuing certificates through the Infisi
   <Step title="Navigate to your Application">
     Go to **Certificate Manager → Applications** and select your Application.
   </Step>
-  <Step title="Add an enrollment method">
-    In the **Enrollment Methods** section, click **Add Enrollment Method** and select **API**.
-    
-    {/* SCREENSHOT: Add API enrollment method modal */}
-    <Frame caption="Adding API enrollment to an Application">
-      ![Adding API enrollment](/images/pki/placeholder-screenshot.svg)
-    </Frame>
-  </Step>
-  <Step title="Select a certificate profile">
-    Choose the certificate profile that defines what certificates will look like (CA, validity, constraints).
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable API enrollment for.
     
     <Note>
-      Profiles are created by platform admins. If you don't see any profiles, contact your platform admin.
+      Profiles are attached by Platform Admins. If you don't see any profiles, ask your Platform Admin to attach one.
     </Note>
+  </Step>
+  <Step title="Add API enrollment">
+    In the modal, click **Add enrollment method** and select **API**.
   </Step>
   <Step title="Configure auto-renewal (optional)">
     Enable **Auto-Renewal By Default** to have Infisical automatically renew certificates before expiration.
@@ -79,11 +74,6 @@ Once API enrollment is configured, you can issue certificates through the UI or 
     <Steps>
       <Step title="Open certificate requests">
         In your Application, go to **Certificates → Certificate Requests** and click **Request**.
-        
-        {/* SCREENSHOT: Certificate requests page with Request button */}
-        <Frame caption="Certificate requests page">
-          ![Certificate requests](/images/pki/placeholder-screenshot.svg)
-        </Frame>
       </Step>
       <Step title="Select profile and request method">
         Choose your certificate profile and request method:
@@ -195,8 +185,6 @@ When auto-renewal is enabled, Infisical automatically renews certificates before
 <Info>
   Auto-renewal only works for certificates with server-managed keys. Certificates issued via CSR must be renewed by the client.
 </Info>
-
-To always fetch the latest valid certificate for a profile, use the [Get Latest Active Certificate Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) endpoint.
 
 ## What's Next?
 

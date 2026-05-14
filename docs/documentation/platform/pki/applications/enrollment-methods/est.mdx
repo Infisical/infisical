@@ -11,7 +11,7 @@ description: "Issue certificates using the Enrollment over Secure Transport (EST
 Use the EST enrollment method to issue and renew certificates for enterprise devices, IoT systems, and secure networks. EST provides strong mutual TLS authentication and is ideal for environments where devices have pre-installed bootstrap certificates.
 
 <Info>
-  EST enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure EST enrollment within your Application.
+  EST enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Platform Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
 ## When to Use EST Enrollment
@@ -64,16 +64,15 @@ Infisical's EST service implements [RFC 7030](https://datatracker.ietf.org/doc/h
   <Step title="Navigate to your Application">
     Go to **Certificate Manager → Applications** and select your Application.
   </Step>
-  <Step title="Add EST enrollment">
-    In the **Enrollment Methods** section, click **Add Enrollment Method** and select **EST**.
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable EST enrollment for.
     
-    {/* SCREENSHOT: Add EST enrollment method modal */}
-    <Frame caption="Adding EST enrollment to an Application">
-      ![Adding EST enrollment](/images/pki/placeholder-screenshot.svg)
-    </Frame>
+    <Note>
+      Profiles are attached by Platform Admins. If you don't see any profiles, ask your Platform Admin to attach one.
+    </Note>
   </Step>
-  <Step title="Select a certificate profile">
-    Choose the certificate profile that defines certificate parameters (CA, validity, constraints).
+  <Step title="Add EST enrollment">
+    In the modal, click **Add enrollment method** and select **EST**.
   </Step>
   <Step title="Configure EST settings">
     | Setting | Description |

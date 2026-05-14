@@ -76,7 +76,6 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
 
   <Step title="Navigate to External Certificate Authorities">
     In your Infisical project, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
-    ![External CA Page](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-page.png)
   </Step>
 
   <Step title="Create the CA">
@@ -87,8 +86,6 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
     - **Route 53 Connection**: the connection with Route 53 permissions (can be the same as above)
     - **Hosted Zone ID**: the Route 53 public hosted zone ID from the previous step
     - **Region**: the ACM region to issue from
-
-    ![External CA Form](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-form.png)
   </Step>
 
   <Step title="Create a Certificate Profile">
@@ -96,7 +93,6 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
   </Step>
   <Step title="Configure an Application and Issue a Certificate">
     Create an [Application](/documentation/platform/pki/applications/overview), attach the profile, and configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview). Then submit a certificate request from within the Application. Infisical requests the certificate from ACM, writes the required CNAME(s) to Route 53, waits for ACM to finish validation, and saves the certificate and private key.
-    ![Certificate Created](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-certificate-created.png)
   </Step>
 </Steps>
 

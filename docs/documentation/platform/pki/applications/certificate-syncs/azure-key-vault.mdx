@@ -27,46 +27,31 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
 <Tabs>
     <Tab title="Infisical UI">
         1. In your Application, go to **Certificate Syncs** and click **Create Sync**.
-        ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
 
         2. Select the **Azure Key Vault** option.
-        ![Select Key Vault](/images/platform/pki/certificate-syncs/azure-key-vault/select-akv-option.png)
 
-        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
-        ![Configure Destination](/images/platform/pki/certificate-syncs/azure-key-vault/akv-destination.png)
-
+        3. Configure the **Destination**:
             - **Azure Connection**: The Azure Connection to authenticate with.
             - **Vault Base URL**: The URL of your Azure Key Vault.
 
-        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
-        ![Configure Options](/images/platform/pki/certificate-syncs/azure-key-vault/akv-options.png)
-
-            - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
-            - **Enable Versioning on Renewal**: If enabled, Infisical will sync renewed certificates to the destination under a new version of the original synced certificate instead of creating a new certificate.
-            - **Include Root CA**: If enabled, the Root CA certificate will be included in the certificate chain when syncing to Azure Key Vault. If disabled, only intermediate certificates will be included.
-            - **Certificate Name Schema** (Optional): Customize how certificate names are generated in Azure Key Vault. Use `{{certificateId}}` as a placeholder for the certificate ID. If not specified, defaults to `Infisical-{{certificateId}}`.
-            - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
+        4. Configure the **Sync Options**:
+            - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
+            - **Enable Versioning on Renewal**: Create a new version of the certificate on renewal instead of a new certificate.
+            - **Include Root CA**: Include the Root CA certificate in the chain.
+            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         <Tip>
-            **Azure Key Vault Soft Delete**: When certificates are removed from Azure Key Vault, they are placed in a soft-deleted state rather than being permanently deleted. This means:
-            - Subsequent syncs will not re-add these soft-deleted certificates automatically
-            - To resync removed certificates, you must either manually **purge** them from Azure Key Vault or **recover** them through the Azure portal/CLI
+            **Soft Delete**: Removed certificates are soft-deleted. To resync them, you must **purge** or **recover** them in Azure.
         </Tip>
 
-        5. Configure the **Details** of your Azure Key Vault Certificate Sync, then click **Next**.
-        ![Configure Details](/images/platform/pki/certificate-syncs/azure-key-vault/akv-details.png)
+        5. Configure the **Details**:
+            - **Name**: The name of your sync (slug-friendly).
+            - **Description**: Optional description.
 
-            - **Name**: The name of your sync. Must be slug-friendly.
-            - **Description**: An optional description for your sync.
+        6. Select which certificates should be synced.
 
-        6. Select which certificates should be synced to Azure Key Vault.
-        ![Select Certificates](/images/platform/pki/certificate-syncs/azure-key-vault/akv-certificates.png)
-
-        7. Review your Azure Key Vault Certificate Sync configuration, then click **Create Sync**.
-        ![Confirm Configuration](/images/platform/pki/certificate-syncs/azure-key-vault/akv-review.png)
-
-        8. If enabled, your Azure Key Vault Certificate Sync will begin syncing your certificates to the destination endpoint.
-        ![Sync Certificates](/images/platform/pki/certificate-syncs/azure-key-vault/akv-synced.png)
+        7. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create an **Azure Key Vault Certificate Sync**, make an API request to the [Create Azure Key Vault Certificate Sync](/api-reference/endpoints/pki/syncs/azure-key-vault/create) API endpoint.

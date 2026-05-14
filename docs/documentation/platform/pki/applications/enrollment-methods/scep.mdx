@@ -11,7 +11,7 @@ description: "Issue certificates using the Simple Certificate Enrollment Protoco
 Use the SCEP enrollment method to provision certificates to network devices, mobile devices, printers, routers, and other endpoints that support the SCEP protocol. SCEP is widely used by MDM tools like Jamf Pro, Ivanti, and Microsoft Intune.
 
 <Info>
-  SCEP enrollment is configured per [Application](/documentation/platform/pki/applications/overview). Your platform admin sets up the [certificate profile](/documentation/platform/pki/settings/profiles), and you configure SCEP enrollment within your Application.
+  SCEP enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Platform Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
 ## When to Use SCEP Enrollment
@@ -93,20 +93,15 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
   <Step title="Navigate to your Application">
     Go to **Certificate Manager → Applications** and select your Application.
   </Step>
-  <Step title="Add SCEP enrollment">
-    In the **Enrollment Methods** section, click **Add Enrollment Method** and select **SCEP**.
-    
-    {/* SCREENSHOT: Add SCEP enrollment method modal */}
-    <Frame caption="Adding SCEP enrollment to an Application">
-      ![Adding SCEP enrollment](/images/pki/placeholder-screenshot.svg)
-    </Frame>
-  </Step>
-  <Step title="Select a certificate profile">
-    Choose the certificate profile that defines certificate parameters (CA, validity, constraints).
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable SCEP enrollment for.
     
     <Note>
-      The certificate profile must use a **CA-issued** issuer type for SCEP enrollment.
+      Profiles are attached by Platform Admins. If you don't see any profiles, ask your Platform Admin to attach one. The profile must use a **CA-issued** issuer type for SCEP enrollment.
     </Note>
+  </Step>
+  <Step title="Add SCEP enrollment">
+    In the modal, click **Add enrollment method** and select **SCEP**.
   </Step>
   <Step title="Configure SCEP settings">
 

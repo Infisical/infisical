@@ -43,22 +43,22 @@ Enrollment methods define how certificates are requested from your Application. 
 ## How Enrollment Works
 
 <Steps>
-  <Step title="Configure enrollment on your Application">
-    In your Application, add an enrollment method and configure its settings (e.g., ACME directory URL, EST endpoint, or API credentials).
+  <Step title="Platform Admin attaches a profile">
+    A Platform Admin attaches a [Certificate Profile](/documentation/platform/pki/settings/profiles) to the Application. The profile defines certificate parameters (CA, validity, constraints).
+  </Step>
+  <Step title="Configure enrollment methods on the profile">
+    In your Application's **Settings** tab, click **Configure** on an attached profile and add enrollment methods (API, ACME, EST, or SCEP).
   </Step>
   <Step title="Point your client to the endpoint">
     Configure your service, device, or tooling to use the enrollment endpoint provided by Infisical.
   </Step>
   <Step title="Request a certificate">
-    Your client requests a certificate. Infisical validates the request against the certificate profile's policy and issues the certificate if it complies.
-  </Step>
-  <Step title="Receive and install the certificate">
-    The certificate is returned to your client. Depending on the enrollment method, renewal may be automatic or manual.
+    Your client requests a certificate. Infisical validates the request against the profile's policy and issues the certificate.
   </Step>
 </Steps>
 
 <Note>
-  Enrollment methods are configured by **Application Admins** within their Application. Each enrollment method is tied to a specific profile attached to the Application — meaning the enrollment URL (e.g., ACME directory) is unique to that Application + Profile pair.
+  Each enrollment method is tied to a specific profile attached to the Application — meaning the enrollment URL (e.g., ACME directory) is unique to that Application + Profile pair.
 </Note>
 
 ## After Enrollment
