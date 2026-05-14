@@ -362,13 +362,32 @@ export const pitServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(userPermission).throwUnlessCan(
-      ProjectPermissionCommitsActions.PerformRollback,
-      subject(ProjectPermissionSub.Commits, {
-        environment,
-        secretPath: folderWithPath.path
-      })
-    );
+    if (deepRollback) {
+      ForbiddenError.from(userPermission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, {
+          environment,
+          secretPath: folderWithPath.path
+        })
+      );
+
+      const deeperPath = folderWithPath.path === "/" ? "/**" : `${folderWithPath.path.replace(/\/$/, "")}/**`;
+      ForbiddenError.from(userPermission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, {
+          environment,
+          secretPath: deeperPath
+        })
+      );
+    } else {
+      ForbiddenError.from(userPermission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, {
+          environment,
+          secretPath: folderWithPath.path
+        })
+      );
+    }
 
     const latestCommit = await folderCommitService.getLatestCommit({
       folderId,
