@@ -136,7 +136,7 @@ type SecretSyncActionJob = Job<
 const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 120;
-const CONNECTION_CONCURRENCY_LIMIT = 3;
+const CONNECTION_CONCURRENCY_LIMIT = 5;
 const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000;
 
 const getRequeueDelay = (failureCount?: number) => {
