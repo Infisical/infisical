@@ -3007,48 +3007,157 @@
             "group": "Certificate Management",
             "pages": [
               {
-                "group": "Certificate Authorities",
+                "group": "Applications",
                 "pages": [
                   {
-                    "group": "ACME",
+                    "group": "Certificates",
                     "pages": [
-                      "api-reference/endpoints/certificate-authorities/acme/list",
-                      "api-reference/endpoints/certificate-authorities/acme/create",
-                      "api-reference/endpoints/certificate-authorities/acme/read",
-                      "api-reference/endpoints/certificate-authorities/acme/update",
-                      "api-reference/endpoints/certificate-authorities/acme/delete"
+                      "api-reference/endpoints/certificates/search",
+                      "api-reference/endpoints/certificates/read",
+                      "api-reference/endpoints/certificates/certificate-request",
+                      "api-reference/endpoints/certificates/search-certificate-requests",
+                      "api-reference/endpoints/certificates/create-certificate",
+                      "api-reference/endpoints/certificates/renew",
+                      "api-reference/endpoints/certificates/update-config",
+                      "api-reference/endpoints/certificates/revoke",
+                      "api-reference/endpoints/certificates/delete",
+                      "api-reference/endpoints/certificates/cert-body",
+                      "api-reference/endpoints/certificates/bundle",
+                      "api-reference/endpoints/certificates/private-key",
+                      "api-reference/endpoints/certificates/import-certificate"
                     ]
                   },
                   {
-                    "group": "AWS PCA",
+                    "group": "Alerting",
                     "pages": [
-                      "api-reference/endpoints/certificate-authorities/aws-pca/list",
-                      "api-reference/endpoints/certificate-authorities/aws-pca/create",
-                      "api-reference/endpoints/certificate-authorities/aws-pca/read",
-                      "api-reference/endpoints/certificate-authorities/aws-pca/update",
-                      "api-reference/endpoints/certificate-authorities/aws-pca/delete"
+                      "api-reference/endpoints/pki-alerts/create",
+                      "api-reference/endpoints/pki-alerts/read",
+                      "api-reference/endpoints/pki-alerts/update",
+                      "api-reference/endpoints/pki-alerts/delete"
                     ]
                   },
                   {
-                    "group": "DigiCert",
+                    "group": "Certificate Syncs",
                     "pages": [
-                      "api-reference/endpoints/certificate-authorities/digicert/list",
-                      "api-reference/endpoints/certificate-authorities/digicert/create",
-                      "api-reference/endpoints/certificate-authorities/digicert/read",
-                      "api-reference/endpoints/certificate-authorities/digicert/update",
-                      "api-reference/endpoints/certificate-authorities/digicert/delete"
+                      "api-reference/endpoints/pki/syncs/list",
+                      "api-reference/endpoints/pki/syncs/get-by-id",
+                      "api-reference/endpoints/pki/syncs/options",
+                      "api-reference/endpoints/pki/syncs/list-certificates",
+                      "api-reference/endpoints/pki/syncs/add-certificates",
+                      "api-reference/endpoints/pki/syncs/remove-certificates",
+                      {
+                        "group": "AWS Certificate Manager",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/list",
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/get-by-id",
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/create",
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/update",
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "AWS Elastic Load Balancer",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/list",
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/get-by-id",
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/create",
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/update",
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/delete",
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "AWS Secrets Manager",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/list",
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/get-by-id",
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/create",
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/update",
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/delete",
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/aws-secrets-manager/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Azure Key Vault",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/list",
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/create",
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/update",
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Chef",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/chef/list",
+                          "api-reference/endpoints/pki/syncs/chef/get-by-id",
+                          "api-reference/endpoints/pki/syncs/chef/create",
+                          "api-reference/endpoints/pki/syncs/chef/update",
+                          "api-reference/endpoints/pki/syncs/chef/delete",
+                          "api-reference/endpoints/pki/syncs/chef/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/chef/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Cloudflare Custom SSL",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/list",
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/get-by-id",
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create",
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/update",
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "NetScaler",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/netscaler/list",
+                          "api-reference/endpoints/pki/syncs/netscaler/get-by-id",
+                          "api-reference/endpoints/pki/syncs/netscaler/create",
+                          "api-reference/endpoints/pki/syncs/netscaler/update",
+                          "api-reference/endpoints/pki/syncs/netscaler/delete",
+                          "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                        ]
+                      }
                     ]
-                  },
+                  }
+                ]
+              },
+              {
+                "group": "Certificate Discovery",
+                "pages": [
+                  "api-reference/endpoints/pki-discovery/create",
+                  "api-reference/endpoints/pki-discovery/list",
+                  "api-reference/endpoints/pki-discovery/read",
+                  "api-reference/endpoints/pki-discovery/update",
+                  "api-reference/endpoints/pki-discovery/delete",
+                  "api-reference/endpoints/pki-discovery/trigger-scan",
+                  "api-reference/endpoints/pki-discovery/latest-scan",
+                  "api-reference/endpoints/pki-discovery/scan-history",
                   {
-                    "group": "AWS ACM Public CA",
+                    "group": "Installations",
                     "pages": [
-                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
-                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
-                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
-                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
-                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
+                      "api-reference/endpoints/pki-installations/list",
+                      "api-reference/endpoints/pki-installations/read",
+                      "api-reference/endpoints/pki-installations/update",
+                      "api-reference/endpoints/pki-installations/delete"
                     ]
-                  },
+                  }
+                ]
+              },
+              {
+                "group": "Certificate Authorities",
+                "pages": [
                   {
                     "group": "Internal",
                     "pages": [
@@ -3087,172 +3196,78 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "group": "External",
+                    "pages": [
+                      {
+                        "group": "ACME",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/acme/list",
+                          "api-reference/endpoints/certificate-authorities/acme/create",
+                          "api-reference/endpoints/certificate-authorities/acme/read",
+                          "api-reference/endpoints/certificate-authorities/acme/update",
+                          "api-reference/endpoints/certificate-authorities/acme/delete"
+                        ]
+                      },
+                      {
+                        "group": "AWS PCA",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/aws-pca/list",
+                          "api-reference/endpoints/certificate-authorities/aws-pca/create",
+                          "api-reference/endpoints/certificate-authorities/aws-pca/read",
+                          "api-reference/endpoints/certificate-authorities/aws-pca/update",
+                          "api-reference/endpoints/certificate-authorities/aws-pca/delete"
+                        ]
+                      },
+                      {
+                        "group": "AWS ACM Public CA",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
+                          "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
+                          "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
+                          "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
+                          "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
+                        ]
+                      },
+                      {
+                        "group": "DigiCert",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/digicert/list",
+                          "api-reference/endpoints/certificate-authorities/digicert/create",
+                          "api-reference/endpoints/certificate-authorities/digicert/read",
+                          "api-reference/endpoints/certificate-authorities/digicert/update",
+                          "api-reference/endpoints/certificate-authorities/digicert/delete"
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
-                "group": "Certificates",
+                "group": "Certificate Settings",
                 "pages": [
-                  "api-reference/endpoints/certificates/search",
-                  "api-reference/endpoints/certificates/read",
-                  "api-reference/endpoints/certificates/certificate-request",
-                  "api-reference/endpoints/certificates/search-certificate-requests",
-                  "api-reference/endpoints/certificates/create-certificate",
-                  "api-reference/endpoints/certificates/renew",
-                  "api-reference/endpoints/certificates/update-config",
-                  "api-reference/endpoints/certificates/revoke",
-                  "api-reference/endpoints/certificates/delete",
-                  "api-reference/endpoints/certificates/cert-body",
-                  "api-reference/endpoints/certificates/bundle",
-                  "api-reference/endpoints/certificates/private-key",
-                  "api-reference/endpoints/certificates/import-certificate"
-                ]
-              },
-              {
-                "group": "Certificate Policies",
-                "pages": [
-                  "api-reference/endpoints/certificate-policies/list",
-                  "api-reference/endpoints/certificate-policies/create",
-                  "api-reference/endpoints/certificate-policies/update",
-                  "api-reference/endpoints/certificate-policies/get-by-id",
-                  "api-reference/endpoints/certificate-policies/delete"
-                ]
-              },
-              {
-                "group": "Certificate Profiles",
-                "pages": [
-                  "api-reference/endpoints/certificate-profiles/list",
-                  "api-reference/endpoints/certificate-profiles/create",
-                  "api-reference/endpoints/certificate-profiles/update",
-                  "api-reference/endpoints/certificate-profiles/get-by-id",
-                  "api-reference/endpoints/certificate-profiles/get-by-slug",
-                  "api-reference/endpoints/certificate-profiles/delete",
-                  "api-reference/endpoints/certificate-profiles/list-certificates",
-                  "api-reference/endpoints/certificate-profiles/get-latest-active-bundle"
-                ]
-              },
-              {
-                "group": "Certificate Alerts",
-                "pages": [
-                  "api-reference/endpoints/pki-alerts/create",
-                  "api-reference/endpoints/pki-alerts/read",
-                  "api-reference/endpoints/pki-alerts/update",
-                  "api-reference/endpoints/pki-alerts/delete"
-                ]
-              },
-              {
-                "group": "Certificate Discovery",
-                "pages": [
-                  "api-reference/endpoints/pki-discovery/create",
-                  "api-reference/endpoints/pki-discovery/list",
-                  "api-reference/endpoints/pki-discovery/read",
-                  "api-reference/endpoints/pki-discovery/update",
-                  "api-reference/endpoints/pki-discovery/delete",
-                  "api-reference/endpoints/pki-discovery/trigger-scan",
-                  "api-reference/endpoints/pki-discovery/latest-scan",
-                  "api-reference/endpoints/pki-discovery/scan-history"
-                ]
-              },
-              {
-                "group": "Certificate Installations",
-                "pages": [
-                  "api-reference/endpoints/pki-installations/list",
-                  "api-reference/endpoints/pki-installations/read",
-                  "api-reference/endpoints/pki-installations/update",
-                  "api-reference/endpoints/pki-installations/delete"
-                ]
-              },
-              {
-                "group": "Certificate Syncs",
-                "pages": [
-                  "api-reference/endpoints/pki/syncs/list",
-                  "api-reference/endpoints/pki/syncs/get-by-id",
-                  "api-reference/endpoints/pki/syncs/options",
-                  "api-reference/endpoints/pki/syncs/list-certificates",
-                  "api-reference/endpoints/pki/syncs/add-certificates",
-                  "api-reference/endpoints/pki/syncs/remove-certificates",
                   {
-                    "group": "AWS Certificate Manager",
+                    "group": "Certificate Policies",
                     "pages": [
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/list",
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/get-by-id",
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/create",
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/update",
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                      "api-reference/endpoints/certificate-policies/list",
+                      "api-reference/endpoints/certificate-policies/create",
+                      "api-reference/endpoints/certificate-policies/update",
+                      "api-reference/endpoints/certificate-policies/get-by-id",
+                      "api-reference/endpoints/certificate-policies/delete"
                     ]
                   },
                   {
-                    "group": "AWS Elastic Load Balancer",
+                    "group": "Certificate Profiles",
                     "pages": [
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/list",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/get-by-id",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/create",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/update",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/delete",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/remove-certificates"
-                    ]
-                  },
-                  {
-                    "group": "AWS Secrets Manager",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/list",
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/get-by-id",
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/create",
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/update",
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/delete",
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/remove-certificates"
-                    ]
-                  },
-                  {
-                    "group": "Azure Key Vault",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/list",
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/create",
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/update",
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
-                    ]
-                  },
-                  {
-                    "group": "Chef",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/chef/list",
-                      "api-reference/endpoints/pki/syncs/chef/get-by-id",
-                      "api-reference/endpoints/pki/syncs/chef/create",
-                      "api-reference/endpoints/pki/syncs/chef/update",
-                      "api-reference/endpoints/pki/syncs/chef/delete",
-                      "api-reference/endpoints/pki/syncs/chef/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/chef/remove-certificates"
-                    ]
-                  },
-                  {
-                    "group": "Cloudflare Custom SSL",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/list",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/get-by-id",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/update",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
-                    ]
-                  },
-                  {
-                    "group": "NetScaler",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/netscaler/list",
-                      "api-reference/endpoints/pki/syncs/netscaler/get-by-id",
-                      "api-reference/endpoints/pki/syncs/netscaler/create",
-                      "api-reference/endpoints/pki/syncs/netscaler/update",
-                      "api-reference/endpoints/pki/syncs/netscaler/delete",
-                      "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                      "api-reference/endpoints/certificate-profiles/list",
+                      "api-reference/endpoints/certificate-profiles/create",
+                      "api-reference/endpoints/certificate-profiles/update",
+                      "api-reference/endpoints/certificate-profiles/get-by-id",
+                      "api-reference/endpoints/certificate-profiles/get-by-slug",
+                      "api-reference/endpoints/certificate-profiles/delete",
+                      "api-reference/endpoints/certificate-profiles/list-certificates",
+                      "api-reference/endpoints/certificate-profiles/get-latest-active-bundle"
                     ]
                   }
                 ]

@@ -20,7 +20,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to **Certificate Syncs** and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
 
         2. Select the **AWS Elastic Load Balancer** option.
 
@@ -62,9 +62,9 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
         --header 'Content-Type: application/json' \
         --data '{
             "name": "my-elb-cert-sync",
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "description": "an example ELB certificate sync",
-            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "aws-elastic-load-balancer",
             "isAutoSyncEnabled": true,
             "certificateIds": [
@@ -119,8 +119,8 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
                     "includeRootCa": false,
                     "certificateNameSchema": "myapp-{{certificateId}}"
                 },
-                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
                 "createdAt": "2023-01-01T00:00:00.000Z",
                 "updatedAt": "2023-01-01T00:00:00.000Z"
             }

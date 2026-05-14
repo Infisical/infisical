@@ -20,7 +20,7 @@ Issue a TLS certificate from your own private CA in about 10 minutes. You'll set
     |-------|-------|
     | Name | `my-root-ca` |
     | Type | Root CA |
-    | Key Algorithm | RSA 2048 |
+    | Key Algorithm | EC_prime256v1 |
     
     [Learn more about CAs →](/documentation/platform/pki/ca/overview)
   </Step>
@@ -58,17 +58,12 @@ Issue a TLS certificate from your own private CA in about 10 minutes. You'll set
     [Learn more about Applications →](/documentation/platform/pki/applications/overview)
   </Step>
   <Step title="Configure Enrollment">
-    In your Application, go to **Enrollment Methods** and click **Add**.
-    
-    | Field | Value |
-    |-------|-------|
-    | Method | API |
-    | Profile | Select `web-servers` |
+    In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the `web-servers` profile, then click **Add enrollment method** and select **API**.
     
     [Learn more about enrollment →](/documentation/platform/pki/applications/enrollment-methods/overview)
   </Step>
   <Step title="Issue Certificate">
-    In your Application, go to **Certificates → Request**.
+    In your Application, go to the **Certificate Requests** tab and click **Request Certificate**.
     
     | Field | Value |
     |-------|-------|
