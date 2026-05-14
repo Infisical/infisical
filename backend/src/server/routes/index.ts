@@ -389,6 +389,8 @@ import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgAssetDALFactory } from "@app/services/org-asset/org-asset-dal";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { orgProductStatsDALFactory } from "@app/services/org-product-stats/org-product-stats-dal";
+import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
 import { pamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
@@ -577,6 +579,7 @@ export const registerRoutes = async (
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
+  const orgProductStatsDAL = orgProductStatsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -1208,6 +1211,10 @@ export const registerRoutes = async (
   const offlineUsageReportService = offlineUsageReportServiceFactory({
     offlineUsageReportDAL,
     licenseService
+  });
+
+  const orgProductStatsService = orgProductStatsServiceFactory({
+    orgProductStatsDAL
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -3368,6 +3375,7 @@ export const registerRoutes = async (
     authToken: tokenService,
     superAdmin: superAdminService,
     offlineUsageReport: offlineUsageReportService,
+    orgProductStats: orgProductStatsService,
     project: projectService,
     projectMembership: projectMembershipService,
     projectKey: projectKeyService,

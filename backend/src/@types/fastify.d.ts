@@ -135,6 +135,7 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
+import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { TPkiApplicationEnrollmentServiceFactory } from "@app/services/pki-application/pki-application-enrollment-service";
@@ -404,6 +405,7 @@ declare module "fastify" {
       notification: TNotificationServiceFactory;
       announcement: TAnnouncementServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
+      orgProductStats: TOrgProductStatsServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;
       pamDomain: TPamDomainServiceFactory;

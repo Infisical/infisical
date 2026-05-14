@@ -643,4 +643,48 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       return { identities };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/product-stats",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getOrganizationProductStats",
+      description: "Get aggregated product statistics for the organization",
+      response: {
+        200: z.object({
+          secretManager: z.object({
+            secretsCount: z.number(),
+            projectsCount: z.number()
+          }),
+          certificateManager: z.object({
+            certificatesCount: z.number(),
+            certificateAuthoritiesCount: z.number()
+          }),
+          kms: z.object({
+            keysCount: z.number(),
+            projectsCount: z.number()
+          }),
+          secretScanning: z.object({
+            dataSourcesCount: z.number(),
+            projectsCount: z.number()
+          }),
+          pam: z.object({
+            accountsCount: z.number(),
+            projectsCount: z.number()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const stats = await server.services.orgProductStats.getOrgProductStats({
+        actorOrgId: req.permission.orgId
+      });
+      return stats;
+    }
+  });
 };

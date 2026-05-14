@@ -24,7 +24,7 @@ import {
   getProjectTitle,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
-import { useGetUserProjects } from "@app/hooks/api";
+import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -37,24 +37,26 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.PAM
 ];
 
+const formatNumber = (num: number): string => {
+  return num.toLocaleString();
+};
+
+type ProductStat = {
+  label: string;
+  value: number;
+};
+
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
   const { data: certManagerInstance } = useCertManagerInstanceState();
+  const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
-
-  const projectCountsByType = useMemo(
-    () =>
-      projects.reduce<Partial<Record<ProjectType, number>>>((counts, project) => {
-        return { ...counts, [project.type]: (counts[project.type] || 0) + 1 };
-      }, {}),
-    [projects]
-  );
 
   const certManagerActiveProjectId = certManagerInstance?.activeProjectId ?? null;
   const certManagerActiveProject = useMemo(
@@ -71,6 +73,40 @@ export const ProjectCategoryOverview = () => {
         : false,
     [projects, certManagerActiveProjectId]
   );
+
+  const getStatsForType = (type: ProjectType): ProductStat[] => {
+    if (!productStats) return [];
+
+    switch (type) {
+      case ProjectType.SecretManager:
+        return [
+          { label: "secrets", value: productStats.secretManager.secretsCount },
+          { label: "projects", value: productStats.secretManager.projectsCount }
+        ];
+      case ProjectType.CertificateManager:
+        return [
+          { label: "certificates", value: productStats.certificateManager.certificatesCount },
+          { label: "CAs", value: productStats.certificateManager.certificateAuthoritiesCount }
+        ];
+      case ProjectType.KMS:
+        return [
+          { label: "keys", value: productStats.kms.keysCount },
+          { label: "projects", value: productStats.kms.projectsCount }
+        ];
+      case ProjectType.SecretScanning:
+        return [
+          { label: "data sources", value: productStats.secretScanning.dataSourcesCount },
+          { label: "projects", value: productStats.secretScanning.projectsCount }
+        ];
+      case ProjectType.PAM:
+        return [
+          { label: "accounts", value: productStats.pam.accountsCount },
+          { label: "projects", value: productStats.pam.projectsCount }
+        ];
+      default:
+        return [];
+    }
+  };
 
   const navigateToCertManager = (projectId: string) => {
     navigate({
@@ -148,8 +184,7 @@ export const ProjectCategoryOverview = () => {
     <>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PRODUCT_TYPES.map((type) => {
-          const isCertManager = type === ProjectType.CertificateManager;
-          const count = projectCountsByType[type] || 0;
+          const stats = getStatsForType(type);
 
           return (
             <Card
@@ -160,25 +195,34 @@ export const ProjectCategoryOverview = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleTileClick(type);
               }}
-              className="group relative h-auto cursor-pointer overflow-hidden px-7 transition-all duration-100 before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:bg-mineshaft-400 before:transition-colors before:content-[''] hover:bg-card/80 hover:before:bg-primary"
+              className="h-auto cursor-pointer transition-all duration-100 hover:bg-card/80"
             >
               <CardHeader>
                 <CardTitle className="flex items-start justify-between">
                   <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
                     <Lottie className="h-7 w-7 shrink-0" icon={getProjectLottieIcon(type)} />
                   </div>
-                  {!isCertManager && count > 1 && (
-                    <span className="text-xs font-normal text-accent">{count} projects</span>
-                  )}
                 </CardTitle>
                 <CardDescription className="mt-3 text-lg font-semibold text-foreground">
                   {getProjectTitle(type)}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="line-clamp-3 text-sm leading-relaxed text-accent">
+              <CardContent className="flex flex-col gap-3">
+                <p className="line-clamp-2 text-sm leading-relaxed text-accent">
                   {getProjectDescription(type)}
                 </p>
+                {stats.length > 0 && (
+                  <div className="flex items-center gap-4 border-t border-mineshaft-600 pt-3 text-sm">
+                    {stats.map((stat) => (
+                      <span key={stat.label} className="text-mineshaft-300">
+                        <span className="font-semibold text-foreground">
+                          {formatNumber(stat.value)}
+                        </span>{" "}
+                        {stat.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
