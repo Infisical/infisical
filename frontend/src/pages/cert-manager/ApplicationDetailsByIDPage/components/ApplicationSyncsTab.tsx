@@ -49,8 +49,8 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
       <CardHeader>
         <CardTitle>Certificate Syncs</CardTitle>
         <CardDescription>
-          Sync certificates issued by this Application out to AWS ACM, Cloudflare, Azure Key Vault,
-          and other destinations.
+          Push certificates from this Application out to AWS ACM, Cloudflare, Azure Key Vault, and
+          other destinations.
         </CardDescription>
         <CardAction>
           <Button

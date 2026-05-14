@@ -679,9 +679,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
       <Card>
         <CardHeader>
           <CardTitle>Alerting</CardTitle>
-          <CardDescription>
-            Get notified about certificate events scoped to {application.name}.
-          </CardDescription>
+          <CardDescription>Get notified about certificate events.</CardDescription>
           <CardAction>
             <Button
               variant="outline"

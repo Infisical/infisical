@@ -219,18 +219,21 @@ export const IdentityRoleDetailsSection = ({
                     return (
                       <TableRow
                         key={`user-project-identity-${roleDetails?.id}`}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                            params: {
-                              projectId: currentProject.id,
-                              roleSlug:
-                                roleDetails.role === "custom"
-                                  ? roleDetails.customRoleSlug
-                                  : roleDetails.role
-                            }
-                          })
+                        className={isCertManager ? "" : "cursor-pointer"}
+                        onClick={
+                          isCertManager
+                            ? undefined
+                            : () =>
+                                navigate({
+                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                                  params: {
+                                    projectId: currentProject.id,
+                                    roleSlug:
+                                      roleDetails.role === "custom"
+                                        ? roleDetails.customRoleSlug
+                                        : roleDetails.role
+                                  }
+                                })
                         }
                       >
                         <TableCell className="max-w-0 truncate">

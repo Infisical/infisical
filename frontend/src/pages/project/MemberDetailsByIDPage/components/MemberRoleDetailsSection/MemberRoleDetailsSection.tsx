@@ -223,19 +223,22 @@ export const MemberRoleDetailsSection = ({
 
                     return (
                       <TableRow
-                        className="group h-10 cursor-pointer"
+                        className={`group h-10 ${isCertManager ? "" : "cursor-pointer"}`}
                         key={`user-project-identity-${roleDetails?.id}`}
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                            params: {
-                              projectId: currentProject.id,
-                              roleSlug:
-                                roleDetails.role === "custom"
-                                  ? roleDetails.customRoleSlug
-                                  : roleDetails.role
-                            }
-                          })
+                        onClick={
+                          isCertManager
+                            ? undefined
+                            : () =>
+                                navigate({
+                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                                  params: {
+                                    projectId: currentProject.id,
+                                    roleSlug:
+                                      roleDetails.role === "custom"
+                                        ? roleDetails.customRoleSlug
+                                        : roleDetails.role
+                                  }
+                                })
                         }
                       >
                         <TableCell className="max-w-0 truncate">

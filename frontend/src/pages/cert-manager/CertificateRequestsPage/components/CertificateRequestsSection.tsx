@@ -219,7 +219,7 @@ export const CertificateRequestsSection = ({
         <CardTitle>Certificate Requests</CardTitle>
         <CardDescription>
           {applicationId
-            ? "View, filter and manage certificate issuance requests against this application"
+            ? "Filter, view, and manage certificate requests against this application"
             : "Track certificate issuance requests across Certificate Manager."}
         </CardDescription>
         <CardAction>
