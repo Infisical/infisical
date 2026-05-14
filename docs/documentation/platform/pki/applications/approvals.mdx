@@ -38,14 +38,10 @@ An approval policy defines the workflow that must be completed before certificat
 
 ## Create an Approval Policy
 
-In your Application, navigate to **Approvals → Policies** and click **Create Policy**.
-
-![Approval policies list](/images/platform/pki/approvals/approval-policies.png)
+In your Application, go to the **Settings** tab and find the **Approval Policies** section. Click **Create Policy**.
 
 <Steps>
   <Step title="Configure basic settings">
-    ![Approval policy configuration](/images/platform/pki/approvals/approval-policy-configuration.png)
-    
     | Field | Description |
     |-------|-------------|
     | **Policy Name** | A descriptive name like `production-cert-approval` |
@@ -54,8 +50,6 @@ In your Application, navigate to **Approvals → Policies** and click **Create P
     | **Bypass for machine identities** | Allow automated systems to skip approval |
   </Step>
   <Step title="Configure approval steps">
-    ![Approval sequence](/images/platform/pki/approvals/approval-policy-sequence.png)
-    
     Each step defines who can approve and how many approvals are required:
     
     | Field | Description |
@@ -71,8 +65,6 @@ In your Application, navigate to **Approvals → Policies** and click **Create P
   </Step>
   <Step title="Review and create">
     Review your configuration and click **Create**.
-    
-    ![Approval policy review](/images/platform/pki/approvals/approval-policy-review.png)
   </Step>
 </Steps>
 
@@ -80,9 +72,7 @@ In your Application, navigate to **Approvals → Policies** and click **Create P
 
 ### View Requests
 
-Navigate to **Approvals → Requests** to see all approval requests:
-
-![Approval requests](/images/platform/pki/approvals/approval-requests.png)
+In the Certificate Manager sidebar, go to **Approval Requests** to see all pending and completed requests:
 
 | Status | Meaning |
 |--------|---------|
@@ -97,8 +87,6 @@ Navigate to **Approvals → Requests** to see all approval requests:
 <Steps>
   <Step title="Open the request">
     Click on a pending request to view details.
-    
-    ![Open request](/images/platform/pki/approvals/approval-request-open.png)
   </Step>
   <Step title="Review certificate details">
     Verify the request information:
@@ -106,13 +94,9 @@ Navigate to **Approvals → Requests** to see all approval requests:
     - Certificate profile
     - Common name and SANs
     - Key usages and validity period
-    
-    ![Request details](/images/platform/pki/approvals/approval-request-detail.png)
   </Step>
   <Step title="Approve">
     If you're an eligible approver for the current step, click **Approve**.
-    
-    ![Approve modal](/images/platform/pki/approvals/approval-request-approve-modal.png)
   </Step>
 </Steps>
 
@@ -126,8 +110,6 @@ Once all required approvals are obtained, the certificate is automatically issue
   </Step>
   <Step title="Reject with reason">
     Click **Reject** and optionally add a comment explaining why.
-    
-    ![Rejected request](/images/platform/pki/approvals/approval-request-rejected.png)
   </Step>
 </Steps>
 

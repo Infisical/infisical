@@ -66,8 +66,6 @@ To create a signing policy, go to **Certificate Manager → Code Signing → Sig
     - **Max. Signings**: The maximum number of signing operations a requester can ask for. Set to 1 for single-operation approvals.
     - **Max. Request TTL**: The maximum time a request can remain pending before it expires (optional).
     - **Bypass approval for machine identities**: When enabled, machine identities can sign without requiring approval.
-
-    ![Create signing policy - configuration](/images/platform/pki/code-signing/approval-policy-create.png)
   </Step>
   <Step title="Configuring the approval sequence">
     Configure the approval steps. Each step defines who can approve and how many approvals are required:
@@ -81,13 +79,9 @@ To create a signing policy, go to **Certificate Manager → Code Signing → Sig
     2. **Security Review**: Requires 2 approvals from the security team
 
     Each step must be completed in order before the signing grant is issued.
-
-    ![Create signing policy - approval sequence](/images/platform/pki/code-signing/approval-policy-steps.png)
   </Step>
   <Step title="Reviewing and creating the policy">
     Review your policy configuration and press **Create** to save the policy.
-
-    ![Create signing policy - review](/images/platform/pki/code-signing/approval-policy-review.png)
   </Step>
 </Steps>
 

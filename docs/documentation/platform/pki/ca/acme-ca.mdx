@@ -139,13 +139,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
           <Tab title="Infisical UI">
               To register an ACME-compatible CA, head to your Certificate Management Project > Certificate Authorities > External Certificate Authorities and press **Create CA**.
 
-              ![pki register external ca](/images/platform/pki/ca/external-ca/create-external-ca-button.png)
-
-              Here, set the **CA Type** to **ACME** and fill out details for it.
-
-              ![pki register external ca details](/images/platform/pki/ca/external-ca/create-external-ca-form.png)
-
-              Here's some guidance for each field:
+              Set the **CA Type** to **ACME** and fill out the following fields:
 
               - Name: A slug-friendly name for the ACME-compatible CA such as `lets-encrypt-production`.
               - DNS App Connection: The App Connection from Step 1 used for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge in ACME.
@@ -231,7 +225,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
   </Accordion>
   <Accordion title="Can I use wildcard certificates with ACME CAs?">
-    Yes! ACME CAs like Let's Encrypt support wildcard certificates (e.g., `*.example.com`) when using DNS-01 validation. Simply specify the wildcard domain in your subscriber configuration.
+    Yes! ACME CAs like Let's Encrypt support wildcard certificates (e.g., `*.example.com`) when using DNS-01 validation. Simply specify the wildcard domain when requesting the certificate.
 
     Note that wildcard certificates still require DNS-01 validation - HTTP-01 validation cannot be used for wildcard certificates.
 

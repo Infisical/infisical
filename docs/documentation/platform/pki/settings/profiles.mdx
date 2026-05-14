@@ -22,11 +22,7 @@ Profiles solve a common problem: you want consistency across certificates withou
 
 ## Create a Certificate Profile
 
-Navigate to **Certificate Manager → Certificate Profiles** and click **Create Profile**.
-
-![Certificate profile list](/images/platform/pki/certificate/cert-profile.png)
-
-![Certificate profile modal](/images/platform/pki/certificate/cert-profile-modal.png)
+Navigate to **Certificate Manager → Settings → Certificate Profiles** and click **Create Profile**.
 
 ### Configuration
 
@@ -35,7 +31,7 @@ Navigate to **Certificate Manager → Certificate Profiles** and click **Create 
 | **Name** | A slug-friendly name like `web-servers` or `internal-mtls` |
 | **Description** | Optional context about this profile's purpose |
 | **Issuer Type** | `Certificate Authority` or `Self-Signed` |
-| **Issuing CA** | The CA that signs certificates (if Issuer Type is CA) |
+| **Certificate Authority** | The CA that signs certificates (if Issuer Type is CA) |
 | **Certificate Policy** | The policy that validates certificate requests |
 
 <Note>
@@ -44,11 +40,7 @@ Navigate to **Certificate Manager → Certificate Profiles** and click **Create 
 
 ### Profile Defaults
 
-The **Certificate Details** tab lets you pre-configure sensible defaults for certificate fields:
-
-![Certificate profile defaults](/images/platform/pki/certificate/cert-profile-modal-defaults.png)
-
-When a requester doesn't specify a value, the profile default is applied automatically. This simplifies certificate requests — teams can issue certificates without making decisions about every field.
+The **Certificate Details** tab lets you pre-configure sensible defaults for certificate fields. When a requester doesn't specify a value, the profile default is applied automatically. This simplifies certificate requests — teams can issue certificates without making decisions about every field.
 
 Defaults can be configured for:
 - **TTL** (validity period)

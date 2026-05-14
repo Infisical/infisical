@@ -22,46 +22,25 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
     <Tab title="Infisical UI">
         1. In your Application, go to **Certificate Syncs** and click **Create Sync**.
 
-            ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
-
         2. Select the **NetScaler** option.
 
-            ![Select NetScaler](/images/platform/pki/certificate-syncs/netscaler/select-netscaler-option.png)
-
-        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
-
+        3. Configure the **Destination**:
             - **NetScaler Connection**: The NetScaler Connection to authenticate with.
-            - **SSL vServer Name** (Optional): The name of the SSL virtual server to bind the certificate to. Leave empty to only upload the certificate without binding to a vserver.
+            - **SSL vServer Name** (Optional): The SSL virtual server to bind the certificate to. Leave empty to only upload without binding.
 
-            ![Configure Destination](/images/platform/pki/certificate-syncs/netscaler/netscaler-destination.png)
+        4. Configure the **Sync Options**:
+            - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
+            - **Preserve Certificate on Renewal**: Update the existing certkey object in place, preserving name and vServer bindings.
+            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
+        5. Configure the **Details**:
+            - **Name**: The name of your sync (slug-friendly).
+            - **Description**: Optional description.
 
-            - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the NetScaler if they are no longer active in Infisical.
-            - **Preserve Certificate on Renewal**: When enabled, a renewed certificate will update the existing certkey object in place, preserving the same name and vServer bindings. When disabled, a new certkey is created alongside the original.
-            - **Certificate Name Schema** (Optional): Customize how certificate names are generated. Must include `{{certificateId}}` as a placeholder. If not specified, defaults to `Infisical-{{certificateId}}`.
-            - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur.
+        6. Select which certificates should be synced.
 
-            ![Configure Options](/images/platform/pki/certificate-syncs/netscaler/netscaler-options.png)
-
-        5. Configure the **Details** of your NetScaler Certificate Sync, then click **Next**.
-
-            - **Name**: The name of your sync. Must be slug-friendly.
-            - **Description**: An optional description for your sync.
-
-            ![Configure Details](/images/platform/pki/certificate-syncs/netscaler/netscaler-details.png)
-
-        6. Select which certificates should be synced to NetScaler.
-
-            ![Select Certificates](/images/platform/pki/certificate-syncs/netscaler/netscaler-certificates.png)
-
-        7. Review your NetScaler Certificate Sync configuration, then click **Create Sync**.
-
-            ![Confirm Configuration](/images/platform/pki/certificate-syncs/netscaler/netscaler-review.png)
-
-        8. If enabled, your NetScaler Certificate Sync will begin syncing your certificates to the destination endpoint.
-
-            ![Sync Certificates](/images/platform/pki/certificate-syncs/netscaler/netscaler-synced.png)
+        7. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create a **NetScaler Certificate Sync**, make an API request to the [Create NetScaler PKI Sync](/api-reference/endpoints/pki/syncs/netscaler/create) endpoint.
