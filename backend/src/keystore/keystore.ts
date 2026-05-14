@@ -130,7 +130,11 @@ export const KeyStorePrefixes = {
 
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+
+  AuditLogStreamFailureBucket: (streamId: string, minuteBucket: number) =>
+    `audit-log-stream:${streamId}:failures:${minuteBucket}` as const,
+  AuditLogStreamAlertSent: (streamId: string) => `audit-log-stream:${streamId}:alert-sent` as const
 };
 
 export const KeyStoreTtls = {
@@ -524,6 +528,6 @@ export const keyStoreFactory = (
     streamAdd,
     streamRange,
     streamTrim,
-    streamCollect
+    streamCollect,
   };
 };

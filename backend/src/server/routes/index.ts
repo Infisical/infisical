@@ -848,11 +848,22 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const notificationQueue = notificationQueueServiceFactory({
+    userNotificationDAL,
+    queueService
+  });
+
+  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsService
+    kmsService,
+    keyStore,
+    notificationService,
+    smtpService,
+    orgDAL
   });
 
   const auditLogQueue = await auditLogQueueServiceFactory({
@@ -864,13 +875,6 @@ export const registerRoutes = async (
     clickhouseClient: clickhouse,
     keyStore
   });
-
-  const notificationQueue = notificationQueueServiceFactory({
-    userNotificationDAL,
-    queueService
-  });
-
-  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
   const announcementService = announcementServiceFactory({ userDAL, keyStore });
 
