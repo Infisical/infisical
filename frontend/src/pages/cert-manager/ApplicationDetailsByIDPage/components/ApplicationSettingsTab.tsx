@@ -718,7 +718,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-full">Name</TableHead>
+                  <TableHead className="w-1/3">Name</TableHead>
                   <TableHead className="whitespace-nowrap">Event Type</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="whitespace-nowrap">Alert Before</TableHead>

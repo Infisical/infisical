@@ -275,7 +275,15 @@ const ApiPanel = ({
               POST to this endpoint with <code className="font-mono">applicationId</code>,{" "}
               <code className="font-mono">profileId</code>, and an{" "}
               <code className="font-mono">attributes</code> object (commonName, ttl, etc.) in the
-              body to issue a certificate from this profile.
+              body to issue a certificate.{" "}
+              <a
+                href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-primary-400"
+              >
+                View API reference
+              </a>
             </>
           }
         />
@@ -1048,10 +1056,10 @@ const METHOD_LABELS: Record<EnrollmentMethod, string> = {
 };
 
 const METHOD_DESCRIPTIONS: Record<EnrollmentMethod, string> = {
-  api: "Clients call the Infisical API directly to request certificates.",
-  est: "Clients use the EST protocol (RFC 7030) over HTTPS.",
-  acme: "Clients use the ACME protocol (RFC 8555) over HTTPS.",
-  scep: "Network devices use the SCEP protocol over HTTPS."
+  api: "Issue certificates manually via the UI or programmatically through the API.",
+  est: "Enroll enterprise devices and IoT using the EST protocol.",
+  acme: "Automate certificate lifecycle with ACME clients like Certbot or Caddy.",
+  scep: "Provision device certificates through MDM platforms like Jamf or Intune."
 };
 
 export const ConfigureEnrollmentModal = ({
@@ -1121,8 +1129,7 @@ export const ConfigureEnrollmentModal = ({
             ) : null}
           </DialogTitle>
           <DialogDescription>
-            Enable an enrollment method to allow clients to request certificates from this Profile
-            through this Application.
+            Enable an enrollment method to allow clients to request certificates using this profile.
           </DialogDescription>
         </DialogHeader>
 
@@ -1175,55 +1182,62 @@ export const ConfigureEnrollmentModal = ({
                 <EmptyHeader>
                   <EmptyTitle>No enrollment methods configured</EmptyTitle>
                   <EmptyDescription>
-                    Click <span className="font-medium">Add enrollment method</span> above to let
-                    clients request certificates from this Profile.
+                    <span className="font-medium">Add enrollment method</span> above to let clients
+                    request certificates from this profile.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
-                {visibleMethods.includes("api") ? (
-                  <TabPanel value="api">
-                    <ApiPanel
-                      applicationId={applicationId}
-                      profileId={profileId}
-                      enabled={Boolean(data?.api)}
-                      initial={data?.api ?? null}
-                    />
-                  </TabPanel>
-                ) : null}
-                {visibleMethods.includes("est") ? (
-                  <TabPanel value="est">
-                    <EstPanel
-                      applicationId={applicationId}
-                      profileId={profileId}
-                      enabled={Boolean(data?.estConfigured)}
-                      initial={data?.est ?? null}
-                    />
-                  </TabPanel>
-                ) : null}
-                {visibleMethods.includes("acme") ? (
-                  <TabPanel value="acme">
-                    <AcmePanel
-                      applicationId={applicationId}
-                      profileId={profileId}
-                      enabled={Boolean(data?.acmeConfigured)}
-                      initial={data?.acme ?? null}
-                    />
-                  </TabPanel>
-                ) : null}
-                {visibleMethods.includes("scep") ? (
-                  <TabPanel value="scep">
-                    <ScepPanel
-                      applicationId={applicationId}
-                      profileId={profileId}
-                      profileSlug={profile?.profileSlug ?? ""}
-                      enabled={Boolean(data?.scepConfigured)}
-                      initial={data?.scep ?? null}
-                    />
-                  </TabPanel>
-                ) : null}
-              </Tabs>
+              <>
+                {activeTab && (
+                  <p className="text-sm text-accent">
+                    {METHOD_DESCRIPTIONS[activeTab as EnrollmentMethod]}
+                  </p>
+                )}
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
+                  {visibleMethods.includes("api") ? (
+                    <TabPanel value="api">
+                      <ApiPanel
+                        applicationId={applicationId}
+                        profileId={profileId}
+                        enabled={Boolean(data?.api)}
+                        initial={data?.api ?? null}
+                      />
+                    </TabPanel>
+                  ) : null}
+                  {visibleMethods.includes("est") ? (
+                    <TabPanel value="est">
+                      <EstPanel
+                        applicationId={applicationId}
+                        profileId={profileId}
+                        enabled={Boolean(data?.estConfigured)}
+                        initial={data?.est ?? null}
+                      />
+                    </TabPanel>
+                  ) : null}
+                  {visibleMethods.includes("acme") ? (
+                    <TabPanel value="acme">
+                      <AcmePanel
+                        applicationId={applicationId}
+                        profileId={profileId}
+                        enabled={Boolean(data?.acmeConfigured)}
+                        initial={data?.acme ?? null}
+                      />
+                    </TabPanel>
+                  ) : null}
+                  {visibleMethods.includes("scep") ? (
+                    <TabPanel value="scep">
+                      <ScepPanel
+                        applicationId={applicationId}
+                        profileId={profileId}
+                        profileSlug={profile?.profileSlug ?? ""}
+                        enabled={Boolean(data?.scepConfigured)}
+                        initial={data?.scep ?? null}
+                      />
+                    </TabPanel>
+                  ) : null}
+                </Tabs>
+              </>
             )}
           </>
         )}
