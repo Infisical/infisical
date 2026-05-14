@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -231,6 +232,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
+      const appCfg = getConfig();
+      if (appCfg.DISABLE_SECRET_SHARING) {
+        throw new BadRequestError({ message: "Secret sharing is disabled" });
+      }
+
       const sharedSecret = await req.server.services.secretSharing.createPublicSharedSecret({
         ...req.body,
         accessType: SecretSharingAccessType.Anyone
