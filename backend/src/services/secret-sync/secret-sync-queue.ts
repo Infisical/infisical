@@ -86,7 +86,7 @@ type TSecretSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "incrementBy" | "setExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementBy" | "setExpiry">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -234,6 +234,12 @@ export const secretSyncQueueFactory = ({
   const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
     const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
     const count = await keyStore.incrementBy(key, 1);
+
+    if (count <= 0) {
+      logger.warn(
+        `SecretSync connection concurrency counter drifted non-positive after admit [connectionId=${connectionId}] [count=${count}]`
+      );
+    }
 
     try {
       // INCR on a missing key creates it without a TTL; EXPIRE is what arms it. Calling
