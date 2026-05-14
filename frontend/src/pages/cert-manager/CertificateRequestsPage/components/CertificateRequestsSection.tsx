@@ -5,7 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { FilterableSelect, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { FilterableSelect, Select, SelectItem } from "@app/components/v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import {
   Button,
   Card,
@@ -227,24 +228,24 @@ export const CertificateRequestsSection = ({
             : "Track certificate issuance requests across Certificate Manager."}
         </CardDescription>
         <CardAction>
-          <Tooltip
-            content={
-              canRequestCertificate
-                ? undefined
-                : "You don't have permission to request certificates here."
-            }
-            position="left"
-          >
-            <span>
-              <Button
-                variant="outline"
-                onClick={() => handlePopUpOpen("issueCertificate")}
-                disabled={!canRequestCertificate}
-              >
-                <FontAwesomeIcon icon={faPlus} className="mr-1.5 size-3.5" />
-                Request Certificate
-              </Button>
-            </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  variant="outline"
+                  onClick={() => handlePopUpOpen("issueCertificate")}
+                  disabled={!canRequestCertificate}
+                >
+                  <FontAwesomeIcon icon={faPlus} className="mr-1.5 size-3.5" />
+                  Request Certificate
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canRequestCertificate && (
+              <TooltipContent side="left">
+                You don&apos;t have permission to request certificates here.
+              </TooltipContent>
+            )}
           </Tooltip>
         </CardAction>
       </CardHeader>
