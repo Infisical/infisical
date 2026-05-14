@@ -166,9 +166,24 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="operator">Operator</SelectItem>
-                            <SelectItem value="auditor">Auditor</SelectItem>
+                            <SelectItem
+                              value="admin"
+                              description="Manage members, profiles, and policies"
+                            >
+                              Admin
+                            </SelectItem>
+                            <SelectItem
+                              value="operator"
+                              description="Issue certificates and submit requests"
+                            >
+                              Operator
+                            </SelectItem>
+                            <SelectItem
+                              value="auditor"
+                              description="View certificates and activity"
+                            >
+                              Auditor
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>

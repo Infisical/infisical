@@ -95,6 +95,7 @@ export const IdentityRoleDetailsSection = ({
     const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
     await updateIdentityProjectMembership({
       projectId: currentProject?.id || "",
+      projectType: currentProject?.type,
       identityId: identityMembershipDetails.identity.id,
       roles: updatedRoles.map(
         ({
