@@ -26,7 +26,7 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to **Certificate Syncs** and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
 
         2. Select the **Azure Key Vault** option.
 
@@ -70,9 +70,9 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
         --header 'Content-Type: application/json' \
         --data '{
             "name": "my-key-vault-cert-sync",
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "description": "an example certificate sync",
-            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "azure-key-vault",
             "isAutoSyncEnabled": true,
             "certificateIds": [
@@ -110,8 +110,8 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
                     "includeRootCa": false,
                     "certificateNameSchema": "myapp-{{certificateId}}"
                 },
-                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
                 "createdAt": "2023-01-01T00:00:00.000Z",
                 "updatedAt": "2023-01-01T00:00:00.000Z"
             }
