@@ -228,32 +228,38 @@ export const secretSyncQueueFactory = ({
     folderCommitService
   });
 
-  // Atomic admission via INCRBY: only one job per connectionId is admitted per increment,
-  // so concurrent admits cannot exceed CONNECTION_CONCURRENCY_LIMIT.
+  // Admission via INCRBY: the INCR itself is atomic, so concurrent admits cannot exceed
+  // CONNECTION_CONCURRENCY_LIMIT. setExpiry always runs (success and over-limit paths) so
+  // the key never persists TTL-less, and any post-INCR failure fires a compensating DECR.
   const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
     const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
     const count = await keyStore.incrementBy(key, 1);
 
-    if (count > CONNECTION_CONCURRENCY_LIMIT) {
-      await keyStore.incrementBy(key, -1);
-      return false;
-    }
+    try {
+      // INCR on a missing key creates it without a TTL; EXPIRE is what arms it. Calling
+      // this on every path prevents an unarmed key from permanently locking the connection
+      // if a future admit returns over-limit and skips setExpiry.
+      await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
 
-    await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
-    return true;
+      if (count > CONNECTION_CONCURRENCY_LIMIT) {
+        await keyStore.incrementBy(key, -1);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      await keyStore.incrementBy(key, -1).catch(() => {});
+      throw err;
+    }
   };
 
   const $releaseConnectionConcurrency = async (connectionId: string) => {
     const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
-    const count = await keyStore.incrementBy(key, -1);
-
-    // The counter can briefly go negative if the key TTL expired while a job was running
-    // (a new admit creates the key at 0, then this release decrements to -1). Self-heal.
-    if (count < 0) {
-      await keyStore.setItemWithExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS, 0);
-    } else {
-      await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
-    }
+    await keyStore.incrementBy(key, -1);
+    // EXPIRE on a missing key is a no-op; on an existing one it refreshes the TTL. The
+    // counter can briefly go negative if the key TTL expired while a job was running, but
+    // it self-corrects as orphan releases land and future admits' INCRs climb back up.
+    await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
   };
 
   const $getInfisicalSecrets = async (
