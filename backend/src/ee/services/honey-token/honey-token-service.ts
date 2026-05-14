@@ -52,11 +52,7 @@ import {
   THoneyTokenListInput,
   THoneyTokenUpdateInput
 } from "./honey-token-provider-types";
-import {
-  AwsHoneyTokenConfigSchema,
-  AwsHoneyTokenEventMetadataSchema,
-  THoneyTokenEventsInput
-} from "./honey-token-types";
+import { AwsHoneyTokenConfigSchema, THoneyTokenEventsInput, THoneyTokenWebhookPayload } from "./honey-token-types";
 
 const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
@@ -128,7 +124,7 @@ type THandleTriggerInput = {
   type: HoneyTokenType;
   signature: string | undefined;
   rawBody: string;
-  payload: unknown;
+  payload: THoneyTokenWebhookPayload;
 };
 
 export const honeyTokenServiceFactory = ({
@@ -959,19 +955,12 @@ export const honeyTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Request timestamp is too old or invalid" });
     }
 
-    const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
-    const firstAccessKeyId = rawEvents
-      .map((rawEvent) => {
-        const wrapped = rawEvent as { event?: unknown };
-        const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
-        return parsed.success ? parsed.data.accessKeyId : null;
-      })
-      .find((accessKeyId): accessKeyId is string => Boolean(accessKeyId));
-    if (!firstAccessKeyId) {
+    const eventMetadata = payload.event;
+    if (!eventMetadata) {
       throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
-    const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(firstAccessKeyId);
+    const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
     if (!honeyTokenWithOrg) {
       throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
@@ -1005,77 +994,60 @@ export const honeyTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
-    /* eslint-disable no-continue */
-    for await (const rawEvent of rawEvents) {
-      const wrapped = rawEvent as { event?: unknown };
-      const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
-      if (!parsed.success) {
-        logger.warn(
-          { orgId: honeyTokenWithOrg.orgId, event: rawEvent, error: parsed.error },
-          `Failed to parse honey token event [orgId=${honeyTokenWithOrg.orgId}]`
-        );
-        continue;
-      }
-      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
-        parsed.data.accessKeyId,
-        honeyTokenWithOrg.orgId
-      );
-      if (!honeyToken) continue;
-      if (honeyToken.status === HoneyTokenStatus.Revoked) continue;
+    const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
+      eventMetadata.accessKeyId,
+      honeyTokenWithOrg.orgId
+    );
+    if (!honeyToken || honeyToken.status === HoneyTokenStatus.Revoked) {
+      return { acknowledged: true };
+    }
 
-      await honeyTokenEventDAL.create({
-        honeyTokenId: honeyToken.id,
-        eventType: HoneyTokenEventType.AWS,
-        metadata: parsed.data
-      });
+    await honeyTokenEventDAL.create({
+      honeyTokenId: honeyToken.id,
+      eventType: HoneyTokenEventType.AWS,
+      metadata: eventMetadata
+    });
+    const updatedToken = await honeyTokenDAL.tryMarkTriggered(
+      eventMetadata.accessKeyId,
+      TRIGGER_NOTIFICATION_COOLDOWN_MS
+    );
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.HoneyTokenTriggered,
+        distinctId: "anonymous-honey-token-trigger",
+        anonymous: true,
+        properties: {
+          type: honeyToken.type
+        }
+      })
+      .catch(() => {});
+    if (updatedToken) {
+      void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata });
 
-      const updatedToken = await honeyTokenDAL.tryMarkTriggered(
-        parsed.data.accessKeyId,
-        TRIGGER_NOTIFICATION_COOLDOWN_MS
-      );
-
-      void telemetryService
-        .sendPostHogEvents({
-          event: PostHogEventTypes.HoneyTokenTriggered,
-          distinctId: "anonymous-honey-token-trigger",
-          anonymous: true,
-          properties: {
-            type: honeyToken.type
+      void auditLogService
+        .createAuditLog({
+          actor: {
+            type: ActorType.UNKNOWN_USER,
+            metadata: {}
+          },
+          orgId: honeyTokenWithOrg.orgId,
+          projectId: honeyToken.projectId,
+          event: {
+            type: EventType.TRIGGER_HONEY_TOKEN,
+            metadata: {
+              honeyTokenId: honeyToken.id,
+              name: honeyToken.name,
+              type: honeyToken.type as HoneyTokenType,
+              projectId: honeyToken.projectId,
+              eventName: eventMetadata.eventName,
+              eventTime: eventMetadata.eventTime,
+              sourceIp: eventMetadata.sourceIp ?? "Unknown",
+              awsRegion: eventMetadata.awsRegion
+            }
           }
         })
         .catch(() => {});
-
-      // This block only is executed once per token trigger. So, even if we get 100 events
-      // this will run only once.
-      if (updatedToken) {
-        void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
-
-        void auditLogService
-          .createAuditLog({
-            actor: {
-              type: ActorType.UNKNOWN_USER,
-              metadata: {}
-            },
-            orgId: honeyTokenWithOrg.orgId,
-            projectId: honeyToken.projectId,
-            event: {
-              type: EventType.TRIGGER_HONEY_TOKEN,
-              metadata: {
-                honeyTokenId: honeyToken.id,
-                name: honeyToken.name,
-                type: honeyToken.type as HoneyTokenType,
-                projectId: honeyToken.projectId,
-                eventName: parsed.data.eventName,
-                eventTime: parsed.data.eventTime,
-                sourceIp: parsed.data.sourceIp ?? "Unknown",
-                awsRegion: parsed.data.awsRegion
-              }
-            }
-          })
-          .catch(() => {});
-      }
     }
-    /* eslint-enable no-continue */
 
     return { acknowledged: true };
   };

@@ -6,6 +6,7 @@ import {
   THoneyTokenConfigByType,
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
+import { HoneyTokenWebhookPayloadSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -129,6 +130,9 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
   const TRIGGER_BODY_LIMIT = 256 * 1024;
 
   void server.register(async (triggerScope) => {
+    // We remove the default parser because we need to:
+    // 1. Limit the size of the request to prevent DDoS attacks
+    // 2. Access the raw JSON body to run the signature validation
     triggerScope.removeContentTypeParser("application/json");
     triggerScope.addContentTypeParser(
       "application/json",
@@ -154,12 +158,18 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       handler: async (req) => {
         const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf-8") : String(req.body);
 
-        let payload: unknown;
+        let parsed;
         try {
-          payload = JSON.parse(rawBody);
+          parsed = JSON.parse(rawBody) as unknown;
         } catch {
           throw new BadRequestError({ message: "Invalid JSON body" });
         }
+
+        const result = HoneyTokenWebhookPayloadSchema.safeParse(parsed);
+        if (!result.success) {
+          throw new BadRequestError({ message: "Invalid webhook payload" });
+        }
+        const payload = result.data;
 
         const { acknowledged } = await server.services.honeyToken.handleTrigger({
           type,
