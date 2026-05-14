@@ -141,7 +141,6 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <FieldContent>
                   <Input {...field} placeholder="my-service" />
                 </FieldContent>
-                <FieldDescription>Lowercase letters, numbers, and hyphens.</FieldDescription>
                 {error ? <FieldError>{error.message}</FieldError> : null}
               </Field>
             )}

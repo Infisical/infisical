@@ -73,8 +73,8 @@ export const CaSection = () => {
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/private-ca" />
         </CardTitle>
         <CardDescription>
-          Private CAs you run inside Infisical. They can issue certificates directly to
-          applications, or sign other CAs to build a layered setup.
+          Private CAs hosted by Infisical. Use them to issue certificates directly or sign other CAs
+          to build a layered setup.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan

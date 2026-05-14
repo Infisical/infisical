@@ -224,7 +224,7 @@ export const RequestsPage = () => {
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
-              description="Review pending requests for certificate issuance and code signing."
+              description="Review pending approval requests across your applications and signers"
             />
 
             <Tabs
@@ -251,7 +251,7 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
                     <CardDescription>
-                      Pending certificate-issuance requests from your Applications.
+                      Pending certificate issuance requests from your applications.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -309,7 +309,7 @@ export const RequestsPage = () => {
                               : "No requests"}
                           </EmptyTitle>
                           <EmptyDescription>
-                            Cert-request approval workflows from any Application will appear here.
+                            Certificate requests from any application will appear here.
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
@@ -409,7 +409,7 @@ export const RequestsPage = () => {
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
                     <CardDescription>
-                      Pending code-signing requests from your Signers.
+                      Pending code-signing requests from your signers.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -467,7 +467,7 @@ export const RequestsPage = () => {
                               : "No requests"}
                           </EmptyTitle>
                           <EmptyDescription>
-                            Code-signing approval workflows from any Signer will appear here.
+                            Code-signing requests from any signer will appear here.
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>

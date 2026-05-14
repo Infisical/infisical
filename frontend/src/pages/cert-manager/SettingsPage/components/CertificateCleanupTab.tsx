@@ -87,9 +87,7 @@ export const CertificateCleanupTab = () => {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-medium text-mineshaft-100">Certificate Cleanup</h2>
-            <p className="mt-1 text-sm text-gray-400">
-              Automatically remove expired certificates to keep your inventory organized
-            </p>
+            <p className="mt-1 text-sm text-gray-400">Automatically remove expired certificates</p>
           </div>
           <Controller
             control={control}

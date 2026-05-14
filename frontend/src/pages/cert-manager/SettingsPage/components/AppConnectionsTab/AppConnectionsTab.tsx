@@ -219,8 +219,7 @@ export const AppConnectionsTab = () => {
           <DocumentationLinkBadge href="https://infisical.com/docs/integrations/app-connections/overview" />
         </CardTitle>
         <CardDescription>
-          Connect third-party services that issue, sign, or distribute certificates managed by this
-          project.
+          Connect third-party services to issue or distribute certificates
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
@@ -322,7 +321,6 @@ export const AppConnectionsTab = () => {
               </EmptyTitle>
               <EmptyDescription>
                 Create a connection to a third-party service to issue or distribute certificates
-                from this project.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

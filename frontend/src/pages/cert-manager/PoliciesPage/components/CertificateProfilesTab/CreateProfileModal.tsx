@@ -1041,7 +1041,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         subTitle={
           isEdit
             ? `Update configuration for ${profile?.slug}`
-            : "Configure a new certificate profile for unified certificate issuance"
+            : "Define the CA and policy used to issue certificates from this profile"
         }
       >
         <form>
@@ -1105,7 +1105,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                     <FormControl
                       label="Issuer Type"
-                      tooltipText="Choose how certificates are signed. Certificate Authority issues from an existing CA in this project — the standard production path. Self-Signed produces standalone certificates with no CA chain — for tests or one-off identities only."
+                      tooltipText="Choose how certificates are signed. Certificate Authority issues from an existing CA in your organization, which is the standard path for production use. Self-Signed produces standalone certificates with no CA chain, suitable for testing or one-off identities only"
                       isRequired
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -1143,7 +1143,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       return (
                         <div>
                           <FormControl
-                            label="Issuing CA"
+                            label="Certificate Authority"
                             isRequired
                             isError={Boolean(error)}
                             errorText={error?.message}

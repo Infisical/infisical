@@ -64,9 +64,8 @@ export const CertificatePoliciesTab = () => {
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/policies" />
         </CardTitle>
         <CardDescription>
-          The rules applied when certificates are issued. Policies set things like which algorithms
-          are allowed, how the certificate can be used, how long it stays valid, and what identity
-          information it includes.
+          Rules that define what certificates can look like, how they can be used, and how long they
+          stay valid.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
