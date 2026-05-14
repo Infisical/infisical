@@ -376,7 +376,7 @@ export const CodeSigningGrantsTab = () => {
         </Table>
 
         {!isGrantsLoading && !filteredGrants.length && (
-          <Empty className="border">
+          <Empty className="border border-solid">
             <EmptyHeader>
               <EmptyTitle>
                 {grants.length ? "No signing grants match search" : "No signing grants yet"}

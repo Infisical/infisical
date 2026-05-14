@@ -19,6 +19,17 @@ type TCertificateRequestWithCertificate = TCertificateRequests & {
   profileName: string | null;
 };
 
+const expandStatusFilter = (status: string): string[] => {
+  if (status === CertificateRequestStatus.PENDING) {
+    return [
+      CertificateRequestStatus.PENDING,
+      CertificateRequestStatus.PENDING_APPROVAL,
+      CertificateRequestStatus.PENDING_VALIDATION
+    ];
+  }
+  return [status];
+};
+
 type TCertificateRequestQueryResult = TCertificateRequests & {
   certId: string | null;
   certSerialNumber: string | null;
@@ -172,7 +183,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (status) {
-        query = query.where(`${TableName.CertificateRequests}.status`, status);
+        query = query.whereIn(`${TableName.CertificateRequests}.status`, expandStatusFilter(status));
       }
 
       if (fromDate) {
@@ -250,7 +261,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (status) {
-        query = query.where(`${TableName.CertificateRequests}.status`, status);
+        query = query.whereIn(`${TableName.CertificateRequests}.status`, expandStatusFilter(status));
       }
 
       if (fromDate) {
@@ -353,7 +364,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (status) {
-        query = query.where(`${TableName.CertificateRequests}.status`, status);
+        query = query.whereIn(`${TableName.CertificateRequests}.status`, expandStatusFilter(status));
       }
 
       if (fromDate) {

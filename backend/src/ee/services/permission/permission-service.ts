@@ -158,28 +158,36 @@ type MembershipWithRoles = {
   }>;
 };
 
+const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(role: U): boolean =>
+  !role.isTemporary ||
+  Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
+
 const flattenActiveRolesFromMemberships = <T extends string>(
   memberships: MembershipWithRoles[],
   customRoleValue: T
 ): { role: string; permissions?: unknown }[] => {
-  const filterTemporary = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
-    items: U[]
-  ): U[] =>
-    items.filter(
-      ({ isTemporary, temporaryAccessEndTime }) =>
-        !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-    );
   return memberships.flatMap((membership) => {
-    const activeRoles = filterTemporary(membership?.roles ?? []).map(({ role, permissions }) => ({
-      role,
-      permissions
-    }));
-    const activeAdditionalPrivileges = filterTemporary(membership?.additionalPrivileges ?? []).map(
-      ({ permissions }) => ({ role: customRoleValue, permissions })
-    );
+    const activeRoles = (membership?.roles ?? [])
+      .filter(isActiveRole)
+      .map(({ role, permissions }) => ({ role, permissions }));
+    const activeAdditionalPrivileges = (membership?.additionalPrivileges ?? [])
+      .filter(isActiveRole)
+      .map(({ permissions }) => ({ role: customRoleValue, permissions }));
     return activeRoles.concat(activeAdditionalPrivileges);
   });
 };
+
+const membershipsHaveActiveRole = (
+  memberships: Array<{
+    roles: Array<{
+      role: string;
+      customRoleSlug?: string | null;
+      isTemporary?: boolean;
+      temporaryAccessEndTime?: Date | null;
+    }>;
+  }>,
+  role: string
+): boolean => memberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role) && isActiveRole(r)));
 
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
@@ -253,8 +261,7 @@ export const permissionServiceFactory = ({
 
       const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, OrgMembershipRole.Custom);
 
-      const hasRole = (role: string) =>
-        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+      const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 
       const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
         conditionsMatcher
@@ -536,8 +543,7 @@ export const permissionServiceFactory = ({
 
       const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
 
-      const hasRole = (role: string) =>
-        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+      const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 
       // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
       if (actor === ActorType.USER) {
@@ -663,8 +669,7 @@ export const permissionServiceFactory = ({
           : resourceRules;
         const permission = createMongoAbility<ResourcePermissionSet>(mergedRules, { conditionsMatcher });
 
-        const hasRole = (role: string) =>
-          resourceMemberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role)));
+        const hasRole = (role: string) => membershipsHaveActiveRole(resourceMemberships, role);
 
         return {
           permission,

@@ -41,6 +41,11 @@ import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionC
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
+import {
   TPkiSync,
   usePkiSyncOption,
   useTriggerPkiSyncSyncCertificates,
@@ -53,9 +58,16 @@ type Props = {
 };
 
 export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
-  const { destination, projectId, id } = pkiSync;
+  const { destination, projectId, id, applicationId } = pkiSync;
 
   const navigate = useNavigate();
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canDeleteAppSync = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Delete,
+      PkiApplicationResourceSub.PkiSyncs
+    )
+  );
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "importCertificates",
     "removeCertificates",
@@ -250,20 +262,31 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
                 )}
               </ProjectPermissionCan>
 
-              <ProjectPermissionCan
-                I={ProjectPermissionPkiSyncActions.Delete}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
+              {applicationId ? (
+                canDeleteAppSync && (
                   <DropdownMenuItem
-                    isDisabled={!isAllowed}
                     icon={<FontAwesomeIcon icon={faTrash} />}
                     onClick={() => handlePopUpOpen("deleteSync")}
                   >
                     Delete Sync
                   </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+                )
+              ) : (
+                <ProjectPermissionCan
+                  I={ProjectPermissionPkiSyncActions.Delete}
+                  a={permissionSubject}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed}
+                      icon={<FontAwesomeIcon icon={faTrash} />}
+                      onClick={() => handlePopUpOpen("deleteSync")}
+                    >
+                      Delete Sync
+                    </DropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

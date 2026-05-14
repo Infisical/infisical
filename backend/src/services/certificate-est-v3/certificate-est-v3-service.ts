@@ -132,7 +132,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
@@ -216,7 +216,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
@@ -356,7 +356,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 

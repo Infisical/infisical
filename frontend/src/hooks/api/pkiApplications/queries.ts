@@ -81,6 +81,31 @@ export const useGetPkiApplicationByName = (
     ...options
   });
 
+export const useGetPkiApplicationById = (
+  applicationId: string,
+  options?: Omit<
+    UseQueryOptions<
+      { application: TPkiApplication },
+      unknown,
+      TPkiApplication,
+      ReturnType<typeof pkiApplicationKeys.byId>
+    >,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: pkiApplicationKeys.byId(applicationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ application: TPkiApplication }>(
+        `${BASE_URL}/${applicationId}`
+      );
+      return data;
+    },
+    enabled: Boolean(applicationId),
+    select: (data) => data.application,
+    ...options
+  });
+
 export const useListPkiApplicationProfiles = (applicationId: string) =>
   useQuery({
     queryKey: pkiApplicationKeys.profiles(applicationId),

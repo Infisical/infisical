@@ -80,7 +80,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
           <TableHead>Name</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead />
+          <TableHead className="w-5" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -112,10 +112,10 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                   {caStatusToNameMap[ca.status]}
                 </Badge>
               </TableCell>
-              <TableCell className="flex justify-end">
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild className="rounded-lg">
-                    <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                    <div className="inline-flex hover:text-primary-400 data-[state=open]:text-primary-400">
                       <Tooltip content="More options">
                         <FontAwesomeIcon size="lg" icon={faEllipsis} />
                       </Tooltip>

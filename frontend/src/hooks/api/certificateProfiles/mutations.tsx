@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { pkiApplicationKeys } from "@app/hooks/api/pkiApplications/queries";
 
 import { certificateProfileKeys } from "./queries";
 import {
@@ -24,6 +25,7 @@ export const useCreateCertificateProfile = () => {
       queryClient.invalidateQueries({
         queryKey: ["certificate-profiles", "list"]
       });
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };
@@ -45,6 +47,7 @@ export const useUpdateCertificateProfile = () => {
       queryClient.invalidateQueries({
         queryKey: certificateProfileKeys.getById(profileId)
       });
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };
@@ -66,6 +69,7 @@ export const useDeleteCertificateProfile = () => {
       queryClient.removeQueries({
         queryKey: certificateProfileKeys.getById(profileId)
       });
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };

@@ -116,7 +116,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.SCEP) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.SCEP) {
       throw new BadRequestError({ message: "Profile is not configured for SCEP enrollment" });
     }
 
@@ -184,7 +184,10 @@ export const pkiScepServiceFactory = ({
 
   const getCaCaps = async ({ profileId, applicationId }: TGetCaCapsDTO): Promise<string> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile || profile.enrollmentType !== EnrollmentType.SCEP) {
+    if (!profile) {
+      throw new NotFoundError({ message: "SCEP profile not found" });
+    }
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.SCEP) {
       throw new NotFoundError({ message: "SCEP profile not found" });
     }
 
@@ -934,7 +937,10 @@ export const pkiScepServiceFactory = ({
     actorOrgId
   }: TGenerateDynamicChallengeDTO) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile || profile.enrollmentType !== EnrollmentType.SCEP) {
+    if (!profile) {
+      throw new NotFoundError({ message: "SCEP profile not found" });
+    }
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.SCEP) {
       throw new NotFoundError({ message: "SCEP profile not found" });
     }
 

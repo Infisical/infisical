@@ -195,7 +195,7 @@ const validateProfileAndPermissions = async ({
     throw new NotFoundError({ message: "Certificate profile not found" });
   }
 
-  if (profile.enrollmentType !== requiredEnrollmentType) {
+  if (!applicationId && profile.enrollmentType !== requiredEnrollmentType) {
     throw new ForbiddenRequestError({
       message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
     });
@@ -912,6 +912,7 @@ export const certificateV3ServiceFactory = ({
             keyAlgorithm: certificateRequest.keyAlgorithm || null,
             signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
             ttl: resolvedTtl,
+            enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             organization: certificateRequest.organization || null,
             organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -1745,7 +1746,7 @@ export const certificateV3ServiceFactory = ({
           certificateId: certResult.certificateId,
           basicConstraints,
           ttl: validity.ttl,
-          enrollmentType: EnrollmentType.API
+          enrollmentType
         });
 
         if (metadata && metadata.length > 0) {
@@ -1954,6 +1955,7 @@ export const certificateV3ServiceFactory = ({
             country: certificateRequest.country || null,
             state: certificateRequest.state || null,
             locality: certificateRequest.locality || null,
+            enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
@@ -2720,27 +2722,43 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certificate.commonName,
-        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: certificate.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    if (certificate.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificate.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificate.commonName,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: certificate.serialNumber,
+          metadata: certMetadata
+        })
+      );
+    }
 
     if (!certificate.profileId) {
       throw new BadRequestError({
@@ -2837,27 +2855,43 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certificate.commonName,
-        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: certificate.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    if (certificate.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificate.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificate.commonName,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: certificate.serialNumber,
+          metadata: certMetadata
+        })
+      );
+    }
 
     if (!certificate.profileId) {
       throw new BadRequestError({

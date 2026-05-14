@@ -295,27 +295,43 @@ export const certificateServiceFactory = ({
   const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Delete,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    if (cert.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: cert.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: cert.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Delete,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: cert.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Delete,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName,
+          altNames: cert.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: cert.serialNumber,
+          metadata: certMetadata
+        })
+      );
+    }
 
     let deletedCert;
     try {
@@ -379,29 +395,45 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Delete,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
+    if (cert.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: ca.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: cert.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Delete,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: ca.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Delete,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName,
+          altNames: cert.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: cert.serialNumber,
+          friendlyName: cert.friendlyName,
+          status: cert.status,
+          metadata: certMetadata
+        })
+      );
+    }
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 

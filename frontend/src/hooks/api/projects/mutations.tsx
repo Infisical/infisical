@@ -5,6 +5,7 @@ import { groupMembershipsBase } from "@app/hooks/api/certManagerAccess";
 
 import { groupKeys } from "../groups/queries";
 import { TGroupMembership } from "../groups/types";
+import { pkiApplicationKeys } from "../pkiApplications/queries";
 import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
 import {
@@ -99,6 +100,8 @@ export const useDeleteGroupFromWorkspace = () => {
       if (username) {
         queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
       }
+
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };

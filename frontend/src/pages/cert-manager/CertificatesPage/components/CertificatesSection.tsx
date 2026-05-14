@@ -201,6 +201,7 @@ export const CertificatesSection = ({
         <CertificateManagePkiSyncsModal
           popUp={popUp.managePkiSyncs}
           handlePopUpToggle={handlePopUpToggle}
+          applicationName={applicationName}
         />
         <DeleteActionModal
           isOpen={popUp.deleteCertificate.isOpen}

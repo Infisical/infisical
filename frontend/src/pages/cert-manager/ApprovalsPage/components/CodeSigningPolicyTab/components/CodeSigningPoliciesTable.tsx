@@ -118,7 +118,7 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
         </TableBody>
       </Table>
       {!isPoliciesLoading && !sortedPolicies.length && (
-        <Empty className="border">
+        <Empty className="border border-solid">
           <EmptyHeader>
             <EmptyTitle>No signing policies yet</EmptyTitle>
             <EmptyDescription>

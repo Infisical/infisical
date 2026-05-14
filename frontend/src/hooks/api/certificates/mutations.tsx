@@ -255,6 +255,7 @@ export const useUnifiedCertificateIssuance = () => {
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
       });
+      queryClient.invalidateQueries({ queryKey: ["approval-requests"] });
     }
   });
 };

@@ -184,12 +184,15 @@ export const pkiAcmeServiceFactory = ({
   pkiApplicationProfileDAL,
   acmeEnrollmentConfigDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
-  const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
+  const validateAcmeProfile = async (
+    profileId: string,
+    applicationId?: string
+  ): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
-    if (profile.enrollmentType !== EnrollmentType.ACME) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.ACME) {
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
     return profile;
@@ -315,7 +318,10 @@ export const pkiAcmeServiceFactory = ({
     schema?: TSchema;
     expectedAccountId?: string;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
     const result = await validateJwsPayload({
       url,
       rawJwsPayload,
@@ -430,7 +436,7 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const getAcmeDirectory = async (profileId: string, applicationId?: string): Promise<TGetAcmeDirectoryResponse> => {
-    const profile = await validateAcmeProfile(profileId);
+    const profile = await validateAcmeProfile(profileId, applicationId);
     let skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
     if (applicationId) {
       const junctionRow = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profile.id);
@@ -450,7 +456,10 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const getAcmeNewNonce = async (profileId: string): Promise<string> => {
-    await validateAcmeProfile(profileId);
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
     const nonce = crypto.randomBytes(32).toString("base64url");
     const nonceKey = KeyStorePrefixes.PkiAcmeNonce(nonce);
     // TODO: read config from the profile to get the expiration time instead
@@ -476,7 +485,7 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeAccountPayload;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const profile = await validateAcmeProfile(profileId, applicationId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
 
     const junctionRow = applicationId
@@ -697,8 +706,26 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeOrderPayload;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
-    const profile = await validateAcmeProfile(profileId);
-    const skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
+    const orderAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId);
+    const orderAccountApplicationProfileId = (orderAccount as { applicationProfileId?: string | null } | null)
+      ?.applicationProfileId;
+    const accountApplicationId = orderAccountApplicationProfileId
+      ? await acmeAccountDAL.findApplicationIdByJunctionId(orderAccountApplicationProfileId)
+      : null;
+    const profile = await validateAcmeProfile(profileId, accountApplicationId ?? undefined);
+    let skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
+    if (accountApplicationId) {
+      const junctionRow = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(
+        accountApplicationId,
+        profileId
+      );
+      const junctionAcmeConfig = junctionRow?.acmeConfigId
+        ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
+        : null;
+      if (junctionAcmeConfig) {
+        skipDnsOwnershipVerification = junctionAcmeConfig.skipDnsOwnershipVerification ?? false;
+      }
+    }
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
     // TODO: check the identifiers and see if are they even allowed for this profile.
@@ -1180,6 +1207,7 @@ export const pkiAcmeServiceFactory = ({
               keyAlgorithm: null,
               signatureAlgorithm: null,
               ttl,
+              enrollmentType: EnrollmentType.ACME,
               status: CertificateRequestStatus.PENDING_APPROVAL,
               organization: certificateRequest.organization || null,
               organizationalUnit: certificateRequest.organizationalUnit || null,

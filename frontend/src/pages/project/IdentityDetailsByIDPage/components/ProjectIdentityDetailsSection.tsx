@@ -118,7 +118,7 @@ export const ProjectIdentityDetailsSection = ({
                 ) : (
                   <Badge variant="project">
                     <ProjectIcon />
-                    Project
+                    {isCertManager ? "Certificate Manager" : "Project"}
                   </Badge>
                 )}
               </DetailValue>

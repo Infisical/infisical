@@ -99,7 +99,7 @@ const PageContent = () => {
               });
             }}
           >
-            {applicationName || "PKI Syncs"}
+            {applicationName ? "Back to Application" : "PKI Syncs"}
           </Button>
           <div className="mb-6 flex w-full items-center gap-3">
             <img

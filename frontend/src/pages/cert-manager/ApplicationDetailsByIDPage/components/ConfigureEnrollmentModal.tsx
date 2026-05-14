@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Plus } from "lucide-react";
+import { EyeIcon, EyeOffIcon, FileTextIcon, Plus, RotateCwIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ConfirmActionModal, Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -26,15 +26,21 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  IconButton,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Switch,
-  TextArea
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { downloadFile } from "@app/helpers/download";
 import { useToggle } from "@app/hooks";
@@ -65,7 +71,62 @@ type Props = {
 const errorText = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
 
+const SectionCard = ({
+  title,
+  actions,
+  children,
+  className
+}: {
+  title: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <section
+    className={`rounded-md border border-border bg-foreground/[0.02] ${className ?? ""}`.trim()}
+  >
+    <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+      <h3 className="text-xs font-semibold tracking-wider text-accent uppercase">{title}</h3>
+      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+    </header>
+    <div className="space-y-4 px-4 py-4">{children}</div>
+  </section>
+);
+
 const CopyableField = ({
+  label,
+  value,
+  helper
+}: {
+  label: string;
+  value: string;
+  helper?: React.ReactNode;
+}) => {
+  const [copied, setCopied] = useToggle(false);
+  return (
+    <div>
+      {label ? <FieldLabel>{label}</FieldLabel> : null}
+      <InputGroup>
+        <InputGroupInput value={value} readOnly className="font-mono text-xs" />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            aria-label={`copy ${label || "value"}`}
+            onClick={() => {
+              navigator.clipboard.writeText(value);
+              setCopied.on();
+              setTimeout(() => setCopied.off(), COPY_RESET_MS);
+            }}
+          >
+            <FontAwesomeIcon icon={copied ? faCheck : faCopy} />
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
+      {helper ? <p className="mt-1 text-xs text-accent">{helper}</p> : null}
+    </div>
+  );
+};
+
+const SecretField = ({
   label,
   value,
   helper
@@ -75,25 +136,37 @@ const CopyableField = ({
   helper?: string;
 }) => {
   const [copied, setCopied] = useToggle(false);
+  const [shown, setShown] = useToggle(false);
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
-      <div className="flex gap-2">
-        <Input value={value} disabled />
-        <IconButton
-          aria-label={`copy ${label}`}
-          variant="outline"
-          className="w-10"
-          onClick={() => {
-            navigator.clipboard.writeText(value);
-            setCopied.on();
-            setTimeout(() => setCopied.off(), COPY_RESET_MS);
-          }}
-        >
-          <FontAwesomeIcon icon={copied ? faCheck : faCopy} />
-        </IconButton>
-      </div>
-      {helper ? <p className="mt-1 text-xs text-mineshaft-400">{helper}</p> : null}
+      <InputGroup>
+        <InputGroupInput
+          value={value}
+          readOnly
+          type={shown ? "text" : "password"}
+          className="font-mono text-xs"
+        />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            aria-label={shown ? "hide value" : "show value"}
+            onClick={setShown.toggle}
+          >
+            {shown ? <EyeOffIcon /> : <EyeIcon />}
+          </InputGroupButton>
+          <InputGroupButton
+            aria-label={`copy ${label}`}
+            onClick={() => {
+              navigator.clipboard.writeText(value);
+              setCopied.on();
+              setTimeout(() => setCopied.off(), COPY_RESET_MS);
+            }}
+          >
+            <FontAwesomeIcon icon={copied ? faCheck : faCopy} />
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
+      {helper ? <p className="mt-1 text-xs text-accent">{helper}</p> : null}
     </div>
   );
 };
@@ -186,54 +259,71 @@ const ApiPanel = ({
     }
   };
 
+  const apiEndpointUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/v1/cert-manager/certificates`
+      : "/api/v1/cert-manager/certificates";
+
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-mineshaft-300">
-        API enrollment lets clients request certificates by calling the Infisical API with this
-        profile.
-      </p>
-      <Controller
-        control={control}
-        name="autoRenew"
-        render={({ field }) => (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <FieldLabel>Auto-renew</FieldLabel>
-              <p className="text-xs text-mineshaft-400">
-                Automatically renew certificates issued via this profile before they expire.
-              </p>
-            </div>
-            <Switch id="api-auto-renew" checked={field.value} onCheckedChange={field.onChange} />
-          </div>
-        )}
-      />
-      {autoRenew && (
+    <div className="space-y-5">
+      <SectionCard title="Endpoint">
+        <CopyableField
+          label="API endpoint URL"
+          value={apiEndpointUrl}
+          helper={
+            <>
+              POST to this endpoint with <code className="font-mono">applicationId</code>,{" "}
+              <code className="font-mono">profileId</code>, and an{" "}
+              <code className="font-mono">attributes</code> object (commonName, ttl, etc.) in the
+              body to issue a certificate from this profile.
+            </>
+          }
+        />
+      </SectionCard>
+      <SectionCard title="Renewal">
         <Controller
           control={control}
-          name="renewBeforeDays"
-          rules={{ min: 1, max: 365 }}
-          render={({ field, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel>Renew before (days)</FieldLabel>
-              <FieldContent>
-                <Input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                  }
-                  placeholder="30"
-                  isError={Boolean(error)}
-                />
-              </FieldContent>
-              {error ? <FieldError>Must be between 1 and 365</FieldError> : null}
-              <FieldDescription>How many days before expiry to trigger renewal.</FieldDescription>
-            </Field>
+          name="autoRenew"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Auto-renew</FieldLabel>
+                <p className="text-xs text-accent">
+                  Automatically renew certificates issued via this profile before they expire.
+                </p>
+              </div>
+              <Switch id="api-auto-renew" checked={field.value} onCheckedChange={field.onChange} />
+            </div>
           )}
         />
-      )}
+        {autoRenew && (
+          <Controller
+            control={control}
+            name="renewBeforeDays"
+            rules={{ min: 1, max: 365 }}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Renew before (days)</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                    }
+                    placeholder="30"
+                    isError={Boolean(error)}
+                  />
+                </FieldContent>
+                {error ? <FieldError>Must be between 1 and 365</FieldError> : null}
+                <FieldDescription>How many days before expiry to trigger renewal.</FieldDescription>
+              </Field>
+            )}
+          />
+        )}
+      </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
           <DisableEnrollmentButton
@@ -309,67 +399,84 @@ const EstPanel = ({
   };
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-mineshaft-300">
-        EST clients will authenticate to this profile with the passphrase below.
-      </p>
+    <div className="space-y-5">
       {enabled && initial?.estEndpointUrl ? (
-        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+        <SectionCard title="Endpoint">
           <CopyableField
             label="EST endpoint base URL"
             value={initial.estEndpointUrl}
-            helper="Append /simpleenroll, /simplereenroll, or /cacerts depending on the operation."
+            helper={
+              <>
+                Append <code className="font-mono">/simpleenroll</code>,{" "}
+                <code className="font-mono">/simplereenroll</code>, or{" "}
+                <code className="font-mono">/cacerts</code> depending on the operation.
+              </>
+            }
           />
-        </div>
+        </SectionCard>
       ) : null}
-      <Controller
-        control={control}
-        name="passphrase"
-        rules={{ required: !enabled, minLength: 8 }}
-        render={({ field, fieldState: { error } }) => (
-          <Field>
-            <FieldLabel>
-              {enabled ? "New passphrase (leave blank to keep current)" : "Passphrase"}
-            </FieldLabel>
-            <FieldContent>
-              <Input type="password" {...field} placeholder="••••••••" isError={Boolean(error)} />
-            </FieldContent>
-            {error ? <FieldError>Minimum 8 characters</FieldError> : null}
-          </Field>
-        )}
-      />
-      <Controller
-        control={control}
-        name="caChain"
-        render={({ field }) => (
-          <Field>
-            <FieldLabel>CA chain (optional)</FieldLabel>
-            <FieldContent>
-              <TextArea {...field} rows={3} placeholder="-----BEGIN CERTIFICATE-----..." />
-            </FieldContent>
-            <FieldDescription>PEM-encoded chain returned by the EST endpoint.</FieldDescription>
-          </Field>
-        )}
-      />
-      <Controller
-        control={control}
-        name="disableBootstrapCaValidation"
-        render={({ field }) => (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <FieldLabel>Disable bootstrap CA validation</FieldLabel>
-              <p className="text-xs text-mineshaft-400">
-                Allow EST clients to skip server certificate validation during enrollment.
-              </p>
+      <SectionCard title="Authentication">
+        <Controller
+          control={control}
+          name="passphrase"
+          rules={{ required: !enabled, minLength: 8 }}
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>{enabled ? "New passphrase" : "Passphrase"}</FieldLabel>
+              <FieldContent>
+                <Input type="password" {...field} placeholder="••••••••" isError={Boolean(error)} />
+              </FieldContent>
+              <FieldDescription>
+                {enabled
+                  ? "Leave blank to keep the current passphrase."
+                  : "Minimum 8 characters. EST clients authenticate with this passphrase."}
+              </FieldDescription>
+              {error ? <FieldError>Minimum 8 characters</FieldError> : null}
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="caChain"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel>CA chain (optional)</FieldLabel>
+              <FieldContent>
+                <TextArea
+                  {...field}
+                  rows={4}
+                  placeholder={
+                    "-----BEGIN CERTIFICATE-----\nMIIDdzCCAl+gAwIBAgIUJrK4...\n-----END CERTIFICATE-----"
+                  }
+                  className="font-mono text-xs"
+                />
+              </FieldContent>
+              <FieldDescription>PEM-encoded chain returned by the EST endpoint.</FieldDescription>
+            </Field>
+          )}
+        />
+      </SectionCard>
+      <SectionCard title="Advanced options">
+        <Controller
+          control={control}
+          name="disableBootstrapCaValidation"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Disable bootstrap CA validation</FieldLabel>
+                <p className="text-xs text-accent">
+                  Allow EST clients to skip server-certificate validation during enrollment.
+                </p>
+              </div>
+              <Switch
+                id="est-disable-bootstrap"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
             </div>
-            <Switch
-              id="est-disable-bootstrap"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          </div>
-        )}
-      />
+          )}
+        />
+      </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
           <DisableEnrollmentButton
@@ -457,6 +564,10 @@ const AcmePanel = ({
   };
 
   const onReveal = async () => {
+    if (credentials) {
+      setCredentials(null);
+      return;
+    }
     try {
       const data = await revealMutation.mutateAsync({ applicationId, profileId });
       setCredentials({ eabKid: data.eabKid, eabSecret: data.eabSecret });
@@ -477,80 +588,148 @@ const AcmePanel = ({
   };
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-mineshaft-300">
-        ACME clients use the EAB credentials below to register an account against this profile.
-      </p>
+    <div className="space-y-5">
       {enabled && initial?.directoryUrl ? (
-        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
-          <CopyableField label="ACME directory URL" value={initial.directoryUrl} />
-        </div>
+        <SectionCard title="Endpoint">
+          <CopyableField
+            label="ACME directory URL"
+            value={initial.directoryUrl}
+            helper="Point your ACME client at this URL to register an account."
+          />
+        </SectionCard>
       ) : null}
-      <p className="text-xs text-mineshaft-400">
-        Pick at most one of the two options below — they are mutually exclusive.
-      </p>
-      <Controller
-        control={control}
-        name="skipDnsOwnershipVerification"
-        render={({ field }) => (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <FieldLabel>Skip DNS ownership verification</FieldLabel>
-              <p className="text-xs text-mineshaft-400">
-                Skip DNS-01 / HTTP-01 challenge enforcement. Use only inside trusted networks.
-              </p>
-            </div>
-            <Switch
-              id="acme-skip-dns"
-              checked={field.value}
-              onCheckedChange={(v) => {
-                field.onChange(v);
-                if (v) setValue("skipEabBinding", false);
-              }}
-              disabled={skipEab}
-            />
-          </div>
-        )}
-      />
-      <Controller
-        control={control}
-        name="skipEabBinding"
-        render={({ field }) => (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <FieldLabel>Skip EAB binding</FieldLabel>
-              <p className="text-xs text-mineshaft-400">
-                Allow accounts to register without an EAB key. Recommended off in production.
-              </p>
-            </div>
-            <Switch
-              id="acme-skip-eab"
-              checked={field.value}
-              onCheckedChange={(v) => {
-                field.onChange(v);
-                if (v) setValue("skipDnsOwnershipVerification", false);
-              }}
-              disabled={skipDns}
-            />
-          </div>
-        )}
-      />
       {enabled && (
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onReveal} isPending={revealMutation.isPending}>
-            Reveal EAB credentials
-          </Button>
-          <Button variant="outline" onClick={onRotate} isPending={rotateMutation.isPending}>
-            Rotate EAB secret
-          </Button>
-        </div>
+        <SectionCard
+          title="EAB credentials"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={onReveal}
+                isPending={revealMutation.isPending}
+              >
+                {credentials ? <EyeOffIcon /> : <EyeIcon />}
+                {credentials ? "Hide" : "Reveal"}
+              </Button>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={onRotate}
+                isPending={rotateMutation.isPending}
+              >
+                <RotateCwIcon />
+                Rotate
+              </Button>
+            </>
+          }
+        >
+          {credentials ? (
+            <>
+              <CopyableField label="EAB KID" value={credentials.eabKid} />
+              <SecretField
+                label="EAB Secret"
+                value={credentials.eabSecret}
+                helper="External Account Binding key + secret used by ACME clients to register against this profile."
+              />
+            </>
+          ) : (
+            <p className="text-xs text-accent">
+              EAB credentials are hidden by default. Reveal them to copy into your ACME client.
+            </p>
+          )}
+        </SectionCard>
       )}
-      {credentials && (
-        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
-          <CopyableField label="EAB KID" value={credentials.eabKid} />
-          <CopyableField label="EAB Secret" value={credentials.eabSecret} />
-        </div>
-      )}
+      <SectionCard title="Advanced options">
+        <Controller
+          control={control}
+          name="skipDnsOwnershipVerification"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Skip DNS ownership verification</FieldLabel>
+                <p className="text-xs text-accent">
+                  Skip DNS-01 / HTTP-01 challenge enforcement during enrollment.
+                </p>
+              </div>
+              {skipEab ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* span wrapper lets the tooltip listen for hover on a disabled control */}
+                    <span className="inline-flex">
+                      <Switch
+                        id="acme-skip-dns"
+                        checked={field.value}
+                        onCheckedChange={(v) => {
+                          field.onChange(v);
+                          if (v) setValue("skipEabBinding", false);
+                        }}
+                        disabled
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    You can only enable one of these at a time. Disable “Skip EAB binding” first.
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Switch
+                  id="acme-skip-dns"
+                  checked={field.value}
+                  onCheckedChange={(v) => {
+                    field.onChange(v);
+                    if (v) setValue("skipEabBinding", false);
+                  }}
+                />
+              )}
+            </div>
+          )}
+        />
+        <Controller
+          control={control}
+          name="skipEabBinding"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Skip EAB binding</FieldLabel>
+                <p className="text-xs text-accent">
+                  Allow ACME accounts to register without providing an EAB key.
+                </p>
+              </div>
+              {skipDns ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Switch
+                        id="acme-skip-eab"
+                        checked={field.value}
+                        onCheckedChange={(v) => {
+                          field.onChange(v);
+                          if (v) setValue("skipDnsOwnershipVerification", false);
+                        }}
+                        disabled
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    You can only enable one of these at a time. Disable “Skip DNS ownership
+                    verification” first.
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Switch
+                  id="acme-skip-eab"
+                  checked={field.value}
+                  onCheckedChange={(v) => {
+                    field.onChange(v);
+                    if (v) setValue("skipDnsOwnershipVerification", false);
+                  }}
+                />
+              )}
+            </div>
+          )}
+        />
+      </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
           <DisableEnrollmentButton
@@ -660,13 +839,9 @@ const ScepPanel = ({
     : null;
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-mineshaft-300">
-        SCEP clients enroll by presenting a challenge password. Use static for shared passwords,
-        dynamic for one-time per-client challenges.
-      </p>
+    <div className="space-y-5">
       {enabled && initial ? (
-        <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+        <SectionCard title="Endpoint">
           <CopyableField
             label="SCEP endpoint URL"
             value={initial.scepEndpointUrl}
@@ -676,150 +851,177 @@ const ScepPanel = ({
             <CopyableField
               label="Challenge endpoint URL"
               value={initial.challengeEndpointUrl}
-              helper="Authenticated POST endpoint to mint a one-time challenge (e.g., the JAMF SCEPChallenge webhook)."
+              helper="Authenticated POST endpoint to mint a one-time challenge (e.g. the JAMF SCEPChallenge webhook)."
             />
           ) : null}
-          {initial.raCertificatePem ? (
-            <div>
-              <FieldLabel>RA certificate</FieldLabel>
-              <div className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-                <p className="text-xs text-mineshaft-400">
-                  Expires: {raCertExpiresAtLabel ?? "Unknown"}
-                </p>
-                <IconButton
-                  aria-label="download RA certificate"
-                  variant="outline"
-                  onClick={() =>
-                    downloadFile(
-                      initial.raCertificatePem,
-                      `${profileSlug}-ra-cert.pem`,
-                      "application/x-pem-file"
-                    )
-                  }
-                  className="flex w-auto items-center gap-2 px-3"
-                >
-                  <FontAwesomeIcon icon={faDownload} />
-                  <span className="text-sm">Download PEM</span>
-                </IconButton>
-              </div>
-            </div>
-          ) : null}
-        </div>
+        </SectionCard>
       ) : null}
-      <Controller
-        control={control}
-        name="challengeType"
-        render={({ field }) => (
-          <Field>
-            <FieldLabel>Challenge type</FieldLabel>
-            <FieldContent>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="static">Static password</SelectItem>
-                  <SelectItem value="dynamic">Dynamic (per-client)</SelectItem>
-                </SelectContent>
-              </Select>
-            </FieldContent>
-          </Field>
-        )}
-      />
-      {challengeType === "static" && (
+      {enabled && initial?.raCertificatePem ? (
+        <SectionCard
+          title="RA certificate"
+          actions={
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() =>
+                downloadFile(
+                  initial.raCertificatePem,
+                  `${profileSlug}-ra-cert.pem`,
+                  "application/x-pem-file"
+                )
+              }
+            >
+              <FontAwesomeIcon icon={faDownload} />
+              Download PEM
+            </Button>
+          }
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-accent">
+              <FileTextIcon />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-mono text-sm text-foreground">{profileSlug}-ra-cert.pem</span>
+              <span className="text-xs text-accent">
+                Expires {raCertExpiresAtLabel ?? "Unknown"}
+              </span>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
+      <SectionCard title="Challenge">
         <Controller
           control={control}
-          name="challengePassword"
-          rules={{ required: !enabled }}
-          render={({ field, fieldState: { error } }) => (
+          name="challengeType"
+          render={({ field }) => (
             <Field>
-              <FieldLabel>
-                {enabled
-                  ? "New challenge password (leave blank to keep current)"
-                  : "Challenge password"}
-              </FieldLabel>
+              <FieldLabel>Challenge type</FieldLabel>
               <FieldContent>
-                <Input type="password" {...field} placeholder="••••••••" isError={Boolean(error)} />
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="static">Static password</SelectItem>
+                    <SelectItem value="dynamic">Dynamic (per-client)</SelectItem>
+                  </SelectContent>
+                </Select>
               </FieldContent>
-              {error ? <FieldError>Required</FieldError> : null}
+              <FieldDescription>
+                {field.value === "static"
+                  ? "All clients present the same shared challenge password."
+                  : "Each client requests a fresh, one-time challenge before enrolling."}
+              </FieldDescription>
             </Field>
           )}
         />
-      )}
-      {challengeType === "dynamic" && (
-        <div className="grid grid-cols-2 gap-4">
+        {challengeType === "static" && (
           <Controller
             control={control}
-            name="dynamicChallengeExpiryMinutes"
-            render={({ field }) => (
+            name="challengePassword"
+            rules={{ required: !enabled }}
+            render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Challenge expiry (minutes)</FieldLabel>
+                <FieldLabel>{enabled ? "New challenge password" : "Challenge password"}</FieldLabel>
                 <FieldContent>
                   <Input
-                    type="number"
-                    min={5}
-                    max={1440}
-                    value={field.value ?? ""}
-                    onChange={(e) =>
-                      field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                    }
+                    type="password"
+                    {...field}
+                    placeholder="••••••••"
+                    isError={Boolean(error)}
                   />
                 </FieldContent>
+                <FieldDescription>
+                  {enabled
+                    ? "Leave blank to keep the current challenge password."
+                    : "Shared password presented by every SCEP client during enrollment."}
+                </FieldDescription>
+                {error ? <FieldError>Required</FieldError> : null}
               </Field>
             )}
           />
-          <Controller
-            control={control}
-            name="dynamicChallengeMaxPending"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel>Max pending challenges</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={field.value ?? ""}
-                    onChange={(e) =>
-                      field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                    }
-                  />
-                </FieldContent>
-              </Field>
-            )}
-          />
-        </div>
-      )}
-      <Controller
-        control={control}
-        name="includeCaCertInResponse"
-        render={({ field }) => (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <FieldLabel>Include CA cert in response</FieldLabel>
-              <p className="text-xs text-mineshaft-400">
-                Return the issuing CA certificate inline alongside the issued cert.
-              </p>
-            </div>
-            <Switch id="scep-include-ca" checked={field.value} onCheckedChange={field.onChange} />
+        )}
+        {challengeType === "dynamic" && (
+          <div className="grid grid-cols-2 gap-4">
+            <Controller
+              control={control}
+              name="dynamicChallengeExpiryMinutes"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Challenge expiry (minutes)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={5}
+                      max={1440}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="dynamicChallengeMaxPending"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Max pending challenges</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              )}
+            />
           </div>
         )}
-      />
-      <Controller
-        control={control}
-        name="allowCertBasedRenewal"
-        render={({ field }) => (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <FieldLabel>Allow cert-based renewal</FieldLabel>
-              <p className="text-xs text-mineshaft-400">
-                Let clients renew using their existing certificate as authentication.
-              </p>
+      </SectionCard>
+      <SectionCard title="Advanced options">
+        <Controller
+          control={control}
+          name="includeCaCertInResponse"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Include CA cert in response</FieldLabel>
+                <p className="text-xs text-accent">
+                  Return the issuing CA certificate inline alongside the issued cert.
+                </p>
+              </div>
+              <Switch id="scep-include-ca" checked={field.value} onCheckedChange={field.onChange} />
             </div>
-            <Switch id="scep-cert-renewal" checked={field.value} onCheckedChange={field.onChange} />
-          </div>
-        )}
-      />
+          )}
+        />
+        <Controller
+          control={control}
+          name="allowCertBasedRenewal"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Allow cert-based renewal</FieldLabel>
+                <p className="text-xs text-accent">
+                  Let clients renew using their existing certificate as authentication.
+                </p>
+              </div>
+              <Switch
+                id="scep-cert-renewal"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </div>
+          )}
+        />
+      </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
         {enabled && (
           <DisableEnrollmentButton
@@ -908,10 +1110,15 @@ export const ConfigureEnrollmentModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl overflow-visible">
+      <DialogContent className="max-h-[90vh] thin-scrollbar max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            Configure enrollment: <span className="font-mono">{profile?.profileSlug ?? ""}</span>
+          <DialogTitle className="flex items-center gap-2">
+            <span>Configure enrollment methods for</span>
+            {profile?.profileSlug ? (
+              <code className="rounded bg-primary/15 px-1.5 py-0.5 font-mono text-sm text-primary">
+                {profile.profileSlug}
+              </code>
+            ) : null}
           </DialogTitle>
           <DialogDescription>
             Enable an enrollment method to allow clients to request certificates from this Profile

@@ -10,7 +10,7 @@ import { Button, ConfirmActionModal, ContentLoader, EmptyState } from "@app/comp
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
@@ -18,6 +18,7 @@ import {
   CodeSigningRequestData,
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
+import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
 
 import {
   ApprovalStepsSection,
@@ -112,6 +113,10 @@ const PageContent = () => {
       requestId: approvalRequestId
     })
   );
+
+  const requestApplicationId =
+    request?.scopeType === ApprovalPolicyScope.PkiApplication ? (request.scopeId ?? "") : "";
+  const { data: requestApplication } = useGetPkiApplicationById(requestApplicationId);
 
   const handleRequestCancel = async () => {
     if (cancelApprovalRequest.isPending || !request) return;
@@ -240,6 +245,23 @@ const PageContent = () => {
             {reqData.certificateRequest?.commonName || reqData.profileName}
           </span>{" "}
           by {request.requesterName || "Unknown"}
+          {requestApplication && (
+            <>
+              {" "}
+              on application{" "}
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId: currentProject.id,
+                  applicationName: requestApplication.name
+                }}
+                className="font-medium text-mineshaft-200 underline hover:text-mineshaft-100"
+              >
+                {requestApplication.name}
+              </Link>
+            </>
+          )}
         </p>
       </>
     );
@@ -276,7 +298,7 @@ const PageContent = () => {
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
-          {applicationName}
+          Go back to Application
         </Link>
       );
     }

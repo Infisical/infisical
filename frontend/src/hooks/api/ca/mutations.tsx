@@ -42,7 +42,9 @@ export const useUpdateCa = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.getCaById(id)
       });
-      // Invalidate external CAs list
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
+      });
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
       });
@@ -64,7 +66,9 @@ export const useCreateCa = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(type)
       });
-      // Invalidate external CAs list
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
+      });
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
       });
@@ -85,7 +89,9 @@ export const useDeleteCa = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(type)
       });
-      // Invalidate external CAs list
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
+      });
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
       });
@@ -122,6 +128,9 @@ export const useImportCaCertificate = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
       });
     }
   });
@@ -182,6 +191,7 @@ export const useOrderCertificateWithProfile = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.allProjectCertificates()
       });
+      queryClient.invalidateQueries({ queryKey: ["approval-requests"] });
     }
   });
 };
@@ -229,6 +239,9 @@ export const useInstallCaCertificateVenafi = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
+      });
     }
   });
 };
@@ -255,6 +268,9 @@ export const useInstallCaCertificateAdcs = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
       });
     }
   });
@@ -371,6 +387,9 @@ export const useGenerateCaCertificate = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByProjectId()
       });
     }
   });

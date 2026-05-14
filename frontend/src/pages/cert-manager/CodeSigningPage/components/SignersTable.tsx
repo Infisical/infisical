@@ -29,6 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
@@ -280,9 +281,10 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             </TableBody>
           </Table>
           {!isLoading && signers.length === 0 && (
-            <Empty>
+            <Empty className="border border-solid">
               <EmptyHeader>
-                <EmptyTitle>No signers found</EmptyTitle>
+                <EmptyTitle>No signers yet</EmptyTitle>
+                <EmptyDescription>Create a signer to start signing artifacts</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}

@@ -305,7 +305,7 @@ export const IdentityTab = withProjectPermission(
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "No machine identities match search"
                         : isCertManager
-                          ? "No machine identities have been added to this Certificate Manager"
+                          ? "No machine identities have been added"
                           : "No machine identities have been added to this project"}
                     </EmptyTitle>
                     <EmptyDescription>
@@ -530,7 +530,7 @@ export const IdentityTab = withProjectPermission(
                                   {identityProjectId ? (
                                     <>
                                       <ProjectIcon />
-                                      Project
+                                      {productLabel}
                                     </>
                                   ) : isSubOrganization && currentOrg.id === identityOrgId ? (
                                     <>

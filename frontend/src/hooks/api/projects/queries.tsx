@@ -11,6 +11,7 @@ import { TGroupMembership } from "../groups/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
+import { pkiApplicationKeys } from "../pkiApplications/queries";
 import { TPkiCollection } from "../pkiCollections/types";
 import { TPkiSubscriber } from "../pkiSubscriber/types";
 import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
@@ -428,6 +429,7 @@ export const useDeleteUserFromWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };

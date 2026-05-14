@@ -5,7 +5,19 @@ import { format } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, Button, Input, Skeleton, Switch } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Skeleton,
+  Switch
+} from "@app/components/v3";
 import {
   useGetCertificateCleanupConfig,
   useUpdateCertificateCleanupConfig
@@ -69,89 +81,99 @@ export const CertificateCleanupTab = () => {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="mt-2 h-4 w-80" />
-        <div className="mt-6 flex flex-col gap-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-5 w-48" />
+          </CardTitle>
+          <CardDescription>
+            <Skeleton className="h-4 w-80" />
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-medium text-mineshaft-100">Certificate Cleanup</h2>
-            <p className="mt-1 text-sm text-gray-400">Automatically remove expired certificates</p>
-          </div>
-          <Controller
-            control={control}
-            name="isEnabled"
-            render={({ field: { value, onChange } }) => (
-              <Switch variant="project" checked={value} onCheckedChange={onChange} />
-            )}
-          />
-        </div>
-
-        {config?.lastRunAt && (
-          <div className="mt-6 rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-3">
-            <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
-              Last Execution
-            </p>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Status:</span>
-                <Badge variant={config.lastRunStatus === "success" ? "success" : "danger"}>
-                  {config.lastRunStatus === "success" ? "Success" : "Error"}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Last Run:</span>
-                <span className="text-xs font-medium text-mineshaft-100">
-                  {format(new Date(config.lastRunAt), "yyyy-MM-dd, hh:mm a")}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Certificates Removed:</span>
-                <span className="text-xs font-medium text-mineshaft-100">
-                  {config.lastRunCertsDeleted}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-6 flex flex-col gap-5">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-mineshaft-100">Delete certificates</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificate Cleanup</CardTitle>
+          <CardDescription>
+            Automatically remove certificates that have been expired beyond a configurable retention
+            window.
+          </CardDescription>
+          <CardAction className="@xs:self-center">
             <Controller
               control={control}
-              name="postExpiryRetentionDays"
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  type="number"
-                  className="w-20"
-                  min={1}
-                  max={30}
-                  disabled={!isEnabled}
-                />
+              name="isEnabled"
+              render={({ field: { value, onChange } }) => (
+                <Switch variant="project" checked={value} onCheckedChange={onChange} />
               )}
             />
-            <span className="text-sm text-gray-400">days after expiration</span>
-          </div>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {config?.lastRunAt && (
+            <div className="mb-6 rounded-md border border-border bg-foreground/[0.03] px-4 py-3">
+              <p className="mb-2 text-xs font-medium tracking-wide text-accent uppercase">
+                Last Execution
+              </p>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-accent">Status:</span>
+                  <Badge variant={config.lastRunStatus === "success" ? "success" : "danger"}>
+                    {config.lastRunStatus === "success" ? "Success" : "Error"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-accent">Last Run:</span>
+                  <span className="text-xs font-medium text-foreground">
+                    {format(new Date(config.lastRunAt), "yyyy-MM-dd, hh:mm a")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-accent">Certificates Removed:</span>
+                  <span className="text-xs font-medium text-foreground">
+                    {config.lastRunCertsDeleted}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="flex flex-col divide-y divide-mineshaft-600">
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-foreground">Delete certificates</span>
+              <Controller
+                control={control}
+                name="postExpiryRetentionDays"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    type="number"
+                    className="w-20"
+                    min={1}
+                    max={30}
+                    disabled={!isEnabled}
+                  />
+                )}
+              />
+              <span className="text-sm text-accent">days after expiration</span>
+            </div>
+
             <Controller
               control={control}
               name="skipCertsWithActiveSyncs"
               render={({ field: { value, onChange } }) => (
-                <div className="flex items-center gap-4 py-4">
+                <div className="flex items-center gap-4 border-t border-border py-4">
                   <Switch
                     variant="project"
                     checked={isEnabled && value}
@@ -159,25 +181,27 @@ export const CertificateCleanupTab = () => {
                     disabled={!isEnabled}
                   />
                   <div>
-                    <p className="text-sm font-medium text-mineshaft-100">
+                    <p className="text-sm font-medium text-foreground">
                       Skip Certificates with Active Syncs
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-400">
+                    <p className="mt-0.5 text-xs text-accent">
                       Do not remove certificates that are synced to external services
                     </p>
                   </div>
                 </div>
               )}
             />
-          </div>
 
-          {isDirty && (
-            <Button type="submit" variant="project" isPending={isSubmitting}>
-              Save
-            </Button>
-          )}
-        </div>
-      </div>
+            {isDirty && (
+              <div>
+                <Button type="submit" variant="project" isPending={isSubmitting}>
+                  Save
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </form>
   );
 };

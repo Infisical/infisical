@@ -9,7 +9,9 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -161,9 +163,14 @@ export const ApplicationsPage = () => {
             />
 
             <Card>
-              <CardHeader>
+              <CardHeader className="gap-x-6">
+                <CardTitle>Applications</CardTitle>
+                <CardDescription>
+                  Each Application represents a service or workload that issues and manages its own
+                  certificates.
+                </CardDescription>
                 {canCreateApplication ? (
-                  <CardAction className="ml-auto">
+                  <CardAction className="@xs:self-center">
                     <Button variant="project" onClick={() => handlePopUpOpen("application")}>
                       <PlusIcon />
                       Create Application

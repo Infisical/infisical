@@ -41,7 +41,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
               createdAt: z.date(),
               updatedAt: z.date(),
               roles: z.array(MembershipRoleSchema),
-              identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true })
+              identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true })
             })
             .array(),
           totalCount: z.number()

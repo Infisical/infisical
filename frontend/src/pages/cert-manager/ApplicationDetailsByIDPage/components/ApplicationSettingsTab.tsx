@@ -587,29 +587,42 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                     <TableRow key={p.profileId}>
                       <TableCell className="font-mono">{p.profileSlug}</TableCell>
                       <TableCell>
-                        <button
-                          type="button"
-                          onClick={() => setProfileToConfigure(p)}
-                          className="group -mx-2 inline-flex items-center gap-2 rounded-sm px-2 py-1 text-left transition-colors hover:bg-mineshaft-700/50"
-                          aria-label={
-                            hasMethods
-                              ? `Edit enrollment for ${p.profileSlug}`
-                              : `Configure enrollment for ${p.profileSlug}`
-                          }
-                        >
-                          {hasMethods ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {methods.map((m) => (
-                                <Badge key={m} variant="neutral">
-                                  {m}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-accent">Configure</span>
-                          )}
-                          <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-                        </button>
+                        {/* eslint-disable-next-line no-nested-ternary */}
+                        {canConfigureEnrollment ? (
+                          <button
+                            type="button"
+                            onClick={() => setProfileToConfigure(p)}
+                            className="group -mx-2 inline-flex items-center gap-2 rounded-sm px-2 py-1 text-left transition-colors hover:bg-mineshaft-700/50"
+                            aria-label={
+                              hasMethods
+                                ? `Edit enrollment for ${p.profileSlug}`
+                                : `Configure enrollment for ${p.profileSlug}`
+                            }
+                          >
+                            {hasMethods ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {methods.map((m) => (
+                                  <Badge key={m} variant="neutral">
+                                    {m}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-accent">Configure</span>
+                            )}
+                            <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                          </button>
+                        ) : hasMethods ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {methods.map((m) => (
+                              <Badge key={m} variant="neutral">
+                                {m}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-accent">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {canConfigureEnrollment || canManageProfileAttachments ? (
@@ -692,51 +705,55 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-full">Name</TableHead>
-                <TableHead className="whitespace-nowrap">Event Type</TableHead>
-                <TableHead className="whitespace-nowrap">Status</TableHead>
-                <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                <TableHead className="w-5 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isAlertsLoading &&
-                Array.from({ length: 3 }, (_, idx) => (
-                  <TableRow key={`alert-skeleton-${idx + 1}`}>
-                    {Array.from({ length: 6 }, (__, cellIdx) => (
-                      <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              {!isAlertsLoading && alerts.length === 0 && (
+          {!isAlertsLoading && alerts.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No alerts configured</EmptyTitle>
+                <EmptyDescription>
+                  Create one to get notified about certificate events for this Application.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-accent">
-                    No PKI alerts configured yet.
-                  </TableCell>
+                  <TableHead className="w-full">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Event Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
+                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
+                  <TableHead className="w-5 text-right">Actions</TableHead>
                 </TableRow>
-              )}
-              {!isAlertsLoading &&
-                alerts.map((a: TPkiAlertV2) => (
-                  <AlertRow
-                    key={a.id}
-                    alert={a}
-                    onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
-                    onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
-                    onDelete={() =>
-                      setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
-                    }
-                    canEdit={canEditAlerts}
-                    canDelete={canDeleteAlerts}
-                  />
-                ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isAlertsLoading &&
+                  Array.from({ length: 3 }, (_, idx) => (
+                    <TableRow key={`alert-skeleton-${idx + 1}`}>
+                      {Array.from({ length: 6 }, (__, cellIdx) => (
+                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                {!isAlertsLoading &&
+                  alerts.map((a: TPkiAlertV2) => (
+                    <AlertRow
+                      key={a.id}
+                      alert={a}
+                      onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
+                      onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
+                      onDelete={() =>
+                        setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
+                      }
+                      canEdit={canEditAlerts}
+                      canDelete={canDeleteAlerts}
+                    />
+                  ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

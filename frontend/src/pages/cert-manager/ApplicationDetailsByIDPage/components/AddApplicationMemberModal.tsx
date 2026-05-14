@@ -16,17 +16,17 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups
 } from "@app/hooks/api/organization";
-import { useCreateOrgIdentity } from "@app/hooks/api/orgIdentity";
 import {
   TPkiApplicationMember,
   useAddPkiApplicationMember,
   useAddPkiApplicationUserMembers
 } from "@app/hooks/api/pkiApplications";
+import { useCreateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import {
   useCreateProjectIdentityMembership,
   useListProjectIdentityMemberships
@@ -81,8 +81,8 @@ const NoUserOptions = () => (
 
 const NoIdentityOptions = () => (
   <p>
-    No matching identities. Type a name to create a new machine identity in the org and attach it to
-    this Application.
+    No matching identities. Type a name to create a new machine identity in this project and attach
+    it to this Application.
   </p>
 );
 
@@ -93,7 +93,9 @@ export const AddApplicationMemberModal = ({
   existingMembers
 }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const orgId = currentOrg?.id ?? "";
+  const projectId = currentProject?.id ?? "";
 
   const [type, setType] = useState<ActorType>("user");
   const [selectedUsers, setSelectedUsers] = useState<Option[]>([]);
@@ -118,7 +120,7 @@ export const AddApplicationMemberModal = ({
 
   const addMember = useAddPkiApplicationMember();
   const addUserMembers = useAddPkiApplicationUserMembers();
-  const createIdentity = useCreateOrgIdentity();
+  const createProjectIdentity = useCreateProjectIdentity();
   const addIdentityToProject = useCreateProjectIdentityMembership();
 
   const taken = useMemo(() => {
@@ -207,22 +209,24 @@ export const AddApplicationMemberModal = ({
 
   const submitIdentities = async () => {
     if (selectedIdentities.length === 0) return;
+    const newlyCreatedIds = new Set<string>();
     const identityIds: string[] = [];
     await runSequential(selectedIdentities, async (item) => {
       if (item.isNew) {
-        const created = await createIdentity.mutateAsync({
-          organizationId: orgId,
+        const created = await createProjectIdentity.mutateAsync({
+          projectId,
           name: item.value,
           hasDeleteProtection: false
         });
         identityIds.push(created.id);
+        newlyCreatedIds.add(created.id);
       } else {
         identityIds.push(item.value);
       }
     });
 
     const idsNeedingProjectMembership = identityIds.filter(
-      (id) => !identityIdsAlreadyInProject.has(id)
+      (id) => !newlyCreatedIds.has(id) && !identityIdsAlreadyInProject.has(id)
     );
     await runSequential(idsNeedingProjectMembership, async (identityId) => {
       await addIdentityToProject.mutateAsync({

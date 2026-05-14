@@ -68,6 +68,7 @@ const Page = () => {
   const { fromApplication } = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
+  const isInventoryView = !fromApplication;
 
   const projectId = currentProject?.id || "";
 
@@ -215,7 +216,7 @@ const Page = () => {
                     className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
                   >
                     <ChevronLeftIcon size={16} />
-                    Application Certificates
+                    Go back to Application
                   </Link>
                 ) : (
                   <Link
@@ -269,7 +270,8 @@ const Page = () => {
                         )}
                       </ProjectPermissionCan>
                       {/* Enable/Manage auto renewal - conditional */}
-                      {certificate.profileId &&
+                      {!isInventoryView &&
+                        certificate.profileId &&
                         certificate.hasPrivateKey !== false &&
                         !certificate.renewedByCertificateId &&
                         !isRevoked &&
@@ -322,7 +324,8 @@ const Page = () => {
                           </ProjectPermissionCan>
                         )}
                       {/* Disable auto renewal - conditional */}
-                      {certificate.profileId &&
+                      {!isInventoryView &&
+                        certificate.profileId &&
                         certificate.hasPrivateKey !== false &&
                         !certificate.renewedByCertificateId &&
                         !isRevoked &&
@@ -350,7 +353,8 @@ const Page = () => {
                           </ProjectPermissionCan>
                         )}
                       {/* Renew Now - conditional */}
-                      {(certificate.profileId || certificate.caId) &&
+                      {!isInventoryView &&
+                        (certificate.profileId || certificate.caId) &&
                         certificate.hasPrivateKey !== false &&
                         !certificate.renewedByCertificateId &&
                         !isRevoked &&
@@ -381,7 +385,8 @@ const Page = () => {
                           </ProjectPermissionCan>
                         )}
                       {/* Manage PKI Syncs - conditional */}
-                      {certificate.status === CertStatus.ACTIVE &&
+                      {!isInventoryView &&
+                        certificate.status === CertStatus.ACTIVE &&
                         !certificate.renewedByCertificateId &&
                         certificate.source === CertSource.Issued && (
                           <ProjectPermissionCan
@@ -406,7 +411,8 @@ const Page = () => {
                       {/* Revoke Certificate - conditional */}
                       {supportsRevocation &&
                         !isRevoked &&
-                        certificate.source === CertSource.Issued && (
+                        certificate.source === CertSource.Issued &&
+                        !(isInventoryView && certificate.applicationId) && (
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateActions.Delete}
                             a={subject(ProjectPermissionSub.Certificates, {
@@ -431,27 +437,29 @@ const Page = () => {
                             )}
                           </ProjectPermissionCan>
                         )}
-                      {/* Delete Certificate - always available */}
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificateActions.Delete}
-                        a={subject(ProjectPermissionSub.Certificates, {
-                          commonName: certificate.commonName,
-                          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-                          serialNumber: certificate.serialNumber,
-                          friendlyName: certificate.friendlyName,
-                          metadata: certificate.metadata
-                        })}
-                      >
-                        {(canDelete) => (
-                          <DropdownMenuItem
-                            variant="danger"
-                            isDisabled={!canDelete}
-                            onClick={() => handlePopUpOpen("deleteCertificate")}
-                          >
-                            Delete Certificate
-                          </DropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
+                      {/* Delete Certificate - hidden in inventory when cert is app-bound */}
+                      {!(isInventoryView && certificate.applicationId) && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionCertificateActions.Delete}
+                          a={subject(ProjectPermissionSub.Certificates, {
+                            commonName: certificate.commonName,
+                            altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+                            serialNumber: certificate.serialNumber,
+                            friendlyName: certificate.friendlyName,
+                            metadata: certificate.metadata
+                          })}
+                        >
+                          {(canDelete) => (
+                            <DropdownMenuItem
+                              variant="danger"
+                              isDisabled={!canDelete}
+                              onClick={() => handlePopUpOpen("deleteCertificate")}
+                            >
+                              Delete Certificate
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </PageHeader>
@@ -485,6 +493,7 @@ const Page = () => {
       <CertificateManagePkiSyncsModal
         popUp={popUp.managePkiSyncs}
         handlePopUpToggle={handlePopUpToggle}
+        applicationName={fromApplication}
       />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}

@@ -9,7 +9,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -462,14 +462,7 @@ export const pkiSyncServiceFactory = ({
       pkiSyncSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
     }
 
-    const deleteAllowedByProject = permission.can(
-      ProjectPermissionPkiSyncActions.Delete,
-      subject(ProjectPermissionSub.PkiSyncs, {
-        subscriberName: pkiSyncSubscriber?.name,
-        name: pkiSync.name
-      })
-    );
-    if (!deleteAllowedByProject) {
+    if (pkiSync.applicationId) {
       const deleteAllowedByResource = await $resourceFallback(
         ResourcePermissionPkiSyncActions.Delete,
         pkiSync.projectId,
@@ -477,14 +470,18 @@ export const pkiSyncServiceFactory = ({
         actor
       );
       if (!deleteAllowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionPkiSyncActions.Delete,
-          subject(ProjectPermissionSub.PkiSyncs, {
-            subscriberName: pkiSyncSubscriber?.name,
-            name: pkiSync.name
-          })
-        );
+        throw new ForbiddenRequestError({
+          message: "You do not have permission to delete this Application's certificate sync"
+        });
       }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiSyncActions.Delete,
+        subject(ProjectPermissionSub.PkiSyncs, {
+          subscriberName: pkiSyncSubscriber?.name,
+          name: pkiSync.name
+        })
+      );
     }
 
     return pkiSyncDAL.deleteById(id);

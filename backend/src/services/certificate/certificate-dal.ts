@@ -517,7 +517,28 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.ref("enrollmentType").withSchema(TableName.PkiCertificateProfile).as("enrollmentType"))
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??
+            ) as ??`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType",
+              "enrollmentType"
+            ]
+          )
+        )
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {

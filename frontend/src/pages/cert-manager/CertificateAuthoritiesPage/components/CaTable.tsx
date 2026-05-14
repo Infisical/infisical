@@ -90,7 +90,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
           <TableHead>Status</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>Valid Until</TableHead>
-          <TableHead />
+          <TableHead className="w-5" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -134,10 +134,10 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                   </p>
                 </div>
               </TableCell>
-              <TableCell className="flex justify-end">
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild className="rounded-lg">
-                    <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                    <div className="inline-flex hover:text-primary-400 data-[state=open]:text-primary-400">
                       <Tooltip content="More options">
                         <FontAwesomeIcon size="lg" icon={faEllipsis} />
                       </Tooltip>

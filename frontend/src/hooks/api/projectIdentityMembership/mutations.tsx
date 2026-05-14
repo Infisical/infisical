@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { identitiesKeys, projectKeys } from "@app/hooks/api";
 import { identityMembershipsBase } from "@app/hooks/api/certManagerAccess";
+import { pkiApplicationKeys } from "@app/hooks/api/pkiApplications/queries";
 import { projectIdentityQuery } from "@app/hooks/api/projectIdentity";
 
 import {
@@ -40,6 +41,7 @@ export const useCreateProjectIdentityMembership = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };
@@ -99,6 +101,7 @@ export const useDeleteProjectIdentityMembership = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
 };

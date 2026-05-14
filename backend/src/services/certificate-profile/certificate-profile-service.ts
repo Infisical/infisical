@@ -1401,7 +1401,7 @@ export const certificateProfileServiceFactory = ({
       );
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new ForbiddenRequestError({
         message: "Profile is not configured for EST enrollment"
       });

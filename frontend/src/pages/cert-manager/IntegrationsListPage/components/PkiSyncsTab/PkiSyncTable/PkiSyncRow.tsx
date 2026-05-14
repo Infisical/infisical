@@ -40,6 +40,11 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useToggle } from "@app/hooks";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
 import { PkiSyncStatus, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationCol } from "./PkiSyncDestinationCol";
@@ -83,6 +88,14 @@ export const PkiSyncRow = ({
 
   const { currentOrg } = useOrganization();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canDeleteAppSync = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Delete,
+      PkiApplicationResourceSub.PkiSyncs
+    )
+  );
 
   const handleCopyId = useCallback(() => {
     setIsIdCopied.on();
@@ -180,7 +193,7 @@ export const PkiSyncRow = ({
             <PkiSyncDestinationCol pkiSync={pkiSync} />
             <TableCell>
               <div className="flex items-center gap-1">
-                {syncStatus && (
+                {syncStatus ? (
                   <Tooltip
                     position="left"
                     className="max-w-sm"
@@ -225,6 +238,13 @@ export const PkiSyncRow = ({
                       <PkiSyncStatusBadge status={syncStatus} />
                     </div>
                   </Tooltip>
+                ) : (
+                  <Tooltip
+                    className="text-xs"
+                    content="This sync has not run yet — no certificates have been pushed to the destination."
+                  >
+                    <Badge variant="neutral">Not Synced</Badge>
+                  </Tooltip>
                 )}
                 {!isAutoSyncEnabled && (
                   <Tooltip
@@ -233,7 +253,7 @@ export const PkiSyncRow = ({
                   >
                     <Badge variant="neutral">
                       <BanIcon />
-                      {!syncStatus && "Auto-Sync Disabled"}
+                      Auto-Sync Disabled
                     </Badge>
                   </Tooltip>
                 )}
@@ -371,13 +391,9 @@ export const PkiSyncRow = ({
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionPkiSyncActions.Delete}
-                    a={permissionSubject}
-                  >
-                    {(allowed: boolean) => (
+                  {applicationId ? (
+                    canDeleteAppSync && (
                       <DropdownMenuItem
-                        isDisabled={!allowed}
                         icon={<FontAwesomeIcon icon={faTrash} />}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -386,8 +402,26 @@ export const PkiSyncRow = ({
                       >
                         Delete Sync
                       </DropdownMenuItem>
-                    )}
-                  </ProjectPermissionCan>
+                    )
+                  ) : (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionPkiSyncActions.Delete}
+                      a={permissionSubject}
+                    >
+                      {(allowed: boolean) => (
+                        <DropdownMenuItem
+                          isDisabled={!allowed}
+                          icon={<FontAwesomeIcon icon={faTrash} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(pkiSync);
+                          }}
+                        >
+                          Delete Sync
+                        </DropdownMenuItem>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>
