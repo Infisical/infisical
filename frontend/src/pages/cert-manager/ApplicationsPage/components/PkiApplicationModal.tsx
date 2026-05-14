@@ -126,7 +126,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
           <DialogTitle>{editing ? "Edit Application" : "Create Application"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Update this Application's name and description. Changing the name will invalidate any deep links."
+              ? "Update this Application's name and description."
               : "A logical grouping for a service or workload that needs certificates."}
           </DialogDescription>
         </DialogHeader>

@@ -1105,11 +1105,30 @@ export const internalCertificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    let notBefore: Date | undefined;
+    let notAfter: Date | undefined;
+    let maxPathLength: number | undefined;
+    try {
+      const certObj = new x509.X509Certificate(certificate);
+      notBefore = certObj.notBefore;
+      notAfter = certObj.notAfter;
+      const basicConstraintsExt = certObj.getExtension(x509.BasicConstraintsExtension);
+      if (basicConstraintsExt && basicConstraintsExt.ca) {
+        maxPathLength = basicConstraintsExt.pathLength ?? -1;
+      }
+    } catch {
+      // ignore parse errors and return undefined values
+    }
+
     return {
       certificate,
       certificateChain,
       serialNumber,
       certId,
+      notBefore,
+      notAfter,
+      maxPathLength,
+      parentCaId: ca.internalCa.parentCaId ?? undefined,
       ca: expandInternalCa(ca)
     };
   };

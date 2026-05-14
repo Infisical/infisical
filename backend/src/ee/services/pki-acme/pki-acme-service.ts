@@ -1198,6 +1198,7 @@ export const pkiAcmeServiceFactory = ({
             {
               projectId: profile.projectId,
               profileId: profile.id,
+              applicationId: accountApplicationId ?? null,
               commonName: certificateRequest.commonName || null,
               altNames: altNames ? JSON.stringify(altNames) : null,
               keyUsages: certificateRequest.keyUsages || null,

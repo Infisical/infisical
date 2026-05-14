@@ -193,11 +193,14 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
         projectId,
         event: {
-          type: EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP,
-          metadata: { identityId: req.params.identityId, roles: req.body.roles }
+          type: EventType.ADD_CERT_MANAGER_IDENTITY,
+          metadata: {
+            identityId: req.params.identityId,
+            membershipId: membership.id,
+            roles: (roles || [{ role }]).map((r) => r.role)
+          }
         }
       });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };
@@ -225,11 +228,14 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
         projectId,
         event: {
-          type: EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP,
-          metadata: { identityId: req.params.identityId, roles: req.body.roles }
+          type: EventType.UPDATE_CERT_MANAGER_IDENTITY,
+          metadata: {
+            identityId: req.params.identityId,
+            membershipId: membership.id,
+            roles: req.body.roles.map((r) => r.role)
+          }
         }
       });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };
@@ -260,11 +266,10 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
         projectId,
         event: {
-          type: EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP,
-          metadata: { identityId: req.params.identityId }
+          type: EventType.REMOVE_CERT_MANAGER_IDENTITY,
+          metadata: { identityId: req.params.identityId, membershipId: membership.id }
         }
       });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };

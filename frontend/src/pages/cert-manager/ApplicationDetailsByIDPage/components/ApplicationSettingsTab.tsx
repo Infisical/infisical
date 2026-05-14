@@ -142,7 +142,7 @@ const ApplicationPoliciesTable = ({
         <EmptyHeader>
           <EmptyTitle>No approval policies</EmptyTitle>
           <EmptyDescription>
-            Create one to require approval before certificates are issued for this Application.
+            Create one to require approval before certificates are issued for this application.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -565,7 +565,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No profiles attached</EmptyTitle>
                 <EmptyDescription>
-                  Attach a certificate profile, then configure how this Application enrolls against
+                  Attach a certificate profile, then configure how this application enrolls against
                   it.
                 </EmptyDescription>
               </EmptyHeader>
@@ -665,7 +665,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <CardHeader>
           <CardTitle>Approval Policies</CardTitle>
           <CardDescription>
-            Require approval before certificates are issued for this Application.
+            Require approval before certificates are issued for this application.
           </CardDescription>
           <CardAction>
             <Button
@@ -710,7 +710,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No alerts configured</EmptyTitle>
                 <EmptyDescription>
-                  Create one to get notified about certificate events for this Application.
+                  Create one to get notified about certificate events for this application.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -799,7 +799,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           <DialogHeader>
             <DialogTitle>Attach Profiles</DialogTitle>
             <DialogDescription>
-              Select one or more profiles to attach to this Application.
+              Select one or more profiles to attach to this application.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
@@ -832,7 +832,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
       <DeleteActionModal
         isOpen={Boolean(profileToDetach)}
         title={`Detach profile ${profileToDetach?.profileSlug ?? ""}?`}
-        subTitle="This Application will no longer be able to issue from this Profile. Existing certificates remain."
+        subTitle="This application will no longer be able to issue from this Profile. Existing certificates remain."
         deleteKey="confirm"
         onChange={(open) => {
           if (!open) setProfileToDetach(null);

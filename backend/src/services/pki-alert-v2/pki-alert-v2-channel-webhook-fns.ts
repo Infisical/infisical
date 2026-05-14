@@ -46,12 +46,14 @@ type TBuildWebhookPayloadParams = {
 // Builds CloudEvents envelope (shared across all events)
 const buildBasePayload = (params: {
   eventType: PkiWebhookEventType;
-  projectId: string;
+  applicationId?: string;
   alertId: string;
 }): TPkiWebhookBase => ({
   specversion: "1.0" as const,
   type: params.eventType,
-  source: `/projects/${params.projectId}/alerts/${params.alertId}`,
+  source: params.applicationId
+    ? `/applications/${params.applicationId}/alerts/${params.alertId}`
+    : `/alerts/${params.alertId}`,
   id: crypto.randomUUID(),
   time: new Date().toISOString(),
   datacontenttype: "application/json" as const
@@ -92,6 +94,15 @@ const WEBHOOK_EVENT_SUBJECT: Record<PkiWebhookEventType, string> = {
   [PkiWebhookEventType.CERTIFICATE_TEST]: "certificate-test"
 };
 
+const buildViewUrl = (params: { appUrl: string; alert: TAlertInfo }): string => {
+  const { appUrl, alert } = params;
+  const projectBase = `${appUrl}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}`;
+  if (alert.applicationId && alert.applicationName) {
+    return `${projectBase}/applications/${alert.applicationName}`;
+  }
+  return `${projectBase}/inventory`;
+};
+
 const buildEventData = (params: {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
@@ -104,12 +115,12 @@ const buildEventData = (params: {
       id: params.alert.id,
       name: params.alert.name,
       ...(params.alert.alertBefore ? { alertBefore: params.alert.alertBefore } : {}),
-      projectId: params.alert.projectId
+      ...(params.alert.applicationId ? { applicationId: params.alert.applicationId } : {})
     },
     certificates: transformCertificates(params.certificates),
     metadata: {
       totalCertificates: params.certificates.length,
-      viewUrl: `${params.appUrl}/projects/cert-manager/${params.alert.projectId}/policies`
+      viewUrl: buildViewUrl({ appUrl: params.appUrl, alert: params.alert })
     }
   }
 });
@@ -122,7 +133,7 @@ export const buildWebhookPayload = ({
 }: TBuildWebhookPayloadParams): TPkiWebhookPayload => {
   const base = buildBasePayload({
     eventType,
-    projectId: alert.projectId,
+    applicationId: alert.applicationId,
     alertId: alert.id
   });
 

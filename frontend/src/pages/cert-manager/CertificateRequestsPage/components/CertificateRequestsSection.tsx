@@ -17,6 +17,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   InputGroup,
   InputGroupAddon,
@@ -414,17 +418,6 @@ export const CertificateRequestsSection = ({
             )}
             {!isLoading &&
               !isError &&
-              certificateRequestsData?.certificateRequests?.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-foreground">
-                    {isTableFiltered
-                      ? "No certificate requests found matching your filters"
-                      : "No certificate requests found"}
-                  </TableCell>
-                </TableRow>
-              )}
-            {!isLoading &&
-              !isError &&
               certificateRequestsData?.certificateRequests?.map((request) => (
                 <CertificateRequestRow
                   key={request.id}
@@ -435,6 +428,19 @@ export const CertificateRequestsSection = ({
               ))}
           </TableBody>
         </Table>
+
+        {!isLoading && !isError && certificateRequestsData?.certificateRequests?.length === 0 && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>{isTableFiltered ? "No matches" : "No certificate requests"}</EmptyTitle>
+              <EmptyDescription>
+                {isTableFiltered
+                  ? "No certificate requests match your filters."
+                  : "Request a certificate to see it listed here."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
 
         {certificateRequestsData && certificateRequestsData.totalCount > 0 && (
           <Pagination

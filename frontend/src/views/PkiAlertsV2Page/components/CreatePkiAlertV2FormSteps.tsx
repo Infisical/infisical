@@ -82,6 +82,7 @@ interface CreatePkiAlertV2FormStepsProps {
   setExpandedChannel: (channel: string | undefined) => void;
   showPreview?: boolean;
   showFilters?: boolean;
+  applicationId?: string;
 }
 
 type ChannelUIState = {
@@ -97,7 +98,8 @@ export const CreatePkiAlertV2FormSteps = ({
   expandedChannel,
   setExpandedChannel,
   showPreview = true,
-  showFilters = true
+  showFilters = true,
+  applicationId
 }: CreatePkiAlertV2FormStepsProps) => {
   const {
     control,
@@ -265,7 +267,8 @@ export const CreatePkiAlertV2FormSteps = ({
     try {
       const result = await testWebhookConfig({
         url: webhookConfig.url,
-        signingSecret: webhookConfig.signingSecret || undefined
+        signingSecret: webhookConfig.signingSecret || undefined,
+        applicationId
       });
 
       if (result.success) {

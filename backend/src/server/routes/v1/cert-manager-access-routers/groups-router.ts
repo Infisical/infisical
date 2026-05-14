@@ -146,9 +146,10 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.ADD_PROJECT_GROUP,
+          type: EventType.ADD_CERT_MANAGER_GROUP,
           metadata: {
             groupId: req.params.groupId,
+            membershipId: full.id,
             roles: roles.map((r) => r.role)
           }
         }
@@ -186,9 +187,10 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.UPDATE_PROJECT_GROUP,
+          type: EventType.UPDATE_CERT_MANAGER_GROUP,
           metadata: {
             groupId: req.params.groupId,
+            membershipId: groupMembership.id,
             roles: req.body.roles.map((r) => r.role)
           }
         }
@@ -231,8 +233,8 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.REMOVE_PROJECT_GROUP,
-          metadata: { groupId: req.params.groupId }
+          type: EventType.REMOVE_CERT_MANAGER_GROUP,
+          metadata: { groupId: req.params.groupId, membershipId: groupMembership.id }
         }
       });
       return {

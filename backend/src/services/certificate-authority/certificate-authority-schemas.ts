@@ -24,5 +24,6 @@ export const GenericCreateCertificateAuthorityFieldsSchema = (type: CaType) =>
 
 export const GenericUpdateCertificateAuthorityFieldsSchema = (type: CaType) =>
   z.object({
+    name: slugSchema({ field: "name" }).optional().describe(CertificateAuthorities.UPDATE(type).name),
     status: z.nativeEnum(CaStatus).optional().describe(CertificateAuthorities.UPDATE(type).status)
   });

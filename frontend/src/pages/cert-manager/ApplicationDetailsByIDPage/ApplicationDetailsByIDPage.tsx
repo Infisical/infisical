@@ -113,17 +113,21 @@ export const ApplicationDetailsByIDPage = () => {
         params: { orgId: orgId ?? "", projectId: projectId ?? "" }
       });
     } catch (err) {
-      const detail = err instanceof Error ? err.message : "Failed to delete Application.";
+      const detail = err instanceof Error ? err.message : "Failed to delete application.";
       createNotification({ type: "error", text: detail });
     }
   };
 
-  if (isPending || isPermissionsPending) {
+  if (isPending) {
     return <PageLoader />;
   }
 
   if (!application) {
     return <div className="p-12 text-muted">Application not found.</div>;
+  }
+
+  if (isPermissionsPending) {
+    return <PageLoader />;
   }
 
   return (
@@ -155,10 +159,6 @@ export const ApplicationDetailsByIDPage = () => {
               }
               className="mb-4"
             >
-              <Button variant="outline" size="xs" onClick={handleCopyId}>
-                <FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />
-                Copy ID
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="xs">
@@ -167,6 +167,10 @@ export const ApplicationDetailsByIDPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={2}>
+                  <DropdownMenuItem onClick={handleCopyId}>
+                    <FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />
+                    Copy ID
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     isDisabled={!canEditApplication}
                     onClick={() => handleEditPopUpOpen("application", application)}
@@ -265,7 +269,7 @@ export const ApplicationDetailsByIDPage = () => {
       <DeleteActionModal
         isOpen={isDeleteOpen}
         title={`Delete ${application.name}?`}
-        subTitle="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in Certificate Manager but lose their Application tag."
+        subTitle="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in Certificate Manager but lose their application tag."
         onChange={(open) => setIsDeleteOpen(open)}
         deleteKey="confirm"
         onDeleteApproved={handleDelete}

@@ -2185,7 +2185,8 @@ export const registerRoutes = async (
     kmsService,
     notificationService,
     projectMembershipDAL,
-    projectDAL
+    projectDAL,
+    pkiApplicationDAL
   });
 
   const pkiAlertV2Queue = pkiAlertV2QueueServiceFactory({

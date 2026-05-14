@@ -93,6 +93,7 @@ export const useDeletePkiAlertV2 = () => {
 export interface TTestPkiWebhookConfigV2 {
   url: string;
   signingSecret?: string;
+  applicationId?: string;
 }
 
 export interface TTestPkiWebhookConfigV2Response {
@@ -102,10 +103,10 @@ export interface TTestPkiWebhookConfigV2Response {
 
 export const useTestPkiWebhookConfigV2 = () => {
   return useMutation<TTestPkiWebhookConfigV2Response, unknown, TTestPkiWebhookConfigV2>({
-    mutationFn: async ({ url, signingSecret }) => {
+    mutationFn: async ({ url, signingSecret, applicationId }) => {
       const { data } = await apiRequest.post<TTestPkiWebhookConfigV2Response>(
         "/api/v2/pki/alerts/test-webhook",
-        { url, signingSecret }
+        { url, signingSecret, ...(applicationId ? { applicationId } : {}) }
       );
       return data;
     }

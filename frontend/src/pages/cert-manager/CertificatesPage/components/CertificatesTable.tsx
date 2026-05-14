@@ -34,6 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
@@ -880,7 +881,7 @@ export const CertificatesTable = ({
                       {visibleColumns.has("issuedAt") && (
                         <TableCell>
                           {certificate.notBefore ? (
-                            format(new Date(certificate.notBefore), "MMM d, yyyy")
+                            format(new Date(certificate.notBefore), "yyyy-MM-dd")
                           ) : (
                             <EmptyCell />
                           )}
@@ -889,7 +890,7 @@ export const CertificatesTable = ({
                       {visibleColumns.has("expiresAt") && (
                         <TableCell>
                           {certificate.notAfter ? (
-                            format(new Date(certificate.notAfter), "MMM d, yyyy")
+                            format(new Date(certificate.notAfter), "yyyy-MM-dd")
                           ) : (
                             <EmptyCell />
                           )}
@@ -1354,10 +1355,13 @@ export const CertificatesTable = ({
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {isTableFiltered || appliedSearch
-                ? "No certificates match search..."
-                : "No certificates have been issued"}
+              {isTableFiltered || appliedSearch ? "No matches" : "No certificates"}
             </EmptyTitle>
+            <EmptyDescription>
+              {isTableFiltered || appliedSearch
+                ? "No certificates match your search or filters."
+                : "Issue or import a certificate to see it listed here."}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}

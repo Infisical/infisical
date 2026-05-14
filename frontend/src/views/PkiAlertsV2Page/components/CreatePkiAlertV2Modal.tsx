@@ -376,6 +376,7 @@ export const CreatePkiAlertV2Modal = ({
                     setExpandedChannel={setExpandedChannel}
                     showPreview={hasPreviewTab(watchedEventType, applicationScoped)}
                     showFilters={!applicationScoped}
+                    applicationId={applicationId}
                   />
                 </Tab.Panels>
               </Tab.Group>

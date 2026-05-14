@@ -488,6 +488,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
         projectId: z.string().uuid().optional().describe(openApiHidden()),
+        applicationId: z.string().uuid().optional().describe("Optional application context to scope the test payload"),
         url: z
           .string()
           .url()
@@ -505,6 +506,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.testWebhookConfig({
         projectId: req.internalCertManagerProjectId,
+        applicationId: req.body.applicationId,
         url: req.body.url,
         signingSecret: req.body.signingSecret,
         actor: req.permission.type,

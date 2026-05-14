@@ -464,6 +464,16 @@ export enum EventType {
   CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT = "clear-pki-application-scep-enrollment",
   GET_CERT_MANAGER_INSTANCE_STATE = "get-cert-manager-instance-state",
   SET_CERT_MANAGER_ACTIVE_PROJECT = "set-cert-manager-active-project",
+  INVITE_CERT_MANAGER_USERS = "invite-cert-manager-users",
+  UPDATE_CERT_MANAGER_USER = "update-cert-manager-user",
+  REMOVE_CERT_MANAGER_USER = "remove-cert-manager-user",
+  REMOVE_CERT_MANAGER_USERS_BATCH = "remove-cert-manager-users-batch",
+  ADD_CERT_MANAGER_IDENTITY = "add-cert-manager-identity",
+  UPDATE_CERT_MANAGER_IDENTITY = "update-cert-manager-identity",
+  REMOVE_CERT_MANAGER_IDENTITY = "remove-cert-manager-identity",
+  ADD_CERT_MANAGER_GROUP = "add-cert-manager-group",
+  UPDATE_CERT_MANAGER_GROUP = "update-cert-manager-group",
+  REMOVE_CERT_MANAGER_GROUP = "remove-cert-manager-group",
   ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
@@ -3746,6 +3756,95 @@ interface SetCertManagerActiveProject {
   };
 }
 
+interface InviteCertManagerUsers {
+  type: EventType.INVITE_CERT_MANAGER_USERS;
+  metadata: {
+    emails: string[];
+    usernames: string[];
+    userIds: string[];
+    membershipIds: string[];
+    roleSlugs?: string[];
+  };
+}
+
+interface UpdateCertManagerUser {
+  type: EventType.UPDATE_CERT_MANAGER_USER;
+  metadata: {
+    userId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveCertManagerUser {
+  type: EventType.REMOVE_CERT_MANAGER_USER;
+  metadata: {
+    userId: string;
+    membershipId: string;
+  };
+}
+
+interface RemoveCertManagerUsersBatch {
+  type: EventType.REMOVE_CERT_MANAGER_USERS_BATCH;
+  metadata: {
+    emails: string[];
+    usernames: string[];
+    userIds: string[];
+    membershipIds: string[];
+  };
+}
+
+interface AddCertManagerIdentity {
+  type: EventType.ADD_CERT_MANAGER_IDENTITY;
+  metadata: {
+    identityId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface UpdateCertManagerIdentity {
+  type: EventType.UPDATE_CERT_MANAGER_IDENTITY;
+  metadata: {
+    identityId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveCertManagerIdentity {
+  type: EventType.REMOVE_CERT_MANAGER_IDENTITY;
+  metadata: {
+    identityId: string;
+    membershipId: string;
+  };
+}
+
+interface AddCertManagerGroup {
+  type: EventType.ADD_CERT_MANAGER_GROUP;
+  metadata: {
+    groupId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface UpdateCertManagerGroup {
+  type: EventType.UPDATE_CERT_MANAGER_GROUP;
+  metadata: {
+    groupId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveCertManagerGroup {
+  type: EventType.REMOVE_CERT_MANAGER_GROUP;
+  metadata: {
+    groupId: string;
+    membershipId: string;
+  };
+}
+
 interface GetCertificateProfile {
   type: EventType.GET_CERTIFICATE_PROFILE;
   metadata: {
@@ -6996,6 +7095,16 @@ export type Event =
   | ClearPkiApplicationScepEnrollment
   | GetCertManagerInstanceState
   | SetCertManagerActiveProject
+  | InviteCertManagerUsers
+  | UpdateCertManagerUser
+  | RemoveCertManagerUser
+  | RemoveCertManagerUsersBatch
+  | AddCertManagerIdentity
+  | UpdateCertManagerIdentity
+  | RemoveCertManagerIdentity
+  | AddCertManagerGroup
+  | UpdateCertManagerGroup
+  | RemoveCertManagerGroup
   | GetCertificateProfile
   | ListCertificateProfiles
   | GetCertificateProfileLatestActiveBundle

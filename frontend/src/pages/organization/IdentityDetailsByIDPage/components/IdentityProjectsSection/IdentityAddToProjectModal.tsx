@@ -24,7 +24,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    project: z.object({ name: z.string(), id: z.string() }),
+    project: z.object({ name: z.string(), id: z.string(), type: z.string().optional() }),
     role: z.object({ name: z.string(), slug: z.string() })
   })
   .required();
@@ -77,6 +77,7 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
   const onFormSubmit = async ({ project: selectedProject, role }: FormData) => {
     await addIdentityToWorkspace({
       projectId: selectedProject.id,
+      projectType: selectedProject.type,
       identityId,
       role: role.slug || undefined
     });

@@ -84,6 +84,9 @@ export type TAlertInfo = {
   name: string;
   alertBefore?: string;
   projectId: string;
+  orgId: string;
+  applicationId?: string;
+  applicationName?: string;
 };
 
 // Certificate data for webhook payloads
@@ -115,7 +118,7 @@ export type TPkiWebhookPayload = {
 
   // Event data
   data: {
-    alert: TAlertInfo;
+    alert: Omit<TAlertInfo, "projectId" | "orgId" | "applicationName">;
     certificates: TCertificateData[];
     metadata: {
       totalCertificates: number;
@@ -381,6 +384,7 @@ export type TListMatchingCertificatesResponse = {
 
 export type TTestWebhookConfigDTO = TGenericPermission & {
   projectId: string;
+  applicationId?: string;
   url: string;
   signingSecret?: string;
 };

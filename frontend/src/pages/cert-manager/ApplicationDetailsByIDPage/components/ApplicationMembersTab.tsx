@@ -102,7 +102,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
         <CardHeader>
           <CardTitle>Members</CardTitle>
           <CardDescription>
-            Users, machine identities, and groups granted access to this Application.
+            Users, machine identities, and groups granted access to this application.
           </CardDescription>
           <CardAction>
             <Button variant="outline" onClick={() => setIsAddOpen(true)} isDisabled={!canAddMember}>
@@ -117,7 +117,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No members yet</EmptyTitle>
                 <EmptyDescription>
-                  Add a user, identity, or group to grant access to this Application.
+                  Add a user, identity, or group to grant access to this application.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -228,7 +228,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         title="Remove member?"
-        subTitle="The member loses access to this Application immediately. Their access to other Applications is unchanged."
+        subTitle="The member loses access to this application immediately. Their access to other applications is unchanged."
         onChange={(o) => handlePopUpToggle("removeMember", o)}
         deleteKey="confirm"
         onDeleteApproved={async () => {

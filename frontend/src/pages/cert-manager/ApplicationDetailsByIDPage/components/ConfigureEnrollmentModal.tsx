@@ -126,51 +126,6 @@ const CopyableField = ({
   );
 };
 
-const SecretField = ({
-  label,
-  value,
-  helper
-}: {
-  label: string;
-  value: string;
-  helper?: string;
-}) => {
-  const [copied, setCopied] = useToggle(false);
-  const [shown, setShown] = useToggle(false);
-  return (
-    <div>
-      <FieldLabel>{label}</FieldLabel>
-      <InputGroup>
-        <InputGroupInput
-          value={value}
-          readOnly
-          type={shown ? "text" : "password"}
-          className="font-mono text-xs"
-        />
-        <InputGroupAddon align="inline-end">
-          <InputGroupButton
-            aria-label={shown ? "hide value" : "show value"}
-            onClick={setShown.toggle}
-          >
-            {shown ? <EyeOffIcon /> : <EyeIcon />}
-          </InputGroupButton>
-          <InputGroupButton
-            aria-label={`copy ${label}`}
-            onClick={() => {
-              navigator.clipboard.writeText(value);
-              setCopied.on();
-              setTimeout(() => setCopied.off(), COPY_RESET_MS);
-            }}
-          >
-            <FontAwesomeIcon icon={copied ? faCheck : faCopy} />
-          </InputGroupButton>
-        </InputGroupAddon>
-      </InputGroup>
-      {helper ? <p className="mt-1 text-xs text-accent">{helper}</p> : null}
-    </div>
-  );
-};
-
 const DisableEnrollmentButton = ({
   method,
   onConfirmed,
@@ -191,7 +146,7 @@ const DisableEnrollmentButton = ({
         onChange={setIsOpen}
         confirmKey="disable"
         title={`Disable ${method} enrollment for this profile?`}
-        subTitle={`Clients using ${method} against this profile via this Application will stop being able to request certificates. Existing certificates remain valid.`}
+        subTitle={`Clients using ${method} against this profile via this application will stop being able to request certificates. Existing certificates remain valid.`}
         buttonText="Disable enrollment"
         onConfirmed={async () => {
           await onConfirmed();
@@ -635,7 +590,7 @@ const AcmePanel = ({
           {credentials ? (
             <>
               <CopyableField label="EAB KID" value={credentials.eabKid} />
-              <SecretField
+              <CopyableField
                 label="EAB Secret"
                 value={credentials.eabSecret}
                 helper="External Account Binding key + secret used by ACME clients to register against this profile."
@@ -1120,14 +1075,7 @@ export const ConfigureEnrollmentModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] thin-scrollbar max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span>Configure enrollment methods for</span>
-            {profile?.profileSlug ? (
-              <code className="rounded bg-primary/15 px-1.5 py-0.5 font-mono text-sm text-primary">
-                {profile.profileSlug}
-              </code>
-            ) : null}
-          </DialogTitle>
+          <DialogTitle>Configure enrollment methods for {profile?.profileSlug}</DialogTitle>
           <DialogDescription>
             Enable an enrollment method to allow clients to request certificates using this profile.
           </DialogDescription>
@@ -1166,9 +1114,7 @@ export const ConfigureEnrollmentModal = ({
                       <DropdownMenuItem key={m} onClick={() => handleAdd(m)}>
                         <div className="flex flex-col">
                           <span className="font-medium">{METHOD_LABELS[m]}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {METHOD_DESCRIPTIONS[m]}
-                          </span>
+                          <span className="text-xs text-accent">{METHOD_DESCRIPTIONS[m]}</span>
                         </div>
                       </DropdownMenuItem>
                     ))}

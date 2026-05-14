@@ -168,7 +168,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }
     }
     createNotification({
-      text: "Successfully added user to the project",
+      text: `Successfully added user to ${isCertManager ? productLabel : "the project"}`,
       type: "success"
     });
     handlePopUpToggle("addMember", false);

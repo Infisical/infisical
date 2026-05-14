@@ -133,16 +133,16 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       });
 
       await server.services.auditLog.createAuditLog({
-        projectId,
         ...req.auditLogInfo,
+        projectId,
         event: {
-          type: EventType.ADD_BATCH_PROJECT_MEMBER,
+          type: EventType.INVITE_CERT_MANAGER_USERS,
           metadata: {
-            members: memberships.map(({ actorUserId, id }) => ({
-              userId: actorUserId || "",
-              membershipId: id,
-              email: ""
-            }))
+            emails: req.body.emails,
+            usernames: req.body.usernames,
+            userIds: memberships.map(({ actorUserId }) => actorUserId || ""),
+            membershipIds: memberships.map(({ id }) => id),
+            roleSlugs: req.body.roleSlugs
           }
         }
       });
@@ -177,12 +177,10 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.UPDATE_USER_PROJECT_ROLE,
+          type: EventType.UPDATE_CERT_MANAGER_USER,
           metadata: {
             userId,
-            email: "",
-            oldRole: "",
-            newRole: req.body.roles.map((r) => r.role).join(",")
+            roles: req.body.roles.map((r) => r.role)
           }
         }
       });
@@ -230,18 +228,19 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         emails: req.body.emails,
         usernames: req.body.usernames
       });
-      await Promise.all(
-        memberships.map((membership) =>
-          server.services.auditLog.createAuditLog({
-            ...req.auditLogInfo,
-            projectId,
-            event: {
-              type: EventType.REMOVE_PROJECT_MEMBER,
-              metadata: { userId: membership.actorUserId as string, email: "" }
-            }
-          })
-        )
-      );
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.REMOVE_CERT_MANAGER_USERS_BATCH,
+          metadata: {
+            emails: req.body.emails,
+            usernames: req.body.usernames,
+            userIds: memberships.map((m) => m.actorUserId as string),
+            membershipIds: memberships.map((m) => m.id)
+          }
+        }
+      });
       return {
         memberships: memberships.map((el) => ({ ...el, userId: el.actorUserId as string }))
       };
@@ -275,8 +274,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.REMOVE_PROJECT_MEMBER,
-          metadata: { userId: membership.actorUserId as string, email: "" }
+          type: EventType.REMOVE_CERT_MANAGER_USER,
+          metadata: { userId: membership.actorUserId as string, membershipId: membership.id }
         }
       });
       return { membership: { ...membership, userId } };
