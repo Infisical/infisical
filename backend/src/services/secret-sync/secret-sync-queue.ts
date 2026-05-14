@@ -86,7 +86,7 @@ type TSecretSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "incrementBy" | "setExpiry">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -135,8 +135,9 @@ type SecretSyncActionJob = Job<
 
 const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
-const REQUEUE_LIMIT = 30;
+const REQUEUE_LIMIT = 120;
 const CONNECTION_CONCURRENCY_LIMIT = 3;
+const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000;
 
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
@@ -227,44 +228,32 @@ export const secretSyncQueueFactory = ({
     folderCommitService
   });
 
-  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+  // Atomic admission via INCRBY: only one job per connectionId is admitted per increment,
+  // so concurrent admits cannot exceed CONNECTION_CONCURRENCY_LIMIT.
+  const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    const count = await keyStore.incrementBy(key, 1);
 
-    if (!concurrencyCount) return false;
+    if (count > CONNECTION_CONCURRENCY_LIMIT) {
+      await keyStore.incrementBy(key, -1);
+      return false;
+    }
 
-    const count = Number.parseInt(concurrencyCount, 10);
-
-    if (Number.isNaN(count)) return false;
-
-    return count >= CONNECTION_CONCURRENCY_LIMIT;
+    await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
+    return true;
   };
 
-  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+  const $releaseConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    const count = await keyStore.incrementBy(key, -1);
 
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
-    );
-  };
-
-  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
+    // The counter can briefly go negative if the key TTL expired while a job was running
+    // (a new admit creates the key at 0, then this release decrements to -1). Self-heal.
+    if (count < 0) {
+      await keyStore.setItemWithExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS, 0);
+    } else {
+      await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
+    }
   };
 
   const $getInfisicalSecrets = async (
@@ -1148,84 +1137,89 @@ export const secretSyncQueueFactory = ({
     );
   };
 
-  queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
-    if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
-      await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
-      return;
-    }
+  queueService.start(
+    QueueName.AppConnectionSecretSync,
+    async (job) => {
+      if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
+        await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
+        return;
+      }
 
-    if (job.name === QueueJobs.DailySecretSyncRetry) {
-      await $handleDailySecretSyncRetry();
-      return;
-    }
+      if (job.name === QueueJobs.DailySecretSyncRetry) {
+        await $handleDailySecretSyncRetry();
+        return;
+      }
 
-    const { syncId } = job.data as
-      | TQueueSecretSyncSyncSecretsByIdDTO
-      | TQueueSecretSyncImportSecretsByIdDTO
-      | TQueueSecretSyncRemoveSecretsByIdDTO;
+      const { syncId } = job.data as
+        | TQueueSecretSyncSyncSecretsByIdDTO
+        | TQueueSecretSyncImportSecretsByIdDTO
+        | TQueueSecretSyncRemoveSecretsByIdDTO;
 
-    const secretSync = await secretSyncDAL.findById(syncId);
+      const secretSync = await secretSyncDAL.findById(syncId);
 
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+      if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
-    const { connectionId } = secretSync;
+      const { connectionId } = secretSync;
 
-    if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
+      let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
-      if (isConcurrentLimitReached) {
-        logger.info(
-          `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
+      try {
+        lock = await keyStore.acquireLock(
+          [KeyStorePrefixes.SecretSyncLock(syncId)],
+          // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
+          // but should always release below...
+          5 * 60 * 1000
         );
+      } catch (e) {
+        logger.info(`SecretSync Failed to acquire lock [syncId=${syncId}] [job=${job.name}]`);
 
         await $handleAcquireLockFailure(job as SecretSyncActionJob);
 
         return;
       }
-    }
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+      let admittedConnectionSlot = false;
 
-    try {
-      lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.SecretSyncLock(syncId)],
-        // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
-        // but should always release below...
-        5 * 60 * 1000
-      );
-    } catch (e) {
-      logger.info(`SecretSync Failed to acquire lock [syncId=${syncId}] [job=${job.name}]`);
+      try {
+        if (job.name === QueueJobs.SecretSyncSyncSecrets) {
+          admittedConnectionSlot = await $tryAdmitConnectionConcurrency(connectionId);
 
-      await $handleAcquireLockFailure(job as SecretSyncActionJob);
+          if (!admittedConnectionSlot) {
+            logger.info(
+              `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
+            );
 
-      return;
-    }
+            await $handleAcquireLockFailure(job as SecretSyncActionJob);
 
-    try {
-      switch (job.name) {
-        case QueueJobs.SecretSyncSyncSecrets: {
-          await $incrementConnectionConcurrencyCount(connectionId);
-          await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
-          break;
+            return;
+          }
         }
-        case QueueJobs.SecretSyncImportSecrets:
-          await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO, secretSync);
-          break;
-        case QueueJobs.SecretSyncRemoveSecrets:
-          await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO, secretSync);
-          break;
-        default:
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          throw new Error(`Unhandled Secret Sync Job ${job.name}`);
-      }
-    } finally {
-      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-        await $decrementConnectionConcurrencyCount(connectionId);
-      }
 
-      await lock.release();
-    }
-  });
+        switch (job.name) {
+          case QueueJobs.SecretSyncSyncSecrets: {
+            await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
+            break;
+          }
+          case QueueJobs.SecretSyncImportSecrets:
+            await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO, secretSync);
+            break;
+          case QueueJobs.SecretSyncRemoveSecrets:
+            await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO, secretSync);
+            break;
+          default:
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            throw new Error(`Unhandled Secret Sync Job ${job.name}`);
+        }
+      } finally {
+        if (admittedConnectionSlot) {
+          await $releaseConnectionConcurrency(connectionId);
+        }
+
+        await lock.release();
+      }
+    },
+    { concurrency: 5 }
+  );
 
   const startDailySecretSyncRetryJob = () => {
     cronJob.register({
