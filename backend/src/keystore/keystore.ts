@@ -384,8 +384,10 @@ export const keyStoreFactory = (
   const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
     const result = await primaryRedis.eval(
       `local v = redis.call('INCRBY', KEYS[1], ARGV[1])
-if v == tonumber(ARGV[1]) then redis.call('EXPIRE', KEYS[1], ARGV[2]) end
-return v`,
+      if redis.call('TTL', KEYS[1]) == -1 then
+        redis.call('EXPIRE', KEYS[1], ARGV[2])
+      end
+      return v`,
       1,
       key,
       String(value),

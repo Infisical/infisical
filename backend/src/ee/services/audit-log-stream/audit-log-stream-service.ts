@@ -253,7 +253,6 @@ export const auditLogStreamServiceFactory = ({
       return;
     }
 
-    const adminEmails = activeAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
     const streamPath = `/organizations/${orgId}/settings?selectedTab=tag-audit-log-streams`;
     const streamUrl = `${appCfg.SITE_URL}${streamPath}`;
 
@@ -267,6 +266,11 @@ export const auditLogStreamServiceFactory = ({
         link: streamPath
       }))
     );
+
+    const adminEmails = activeAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
+    if (adminEmails.length === 0) {
+      return;
+    }
     await smtpService
       .sendMail({
         recipients: adminEmails,
@@ -312,7 +316,7 @@ export const auditLogStreamServiceFactory = ({
           `Failed to send audit log stream failure notification [streamId=${streamId}] [orgId=${orgId}]`
         );
         // Release the lock so the next threshold breach can retry delivery.
-        await keyStore.deleteItem(alertKey).catch(() => {});
+        await keyStore.deleteItem(alertKey);
       });
     } catch (trackingErr) {
       logger.error(
