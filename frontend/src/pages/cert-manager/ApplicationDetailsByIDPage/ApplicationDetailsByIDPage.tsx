@@ -15,6 +15,7 @@ import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,6 +36,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PkiApplicationModal } from "../ApplicationsPage/components/PkiApplicationModal";
+import { PkiDocsUrls } from "../pki-docs-urls";
 import { ApplicationCertificatesTab } from "./components/ApplicationCertificatesTab";
 import { ApplicationMembersTab } from "./components/ApplicationMembersTab";
 import { ApplicationRequestsTab } from "./components/ApplicationRequestsTab";
@@ -151,7 +153,12 @@ export const ApplicationDetailsByIDPage = () => {
             <PageHeader
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
-              title={application.name}
+              title={
+                <span className="flex items-center gap-x-2">
+                  {application.name}
+                  <DocumentationLinkBadge href={PkiDocsUrls.applications.overview} />
+                </span>
+              }
               description={
                 application.description ? (
                   <span className="break-all">{application.description}</span>

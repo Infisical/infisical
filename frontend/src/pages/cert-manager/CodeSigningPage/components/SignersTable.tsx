@@ -61,6 +61,7 @@ import {
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { RequestSigningAccessModal } from "../../ApprovalsPage/components/CodeSigningRequestsTab/RequestSigningAccessModal";
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { EditSignerModal } from "../../SignerDetailPage/components/EditSignerModal";
 
 type Props = {
@@ -106,7 +107,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
         <CardHeader>
           <CardTitle>
             Signers
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/code-signing" />
+            <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
           </CardTitle>
           <CardDescription>Manage signers and control who can sign artifacts.</CardDescription>
           <CardAction>

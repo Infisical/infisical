@@ -59,6 +59,8 @@ import {
 } from "@app/hooks/api/pkiApplications/mutations";
 import { ScepChallengeType, TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
+
 const COPY_RESET_MS = 1000;
 
 type Props = {
@@ -1010,11 +1012,41 @@ const METHOD_LABELS: Record<EnrollmentMethod, string> = {
   scep: "SCEP"
 };
 
-const METHOD_DESCRIPTIONS: Record<EnrollmentMethod, string> = {
-  api: "Issue certificates manually via the UI or programmatically through the API.",
-  est: "Enroll enterprise devices and IoT using the EST protocol.",
-  acme: "Automate certificate lifecycle with ACME clients like Certbot or Caddy.",
-  scep: "Provision device certificates through MDM platforms like Jamf or Intune."
+const METHOD_DOCS: Record<EnrollmentMethod, string> = {
+  api: PkiDocsUrls.applications.enrollment.api,
+  est: PkiDocsUrls.applications.enrollment.est,
+  acme: PkiDocsUrls.applications.enrollment.acme,
+  scep: PkiDocsUrls.applications.enrollment.scep
+};
+
+const MethodDescription = ({ method }: { method: EnrollmentMethod }) => {
+  const docLink = (
+    <a
+      href={METHOD_DOCS[method]}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline hover:text-foreground"
+    >
+      {METHOD_LABELS[method]}
+    </a>
+  );
+
+  switch (method) {
+    case "api":
+      return <>Issue certificates manually via the UI or programmatically through the {docLink}.</>;
+    case "est":
+      return <>Enroll enterprise devices and IoT using the {docLink} protocol.</>;
+    case "acme":
+      return <>Automate certificate lifecycle with {docLink} clients like Certbot or Caddy.</>;
+    case "scep":
+      return (
+        <>
+          Provision device certificates through MDM platforms like Jamf or Intune using {docLink}.
+        </>
+      );
+    default:
+      return null;
+  }
 };
 
 export const ConfigureEnrollmentModal = ({
@@ -1077,7 +1109,15 @@ export const ConfigureEnrollmentModal = ({
         <DialogHeader>
           <DialogTitle>Configure enrollment methods for {profile?.profileSlug}</DialogTitle>
           <DialogDescription>
-            Enable an enrollment method to allow clients to request certificates using this profile.
+            Enable an enrollment method to allow clients to request certificates using this profile.{" "}
+            <a
+              href={PkiDocsUrls.applications.enrollment.overview}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
 
@@ -1114,7 +1154,9 @@ export const ConfigureEnrollmentModal = ({
                       <DropdownMenuItem key={m} onClick={() => handleAdd(m)}>
                         <div className="flex flex-col">
                           <span className="font-medium">{METHOD_LABELS[m]}</span>
-                          <span className="text-xs text-accent">{METHOD_DESCRIPTIONS[m]}</span>
+                          <span className="text-xs text-accent">
+                            <MethodDescription method={m} />
+                          </span>
                         </div>
                       </DropdownMenuItem>
                     ))}
@@ -1137,7 +1179,7 @@ export const ConfigureEnrollmentModal = ({
               <>
                 {activeTab && (
                   <p className="text-sm text-accent">
-                    {METHOD_DESCRIPTIONS[activeTab as EnrollmentMethod]}
+                    <MethodDescription method={activeTab as EnrollmentMethod} />
                   </p>
                 )}
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>

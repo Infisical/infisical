@@ -25,6 +25,7 @@ import {
   useDeleteCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { CreateProfileModal } from "./CreateProfileModal";
 import { ProfileList } from "./ProfileList";
 
@@ -68,7 +69,7 @@ export const CertificateProfilesTab = () => {
       <CardHeader>
         <CardTitle>
           Certificate Profiles
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/profiles" />
+          <DocumentationLinkBadge href={PkiDocsUrls.settings.profiles} />
         </CardTitle>
         <CardDescription>
           Reusable presets for issuing certificates. Each profile combines a certificate authority

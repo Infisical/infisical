@@ -21,6 +21,7 @@ import {
 import { useDeleteCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 import { type TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { CreatePolicyModal } from "./CreatePolicyModal";
 import { PolicyList } from "./PolicyList";
 
@@ -61,7 +62,7 @@ export const CertificatePoliciesTab = () => {
       <CardHeader>
         <CardTitle>
           Certificate Policies
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/policies" />
+          <DocumentationLinkBadge href={PkiDocsUrls.settings.policies} />
         </CardTitle>
         <CardDescription>
           Rules that define what certificates can look like, how they can be used, and how long they

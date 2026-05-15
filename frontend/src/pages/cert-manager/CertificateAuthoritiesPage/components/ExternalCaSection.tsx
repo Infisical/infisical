@@ -21,6 +21,7 @@ import {
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { ExternalCaModal } from "./ExternalCaModal";
 import { ExternalCaTable } from "./ExternalCaTable";
 
@@ -74,7 +75,7 @@ export const ExternalCaSection = () => {
       <CardHeader>
         <CardTitle>
           External Certificate Authorities
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/ca/external-ca" />
+          <DocumentationLinkBadge href={PkiDocsUrls.ca.external} />
         </CardTitle>
         <CardDescription>
           Third-party CAs connected to Infisical. Use them to issue certificates from providers you

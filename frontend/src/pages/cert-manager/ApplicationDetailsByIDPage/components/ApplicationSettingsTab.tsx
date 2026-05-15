@@ -32,6 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -87,6 +88,7 @@ import {
   formatEventType
 } from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { ConfigureEnrollmentModal } from "./ConfigureEnrollmentModal";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
@@ -528,7 +530,10 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Certificate Profiles</CardTitle>
+          <CardTitle>
+            Certificate Profiles
+            <DocumentationLinkBadge href={PkiDocsUrls.applications.enrollment.overview} />
+          </CardTitle>
           <CardDescription>
             For each profile, configure how this application will issue certificates via API, EST,
             ACME, or SCEP.
@@ -663,7 +668,10 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Approval Policies</CardTitle>
+          <CardTitle>
+            Approval Policies
+            <DocumentationLinkBadge href={PkiDocsUrls.applications.approvals} />
+          </CardTitle>
           <CardDescription>
             Require approval before certificates are issued for this application.
           </CardDescription>
@@ -691,7 +699,10 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Alerting</CardTitle>
+          <CardTitle>
+            Alerting
+            <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
+          </CardTitle>
           <CardDescription>Get notified about certificate events.</CardDescription>
           <CardAction>
             <Button

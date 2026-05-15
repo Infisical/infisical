@@ -37,7 +37,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, DocumentationLinkBadge } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import {
   ProjectPermissionCodeSigningActions,
@@ -57,6 +57,7 @@ import {
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { RequestSigningAccessModal } from "./RequestSigningAccessModal";
 
 const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
@@ -156,6 +157,7 @@ export const CodeSigningRequestsTab = () => {
         <div>
           <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-mineshaft-100">Signing Requests</p>
+            <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signingRequests} />
           </div>
           <p className="text-sm text-bunker-300">Review and manage signing requests</p>
         </div>

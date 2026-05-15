@@ -21,6 +21,7 @@ import {
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CaCertModal } from "./CaCertModal";
 import { CaInstallCertModal } from "./CaInstallCertModal";
 import { CaModal } from "./CaModal";
@@ -70,7 +71,7 @@ export const CaSection = () => {
       <CardHeader>
         <CardTitle>
           Internal Certificate Authorities
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/private-ca" />
+          <DocumentationLinkBadge href={PkiDocsUrls.ca.internal} />
         </CardTitle>
         <CardDescription>
           Private CAs hosted by Infisical. Use them to issue certificates directly or sign other CAs

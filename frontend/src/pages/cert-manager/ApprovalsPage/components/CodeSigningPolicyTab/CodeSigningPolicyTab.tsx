@@ -10,13 +10,15 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { CodeSigningPoliciesTable } from "./components/CodeSigningPoliciesTable";
 import { CodeSigningPolicyModal } from "./components/CodeSigningPolicyModal";
 
@@ -58,7 +60,10 @@ export const CodeSigningPolicyTab = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Signing Policies</CardTitle>
+        <CardTitle>
+          Signing Policies
+          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signingPolicies} />
+        </CardTitle>
         <CardDescription>
           Define policies that require approval before signing operations.
         </CardDescription>

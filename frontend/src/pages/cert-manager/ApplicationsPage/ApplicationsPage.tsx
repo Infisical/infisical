@@ -12,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -38,6 +39,7 @@ import { TPkiApplication, useListPkiApplications } from "@app/hooks/api/pkiAppli
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PkiDocsUrls } from "../pki-docs-urls";
 import { ConfigureProfilesModal } from "./components/ConfigureProfilesModal";
 import { PkiApplicationModal } from "./components/PkiApplicationModal";
 
@@ -164,7 +166,10 @@ export const ApplicationsPage = () => {
 
             <Card>
               <CardHeader className="gap-x-6">
-                <CardTitle>Applications</CardTitle>
+                <CardTitle>
+                  Applications
+                  <DocumentationLinkBadge href={PkiDocsUrls.applications.overview} />
+                </CardTitle>
                 <CardDescription>
                   Each Application represents a service or workload that issues and manages its own
                   certificates.

@@ -14,6 +14,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
+import { PkiDocsUrls } from "../pki-docs-urls";
 import { DiscoveryJobsTab, InstallationsTab } from "./components";
 
 export const DiscoveryPage = () => {
@@ -47,7 +48,7 @@ export const DiscoveryPage = () => {
             <span className="inline-flex items-center gap-x-2">
               Certificate Discovery
               <span className="mt-0.5">
-                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/discovery" />
+                <DocumentationLinkBadge href={PkiDocsUrls.discovery.overview} />
               </span>
             </span>
           }

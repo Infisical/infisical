@@ -32,6 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -69,6 +70,8 @@ import {
 } from "@app/hooks/api/approvalGrants";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership/queries";
+
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 
 const revokeGrantSchema = z.object({
   revocationReason: z.string().max(256).optional()
@@ -214,7 +217,10 @@ export const CodeSigningGrantsTab = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Signing Grants</CardTitle>
+        <CardTitle>
+          Signing Grants
+          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.grants} />
+        </CardTitle>
         <CardDescription>View and revoke signing access grants.</CardDescription>
       </CardHeader>
       <CardContent>

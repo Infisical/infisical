@@ -14,10 +14,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Input,
   Skeleton,
   Switch
 } from "@app/components/v3";
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import {
   useGetCertificateCleanupConfig,
   useUpdateCertificateCleanupConfig
@@ -105,7 +107,10 @@ export const CertificateCleanupTab = () => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Card>
         <CardHeader>
-          <CardTitle>Certificate Cleanup</CardTitle>
+          <CardTitle>
+            Certificate Cleanup
+            <DocumentationLinkBadge href={PkiDocsUrls.settings.certificateCleanup} />
+          </CardTitle>
           <CardDescription>
             Automatically remove certificates that have been expired beyond a configurable retention
             window.

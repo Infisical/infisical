@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   PageLoader
 } from "@app/components/v3";
 import {
@@ -20,6 +21,7 @@ import {
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncsTable } from "../../IntegrationsListPage/components/PkiSyncsTab/PkiSyncTable";
+import { PkiDocsUrls } from "../../pki-docs-urls";
 
 type Props = { applicationId: string; applicationName: string; projectId: string };
 
@@ -47,7 +49,10 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Certificate Syncs</CardTitle>
+        <CardTitle>
+          Certificate Syncs
+          <DocumentationLinkBadge href={PkiDocsUrls.applications.syncs.overview} />
+        </CardTitle>
         <CardDescription>
           Push certificates from this application out to AWS ACM, Cloudflare, Azure Key Vault, and
           other destinations.

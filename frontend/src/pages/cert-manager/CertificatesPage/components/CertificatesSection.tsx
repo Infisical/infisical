@@ -26,6 +26,7 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportModal } from "./CertificateImportModal";
@@ -140,7 +141,7 @@ export const CertificatesSection = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-x-2">
           Certificates
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
+          {applicationId && <DocumentationLinkBadge href={PkiDocsUrls.applications.certificates} />}
         </CardTitle>
         <CardDescription>
           {applicationId
