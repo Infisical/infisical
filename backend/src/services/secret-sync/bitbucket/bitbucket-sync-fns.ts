@@ -24,22 +24,32 @@ const buildVariablesUrl = (workspace: string, repository: string, environment?: 
   return `${baseUrl}/pipelines_config/variables/${uuid || ""}`;
 };
 
+const BITBUCKET_VARIABLES_PAGE_SIZE = 100;
+
 const listVariables = async ({
   workspaceSlug,
   repositorySlug,
   environmentId,
   authHeader
 }: TBitbucketListVariables): Promise<TBitbucketVariable[]> => {
-  const url = buildVariablesUrl(workspaceSlug, repositorySlug, environmentId);
+  const firstUrl = `${buildVariablesUrl(workspaceSlug, repositorySlug, environmentId)}?pagelen=${BITBUCKET_VARIABLES_PAGE_SIZE}`;
 
-  const { data } = await request.get<{ values: TBitbucketVariable[] }>(url, {
-    headers: {
-      Authorization: authHeader,
-      Accept: "application/json"
-    }
-  });
+  const variables: TBitbucketVariable[] = [];
+  let nextUrl: string | undefined = firstUrl;
 
-  return data.values;
+  while (nextUrl) {
+    const { data }: { data: { values: TBitbucketVariable[]; next?: string } } = await request.get(nextUrl, {
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json"
+      }
+    });
+
+    if (data.values?.length) variables.push(...data.values);
+    nextUrl = data.next;
+  }
+
+  return variables;
 };
 
 const upsertVariable = async ({
