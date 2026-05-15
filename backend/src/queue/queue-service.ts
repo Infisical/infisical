@@ -67,7 +67,6 @@ export enum QueueName {
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
-  CaCrlRotation = "ca-crl-rotation",
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   CertificateIssuance = "certificate-issuance",
   SecretReplication = "secret-replication",
@@ -91,8 +90,7 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal",
-  DigiCertOrderPolling = "digicert-order-polling"
+  CaAutoRenewal = "ca-auto-renewal"
 }
 
 export enum QueueJobs {
@@ -277,10 +275,6 @@ export type TQueueJobTypes = {
           dynamicSecretCfgId: string;
         };
       };
-  [QueueName.CaCrlRotation]: {
-    name: QueueJobs.CaCrlRotation;
-    payload: undefined;
-  };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
     payload: TSyncSecretsDTO;
@@ -482,10 +476,6 @@ export type TQueueJobTypes = {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
-  [QueueName.DigiCertOrderPolling]: {
-    name: QueueJobs.DigiCertOrderPolling;
-    payload: undefined;
-  };
 };
 
 const SECRET_SCANNING_QUEUES = [
