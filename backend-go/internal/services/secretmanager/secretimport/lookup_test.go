@@ -46,57 +46,59 @@ func buildTestImports() *ImportLookup {
 }
 
 // ---------------------------------------------------------------------------
-// GetByFolderID
+// ImportsOfFolder
 // ---------------------------------------------------------------------------
 
-func TestGetByFolderID(t *testing.T) {
+func TestImportsOfFolder(t *testing.T) {
 	l := buildTestImports()
 
 	t.Run("returns imports sorted by position", func(t *testing.T) {
-		entries := l.GetByFolderID(folderRoot)
-		require.Len(t, entries, 2)
-		assert.Equal(t, importID1, entries[0].ID)
-		assert.Equal(t, int32(1), entries[0].Position)
-		assert.Equal(t, importID2, entries[1].ID)
-		assert.Equal(t, int32(2), entries[1].Position)
+		start, end := l.ImportsOfFolder(folderRoot)
+		require.Equal(t, int32(2), end-start)
+
+		assert.Equal(t, importID1, l.ID(start))
+		assert.Equal(t, int32(1), l.Position(start))
+		assert.Equal(t, importID2, l.ID(start+1))
+		assert.Equal(t, int32(2), l.Position(start+1))
 	})
 
 	t.Run("returns all fields correctly", func(t *testing.T) {
-		entries := l.GetByFolderID(folderRoot)
-		require.Len(t, entries, 2)
+		start, end := l.ImportsOfFolder(folderRoot)
+		require.Equal(t, int32(2), end-start)
 
-		assert.Equal(t, folderRoot, entries[0].FolderID)
-		assert.Equal(t, "/", entries[0].ImportPath)
-		assert.Equal(t, prodEnvID, entries[0].ImportEnvID)
-		assert.False(t, entries[0].IsReplication)
-		assert.False(t, entries[0].IsReserved)
+		assert.Equal(t, folderRoot, l.FolderID(start))
+		assert.Equal(t, "/", l.TargetPath(start))
+		assert.Equal(t, prodEnvID, l.TargetEnvID(start))
+		assert.False(t, l.IsReplication(start))
+		assert.False(t, l.IsReserved(start))
 	})
 
 	t.Run("replication and reserved flags", func(t *testing.T) {
-		entries := l.GetByFolderID(folderA)
-		require.Len(t, entries, 2)
+		start, end := l.ImportsOfFolder(folderA)
+		require.Equal(t, int32(2), end-start)
 
-		assert.True(t, entries[0].IsReplication)
-		assert.False(t, entries[0].IsReserved)
+		assert.True(t, l.IsReplication(start))
+		assert.False(t, l.IsReserved(start))
 
-		assert.False(t, entries[1].IsReplication)
-		assert.True(t, entries[1].IsReserved)
+		assert.False(t, l.IsReplication(start+1))
+		assert.True(t, l.IsReserved(start+1))
 	})
 
 	t.Run("single import folder", func(t *testing.T) {
-		entries := l.GetByFolderID(folderB)
-		require.Len(t, entries, 1)
-		assert.Equal(t, importID5, entries[0].ID)
-		assert.Equal(t, "/a", entries[0].ImportPath)
+		start, end := l.ImportsOfFolder(folderB)
+		require.Equal(t, int32(1), end-start)
+		assert.Equal(t, importID5, l.ID(start))
+		assert.Equal(t, "/a", l.TargetPath(start))
 	})
 
-	t.Run("folder with no imports returns nil", func(t *testing.T) {
-		entries := l.GetByFolderID(uuid.MustParse("99999999-9999-9999-9999-999999999999"))
-		assert.Nil(t, entries)
+	t.Run("folder with no imports returns empty range", func(t *testing.T) {
+		start, end := l.ImportsOfFolder(uuid.MustParse("99999999-9999-9999-9999-999999999999"))
+		assert.Equal(t, int32(0), start)
+		assert.Equal(t, int32(0), end)
 	})
 }
 
-func TestGetByFolderID_PositionOrdering(t *testing.T) {
+func TestImportsOfFolder_PositionOrdering(t *testing.T) {
 	// Insert rows in reverse position order to verify sorting.
 	rows := []importRow{
 		{ID: importID3, ImportPath: "/c", ImportEnvID: devEnvID, Position: 3, FolderID: folderRoot},
@@ -105,66 +107,66 @@ func TestGetByFolderID_PositionOrdering(t *testing.T) {
 	}
 	l := newImportLookup(rows)
 
-	entries := l.GetByFolderID(folderRoot)
-	require.Len(t, entries, 3)
-	assert.Equal(t, int32(1), entries[0].Position)
-	assert.Equal(t, int32(2), entries[1].Position)
-	assert.Equal(t, int32(3), entries[2].Position)
+	start, end := l.ImportsOfFolder(folderRoot)
+	require.Equal(t, int32(3), end-start)
+	assert.Equal(t, int32(1), l.Position(start))
+	assert.Equal(t, int32(2), l.Position(start+1))
+	assert.Equal(t, int32(3), l.Position(start+2))
 }
 
 // ---------------------------------------------------------------------------
-// GetByID
+// IndexByID
 // ---------------------------------------------------------------------------
 
-func TestGetByID(t *testing.T) {
+func TestIndexByID(t *testing.T) {
 	l := buildTestImports()
 
 	t.Run("existing import", func(t *testing.T) {
-		entry, ok := l.GetByID(importID3)
+		idx, ok := l.IndexByID(importID3)
 		require.True(t, ok)
-		assert.Equal(t, importID3, entry.ID)
-		assert.Equal(t, folderA, entry.FolderID)
-		assert.True(t, entry.IsReplication)
+		assert.Equal(t, importID3, l.ID(idx))
+		assert.Equal(t, folderA, l.FolderID(idx))
+		assert.True(t, l.IsReplication(idx))
 	})
 
 	t.Run("nonexistent import", func(t *testing.T) {
-		_, ok := l.GetByID(uuid.MustParse("99999999-9999-9999-9999-999999999999"))
+		_, ok := l.IndexByID(uuid.MustParse("99999999-9999-9999-9999-999999999999"))
 		assert.False(t, ok)
 	})
 }
 
 // ---------------------------------------------------------------------------
-// GetImportersOf
+// ImportersOf
 // ---------------------------------------------------------------------------
 
-func TestGetImportersOf(t *testing.T) {
+func TestImportersOf(t *testing.T) {
 	l := buildTestImports()
 
 	t.Run("multiple folders import prod:/", func(t *testing.T) {
-		importers := l.GetImportersOf(prodEnvID, "/")
+		importers := l.ImportersOf(prodEnvID, "/")
 		require.Len(t, importers, 2)
 
 		folderIDs := make(map[uuid.UUID]bool)
-		for _, e := range importers {
-			folderIDs[e.FolderID] = true
+		for _, idx := range importers {
+			folderIDs[l.FolderID(idx)] = true
 		}
 		assert.True(t, folderIDs[folderRoot], "folderRoot should import prod:/")
 		assert.True(t, folderIDs[folderA], "folderA should import prod:/")
 	})
 
 	t.Run("single importer", func(t *testing.T) {
-		importers := l.GetImportersOf(prodEnvID, "/d")
+		importers := l.ImportersOf(prodEnvID, "/d")
 		require.Len(t, importers, 1)
-		assert.Equal(t, folderRoot, importers[0].FolderID)
+		assert.Equal(t, folderRoot, l.FolderID(importers[0]))
 	})
 
 	t.Run("no importers for path", func(t *testing.T) {
-		importers := l.GetImportersOf(devEnvID, "/nonexistent")
+		importers := l.ImportersOf(devEnvID, "/nonexistent")
 		assert.Nil(t, importers)
 	})
 
 	t.Run("no importers for unknown env", func(t *testing.T) {
-		importers := l.GetImportersOf(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/")
+		importers := l.ImportersOf(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/")
 		assert.Nil(t, importers)
 	})
 }
@@ -176,12 +178,14 @@ func TestGetImportersOf(t *testing.T) {
 func TestEmptyLookup(t *testing.T) {
 	l := newImportLookup(nil)
 
-	assert.Nil(t, l.GetByFolderID(uuid.New()))
+	start, end := l.ImportsOfFolder(uuid.New())
+	assert.Equal(t, int32(0), start)
+	assert.Equal(t, int32(0), end)
 
-	_, ok := l.GetByID(uuid.New())
+	_, ok := l.IndexByID(uuid.New())
 	assert.False(t, ok)
 
-	assert.Nil(t, l.GetImportersOf(uuid.New(), "/"))
+	assert.Nil(t, l.ImportersOf(uuid.New(), "/"))
 }
 
 // ---------------------------------------------------------------------------
@@ -199,10 +203,38 @@ func TestNullBoolsDefaultToFalse(t *testing.T) {
 	}
 	l := newImportLookup(rows)
 
-	entries := l.GetByFolderID(folderRoot)
-	require.Len(t, entries, 1)
-	assert.False(t, entries[0].IsReplication)
-	assert.False(t, entries[0].IsReserved)
+	start, end := l.ImportsOfFolder(folderRoot)
+	require.Equal(t, int32(1), end-start)
+	assert.False(t, l.IsReplication(start))
+	assert.False(t, l.IsReserved(start))
+}
+
+// ---------------------------------------------------------------------------
+// Path arena deduplication
+// ---------------------------------------------------------------------------
+
+func TestPathArenaDeduplication(t *testing.T) {
+	rows := []importRow{
+		{ID: importID1, ImportPath: "/shared", ImportEnvID: devEnvID, Position: 1, FolderID: folderRoot},
+		{ID: importID2, ImportPath: "/shared", ImportEnvID: prodEnvID, Position: 2, FolderID: folderRoot},
+		{ID: importID3, ImportPath: "/shared", ImportEnvID: devEnvID, Position: 1, FolderID: folderA},
+		{ID: importID4, ImportPath: "/unique", ImportEnvID: devEnvID, Position: 1, FolderID: folderB},
+	}
+	l := newImportLookup(rows)
+
+	// Verify all paths are correct
+	idx1, _ := l.IndexByID(importID1)
+	idx2, _ := l.IndexByID(importID2)
+	idx3, _ := l.IndexByID(importID3)
+	idx4, _ := l.IndexByID(importID4)
+
+	assert.Equal(t, "/shared", l.TargetPath(idx1))
+	assert.Equal(t, "/shared", l.TargetPath(idx2))
+	assert.Equal(t, "/shared", l.TargetPath(idx3))
+	assert.Equal(t, "/unique", l.TargetPath(idx4))
+
+	// Verify arena only contains "/shared" + "/unique" = 14 bytes
+	assert.Equal(t, 14, len(l.pathArena))
 }
 
 // ---------------------------------------------------------------------------
@@ -272,7 +304,7 @@ func TestResolveChain_DepthFirst(t *testing.T) {
 	assert.Equal(t, 1, chain[3].Depth)
 }
 
-func TestResolveChain_PreservesImportEntry(t *testing.T) {
+func TestResolveChain_PreservesImportIndex(t *testing.T) {
 	l := buildChainImports()
 	resolver := mockResolver(map[importTarget]uuid.UUID{
 		{devEnvID, "/b"}: chainFolderB,
@@ -283,8 +315,8 @@ func TestResolveChain_PreservesImportEntry(t *testing.T) {
 
 	// Only B and D resolve (prod:/ not in resolver).
 	require.Len(t, chain, 2)
-	assert.Equal(t, chainImp1, chain[0].Import.ID)
-	assert.Equal(t, chainImp3, chain[1].Import.ID)
+	assert.Equal(t, chainImp1, l.ID(chain[0].ImportIdx))
+	assert.Equal(t, chainImp3, l.ID(chain[1].ImportIdx))
 }
 
 func TestResolveChain_CycleDetection(t *testing.T) {

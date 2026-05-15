@@ -148,7 +148,7 @@ type ProcessedSecret struct {
 
 // SecretFolderService loads folder hierarchies for a project.
 type SecretFolderService interface {
-	LoadProjectFolders(ctx context.Context, projectID string, envIDs []uuid.UUID) (*secretfolder.FolderLookup, error)
+	LoadFolders(ctx context.Context, projectID string, envIDs []uuid.UUID) (*secretfolder.FolderLookup, error)
 }
 
 // SecretImportService loads import configurations for a project.
@@ -489,47 +489,6 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 	}
 
 	return secret, nil
-}
-
-// --- Environment Lookup Methods ---
-
-// getEnvBySlug fetches a single environment ID by project ID and slug.
-func (s *Service) getEnvBySlug(ctx context.Context, projectID, slug string) (uuid.UUID, error) {
-	query := `SELECT id FROM project_environments WHERE "projectId" = @projectID AND slug = @slug`
-	args := pgx.NamedArgs{"projectID": projectID, "slug": slug}
-
-	var envID uuid.UUID
-	err := s.db.Replica().QueryRow(ctx, query, args).Scan(&envID)
-	return envID, err
-}
-
-// getEnvsBySlugs fetches environment IDs for multiple slugs in a single query.
-// Returns a map of slug -> envID for found environments.
-func (s *Service) getEnvsBySlugs(ctx context.Context, projectID string, slugs []string) (map[string]uuid.UUID, error) {
-	if len(slugs) == 0 {
-		return nil, nil
-	}
-
-	query := `SELECT id, slug FROM project_environments WHERE "projectId" = @projectID AND slug = ANY(@slugs)`
-	args := pgx.NamedArgs{"projectID": projectID, "slugs": slugs}
-
-	rows, err := s.db.Replica().Query(ctx, query, args)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	result := make(map[string]uuid.UUID)
-	for rows.Next() {
-		var envID uuid.UUID
-		var slug string
-		if err := rows.Scan(&envID, &slug); err != nil {
-			return nil, err
-		}
-		result[slug] = envID
-	}
-
-	return result, rows.Err()
 }
 
 // --- Decryption Helpers ---

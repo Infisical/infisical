@@ -2,11 +2,8 @@ package secret
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/kms"
@@ -53,30 +50,73 @@ type ListSecretsResult struct {
 
 // ListSecrets retrieves secrets for a project/environment/path with full processing.
 func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*ListSecretsResult, error) {
-	// 1. Get starting environment by slug
-	envID, err := s.getEnvBySlug(ctx, opts.ProjectID, opts.Environment)
+	// 1. Load all folders for project
+	folderLookup, err := s.secretFolderService.LoadFolders(ctx, opts.ProjectID, nil)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errutil.NotFound("Environment not found")
-		}
-		return nil, errutil.DatabaseErr("Failed to load environment").WithErrf("ListSecrets: %w", err)
+		return nil, errutil.DatabaseErr("Failed to load folders").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 2. Load imports
+	// 2. Get starting environment by slug (every env has a root folder)
+	envID, ok := folderLookup.GetEnvIDBySlug(opts.Environment)
+	if !ok {
+		return nil, errutil.NotFound("Environment not found")
+	}
+
+	// 3. Resolve direct folders
+	var directFolderIDs []uuid.UUID
+	directPaths := make(map[uuid.UUID]string)
+
+	if opts.Recursive {
+		nodes, ok := folderLookup.GetSubTree(envID, opts.SecretPath)
+		if !ok || len(nodes) == 0 {
+			return nil, errutil.NotFound("Folder not found").WithErrf("ListSecrets: path=%s", opts.SecretPath)
+		}
+		for _, node := range nodes {
+			directFolderIDs = append(directFolderIDs, node.ID)
+			directPaths[node.ID] = node.GetPath()
+		}
+	} else {
+		node, ok := folderLookup.GetByPath(envID, opts.SecretPath)
+		if !ok {
+			return nil, errutil.NotFound("Folder not found").WithErrf("ListSecrets: path=%s", opts.SecretPath)
+		}
+		directFolderIDs = []uuid.UUID{node.ID}
+		directPaths[node.ID] = opts.SecretPath
+	}
+
+	// 4. Load imports and resolve chain
 	importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 3. Resolve folder chain (lazy-loads folders for imported envs)
-	chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderService)
-	chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, envID, opts.SecretPath, opts.Recursive)
-	if err != nil {
-		return nil, errutil.NotFound("Folder not found").WithErrf("ListSecrets: %w", err)
+	// Resolve import chain using folder lookup
+	resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
+		node, ok := folderLookup.GetByPath(envID, path)
+		if !ok {
+			return uuid.Nil, false
+		}
+		return node.ID, true
 	}
 
-	// 4. Fetch secrets from all folders
-	allFolderIDs := chainResult.AllFolderIDs()
+	var allImports []secretimport.ResolvedImport
+	visitedImports := make(map[uuid.UUID]bool)
+	for _, folderID := range directFolderIDs {
+		imports := importLookup.ResolveChain(folderID, resolveFolder)
+		for _, imp := range imports {
+			if !visitedImports[imp.FolderID] {
+				visitedImports[imp.FolderID] = true
+				allImports = append(allImports, imp)
+			}
+		}
+	}
+
+	// 5. Fetch secrets from all folders
+	allFolderIDs := make([]uuid.UUID, 0, len(directFolderIDs)+len(allImports))
+	allFolderIDs = append(allFolderIDs, directFolderIDs...)
+	for _, imp := range allImports {
+		allFolderIDs = append(allFolderIDs, imp.FolderID)
+	}
 
 	var dalFilters *FindByFolderIdsFilter
 	if len(opts.TagSlugs) > 0 || len(opts.MetadataFilter) > 0 {
@@ -88,10 +128,10 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 
 	secrets, err := s.FindByFolderIds(ctx, allFolderIDs, opts.UserID, dalFilters)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to load environments").WithErrf("ListSecrets: %w", err)
+		return nil, errutil.DatabaseErr("Failed to load secrets").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 5. Get cipher pair for decryption
+	// 6. Get cipher pair for decryption
 	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
 		ProjectID: opts.ProjectID,
@@ -100,14 +140,15 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 6. Process secrets with permission filtering
+	// 7. Process secrets with permission filtering
 	directSecrets, importedSecrets := s.processSecretsWithPermissions(
 		secrets,
-		chainResult.DirectFolderIDs,
-		chainResult.DirectPaths,
-		chainResult.Imports,
+		directFolderIDs,
+		directPaths,
+		allImports,
 		opts.Environment,
-		chainResult.FolderLookup,
+		folderLookup,
+		importLookup,
 		secretProcessorOpts{
 			ViewSecretValue: opts.ViewSecretValue,
 			AccessChecker:   opts.AccessChecker,
@@ -117,14 +158,14 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		},
 	)
 
-	// 7. Apply personal overrides behavior
+	// 8. Apply personal overrides behavior
 	directSecrets = filterByPersonalOverridesBehavior(directSecrets, opts.PersonalOverridesBehavior)
 	importedSecrets = filterByPersonalOverridesBehavior(importedSecrets, opts.PersonalOverridesBehavior)
 
-	// 8. Expand secret references if requested
+	// 9. Expand secret references if requested
 	if opts.ExpandSecretReferences {
 		// Build expansion list: direct secrets first, then imported in reverse import order
-		allSecrets := buildExpansionSecretList(directSecrets, importedSecrets, chainResult.Imports)
+		allSecrets := buildExpansionSecretList(directSecrets, importedSecrets, allImports)
 
 		var expansionUserID *uuid.UUID
 		if opts.ExpandPersonalOverrides &&
@@ -143,7 +184,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
 					projectID:    opts.ProjectID,
-					folderLookup: chainResult.FolderLookup,
+					folderLookup: folderLookup,
 					cipherPair:   cipherPair,
 					userID:       expansionUserID,
 				})
@@ -154,14 +195,13 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		if expander.HasDeniedRefs() {
 			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("ListSecrets: denied refs: %v", expander.DeniedRefs())
 		}
-		// Values are already expanded in place - no need to copy back
 	}
 
 	return &ListSecretsResult{
 		DirectSecrets:   directSecrets,
 		ImportedSecrets: importedSecrets,
-		Imports:         chainResult.Imports,
-		FolderLookup:    chainResult.FolderLookup,
+		Imports:         allImports,
+		FolderLookup:    folderLookup,
 	}, nil
 }
 
@@ -182,6 +222,7 @@ func (s *Service) processSecretsWithPermissions(
 	imports []secretimport.ResolvedImport,
 	requestedEnv string,
 	folderLookup *secretfolder.FolderLookup,
+	importLookup *secretimport.ImportLookup,
 	opts secretProcessorOpts,
 ) (directSecrets, importedSecrets []ProcessedSecret) {
 	directFolderSet := make(map[uuid.UUID]bool, len(directFolderIDs))
@@ -209,7 +250,7 @@ func (s *Service) processSecretsWithPermissions(
 			secretPath = imp.Path
 			envSlug, _ = folderLookup.GetEnvSlug(imp.EnvID)
 			isImported = true
-			importFolderID = imp.Import.FolderID
+			importFolderID = importLookup.FolderID(imp.ImportIdx)
 			importEnv = envSlug
 			importPath = imp.Path
 		} else {
@@ -347,45 +388,7 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 		return nil
 	}
 
-	// First pass: collect unique slugs that aren't in FolderLookup yet
-	var missingSlugs []string
-	seenSlugs := make(map[string]bool)
-	for i := range refs {
-		slug := refs[i].Env
-		if seenSlugs[slug] {
-			continue
-		}
-		seenSlugs[slug] = true
-
-		if _, ok := opts.folderLookup.GetEnvIDBySlug(slug); !ok {
-			missingSlugs = append(missingSlugs, slug)
-		}
-	}
-
-	// Batch fetch missing env IDs in a single query
-	if len(missingSlugs) > 0 {
-		slugToEnvID, err := s.getEnvsBySlugs(ctx, opts.projectID, missingSlugs)
-		if err != nil {
-			s.logger.WarnContext(ctx, "fetchAbsoluteSecrets: failed to get envs by slugs", slog.Any("error", err))
-			return nil
-		}
-
-		var newEnvIDs []uuid.UUID
-		for _, envID := range slugToEnvID {
-			newEnvIDs = append(newEnvIDs, envID)
-		}
-
-		if len(newEnvIDs) > 0 {
-			newLookup, err := s.secretFolderService.LoadProjectFolders(ctx, opts.projectID, newEnvIDs)
-			if err != nil {
-				s.logger.WarnContext(ctx, "fetchAbsoluteSecrets: failed to load project folders", slog.String("projectID", opts.projectID), slog.Any("error", err))
-				return nil
-			}
-			opts.folderLookup.Merge(newLookup)
-		}
-	}
-
-	// Second pass: build location map
+	// Build location map
 	type locationKey struct {
 		envID uuid.UUID
 		path  string
@@ -425,7 +428,6 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 
 	rawSecrets, err := s.FindByFolderIds(ctx, folderIDs, opts.userID, nil)
 	if err != nil {
-		s.logger.WarnContext(ctx, "fetchAbsoluteSecrets: failed to find secrets by folder IDs", slog.Any("error", err))
 		return nil
 	}
 

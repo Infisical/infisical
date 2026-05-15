@@ -2,10 +2,8 @@ package secret
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/kms"
@@ -33,27 +31,25 @@ type GetSecretByNameResult struct {
 
 // GetSecretByName retrieves a single secret by name with full processing.
 func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts) (*GetSecretByNameResult, error) {
-	// 1. Get starting environment by slug
-	envID, err := s.getEnvBySlug(ctx, opts.ProjectID, opts.Environment)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errutil.NotFound("Environment not found")
-		}
-		return nil, errutil.DatabaseErr("Failed to load environment").WithErrf("GetSecretByName: %w", err)
-	}
-
-	// 2. Load folder
-	folderLookup, err := s.secretFolderService.LoadProjectFolders(ctx, opts.ProjectID, []uuid.UUID{envID})
+	// 1. Load all folders for project
+	folderLookup, err := s.secretFolderService.LoadFolders(ctx, opts.ProjectID, nil)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load folders").WithErrf("GetSecretByName: %w", err)
 	}
 
+	// 2. Get starting environment by slug (every env has a root folder)
+	envID, ok := folderLookup.GetEnvIDBySlug(opts.Environment)
+	if !ok {
+		return nil, errutil.NotFound("Environment not found")
+	}
+
+	// 3. Get folder
 	folderNode, ok := folderLookup.GetByPath(envID, opts.SecretPath)
 	if !ok {
 		return nil, errutil.NotFound("Folder not found")
 	}
 
-	// 3. Get cipher pair
+	// 4. Get cipher pair
 	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
 		ProjectID: opts.ProjectID,
@@ -62,7 +58,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("GetSecretByName: %w", err)
 	}
 
-	// 4. Find secret
+	// 5. Find secret
 	secretType := opts.SecretType
 	if secretType == "" {
 		secretType = "shared"
@@ -76,30 +72,39 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 	secretEnv := opts.Environment
 	secretPath := opts.SecretPath
 
-	// 5. Search imports if not found
+	// 6. Search imports if not found
+	var importLookup *secretimport.ImportLookup
+	var allImports []secretimport.ResolvedImport
+
 	if foundSecret == nil && opts.IncludeImports {
-		importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
+		importLookup, err = s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
 		if err != nil {
 			return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("GetSecretByName: %w", err)
 		}
 
-		chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderService)
-		chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, envID, opts.SecretPath, false)
-		if err == nil && len(chainResult.Imports) > 0 {
-			folderLookup.Merge(chainResult.FolderLookup)
+		// Resolve import chain
+		resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
+			node, ok := folderLookup.GetByPath(envID, path)
+			if !ok {
+				return uuid.Nil, false
+			}
+			return node.ID, true
+		}
 
-			for i := len(chainResult.Imports) - 1; i >= 0; i-- {
-				imp := &chainResult.Imports[i]
-				importedSecret, err := s.FindByKey(ctx, imp.FolderID, opts.SecretName, secretType, opts.UserID)
-				if err != nil {
-					continue
-				}
-				if importedSecret != nil {
-					foundSecret = importedSecret
-					secretEnv, _ = folderLookup.GetEnvSlug(imp.EnvID)
-					secretPath = imp.Path
-					break
-				}
+		allImports = importLookup.ResolveChain(folderNode.ID, resolveFolder)
+
+		// Search imports in reverse order (later imports have higher priority)
+		for i := len(allImports) - 1; i >= 0; i-- {
+			imp := &allImports[i]
+			importedSecret, err := s.FindByKey(ctx, imp.FolderID, opts.SecretName, secretType, opts.UserID)
+			if err != nil {
+				continue
+			}
+			if importedSecret != nil {
+				foundSecret = importedSecret
+				secretEnv, _ = folderLookup.GetEnvSlug(imp.EnvID)
+				secretPath = imp.Path
+				break
 			}
 		}
 	}
@@ -108,7 +113,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		return nil, errutil.NotFound("Secret not found")
 	}
 
-	// 6. Check permissions
+	// 7. Check permissions
 	tagSlugs := make([]string, len(foundSecret.Tags))
 	for i, tag := range foundSecret.Tags {
 		tagSlugs[i] = tag.Slug
@@ -126,7 +131,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		}
 	}
 
-	// 7. Decrypt value and comment
+	// 8. Decrypt value and comment
 	valueHidden := !opts.ViewSecretValue
 	if opts.AccessChecker != nil {
 		canReadValue := opts.AccessChecker.CanReadSecretValue(secretEnv, secretPath, foundSecret.Key, tagSlugs)
@@ -147,23 +152,29 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		ValueHidden: valueHidden,
 	}
 
-	// 8. Expand references if requested
+	// 9. Expand references if requested
 	if opts.ExpandSecretReferences && !valueHidden && rawValue != "" {
-		importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
-		if err != nil {
-			return nil, errutil.InternalServer("Failed to load imports for expansion").WithErrf("GetSecretByName: %w", err)
-		}
-		chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderService)
-		chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, envID, opts.SecretPath, false)
-		if err != nil {
-			return nil, errutil.InternalServer("Failed to resolve import chain for expansion").WithErrf("GetSecretByName: %w", err)
-		}
-		folderLookup.Merge(chainResult.FolderLookup)
+		// Load imports if not already loaded
+		if importLookup == nil {
+			importLookup, err = s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
+			if err != nil {
+				return nil, errutil.InternalServer("Failed to load imports for expansion").WithErrf("GetSecretByName: %w", err)
+			}
 
-		// Always fetch from same folder + imported folders for relative ref resolution
+			resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
+				node, ok := folderLookup.GetByPath(envID, path)
+				if !ok {
+					return uuid.Nil, false
+				}
+				return node.ID, true
+			}
+			allImports = importLookup.ResolveChain(folderNode.ID, resolveFolder)
+		}
+
+		// Fetch context secrets from same folder + imported folders
 		allFolderIDs := []uuid.UUID{folderNode.ID}
-		if len(chainResult.Imports) > 0 {
-			allFolderIDs = append(allFolderIDs, chainResult.ImportedFolderIDs()...)
+		for _, imp := range allImports {
+			allFolderIDs = append(allFolderIDs, imp.FolderID)
 		}
 
 		// Build list of secrets for expansion: main secret + context secrets
@@ -185,10 +196,10 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 			ctxPath := secretPath
 			if sec.FolderID != folderNode.ID {
 				// This is from an imported folder
-				for i := range chainResult.Imports {
-					if chainResult.Imports[i].FolderID == sec.FolderID {
-						ctxEnvSlug, _ = folderLookup.GetEnvSlug(chainResult.Imports[i].EnvID)
-						ctxPath = chainResult.Imports[i].Path
+				for j := range allImports {
+					if allImports[j].FolderID == sec.FolderID {
+						ctxEnvSlug, _ = folderLookup.GetEnvSlug(allImports[j].EnvID)
+						ctxPath = allImports[j].Path
 						break
 					}
 				}
@@ -228,7 +239,6 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		if expander.HasDeniedRefs() {
 			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("GetSecretByName: denied refs: %v", expander.DeniedRefs())
 		}
-		// resultSecret.Value is already expanded in place
 	}
 
 	return &GetSecretByNameResult{

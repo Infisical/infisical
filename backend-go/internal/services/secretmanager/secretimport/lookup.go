@@ -1,104 +1,235 @@
 package secretimport
 
 import (
+	"bytes"
 	"sort"
 
 	"github.com/google/uuid"
 )
 
-// ImportEntry represents a single secret import configured on a folder.
-type ImportEntry struct {
-	ID            uuid.UUID
-	FolderID      uuid.UUID
-	ImportPath    string
-	ImportEnvID   uuid.UUID
-	Position      int32
-	IsReplication bool
-	IsReserved    bool
-}
+const (
+	flagReplication = 1 << 0
+	flagReserved    = 1 << 1
+)
 
-// importTarget is a composite key for the reverse index.
+// importTarget is a composite key for reverse lookups.
 type importTarget struct {
 	envID uuid.UUID
 	path  string
 }
 
-// ImportLookup provides O(1) lookup of secret imports for a project.
-// Forward index: folder ID → imports configured on that folder (sorted by position).
-// Reverse index: (envID, path) → imports that reference this target.
+// ImportLookup provides efficient lookup of secret imports using CSR structure.
 type ImportLookup struct {
-	byFolderID map[uuid.UUID][]ImportEntry
-	byID       map[uuid.UUID]*ImportEntry
-	byTarget   map[importTarget][]*ImportEntry
+	// Parallel arrays - sorted by (folderID, position)
+	ids          []uuid.UUID
+	folderIDs    []uuid.UUID
+	targetEnvIDs []uuid.UUID
+	positions    []int32
+	flags        []uint8
+
+	// Path arena - deduplicated string storage
+	pathOffsets []uint32
+	pathLens    []uint16
+	pathArena   []byte
+
+	// Index: folder -> range in arrays
+	folderStart map[uuid.UUID]int32
+	folderEnd   map[uuid.UUID]int32
+
+	// Index: ID -> array index (binary search)
+	idOrder []int32
+
+	// Reverse index (cold path)
+	byTarget map[importTarget][]int32
 }
 
 func newImportLookup(rows []importRow) *ImportLookup {
+	if len(rows) == 0 {
+		return &ImportLookup{
+			folderStart: make(map[uuid.UUID]int32),
+			folderEnd:   make(map[uuid.UUID]int32),
+			byTarget:    make(map[importTarget][]int32),
+		}
+	}
+
+	n := len(rows)
+
+	// Sort rows by (folderID, position)
+	sort.Slice(rows, func(i, j int) bool {
+		cmp := bytes.Compare(rows[i].FolderID[:], rows[j].FolderID[:])
+		if cmp != 0 {
+			return cmp < 0
+		}
+		return rows[i].Position < rows[j].Position
+	})
+
 	l := &ImportLookup{
-		byFolderID: make(map[uuid.UUID][]ImportEntry),
-		byID:       make(map[uuid.UUID]*ImportEntry, len(rows)),
-		byTarget:   make(map[importTarget][]*ImportEntry),
+		ids:          make([]uuid.UUID, n),
+		folderIDs:    make([]uuid.UUID, n),
+		targetEnvIDs: make([]uuid.UUID, n),
+		positions:    make([]int32, n),
+		flags:        make([]uint8, n),
+		pathOffsets:  make([]uint32, n),
+		pathLens:     make([]uint16, n),
+		pathArena:    make([]byte, 0, n*20), // estimate avg path length
+		folderStart:  make(map[uuid.UUID]int32),
+		folderEnd:    make(map[uuid.UUID]int32),
+		idOrder:      make([]int32, n),
+		byTarget:     make(map[importTarget][]int32),
 	}
 
-	// Group rows by folder ID.
-	for _, r := range rows {
-		entry := ImportEntry{
-			ID:            r.ID,
-			FolderID:      r.FolderID,
-			ImportPath:    r.ImportPath,
-			ImportEnvID:   r.ImportEnvID,
-			Position:      r.Position,
-			IsReplication: r.IsReplication.Valid && r.IsReplication.V,
-			IsReserved:    r.IsReserved.Valid && r.IsReserved.V,
+	// Path interning map
+	pathPool := make(map[string]struct {
+		offset uint32
+		length uint16
+	})
+
+	// Populate parallel arrays
+	var currentFolder uuid.UUID
+	var currentStart int32
+
+	for i, r := range rows {
+		// Track folder ranges
+		if i == 0 || r.FolderID != currentFolder {
+			if i > 0 {
+				l.folderEnd[currentFolder] = int32(i)
+			}
+			currentFolder = r.FolderID
+			currentStart = int32(i)
+			l.folderStart[currentFolder] = currentStart
 		}
-		l.byFolderID[r.FolderID] = append(l.byFolderID[r.FolderID], entry)
-	}
 
-	// Sort each folder's imports by position, then build secondary indexes.
-	for folderID := range l.byFolderID {
-		entries := l.byFolderID[folderID]
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].Position < entries[j].Position
-		})
-		l.byFolderID[folderID] = entries
+		l.ids[i] = r.ID
+		l.folderIDs[i] = r.FolderID
+		l.targetEnvIDs[i] = r.ImportEnvID
+		l.positions[i] = r.Position
 
-		for i := range entries {
-			e := &entries[i]
-			l.byID[e.ID] = e
-			key := importTarget{envID: e.ImportEnvID, path: e.ImportPath}
-			l.byTarget[key] = append(l.byTarget[key], e)
+		// Flags
+		var f uint8
+		if r.IsReplication.Valid && r.IsReplication.V {
+			f |= flagReplication
 		}
+		if r.IsReserved.Valid && r.IsReserved.V {
+			f |= flagReserved
+		}
+		l.flags[i] = f
+
+		// Intern path
+		if existing, ok := pathPool[r.ImportPath]; ok {
+			l.pathOffsets[i] = existing.offset
+			l.pathLens[i] = existing.length
+		} else {
+			offset := uint32(len(l.pathArena))
+			length := uint16(len(r.ImportPath))
+			l.pathArena = append(l.pathArena, r.ImportPath...)
+			l.pathOffsets[i] = offset
+			l.pathLens[i] = length
+			pathPool[r.ImportPath] = struct {
+				offset uint32
+				length uint16
+			}{offset, length}
+		}
+
+		// Build reverse index
+		key := importTarget{envID: r.ImportEnvID, path: r.ImportPath}
+		l.byTarget[key] = append(l.byTarget[key], int32(i))
 	}
+
+	// Close last folder range
+	if n > 0 {
+		l.folderEnd[currentFolder] = int32(n)
+	}
+
+	// Build sorted ID index for binary search
+	for i := range l.idOrder {
+		l.idOrder[i] = int32(i)
+	}
+	sort.Slice(l.idOrder, func(a, b int) bool {
+		return bytes.Compare(l.ids[l.idOrder[a]][:], l.ids[l.idOrder[b]][:]) < 0
+	})
 
 	return l
 }
 
-// GetByFolderID returns imports for a folder, sorted by position (ascending).
-// Returns nil if the folder has no imports.
-func (l *ImportLookup) GetByFolderID(folderID uuid.UUID) []ImportEntry {
-	return l.byFolderID[folderID]
+// Len returns the total number of imports.
+func (l *ImportLookup) Len() int {
+	return len(l.ids)
 }
 
-// GetByID returns a single import entry by its ID.
-func (l *ImportLookup) GetByID(id uuid.UUID) (*ImportEntry, bool) {
-	entry, ok := l.byID[id]
-	return entry, ok
+// ImportsOfFolder returns the range [start, end) of imports for a folder.
+// Returns (0, 0) if folder has no imports.
+func (l *ImportLookup) ImportsOfFolder(folderID uuid.UUID) (start, end int32) {
+	start, ok := l.folderStart[folderID]
+	if !ok {
+		return 0, 0
+	}
+	return start, l.folderEnd[folderID]
 }
 
-// GetImportersOf returns all imports that reference the given env + path.
-// Useful for answering "which folders import from this location?".
-func (l *ImportLookup) GetImportersOf(envID uuid.UUID, path string) []*ImportEntry {
+// ID returns the import ID at index i.
+func (l *ImportLookup) ID(i int32) uuid.UUID {
+	return l.ids[i]
+}
+
+// FolderID returns the source folder ID at index i.
+func (l *ImportLookup) FolderID(i int32) uuid.UUID {
+	return l.folderIDs[i]
+}
+
+// TargetEnvID returns the target environment ID at index i.
+func (l *ImportLookup) TargetEnvID(i int32) uuid.UUID {
+	return l.targetEnvIDs[i]
+}
+
+// TargetPath returns the target path at index i.
+func (l *ImportLookup) TargetPath(i int32) string {
+	offset := l.pathOffsets[i]
+	length := l.pathLens[i]
+	return string(l.pathArena[offset : offset+uint32(length)])
+}
+
+// Position returns the position at index i.
+func (l *ImportLookup) Position(i int32) int32 {
+	return l.positions[i]
+}
+
+// IsReplication returns whether the import at index i is a replication.
+func (l *ImportLookup) IsReplication(i int32) bool {
+	return l.flags[i]&flagReplication != 0
+}
+
+// IsReserved returns whether the import at index i is reserved.
+func (l *ImportLookup) IsReserved(i int32) bool {
+	return l.flags[i]&flagReserved != 0
+}
+
+// IndexByID returns the array index for an import ID using binary search.
+// Returns (-1, false) if not found.
+func (l *ImportLookup) IndexByID(id uuid.UUID) (int32, bool) {
+	i := sort.Search(len(l.idOrder), func(k int) bool {
+		return bytes.Compare(l.ids[l.idOrder[k]][:], id[:]) >= 0
+	})
+	if i < len(l.idOrder) && l.ids[l.idOrder[i]] == id {
+		return l.idOrder[i], true
+	}
+	return -1, false
+}
+
+// ImportersOf returns indices of imports that target the given env + path.
+// Returns nil if no imports target this location.
+func (l *ImportLookup) ImportersOf(envID uuid.UUID, path string) []int32 {
 	return l.byTarget[importTarget{envID: envID, path: path}]
 }
 
 const maxImportDepth = 10
 
-// ResolvedImport is a folder in the import chain with the import that led to it.
+// ResolvedImport represents a folder in the import chain.
 type ResolvedImport struct {
-	FolderID uuid.UUID
-	Import   ImportEntry
-	Depth    int
-	EnvID    uuid.UUID
-	Path     string
+	FolderID  uuid.UUID
+	ImportIdx int32
+	Depth     int
+	EnvID     uuid.UUID
+	Path      string
 }
 
 // ResolveChain walks the full import chain starting from a folder and returns
@@ -119,22 +250,27 @@ func (l *ImportLookup) ResolveChain(
 			return
 		}
 
-		for _, entry := range l.GetByFolderID(folderID) {
-			key := importTarget{envID: entry.ImportEnvID, path: entry.ImportPath}
+		start, end := l.ImportsOfFolder(folderID)
+		for i := start; i < end; i++ {
+			envID := l.TargetEnvID(i)
+			path := l.TargetPath(i)
+			key := importTarget{envID: envID, path: path}
 			if visited[key] {
 				continue
 			}
 			visited[key] = true
 
-			resolvedID, ok := resolveFolder(entry.ImportEnvID, entry.ImportPath)
+			resolvedID, ok := resolveFolder(envID, path)
 			if !ok {
 				continue
 			}
 
 			result = append(result, ResolvedImport{
-				FolderID: resolvedID,
-				Import:   entry,
-				Depth:    depth,
+				FolderID:  resolvedID,
+				ImportIdx: i,
+				Depth:     depth,
+				EnvID:     envID,
+				Path:      path,
 			})
 
 			walk(resolvedID, depth+1)
