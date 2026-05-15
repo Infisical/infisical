@@ -922,6 +922,12 @@ export const projectServiceFactory = ({
       });
     }
 
+    if (project.type === ProjectType.CertificateManager && !hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only admins can update Certificate Manager project settings"
+      });
+    }
+
     try {
       const updatedProject = await projectDAL.updateById(project.id, {
         name: update.name,

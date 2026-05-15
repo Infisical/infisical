@@ -697,7 +697,7 @@ export const permissionServiceFactory = ({
       }
 
       throw new ForbiddenRequestError({
-        message: `You are not a member of ${resourceType} '${resourceId}'.`
+        message: `You are not a member of this ${resourceType}.`
       });
     });
   };
