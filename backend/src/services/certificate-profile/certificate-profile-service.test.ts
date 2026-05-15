@@ -181,12 +181,14 @@ describe("CertificateProfileService", () => {
   const mockPermissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
+        can: vi.fn().mockReturnValue(true),
         throwUnlessCan: vi.fn(),
         rules: []
       }
     }),
     getResourcePermission: vi.fn().mockResolvedValue({
       permission: {
+        can: vi.fn().mockReturnValue(true),
         throwUnlessCan: vi.fn(),
         rules: []
       }
