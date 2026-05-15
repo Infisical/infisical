@@ -18,7 +18,8 @@ export const RailwaySyncFns = {
       const variables = await RailwayPublicAPI.getVariables(secretSync.connection, {
         projectId: config.projectId,
         environmentId: config.environmentId,
-        serviceId: config.serviceId || undefined
+        serviceId: config.serviceId || undefined,
+        unrendered: true
       });
 
       const entries = {} as TSecretMap;
