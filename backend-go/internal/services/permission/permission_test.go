@@ -315,7 +315,6 @@ func TestCustomRole_InvertedRuleBlocksSpecificAction(t *testing.T) {
 	t.Parallel()
 
 	// Allow all CRUD, but forbid delete on prod.
-	// NOTE: Currently fails due to gocasl LoadFromJSON not processing the "inverted" field.
 	rules := []gocasl.JSONRule{
 		{Action: gocasl.StringOrSlice{"read", "create", "edit", "delete"}, Subject: gocasl.StringOrSlice{project.SubSecrets}},
 		{Action: gocasl.StringOrSlice{"delete"}, Subject: gocasl.StringOrSlice{project.SubSecrets}, Conditions: gocasl.Cond{"environment": "prod"}, Inverted: true},

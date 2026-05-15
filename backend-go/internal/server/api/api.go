@@ -41,10 +41,11 @@ type SecretManagerHandlers struct {
 }
 
 // NewRegistry creates a new API registry with all services and handlers initialized.
-func NewRegistry(ctx context.Context, infra *Infra) (*Registry, error) {
+// Returns a cleanup function that should be called during graceful shutdown.
+func NewRegistry(ctx context.Context, infra *Infra) (*Registry, func(), error) {
 	platformSvc, err := newPlatformServices(ctx, infra)
 	if err != nil {
-		return nil, fmt.Errorf("platform services: %w", err)
+		return nil, nil, fmt.Errorf("platform services: %w", err)
 	}
 
 	secretManagerSvc := newSecretManagerServices(infra, platformSvc)
@@ -57,5 +58,10 @@ func NewRegistry(ctx context.Context, infra *Infra) (*Registry, error) {
 		SecretManager: secretManagerHandlers,
 	}
 
-	return registry, nil
+	cleanup := func() {
+		platformSvc.kms.Close()
+		platformSvc.license.Close()
+	}
+
+	return registry, cleanup, nil
 }

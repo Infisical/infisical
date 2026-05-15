@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -35,9 +36,11 @@ const syncInterval = 10 * time.Minute
 
 // Service manages license validation and feature gating.
 type Service struct {
-	logger         *slog.Logger
-	instanceType   InstanceType
-	isValid        bool
+	logger       *slog.Logger
+	instanceType InstanceType
+	isValid      bool
+
+	mu             sync.RWMutex
 	onPremFeatures FeatureSet
 	offlineLicense *OfflineLicenseInfo
 
@@ -219,6 +222,8 @@ func (s *Service) syncOnPremFeatures(ctx context.Context) error {
 	if err := s.onPremAPI.get(ctx, "/api/license/v1/plan", &resp); err != nil {
 		return err
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.onPremFeatures = resp.CurrentPlan
 	return nil
 }
@@ -271,6 +276,8 @@ func (s *Service) findRootOrgDetails(ctx context.Context, orgID string) (*orgDet
 // For on-prem instances it returns the in-memory feature set.
 func (s *Service) GetPlan(ctx context.Context, orgID string) (*FeatureSet, error) {
 	if s.instanceType != InstanceTypeCloud {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
 		features := s.onPremFeatures
 		return &features, nil
 	}
@@ -319,7 +326,9 @@ func (s *Service) GetPlan(ctx context.Context, orgID string) (*FeatureSet, error
 
 // fallbackPlan caches and returns the default on-prem features when cloud fetch fails.
 func (s *Service) fallbackPlan(ctx context.Context, cacheKey string) *FeatureSet {
+	s.mu.RLock()
 	features := s.onPremFeatures
+	s.mu.RUnlock()
 	if planJSON, err := json.Marshal(features); err == nil {
 		_ = s.keyStore.SetItemWithExpiry(ctx, cacheKey, cloudPlanTTL, string(planJSON))
 	}

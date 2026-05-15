@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 func setupService(t *testing.T) *kms.Service {
 	t.Helper()
 
-	svc, err := kms.NewService(kms.Deps{
+	svc, err := kms.NewService(&kms.Deps{
 		DB:     stack.DB(),
 		HSM:    nil,
 		Config: stack.Config(),

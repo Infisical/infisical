@@ -57,7 +57,7 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
 
-	kmsSvc, err := kms.NewService(kms.Deps{
+	kmsSvc, err := kms.NewService(&kms.Deps{
 		DB:     stack.DB(),
 		HSM:    nil,
 		Config: stack.Config(),

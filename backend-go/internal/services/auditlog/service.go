@@ -41,7 +41,7 @@ func (s *Service) CreateAuditLog(ctx context.Context, dto *CreateAuditLogDTO) er
 		return errutil.BadRequest("Must specify either projectId or orgId").WithErrf("CreateAuditLog: both projectId and orgId are nil")
 	}
 
-	if err := queue.Enqueue(s.queue, TaskAuditLog, dto, queue.WithMaxRetry(3)); err != nil {
+	if err := queue.Enqueue(ctx, s.queue, TaskAuditLog, dto, queue.WithMaxRetry(3)); err != nil {
 		s.logger.ErrorContext(ctx, "failed to enqueue audit log",
 			slog.String("eventType", string(dto.Event.Type())),
 			slog.Any("error", err),

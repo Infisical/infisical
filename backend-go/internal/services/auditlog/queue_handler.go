@@ -85,7 +85,7 @@ type QueueHandler struct {
 }
 
 // NewQueueHandler creates a new audit log queue handler.
-func NewQueueHandler(logger *slog.Logger, deps QueueHandlerDeps) *QueueHandler {
+func NewQueueHandler(logger *slog.Logger, deps *QueueHandlerDeps) *QueueHandler {
 	return &QueueHandler{
 		logger:   logger.With(slog.String("queue_handler", "auditlog")),
 		db:       deps.DB,

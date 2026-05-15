@@ -76,7 +76,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	queueSvc := queue.NewService(logger, redisClient)
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 
-	registry, err := api.NewRegistry(ctx, &api.Infra{
+	registry, cleanup, err := api.NewRegistry(ctx, &api.Infra{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
@@ -88,6 +88,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		logger.ErrorContext(ctx, "failed to initialize services", slog.Any("error", err))
 		return err
 	}
+	defer cleanup()
 
 	// Create server.
 	srv := server.NewServer(registry, logger)

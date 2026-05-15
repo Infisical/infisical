@@ -119,7 +119,7 @@ type Deps struct {
 
 // NewService creates a new KMS service.
 // The encryption key is decoded during Start() based on FIPS mode determination.
-func NewService(deps Deps) (*Service, error) {
+func NewService(deps *Deps) (*Service, error) {
 	return &Service{
 		db:                   deps.DB,
 		hsm:                  deps.HSM,
@@ -183,6 +183,20 @@ func (s *Service) Start(ctx context.Context, hsmConfigured bool) error {
 	return nil
 }
 
+// Close zeroes the root encryption key from memory.
+func (s *Service) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.rootEncryptionKey {
+		s.rootEncryptionKey[i] = 0
+	}
+	s.rootEncryptionKey = nil
+	for i := range s.encryptionKey {
+		s.encryptionKey[i] = 0
+	}
+	s.encryptionKey = nil
+}
+
 // resolveEncryptionKey decodes the encryption key based on FIPS mode.
 // ROOT_ENCRYPTION_KEY takes precedence and is always base64-encoded.
 // ENCRYPTION_KEY is base64-encoded in FIPS mode, raw 32-char string otherwise.
@@ -244,7 +258,12 @@ func (s *Service) CreateCipherPairWithDataKey(ctx context.Context, dto CreateCip
 func (s *Service) getRootKey() []byte {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.rootEncryptionKey
+	if len(s.rootEncryptionKey) == 0 {
+		return nil
+	}
+	keyCopy := make([]byte, len(s.rootEncryptionKey))
+	copy(keyCopy, s.rootEncryptionKey)
+	return keyCopy
 }
 
 func (s *Service) getDataKey(ctx context.Context, dto CreateCipherPairDTO) ([]byte, error) {

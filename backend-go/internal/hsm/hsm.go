@@ -90,10 +90,9 @@ func (s *Service) StartService() error {
 // IsActive returns true if the HSM self-test has passed.
 func (s *Service) IsActive() bool {
 	s.mu.Lock()
-	passed := s.testPassed
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
-	if passed {
+	if s.testPassed {
 		return true
 	}
 
@@ -101,10 +100,7 @@ func (s *Service) IsActive() bool {
 		return false
 	}
 
-	s.mu.Lock()
 	s.testPassed = true
-	s.mu.Unlock()
-
 	return true
 }
 

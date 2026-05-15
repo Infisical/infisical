@@ -22,7 +22,7 @@ type platformServices struct {
 }
 
 func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, error) {
-	kmsSvc, err := kms.NewService(kms.Deps{
+	kmsSvc, err := kms.NewService(&kms.Deps{
 		DB:     infra.DB,
 		HSM:    infra.HSM,
 		Config: infra.Config,
@@ -53,7 +53,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 		Config: infra.Config,
 	})
 
-	auditLogQueueHandler := auditlog.NewQueueHandler(infra.Logger, auditlog.QueueHandlerDeps{
+	auditLogQueueHandler := auditlog.NewQueueHandler(infra.Logger, &auditlog.QueueHandlerDeps{
 		DB:       infra.DB,
 		Project:  projectSvc,
 		License:  licenseSvc,

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -210,7 +209,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// 12. Marshal rules to JSON
 	rulesJSON, err := json.Marshal(rules)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling permission rules: %w", err)
+		return nil, errutil.InternalServer("Failed to marshal permission rules").WithErrf("GetProjectPermission: %w", err)
 	}
 
 	// 13. Fetch username
@@ -256,7 +255,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		FieldOps: PermissionFieldOps(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("loading permission rules: %w", err)
+		return nil, errutil.InternalServer("Failed to load permission rules").WithErrf("GetProjectPermission: %w", err)
 	}
 
 	// 18. Build memberships for result
@@ -317,7 +316,7 @@ func (p *Service) getServiceTokenProjectPermission(
 	// 6. Parse scopes and build rules
 	var scopes []ServiceTokenScope
 	if err := json.Unmarshal([]byte(serviceToken.Scopes), &scopes); err != nil {
-		return nil, fmt.Errorf("parsing service token scopes: %w", err)
+		return nil, errutil.InternalServer("Failed to parse service token scopes").WithErrf("getServiceTokenProjectPermission: %w", err)
 	}
 
 	rules := buildServiceTokenProjectPermission(scopes, serviceToken.Permissions)
@@ -325,14 +324,14 @@ func (p *Service) getServiceTokenProjectPermission(
 	// 7. Load ability from JSON
 	rulesJSON, err := json.Marshal(rules)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling service token rules: %w", err)
+		return nil, errutil.InternalServer("Failed to marshal service token rules").WithErrf("getServiceTokenProjectPermission: %w", err)
 	}
 
 	ability, err := gocasl.LoadFromJSON(rulesJSON, gocasl.LoadOptions{
 		FieldOps: PermissionFieldOps(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("loading service token rules: %w", err)
+		return nil, errutil.InternalServer("Failed to load service token rules").WithErrf("getServiceTokenProjectPermission: %w", err)
 	}
 
 	return &GetProjectPermissionResult{
