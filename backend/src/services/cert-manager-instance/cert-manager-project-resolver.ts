@@ -38,8 +38,10 @@ export type TCertManagerProjectResolverFactory = ReturnType<typeof certManagerPr
 
 export const certManagerProjectResolverFactory = (deps: TResolverDeps) => ({
   resolve: (actorOrgId: string) => resolveCertManagerProjectId(deps, actorOrgId),
-  isCertManagerProject: async (projectId: string): Promise<boolean> => {
+  isCertManagerProject: async (projectId: string, expectedOrgId: string): Promise<boolean> => {
     const project = await deps.projectDAL.findById(projectId);
-    return project?.type === ProjectType.CertificateManager;
+    if (!project) return false;
+    if (project.orgId !== expectedOrgId) return false;
+    return project.type === ProjectType.CertificateManager;
   }
 });

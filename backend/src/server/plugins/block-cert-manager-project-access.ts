@@ -9,6 +9,8 @@ const PROJECT_ROUTE_PREFIX_RE = new RE2("^/api/v[12]/(projects|workspace)/");
 
 export const blockCertManagerProjectAccess: FastifyPluginAsync = fp(async (server) => {
   server.addHook("preValidation", async (req) => {
+    if (!req.permission?.orgId) return;
+
     const params = req.params as { projectId?: string; workspaceId?: string } | null;
     const projectId = params?.projectId ?? params?.workspaceId;
     if (!projectId) return;
@@ -17,7 +19,10 @@ export const blockCertManagerProjectAccess: FastifyPluginAsync = fp(async (serve
     if (!PROJECT_ROUTE_PREFIX_RE.test(routePath)) return;
     if (!ACCESS_PATH_RE.test(routePath)) return;
 
-    const isCertManager = await server.services.certManagerProjectResolver.isCertManagerProject(projectId);
+    const isCertManager = await server.services.certManagerProjectResolver.isCertManagerProject(
+      projectId,
+      req.permission.orgId
+    );
     if (isCertManager) {
       throw new ForbiddenRequestError({
         message:

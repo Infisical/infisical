@@ -346,17 +346,8 @@ export const certificateRequestServiceFactory = ({
       actorOrgId
     });
 
-    let canReadPrivateKey = permission.can(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certificateRequest.commonName ?? undefined,
-        altNames: Array.isArray(certificateRequest.altNames)
-          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
-          : undefined,
-        metadata: requestMetadata
-      })
-    );
-    if (!canReadPrivateKey && certificateRequest.applicationId) {
+    let canReadPrivateKey: boolean;
+    if (certificateRequest.applicationId) {
       const { permission: resourcePermission } = await permissionService.getResourcePermission({
         actor,
         actorId,
@@ -369,6 +360,17 @@ export const certificateRequestServiceFactory = ({
       canReadPrivateKey = resourcePermission.can(
         ResourcePermissionCertificateActions.ReadPrivateKey,
         ResourcePermissionSub.Certificates
+      );
+    } else {
+      canReadPrivateKey = permission.can(
+        ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificateRequest.commonName ?? undefined,
+          altNames: Array.isArray(certificateRequest.altNames)
+            ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+            : undefined,
+          metadata: requestMetadata
+        })
       );
     }
 

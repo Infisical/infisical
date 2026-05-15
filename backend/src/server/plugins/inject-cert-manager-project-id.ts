@@ -28,7 +28,10 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
 
     const explicit = readProjectIdFromRequest(req);
     if (explicit) {
-      const isCertManager = await server.services.certManagerProjectResolver.isCertManagerProject(explicit);
+      const isCertManager = await server.services.certManagerProjectResolver.isCertManagerProject(
+        explicit,
+        req.permission.orgId
+      );
       if (!isCertManager) {
         throw new BadRequestError({
           message: "The supplied projectId does not reference a Certificate Manager project."

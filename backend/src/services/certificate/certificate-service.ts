@@ -300,15 +300,19 @@ export const certificateServiceFactory = ({
       serialNumber: cert.serialNumber,
       metadata: certMetadata
     });
-    if (!permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject)) {
+    if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
         ResourcePermissionCertificateActions.ReadPrivateKey,
         { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
       );
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to read this certificate's private key"
+        });
       }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
     }
 
     const { certPrivateKey } = await getCertificateCredentials({
@@ -938,15 +942,19 @@ export const certificateServiceFactory = ({
         ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, certSubject);
       }
     }
-    if (!permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject)) {
+    if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
         ResourcePermissionCertificateActions.ReadPrivateKey,
         { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
       );
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to read this certificate's private key"
+        });
       }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
     }
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
@@ -1067,15 +1075,19 @@ export const certificateServiceFactory = ({
       status: cert.status,
       metadata: certMetadata
     });
-    if (!permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject)) {
+    if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
         ResourcePermissionCertificateActions.ReadPrivateKey,
         { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
       );
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to read this certificate's private key"
+        });
       }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
     }
 
     // Get certificate bundle (certificate, chain, private key)

@@ -1086,11 +1086,7 @@ const buildApplicationProjectAdminFallbackRules = () => {
   can([ProjectPermissionActions.Read], ResourcePermissionSub.Role);
 
   can(
-    [
-      ResourcePermissionCertificateActions.Read,
-      ResourcePermissionCertificateActions.List,
-      ResourcePermissionCertificateActions.ReadPrivateKey
-    ],
+    [ResourcePermissionCertificateActions.Read, ResourcePermissionCertificateActions.List],
     ResourcePermissionSub.Certificates
   );
 

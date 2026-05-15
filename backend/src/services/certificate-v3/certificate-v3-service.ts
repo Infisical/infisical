@@ -1178,11 +1178,8 @@ export const certificateV3ServiceFactory = ({
         actionProjectType: ActionProjectType.CertificateManager
       });
 
-      let canReadPrivateKey = permission.can(
-        ProjectPermissionCertificateActions.ReadPrivateKey,
-        ProjectPermissionSub.Certificates
-      );
-      if (!canReadPrivateKey && applicationId) {
+      let canReadPrivateKey: boolean;
+      if (applicationId) {
         const { permission: resourcePermission } = await permissionService.getResourcePermission({
           actor,
           actorId,
@@ -1195,6 +1192,11 @@ export const certificateV3ServiceFactory = ({
         canReadPrivateKey = resourcePermission.can(
           ResourcePermissionCertificateActions.ReadPrivateKey,
           ResourcePermissionSub.Certificates
+        );
+      } else {
+        canReadPrivateKey = permission.can(
+          ProjectPermissionCertificateActions.ReadPrivateKey,
+          ProjectPermissionSub.Certificates
         );
       }
 
@@ -1388,11 +1390,8 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    let canReadPrivateKey = permission.can(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
-    );
-    if (!canReadPrivateKey && applicationId) {
+    let canReadPrivateKey: boolean;
+    if (applicationId) {
       const { permission: resourcePermission } = await permissionService.getResourcePermission({
         actor,
         actorId,
@@ -1405,6 +1404,11 @@ export const certificateV3ServiceFactory = ({
       canReadPrivateKey = resourcePermission.can(
         ResourcePermissionCertificateActions.ReadPrivateKey,
         ResourcePermissionSub.Certificates
+      );
+    } else {
+      canReadPrivateKey = permission.can(
+        ProjectPermissionCertificateActions.ReadPrivateKey,
+        ProjectPermissionSub.Certificates
       );
     }
 
