@@ -626,10 +626,7 @@ export const pamWebAccessServiceFactory = ({
         handlerResult = await handleRdpSession(ctx);
       }
 
-      // RDP calls releaseEarlyBuffer() itself; detach for all other types
-      if (resource.resourceType !== PamResource.Windows) {
-        releaseEarlyBuffer();
-      }
+      releaseEarlyBuffer();
 
       // 7. ACTIVATE SESSION
       // For RDP (Windows), the gateway calls getSessionCredentials which transitions

@@ -42,11 +42,27 @@ function removeInnerHeightOverride() {
   }
 }
 
-// Loads IronRDP WASM; must run exactly once per page load
+// IronRDP embeds WASM as a data: URI and fetch()es it at init, which
+// requires "data:" in connect-src CSP. We briefly patch fetch to convert
+// the data: URI into a blob response so only "blob:" is needed instead.
 let rdpBackendInitialized: Promise<void> | null = null;
 const ensureRdpBackend = () => {
   if (!rdpBackendInitialized) {
-    rdpBackendInitialized = initRdpBackend("INFO");
+    const originalFetch = window.fetch;
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.startsWith("data:application/wasm;base64,")) {
+        window.fetch = originalFetch;
+        const raw = atob(url.slice("data:application/wasm;base64,".length));
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+        return new Response(bytes, { headers: { "Content-Type": "application/wasm" } });
+      }
+      return originalFetch(input, init);
+    };
+    rdpBackendInitialized = initRdpBackend("INFO").finally(() => {
+      window.fetch = originalFetch;
+    });
   }
   return rdpBackendInitialized;
 };
