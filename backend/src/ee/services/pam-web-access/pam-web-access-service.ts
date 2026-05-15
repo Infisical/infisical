@@ -607,26 +607,28 @@ export const pamWebAccessServiceFactory = ({
       };
 
       // 6. CONNECT TO RESOURCE (dispatch by type)
-      if (resource.resourceType === PamResource.Postgres) {
-        handlerResult = await handlePostgresSession(ctx, {
-          connectionDetails: resourceConnectionDetails as TPostgresResourceConnectionDetails,
-          credentials: accountCredentials as TPostgresAccountCredentials
-        });
-      } else if (resource.resourceType === PamResource.SSH) {
-        handlerResult = await handleSSHSession(ctx, {
-          connectionDetails: resourceConnectionDetails as TSSHResourceConnectionDetails,
-          credentials: accountCredentials as TSSHAccountCredentials
-        });
-      } else if (resource.resourceType === PamResource.Redis) {
-        handlerResult = await handleRedisSession(ctx, {
-          connectionDetails: resourceConnectionDetails as TRedisResourceConnectionDetails,
-          credentials: accountCredentials as TRedisAccountCredentials
-        });
-      } else if (resource.resourceType === PamResource.Windows) {
-        handlerResult = await handleRdpSession(ctx);
+      try {
+        if (resource.resourceType === PamResource.Postgres) {
+          handlerResult = await handlePostgresSession(ctx, {
+            connectionDetails: resourceConnectionDetails as TPostgresResourceConnectionDetails,
+            credentials: accountCredentials as TPostgresAccountCredentials
+          });
+        } else if (resource.resourceType === PamResource.SSH) {
+          handlerResult = await handleSSHSession(ctx, {
+            connectionDetails: resourceConnectionDetails as TSSHResourceConnectionDetails,
+            credentials: accountCredentials as TSSHAccountCredentials
+          });
+        } else if (resource.resourceType === PamResource.Redis) {
+          handlerResult = await handleRedisSession(ctx, {
+            connectionDetails: resourceConnectionDetails as TRedisResourceConnectionDetails,
+            credentials: accountCredentials as TRedisAccountCredentials
+          });
+        } else if (resource.resourceType === PamResource.Windows) {
+          handlerResult = await handleRdpSession(ctx);
+        }
+      } finally {
+        releaseEarlyBuffer();
       }
-
-      releaseEarlyBuffer();
 
       // 7. ACTIVATE SESSION
       // For RDP (Windows), the gateway calls getSessionCredentials which transitions
