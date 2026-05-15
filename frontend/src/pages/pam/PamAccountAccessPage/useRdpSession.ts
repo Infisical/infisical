@@ -50,7 +50,10 @@ const ensureRdpBackend = () => {
   if (!rdpBackendInitialized) {
     const originalFetch = window.fetch;
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      let url: string;
+      if (typeof input === "string") url = input;
+      else if (input instanceof URL) url = input.href;
+      else url = input.url;
       if (url.startsWith("data:application/wasm;base64,")) {
         window.fetch = originalFetch;
         const raw = atob(url.slice("data:application/wasm;base64,".length));
