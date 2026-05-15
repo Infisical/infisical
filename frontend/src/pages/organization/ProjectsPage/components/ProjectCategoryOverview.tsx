@@ -5,14 +5,7 @@ import { FileKeyIcon, LockIcon, ScanSearchIcon, UsersIcon, VaultIcon } from "luc
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Skeleton
-} from "@app/components/v3";
+import { Card, CardContent, CardDescription, CardHeader, Skeleton } from "@app/components/v3";
 import { useOrganization, useOrgPermission } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
@@ -24,7 +17,9 @@ import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance"
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
-const PRODUCT_TYPES: ProjectType[] = [
+type ActiveProducts = Exclude<ProjectType, ProjectType.AI | ProjectType.SSH>;
+
+const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.SecretManager,
   ProjectType.CertificateManager,
   ProjectType.KMS,
@@ -32,22 +27,55 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.PAM
 ];
 
-const getProductIcon = (type: ProjectType) => {
-  const iconProps = { className: "h-6 w-6 text-org" };
-
-  switch (type) {
-    case ProjectType.SecretManager:
-      return <VaultIcon {...iconProps} />;
-    case ProjectType.CertificateManager:
-      return <FileKeyIcon {...iconProps} />;
-    case ProjectType.KMS:
-      return <LockIcon {...iconProps} />;
-    case ProjectType.SecretScanning:
-      return <ScanSearchIcon {...iconProps} />;
-    case ProjectType.PAM:
-      return <UsersIcon {...iconProps} />;
-    default:
-      return <VaultIcon {...iconProps} />;
+const PRODUCT_STYLES: Record<
+  ActiveProducts,
+  {
+    Icon: typeof VaultIcon;
+    iconClassName: string;
+    containerClassName: string;
+    cardClassName: string;
+    titleUnderlineClassName: string;
+  }
+> = {
+  [ProjectType.SecretManager]: {
+    Icon: VaultIcon,
+    iconClassName: "h-4.5 w-4.5 text-product-sm",
+    containerClassName:
+      "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-sm/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-sm/60"
+  },
+  [ProjectType.CertificateManager]: {
+    Icon: FileKeyIcon,
+    iconClassName: "h-4.5 w-4.5 text-product-pki",
+    containerClassName:
+      "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-pki/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-pki/60"
+  },
+  [ProjectType.KMS]: {
+    Icon: LockIcon,
+    iconClassName: "h-4.5 w-4.5 text-product-kms",
+    containerClassName:
+      "border-product-kms/30 bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:border-product-kms/50 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-kms/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-kms/60"
+  },
+  [ProjectType.SecretScanning]: {
+    Icon: ScanSearchIcon,
+    iconClassName: "h-4.5 w-4.5 text-product-ss",
+    containerClassName:
+      "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:border-product-ss/50 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-ss/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-ss/60"
+  },
+  [ProjectType.PAM]: {
+    Icon: UsersIcon,
+    iconClassName: "h-4.5 w-4.5 text-product-pam",
+    containerClassName:
+      "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-pam/60"
   }
 };
 
@@ -179,12 +207,16 @@ export const ProjectCategoryOverview = () => {
         {Array.from({ length: 5 }).map((_, i) => (
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
-              <Skeleton className="h-10 w-10" />
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-9 w-9 shrink-0" />
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-3 w-1/4" />
+            <CardContent className="flex flex-col gap-3">
+              <Skeleton className="h-3 w-1/3" />
             </CardContent>
           </Card>
         ))}
@@ -204,6 +236,13 @@ export const ProjectCategoryOverview = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PRODUCT_TYPES.map((type) => {
           const stats = getStatsForType(type);
+          const {
+            Icon,
+            iconClassName,
+            containerClassName,
+            cardClassName,
+            titleUnderlineClassName
+          } = PRODUCT_STYLES[type];
 
           return (
             <Card
@@ -214,31 +253,41 @@ export const ProjectCategoryOverview = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleTileClick(type);
               }}
-              className="h-auto cursor-pointer transition-all duration-100 hover:bg-card/80"
+              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`}
             >
               <CardHeader>
-                <CardTitle className="flex items-start justify-between">
-                  <div className="rounded-md border border-org/20 bg-org/10 p-2">
-                    {getProductIcon(type)}
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`shrink-0 rounded-sm border p-1.5 transition-colors duration-200 ${containerClassName}`}
+                  >
+                    <Icon className={iconClassName} />
                   </div>
-                </CardTitle>
-                <CardDescription className="mt-2 text-lg font-semibold text-foreground">
-                  {getProjectTitle(type)}
-                </CardDescription>
-                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                  {getProjectDescription(type)}
-                </p>
+                  <div className="min-w-0 flex-1">
+                    <CardDescription className="text-base font-semibold text-foreground">
+                      <span
+                        className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
+                      >
+                        {getProjectTitle(type)}
+                      </span>
+                    </CardDescription>
+                    <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
+                      {getProjectDescription(type)}
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 {stats.length > 0 && (
-                  <div className="flex items-center gap-4 border-t border-mineshaft-600 pt-3">
+                  <div className="flex items-center gap-4 border-t border-border pt-3">
                     {stats.map((stat, index) => (
                       <div key={stat.label} className="flex items-center gap-4">
-                        <span className="text-mineshaft-400">
-                          <span className="font-medium text-white">{formatNumber(stat.value)}</span>{" "}
-                          <span className="text-sm">{stat.label}</span>
+                        <span className="text-muted">
+                          <span className="text-sm font-medium text-foreground">
+                            {formatNumber(stat.value)}
+                          </span>{" "}
+                          <span className="text-xs">{stat.label}</span>
                         </span>
-                        {index < stats.length - 1 && <div className="h-4 w-px bg-mineshaft-500" />}
+                        {index < stats.length - 1 && <div className="h-4 w-px bg-border" />}
                       </div>
                     ))}
                   </div>

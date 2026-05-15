@@ -162,7 +162,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
                             }
                           }}
                         >
-                          <SelectTrigger className="w-32">
+                          <SelectTrigger size="sm" className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
