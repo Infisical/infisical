@@ -7,6 +7,11 @@ Certificate Manager uses a layered access model that separates infrastructure ma
 
 ## Product Level
 
+| Role | What they can do |
+|------|------------------|
+| **Product Admin** | Full control: create and manage CAs, Policies, Profiles, Applications, and Signers. Assign members to Applications and Signers. |
+| **Product Member** | Operate within the Applications and Signers they're assigned to. |
+
 **Product Admins** manage the shared infrastructure that all teams use:
 
 - Certificate Authorities (internal and external)
@@ -14,6 +19,8 @@ Certificate Manager uses a layered access model that separates infrastructure ma
 - Certificate Profiles
 - Creating Applications and assigning members
 - Creating Signers and assigning members
+
+**Product Members** are assigned to specific Applications and Signers by Product Admins. They operate within those assigned resources.
 
 This separation means teams can issue certificates and sign code without needing access to the underlying CAs or policies.
 
