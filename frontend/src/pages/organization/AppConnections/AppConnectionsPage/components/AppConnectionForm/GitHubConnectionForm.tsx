@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
@@ -30,6 +28,7 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { apiRequest } from "@app/config/request";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
@@ -118,32 +117,6 @@ const buildDedicatedAppSlug = (connectionName: string) => {
   const slug = slugifyConnectionName(connectionName || "");
   return `infisical-${slug}`;
 };
-
-const buildGitHubManifest = ({
-  appName,
-  redirectUrl,
-  oauthCallbackUrl
-}: {
-  appName: string;
-  redirectUrl: string;
-  oauthCallbackUrl: string;
-}) => ({
-  name: appName,
-  url: window.location.origin,
-  redirect_url: redirectUrl,
-  callback_urls: [oauthCallbackUrl],
-  description: "Infisical GitHub App Connection",
-  public: false,
-  request_oauth_on_install: true,
-  default_permissions: {
-    metadata: "read",
-    secrets: "write",
-    environments: "write",
-    actions: "read",
-    organization_secrets: "write"
-  },
-  default_events: [] as string[]
-});
 
 type AppSourceCardProps = {
   title: string;
@@ -238,8 +211,13 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     }
 
     setIsRedirecting(true);
-    const state = crypto.randomBytes(16).toString("hex");
-    localStorage.setItem("latestCSRFToken", state);
+
+    // generate install state here so the OAuth callback can validate it
+    const installState = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    localStorage.setItem("latestCSRFToken", installState);
     localStorage.setItem(
       "githubConnectionFormData",
       JSON.stringify({
@@ -259,40 +237,26 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     switch (formData.method) {
       case GitHubConnectionMethod.App: {
         if (appSource === "dedicated") {
-          const manifestState = crypto.randomBytes(16).toString("hex");
-          const redirectUrl = `${window.location.origin}/organization/app-connections/github/manifest/callback`;
-          const oauthCallbackUrl = `${window.location.origin}/organization/app-connections/github/oauth/callback`;
-
-          const manifest = buildGitHubManifest({
-            appName: dedicatedAppSlug,
-            redirectUrl,
-            oauthCallbackUrl
+          const { data } = await apiRequest.post<{
+            state: string;
+            manifest: Record<string, unknown>;
+            githubActionUrl: string;
+          }>("/api/v1/github-apps/manifest/initiate", {
+            name: dedicatedAppSlug,
+            instanceType: formData.credentials?.instanceType ?? "cloud",
+            githubOrg: dedicatedAppOrg.trim() || undefined,
+            githubHost: formData.credentials?.host || undefined,
+            installState
           });
-
-          localStorage.setItem("githubManifestCSRFToken", manifestState);
-          localStorage.setItem(
-            "githubManifestFormData",
-            JSON.stringify({
-              connectionFormDataKey: "githubConnectionFormData",
-              instanceType: formData.credentials?.instanceType ?? "cloud",
-              host: formData.credentials?.host ?? "",
-              name: dedicatedAppSlug
-            })
-          );
-
-          const orgSlug = dedicatedAppOrg.trim();
-          const baseUrl = orgSlug
-            ? `${githubHost}/organizations/${encodeURIComponent(orgSlug)}/settings/apps/new`
-            : `${githubHost}/settings/apps/new`;
 
           const formEl = document.createElement("form");
           formEl.method = "post";
-          formEl.action = `${baseUrl}?state=${encodeURIComponent(manifestState)}`;
+          formEl.action = `${data.githubActionUrl}?state=${encodeURIComponent(data.state)}`;
 
           const input = document.createElement("input");
           input.type = "hidden";
           input.name = "manifest";
-          input.value = JSON.stringify(manifest);
+          input.value = JSON.stringify(data.manifest);
           formEl.appendChild(input);
 
           document.body.appendChild(formEl);
@@ -301,13 +265,13 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         }
 
         window.location.assign(
-          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${appClientSlug}/installations/new?state=${state}`
+          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${appClientSlug}/installations/new?state=${installState}`
         );
         break;
       }
       case GitHubConnectionMethod.OAuth:
         window.location.assign(
-          `${githubHost}/login/oauth/authorize?client_id=${oauthClientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback&state=${state}`
+          `${githubHost}/login/oauth/authorize?client_id=${oauthClientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback&state=${installState}`
         );
         break;
       default:

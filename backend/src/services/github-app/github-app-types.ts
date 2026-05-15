@@ -6,6 +6,27 @@ export type TExchangeGitHubManifestCodeDTO = {
   orgPermission: OrgServiceActor;
 };
 
+export type TInitiateGitHubManifestDTO = {
+  name: string;
+  instanceType: "cloud" | "server";
+  githubOrg?: string;
+  githubHost?: string;
+  installState: string;
+  orgPermission: OrgServiceActor;
+};
+
+export type TGitHubManifestStatePayload = {
+  orgId: string;
+  actorId: string;
+  actorType: string;
+  authMethod: string | null;
+  name: string;
+  instanceType: "cloud" | "server";
+  githubOrg: string;
+  githubHost: string;
+  installState: string;
+};
+
 export type TListGitHubAppsDTO = {
   orgPermission: OrgServiceActor;
 };

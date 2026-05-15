@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import jwt from "jsonwebtoken";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -6,6 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -14,6 +16,8 @@ import {
   TDeleteGitHubAppDTO,
   TExchangeGitHubManifestCodeDTO,
   TGitHubAppManifestResponse,
+  TGitHubManifestStatePayload,
+  TInitiateGitHubManifestDTO,
   TListGitHubAppsDTO,
   TRegisterGitHubAppDTO,
   TSanitizedGitHubApp
@@ -238,8 +242,162 @@ export const gitHubAppServiceFactory = ({
     };
   };
 
+  const initiateManifestCreation = async ({
+    name,
+    instanceType,
+    githubOrg,
+    githubHost,
+    installState,
+    orgPermission
+  }: TInitiateGitHubManifestDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+
+    const existing = await gitHubAppDAL.findOne({ orgId: orgPermission.orgId, name });
+    if (existing) {
+      throw new BadRequestError({
+        message: `A GitHub App with name "${name}" already exists in this organization.`
+      });
+    }
+
+    const { AUTH_SECRET, SITE_URL } = getConfig();
+
+    if (!SITE_URL) {
+      throw new BadRequestError({
+        message: "SITE_URL is not configured. Please set it in your environment to use GitHub App manifest creation."
+      });
+    }
+
+    const stateToken = jwt.sign(
+      {
+        orgId: orgPermission.orgId,
+        actorId: orgPermission.id,
+        actorType: orgPermission.type,
+        authMethod: orgPermission.authMethod,
+        name,
+        instanceType,
+        githubOrg: githubOrg ?? "",
+        githubHost: githubHost ?? "",
+        installState
+      } satisfies TGitHubManifestStatePayload,
+      AUTH_SECRET,
+      { expiresIn: "10m" }
+    );
+
+    const callbackUrl = `${SITE_URL}/api/v1/github-apps/manifest/callback`;
+    const oauthCallbackUrl = `${SITE_URL}/organization/app-connections/github/oauth/callback`;
+
+    const manifest = {
+      name,
+      url: SITE_URL,
+      redirect_url: callbackUrl,
+      callback_urls: [oauthCallbackUrl],
+      description: "Infisical GitHub App Connection",
+      public: false,
+      request_oauth_on_install: true,
+      default_permissions: {
+        metadata: "read",
+        secrets: "write",
+        environments: "write",
+        actions: "read",
+        organization_secrets: "write"
+      },
+      default_events: [] as string[]
+    };
+
+    const resolvedHost = githubHost ? `https://${githubHost}` : "https://github.com";
+    const githubActionUrl = githubOrg
+      ? `${resolvedHost}/organizations/${encodeURIComponent(githubOrg)}/settings/apps/new`
+      : `${resolvedHost}/settings/apps/new`;
+
+    return { state: stateToken, manifest, githubActionUrl };
+  };
+
+  const handleManifestCallback = async ({ code, state }: { code: string; state: string }) => {
+    const { AUTH_SECRET, SITE_URL } = getConfig();
+
+    if (!SITE_URL) {
+      throw new BadRequestError({ message: "SITE_URL is not configured." });
+    }
+
+    let statePayload: TGitHubManifestStatePayload;
+    try {
+      statePayload = jwt.verify(state, AUTH_SECRET) as TGitHubManifestStatePayload;
+    } catch {
+      throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
+    }
+
+    const { orgId, actorId, actorType, authMethod, name, instanceType, githubHost, installState } = statePayload;
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actorType as ActorType,
+      actorId,
+      orgId,
+      actorAuthMethod: authMethod as ActorAuthMethod,
+      actorOrgId: orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+
+    let manifestResponse: TGitHubAppManifestResponse;
+    try {
+      const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
+      const { data } = await request.post<TGitHubAppManifestResponse>(
+        `${resolvedApiHost}/app-manifests/${encodeURIComponent(code)}/conversions`,
+        {},
+        {
+          headers: {
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+          }
+        }
+      );
+      manifestResponse = data;
+    } catch {
+      throw new BadRequestError({
+        message:
+          "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
+      });
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    const created = await gitHubAppDAL.create({
+      orgId,
+      name,
+      encryptedAppId: encryptor({ plainText: Buffer.from(String(manifestResponse.id)) }).cipherTextBlob,
+      encryptedClientId: encryptor({ plainText: Buffer.from(manifestResponse.client_id) }).cipherTextBlob,
+      encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
+      encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
+      encryptedSlug: encryptor({ plainText: Buffer.from(manifestResponse.slug) }).cipherTextBlob
+    });
+
+    const callbackUrl = new URL(`${SITE_URL}/organizations/${orgId}/app-connections/github/manifest/callback`);
+    callbackUrl.searchParams.set("gitHubAppId", created.id ?? "");
+    callbackUrl.searchParams.set("slug", manifestResponse.slug);
+    callbackUrl.searchParams.set("installState", installState);
+    callbackUrl.searchParams.set("instanceType", instanceType);
+    callbackUrl.searchParams.set("host", githubHost);
+
+    return { redirectUrl: callbackUrl.toString() };
+  };
+
   return {
     exchangeManifestCode,
+    initiateManifestCreation,
+    handleManifestCallback,
     listGitHubApps,
     deleteGitHubApp,
     registerGitHubApp
