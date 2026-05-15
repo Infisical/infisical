@@ -70,6 +70,11 @@
   --color-org: #30b3ff;
   --color-sub-org: #96ff59;
   --color-project: #e0ed34;
+  --color-product-sm: #e0ed34;
+  --color-product-pki: #ed8c34;
+  --color-product-kms: #34edbf;
+  --color-product-ss: #b056f0;
+  --color-product-pam: #ed3453;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
