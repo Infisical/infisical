@@ -1,7 +1,10 @@
 import crypto from "crypto";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -20,8 +23,9 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3/generic/Badge";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
-import { useOrganization, useSubscription } from "@app/context";
+import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -38,7 +42,6 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
@@ -51,6 +54,8 @@ type Props = {
   projectId: string | undefined | null;
   onSubmit: (formData: PatSchemaForm) => Promise<void>;
 };
+
+type GitHubAppSource = "shared" | "dedicated";
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GitHub),
@@ -68,22 +73,9 @@ const baseCredentialsSchema = z.union([
   })
 ]);
 
-const appCredentialsSchema = z.union([
-  z.object({
-    instanceType: z.literal("server"),
-    host: z.string().min(1, "Host is required for server instance type"),
-    gitHubAppId: z.string().nullish()
-  }),
-  z.object({
-    instanceType: z.literal("cloud").optional(),
-    host: z.string().optional(),
-    gitHubAppId: z.string().nullish()
-  })
-]);
-
 const appSchema = rootSchema.extend({
   method: z.literal(GitHubConnectionMethod.App),
-  credentials: appCredentialsSchema
+  credentials: baseCredentialsSchema
 });
 
 const oauthSchema = rootSchema.extend({
@@ -113,6 +105,81 @@ const formSchema = z.discriminatedUnion("method", [appSchema, oauthSchema, patSc
 
 type FormData = z.infer<typeof formSchema>;
 
+const slugifyConnectionName = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const buildDedicatedAppSlug = (connectionName: string) => {
+  const slug = slugifyConnectionName(connectionName || "");
+  return `infisical-${slug}`;
+};
+
+const buildGitHubManifest = ({
+  appName,
+  redirectUrl,
+  oauthCallbackUrl
+}: {
+  appName: string;
+  redirectUrl: string;
+  oauthCallbackUrl: string;
+}) => ({
+  name: appName,
+  url: window.location.origin,
+  redirect_url: redirectUrl,
+  callback_urls: [oauthCallbackUrl],
+  description: "Infisical GitHub App Connection",
+  public: false,
+  request_oauth_on_install: true,
+  default_permissions: {
+    metadata: "read",
+    secrets: "write",
+    environments: "write",
+    actions: "read",
+    organization_secrets: "write"
+  },
+  default_events: [] as string[]
+});
+
+type AppSourceCardProps = {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  selected: boolean;
+  onClick: () => void;
+};
+
+const AppSourceCard = ({ title, description, icon, selected, onClick }: AppSourceCardProps) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`relative flex h-full flex-col items-start gap-2 rounded-md border p-3 text-left transition-all ${
+      selected
+        ? "border-primary/60 bg-primary/10"
+        : "border-mineshaft-500 bg-mineshaft-700/30 hover:border-mineshaft-400 hover:bg-mineshaft-700/60"
+    }`}
+  >
+    {selected && (
+      <div className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-mineshaft-900">
+        <FontAwesomeIcon icon={faCheck} className="text-[8px]" />
+      </div>
+    )}
+    <div className="flex items-center gap-2">
+      <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-mineshaft-600 text-mineshaft-100">
+        {icon}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-sm font-medium text-mineshaft-100">{title}</span>
+      </div>
+    </div>
+    <p className="text-xs leading-relaxed text-mineshaft-300">{description}</p>
+  </button>
+);
+
 export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -130,8 +197,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       gatewayId: null,
       gatewayPoolId: null,
       credentials: {
-        instanceType: "cloud",
-        gitHubAppId: null
+        instanceType: "cloud"
       }
     }
   });
@@ -145,15 +211,25 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   } = form;
 
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
-  const { data: gitHubApps } = useListGitHubApps(currentOrg?.id);
 
   const selectedMethod = watch("method");
   const instanceType = watch("credentials.instanceType");
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
+  const connectionName = watch("name") ?? "";
+
+  // Dedicated is the recommended default for new connections; update flow is reconnect-only
+  // and uses the instance-default app since the dedicated app slug lives in the DB.
+  const [appSource, setAppSource] = useState<GitHubAppSource>(isUpdate ? "shared" : "dedicated");
+  const [dedicatedAppOrg, setDedicatedAppOrg] = useState("");
+
+  useEffect(() => {
+    if (isUpdate) setAppSource("shared");
+  }, [isUpdate]);
 
   const returnUrl = useGetAppConnectionOauthReturnUrl();
+
+  const dedicatedAppSlug = buildDedicatedAppSlug(connectionName);
 
   const submitHandler = async (formData: FormData) => {
     if (formData.method === GitHubConnectionMethod.Pat) {
@@ -180,17 +256,55 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         ? `https://${formData.credentials.host}`
         : "https://github.com";
 
-    const selectedAppSlug =
-      formData.method === GitHubConnectionMethod.App && formData.credentials.gitHubAppId
-        ? gitHubApps?.find((app) => app.id === formData.credentials.gitHubAppId)?.slug
-        : appClientSlug;
-
     switch (formData.method) {
-      case GitHubConnectionMethod.App:
+      case GitHubConnectionMethod.App: {
+        if (appSource === "dedicated") {
+          const manifestState = crypto.randomBytes(16).toString("hex");
+          const redirectUrl = `${window.location.origin}/organization/app-connections/github/manifest/callback`;
+          const oauthCallbackUrl = `${window.location.origin}/organization/app-connections/github/oauth/callback`;
+
+          const manifest = buildGitHubManifest({
+            appName: dedicatedAppSlug,
+            redirectUrl,
+            oauthCallbackUrl
+          });
+
+          localStorage.setItem("githubManifestCSRFToken", manifestState);
+          localStorage.setItem(
+            "githubManifestFormData",
+            JSON.stringify({
+              connectionFormDataKey: "githubConnectionFormData",
+              instanceType: formData.credentials?.instanceType ?? "cloud",
+              host: formData.credentials?.host ?? "",
+              name: dedicatedAppSlug
+            })
+          );
+
+          const orgSlug = dedicatedAppOrg.trim();
+          const baseUrl = orgSlug
+            ? `${githubHost}/organizations/${encodeURIComponent(orgSlug)}/settings/apps/new`
+            : `${githubHost}/settings/apps/new`;
+
+          const formEl = document.createElement("form");
+          formEl.method = "post";
+          formEl.action = `${baseUrl}?state=${encodeURIComponent(manifestState)}`;
+
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "manifest";
+          input.value = JSON.stringify(manifest);
+          formEl.appendChild(input);
+
+          document.body.appendChild(formEl);
+          formEl.submit();
+          return;
+        }
+
         window.location.assign(
-          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${selectedAppSlug}/installations/new?state=${state}`
+          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${appClientSlug}/installations/new?state=${state}`
         );
         break;
+      }
       case GitHubConnectionMethod.OAuth:
         window.location.assign(
           `${githubHost}/login/oauth/authorize?client_id=${oauthClientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback&state=${state}`
@@ -208,7 +322,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       isMissingConfig = !oauthClientId;
       break;
     case GitHubConnectionMethod.App:
-      isMissingConfig = !appClientSlug && !(gitHubApps && gitHubApps.length > 0);
+      isMissingConfig = (isUpdate || appSource === "shared") && !appClientSlug;
       break;
     case GitHubConnectionMethod.Pat:
       isMissingConfig = false;
@@ -242,6 +356,10 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const getButtonText = () => {
     if (selectedMethod === GitHubConnectionMethod.Pat) {
       return isUpdate ? "Update Connection" : "Create Connection";
+    }
+
+    if (selectedMethod === GitHubConnectionMethod.App && appSource === "dedicated" && !isUpdate) {
+      return "Create app & connect";
     }
 
     return isUpdate ? "Reconnect to GitHub" : "Connect to GitHub";
@@ -283,40 +401,77 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             </FormControl>
           )}
         />
-        {selectedMethod === GitHubConnectionMethod.App && (
-          <Controller
-            name={"credentials.gitHubAppId" as never}
-            control={control}
-            shouldUnregister
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                tooltipText="Select which GitHub App to install. Registered apps are managed under Organization Settings > Integrations."
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="GitHub App"
-              >
-                <Select
-                  isDisabled={isUpdate}
-                  value={(value as string | null | undefined) ?? "__instance_default__"}
-                  onValueChange={(val) => onChange(val === "__instance_default__" ? null : val)}
-                  className="w-full border border-mineshaft-500"
-                  position="popper"
-                  dropdownContainerClassName="max-w-none"
-                >
-                  {appClientSlug && (
-                    <SelectItem value="__instance_default__" key="__instance_default__">
-                      Instance default
-                    </SelectItem>
-                  )}
-                  {(gitHubApps ?? []).map((app) => (
-                    <SelectItem value={app.id} key={app.id}>
-                      {app.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
+        {selectedMethod === GitHubConnectionMethod.App && !isUpdate && (
+          <FormControl
+            label="GitHub App setup"
+            tooltipText="Reuse the shared instance-default GitHub App or create a new private app dedicated to this connection."
+          >
+            <div className="flex flex-col gap-3">
+              {appClientSlug && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <AppSourceCard
+                    title="Use shared app"
+                    description="Reuse the instance-default GitHub App. Best for teams managing many connections."
+                    icon={<FontAwesomeIcon icon={faGithub} className="text-base" />}
+                    selected={appSource === "shared"}
+                    onClick={() => setAppSource("shared")}
+                  />
+                  <AppSourceCard
+                    title="Create dedicated app"
+                    description="One app per connection. Maximum isolation, no admin handoff."
+                    icon={<FontAwesomeIcon icon={faPlus} className="text-base" />}
+                    selected={appSource === "dedicated"}
+                    onClick={() => setAppSource("dedicated")}
+                  />
+                </div>
+              )}
+              {appSource === "dedicated" && (
+                <>
+                  <div className="flex items-start gap-3 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5">
+                    <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+                      <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                    </div>
+                    <div className="text-xs leading-relaxed text-mineshaft-300">
+                      Will create and install{" "}
+                      <span className="font-mono text-mineshaft-100">{dedicatedAppSlug}</span>{" "}
+                      <Badge variant="info" className="ml-1">
+                        New
+                      </Badge>
+                      <div className="mt-0.5 text-mineshaft-400">
+                        Private · scoped to this connection
+                      </div>
+                    </div>
+                  </div>
+                  <FormControl
+                    label="GitHub Organization"
+                    isOptional
+                    helperText="Leave blank to register under your personal account."
+                    className="mb-0"
+                  >
+                    <Input
+                      value={dedicatedAppOrg}
+                      onChange={(e) => setDedicatedAppOrg(e.target.value)}
+                      placeholder="my-github-org"
+                    />
+                  </FormControl>
+                </>
+              )}
+              {appSource === "shared" && appClientSlug && (
+                <div className="flex items-start gap-3 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5">
+                  <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-mineshaft-600 text-mineshaft-200">
+                    <FontAwesomeIcon icon={faGithub} className="text-xs" />
+                  </div>
+                  <div className="text-xs leading-relaxed text-mineshaft-300">
+                    Will install{" "}
+                    <span className="font-mono text-mineshaft-100">{appClientSlug}</span>
+                    <div className="mt-0.5 text-mineshaft-400">
+                      Public · shared across all connections
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </FormControl>
         )}
         {selectedMethod === GitHubConnectionMethod.Pat && (
           <Controller

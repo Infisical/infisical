@@ -5,13 +5,13 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedGitHubAppSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid().nullable(),
   orgId: z.string().uuid(),
   name: z.string(),
   appId: z.string(),
   slug: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
+  createdAt: z.date().nullable(),
+  updatedAt: z.date().nullable()
 });
 
 export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {

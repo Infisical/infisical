@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -119,7 +120,7 @@ export const gitHubAppServiceFactory = ({
       orgId: orgPermission.orgId
     });
 
-    return apps.map((app) => ({
+    const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
       id: app.id,
       orgId: app.orgId,
       name: app.name,
@@ -128,6 +129,23 @@ export const gitHubAppServiceFactory = ({
       createdAt: app.createdAt,
       updatedAt: app.updatedAt
     }));
+
+    const { INF_APP_CONNECTION_GITHUB_APP_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
+
+    const sharedApp: TSanitizedGitHubApp | null =
+      INF_APP_CONNECTION_GITHUB_APP_ID && INF_APP_CONNECTION_GITHUB_APP_SLUG
+        ? {
+            id: null,
+            orgId: orgPermission.orgId,
+            name: INF_APP_CONNECTION_GITHUB_APP_SLUG,
+            appId: INF_APP_CONNECTION_GITHUB_APP_ID,
+            slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
+            createdAt: null,
+            updatedAt: null
+          }
+        : null;
+
+    return sharedApp ? [sharedApp, ...dbApps] : dbApps;
   };
 
   const deleteGitHubApp = async ({ id, orgPermission }: TDeleteGitHubAppDTO): Promise<TSanitizedGitHubApp> => {

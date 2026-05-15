@@ -164,7 +164,8 @@ export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
     method: z.literal(GitHubConnectionMethod.App),
     credentials: z.object({
       instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
-      host: z.string().optional()
+      host: z.string().optional(),
+      gitHubAppId: z.string().uuid().nullish()
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitHub]} (GitHub App)` })),
   BaseGitHubConnectionSchema.extend({

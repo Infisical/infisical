@@ -150,7 +150,7 @@ export const getOrgSettingsSubmenu = ({
         ]
       : []),
     { label: "Encryption", icon: Lock, tab: "tab-org-encryption" },
-    { label: "Integrations", icon: Plug, tab: "integrations" },
+    { label: "Workflow Integrations", icon: Plug, tab: "workflow-integrations" },
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },

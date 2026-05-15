@@ -35,11 +35,11 @@ export type TGitHubAppManifestResponse = {
 };
 
 export type TSanitizedGitHubApp = {
-  id: string;
+  id: string | null;
   orgId: string;
   name: string;
   appId: string;
   slug: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 };

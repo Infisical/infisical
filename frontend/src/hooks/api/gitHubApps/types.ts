@@ -1,27 +1,9 @@
 export type TGitHubApp = {
-  id: string;
+  id: string | null;
   orgId: string;
   name: string;
   appId: string;
   slug: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type TExchangeGitHubManifestCodeDTO = {
-  name: string;
-  code: string;
-};
-
-export type TDeleteGitHubAppDTO = {
-  id: string;
-};
-
-export type TRegisterGitHubAppDTO = {
-  name: string;
-  appId: string;
-  slug: string;
-  clientId: string;
-  clientSecret: string;
-  privateKey: string;
+  createdAt: string | null;
+  updatedAt: string | null;
 };

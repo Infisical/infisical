@@ -43,10 +43,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/settings",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/"
     ),
-    GitHubAppCallbackPage: setRoute(
-      "/organizations/$orgId/settings/github-app/callback",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/github-app/callback"
-    ),
     GroupDetailsByIDPage: setRoute(
       "/organizations/$orgId/groups/$groupId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/groups/$groupId"
@@ -71,6 +67,10 @@ export const ROUTE_PATHS = Object.freeze({
       OauthCallbackPage: setRoute(
         "/organizations/$orgId/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback"
+      ),
+      GitHubManifestCallbackPage: setRoute(
+        "/organizations/$orgId/app-connections/github/manifest/callback",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback"
       )
     },
     NetworkingPage: setRoute(

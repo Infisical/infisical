@@ -1,8 +1,2 @@
-export * from "./mutations";
-export * from "./queries";
-export type {
-  TDeleteGitHubAppDTO,
-  TExchangeGitHubManifestCodeDTO,
-  TGitHubApp,
-  TRegisterGitHubAppDTO
-} from "./types";
+export { gitHubAppKeys, useListGitHubApps } from "./queries";
+export type { TGitHubApp } from "./types";
