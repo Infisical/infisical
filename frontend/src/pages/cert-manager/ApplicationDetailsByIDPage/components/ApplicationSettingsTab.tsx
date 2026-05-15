@@ -398,10 +398,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
 
-  const { data: profileList } = useListCertificateProfiles({
-    limit: 100,
-    applicationId: application.id
-  });
+  const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
   const detachMutation = useDetachPkiApplicationProfile();
 
