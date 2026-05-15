@@ -566,16 +566,12 @@ export const pkiAlertV2ServiceFactory = ({
     const alert = await pkiAlertV2DAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Read, alert.projectId, alert.applicationId, {
       actor,
       actorId,
-      projectId: alert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
     const options: {
       limit: number;
@@ -907,17 +903,12 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TTestWebhookConfigDTO): Promise<{ success: boolean; error?: string }> => {
-    // Permission check - user must have edit access to PKI alerts in this project
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Edit, projectId, applicationId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)

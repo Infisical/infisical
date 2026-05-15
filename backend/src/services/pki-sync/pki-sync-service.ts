@@ -215,15 +215,6 @@ export const pkiSyncServiceFactory = ({
 
     await enterprisePkiSyncCheck(licenseService, actor.orgId, destination);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager,
-      projectId
-    });
-
     let subscriber;
     if (subscriberId) {
       subscriber = await pkiSubscriberDAL.findById(subscriberId);
@@ -232,29 +223,14 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
-    const allowedByProject = permission.can(
-      ProjectPermissionPkiSyncActions.Create,
-      subject(ProjectPermissionSub.PkiSyncs, {
-        subscriberName: subscriber?.name,
-        name
-      })
+    const allowedByResource = await $resourceFallback(
+      ResourcePermissionPkiSyncActions.Create,
+      projectId,
+      applicationId,
+      actor
     );
-    if (!allowedByProject) {
-      const allowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Create,
-        projectId,
-        applicationId,
-        actor
-      );
-      if (!allowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionPkiSyncActions.Create,
-          subject(ProjectPermissionSub.PkiSyncs, {
-            subscriberName: subscriber?.name,
-            name
-          })
-        );
-      }
+    if (!allowedByResource) {
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
     // Get the destination app type based on PKI sync destination

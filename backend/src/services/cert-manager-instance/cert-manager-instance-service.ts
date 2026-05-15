@@ -32,7 +32,7 @@ export const certManagerInstanceServiceFactory = ({
   permissionService
 }: TCertManagerInstanceServiceDeps) => {
   const getInstanceState = async ({ actor, actorId, actorAuthMethod, actorOrgId }: TActor) => {
-    const { permission } = await permissionService.getOrgPermission({
+    await permissionService.getOrgPermission({
       actor,
       actorId,
       orgId: actorOrgId,
@@ -40,11 +40,6 @@ export const certManagerInstanceServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionCertManagerActions.Read,
-      OrgPermissionSubjects.CertManager
-    );
 
     const org = await orgDAL.findById(actorOrgId);
     if (!org) throw new NotFoundError({ message: "Organization not found" });
