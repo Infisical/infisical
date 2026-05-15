@@ -20,6 +20,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
@@ -45,6 +46,7 @@ type TDynamicSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -88,6 +90,7 @@ export const dynamicSecretServiceFactory = ({
   kmsService,
   gatewayDAL,
   gatewayV2DAL,
+  gatewayPoolService,
   resourceMetadataDAL
 }: TDynamicSecretServiceFactoryDep): TDynamicSecretServiceFactory => {
   const create: TDynamicSecretServiceFactory["create"] = async ({
@@ -149,8 +152,28 @@ export const dynamicSecretServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
 
+    if (
+      inputs &&
+      typeof inputs === "object" &&
+      "gatewayId" in inputs &&
+      inputs.gatewayId &&
+      "gatewayPoolId" in inputs &&
+      inputs.gatewayPoolId
+    ) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     let selectedGatewayId: string | null = null;
-    if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
+    let selectedGatewayPoolId: string | null = null;
+    if (inputs && typeof inputs === "object" && "gatewayPoolId" in inputs && inputs.gatewayPoolId) {
+      const gatewayPoolId = inputs.gatewayPoolId as string;
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actorOrgId,
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+      });
+      selectedGatewayPoolId = gatewayPoolId;
+    } else if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
       const gatewayId = inputs.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
@@ -201,8 +224,9 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: isGatewayV1 ? selectedGatewayId : undefined,
-          gatewayV2Id: isGatewayV1 ? undefined : selectedGatewayId,
+          gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : undefined,
+          gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : undefined,
+          gatewayPoolId: selectedGatewayPoolId ?? undefined,
           usernameTemplate
         },
         tx
@@ -316,6 +340,23 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    // Mutual exclusion: reject if both gateway fields are set
+    if (
+      inputs &&
+      typeof inputs === "object" &&
+      "gatewayId" in inputs &&
+      inputs.gatewayId &&
+      "gatewayPoolId" in inputs &&
+      inputs.gatewayPoolId
+    ) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+    if (inputs && typeof inputs === "object") {
+      if ((inputs as Record<string, unknown>).gatewayId)
+        (newInput as Record<string, unknown>).gatewayPoolId = undefined;
+      else if ((inputs as Record<string, unknown>).gatewayPoolId)
+        (newInput as Record<string, unknown>).gatewayId = undefined;
+    }
     const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
 
@@ -336,9 +377,32 @@ export const dynamicSecretServiceFactory = ({
       }
     );
 
-    let selectedGatewayId: string | null = null;
-    let isGatewayV1 = true;
-    if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
+    let selectedGatewayId: string | null = (newInput as Record<string, unknown>).gatewayId as string | null;
+    let selectedGatewayPoolId: string | null = (newInput as Record<string, unknown>).gatewayPoolId as string | null;
+    let isGatewayV1 = Boolean(dynamicSecretCfg.gatewayId);
+    const hasGatewayFieldInInput =
+      inputs && typeof inputs === "object" && ("gatewayId" in inputs || "gatewayPoolId" in inputs);
+    if (
+      inputs &&
+      typeof inputs === "object" &&
+      "gatewayPoolId" in inputs &&
+      inputs.gatewayPoolId &&
+      inputs.gatewayPoolId !== (decryptedStoredInput as Record<string, unknown>).gatewayPoolId
+    ) {
+      const { gatewayPoolId } = inputs;
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actorOrgId,
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+      });
+      selectedGatewayPoolId = gatewayPoolId;
+    } else if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      "gatewayId" in updatedInput &&
+      updatedInput?.gatewayId
+    ) {
+      selectedGatewayPoolId = null;
       const gatewayId = updatedInput.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
@@ -350,9 +414,7 @@ export const dynamicSecretServiceFactory = ({
         });
       }
 
-      if (!gateway) {
-        isGatewayV1 = false;
-      }
+      isGatewayV1 = Boolean(gateway);
 
       const { permission: orgPermission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
@@ -384,8 +446,13 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: isGatewayV1 ? selectedGatewayId : null,
-          gatewayV2Id: isGatewayV1 ? null : selectedGatewayId,
+          ...(hasGatewayFieldInInput
+            ? {
+                gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : null,
+                gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : null,
+                gatewayPoolId: selectedGatewayPoolId
+              }
+            : {}),
           usernameTemplate
         },
         tx

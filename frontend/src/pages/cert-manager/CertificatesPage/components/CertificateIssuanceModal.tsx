@@ -376,9 +376,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
               (attr) => attr.type === CertSubjectAttributeType.ORGANIZATIONAL_UNIT
             );
             if (ouAttr?.value) {
-              request.attributes.organizationUnit = ouAttr.value;
+              request.attributes.organizationalUnit = ouAttr.value;
             } else if (defaults?.organizationalUnit) {
-              request.attributes.organizationUnit = null;
+              request.attributes.organizationalUnit = null;
             }
 
             const countryAttr = subjectAttributes.find(
@@ -411,7 +411,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             // No subject attributes provided; send null overrides for profile defaults
             if (defaults.commonName) request.attributes.commonName = null;
             if (defaults.organization) request.attributes.organization = null;
-            if (defaults.organizationalUnit) request.attributes.organizationUnit = null;
+            if (defaults.organizationalUnit) request.attributes.organizationalUnit = null;
             if (defaults.country) request.attributes.country = null;
             if (defaults.state) request.attributes.state = null;
             if (defaults.locality) request.attributes.locality = null;

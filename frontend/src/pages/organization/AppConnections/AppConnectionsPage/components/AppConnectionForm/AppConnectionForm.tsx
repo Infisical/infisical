@@ -32,6 +32,7 @@ import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DevinConnectionForm } from "./DevinConnectionForm";
 import { DigiCertConnectionForm } from "./DigiCertConnectionForm";
@@ -300,6 +301,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Snowflake:
         return <SnowflakeConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Datadog:
+        return <DatadogConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -525,6 +528,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Snowflake:
         return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Datadog:
+        return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

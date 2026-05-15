@@ -18,7 +18,8 @@ export const PamDomainsSchema = z.object({
   encryptedConnectionDetails: zodBuffer,
   discoveryFingerprint: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TPamDomains = z.infer<typeof PamDomainsSchema>;

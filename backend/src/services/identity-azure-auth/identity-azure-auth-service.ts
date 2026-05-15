@@ -54,7 +54,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
   >;
 };
 
@@ -578,7 +578,10 @@ export const identityAzureAuthServiceFactory = ({
     // Detaching the auth method must invalidate any tokens already issued
     // through it; without this, leaked tokens authenticate up to MAX_AGE
     // even after the admin pulled the auth method.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.AZURE_AUTH
+    });
 
     return revokedIdentityAzureAuth;
   };

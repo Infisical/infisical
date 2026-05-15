@@ -478,6 +478,14 @@ export const AppConnectionsBrowser = () => {
         "Learn how to connect Snowflake to pull secrets from Infisical.",
       category: "Databases",
     },
+    {
+      name: "Datadog",
+      slug: "datadog",
+      path: "/integrations/app-connections/datadog",
+      description:
+        "Learn how to connect Datadog to pull secrets from Infisical.",
+      category: "Monitoring",
+    }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

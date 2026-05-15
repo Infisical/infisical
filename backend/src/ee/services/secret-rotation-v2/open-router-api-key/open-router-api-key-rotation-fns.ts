@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -173,10 +174,25 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
     apiKey
   }) => [{ key: secretsMapping.apiKey, value: apiKey }];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TOpenRouterApiKeyRotationGeneratedCredentials
+  > = async ({ apiKey }) => {
+    try {
+      await request.get(`${OPEN_ROUTER_API_BASE_URL}/key`, {
+        headers: { Authorization: `Bearer ${apiKey}` }
+      });
+    } catch (error: unknown) {
+      throw new BadRequestError({
+        message: `OpenRouter API key verification failed: ${createErrorMessage(error)}`
+      });
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

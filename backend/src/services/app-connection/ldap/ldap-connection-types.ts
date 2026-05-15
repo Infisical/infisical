@@ -19,7 +19,7 @@ export type TValidateLdapConnectionCredentialsSchema = typeof ValidateLdapConnec
 
 export type TLdapConnectionConfig = DiscriminativePick<
   TLdapConnectionInput,
-  "method" | "app" | "credentials" | "gatewayId"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

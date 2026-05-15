@@ -19,6 +19,8 @@ import { setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { PiiEntityType, redactPiiFromObject } from "@app/lib/pii";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -232,7 +234,7 @@ export const aiMcpEndpointServiceFactory = ({
       subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
-    const user = await userDAL.findById(userId);
+    const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
     if (!user) {
       throw new NotFoundError({ message: `User with ID '${userId}' not found` });
     }

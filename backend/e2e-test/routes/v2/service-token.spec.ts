@@ -590,4 +590,83 @@ describe("Service token fail cases", async () => {
     expect(fetchSecrets.statusCode).toBe(200);
     await deleteServiceToken();
   });
+
+  test("Admin can still create service tokens with full permissions (happy path regression)", async () => {
+    const projectKeyRes = await testServer.inject({
+      method: "GET",
+      url: `/api/v2/workspace/${seedData1.project.id}/encrypted-key`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      }
+    });
+    const projectKeyEnc = JSON.parse(projectKeyRes.payload);
+
+    const userInfoRes = await testServer.inject({
+      method: "GET",
+      url: "/api/v2/users/me",
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      }
+    });
+    const { user: userInfo } = JSON.parse(userInfoRes.payload);
+    const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
+
+    const projectKey = crypto.encryption().asymmetric().decrypt({
+      ciphertext: projectKeyEnc.encryptedKey,
+      nonce: projectKeyEnc.nonce,
+      publicKey: projectKeyEnc.sender.publicKey,
+      privateKey
+    });
+
+    const randomBytes = crypto.randomBytes(16).toString("hex");
+
+    const { ciphertext, iv, tag } = crypto.encryption().symmetric().encrypt({
+      plaintext: projectKey,
+      key: randomBytes,
+      keySize: SymmetricKeySize.Bits128
+    });
+
+    const serviceTokenRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v2/service-token",
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        name: "test-admin-token",
+        workspaceId: seedData1.project.id,
+        scopes: [{ secretPath: "/**", environment: seedData1.environment.slug }],
+        encryptedKey: ciphertext,
+        iv,
+        tag,
+        permissions: ["read", "write"],
+        expiresIn: null
+      }
+    });
+
+    expect(serviceTokenRes.statusCode).toBe(200);
+    const serviceTokenInfo = serviceTokenRes.json();
+    expect(serviceTokenInfo).toHaveProperty("serviceToken");
+    expect(serviceTokenInfo).toHaveProperty("serviceTokenData");
+
+    const serviceTokenListRes = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/projects/${seedData1.project.id}/service-token-data`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      }
+    });
+    const serviceTokens = JSON.parse(serviceTokenListRes.payload).serviceTokenData as { name: string; id: string }[];
+    const createdToken = serviceTokens.find(({ name }) => name === "test-admin-token");
+    expect(createdToken).toBeDefined();
+
+    const deleteRes = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/service-token/${createdToken?.id}`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      }
+    });
+    expect(deleteRes.statusCode).toBe(200);
+  });
 });

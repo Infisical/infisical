@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-types";
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -248,10 +249,49 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     { key: secretsMapping.clientId, value: clientIdParam }
   ];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TAzureClientSecretRotationGeneratedCredentials
+  > = async ({ clientId: activeClientId, clientSecret }) => {
+    const tenantId = connection.credentials.tenantId || "common";
+    const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+    try {
+      await request.post(
+        tokenEndpoint,
+        {
+          grant_type: "client_credentials",
+          client_id: activeClientId,
+          client_secret: clientSecret,
+          scope: "https://graph.microsoft.com/.default"
+        },
+        {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        }
+      );
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        let message: string | undefined;
+        if (
+          error.response?.data &&
+          typeof error.response.data === "object" &&
+          "error_description" in error.response.data &&
+          typeof (error.response.data as { error_description?: string }).error_description === "string"
+        ) {
+          message = (error.response.data as { error_description: string }).error_description;
+        }
+        throw new BadRequestError({
+          message: `Azure client credentials check failed: ${message ?? error.message ?? "Unknown error"}`
+        });
+      }
+      throw error;
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

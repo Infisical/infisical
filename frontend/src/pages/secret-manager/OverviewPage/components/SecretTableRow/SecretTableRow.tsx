@@ -483,7 +483,9 @@ export const SecretTableRow = ({
               <Table containerClassName="border-none rounded-none bg-transparent">
                 <TableHeader className="">
                   <TableRow className="border-none">
-                    <TableHead>Environment</TableHead>
+                    <TableHead isTruncatable className="w-px min-w-40 lg:min-w-64 xl:min-w-80">
+                      Environment
+                    </TableHead>
                     <TableHead className="w-full">Value</TableHead>
                     <div className="absolute top-0 right-0">
                       <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
@@ -518,9 +520,19 @@ export const SecretTableRow = ({
                     return (
                       <Fragment key={`secret-expanded-${slug}-${secretKey}`}>
                         <TableRow className="group hover:z-10">
-                          <TableCell className={hasOverride ? "border-b-border/50" : undefined}>
-                            <div title={name} className="flex h-8 w-32 items-center space-x-2">
-                              <span className="truncate">{name}</span>
+                          <TableCell
+                            isTruncatable
+                            className={hasOverride ? "border-b-border/50" : undefined}
+                          >
+                            <div className="flex h-8 items-center space-x-2">
+                              <Tooltip disableHoverableContent>
+                                <TooltipTrigger asChild>
+                                  <span className="truncate">{name}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-2xl break-all">
+                                  {name}
+                                </TooltipContent>
+                              </Tooltip>
                               {isImportedSecret && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>

@@ -32,6 +32,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -109,6 +110,7 @@ export type THoneyTokenServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 type TSendTriggerNotificationInput = {
@@ -150,7 +152,8 @@ export const honeyTokenServiceFactory = ({
   resourceMetadataDAL,
   snapshotService,
   secretQueueService,
-  telemetryService
+  telemetryService,
+  auditLogService
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     honeyTokenDAL,
@@ -174,7 +177,8 @@ export const honeyTokenServiceFactory = ({
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
-    telemetryService
+    telemetryService,
+    auditLogService
   });
 
   const create = async (
@@ -1020,24 +1024,51 @@ export const honeyTokenServiceFactory = ({
         eventType: HoneyTokenEventType.AWS,
         metadata: parsed.data
       });
+
       const updatedToken = await honeyTokenDAL.tryMarkTriggered(
         parsed.data.accessKeyId,
         TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
+
       void telemetryService
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenTriggered,
-          distinctId: `honey-token-${honeyToken.id}`,
-          organizationId: honeyTokenWithOrg.orgId,
+          distinctId: "anonymous-honey-token-trigger",
+          anonymous: true,
           properties: {
-            honeyTokenId: honeyToken.id,
-            type: honeyToken.type,
-            projectId: honeyToken.projectId
+            type: honeyToken.type
           }
         })
         .catch(() => {});
+
+      // This block only is executed once per token trigger. So, even if we get 100 events
+      // this will run only once.
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
+
+        void auditLogService
+          .createAuditLog({
+            actor: {
+              type: ActorType.UNKNOWN_USER,
+              metadata: {}
+            },
+            orgId: honeyTokenWithOrg.orgId,
+            projectId: honeyToken.projectId,
+            event: {
+              type: EventType.TRIGGER_HONEY_TOKEN,
+              metadata: {
+                honeyTokenId: honeyToken.id,
+                name: honeyToken.name,
+                type: honeyToken.type as HoneyTokenType,
+                projectId: honeyToken.projectId,
+                eventName: parsed.data.eventName,
+                eventTime: parsed.data.eventTime,
+                sourceIp: parsed.data.sourceIp ?? "Unknown",
+                awsRegion: parsed.data.awsRegion
+              }
+            }
+          })
+          .catch(() => {});
       }
     }
     /* eslint-enable no-continue */

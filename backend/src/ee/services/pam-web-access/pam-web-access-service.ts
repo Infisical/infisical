@@ -5,6 +5,7 @@ import type WebSocket from "ws";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -77,6 +78,7 @@ type TPamWebAccessServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "countActiveWebSessions">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
@@ -116,6 +118,7 @@ export const pamWebAccessServiceFactory = ({
   pamSessionDAL,
   pamSessionExpirationService,
   gatewayV2Service,
+  gatewayPoolService,
   kmsService,
   userDAL,
   mfaSessionService,
@@ -272,7 +275,7 @@ export const pamWebAccessServiceFactory = ({
       );
       if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
 
-      const actorUser = await userDAL.findById(actor.id);
+      const actorUser = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
       const org = await requestMemoize(requestMemoKeys.orgFindOrgById(project.orgId), () =>
@@ -467,7 +470,11 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Web access is not supported for this resource type" });
       }
 
-      if (!resource.gatewayId) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: resource.gatewayId,
+        gatewayPoolId: resource.gatewayPoolId
+      });
+      if (!effectiveGatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this resource" });
       }
 
@@ -497,7 +504,7 @@ export const pamWebAccessServiceFactory = ({
       });
 
       // 3. CREATE SESSION
-      const user = await userDAL.findById(userId);
+      const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
       const expiresAt = new Date(Date.now() + DEFAULT_WEB_SESSION_DURATION_MS);
 
       session = await pamSessionDAL.create({
@@ -515,6 +522,7 @@ export const pamWebAccessServiceFactory = ({
         accountId: account.id,
         resourceId: resource.id,
         userId,
+        gatewayId: effectiveGatewayId,
         reason: accessReason?.trim() || null
       });
 
@@ -522,7 +530,7 @@ export const pamWebAccessServiceFactory = ({
 
       // 4. GET CERTIFICATES
       const certs = await gatewayV2Service.getPAMConnectionDetails({
-        gatewayId: resource.gatewayId,
+        gatewayId: effectiveGatewayId,
         sessionId: session.id,
         resourceType: resource.resourceType as PamResource,
         host,

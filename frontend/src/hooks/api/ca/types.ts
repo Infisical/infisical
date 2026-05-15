@@ -245,7 +245,7 @@ export type TCreateCertificateV3DTO = {
   friendlyName?: string;
   commonName?: string;
   organization?: string;
-  organizationUnit?: string;
+  organizationalUnit?: string;
   locality?: string;
   state?: string;
   country?: string;

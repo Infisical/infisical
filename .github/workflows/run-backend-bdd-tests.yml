@@ -25,23 +25,23 @@ jobs:
           docker system prune -af
 
       - name: ☁️ Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       - name: Install Python
         run: uv python install
-      - uses: KengoTODA/actions-setup-docker-compose@v1
+      - uses: KengoTODA/actions-setup-docker-compose@477353946803dd64eaa44008b865b6bfc88cab4e # v1.2.4
         if: ${{ env.ACT }}
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
       - name: 🔧 Setup Node 22
         id: setup-node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
       - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - name: Install sscep (SCEP client for BDD tests)
@@ -53,7 +53,7 @@ jobs:
           sudo cp /tmp/sscep-build/build/sscep /usr/local/bin/sscep
       - name: 📦 Cache node_modules
         id: cache-node-modules
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: backend/node_modules
           key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('backend/package-lock.json') }}
@@ -89,12 +89,12 @@ jobs:
           sed -i 's/pkiAcme: .*/pkiAcme: true,/g' backend/src/ee/services/license/license-fns.ts
           sed -i 's/pkiScep: .*/pkiScep: true,/g' backend/src/ee/services/license/license-fns.ts
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           driver-opts: |
             image=moby/buildkit:latest
       - name: Build Infisical backend Docker image with caching
-        uses: docker/bake-action@v5
+        uses: docker/bake-action@4a9a8d494466d37134e2bfca2d3a8de8fb2681ad # v5
         timeout-minutes: 30
         with:
           files: docker-compose.bdd.yml
@@ -108,7 +108,7 @@ jobs:
       - name: Start Infisical
         run: docker compose -f docker-compose.bdd.yml up -d
       - name: Wait for API to be ready
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
         with:
           timeout_seconds: 60
           max_attempts: 30
@@ -130,7 +130,7 @@ jobs:
           docker compose -f docker-compose.bdd.yml logs backend > logs/backend.log 2>&1 || true
       - name: Upload backend logs as artifact
         if: always()  # Always upload, even on failure/cancellation
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: backend-logs-${{ github.run_id }}
           path: logs/backend.log

@@ -137,11 +137,37 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
+  const findByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamDiscoverySource)
+      .leftJoin(TableName.Project, `${TableName.PamDiscoverySource}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamDiscoverySource}.gatewayPoolId`, gatewayPoolId)
+      .select(
+        db.ref("id").withSchema(TableName.PamDiscoverySource),
+        db.ref("name").withSchema(TableName.PamDiscoverySource),
+        db.ref("projectId").withSchema(TableName.PamDiscoverySource),
+        db.ref("discoveryType").withSchema(TableName.PamDiscoverySource),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamDiscoverySource)
+      .where(`${TableName.PamDiscoverySource}.gatewayPoolId`, gatewayPoolId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...orm,
     findByProjectId,
     findDueForScan,
     findByGatewayId,
-    countByGatewayId
+    countByGatewayId,
+    findByGatewayPoolId,
+    countByGatewayPoolId
   };
 };

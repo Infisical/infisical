@@ -292,7 +292,9 @@ export const roleServiceFactory = ({
           throw new NotFoundError({ message: `Identity with ID ${assumedPrivilegeDetails.actorId} not found` });
         assumedPrivilegeDetails.actorName = identityDetails.name;
       } else if (assumedPrivilegeDetails?.actorType === ActorType.USER) {
-        const userDetails = await userDAL.findById(assumedPrivilegeDetails?.actorId);
+        const userDetails = await requestMemoize(requestMemoKeys.userFindById(assumedPrivilegeDetails.actorId), () =>
+          userDAL.findById(assumedPrivilegeDetails.actorId)
+        );
         if (!userDetails)
           throw new NotFoundError({ message: `User with ID ${assumedPrivilegeDetails.actorId} not found` });
         assumedPrivilegeDetails.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
