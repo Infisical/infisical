@@ -37,6 +37,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
 
     tcpSocket.once("connect", () => {
       clearTimeout(connectTimeout);
+      tcpSocket.removeAllListeners("error");
 
       releaseEarlyBuffer();
       for (const msg of earlyMessages) {
