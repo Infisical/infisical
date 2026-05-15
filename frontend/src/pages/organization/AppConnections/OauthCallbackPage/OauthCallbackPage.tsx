@@ -364,6 +364,7 @@ export const OAuthCallbackPage = () => {
     let connection: TAppConnection;
 
     try {
+      const gitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId;
       if (connectionId) {
         connection = await updateAppConnection.mutateAsync({
           app: AppConnection.GitHub,
@@ -373,6 +374,7 @@ export const OAuthCallbackPage = () => {
                 credentials: {
                   code: code as string,
                   installationId: installationId as string,
+                  ...(gitHubAppId !== undefined && { gitHubAppId }),
                   ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
@@ -401,6 +403,7 @@ export const OAuthCallbackPage = () => {
                   code: code as string,
                   ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   installationId: installationId as string,
+                  ...(gitHubAppId !== undefined && { gitHubAppId }),
                   ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId

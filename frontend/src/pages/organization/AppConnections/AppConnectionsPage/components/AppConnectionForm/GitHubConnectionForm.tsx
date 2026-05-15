@@ -21,7 +21,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -38,6 +38,7 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
@@ -67,9 +68,22 @@ const baseCredentialsSchema = z.union([
   })
 ]);
 
+const appCredentialsSchema = z.union([
+  z.object({
+    instanceType: z.literal("server"),
+    host: z.string().min(1, "Host is required for server instance type"),
+    gitHubAppId: z.string().nullish()
+  }),
+  z.object({
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().optional(),
+    gitHubAppId: z.string().nullish()
+  })
+]);
+
 const appSchema = rootSchema.extend({
   method: z.literal(GitHubConnectionMethod.App),
-  credentials: baseCredentialsSchema
+  credentials: appCredentialsSchema
 });
 
 const oauthSchema = rootSchema.extend({
@@ -116,7 +130,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       gatewayId: null,
       gatewayPoolId: null,
       credentials: {
-        instanceType: "cloud"
+        instanceType: "cloud",
+        gitHubAppId: null
       }
     }
   });
@@ -130,6 +145,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   } = form;
 
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const { data: gitHubApps } = useListGitHubApps(currentOrg?.id);
 
   const selectedMethod = watch("method");
   const instanceType = watch("credentials.instanceType");
@@ -163,10 +180,15 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         ? `https://${formData.credentials.host}`
         : "https://github.com";
 
+    const selectedAppSlug =
+      formData.method === GitHubConnectionMethod.App && formData.credentials.gitHubAppId
+        ? gitHubApps?.find((app) => app.id === formData.credentials.gitHubAppId)?.slug
+        : appClientSlug;
+
     switch (formData.method) {
       case GitHubConnectionMethod.App:
         window.location.assign(
-          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${appClientSlug}/installations/new?state=${state}`
+          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${selectedAppSlug}/installations/new?state=${state}`
         );
         break;
       case GitHubConnectionMethod.OAuth:
@@ -186,7 +208,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       isMissingConfig = !oauthClientId;
       break;
     case GitHubConnectionMethod.App:
-      isMissingConfig = !appClientSlug;
+      isMissingConfig = !appClientSlug && !(gitHubApps && gitHubApps.length > 0);
       break;
     case GitHubConnectionMethod.Pat:
       isMissingConfig = false;
@@ -261,6 +283,41 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             </FormControl>
           )}
         />
+        {selectedMethod === GitHubConnectionMethod.App && (
+          <Controller
+            name={"credentials.gitHubAppId" as never}
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                tooltipText="Select which GitHub App to install. Registered apps are managed under Organization Settings > Integrations."
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="GitHub App"
+              >
+                <Select
+                  isDisabled={isUpdate}
+                  value={(value as string | null | undefined) ?? "__instance_default__"}
+                  onValueChange={(val) => onChange(val === "__instance_default__" ? null : val)}
+                  className="w-full border border-mineshaft-500"
+                  position="popper"
+                  dropdownContainerClassName="max-w-none"
+                >
+                  {appClientSlug && (
+                    <SelectItem value="__instance_default__" key="__instance_default__">
+                      Instance default
+                    </SelectItem>
+                  )}
+                  {(gitHubApps ?? []).map((app) => (
+                    <SelectItem value={app.id} key={app.id}>
+                      {app.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+        )}
         {selectedMethod === GitHubConnectionMethod.Pat && (
           <Controller
             name="credentials.personalAccessToken"

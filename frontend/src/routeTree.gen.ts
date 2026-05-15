@@ -76,8 +76,8 @@ import { Route as organizationNetworkingPageRouteImport } from './pages/organiza
 import { Route as organizationAppConnectionsAppConnectionsPageRouteImport } from './pages/organization/AppConnections/AppConnectionsPage/route'
 import { Route as secretManagerRedirectsRedirectApprovalPageImport } from './pages/secret-manager/redirects/redirect-approval-page'
 import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from './pages/organization/SettingsPage/OauthCallbackPage/route'
-import { Route as organizationNetworkingPageRelayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/RelayDetailsByIDPage/route'
 import { Route as organizationSettingsPageGitHubAppCallbackPageRouteImport } from './pages/organization/SettingsPage/GitHubAppCallbackPage/route'
+import { Route as organizationNetworkingPageRelayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/RelayDetailsByIDPage/route'
 import { Route as organizationNetworkingPageGatewayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/GatewayDetailsByIDPage/route'
 import { Route as sshLayoutImport } from './pages/ssh/layout'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
@@ -1029,20 +1029,20 @@ const organizationSettingsPageOauthCallbackPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRoute,
   } as any)
 
-const organizationNetworkingPageRelayDetailsByIDPageRouteRoute =
-  organizationNetworkingPageRelayDetailsByIDPageRouteImport.update({
-    id: '/relays/$relayId',
-    path: '/relays/$relayId',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdNetworkingRoute,
-  } as any)
-
 const organizationSettingsPageGitHubAppCallbackPageRouteRoute =
   organizationSettingsPageGitHubAppCallbackPageRouteImport.update({
     id: '/github-app/callback',
     path: '/github-app/callback',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRoute,
+  } as any)
+
+const organizationNetworkingPageRelayDetailsByIDPageRouteRoute =
+  organizationNetworkingPageRelayDetailsByIDPageRouteImport.update({
+    id: '/relays/$relayId',
+    path: '/relays/$relayId',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdNetworkingRoute,
   } as any)
 
 const organizationNetworkingPageGatewayDetailsByIDPageRouteRoute =

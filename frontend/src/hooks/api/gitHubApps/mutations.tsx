@@ -2,7 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TDeleteGitHubAppDTO, TExchangeGitHubManifestCodeDTO, TGitHubApp, TRegisterGitHubAppDTO } from "./types";
+import {
+  TDeleteGitHubAppDTO,
+  TExchangeGitHubManifestCodeDTO,
+  TGitHubApp,
+  TRegisterGitHubAppDTO
+} from "./types";
 
 export const useExchangeGitHubManifestCode = () => {
   const queryClient = useQueryClient();
@@ -17,7 +22,9 @@ export const useExchangeGitHubManifestCode = () => {
       return data.gitHubApp;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["github-apps"], exact: false });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("github-apps")
+      });
     }
   });
 };
@@ -35,7 +42,9 @@ export const useRegisterGitHubApp = () => {
       return data.gitHubApp;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["github-apps"], exact: false });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("github-apps")
+      });
     }
   });
 };
@@ -52,7 +61,9 @@ export const useDeleteGitHubApp = () => {
       return data.gitHubApp;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["github-apps"], exact: false });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("github-apps")
+      });
     }
   });
 };

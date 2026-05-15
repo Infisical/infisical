@@ -2,7 +2,8 @@ import crypto from "crypto";
 
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import { BsMicrosoftTeams } from "react-icons/bs";
+import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faArrowRight, faFileImport, faPlusCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,23 +14,57 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useRegisterGitHubApp } from "@app/hooks/api/gitHubApps";
+import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+
+import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
+import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
 };
 
+enum AppPlatform {
+  GitHub = "github"
+}
+
+type SelectedPlatform =
+  | WorkflowIntegrationPlatform.SLACK
+  | WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+  | AppPlatform.GitHub
+  | null;
+
 enum WizardSteps {
   SelectPlatform = "select-platform",
-  SelectMethod = "select-method",
+  WorkflowInputs = "workflow-inputs",
+  GitHubSelectMethod = "github-select-method",
   GitHubManifest = "github-manifest",
   GitHubManual = "github-manual"
 }
 
-const PLATFORM_LIST = [
+type PlatformOption = {
+  icon: React.ReactNode;
+  platform: SelectedPlatform;
+  title: string;
+};
+
+const WORKFLOW_PLATFORMS: PlatformOption[] = [
+  {
+    icon: <FontAwesomeIcon icon={faSlack} size="lg" />,
+    platform: WorkflowIntegrationPlatform.SLACK,
+    title: "Slack"
+  },
+  {
+    icon: <BsMicrosoftTeams className="text-lg" />,
+    platform: WorkflowIntegrationPlatform.MICROSOFT_TEAMS,
+    title: "Microsoft Teams"
+  }
+];
+
+const APP_PLATFORMS: PlatformOption[] = [
   {
     icon: <FontAwesomeIcon icon={faGithub} size="lg" />,
-    platform: "github",
+    platform: AppPlatform.GitHub,
     title: "GitHub"
   }
 ];
@@ -51,15 +86,24 @@ const manualFormSchema = z.object({
 type TManifestFormData = z.infer<typeof manifestFormSchema>;
 type TManualFormData = z.infer<typeof manualFormSchema>;
 
+const slugifyGitHubAppName = (name: string) =>
+  `infisical-${name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")}`;
+
 const buildGitHubManifest = ({ orgId, name }: { orgId: string; name: string }) => {
   const redirectUrl = `${window.location.origin}/organizations/${orgId}/settings/github-app/callback`;
 
   return {
-    name,
+    name: slugifyGitHubAppName(name),
     url: window.location.origin,
     redirect_url: redirectUrl,
     callback_urls: [`${window.location.origin}/organization/app-connections/github/oauth/callback`],
-    description: `Infisical GitHub App for organization ${orgId}`,
+    description: "Infisical GitHub App Integration",
     public: false,
     request_oauth_on_install: true,
     default_permissions: {
@@ -105,9 +149,9 @@ const submitManifestForm = ({
   form.submit();
 };
 
-export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
+export const AddIntegrationModal = ({ isOpen, onToggle }: Props) => {
   const [wizardStep, setWizardStep] = useState(WizardSteps.SelectPlatform);
-  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<SelectedPlatform>(null);
   const { currentOrg } = useOrganization();
 
   const registerGitHubApp = useRegisterGitHubApp();
@@ -126,6 +170,15 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
     setSelectedPlatform(null);
     manifestForm.reset();
     manualForm.reset();
+  };
+
+  const handleSelectPlatform = (platform: SelectedPlatform) => {
+    setSelectedPlatform(platform);
+    if (platform === AppPlatform.GitHub) {
+      setWizardStep(WizardSteps.GitHubSelectMethod);
+    } else {
+      setWizardStep(WizardSteps.WorkflowInputs);
+    }
   };
 
   const handleSubmitManifest = ({ name, organization }: TManifestFormData) => {
@@ -152,9 +205,28 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
   const getModalTitle = () => {
     if (wizardStep === WizardSteps.GitHubManifest) return "Create a new GitHub App";
     if (wizardStep === WizardSteps.GitHubManual) return "Register an existing GitHub App";
-    if (selectedPlatform === "github") return "Add a GitHub App";
-    return "Add an app integration";
+    if (selectedPlatform === WorkflowIntegrationPlatform.SLACK) return "Add a Slack integration";
+    if (selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS)
+      return "Add a Microsoft Teams integration";
+    if (selectedPlatform === AppPlatform.GitHub) return "Add a GitHub App";
+    return "Add an integration";
   };
+
+  const renderPlatformCard = ({ icon, platform, title }: PlatformOption) => (
+    <div
+      key={platform ?? title}
+      className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+      role="button"
+      tabIndex={0}
+      onClick={() => handleSelectPlatform(platform)}
+      onKeyDown={(evt) => {
+        if (evt.key === "Enter") handleSelectPlatform(platform);
+      }}
+    >
+      <div>{icon}</div>
+      <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
+    </div>
+  );
 
   return (
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
@@ -168,97 +240,113 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="mb-4 text-mineshaft-300">Select a platform</div>
+              <div className="mb-2 text-sm font-medium text-mineshaft-200">Workflow</div>
+              <div className="mb-6 flex items-center space-x-4">
+                {WORKFLOW_PLATFORMS.map(renderPlatformCard)}
+              </div>
+              <div className="mb-2 text-sm font-medium text-mineshaft-200">Apps</div>
               <div className="flex items-center space-x-4">
-                {PLATFORM_LIST.map(({ icon, platform, title }) => (
+                {APP_PLATFORMS.map(renderPlatformCard)}
+              </div>
+            </motion.div>
+          )}
+          {wizardStep === WizardSteps.WorkflowInputs &&
+            selectedPlatform === WorkflowIntegrationPlatform.SLACK && (
+              <motion.div
+                key="slack-platform"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <SlackIntegrationForm onClose={() => handleFormReset(false)} />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.WorkflowInputs &&
+            selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+              <motion.div
+                key="microsoft-teams-platform"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <MicrosoftTeamsIntegrationForm onClose={() => handleFormReset(false)} />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.GitHubSelectMethod &&
+            selectedPlatform === AppPlatform.GitHub && (
+              <motion.div
+                key="github-select-method"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <div className="mb-4 text-mineshaft-300">
+                  How would you like to add a GitHub App?
+                </div>
+                <div className="flex flex-col space-y-3">
                   <div
-                    key={platform}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex cursor-pointer items-start space-x-4 rounded-md border border-mineshaft-500 bg-bunker-600 p-4 transition-all hover:border-primary/70 hover:bg-primary/10"
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      setSelectedPlatform(platform);
-                      setWizardStep(WizardSteps.SelectMethod);
-                    }}
+                    onClick={() => setWizardStep(WizardSteps.GitHubManifest)}
                     onKeyDown={(evt) => {
-                      if (evt.key === "Enter") {
-                        setSelectedPlatform(platform);
-                        setWizardStep(WizardSteps.SelectMethod);
-                      }
+                      if (evt.key === "Enter") setWizardStep(WizardSteps.GitHubManifest);
                     }}
                   >
-                    <div>{icon}</div>
-                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-          {wizardStep === WizardSteps.SelectMethod && selectedPlatform === "github" && (
-            <motion.div
-              key="select-method"
-              transition={{ duration: 0.1 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: -30 }}
-            >
-              <div className="mb-4 text-mineshaft-300">How would you like to add a GitHub App?</div>
-              <div className="flex flex-col space-y-3">
-                <div
-                  className="flex cursor-pointer items-start space-x-4 rounded-md border border-mineshaft-500 bg-bunker-600 p-4 transition-all hover:border-primary/70 hover:bg-primary/10"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setWizardStep(WizardSteps.GitHubManifest)}
-                  onKeyDown={(evt) => {
-                    if (evt.key === "Enter") setWizardStep(WizardSteps.GitHubManifest);
-                  }}
-                >
-                  <div className="mt-0.5 text-primary">
-                    <FontAwesomeIcon icon={faPlusCircle} size="lg" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-mineshaft-100">Create via GitHub Manifest</div>
-                    <div className="mt-1 text-sm text-mineshaft-400">
-                      Let Infisical guide you through creating a new GitHub App directly on GitHub.
-                      Recommended for new setups.
+                    <div className="mt-0.5 text-primary">
+                      <FontAwesomeIcon icon={faPlusCircle} size="lg" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-mineshaft-100">
+                        Create via GitHub Manifest
+                      </div>
+                      <div className="mt-1 text-sm text-mineshaft-400">
+                        Let Infisical guide you through creating a new GitHub App directly on
+                        GitHub. Recommended for new setups.
+                      </div>
+                    </div>
+                    <div className="ml-auto self-center text-mineshaft-400">
+                      <FontAwesomeIcon icon={faArrowRight} />
                     </div>
                   </div>
-                  <div className="ml-auto self-center text-mineshaft-400">
-                    <FontAwesomeIcon icon={faArrowRight} />
-                  </div>
-                </div>
-                <div
-                  className="flex cursor-pointer items-start space-x-4 rounded-md border border-mineshaft-500 bg-bunker-600 p-4 transition-all hover:border-primary/70 hover:bg-primary/10"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setWizardStep(WizardSteps.GitHubManual)}
-                  onKeyDown={(evt) => {
-                    if (evt.key === "Enter") setWizardStep(WizardSteps.GitHubManual);
-                  }}
-                >
-                  <div className="mt-0.5 text-primary">
-                    <FontAwesomeIcon icon={faFileImport} size="lg" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-mineshaft-100">Register Existing App</div>
-                    <div className="mt-1 text-sm text-mineshaft-400">
-                      Already have a GitHub App? Provide its credentials to register it with
-                      Infisical.
+                  <div
+                    className="flex cursor-pointer items-start space-x-4 rounded-md border border-mineshaft-500 bg-bunker-600 p-4 transition-all hover:border-primary/70 hover:bg-primary/10"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(WizardSteps.GitHubManual)}
+                    onKeyDown={(evt) => {
+                      if (evt.key === "Enter") setWizardStep(WizardSteps.GitHubManual);
+                    }}
+                  >
+                    <div className="mt-0.5 text-primary">
+                      <FontAwesomeIcon icon={faFileImport} size="lg" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-mineshaft-100">Register Existing App</div>
+                      <div className="mt-1 text-sm text-mineshaft-400">
+                        Already have a GitHub App? Provide its credentials to register it with
+                        Infisical.
+                      </div>
+                    </div>
+                    <div className="ml-auto self-center text-mineshaft-400">
+                      <FontAwesomeIcon icon={faArrowRight} />
                     </div>
                   </div>
-                  <div className="ml-auto self-center text-mineshaft-400">
-                    <FontAwesomeIcon icon={faArrowRight} />
-                  </div>
                 </div>
-              </div>
-              <div className="mt-4">
-                <Button variant="outline_bg" onClick={() => setWizardStep(WizardSteps.SelectPlatform)}>
-                  Back
-                </Button>
-              </div>
-            </motion.div>
-          )}
-          {wizardStep === WizardSteps.GitHubManifest && selectedPlatform === "github" && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline_bg"
+                    onClick={() => setWizardStep(WizardSteps.SelectPlatform)}
+                  >
+                    Back
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.GitHubManifest && selectedPlatform === AppPlatform.GitHub && (
             <motion.div
               key="github-manifest"
               transition={{ duration: 0.1 }}
@@ -273,17 +361,14 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
                 any of your GitHub organizations and use it as the basis for GitHub App connections
                 in Infisical.
               </div>
-              <form
-                onSubmit={manifestForm.handleSubmit(handleSubmitManifest)}
-                autoComplete="off"
-              >
+              <form onSubmit={manifestForm.handleSubmit(handleSubmitManifest)} autoComplete="off">
                 <Controller
                   control={manifestForm.control}
                   name="name"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="GitHub App name"
-                      helperText="Used as the GitHub App's display name. Must be unique within this organization."
+                      helperText="Used to identify this app in Infisical. Sent to GitHub as a slugified name prefixed with 'infisical-'."
                       isRequired
                       errorText={error?.message}
                       isError={Boolean(error)}
@@ -316,7 +401,7 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
                   </Button>
                   <Button
                     variant="outline_bg"
-                    onClick={() => setWizardStep(WizardSteps.SelectMethod)}
+                    onClick={() => setWizardStep(WizardSteps.GitHubSelectMethod)}
                   >
                     Back
                   </Button>
@@ -324,7 +409,7 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
               </form>
             </motion.div>
           )}
-          {wizardStep === WizardSteps.GitHubManual && selectedPlatform === "github" && (
+          {wizardStep === WizardSteps.GitHubManual && selectedPlatform === AppPlatform.GitHub && (
             <motion.div
               key="github-manual"
               transition={{ duration: 0.1 }}
@@ -336,10 +421,7 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
                 Provide your existing GitHub App credentials. These will be securely encrypted and
                 stored in Infisical.
               </div>
-              <form
-                onSubmit={manualForm.handleSubmit(handleSubmitManual)}
-                autoComplete="off"
-              >
+              <form onSubmit={manualForm.handleSubmit(handleSubmitManual)} autoComplete="off">
                 <Controller
                   control={manualForm.control}
                   name="name"
@@ -444,7 +526,7 @@ export const AddGitHubAppModal = ({ isOpen, onToggle }: Props) => {
                   </Button>
                   <Button
                     variant="outline_bg"
-                    onClick={() => setWizardStep(WizardSteps.SelectMethod)}
+                    onClick={() => setWizardStep(WizardSteps.GitHubSelectMethod)}
                   >
                     Back
                   </Button>

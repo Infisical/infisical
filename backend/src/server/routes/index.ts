@@ -1676,6 +1676,7 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
     appConnectionDAL,
+    gitHubAppDAL,
     licenseService,
     gatewayService,
     gatewayV2Service,
@@ -2509,7 +2510,8 @@ export const registerRoutes = async (
     gatewayV2DAL,
     projectDAL,
     appConnectionCredentialRotationService,
-    identityUaDAL
+    identityUaDAL,
+    gitHubAppDAL
   });
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({

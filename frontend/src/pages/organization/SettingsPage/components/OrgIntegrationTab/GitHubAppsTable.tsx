@@ -1,13 +1,11 @@
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import { faEllipsis, faPlug, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faPlug, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +24,8 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
-import { AddGitHubAppModal } from "./AddGitHubAppModal";
-
-export const OrgAppsSection = () => {
+export const GitHubAppsTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "addAppConnection",
     "removeAppConnection"
   ] as const);
 
@@ -43,10 +38,10 @@ export const OrgAppsSection = () => {
     if (!popUp.removeAppConnection?.data?.id) return;
     try {
       await deleteGitHubApp({ id: popUp.removeAppConnection.data.id as string });
-      createNotification({ text: "Successfully removed GitHub App.", type: "success" });
+      createNotification({ text: "Successfully removed app.", type: "success" });
     } catch (err) {
       createNotification({
-        text: (err as Error).message || "Failed to delete GitHub App.",
+        text: (err as Error).message || "Failed to app.",
         type: "error"
       });
     } finally {
@@ -55,22 +50,7 @@ export const OrgAppsSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Apps</p>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <Button
-              onClick={() => handlePopUpOpen("addAppConnection")}
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            >
-              Add
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
-      <p className="mb-4 text-gray-400">Connect Infisical to other apps for app connections integrations.</p>
+    <>
       <TableContainer>
         <Table>
           <THead>
@@ -79,15 +59,14 @@ export const OrgAppsSection = () => {
               <Td>Name</Td>
               <Td>App ID</Td>
               <Td>Slug</Td>
-              <Td>Created</Td>
               <Td />
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={6} innerKey="github-apps-loading" />}
+            {isPending && <TableSkeleton columns={5} innerKey="github-apps-loading" />}
             {!isPending && gitHubApps && gitHubApps.length === 0 && (
               <Tr>
-                <Td colSpan={6}>
+                <Td colSpan={5}>
                   <EmptyState title="No app integrations found" icon={faPlug} />
                 </Td>
               </Tr>
@@ -110,7 +89,6 @@ export const OrgAppsSection = () => {
                     {app.slug}
                   </a>
                 </Td>
-                <Td>{format(new Date(app.createdAt), "yyyy-MM-dd")}</Td>
                 <Td>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild className="rounded-lg">
@@ -125,8 +103,10 @@ export const OrgAppsSection = () => {
                       >
                         {(isAllowed) => (
                           <DropdownMenuItem
-                            disabled={!isAllowed}
+                            isDisabled={!isAllowed}
+                            icon={<FontAwesomeIcon icon={faTrash} />}
                             className={twMerge(
+                              "text-red",
                               !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                             )}
                             onClick={(e) => {
@@ -137,7 +117,7 @@ export const OrgAppsSection = () => {
                               });
                             }}
                           >
-                            Delete
+                            Delete app
                           </DropdownMenuItem>
                         )}
                       </OrgPermissionCan>
@@ -149,10 +129,6 @@ export const OrgAppsSection = () => {
           </TBody>
         </Table>
       </TableContainer>
-      <AddGitHubAppModal
-        isOpen={popUp.addAppConnection.isOpen}
-        onToggle={(state) => handlePopUpToggle("addAppConnection", state)}
-      />
       <DeleteActionModal
         isOpen={popUp.removeAppConnection.isOpen}
         title={`Are you sure you want to remove ${popUp?.removeAppConnection?.data?.name as string}?`}
@@ -160,6 +136,6 @@ export const OrgAppsSection = () => {
         deleteKey="confirm"
         onDeleteApproved={handleRemove}
       />
-    </div>
+    </>
   );
 };

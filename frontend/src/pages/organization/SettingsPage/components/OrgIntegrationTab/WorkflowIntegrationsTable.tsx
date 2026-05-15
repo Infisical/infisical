@@ -1,5 +1,5 @@
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
-import { faEllipsis, faGear, faInfoCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faGear, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
 import { twMerge } from "tailwind-merge";
@@ -7,7 +7,6 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +37,6 @@ import {
   WorkflowIntegrationStatus
 } from "@app/hooks/api/workflowIntegrations/types";
 
-import { AddWorkflowIntegrationForm } from "./AddWorkflowIntegrationForm";
 import { IntegrationFormDetails } from "./IntegrationFormDetails";
 
 const renderStatus = (status: WorkflowIntegrationStatus) => {
@@ -53,9 +51,8 @@ const renderStatus = (status: WorkflowIntegrationStatus) => {
   return <Badge variant="danger">Failed</Badge>;
 };
 
-export const OrgWorkflowIntegrationSection = () => {
+export const WorkflowIntegrationsTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "addWorkflowIntegration",
     "integrationDetails",
     "removeIntegration"
   ] as const);
@@ -128,26 +125,7 @@ export const OrgWorkflowIntegrationSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Workflows</p>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <Button
-              onClick={() => {
-                handlePopUpOpen("addWorkflowIntegration");
-              }}
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            >
-              Add
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
-      <p className="mb-4 text-gray-400">
-        Connect Infisical to other platforms for notification and workflow integrations.
-      </p>
+    <>
       <TableContainer>
         <Table>
           <THead>
@@ -291,10 +269,6 @@ export const OrgWorkflowIntegrationSection = () => {
           </TBody>
         </Table>
       </TableContainer>
-      <AddWorkflowIntegrationForm
-        isOpen={popUp.addWorkflowIntegration.isOpen}
-        onToggle={(state) => handlePopUpToggle("addWorkflowIntegration", state)}
-      />
       <IntegrationFormDetails
         isOpen={popUp.integrationDetails?.isOpen}
         workflowPlatform={popUp.integrationDetails?.data?.platform}
@@ -308,6 +282,6 @@ export const OrgWorkflowIntegrationSection = () => {
         deleteKey="confirm"
         onDeleteApproved={handleRemoveIntegration}
       />
-    </div>
+    </>
   );
 };

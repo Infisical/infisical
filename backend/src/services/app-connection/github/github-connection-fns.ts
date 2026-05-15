@@ -15,10 +15,87 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
+import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-types";
+
+export type TGitHubAppCredentialResolverDeps = {
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+type TResolvedGitHubAppCredentials = {
+  appId: string;
+  slug: string;
+  clientId: string;
+  clientSecret: string;
+  privateKey: string;
+};
+
+export const resolveGitHubAppCredentials = async (
+  {
+    gitHubAppId,
+    orgId
+  }: {
+    gitHubAppId?: string | null;
+    orgId: string;
+  },
+  { gitHubAppDAL, kmsService }: TGitHubAppCredentialResolverDeps
+): Promise<TResolvedGitHubAppCredentials> => {
+  if (gitHubAppId) {
+    const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
+    if (!app) {
+      throw new BadRequestError({
+        message: `GitHub App with id ${gitHubAppId} not found in this organization.`
+      });
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    return {
+      appId: decryptor({ cipherTextBlob: app.encryptedAppId }).toString(),
+      slug: decryptor({ cipherTextBlob: app.encryptedSlug }).toString(),
+      clientId: decryptor({ cipherTextBlob: app.encryptedClientId }).toString(),
+      clientSecret: decryptor({ cipherTextBlob: app.encryptedClientSecret }).toString(),
+      privateKey: decryptor({ cipherTextBlob: app.encryptedPrivateKey }).toString()
+    };
+  }
+
+  const {
+    INF_APP_CONNECTION_GITHUB_APP_ID,
+    INF_APP_CONNECTION_GITHUB_APP_SLUG,
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
+    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+  } = getConfig();
+
+  if (
+    !INF_APP_CONNECTION_GITHUB_APP_ID ||
+    !INF_APP_CONNECTION_GITHUB_APP_SLUG ||
+    !INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID ||
+    !INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET ||
+    !INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+  ) {
+    throw new InternalServerError({
+      message: "GitHub App environment variables have not been configured"
+    });
+  }
+
+  return {
+    appId: INF_APP_CONNECTION_GITHUB_APP_ID,
+    slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
+    clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+    clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
+    privateKey: INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+  };
+};
 
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
@@ -192,28 +269,24 @@ export const getGitHubAppAuthToken = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
-  const appCfg = getConfig();
-  const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
-  let appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
-
-  if (!appId || !appPrivateKey) {
-    throw new InternalServerError({
-      message: `GitHub App keys are not configured.`
-    });
-  }
-
-  appPrivateKey = appPrivateKey
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n");
-
   if (appConnection.method !== GitHubConnectionMethod.App) {
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
   }
 
   assertPlatformGitHubHostAllowed(appConnection.credentials.host);
+
+  const { appId, privateKey } = await resolveGitHubAppCredentials(
+    { gitHubAppId: appConnection.credentials.gitHubAppId, orgId: appConnection.orgId },
+    deps
+  );
+
+  const appPrivateKey = privateKey
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -284,6 +357,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   path: string,
+  deps: TGitHubAppCredentialResolverDeps,
   dataMapper?: (data: R) => T[]
 ): Promise<T[]> => {
   const { credentials, method } = appConnection;
@@ -298,7 +372,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       token = credentials.personalAccessToken;
       break;
     default:
-      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service, gatewayPoolService);
+      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service, gatewayPoolService, deps);
   }
 
   const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
@@ -438,7 +512,8 @@ export const getGitHubRepositories = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     return makePaginatedGitHubRequest<GitHubRepository, { repositories: GitHubRepository[] }>(
@@ -447,6 +522,7 @@ export const getGitHubRepositories = async (
       gatewayV2Service,
       gatewayPoolService,
       "/installation/repositories",
+      deps,
       (data) => data.repositories
     );
   }
@@ -456,7 +532,8 @@ export const getGitHubRepositories = async (
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    "/user/repos"
+    "/user/repos",
+    deps
   );
 
   return repos.filter((repo) => repo.permissions?.admin);
@@ -466,7 +543,8 @@ export const getGitHubOrganizations = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     const installationRepositories = await makePaginatedGitHubRequest<
@@ -478,6 +556,7 @@ export const getGitHubOrganizations = async (
       gatewayV2Service,
       gatewayPoolService,
       "/installation/repositories",
+      deps,
       (data) => data.repositories
     );
 
@@ -496,7 +575,8 @@ export const getGitHubOrganizations = async (
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    "/user/orgs"
+    "/user/orgs",
+    deps
   );
 };
 
@@ -506,7 +586,8 @@ export const getGitHubEnvironments = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   owner: string,
-  repo: string
+  repo: string,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   try {
     return await makePaginatedGitHubRequest<GitHubEnvironment, { environments: GitHubEnvironment[] }>(
@@ -515,6 +596,7 @@ export const getGitHubEnvironments = async (
       gatewayV2Service,
       gatewayPoolService,
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
+      deps,
       (data) => data.environments
     );
   } catch (error) {
@@ -542,7 +624,8 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
 export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   const { credentials, method } = config;
 
@@ -586,25 +669,23 @@ export const validateGitHubConnectionCredentials = async (
     }
   }
 
-  const {
-    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
-    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET,
-    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
-    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
-    SITE_URL
-  } = getConfig();
+  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET, SITE_URL } =
+    getConfig();
 
-  const { clientId, clientSecret } =
-    method === GitHubConnectionMethod.App
-      ? {
-          clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
-          clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET
-        }
-      : // oauth
-        {
-          clientId: INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
-          clientSecret: INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET
-        };
+  let clientId: string | undefined;
+  let clientSecret: string | undefined;
+
+  if (method === GitHubConnectionMethod.App) {
+    const resolved = await resolveGitHubAppCredentials(
+      { gitHubAppId: credentials.gitHubAppId, orgId: config.orgId },
+      deps
+    );
+    clientId = resolved.clientId;
+    clientSecret = resolved.clientSecret;
+  } else {
+    clientId = INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID;
+    clientSecret = INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET;
+  }
 
   if (!clientId || !clientSecret) {
     throw new InternalServerError({
@@ -713,6 +794,7 @@ export const validateGitHubConnectionCredentials = async (
     case GitHubConnectionMethod.App:
       return {
         installationId: credentials.installationId,
+        gitHubAppId: credentials.gitHubAppId ?? null,
         instanceType: credentials.instanceType,
         host: credentials.host
       };

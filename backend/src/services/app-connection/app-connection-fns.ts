@@ -23,7 +23,9 @@ import {
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
+import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -141,7 +143,12 @@ import {
 } from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
-import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
+import {
+  getGitHubConnectionListItem,
+  GitHubConnectionMethod,
+  TGitHubConnectionConfig,
+  validateGitHubConnectionCredentials
+} from "./github";
 import {
   getGitHubRadarConnectionListItem,
   GitHubRadarConnectionMethod,
@@ -496,12 +503,20 @@ export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  deps: { identityUaDAL: Pick<TIdentityUaDALFactory, "findOne"> }
+  deps: {
+    identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
+    gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
+    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  }
 ): Promise<TAppConnection["credentials"]> => {
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
+      validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
+        gitHubAppDAL: deps.gitHubAppDAL,
+        kmsService: deps.kmsService
+      })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
