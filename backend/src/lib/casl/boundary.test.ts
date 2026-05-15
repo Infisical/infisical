@@ -845,6 +845,35 @@ describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {
     expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
   });
 
+  // Picomatch supports extglob syntax (e.g. `@(a|b)`, `+(a|b)`, `!(...)`) at runtime and in the
+  // $glob schema, so the disjointness heuristic used by the deny-overlap check must treat extglob
+  // metacharacters as wildcards rather than literal text. Otherwise a deny rule like
+  // `/@(secret|restricted)/**` looks disjoint from `/secret/**` even though both match
+  // `/secret/foo` at runtime.
+  test("Child overlapping extglob deny region is rejected (deny '/@(secret|restricted)/**' + child '/secret/**')", () => {
+    const parentPermission = createMongoAbility([
+      { action: "read", subject: "secrets" },
+      {
+        action: "read",
+        subject: "secrets",
+        inverted: true,
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/@(secret|restricted)/**" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: "read",
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/secret/**" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
   test("Child without the deny-region's constrained field is rejected (deny path='/secret/**' + child {})", () => {
     const parentPermission = createMongoAbility([
       { action: "read", subject: "secrets" },

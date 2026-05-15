@@ -97,13 +97,29 @@ export const isGlobSubsetOfGlob = (parentGlob: string, subsetGlob: string): bool
 };
 
 /**
- * Returns the static text of a glob — the prefix up to (but not including) the first glob
+ * Returns the static text of a glob — the prefix up to (but not including) the first picomatch
  * metacharacter. Used by callers that need a sound disjointness heuristic for two globs.
+ *
+ * Stops at any character that picomatch may interpret specially, including extglob syntax
+ * (`@(...)`, `?(...)`, `+(...)`, `*(...)`, `!(...)`), so the returned prefix is guaranteed to be
+ * literal text.
  */
 export const literalPrefix = (glob: string): string => {
   for (let i = 0; i < glob.length; i += 1) {
     const c = glob[i];
-    if (c === "*" || c === "?" || c === "[" || c === "{") return glob.slice(0, i);
+    if (
+      c === "*" ||
+      c === "?" ||
+      c === "[" ||
+      c === "{" ||
+      c === "(" ||
+      c === ")" ||
+      c === "@" ||
+      c === "+" ||
+      c === "!"
+    ) {
+      return glob.slice(0, i);
+    }
   }
   return glob;
 };

@@ -62,7 +62,12 @@ describe("literalPrefix", () => {
     ["/apps/**", "/apps/"],
     ["/**", "/"],
     ["**", ""],
-    ["*foo", ""]
+    ["*foo", ""],
+    ["/@(secret|restricted)/**", "/"],
+    ["/+(foo|bar)/**", "/"],
+    ["/!(public)/**", "/"],
+    ["/?(opt)/**", "/"],
+    ["/foo(bar)/**", "/foo"]
   ])("literalPrefix(%s) === %s", (input, expected) => expect(literalPrefix(input)).toBe(expected));
 });
 
@@ -73,6 +78,10 @@ describe("haveDisjointLiteralPrefixes", () => {
     ["/foo/bar", "/foo/baz", true],
     ["/foo/bar", "/foo/bar", false],
     ["/**", "/secret/**", false],
-    ["/apps/*", "/apps/**", false]
+    ["/apps/*", "/apps/**", false],
+    // Extglob deny region must not be proven disjoint from a literal path it actually matches.
+    ["/@(secret|restricted)/**", "/secret/**", false],
+    ["/+(foo|bar)/**", "/foo/**", false],
+    ["/!(public)/**", "/secret/**", false]
   ])("disjoint(%s, %s) === %s", (a, b, expected) => expect(haveDisjointLiteralPrefixes(a, b)).toBe(expected));
 });
