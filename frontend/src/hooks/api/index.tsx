@@ -17,6 +17,8 @@ export * from "./certificateCleanup";
 export * from "./certificatePolicies";
 export * from "./certificates";
 export * from "./certificateTemplates";
+export * from "./certManagerAccess";
+export * from "./certManagerInstance";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
 export * from "./emailDomains";
