@@ -632,10 +632,15 @@ export const pamWebAccessServiceFactory = ({
       }
 
       // 7. ACTIVATE SESSION
-      await pamSessionDAL.updateById(session.id, {
-        status: PamSessionStatus.Active,
-        startedAt: new Date()
-      });
+      // For RDP (Windows), the gateway calls getSessionCredentials which transitions
+      // Starting -> Active via startSession() and generates recording secrets.
+      // Setting Active here first would prevent recording secrets from being created.
+      if (resource.resourceType !== PamResource.Windows) {
+        await pamSessionDAL.updateById(session.id, {
+          status: PamSessionStatus.Active,
+          startedAt: new Date()
+        });
+      }
 
       logger.info({ accountId, sessionId: session.id }, "Web access session established");
 

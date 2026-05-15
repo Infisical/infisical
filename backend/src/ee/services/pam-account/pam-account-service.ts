@@ -963,10 +963,10 @@ export const pamAccountServiceFactory = ({
 
     if (resourceType === PamResource.Windows) {
       const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
-      if (!recordingConfig) {
+      if (!recordingConfig || recordingConfig.storageBackend === PamRecordingStorageBackend.Postgres) {
         throw new BadRequestError({
           message:
-            "Windows resources require an external session recording configuration. Configure session recording in project settings before accessing Windows accounts."
+            "Windows resources require an external (S3) session recording configuration. Postgres storage is not supported for RDP sessions. Configure an S3 bucket in project settings before accessing Windows accounts."
         });
       }
     }
@@ -1357,6 +1357,13 @@ export const pamAccountServiceFactory = ({
       const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
       const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
 
+      if (resource.resourceType === PamResource.Windows && storageBackend === PamRecordingStorageBackend.Postgres) {
+        throw new BadRequestError({
+          message:
+            "Windows (RDP) sessions require an external (S3) recording backend. Postgres storage is not supported for RDP recordings."
+        });
+      }
+
       const { sessionKey, uploadToken, encryptedSessionKey, uploadTokenHash } = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
@@ -1379,6 +1386,14 @@ export const pamAccountServiceFactory = ({
     } else if (session.status === PamSessionStatus.Active && session.encryptedSessionKey) {
       const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
       const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+
+      if (resource.resourceType === PamResource.Windows && storageBackend === PamRecordingStorageBackend.Postgres) {
+        throw new BadRequestError({
+          message:
+            "Windows (RDP) sessions require an external (S3) recording backend. Postgres storage is not supported for RDP recordings."
+        });
+      }
+
       const sessionKey = await decryptSessionKey({
         projectId: session.projectId,
         sessionId,
