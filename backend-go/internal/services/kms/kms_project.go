@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]byte, error) {
-	project, err := s.findProjectKmsInfo(ctx, projectID)
+	project, err := s.findProjectKmsInfo(ctx, s.db.Replica(), projectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find project KMS info").WithErrf("getProjectDataKey(projectId=%s): %w", projectID, err)
 	}

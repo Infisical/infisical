@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]byte, error) {
-	org, err := s.findOrgKmsInfo(ctx, orgID)
+	org, err := s.findOrgKmsInfo(ctx, s.db.Replica(), orgID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find organization KMS info").WithErrf("getOrgDataKey(orgId=%s): %w", orgID, err)
 	}

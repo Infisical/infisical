@@ -10,10 +10,20 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/infisical/api/internal/config"
 )
+
+// Querier is implemented by both *pgxpool.Pool and pgx.Tx.
+// Use this interface for functions that can work with or without a transaction.
+type Querier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
 
 type DB interface {
 	Primary() *pgxpool.Pool

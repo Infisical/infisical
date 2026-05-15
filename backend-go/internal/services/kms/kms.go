@@ -555,7 +555,8 @@ func (s *Service) findKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*kmsK
 }
 
 // findOrgKmsInfo returns the narrow org fields needed for KMS data key operations.
-func (s *Service) findOrgKmsInfo(ctx context.Context, orgID uuid.UUID) (*orgKmsInfo, error) {
+// Pass a pg.Querier (either *pgxpool.Pool or pgx.Tx).
+func (s *Service) findOrgKmsInfo(ctx context.Context, q pg.Querier, orgID uuid.UUID) (*orgKmsInfo, error) {
 	query := `
 		SELECT id, "kmsDefaultKeyId", "kmsEncryptedDataKey"
 		FROM organizations
@@ -563,25 +564,7 @@ func (s *Service) findOrgKmsInfo(ctx context.Context, orgID uuid.UUID) (*orgKmsI
 	`
 	args := pgx.NamedArgs{"orgID": orgID}
 
-	row := s.db.Replica().QueryRow(ctx, query, args)
-	var result orgKmsInfo
-	err := row.Scan(&result.ID, &result.KmsDefaultKeyID, &result.KmsEncryptedDataKey)
-	if err != nil {
-		return nil, fmt.Errorf("finding org KMS info: %w", err)
-	}
-	return &result, nil
-}
-
-// findOrgKmsInfoTx returns org KMS info within a transaction.
-func (s *Service) findOrgKmsInfoTx(ctx context.Context, tx pgx.Tx, orgID uuid.UUID) (*orgKmsInfo, error) {
-	query := `
-		SELECT id, "kmsDefaultKeyId", "kmsEncryptedDataKey"
-		FROM organizations
-		WHERE id = @orgID
-	`
-	args := pgx.NamedArgs{"orgID": orgID}
-
-	row := tx.QueryRow(ctx, query, args)
+	row := q.QueryRow(ctx, query, args)
 	var result orgKmsInfo
 	err := row.Scan(&result.ID, &result.KmsDefaultKeyID, &result.KmsEncryptedDataKey)
 	if err != nil {
@@ -591,7 +574,8 @@ func (s *Service) findOrgKmsInfoTx(ctx context.Context, tx pgx.Tx, orgID uuid.UU
 }
 
 // findProjectKmsInfo returns the narrow project fields needed for KMS data key operations.
-func (s *Service) findProjectKmsInfo(ctx context.Context, projectID string) (*projectKmsInfo, error) {
+// Pass a pg.Querier (either *pgxpool.Pool or pgx.Tx).
+func (s *Service) findProjectKmsInfo(ctx context.Context, q pg.Querier, projectID string) (*projectKmsInfo, error) {
 	query := `
 		SELECT id, "orgId", "kmsSecretManagerKeyId", "kmsSecretManagerEncryptedDataKey"
 		FROM projects
@@ -599,25 +583,7 @@ func (s *Service) findProjectKmsInfo(ctx context.Context, projectID string) (*pr
 	`
 	args := pgx.NamedArgs{"projectID": projectID}
 
-	row := s.db.Replica().QueryRow(ctx, query, args)
-	var result projectKmsInfo
-	err := row.Scan(&result.ID, &result.OrgID, &result.KmsSecretManagerKeyID, &result.KmsSecretManagerEncryptedDataKey)
-	if err != nil {
-		return nil, fmt.Errorf("finding project KMS info: %w", err)
-	}
-	return &result, nil
-}
-
-// findProjectKmsInfoTx returns project KMS info within a transaction.
-func (s *Service) findProjectKmsInfoTx(ctx context.Context, tx pgx.Tx, projectID string) (*projectKmsInfo, error) {
-	query := `
-		SELECT id, "orgId", "kmsSecretManagerKeyId", "kmsSecretManagerEncryptedDataKey"
-		FROM projects
-		WHERE id = @projectID
-	`
-	args := pgx.NamedArgs{"projectID": projectID}
-
-	row := tx.QueryRow(ctx, query, args)
+	row := q.QueryRow(ctx, query, args)
 	var result projectKmsInfo
 	err := row.Scan(&result.ID, &result.OrgID, &result.KmsSecretManagerKeyID, &result.KmsSecretManagerEncryptedDataKey)
 	if err != nil {
@@ -680,7 +646,7 @@ func (s *Service) findOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, cr
 	}
 
 	// Re-check after lock — another request may have created it.
-	org, err := s.findOrgKmsInfoTx(ctx, tx, orgID)
+	org, err := s.findOrgKmsInfo(ctx, tx, orgID)
 	if err != nil {
 		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("finding org: %w", err)
@@ -734,7 +700,7 @@ func (s *Service) findOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, c
 	}
 
 	// Re-check after lock — another request may have created it.
-	org, err := s.findOrgKmsInfoTx(ctx, tx, orgID)
+	org, err := s.findOrgKmsInfo(ctx, tx, orgID)
 	if err != nil {
 		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("finding org: %w", err)
@@ -781,7 +747,7 @@ func (s *Service) findOrCreateProjectKmsKey(ctx context.Context, projectID strin
 	}
 
 	// Re-check after lock — another request may have created it.
-	project, err := s.findProjectKmsInfoTx(ctx, tx, projectID)
+	project, err := s.findProjectKmsInfo(ctx, tx, projectID)
 	if err != nil {
 		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return uuid.Nil, fmt.Errorf("finding project: %w", err)
@@ -834,7 +800,7 @@ func (s *Service) findOrCreateProjectDataKey(ctx context.Context, projectID stri
 	}
 
 	// Re-check after lock — another request may have created it.
-	project, err := s.findProjectKmsInfoTx(ctx, tx, projectID)
+	project, err := s.findProjectKmsInfo(ctx, tx, projectID)
 	if err != nil {
 		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
 		return nil, fmt.Errorf("finding project: %w", err)
