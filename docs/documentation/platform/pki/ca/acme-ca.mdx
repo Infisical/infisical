@@ -57,7 +57,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
         <Tabs>
             <Tab title="Route53">
-                1. Navigate to your Certificate Management Project > App Connections and create a new AWS connection.
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new AWS connection.
 
                 2. Ensure your AWS connection has the following minimum permissions for Route53 DNS validation:
 
@@ -109,7 +109,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                 For detailed instructions on setting up an AWS connection, see the [AWS Connection](/integrations/app-connections/aws) documentation.
             </Tab>
             <Tab title="Cloudflare">
-                1. Navigate to your Certificate Management Project > App Connections and create a new Cloudflare connection.
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new Cloudflare connection.
 
                 2. Ensure your Cloudflare token has the following minimum permissions for DNS validation:
 
@@ -121,14 +121,14 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                 For detailed instructions on setting up a Cloudflare connection, see the [Cloudflare Connection](/integrations/app-connections/cloudflare) documentation.
             </Tab>
             <Tab title="Azure DNS">
-                1. Navigate to your Certificate Management Project > App Connections and create a new Azure DNS connection.
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new Azure DNS connection.
 
                 2. Ensure your Azure Service Principal has the **DNS Zone Contributor** role assigned on the DNS Zone you want to use for validation.
 
                 For detailed instructions on setting up an Azure DNS connection, see the [Azure DNS Connection](/integrations/app-connections/azure-dns) documentation.
             </Tab>
             <Tab title="DNS Made Easy">
-                Navigate to your Certificate Management Project > App Connections and create a new DNS Made Easy connection.
+                In **Certificate Manager**, go to **Settings → App Connections** and create a new DNS Made Easy connection.
 
                 For detailed instructions on setting up a DNS Made Easy connection, see the [DNS Made Easy Connection](/integrations/app-connections/dns-made-easy) documentation.
             </Tab>
@@ -137,7 +137,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
     <Step title="Register an ACME-compatible CA">
         <Tabs>
           <Tab title="Infisical UI">
-              To register an ACME-compatible CA, head to your Certificate Management Project > Certificate Authorities > External Certificate Authorities and press **Create CA**.
+              To register an ACME-compatible CA, in **Certificate Manager** go to **Settings → Certificate Authorities**, scroll to External Certificate Authorities, and click **Create CA**.
 
               Set the **CA Type** to **ACME** and fill out the following fields:
 
@@ -237,7 +237,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
   </Accordion>
   <Accordion title="Can I use multiple ACME providers?">
-    Yes. You can register multiple ACME CAs in the same project.
+    Yes. You can register multiple ACME CAs in Certificate Manager.
   </Accordion>
   <Accordion title="How do I use DNS CNAME delegation for ACME challenges?">
     CNAME delegation lets you redirect ACME DNS-01 challenge records to a separate DNS zone. Instead of granting Infisical write access to your main domain zone, you point `_acme-challenge` via a CNAME to a dedicated zone where Infisical creates the TXT records.

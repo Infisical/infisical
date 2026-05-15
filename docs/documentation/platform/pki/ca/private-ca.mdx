@@ -118,7 +118,6 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "projectSlug": "<your-project-slug>",
           "type": "root",
           "commonName": "My Root CA"
       }'
@@ -151,7 +150,6 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
       --header ‘Authorization: Bearer <access-token>’ \
       --header ‘Content-Type: application/json’ \
       --data-raw ‘{
-          "projectSlug": "<your-project-slug>",
           "type": "intermediate",
           "commonName": "My Intermediate CA"
       }’

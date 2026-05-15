@@ -87,7 +87,7 @@ gpg-connect-agent "SCD LEARN" /bye
 Look for lines starting with `KEY-FRIEDNLY` or `KEYPAIRINFO`. These show the available keys and their key grips (40-character hex strings). Note the key grip for the signer you want to use.
 
 <Warning>
-  If multiple signers use the same certificate/key, they will share the same key grip. GPG will attempt to sign using the first matching slot. Ensure the signer in the first slot has an active signing grant, or configure your project so each key is used by only one signer.
+  If multiple signers use the same certificate/key, they will share the same key grip. GPG will attempt to sign using the first matching slot. Ensure the signer in the first slot has an active signing grant, or configure your signers so each key is used by only one signer.
 </Warning>
 
 Then generate a key stub:

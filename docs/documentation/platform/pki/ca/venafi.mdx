@@ -51,7 +51,7 @@ sequenceDiagram
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Create an Intermediate CA">
-        If you haven't already, head to your Certificate Management Project > Certificate Authorities > Internal Certificate Authorities and press **Create CA**.
+        If you haven't already, in **Certificate Manager** go to **Settings → Certificate Authorities** and click **Create CA** in the Internal Certificate Authorities section.
 
         Set the **CA Type** to **Intermediate** and fill out the details for the intermediate CA (Common Name, Organization, Key Algorithm, etc.).
       </Step>
@@ -91,7 +91,6 @@ sequenceDiagram
           --header 'Authorization: Bearer <access-token>' \
           --header 'Content-Type: application/json' \
           --data-raw '{
-              "projectSlug": "<your-project-slug>",
               "type": "intermediate",
               "commonName": "My Intermediate CA"
           }'

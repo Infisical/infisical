@@ -75,7 +75,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
   </Step>
 
   <Step title="Navigate to External Certificate Authorities">
-    In your Infisical project, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
+    In **Certificate Manager**, go to **Settings → Certificate Authorities** and scroll to the **External Certificate Authorities** section.
   </Step>
 
   <Step title="Create the CA">
@@ -123,7 +123,7 @@ When a certificate reaches the configured threshold, Infisical reconciles it wit
 In both cases the renewed certificate is stored as a new entry linked to the original and inherits the same auto-renewal settings — so the cycle continues automatically.
 
 <Note>
-  AWS generates a fresh private key on every renewal. Infisical pulls it in each time and stores it encrypted with your project's KMS key.
+  AWS generates a fresh private key on every renewal. Infisical pulls it in each time and stores it encrypted with your organization's KMS key.
 </Note>
 
 ## Troubleshooting
