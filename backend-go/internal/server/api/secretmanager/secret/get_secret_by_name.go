@@ -9,6 +9,7 @@ import (
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
+	permsecretsvc "github.com/infisical/api/internal/services/permission/secretmanager"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
@@ -46,7 +47,7 @@ func (h *Handler) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecret
 		ViewSecretValue:        p.ViewSecretValue,
 		ExpandSecretReferences: p.ExpandSecretReferences,
 		IncludeImports:         p.IncludeImports,
-		AccessChecker:          buildAccessChecker(permResult),
+		Access:                 secretsvc.AccessControl{Checker: permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)},
 	})
 	if err != nil {
 		return nil, err
@@ -104,7 +105,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 		ViewSecretValue:        p.ViewSecretValue,
 		ExpandSecretReferences: p.ExpandSecretReferences,
 		IncludeImports:         p.IncludeImports,
-		AccessChecker:          buildAccessChecker(permResult),
+		Access:                 secretsvc.AccessControl{Checker: permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)},
 	})
 	if err != nil {
 		return nil, err
@@ -134,9 +135,14 @@ func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, s
 	if sec.SecretMetadata != nil {
 		secretMetadata = make([]auditlog.SecretMetadataEntry, len(sec.SecretMetadata))
 		for i, m := range sec.SecretMetadata {
+			value := m.Value
+			if m.IsEncrypted {
+				value = auditlog.AuditLogSensitiveValue
+			}
 			secretMetadata[i] = auditlog.SecretMetadataEntry{
-				Key:   m.Key,
-				Value: m.Value,
+				Key:         m.Key,
+				Value:       value,
+				IsEncrypted: m.IsEncrypted,
 			}
 		}
 	}

@@ -37,9 +37,13 @@ func (GetSecretsEventMetadata) eventType() EventType { return EventTypeGetSecret
 
 // SecretMetadataEntry represents a single metadata entry on a secret.
 type SecretMetadataEntry struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key         string `json:"key"`
+	Value       string `json:"value"`
+	IsEncrypted bool   `json:"isEncrypted"`
 }
+
+// AuditLogSensitiveValue is the placeholder used for encrypted values in audit logs.
+const AuditLogSensitiveValue = "*****"
 
 // GetSecretEventMetadata contains metadata for a get-secret event.
 type GetSecretEventMetadata struct {

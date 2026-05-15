@@ -114,11 +114,40 @@ type FindByFolderIdsFilter struct {
 	ExcludeRotatedSecrets   bool
 }
 
-// AccessChecker verifies if a user can access secrets at given locations.
-// Pass nil to skip permission checks (e.g., for internal/integration use).
-type AccessChecker interface {
+// accessChecker verifies if a user can access secrets at given locations.
+type accessChecker interface {
 	CanDescribeSecret(env, path, key string, tagSlugs []string) bool
 	CanReadSecretValue(env, path, key string, tagSlugs []string) bool
+}
+
+// AccessControl wraps permission checking with explicit opt-out.
+// To skip checks, set SkipChecks=true (Checker can be nil in that case).
+// If SkipChecks=false and Checker=nil, permission checks will fail-closed.
+type AccessControl struct {
+	Checker    accessChecker
+	SkipChecks bool
+}
+
+// CanDescribe returns true if the caller can describe the secret.
+func (ac *AccessControl) CanDescribe(env, path, key string, tagSlugs []string) bool {
+	if ac.SkipChecks {
+		return true
+	}
+	if ac.Checker == nil {
+		return false // fail-closed
+	}
+	return ac.Checker.CanDescribeSecret(env, path, key, tagSlugs)
+}
+
+// CanReadValue returns true if the caller can read the secret value.
+func (ac *AccessControl) CanReadValue(env, path, key string, tagSlugs []string) bool {
+	if ac.SkipChecks {
+		return true
+	}
+	if ac.Checker == nil {
+		return false // fail-closed
+	}
+	return ac.Checker.CanReadSecretValue(env, path, key, tagSlugs)
 }
 
 // DecryptedMetadata holds a decrypted metadata entry.
@@ -493,13 +522,32 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 
 // --- Decryption Helpers ---
 
+// DecryptErrors holds any errors encountered during secret field decryption.
+// Decryption uses fail-open semantics: fields that fail to decrypt are left empty
+// but errors are collected for logging.
+type DecryptErrors struct {
+	ValueErr    error
+	CommentErr  error
+	MetadataErr error
+}
+
+// HasErrors returns true if any decryption errors occurred.
+func (e *DecryptErrors) HasErrors() bool {
+	return e.ValueErr != nil || e.CommentErr != nil || e.MetadataErr != nil
+}
+
 // decryptSecretFields decrypts the value, comment, and metadata of a secret.
 // If valueHidden is true, the displayValue is replaced with the hidden mask.
-// Returns rawValue (actual decrypted), displayValue (masked if hidden), comment, and metadata.
-func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata) {
+// Returns rawValue (actual decrypted), displayValue (masked if hidden), comment, metadata,
+// and any decryption errors encountered (callers should log these).
+func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata, decryptErrs *DecryptErrors) {
+	decryptErrs = &DecryptErrors{}
+
 	// Decrypt value
 	if sec.EncryptedValue.Valid && len(sec.EncryptedValue.V) > 0 {
-		if decrypted, err := cipherPair.Decrypt(sec.EncryptedValue.V); err == nil {
+		if decrypted, err := cipherPair.Decrypt(sec.EncryptedValue.V); err != nil {
+			decryptErrs.ValueErr = err
+		} else {
 			rawValue = string(decrypted)
 		}
 	}
@@ -510,7 +558,9 @@ func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bo
 
 	// Decrypt comment
 	if sec.EncryptedComment.Valid && len(sec.EncryptedComment.V) > 0 {
-		if decrypted, err := cipherPair.Decrypt(sec.EncryptedComment.V); err == nil {
+		if decrypted, err := cipherPair.Decrypt(sec.EncryptedComment.V); err != nil {
+			decryptErrs.CommentErr = err
+		} else {
 			comment = string(decrypted)
 		}
 	}
@@ -520,7 +570,11 @@ func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bo
 		metaValue := m.Value
 		isEncrypted := len(m.EncryptedValue) > 0
 		if isEncrypted {
-			if decrypted, err := cipherPair.Decrypt(m.EncryptedValue); err == nil {
+			if decrypted, err := cipherPair.Decrypt(m.EncryptedValue); err != nil {
+				if decryptErrs.MetadataErr == nil {
+					decryptErrs.MetadataErr = err
+				}
+			} else {
 				metaValue = string(decrypted)
 			}
 		}
@@ -531,5 +585,5 @@ func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bo
 		})
 	}
 
-	return rawValue, displayValue, comment, metadata
+	return rawValue, displayValue, comment, metadata, decryptErrs
 }

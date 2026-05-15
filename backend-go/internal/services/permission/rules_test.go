@@ -33,8 +33,9 @@ func TestBuildProjectPermissionRules_BuiltinRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			roles := []roleWithPermissions{{Role: tt.role}}
-			rules := buildProjectPermissionRules(roles)
+			rules, errs := buildProjectPermissionRules(roles)
 			assert.Len(t, rules, tt.minRuleCount)
+			assert.Empty(t, errs, "builtin roles should not produce parse errors")
 		})
 	}
 }
@@ -56,9 +57,10 @@ func TestBuildProjectPermissionRules_CustomRole(t *testing.T) {
 	packedStr := string(packedJSON)
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &packedStr}}
-	rules := buildProjectPermissionRules(roles)
+	rules, errs := buildProjectPermissionRules(roles)
 
 	require.Len(t, rules, 1)
+	assert.Empty(t, errs)
 	assert.Equal(t, gocasl.StringOrSlice{"read"}, rules[0].Action)
 	assert.Equal(t, gocasl.StringOrSlice{project.SubSecrets}, rules[0].Subject)
 	assert.Equal(t, "prod", rules[0].Conditions["environment"])
@@ -68,8 +70,9 @@ func TestBuildProjectPermissionRules_CustomRoleNilPermissions(t *testing.T) {
 	t.Parallel()
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: nil}}
-	rules := buildProjectPermissionRules(roles)
+	rules, errs := buildProjectPermissionRules(roles)
 	assert.Empty(t, rules, "nil permissions must produce no rules")
+	assert.Empty(t, errs, "nil permissions should not produce parse errors")
 }
 
 func TestBuildProjectPermissionRules_CustomRoleInvalidJSON(t *testing.T) {
@@ -77,16 +80,18 @@ func TestBuildProjectPermissionRules_CustomRoleInvalidJSON(t *testing.T) {
 
 	badJSON := "not valid json"
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &badJSON}}
-	rules := buildProjectPermissionRules(roles)
-	assert.Empty(t, rules, "invalid JSON must be silently skipped, producing no rules")
+	rules, errs := buildProjectPermissionRules(roles)
+	assert.Empty(t, rules, "invalid JSON must produce no rules (fail-closed)")
+	assert.Len(t, errs, 1, "invalid JSON must return parse error")
 }
 
 func TestBuildProjectPermissionRules_UnknownRoleProducesNothing(t *testing.T) {
 	t.Parallel()
 
 	roles := []roleWithPermissions{{Role: "unknown-role-slug"}}
-	rules := buildProjectPermissionRules(roles)
+	rules, errs := buildProjectPermissionRules(roles)
 	assert.Empty(t, rules)
+	assert.Empty(t, errs)
 }
 
 func TestBuildProjectPermissionRules_InvertedRulesPreserved(t *testing.T) {
@@ -105,9 +110,10 @@ func TestBuildProjectPermissionRules_InvertedRulesPreserved(t *testing.T) {
 	packedStr := string(packedJSON)
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &packedStr}}
-	rules := buildProjectPermissionRules(roles)
+	rules, errs := buildProjectPermissionRules(roles)
 
 	require.Len(t, rules, 2)
+	assert.Empty(t, errs)
 
 	hasAllow := false
 	hasForbid := false
@@ -129,10 +135,11 @@ func TestBuildProjectPermissionRules_MultipleRolesMerge(t *testing.T) {
 		{Role: project.RoleViewer},
 		{Role: project.RoleSshHostBootstrapper},
 	}
-	rules := buildProjectPermissionRules(roles)
+	rules, errs := buildProjectPermissionRules(roles)
 
 	expectedLen := len(project.ViewerPermissions) + len(project.SshHostBootstrapPermissions)
 	assert.Len(t, rules, expectedLen, "rules from multiple roles must be merged")
+	assert.Empty(t, errs)
 }
 
 // ---- buildServiceTokenProjectPermission ----

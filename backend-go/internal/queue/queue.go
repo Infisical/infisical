@@ -106,6 +106,7 @@ type Handler[P any] func(ctx context.Context, payload P) error
 type Service struct {
 	logger      *slog.Logger
 	client      *asynq.Client
+	server      *asynq.Server
 	mux         *asynq.ServeMux
 	redisClient redis.UniversalClient
 }
@@ -177,18 +178,21 @@ func (s *Service) Start(cfg ServerConfig) error {
 		concurrency = 10
 	}
 
-	server := asynq.NewServerFromRedisClient(s.redisClient, asynq.Config{
+	s.server = asynq.NewServerFromRedisClient(s.redisClient, asynq.Config{
 		Concurrency: concurrency,
 		LogLevel:    cfg.LogLevel,
 		Logger:      newAsynqLogger(s.logger),
 	})
 
 	s.logger.InfoContext(context.Background(), "starting queue worker", slog.Int("concurrency", concurrency))
-	return server.Run(s.mux)
+	return s.server.Run(s.mux)
 }
 
-// Close closes the queue client connection.
+// Close shuts down the queue server and closes the client connection.
 func (s *Service) Close() error {
+	if s.server != nil {
+		s.server.Shutdown()
+	}
 	return s.client.Close()
 }
 

@@ -200,7 +200,12 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// - Only applies to ActorTypeUser
 
 	// 11. Build rules
-	rules := buildProjectPermissionRules(permissionFromRoles)
+	rules, parseErrors := buildProjectPermissionRules(permissionFromRoles)
+	for _, parseErr := range parseErrors {
+		p.logger.WarnContext(ctx, "custom role permission parse failed (fail-closed: role contributes no rules)",
+			slog.String("projectId", args.ProjectID),
+			slog.Any("error", parseErr))
+	}
 
 	// 12. Marshal rules to JSON
 	rulesJSON, err := json.Marshal(rules)

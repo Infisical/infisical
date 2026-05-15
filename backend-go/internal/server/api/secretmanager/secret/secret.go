@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/infisical/gocasl"
 
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auditlog"
@@ -70,24 +69,6 @@ func NewHandler(deps *Deps) *Handler {
 		auditLog:      deps.AuditLog,
 		secrets:       deps.Secrets,
 	}
-}
-
-// accessChecker implements secretsvc.AccessChecker using permission service.
-type accessChecker struct {
-	ability *gocasl.Ability
-}
-
-func (a *accessChecker) CanDescribeSecret(env, path, key string, tagSlugs []string) bool {
-	return permission.CanDescribeSecret(a.ability, env, path, key, tagSlugs)
-}
-
-func (a *accessChecker) CanReadSecretValue(env, path, key string, tagSlugs []string) bool {
-	return permission.CanReadSecretValue(a.ability, env, path, key, tagSlugs)
-}
-
-// buildAccessChecker creates an AccessChecker from permission result.
-func buildAccessChecker(permResult *permission.GetProjectPermissionResult) secretsvc.AccessChecker {
-	return &accessChecker{ability: permResult.Permission.Ability}
 }
 
 // parseTagSlugs parses a comma-separated string of tag slugs into a slice.

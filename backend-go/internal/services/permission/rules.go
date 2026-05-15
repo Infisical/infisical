@@ -2,6 +2,7 @@ package permission
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 
 	"github.com/infisical/gocasl"
@@ -17,9 +18,12 @@ type roleWithPermissions struct {
 
 // buildProjectPermissionRules maps role slugs to their builtin JSONRule sets and
 // unpacks custom roles via gocasl.UnpackRules.
+// Returns the combined rules and any parse errors encountered (fail-closed: invalid
+// custom roles yield no rules but parsing continues for other roles).
 // Exact port of buildProjectPermissionRules from permission-service.ts:77-109.
-func buildProjectPermissionRules(roles []roleWithPermissions) []gocasl.JSONRule {
+func buildProjectPermissionRules(roles []roleWithPermissions) ([]gocasl.JSONRule, []error) {
 	var allRules []gocasl.JSONRule
+	var parseErrors []error
 
 	for _, roleEntry := range roles {
 		switch roleEntry.Role {
@@ -38,7 +42,9 @@ func buildProjectPermissionRules(roles []roleWithPermissions) []gocasl.JSONRule 
 		case project.RoleCustom:
 			if roleEntry.Permissions != nil {
 				var packed []gocasl.PackedRule
-				if err := json.Unmarshal([]byte(*roleEntry.Permissions), &packed); err == nil {
+				if err := json.Unmarshal([]byte(*roleEntry.Permissions), &packed); err != nil {
+					parseErrors = append(parseErrors, fmt.Errorf("custom role permissions parse failed: %w", err))
+				} else {
 					unpacked := gocasl.UnpackRules(packed)
 					allRules = append(allRules, unpacked...)
 				}
@@ -46,7 +52,7 @@ func buildProjectPermissionRules(roles []roleWithPermissions) []gocasl.JSONRule 
 		}
 	}
 
-	return allRules
+	return allRules, parseErrors
 }
 
 // ServiceTokenScope represents a single scope entry from a service token.

@@ -263,7 +263,7 @@ func TestCustomRole_EnvironmentCondition_AllowsProdOnly(t *testing.T) {
 	packedStr := string(packedJSON)
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &packedStr}}
-	rules := buildProjectPermissionRules(roles)
+	rules, _ := buildProjectPermissionRules(roles)
 	ability := loadAbilityFromRules(t, rules, nil)
 
 	prodSecret := project.SecretSubject{Environment: "prod", SecretPath: "/app"}
@@ -291,7 +291,7 @@ func TestCustomRole_SecretPathGlobCondition(t *testing.T) {
 	packedStr := string(packedJSON)
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &packedStr}}
-	rules := buildProjectPermissionRules(roles)
+	rules, _ := buildProjectPermissionRules(roles)
 	ability := loadAbilityFromRules(t, rules, nil)
 
 	assert.True(t, gocasl.Can(ability, project.SecretActionDescribeAndReadValue,
@@ -351,7 +351,7 @@ func TestCustomRole_InConditionOnEnvironment(t *testing.T) {
 	packedStr := string(packedJSON)
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &packedStr}}
-	rules := buildProjectPermissionRules(roles)
+	rules, _ := buildProjectPermissionRules(roles)
 	ability := loadAbilityFromRules(t, rules, nil)
 
 	assert.True(t, gocasl.Can(ability, project.SecretActionDescribeAndReadValue,
@@ -382,7 +382,7 @@ func TestCustomRole_MultipleConditionsOnSecretFields(t *testing.T) {
 	packedStr := string(packedJSON)
 
 	roles := []roleWithPermissions{{Role: project.RoleCustom, Permissions: &packedStr}}
-	rules := buildProjectPermissionRules(roles)
+	rules, _ := buildProjectPermissionRules(roles)
 	ability := loadAbilityFromRules(t, rules, nil)
 
 	// Both conditions must match

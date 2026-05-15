@@ -2,6 +2,7 @@ package secret
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -37,7 +38,7 @@ type ListSecretsOpts struct {
 	ExpandPersonalOverrides   bool
 	TagSlugs                  []string
 	MetadataFilter            []MetadataFilter
-	AccessChecker             AccessChecker // nil = skip permission checks
+	Access                    AccessControl
 }
 
 // ListSecretsResult contains the results of listing secrets.
@@ -142,6 +143,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 
 	// 7. Process secrets with permission filtering
 	directSecrets, importedSecrets := s.processSecretsWithPermissions(
+		ctx,
 		secrets,
 		directFolderIDs,
 		directPaths,
@@ -151,7 +153,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		importLookup,
 		secretProcessorOpts{
 			ViewSecretValue: opts.ViewSecretValue,
-			AccessChecker:   opts.AccessChecker,
+			Access:          opts.Access,
 			CipherPair:      cipherPair,
 			RequestedPath:   opts.SecretPath,
 			Recursive:       opts.Recursive,
@@ -176,10 +178,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 
 		expander := NewSecretExpander(allSecrets, ExpandOpts{
 			CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
-				if opts.AccessChecker == nil {
-					return true
-				}
-				return opts.AccessChecker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, nil)
+				return opts.Access.CanReadValue(ref.Env, ref.Path, ref.Key, nil)
 			},
 			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
@@ -208,7 +207,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 // secretProcessorOpts configures secret processing.
 type secretProcessorOpts struct {
 	ViewSecretValue bool
-	AccessChecker   AccessChecker
+	Access          AccessControl
 	CipherPair      *kms.CipherPair
 	RequestedPath   string
 	Recursive       bool
@@ -216,6 +215,7 @@ type secretProcessorOpts struct {
 
 // processSecretsWithPermissions filters and decrypts secrets based on permissions.
 func (s *Service) processSecretsWithPermissions(
+	ctx context.Context,
 	rawSecrets []Secret,
 	directFolderIDs []uuid.UUID,
 	directPaths map[uuid.UUID]string,
@@ -262,18 +262,12 @@ func (s *Service) processSecretsWithPermissions(
 			tagSlugs[j] = tag.Slug
 		}
 
-		// Permission checks (skip if no checker)
-		if opts.AccessChecker != nil {
-			canDescribe := opts.AccessChecker.CanDescribeSecret(envSlug, secretPath, sec.Key, tagSlugs)
-			if !canDescribe {
-				continue
-			}
+		// Permission checks
+		if !opts.Access.CanDescribe(envSlug, secretPath, sec.Key, tagSlugs) {
+			continue
 		}
 
-		canReadValue := true
-		if opts.AccessChecker != nil {
-			canReadValue = opts.AccessChecker.CanReadSecretValue(envSlug, secretPath, sec.Key, tagSlugs)
-		}
+		canReadValue := opts.Access.CanReadValue(envSlug, secretPath, sec.Key, tagSlugs)
 
 		if opts.Recursive && opts.ViewSecretValue && secretPath != opts.RequestedPath {
 			if !canReadValue {
@@ -282,7 +276,12 @@ func (s *Service) processSecretsWithPermissions(
 		}
 
 		valueHidden := !opts.ViewSecretValue || !canReadValue
-		rawValue, displayValue, secretComment, metadata := decryptSecretFields(sec, opts.CipherPair, valueHidden)
+		rawValue, displayValue, secretComment, metadata, decryptErrs := decryptSecretFields(sec, opts.CipherPair, valueHidden)
+		if decryptErrs.HasErrors() {
+			s.logger.WarnContext(ctx, "secret decryption errors (fail-open)",
+				slog.String("secretId", sec.ID.String()),
+				slog.Any("valueErr", decryptErrs.ValueErr))
+		}
 
 		processed := ProcessedSecret{
 			Secret:            sec,
@@ -445,7 +444,12 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 		}
 
 		envSlug, _ := opts.folderLookup.GetEnvSlug(loc.envID)
-		rawValue, displayValue, comment, metadata := decryptSecretFields(sec, opts.cipherPair, false)
+		rawValue, displayValue, comment, metadata, decryptErrs := decryptSecretFields(sec, opts.cipherPair, false)
+		if decryptErrs.HasErrors() {
+			s.logger.WarnContext(ctx, "absolute ref decryption errors (fail-open)",
+				slog.String("secretId", sec.ID.String()),
+				slog.Any("valueErr", decryptErrs.ValueErr))
+		}
 
 		result = append(result, &ProcessedSecret{
 			Secret:      sec,

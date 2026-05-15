@@ -9,6 +9,7 @@ import (
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
+	permsecretsvc "github.com/infisical/api/internal/services/permission/secretmanager"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
@@ -53,7 +54,7 @@ func (h *Handler) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		ExpandPersonalOverrides:   p.IncludePersonalOverrides,
 		TagSlugs:                  parseTagSlugs(p.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
-		AccessChecker:             buildAccessChecker(permResult),
+		Access:                    secretsvc.AccessControl{Checker: permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)},
 	})
 	if err != nil {
 		return nil, err
@@ -112,7 +113,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		PersonalOverridesBehavior: secretsvc.PersonalOverridesIncludeAll,
 		TagSlugs:                  parseTagSlugs(p.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
-		AccessChecker:             buildAccessChecker(permResult),
+		Access:                    secretsvc.AccessControl{Checker: permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)},
 	})
 	if err != nil {
 		return nil, err

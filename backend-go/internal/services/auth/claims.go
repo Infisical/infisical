@@ -54,7 +54,7 @@ func (c *IdentityJWTClaims) HasFullRenewClaims() bool {
 		c.RootOrgID != uuid.Nil &&
 		c.ParentOrgID != uuid.Nil &&
 		c.AuthMethod != "" &&
-		c.AccessTokenTTL > 0 || c.AccessTokenMaxTTL > 0 || c.AccessTokenPeriod > 0
+		(c.AccessTokenTTL > 0 || c.AccessTokenMaxTTL > 0 || c.AccessTokenPeriod > 0)
 }
 
 // IdentityAuth holds auth-method-specific metadata from the identity JWT payload.

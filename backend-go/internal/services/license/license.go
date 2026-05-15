@@ -280,7 +280,11 @@ func (s *Service) GetPlan(ctx context.Context, orgID string) (*FeatureSet, error
 	cached, err := s.keyStore.GetItem(ctx, cacheKey)
 	if err == nil && cached != "" {
 		var plan FeatureSet
-		if err := json.Unmarshal([]byte(cached), &plan); err == nil {
+		if unmarshalErr := json.Unmarshal([]byte(cached), &plan); unmarshalErr != nil {
+			s.logger.WarnContext(ctx, "cached plan unmarshal failed, will fetch fresh",
+				slog.String("orgID", orgID),
+				slog.Any("error", unmarshalErr))
+		} else {
 			return &plan, nil
 		}
 	}

@@ -89,10 +89,11 @@ func (a Authenticator) JWTAuth(ctx context.Context, token string, sc *security.J
 	case AuthModeJWT:
 		identity, err = a.validateJWT(ctx, token)
 	case AuthModeIdentityAccessToken:
-		// TODO(go): pass real IP address from HTTP layer instead of empty string
-		// IP address needs to come from HTTP layer. For now pass empty string
-		// (IP check is skipped when ipAddress is empty, matching Node.js: if (ipAddress && trustedIps)).
-		identity, err = a.validateIdentityAccessToken(ctx, token, "")
+		ipAddress := ""
+		if httpInfo := HTTPInfoFromContext(ctx); httpInfo != nil {
+			ipAddress = httpInfo.IPAddress
+		}
+		identity, err = a.validateIdentityAccessToken(ctx, token, ipAddress)
 	case AuthModeServiceToken:
 		identity, err = a.validateServiceToken(ctx, token)
 	}

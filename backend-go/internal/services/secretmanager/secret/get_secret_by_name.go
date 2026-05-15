@@ -2,6 +2,7 @@ package secret
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -21,7 +22,7 @@ type GetSecretByNameOpts struct {
 	ViewSecretValue        bool
 	ExpandSecretReferences bool
 	IncludeImports         bool
-	AccessChecker          AccessChecker // nil = skip permission checks
+	Access                 AccessControl
 }
 
 // GetSecretByNameResult contains the result of getting a secret by name.
@@ -119,26 +120,26 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		tagSlugs[i] = tag.Slug
 	}
 
-	if opts.AccessChecker != nil {
-		canDescribe := opts.AccessChecker.CanDescribeSecret(secretEnv, secretPath, foundSecret.Key, tagSlugs)
-		if !canDescribe {
-			return nil, errutil.Forbidden("permission denied to access this secret")
-		}
+	if !opts.Access.CanDescribe(secretEnv, secretPath, foundSecret.Key, tagSlugs) {
+		return nil, errutil.Forbidden("permission denied to access this secret")
+	}
 
-		canReadValue := opts.AccessChecker.CanReadSecretValue(secretEnv, secretPath, foundSecret.Key, tagSlugs)
-		if opts.ViewSecretValue && !canReadValue {
-			return nil, errutil.Forbidden("Read value denied")
-		}
+	canReadValue := opts.Access.CanReadValue(secretEnv, secretPath, foundSecret.Key, tagSlugs)
+	if opts.ViewSecretValue && !canReadValue {
+		return nil, errutil.Forbidden("Read value denied")
 	}
 
 	// 8. Decrypt value and comment
-	valueHidden := !opts.ViewSecretValue
-	if opts.AccessChecker != nil {
-		canReadValue := opts.AccessChecker.CanReadSecretValue(secretEnv, secretPath, foundSecret.Key, tagSlugs)
-		valueHidden = valueHidden || !canReadValue
-	}
+	valueHidden := !opts.ViewSecretValue || !canReadValue
 
-	rawValue, displayValue, secretComment, metadata := decryptSecretFields(foundSecret, cipherPair, valueHidden)
+	rawValue, displayValue, secretComment, metadata, decryptErrs := decryptSecretFields(foundSecret, cipherPair, valueHidden)
+	if decryptErrs.HasErrors() {
+		s.logger.WarnContext(ctx, "secret decryption errors (fail-open: returning empty values)",
+			slog.String("secretId", foundSecret.ID.String()),
+			slog.Any("valueErr", decryptErrs.ValueErr),
+			slog.Any("commentErr", decryptErrs.CommentErr),
+			slog.Any("metadataErr", decryptErrs.MetadataErr))
+	}
 
 	// Build the result secret
 	resultSecret := &ProcessedSecret{
@@ -205,7 +206,12 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 				}
 			}
 
-			ctxRawValue, ctxDisplayValue, ctxComment, ctxMetadata := decryptSecretFields(sec, cipherPair, false)
+			ctxRawValue, ctxDisplayValue, ctxComment, ctxMetadata, ctxDecryptErrs := decryptSecretFields(sec, cipherPair, false)
+			if ctxDecryptErrs.HasErrors() {
+				s.logger.WarnContext(ctx, "context secret decryption errors (fail-open)",
+					slog.String("secretId", sec.ID.String()),
+					slog.Any("valueErr", ctxDecryptErrs.ValueErr))
+			}
 			allSecrets = append(allSecrets, &ProcessedSecret{
 				Secret:      sec,
 				SecretPath:  ctxPath,
@@ -220,10 +226,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 
 		expander := NewSecretExpander(allSecrets, ExpandOpts{
 			CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
-				if opts.AccessChecker == nil {
-					return true
-				}
-				return opts.AccessChecker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, nil)
+				return opts.Access.CanReadValue(ref.Env, ref.Path, ref.Key, nil)
 			},
 			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
 				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
