@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   CertificateDisplayName,
   getCertificateDisplayName
@@ -83,6 +82,11 @@ import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub
+} from "@app/hooks/api/pkiApplications/types";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -179,6 +183,32 @@ export const CertificatesTable = ({
   const [search, setSearch] = useState(externalFilter?.search || "");
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canReadAtApplication = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Read,
+      PkiApplicationResourceSub.Certificates
+    )
+  );
+  const canEditAtApplication = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Edit,
+      PkiApplicationResourceSub.Certificates
+    )
+  );
+  const canDeleteAtApplication = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Delete,
+      PkiApplicationResourceSub.Certificates
+    )
+  );
+  const canEditPkiSyncsAtApplication = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Edit,
+      PkiApplicationResourceSub.PkiSyncs
+    )
+  );
+
   const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
     if (viewId === "system-pqc") {
       return [
@@ -262,7 +292,8 @@ export const CertificatesTable = ({
   const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
 
   const { data: profilesData } = useListCertificateProfiles({
-    limit: 100
+    limit: 100,
+    applicationId
   });
 
   const { data: applicationsData } = useListPkiApplications(undefined, {
@@ -816,6 +847,28 @@ export const CertificatesTable = ({
                   const isAutoRenewalEnabled = Boolean(
                     certificate.renewBeforeDays && certificate.renewBeforeDays > 0
                   );
+
+                  const certSubject = subject(ProjectPermissionSub.Certificates, {
+                    commonName: certificate.commonName,
+                    altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+                    serialNumber: certificate.serialNumber,
+                    friendlyName: certificate.friendlyName,
+                    metadata: certificate.metadata
+                  });
+                  const canReadCertificate =
+                    permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
+                    canReadAtApplication;
+                  const canEditCertificate =
+                    permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
+                    canEditAtApplication;
+                  const canDeleteCertificate =
+                    permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
+                    canDeleteAtApplication;
+                  const canEditPkiSyncs =
+                    permission.can(
+                      ProjectPermissionPkiSyncActions.Edit,
+                      ProjectPermissionSub.PkiSyncs
+                    ) || canEditPkiSyncsAtApplication;
                   const canShowAutoRenewalIcon = Boolean(
                     !isInventoryView &&
                       certificate.profileId &&
@@ -934,16 +987,6 @@ export const CertificatesTable = ({
                           >
                             {canShowAutoRenewalIcon &&
                               (() => {
-                                const canEditCertificate = permission.can(
-                                  ProjectPermissionCertificateActions.Edit,
-                                  subject(ProjectPermissionSub.Certificates, {
-                                    commonName: certificate.commonName,
-                                    altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-                                    serialNumber: certificate.serialNumber,
-                                    metadata: certificate.metadata
-                                  })
-                                );
-
                                 const tooltipText = (() => {
                                   if (hasFailed && certificate.renewalError) {
                                     return `Auto-renewal failed: ${certificate.renewalError}`;
@@ -1015,57 +1058,31 @@ export const CertificatesTable = ({
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" sideOffset={2}>
-                              <ProjectPermissionCan
-                                I={ProjectPermissionCertificateActions.Read}
-                                a={subject(ProjectPermissionSub.Certificates, {
-                                  commonName: certificate.commonName,
-                                  altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-                                  serialNumber: certificate.serialNumber,
-                                  friendlyName: certificate.friendlyName,
-                                  metadata: certificate.metadata
-                                })}
+                              <DropdownMenuItem
+                                isDisabled={!canReadCertificate}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("certificateExport", {
+                                    certificateId: certificate.id,
+                                    serialNumber: certificate.serialNumber
+                                  });
+                                }}
                               >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("certificateExport", {
-                                        certificateId: certificate.id,
-                                        serialNumber: certificate.serialNumber
-                                      });
-                                    }}
-                                  >
-                                    <FileOutputIcon />
-                                    Export Certificate
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
-                              <ProjectPermissionCan
-                                I={ProjectPermissionCertificateActions.Read}
-                                a={subject(ProjectPermissionSub.Certificates, {
-                                  commonName: certificate.commonName,
-                                  altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-                                  serialNumber: certificate.serialNumber,
-                                  friendlyName: certificate.friendlyName,
-                                  metadata: certificate.metadata
-                                })}
+                                <FileOutputIcon />
+                                Export Certificate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                isDisabled={!canReadCertificate}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("certificateCert", {
+                                    serialNumber: certificate.serialNumber
+                                  });
+                                }}
                               >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("certificateCert", {
-                                        serialNumber: certificate.serialNumber
-                                      });
-                                    }}
-                                  >
-                                    <EyeIcon />
-                                    View Details
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
+                                <EyeIcon />
+                                View Details
+                              </DropdownMenuItem>
                               {(() => {
                                 const canManageRenewal =
                                   !isInventoryView &&
@@ -1080,56 +1097,40 @@ export const CertificatesTable = ({
                                 if (!canManageRenewal) return null;
 
                                 return (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionCertificateActions.Edit}
-                                    a={subject(ProjectPermissionSub.Certificates, {
-                                      commonName: certificate.commonName,
-                                      altNames: certificate.altNames
-                                        ?.split(",")
-                                        .map((s) => s.trim()),
-                                      serialNumber: certificate.serialNumber,
-                                      friendlyName: certificate.friendlyName,
-                                      metadata: certificate.metadata
-                                    })}
+                                  <DropdownMenuItem
+                                    isDisabled={!canEditCertificate}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const notAfterDate = new Date(certificate.notAfter);
+                                      const notBeforeDate = certificate.notBefore
+                                        ? new Date(certificate.notBefore)
+                                        : new Date(notAfterDate.getTime() - 365 * MS_PER_DAY);
+                                      const ttlDays = Math.max(
+                                        1,
+                                        Math.ceil(
+                                          (notAfterDate.getTime() - notBeforeDate.getTime()) /
+                                            MS_PER_DAY
+                                        )
+                                      );
+                                      handlePopUpOpen("manageRenewal", {
+                                        certificateId: certificate.id,
+                                        commonName: certificate.commonName,
+                                        profileId: certificate.profileId,
+                                        renewBeforeDays: certificate.renewBeforeDays,
+                                        ttlDays,
+                                        notAfter: certificate.notAfter,
+                                        renewalError: certificate.renewalError,
+                                        renewedFromCertificateId:
+                                          certificate.renewedFromCertificateId,
+                                        renewedByCertificateId: certificate.renewedByCertificateId
+                                      });
+                                    }}
                                   >
-                                    {(isAllowed) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const notAfterDate = new Date(certificate.notAfter);
-                                          const notBeforeDate = certificate.notBefore
-                                            ? new Date(certificate.notBefore)
-                                            : new Date(notAfterDate.getTime() - 365 * MS_PER_DAY);
-                                          const ttlDays = Math.max(
-                                            1,
-                                            Math.ceil(
-                                              (notAfterDate.getTime() - notBeforeDate.getTime()) /
-                                                MS_PER_DAY
-                                            )
-                                          );
-                                          handlePopUpOpen("manageRenewal", {
-                                            certificateId: certificate.id,
-                                            commonName: certificate.commonName,
-                                            profileId: certificate.profileId,
-                                            renewBeforeDays: certificate.renewBeforeDays,
-                                            ttlDays,
-                                            notAfter: certificate.notAfter,
-                                            renewalError: certificate.renewalError,
-                                            renewedFromCertificateId:
-                                              certificate.renewedFromCertificateId,
-                                            renewedByCertificateId:
-                                              certificate.renewedByCertificateId
-                                          });
-                                        }}
-                                      >
-                                        <RefreshCwIcon />
-                                        {isAutoRenewalEnabled
-                                          ? "Manage auto renewal"
-                                          : "Enable auto renewal"}
-                                      </DropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
+                                    <RefreshCwIcon />
+                                    {isAutoRenewalEnabled
+                                      ? "Manage auto renewal"
+                                      : "Enable auto renewal"}
+                                  </DropdownMenuItem>
                                 );
                               })()}
                               {(() => {
@@ -1146,34 +1147,19 @@ export const CertificatesTable = ({
                                 if (!canDisableRenewal) return null;
 
                                 return (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionCertificateActions.Edit}
-                                    a={subject(ProjectPermissionSub.Certificates, {
-                                      commonName: certificate.commonName,
-                                      altNames: certificate.altNames
-                                        ?.split(",")
-                                        .map((s) => s.trim()),
-                                      serialNumber: certificate.serialNumber,
-                                      friendlyName: certificate.friendlyName,
-                                      metadata: certificate.metadata
-                                    })}
+                                  <DropdownMenuItem
+                                    isDisabled={!canEditCertificate}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await handleDisableAutoRenewal(
+                                        certificate.id,
+                                        certificate.commonName
+                                      );
+                                    }}
                                   >
-                                    {(isAllowed) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={async (e) => {
-                                          e.stopPropagation();
-                                          await handleDisableAutoRenewal(
-                                            certificate.id,
-                                            certificate.commonName
-                                          );
-                                        }}
-                                      >
-                                        <BanIcon />
-                                        Disable auto renewal
-                                      </DropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
+                                    <BanIcon />
+                                    Disable auto renewal
+                                  </DropdownMenuItem>
                                 );
                               })()}
                               {(() => {
@@ -1188,60 +1174,38 @@ export const CertificatesTable = ({
                                 if (!canRenew) return null;
 
                                 return (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionCertificateActions.Edit}
-                                    a={subject(ProjectPermissionSub.Certificates, {
-                                      commonName: certificate.commonName,
-                                      altNames: certificate.altNames
-                                        ?.split(",")
-                                        .map((s) => s.trim()),
-                                      serialNumber: certificate.serialNumber,
-                                      friendlyName: certificate.friendlyName,
-                                      metadata: certificate.metadata
-                                    })}
+                                  <DropdownMenuItem
+                                    isDisabled={!canEditCertificate}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("renewCertificate", {
+                                        certificateId: certificate.id,
+                                        commonName: certificate.commonName
+                                      });
+                                    }}
                                   >
-                                    {(isAllowed) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("renewCertificate", {
-                                            certificateId: certificate.id,
-                                            commonName: certificate.commonName
-                                          });
-                                        }}
-                                      >
-                                        <RefreshCwIcon />
-                                        Renew Now
-                                      </DropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
+                                    <RefreshCwIcon />
+                                    Renew Now
+                                  </DropdownMenuItem>
                                 );
                               })()}
                               {!isInventoryView &&
                                 certificate.status === CertStatus.ACTIVE &&
                                 !certificate.renewedByCertificateId &&
                                 certificate.source !== CertSource.Discovered && (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionPkiSyncActions.Edit}
-                                    a={ProjectPermissionSub.PkiSyncs}
+                                  <DropdownMenuItem
+                                    isDisabled={!canEditPkiSyncs}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("managePkiSyncs", {
+                                        certificateId: certificate.id,
+                                        commonName: certificate.commonName
+                                      });
+                                    }}
                                   >
-                                    {(isAllowed) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("managePkiSyncs", {
-                                            certificateId: certificate.id,
-                                            commonName: certificate.commonName
-                                          });
-                                        }}
-                                      >
-                                        <LinkIcon />
-                                        Manage PKI Syncs
-                                      </DropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
+                                    <LinkIcon />
+                                    Manage PKI Syncs
+                                  </DropdownMenuItem>
                                 )}
                               {hasProjectRole("admin") &&
                                 !certificate.applicationId &&
@@ -1272,64 +1236,36 @@ export const CertificatesTable = ({
                                 }
 
                                 return (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionCertificateActions.Delete}
-                                    a={subject(ProjectPermissionSub.Certificates, {
-                                      commonName: certificate.commonName,
-                                      altNames: certificate.altNames
-                                        ?.split(",")
-                                        .map((s) => s.trim()),
-                                      serialNumber: certificate.serialNumber,
-                                      friendlyName: certificate.friendlyName,
-                                      metadata: certificate.metadata
-                                    })}
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    isDisabled={!canDeleteCertificate}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("revokeCertificate", {
+                                        certificateId: certificate.id
+                                      });
+                                    }}
                                   >
-                                    {(isAllowed) => (
-                                      <DropdownMenuItem
-                                        variant="danger"
-                                        isDisabled={!isAllowed}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("revokeCertificate", {
-                                            certificateId: certificate.id
-                                          });
-                                        }}
-                                      >
-                                        <BanIcon />
-                                        Revoke Certificate
-                                      </DropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
+                                    <BanIcon />
+                                    Revoke Certificate
+                                  </DropdownMenuItem>
                                 );
                               })()}
                               {!(isInventoryView && certificate.applicationId) && (
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionCertificateActions.Delete}
-                                  a={subject(ProjectPermissionSub.Certificates, {
-                                    commonName: certificate.commonName,
-                                    altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-                                    serialNumber: certificate.serialNumber,
-                                    friendlyName: certificate.friendlyName,
-                                    metadata: certificate.metadata
-                                  })}
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={!canDeleteCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteCertificate", {
+                                      certificateId: certificate.id,
+                                      commonName: certificate.commonName
+                                    });
+                                  }}
                                 >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      variant="danger"
-                                      isDisabled={!isAllowed}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteCertificate", {
-                                          certificateId: certificate.id,
-                                          commonName: certificate.commonName
-                                        });
-                                      }}
-                                    >
-                                      <Trash2Icon />
-                                      Delete Certificate
-                                    </DropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
+                                  <Trash2Icon />
+                                  Delete Certificate
+                                </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>

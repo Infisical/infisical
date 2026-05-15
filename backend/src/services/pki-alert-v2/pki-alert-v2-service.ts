@@ -105,6 +105,20 @@ export const pkiAlertV2ServiceFactory = ({
       actorOrgId?: string;
     }
   ) => {
+    if (applicationId) {
+      const { permission: resourcePerm } = await permissionService.getResourcePermission({
+        actor: ctx.actor,
+        actorId: ctx.actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod: ctx.actorAuthMethod,
+        actorOrgId: ctx.actorOrgId
+      });
+      ForbiddenError.from(resourcePerm).throwUnlessCan(action, ResourcePermissionSub.PkiAlerts);
+      return null;
+    }
+
     const projectPerm = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
@@ -113,26 +127,7 @@ export const pkiAlertV2ServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
     });
-
-    if (projectPerm.permission.can(action, ProjectPermissionSub.PkiAlerts)) {
-      return projectPerm;
-    }
-
-    if (!applicationId) {
-      ForbiddenError.from(projectPerm.permission).throwUnlessCan(action, ProjectPermissionSub.PkiAlerts);
-      return projectPerm;
-    }
-
-    const { permission: resourcePerm } = await permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: applicationId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
-    ForbiddenError.from(resourcePerm).throwUnlessCan(action, ResourcePermissionSub.PkiAlerts);
+    ForbiddenError.from(projectPerm.permission).throwUnlessCan(action, ProjectPermissionSub.PkiAlerts);
     return projectPerm;
   };
 

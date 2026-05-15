@@ -102,7 +102,7 @@ export const ProjectNav = () => {
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     if (currentProject.type === ProjectType.PAM && pathname.includes("/approvals"))
       return PAM_APPROVALS_SUBMENU;
-    if (isOnApproval) return smApprovalsSubmenu;
+    if (isOnApproval && !isCertManager) return smApprovalsSubmenu;
     return null;
   };
 

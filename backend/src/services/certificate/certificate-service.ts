@@ -123,6 +123,28 @@ export const certificateServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationDAL
 }: TCertificateServiceFactoryDep) => {
+  const $canActOnCertViaApplication = async (
+    cert: { applicationId?: string | null; projectId: string },
+    action: ResourcePermissionCertificateActions,
+    actor: {
+      type: Parameters<TPermissionServiceFactory["getResourcePermission"]>[0]["actor"];
+      id: string;
+      authMethod: Parameters<TPermissionServiceFactory["getResourcePermission"]>[0]["actorAuthMethod"];
+      orgId: string;
+    }
+  ): Promise<boolean> => {
+    if (!cert.applicationId) return false;
+    const { permission } = await permissionService.getResourcePermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: cert.projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: cert.applicationId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    return permission.can(action, ResourcePermissionSub.Certificates);
+  };
   /**
    * Return details for certificate with serial number [serialNumber]
    */
@@ -151,15 +173,22 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certWithDetails.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certWithDetails.commonName,
-        altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: certWithDetails.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    const readSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: certWithDetails.commonName,
+      altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: certWithDetails.serialNumber,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.Read, readSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        certWithDetails,
+        ResourcePermissionCertificateActions.Read,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, readSubject);
+      }
+    }
 
     // Extract additional details from the joined result while creating clean cert object
     const { caName, profileName, applicationName, ...cert } = certWithDetails;
@@ -265,15 +294,22 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    const certSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      }
+    }
 
     const { certPrivateKey } = await getCertificateCredentials({
       certId: cert.id,
@@ -530,15 +566,23 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    const readSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.Read, readSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(cert, ResourcePermissionCertificateActions.Read, {
+        type: actor,
+        id: actorId,
+        authMethod: actorAuthMethod,
+        orgId: actorOrgId
+      });
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, readSubject);
+      }
+    }
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -875,28 +919,35 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
+    const certSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      friendlyName: cert.friendlyName,
+      status: cert.status,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.Read, certSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(cert, ResourcePermissionCertificateActions.Read, {
+        type: actor,
+        id: actorId,
+        authMethod: actorAuthMethod,
+        orgId: actorOrgId
+      });
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, certSubject);
+      }
+    }
+    if (!permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      }
+    }
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -1008,17 +1059,24 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
+    const certSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      friendlyName: cert.friendlyName,
+      status: cert.status,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      }
+    }
 
     // Get certificate bundle (certificate, chain, private key)
     const { certificate, certificateChain, privateKey } = await getCertBundle({

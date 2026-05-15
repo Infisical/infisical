@@ -10,6 +10,7 @@ import {
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
+  ResourceType,
   TableName,
   TProjectEnvironments,
   TProjects
@@ -34,6 +35,10 @@ import {
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
@@ -1284,19 +1289,41 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    const scopedToSingleApplication = Boolean(applicationId);
+    let allowedByResource = false;
+    let projectPermission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"] | null =
+      null;
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    if (scopedToSingleApplication) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId!,
+        actorAuthMethod,
+        actorOrgId
+      });
+      if (resourcePermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)) {
+        allowedByResource = true;
+      }
+    }
+
+    if (!allowedByResource) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      projectPermission = permission;
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Read,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     const regularFilters = {
       projectId,
@@ -1324,11 +1351,14 @@ export const projectServiceFactory = ({
       ...(applicationId && { applicationId }),
       ...(applicationIds && applicationIds.length > 0 && { applicationIds })
     };
-    const permissionFilters = getProcessedPermissionRules(
-      permission,
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    const permissionFilters =
+      allowedByResource || !projectPermission
+        ? undefined
+        : getProcessedPermissionRules(
+            projectPermission,
+            ProjectPermissionCertificateActions.Read,
+            ProjectPermissionSub.Certificates
+          );
 
     const ALLOWED_SORT_COLUMNS = new Set([
       "notAfter",

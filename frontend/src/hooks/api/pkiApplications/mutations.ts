@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { approvalGrantQuery } from "../approvalGrants/queries";
+import { approvalPolicyQuery } from "../approvalPolicies/queries";
+import { approvalRequestQuery } from "../approvalRequests/queries";
 import { pkiApplicationKeys } from "./queries";
 import {
   TAddPkiApplicationMemberDTO,
@@ -172,7 +175,12 @@ export const useRemovePkiApplicationMember = () => {
       }>(`${BASE_URL}/${applicationId}/${memberPathSegment(kind)}/${memberId}`);
       return data;
     },
-    onSuccess: () => invalidateAll(qc)
+    onSuccess: () => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: approvalPolicyQuery.allKey() });
+      qc.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+      qc.invalidateQueries({ queryKey: approvalGrantQuery.allKey() });
+    }
   });
 };
 

@@ -648,15 +648,20 @@ export const permissionServiceFactory = ({
         actorType: actor
       });
 
-      const projectPerm = await getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-      const isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
+      let isProjectAdmin = false;
+      try {
+        const projectPerm = await getProjectPermission({
+          actor,
+          actorId,
+          projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actionProjectType: ActionProjectType.CertificateManager
+        });
+        isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
+      } catch {
+        isProjectAdmin = false;
+      }
 
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(

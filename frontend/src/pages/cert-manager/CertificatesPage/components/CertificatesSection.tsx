@@ -190,7 +190,11 @@ export const CertificatesSection = ({
           handlePopUpToggle={handlePopUpToggle}
           applicationId={applicationId}
         />
-        <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateCertModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          applicationId={applicationId}
+        />
         <CertificateExportModal
           popUp={popUp}
           handlePopUpToggle={handlePopUpToggle}

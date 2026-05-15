@@ -1,11 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../../ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
+import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
@@ -84,7 +85,7 @@ const SYSTEM_VIEWS: TSystemView[] = [
 
 type TCertificateInventoryViewServiceFactoryDep = {
   certificateInventoryViewDAL: TCertificateInventoryViewDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
 export type TCertificateInventoryViewServiceFactory = ReturnType<typeof certificateInventoryViewServiceFactory>;
@@ -93,10 +94,26 @@ export const certificateInventoryViewServiceFactory = ({
   certificateInventoryViewDAL,
   permissionService
 }: TCertificateInventoryViewServiceFactoryDep) => {
-  const checkProjectPermission = async (
-    dto: Pick<TProjectPermission, "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"> & { projectId: string },
+  const assertCanActOnView = async (
+    dto: Pick<TProjectPermission, "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"> & {
+      projectId: string;
+      applicationId?: string | null;
+    },
     action: ProjectPermissionActions = ProjectPermissionActions.Read
   ) => {
+    if (dto.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor: dto.actor,
+        actorId: dto.actorId,
+        projectId: dto.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: dto.applicationId,
+        actorAuthMethod: dto.actorAuthMethod,
+        actorOrgId: dto.actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.CertificateInventoryViews);
+      return;
+    }
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.actor,
       actorId: dto.actorId,
@@ -105,10 +122,7 @@ export const certificateInventoryViewServiceFactory = ({
       actorOrgId: dto.actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
     });
-
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.CertificateInventoryViews);
-
-    return permission;
   };
 
   const listViews = async ({
@@ -119,7 +133,10 @@ export const certificateInventoryViewServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TListInventoryViewsDTO) => {
-    await checkProjectPermission({ projectId, actor, actorId, actorOrgId, actorAuthMethod });
+    await assertCanActOnView(
+      { projectId, applicationId, actor, actorId, actorOrgId, actorAuthMethod },
+      ProjectPermissionActions.Read
+    );
 
     const allViews = await certificateInventoryViewDAL.findByProjectId(projectId, actorId, applicationId);
 
@@ -153,8 +170,8 @@ export const certificateInventoryViewServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TCreateInventoryViewDTO) => {
-    await checkProjectPermission(
-      { projectId, actor, actorId, actorOrgId, actorAuthMethod },
+    await assertCanActOnView(
+      { projectId, applicationId, actor, actorId, actorOrgId, actorAuthMethod },
       ProjectPermissionActions.Create
     );
 
@@ -200,15 +217,15 @@ export const certificateInventoryViewServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TUpdateInventoryViewDTO) => {
-    await checkProjectPermission(
-      { projectId, actor, actorId, actorOrgId, actorAuthMethod },
-      ProjectPermissionActions.Edit
-    );
-
     const existing = await certificateInventoryViewDAL.findById(viewId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: "View not found" });
     }
+
+    await assertCanActOnView(
+      { projectId, applicationId: existing.applicationId, actor, actorId, actorOrgId, actorAuthMethod },
+      ProjectPermissionActions.Edit
+    );
 
     if (existing.createdByUserId !== actorId) {
       throw new BadRequestError({ message: "You can only update your own views" });
@@ -249,15 +266,15 @@ export const certificateInventoryViewServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TDeleteInventoryViewDTO) => {
-    await checkProjectPermission(
-      { projectId, actor, actorId, actorOrgId, actorAuthMethod },
-      ProjectPermissionActions.Delete
-    );
-
     const existing = await certificateInventoryViewDAL.findById(viewId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: "View not found" });
     }
+
+    await assertCanActOnView(
+      { projectId, applicationId: existing.applicationId, actor, actorId, actorOrgId, actorAuthMethod },
+      ProjectPermissionActions.Delete
+    );
 
     if (existing.createdByUserId !== actorId) {
       throw new BadRequestError({ message: "You can only delete your own views" });

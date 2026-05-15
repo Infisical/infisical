@@ -133,6 +133,20 @@ export const approvalPolicyServiceFactory = ({
     actor: OrgServiceActor,
     resourceAction: ResourcePermissionApprovalPolicyActions
   ) => {
+    if (scopeType === ApprovalPolicyScope.PkiApplication && scopeId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: scopeId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.ApprovalPolicies);
+      return;
+    }
+
     const { hasRole } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -142,22 +156,9 @@ export const approvalPolicyServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    if (hasRole(ProjectMembershipRole.Admin)) return;
-
-    if (scopeType !== ApprovalPolicyScope.PkiApplication || !scopeId) {
+    if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-
-    const { permission } = await permissionService.getResourcePermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: scopeId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.ApprovalPolicies);
   };
 
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
@@ -626,20 +627,35 @@ export const approvalPolicyServiceFactory = ({
 
     // If user is requester or approver, allow access regardless of role permission
     if (!isRequester && !isApprover) {
-      // Otherwise, check role permission
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
-        projectId: request.projectId,
-        actionProjectType: ActionProjectType.Any
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionApprovalRequestActions.Read,
-        ProjectPermissionSub.ApprovalRequests
-      );
+      if (request.scopeType === ApprovalPolicyScope.PkiApplication && request.scopeId) {
+        const { permission: resourcePermission } = await permissionService.getResourcePermission({
+          actor: actor.type,
+          actorId: actor.id,
+          projectId: request.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: request.scopeId,
+          actorAuthMethod: actor.authMethod,
+          actorOrgId: actor.orgId
+        });
+        if (
+          !resourcePermission.can(ProjectPermissionApprovalRequestActions.Read, ResourcePermissionSub.ApprovalRequests)
+        ) {
+          throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+        }
+      } else {
+        const { permission } = await permissionService.getProjectPermission({
+          actor: actor.type,
+          actorAuthMethod: actor.authMethod,
+          actorId: actor.id,
+          actorOrgId: actor.orgId,
+          projectId: request.projectId,
+          actionProjectType: ActionProjectType.Any
+        });
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionApprovalRequestActions.Read,
+          ProjectPermissionSub.ApprovalRequests
+        );
+      }
     }
 
     return {
@@ -868,19 +884,35 @@ export const approvalPolicyServiceFactory = ({
   ) => {
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = await $resolveScope(scope, inputScopeId);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    const hasReadPermission = permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
-    );
+    let hasReadPermission: boolean;
+    if (scope === ApprovalPolicyScope.PkiApplication && inputScopeId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: inputScopeId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      hasReadPermission = resourcePermission.can(
+        ProjectPermissionApprovalRequestActions.Read,
+        ResourcePermissionSub.ApprovalRequests
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        projectId,
+        actionProjectType: ActionProjectType.Any
+      });
+      hasReadPermission = permission.can(
+        ProjectPermissionApprovalRequestActions.Read,
+        ProjectPermissionSub.ApprovalRequests
+      );
+    }
 
     const requests = await approvalRequestDAL.findByProjectId(
       policyType,
@@ -952,19 +984,38 @@ export const approvalPolicyServiceFactory = ({
   ) => {
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = await $resolveScope(scope, inputScopeId);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalRequestGrantActions.Read,
-      ProjectPermissionSub.ApprovalRequestGrants
-    );
+    if (scope === ApprovalPolicyScope.PkiApplication && inputScopeId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: inputScopeId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      if (
+        !resourcePermission.can(
+          ProjectPermissionApprovalRequestGrantActions.Read,
+          ResourcePermissionSub.ApprovalRequestGrants
+        )
+      ) {
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+      }
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        projectId,
+        actionProjectType: ActionProjectType.Any
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionApprovalRequestGrantActions.Read,
+        ProjectPermissionSub.ApprovalRequestGrants
+      );
+    }
 
     const grants = await approvalRequestGrantsDAL.findByProjectAndScope({
       projectId,

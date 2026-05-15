@@ -3,13 +3,10 @@ import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { EditPkiSyncModal } from "@app/components/pki-syncs";
 import { PkiSyncEditFields } from "@app/components/pki-syncs/types";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp } from "@app/hooks";
 import { useGetPkiSync } from "@app/hooks/api/pkiSyncs";
@@ -147,14 +144,7 @@ export const PkiSyncDetailsByIDPage = () => {
         <title>PKI Sync | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <ProjectPermissionCan
-        renderGuardBanner
-        passThrough={false}
-        I={ProjectPermissionPkiSyncActions.Read}
-        a={ProjectPermissionSub.PkiSyncs}
-      >
-        <PageContent />
-      </ProjectPermissionCan>
+      <PageContent />
     </>
   );
 };

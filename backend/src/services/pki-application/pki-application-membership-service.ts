@@ -193,18 +193,23 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
-    const { permission: projectPermission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-    const canCreateProjectMember = projectPermission.can(
-      ProjectPermissionMemberActions.Create,
-      ProjectPermissionSub.Member
-    );
+    let canCreateProjectMember = false;
+    try {
+      const { permission: projectPermission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      canCreateProjectMember = projectPermission.can(
+        ProjectPermissionMemberActions.Create,
+        ProjectPermissionSub.Member
+      );
+    } catch {
+      canCreateProjectMember = false;
+    }
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingAppMembershipFilter: Record<string, unknown> = {

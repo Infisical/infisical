@@ -15,6 +15,7 @@ export enum ResourcePermissionSub {
   ApplicationEnrollment = "certificate-application-enrollment",
   ApprovalPolicies = "approval-policies",
   Certificates = "certificates",
+  CertificateInventoryViews = "certificate-inventory-views",
   PkiSyncs = "pki-syncs",
   PkiAlerts = "pki-alerts",
   ApprovalRequests = "approval-requests",
@@ -71,6 +72,7 @@ export type ResourcePermissionSet =
   | [ResourcePermissionApplicationEnrollmentActions, ResourcePermissionSub.ApplicationEnrollment]
   | [ResourcePermissionApprovalPolicyActions, ResourcePermissionSub.ApprovalPolicies]
   | [ResourcePermissionCertificateActions, ResourcePermissionSub.Certificates]
+  | [ProjectPermissionActions, ResourcePermissionSub.CertificateInventoryViews]
   | [ResourcePermissionPkiSyncActions, ResourcePermissionSub.PkiSyncs]
   | [ProjectPermissionActions, ResourcePermissionSub.PkiAlerts]
   | [ProjectPermissionApprovalRequestActions, ResourcePermissionSub.ApprovalRequests]

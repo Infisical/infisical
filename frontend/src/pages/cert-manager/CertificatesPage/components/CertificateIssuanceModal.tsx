@@ -156,7 +156,7 @@ export const CertificateIssuanceModal = ({
   const { data: cert } = useGetCert(sanitizedSerialNumber);
 
   const { data: profilesData } = useListCertificateProfiles({
-    enrollmentType: EnrollmentType.API,
+    enrollmentType: applicationId ? undefined : EnrollmentType.API,
     includeConfigs: true,
     applicationId
   });

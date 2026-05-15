@@ -6,7 +6,6 @@ import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { FilterableSelect, Select, SelectItem } from "@app/components/v2";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import {
   Button,
   Card,
@@ -33,7 +32,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,

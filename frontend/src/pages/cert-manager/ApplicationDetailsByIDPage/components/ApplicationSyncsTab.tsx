@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
@@ -30,7 +30,8 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
 
   const { data, isPending } = useListPkiSyncs(projectId, {
     enabled: Boolean(projectId),
-    refetchInterval: 30000
+    refetchInterval: 30000,
+    applicationId
   });
 
   const { data: permissionData } = useGetPkiApplicationPermissions(applicationId);
@@ -41,10 +42,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
     )
   );
 
-  const applicationSyncs = useMemo(
-    () => (data ?? []).filter((sync) => sync.applicationId === applicationId),
-    [data, applicationId]
-  );
+  const applicationSyncs = data ?? [];
 
   return (
     <Card>

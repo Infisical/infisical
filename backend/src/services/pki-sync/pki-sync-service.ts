@@ -119,6 +119,17 @@ export const pkiSyncServiceFactory = ({
     subscriberName: string | undefined,
     actor: OrgServiceActor
   ) => {
+    if (pkiSync.applicationId) {
+      const allowedByResource = await $resourceFallback(
+        resourceAction,
+        pkiSync.projectId,
+        pkiSync.applicationId,
+        actor
+      );
+      if (allowedByResource) return null;
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -127,17 +138,10 @@ export const pkiSyncServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager,
       projectId: pkiSync.projectId
     });
-
     const projectSubject = subject(ProjectPermissionSub.PkiSyncs, {
       subscriberName,
       name: pkiSync.name
     });
-
-    if (permission.can(projectAction, projectSubject)) return permission;
-
-    const allowedByResource = await $resourceFallback(resourceAction, pkiSync.projectId, pkiSync.applicationId, actor);
-    if (allowedByResource) return permission;
-
     ForbiddenError.from(permission).throwUnlessCan(projectAction, projectSubject);
     return permission;
   };
@@ -329,28 +333,12 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager,
-      projectId: pkiSync.projectId
-    });
-
     let currentSubscriber;
     if (pkiSync.subscriberId) {
       currentSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
     }
 
-    const editAllowedByProject = permission.can(
-      ProjectPermissionPkiSyncActions.Edit,
-      subject(ProjectPermissionSub.PkiSyncs, {
-        subscriberName: currentSubscriber?.name,
-        name: pkiSync.name
-      })
-    );
-    if (!editAllowedByProject) {
+    if (pkiSync.applicationId) {
       const editAllowedByResource = await $resourceFallback(
         ResourcePermissionPkiSyncActions.Edit,
         pkiSync.projectId,
@@ -358,14 +346,24 @@ export const pkiSyncServiceFactory = ({
         actor
       );
       if (!editAllowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionPkiSyncActions.Edit,
-          subject(ProjectPermissionSub.PkiSyncs, {
-            subscriberName: currentSubscriber?.name,
-            name: pkiSync.name
-          })
-        );
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.CertificateManager,
+        projectId: pkiSync.projectId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiSyncActions.Edit,
+        subject(ProjectPermissionSub.PkiSyncs, {
+          subscriberName: currentSubscriber?.name,
+          name: pkiSync.name
+        })
+      );
     }
 
     if (name && name !== pkiSync.name) {
@@ -448,15 +446,6 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager,
-      projectId: pkiSync.projectId
-    });
-
     let pkiSyncSubscriber;
     if (pkiSync.subscriberId) {
       pkiSyncSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
@@ -475,6 +464,14 @@ export const pkiSyncServiceFactory = ({
         });
       }
     } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.CertificateManager,
+        projectId: pkiSync.projectId
+      });
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPkiSyncActions.Delete,
         subject(ProjectPermissionSub.PkiSyncs, {
@@ -491,17 +488,9 @@ export const pkiSyncServiceFactory = ({
     { projectId, certificateId, applicationId }: TListPkiSyncsByProjectId,
     actor: OrgServiceActor
   ): Promise<TPkiSync[]> => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager,
-      projectId
-    });
+    let processedRules: ReturnType<typeof getProcessedPermissionRules> | undefined;
 
-    const allowedByProject = permission.can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
-    if (!allowedByProject) {
+    if (applicationId) {
       const allowedByResource = await $resourceFallback(
         ResourcePermissionPkiSyncActions.Read,
         projectId,
@@ -509,18 +498,27 @@ export const pkiSyncServiceFactory = ({
         actor
       );
       if (!allowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionPkiSyncActions.Read,
-          ProjectPermissionSub.PkiSyncs
-        );
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.CertificateManager,
+        projectId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiSyncActions.Read,
+        ProjectPermissionSub.PkiSyncs
+      );
+      processedRules = getProcessedPermissionRules(
+        permission,
+        ProjectPermissionPkiSyncActions.Read,
+        ProjectPermissionSub.PkiSyncs
+      );
     }
-
-    const processedRules = getProcessedPermissionRules(
-      permission,
-      ProjectPermissionPkiSyncActions.Read,
-      ProjectPermissionSub.PkiSyncs
-    );
 
     const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(
       projectId,
@@ -567,28 +565,12 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager,
-      projectId: pkiSync.projectId
-    });
-
     let findSubscriber;
     if (pkiSync.subscriberId) {
       findSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
     }
 
-    const allowedByProject = permission.can(
-      ProjectPermissionPkiSyncActions.Read,
-      subject(ProjectPermissionSub.PkiSyncs, {
-        subscriberName: findSubscriber?.name,
-        name: pkiSync.name
-      })
-    );
-    if (!allowedByProject) {
+    if (pkiSync.applicationId) {
       const allowedByResource = await $resourceFallback(
         ResourcePermissionPkiSyncActions.Read,
         pkiSync.projectId,
@@ -596,14 +578,24 @@ export const pkiSyncServiceFactory = ({
         actor
       );
       if (!allowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionPkiSyncActions.Read,
-          subject(ProjectPermissionSub.PkiSyncs, {
-            subscriberName: findSubscriber?.name,
-            name: pkiSync.name
-          })
-        );
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.CertificateManager,
+        projectId: pkiSync.projectId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiSyncActions.Read,
+        subject(ProjectPermissionSub.PkiSyncs, {
+          subscriberName: findSubscriber?.name,
+          name: pkiSync.name
+        })
+      );
     }
 
     const result = {

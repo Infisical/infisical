@@ -159,7 +159,18 @@ const DisableEnrollmentButton = ({
   );
 };
 
-type ApiForm = { autoRenew: boolean; renewBeforeDays?: number };
+type ApiForm = { autoRenew: boolean; renewBeforeDays: number | null };
+
+const handleOptionalIntChange =
+  (onChange: (next: number | null) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.trim();
+    if (raw === "") {
+      onChange(null);
+      return;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    onChange(Number.isNaN(parsed) ? null : parsed);
+  };
 
 const ApiPanel = ({
   applicationId,
@@ -177,14 +188,14 @@ const ApiPanel = ({
   const { control, handleSubmit, watch, reset } = useForm<ApiForm>({
     defaultValues: {
       autoRenew: initial?.autoRenew ?? false,
-      renewBeforeDays: initial?.renewBeforeDays ?? undefined
+      renewBeforeDays: initial?.renewBeforeDays ?? null
     }
   });
 
   useEffect(() => {
     reset({
       autoRenew: initial?.autoRenew ?? false,
-      renewBeforeDays: initial?.renewBeforeDays ?? undefined
+      renewBeforeDays: initial?.renewBeforeDays ?? null
     });
   }, [initial?.autoRenew, initial?.renewBeforeDays, reset]);
 
@@ -196,7 +207,7 @@ const ApiPanel = ({
         applicationId,
         profileId,
         autoRenew: values.autoRenew,
-        renewBeforeDays: values.autoRenew ? values.renewBeforeDays : undefined
+        renewBeforeDays: values.autoRenew ? (values.renewBeforeDays ?? undefined) : undefined
       });
       createNotification({ type: "success", text: "API enrollment saved" });
     } catch (err) {
@@ -265,24 +276,26 @@ const ApiPanel = ({
           <Controller
             control={control}
             name="renewBeforeDays"
-            rules={{ min: 1, max: 365 }}
+            rules={{
+              validate: (value) =>
+                value === null || (value >= 1 && value <= 365) || "Must be between 1 and 365"
+            }}
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel>Renew before (days)</FieldLabel>
                 <FieldContent>
                   <Input
                     type="number"
-                    min={1}
-                    max={365}
+                    inputMode="numeric"
                     value={field.value ?? ""}
-                    onChange={(e) =>
-                      field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                    }
+                    onChange={handleOptionalIntChange(field.onChange)}
                     placeholder="30"
                     isError={Boolean(error)}
                   />
                 </FieldContent>
-                {error ? <FieldError>Must be between 1 and 365</FieldError> : null}
+                {error ? (
+                  <FieldError>{error.message ?? "Must be between 1 and 365"}</FieldError>
+                ) : null}
                 <FieldDescription>How many days before expiry to trigger renewal.</FieldDescription>
               </Field>
             )}
@@ -917,12 +930,9 @@ const ScepPanel = ({
                   <FieldContent>
                     <Input
                       type="number"
-                      min={5}
-                      max={1440}
+                      inputMode="numeric"
                       value={field.value ?? ""}
-                      onChange={(e) =>
-                        field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                      }
+                      onChange={handleOptionalIntChange(field.onChange)}
                     />
                   </FieldContent>
                 </Field>
@@ -937,12 +947,9 @@ const ScepPanel = ({
                   <FieldContent>
                     <Input
                       type="number"
-                      min={1}
-                      max={1000}
+                      inputMode="numeric"
                       value={field.value ?? ""}
-                      onChange={(e) =>
-                        field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-                      }
+                      onChange={handleOptionalIntChange(field.onChange)}
                     />
                   </FieldContent>
                 </Field>

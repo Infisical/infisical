@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -95,10 +95,19 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       const { emails } = req.body;
 
       if (emails.length > 0) {
+        const bootstrapForApplication = {
+          applicationId: req.params.applicationId,
+          projectId
+        };
+
         await server.services.membershipUser.createMembership({
           permission: req.permission,
           scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
-          data: { roles: [], usernames: emails }
+          data: {
+            roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
+            usernames: emails
+          },
+          bootstrapForApplication
         });
 
         await server.services.membershipUser.createMembership({
@@ -107,7 +116,8 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
           data: {
             roles: [{ isTemporary: false, role: ProjectMembershipRole.Member }],
             usernames: emails
-          }
+          },
+          bootstrapForApplication
         });
       }
 

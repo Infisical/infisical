@@ -8,6 +8,7 @@ export enum PkiApplicationResourceSub {
   ApplicationEnrollment = "certificate-application-enrollment",
   ApprovalPolicies = "approval-policies",
   Certificates = "certificates",
+  CertificateInventoryViews = "certificate-inventory-views",
   PkiSyncs = "pki-syncs",
   PkiAlerts = "pki-alerts",
   ApprovalRequests = "approval-requests",

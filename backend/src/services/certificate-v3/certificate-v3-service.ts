@@ -1178,10 +1178,25 @@ export const certificateV3ServiceFactory = ({
         actionProjectType: ActionProjectType.CertificateManager
       });
 
-      const canReadPrivateKey = permission.can(
+      let canReadPrivateKey = permission.can(
         ProjectPermissionCertificateActions.ReadPrivateKey,
         ProjectPermissionSub.Certificates
       );
+      if (!canReadPrivateKey && applicationId) {
+        const { permission: resourcePermission } = await permissionService.getResourcePermission({
+          actor,
+          actorId,
+          projectId: profile.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: applicationId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        canReadPrivateKey = resourcePermission.can(
+          ResourcePermissionCertificateActions.ReadPrivateKey,
+          ResourcePermissionSub.Certificates
+        );
+      }
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
 
@@ -1373,10 +1388,25 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    const canReadPrivateKey = permission.can(
+    let canReadPrivateKey = permission.can(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       ProjectPermissionSub.Certificates
     );
+    if (!canReadPrivateKey && applicationId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      canReadPrivateKey = resourcePermission.can(
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        ResourcePermissionSub.Certificates
+      );
+    }
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
 
@@ -2959,38 +2989,52 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const currentMetadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
     const currentMetadata = currentMetadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
+    if (certificate.applicationId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificate.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(resourcePermission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      const currentSubject = subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
         altNames: certificate.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certificate.serialNumber,
         metadata: currentMetadata
-      })
-    );
+      });
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Edit, currentSubject);
 
-    if (metadata) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Edit,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: certificate.commonName,
-          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: certificate.serialNumber,
-          metadata
-        })
-      );
+      if (metadata) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateActions.Edit,
+          subject(ProjectPermissionSub.Certificates, {
+            commonName: certificate.commonName,
+            altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+            serialNumber: certificate.serialNumber,
+            metadata
+          })
+        );
+      }
     }
 
     let updatedMetadata: Array<{ key: string; value: string }> = [];

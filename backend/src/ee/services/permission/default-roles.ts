@@ -625,47 +625,13 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
-  // double check if all CRUD are needed for CA and Certificates
   can([ProjectPermissionCertificateAuthorityActions.Read], ProjectPermissionSub.CertificateAuthorities);
-  can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
   can([ProjectPermissionCertificatePolicyActions.Read], ProjectPermissionSub.CertificatePolicies);
-
-  can(
-    [
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionCertificateActions.Edit,
-      ProjectPermissionCertificateActions.Create,
-      ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionCertificateActions.Import
-    ],
-    ProjectPermissionSub.Certificates
-  );
-
-  can(
-    [
-      ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionCertificateProfileActions.Edit,
-      ProjectPermissionCertificateProfileActions.Create,
-      ProjectPermissionCertificateProfileActions.Delete
-    ],
-    ProjectPermissionSub.CertificateProfiles
-  );
-
+  can([ProjectPermissionCertificateProfileActions.Read], ProjectPermissionSub.CertificateProfiles);
+  can([ProjectPermissionCodeSigningActions.Read], ProjectPermissionSub.CodeSigners);
   can(
     [ProjectPermissionApplicationActions.Read, ProjectPermissionApplicationActions.List],
     ProjectPermissionSub.Application
-  );
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.CertificateInventoryViews
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
@@ -673,7 +639,6 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
 
   can([ProjectPermissionSshHostActions.Read], ProjectPermissionSub.SshHosts);
-  can([ProjectPermissionPkiSubscriberActions.Read], ProjectPermissionSub.PkiSubscribers);
 
   can(
     [
@@ -700,26 +665,6 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionSecretSyncActions.RemoveSecrets
     ],
     ProjectPermissionSub.SecretSyncs
-  );
-
-  can(
-    [
-      ProjectPermissionPkiSyncActions.Create,
-      ProjectPermissionPkiSyncActions.Edit,
-      ProjectPermissionPkiSyncActions.Delete,
-      ProjectPermissionPkiSyncActions.Read,
-      ProjectPermissionPkiSyncActions.SyncCertificates,
-      ProjectPermissionPkiSyncActions.ImportCertificates,
-      ProjectPermissionPkiSyncActions.RemoveCertificates
-    ],
-    ProjectPermissionSub.PkiSyncs
-  );
-
-  can([ProjectPermissionPkiDiscoveryActions.Read], ProjectPermissionSub.PkiDiscovery);
-  can([ProjectPermissionPkiCertificateInstallationActions.Read], ProjectPermissionSub.PkiCertificateInstallations);
-  can(
-    [ProjectPermissionCodeSigningActions.Read, ProjectPermissionCodeSigningActions.Sign],
-    ProjectPermissionSub.CodeSigners
   );
 
   can(
@@ -917,8 +862,7 @@ const buildApplicationAdminPermissionRules = () => {
     [
       ResourcePermissionApplicationActions.Read,
       ResourcePermissionApplicationActions.Edit,
-      ResourcePermissionApplicationActions.Delete,
-      ResourcePermissionApplicationActions.ManageProfiles
+      ResourcePermissionApplicationActions.Delete
     ],
     ResourcePermissionSub.Application
   );
@@ -955,6 +899,16 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionCertificateActions.Import
     ],
     ResourcePermissionSub.Certificates
+  );
+
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete
+    ],
+    ResourcePermissionSub.CertificateInventoryViews
   );
 
   can(
@@ -1042,12 +996,30 @@ const buildApplicationOperatorPermissionRules = () => {
       ResourcePermissionCertificateActions.List,
       ResourcePermissionCertificateActions.Create,
       ResourcePermissionCertificateActions.Edit,
+      ResourcePermissionCertificateActions.ReadPrivateKey,
       ResourcePermissionCertificateActions.Import
     ],
     ResourcePermissionSub.Certificates
   );
 
-  can([ResourcePermissionPkiSyncActions.Read, ResourcePermissionPkiSyncActions.List], ResourcePermissionSub.PkiSyncs);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete
+    ],
+    ResourcePermissionSub.CertificateInventoryViews
+  );
+
+  can(
+    [
+      ResourcePermissionPkiSyncActions.Read,
+      ResourcePermissionPkiSyncActions.List,
+      ResourcePermissionPkiSyncActions.SyncCertificates
+    ],
+    ResourcePermissionSub.PkiSyncs
+  );
   can([ProjectPermissionActions.Read], ResourcePermissionSub.PkiAlerts);
 
   can(
@@ -1078,6 +1050,7 @@ const buildApplicationAuditorPermissionRules = () => {
     [ResourcePermissionCertificateActions.Read, ResourcePermissionCertificateActions.List],
     ResourcePermissionSub.Certificates
   );
+  can([ProjectPermissionActions.Read], ResourcePermissionSub.CertificateInventoryViews);
   can([ResourcePermissionPkiSyncActions.Read, ResourcePermissionPkiSyncActions.List], ResourcePermissionSub.PkiSyncs);
   can([ProjectPermissionActions.Read], ResourcePermissionSub.PkiAlerts);
   can([ProjectPermissionApprovalRequestActions.Read], ResourcePermissionSub.ApprovalRequests);
@@ -1111,6 +1084,15 @@ const buildApplicationProjectAdminFallbackRules = () => {
   );
 
   can([ProjectPermissionActions.Read], ResourcePermissionSub.Role);
+
+  can(
+    [
+      ResourcePermissionCertificateActions.Read,
+      ResourcePermissionCertificateActions.List,
+      ResourcePermissionCertificateActions.ReadPrivateKey
+    ],
+    ResourcePermissionSub.Certificates
+  );
 
   return rules;
 };

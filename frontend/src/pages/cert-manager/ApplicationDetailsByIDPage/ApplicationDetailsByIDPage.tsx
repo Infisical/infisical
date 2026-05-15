@@ -154,7 +154,7 @@ export const ApplicationDetailsByIDPage = () => {
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
               title={
-                <span className="flex items-center gap-x-2">
+                <span className="inline-flex items-center gap-x-2 align-middle">
                   {application.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.applications.overview} />
                 </span>

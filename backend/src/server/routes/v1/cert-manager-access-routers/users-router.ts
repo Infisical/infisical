@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   AccessScope,
+  OrgMembershipRole,
   ProjectMembershipRole,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema
@@ -117,7 +118,10 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       await server.services.membershipUser.createMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
-        data: { roles: [], usernames: usernamesAndEmails }
+        data: {
+          roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
+          usernames: usernamesAndEmails
+        }
       });
 
       const { memberships } = await server.services.membershipUser.createMembership({

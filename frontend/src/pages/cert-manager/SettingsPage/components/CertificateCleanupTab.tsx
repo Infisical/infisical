@@ -19,11 +19,12 @@ import {
   Skeleton,
   Switch
 } from "@app/components/v3";
-import { PkiDocsUrls } from "../../pki-docs-urls";
 import {
   useGetCertificateCleanupConfig,
   useUpdateCertificateCleanupConfig
 } from "@app/hooks/api/certificateCleanup";
+
+import { PkiDocsUrls } from "../../pki-docs-urls";
 
 const formSchema = z.object({
   isEnabled: z.boolean(),
