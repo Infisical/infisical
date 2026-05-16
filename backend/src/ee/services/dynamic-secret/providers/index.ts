@@ -67,6 +67,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
-  [DynamicSecretProviders.Milvus]: MilvusProvider(),
+  [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Ssh]: SshProvider()
 });

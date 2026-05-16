@@ -496,6 +496,8 @@ export type TDynamicSecretProvider =
         }>;
         ca?: string;
         sslRejectUnauthorized?: boolean;
+        gatewayId?: string | null;
+        gatewayPoolId?: string | null;
       };
     }
   | {

@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -18,6 +19,11 @@ import {
   Switch,
   Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import {
   DynamicSecretProviders,
@@ -57,7 +63,9 @@ const formSchema = z.object({
         )
         .default([]),
       ca: z.string().optional(),
-      sslRejectUnauthorized: z.boolean().optional()
+      sslRejectUnauthorized: z.boolean().optional(),
+      gatewayId: z.string().optional().nullable(),
+      gatewayPoolId: z.string().optional().nullable()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -110,7 +118,9 @@ export const EditDynamicSecretMilvusForm = ({
   const {
     control,
     formState: { isSubmitting },
-    handleSubmit
+    handleSubmit,
+    setValue,
+    watch
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -130,6 +140,9 @@ export const EditDynamicSecretMilvusForm = ({
     control,
     name: "inputs.privileges"
   });
+
+  const selectedGatewayId = watch("inputs.gatewayId");
+  const selectedGatewayPoolId = watch("inputs.gatewayPoolId");
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
@@ -157,7 +170,11 @@ export const EditDynamicSecretMilvusForm = ({
           !usernameTemplate || usernameTemplate === "{{randomUsername}}"
             ? undefined
             : usernameTemplate,
-        inputs
+        inputs: {
+          ...inputs,
+          gatewayId: inputs.gatewayId ?? null,
+          gatewayPoolId: inputs.gatewayPoolId ?? null
+        }
       }
     });
 
@@ -226,6 +243,39 @@ export const EditDynamicSecretMilvusForm = ({
           <div>
             <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
+            </div>
+            <div>
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.AttachGateways}
+                a={OrgPermissionSubjects.Gateway}
+              >
+                {(isAllowed) => (
+                  <FormControl label="Gateway">
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <GatewayPicker
+                          isDisabled={!isAllowed}
+                          value={{
+                            gatewayId: selectedGatewayId ?? null,
+                            gatewayPoolId: selectedGatewayPoolId ?? null
+                          }}
+                          onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                            setValue("inputs.gatewayId", newGwId ?? null, {
+                              shouldDirty: true
+                            });
+                            setValue("inputs.gatewayPoolId", newPoolId ?? null, {
+                              shouldDirty: true
+                            });
+                          }}
+                        />
+                      </div>
+                    </Tooltip>
+                  </FormControl>
+                )}
+              </OrgPermissionCan>
             </div>
             <div className="flex flex-col space-y-4">
               <div className="flex items-start space-x-2">

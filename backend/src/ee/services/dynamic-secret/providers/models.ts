@@ -348,7 +348,7 @@ export const DynamicSecretMongoAtlasSchema = z.object({
 
 export const DynamicSecretMongoDBSchema = z.object({
   host: z.string().min(1).trim().toLowerCase(),
-  port: z.number(),
+  port: z.number().optional().nullable(),
   username: z.string().min(1).trim(),
   password: z.string().min(1).trim(),
   database: z.string().min(1).trim(),
@@ -753,7 +753,9 @@ export const DynamicSecretMilvusSchema = z.object({
       "Privileges granted to an ephemeral role bound to the lease user. Leave empty to create the user with only the built-in public role."
     ),
   ca: z.string().optional(),
-  sslRejectUnauthorized: z.boolean().default(true)
+  sslRejectUnauthorized: z.boolean().default(true),
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional()
 });
 
 export enum DynamicSecretProviders {

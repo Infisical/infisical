@@ -6,6 +6,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FilterableSelect,
@@ -18,6 +19,11 @@ import {
   Switch,
   Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, MILVUS_OBJECT_TYPES } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -45,7 +51,9 @@ const formSchema = z.object({
       )
       .default([]),
     ca: z.string().optional(),
-    sslRejectUnauthorized: z.boolean().default(true)
+    sslRejectUnauthorized: z.boolean().default(true),
+    gatewayId: z.string().optional(),
+    gatewayPoolId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -92,7 +100,9 @@ export const MilvusInputForm = ({
   const {
     control,
     formState: { isSubmitting },
-    handleSubmit
+    handleSubmit,
+    setValue,
+    watch
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -114,6 +124,9 @@ export const MilvusInputForm = ({
     control,
     name: "provider.privileges"
   });
+
+  const providerGatewayId = watch("provider.gatewayId");
+  const providerGatewayPoolId = watch("provider.gatewayPoolId");
 
   const createDynamicSecret = useCreateDynamicSecret();
 
@@ -200,6 +213,39 @@ export const MilvusInputForm = ({
           <div>
             <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
+            </div>
+            <div>
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.AttachGateways}
+                a={OrgPermissionSubjects.Gateway}
+              >
+                {(isAllowed) => (
+                  <FormControl label="Gateway">
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <GatewayPicker
+                          isDisabled={!isAllowed}
+                          value={{
+                            gatewayId: providerGatewayId ?? null,
+                            gatewayPoolId: providerGatewayPoolId ?? null
+                          }}
+                          onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                            setValue("provider.gatewayId", newGwId ?? undefined, {
+                              shouldDirty: true
+                            });
+                            setValue("provider.gatewayPoolId", newPoolId ?? undefined, {
+                              shouldDirty: true
+                            });
+                          }}
+                        />
+                      </div>
+                    </Tooltip>
+                  </FormControl>
+                )}
+              </OrgPermissionCan>
             </div>
             <div className="flex flex-col">
               <div className="flex items-start space-x-2">
