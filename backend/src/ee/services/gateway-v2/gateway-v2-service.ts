@@ -41,9 +41,14 @@ import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
-import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
+import {
+  DEFAULT_HEARTBEAT_TTL,
+  GATEWAY_ACTOR_OID,
+  GATEWAY_ROUTING_INFO_OID,
+  PAM_INFO_OID
+} from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { GatewayHealthCheckStatus, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
+import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 // Temporary limit until gateway limiting is implemented at the relay level
@@ -843,14 +848,14 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway connection details for gateway ${gatewayId} not found.` });
     }
 
-    let isGatewayReachable = false;
+    let probeResponse: string | undefined;
     try {
-      isGatewayReachable = await withGatewayV2Proxy(
+      probeResponse = await withGatewayV2Proxy(
         async (port) => {
-          return new Promise<boolean>((resolve, reject) => {
+          return new Promise<string>((resolve, reject) => {
             const socket = new net.Socket();
-            let responseReceived = false;
             let isResolved = false;
+            const chunks: Buffer[] = [];
 
             socket.setTimeout(10000);
 
@@ -861,12 +866,13 @@ export const gatewayV2ServiceFactory = ({
             };
 
             socket.on("data", (data: Buffer) => {
-              const response = data.toString().trim();
-              if (response === "PONG" && !isResolved) {
+              chunks.push(data);
+              const response = Buffer.concat(chunks).toString().trim();
+              // Resolve as soon as we have a complete response (PONG or a JSON object)
+              if ((response === "PONG" || response.startsWith("{")) && !isResolved) {
                 isResolved = true;
-                responseReceived = true;
                 cleanup();
-                resolve(true);
+                resolve(response);
               }
             });
 
@@ -887,10 +893,10 @@ export const gatewayV2ServiceFactory = ({
             });
 
             socket.on("close", () => {
-              if (!isResolved && !responseReceived) {
+              if (!isResolved) {
                 isResolved = true;
                 cleanup();
-                reject(new Error("Connection closed without receiving PONG"));
+                reject(new Error("Connection closed without receiving response"));
               }
             });
 
@@ -898,31 +904,42 @@ export const gatewayV2ServiceFactory = ({
           });
         },
         {
-          protocol: GatewayProxyProtocol.Ping,
+          protocol: GatewayProxyProtocol.Health,
           relayHost: gatewayV2ConnectionDetails.relayHost,
           gateway: gatewayV2ConnectionDetails.gateway,
           relay: gatewayV2ConnectionDetails.relay
         }
       );
     } catch (err) {
-      await gatewayV2DAL.updateById(gatewayId, {
-        heartbeat: new Date(),
-        lastHealthCheckStatus: GatewayHealthCheckStatus.Failed
-      });
+      // Probe failed — gateway is unreachable. Mark TTL as 0 but preserve the last successful heartbeat timestamp.
+      await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
       throw err;
     }
 
-    if (!isGatewayReachable) {
-      await gatewayV2DAL.updateById(gatewayId, {
-        heartbeat: new Date(),
-        lastHealthCheckStatus: GatewayHealthCheckStatus.Failed
-      });
+    if (!probeResponse) {
+      await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
       throw new BadRequestError({ message: `Gateway ${gatewayId} is not reachable` });
+    }
+
+    // Parse the response to extract heartbeatTTL.
+    // New gateways respond with JSON: {"status":"ok","heartbeatTTL":180}
+    // Old gateways respond with plain: PONG
+    let heartbeatTTL = DEFAULT_HEARTBEAT_TTL;
+    if (probeResponse.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(probeResponse) as { status?: string; heartbeatTTL?: number };
+        if (parsed.status === "ok" && typeof parsed.heartbeatTTL === "number" && parsed.heartbeatTTL > 0) {
+          heartbeatTTL = parsed.heartbeatTTL;
+        }
+      } catch {
+        // Malformed JSON — fall back to default TTL since the gateway *was* reachable
+        logger.warn({ gatewayId, probeResponse }, "Gateway health probe returned unparseable JSON, using default TTL");
+      }
     }
 
     await gatewayV2DAL.updateById(gatewayId, {
       heartbeat: new Date(),
-      lastHealthCheckStatus: GatewayHealthCheckStatus.Healthy
+      heartbeatTTL
     });
   };
 
@@ -1066,7 +1083,7 @@ export const gatewayV2ServiceFactory = ({
 
     logger.warn(
       { gatewayIds: unhealthyGateways.map((g) => g.id) },
-      "Found gateways with stale heartbeat. Sending notifications."
+      "Found gateways that may be offline or unreachable. Sending notifications."
     );
 
     const gatewaysByOrg = groupBy(unhealthyGateways, (gw) => gw.orgId);
@@ -1083,7 +1100,7 @@ export const gatewayV2ServiceFactory = ({
         }
 
         const gatewayNames = gateways.map((g) => `"${g.name}"`).join(", ");
-        const body = `The following gateway(s) in your organization may be offline as they haven't reported a heartbeat in over 5 minutes: ${gatewayNames}. Please check their status.`;
+        const body = `The following gateway(s) in your organization may be offline or unreachable: ${gatewayNames}. Please check their status.`;
 
         await notificationService.createUserNotifications(
           admins.map((admin) => ({

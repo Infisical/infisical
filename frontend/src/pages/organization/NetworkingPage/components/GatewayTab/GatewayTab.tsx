@@ -300,9 +300,7 @@ export const GatewayTab = withPermission(
                           <Td>
                             <GatewayHealthStatus
                               heartbeat={"heartbeat" in el ? el.heartbeat : null}
-                              lastHealthCheckStatus={
-                                "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
-                              }
+                              heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </Td>
                           <Td className="w-5" onClick={(e) => e.stopPropagation()}>
@@ -327,7 +325,7 @@ export const GatewayTab = withPermission(
                                   </DropdownMenuItem>
                                   {!el.isV1 &&
                                     ("heartbeat" in el
-                                      ? !!el.heartbeat || !!el.lastHealthCheckStatus
+                                      ? !!el.heartbeat || !!el.heartbeatTTL
                                       : false) && (
                                       <DropdownMenuItem
                                         icon={<FontAwesomeIcon icon={faHeartPulse} />}

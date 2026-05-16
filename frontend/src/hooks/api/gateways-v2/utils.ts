@@ -1,15 +1,12 @@
-import { GatewayHealthCheckStatus } from "./types";
-
-export const GATEWAY_HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
+export const HEARTBEAT_BUFFER_SECONDS = 30;
 
 export const isGatewayHealthy = (
   heartbeat?: string | null,
-  lastHealthCheckStatus?: GatewayHealthCheckStatus | string | null
+  heartbeatTTL?: number | null
 ): boolean => {
   if (!heartbeat) return false;
-  const isHeartbeatFresh =
-    new Date(heartbeat).getTime() > Date.now() - GATEWAY_HEARTBEAT_TIMEOUT_MS;
-  const isNotFailed =
-    !lastHealthCheckStatus || lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed;
-  return isHeartbeatFresh && isNotFailed;
+  if (!heartbeatTTL) return false;
+  return (
+    new Date(heartbeat).getTime() + (heartbeatTTL + HEARTBEAT_BUFFER_SECONDS) * 1000 > Date.now()
+  );
 };

@@ -63,16 +63,10 @@ export const NetworkHealthBanner = () => {
   const unreachableGateways = useMemo(
     () =>
       gateways?.filter((g) => {
+        if (g.isV1) return false;
         if (!("heartbeat" in g)) return false;
-        if (
-          g.heartbeat === null &&
-          ("lastHealthCheckStatus" in g ? g.lastHealthCheckStatus : null) === null
-        )
-          return false;
-        return !isGatewayHealthy(
-          g.heartbeat,
-          "lastHealthCheckStatus" in g ? g.lastHealthCheckStatus : null
-        );
+        if (g.heartbeat === null && !("heartbeatTTL" in g && g.heartbeatTTL)) return false;
+        return !isGatewayHealthy(g.heartbeat, "heartbeatTTL" in g ? g.heartbeatTTL : null);
       }).length ?? 0,
     [gateways]
   );

@@ -20,7 +20,7 @@ export const GatewaysV2Schema = z.object({
   heartbeat: z.date().nullable().optional(),
   encryptedPamSessionKey: zodBuffer.nullable().optional(),
   healthAlertedAt: z.date().nullable().optional(),
-  lastHealthCheckStatus: z.string().nullable().optional(),
+  heartbeatTTL: z.number().nullable().optional(),
   tokenVersion: z.number().default(0)
 });
 

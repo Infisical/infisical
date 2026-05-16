@@ -19,7 +19,7 @@ const SanitizedPoolMemberSchema = GatewaysV2Schema.pick({
   id: true,
   name: true,
   heartbeat: true,
-  lastHealthCheckStatus: true
+  heartbeatTTL: true
 });
 
 export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
