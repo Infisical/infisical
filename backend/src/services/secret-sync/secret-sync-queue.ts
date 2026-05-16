@@ -86,7 +86,7 @@ type TSecretSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementBy" | "setExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -137,7 +137,7 @@ const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 120;
 const CONNECTION_CONCURRENCY_LIMIT = 5;
-const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000;
+const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000 / 2;
 
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
@@ -228,44 +228,25 @@ export const secretSyncQueueFactory = ({
     folderCommitService
   });
 
-  // Admission via INCRBY: the INCR itself is atomic, so concurrent admits cannot exceed
-  // CONNECTION_CONCURRENCY_LIMIT. setExpiry always runs (success and over-limit paths) so
-  // the key never persists TTL-less, and any post-INCR failure fires a compensating DECR.
+  // INCR + cap check + EXPIRE happen atomically inside a Lua script. TTL is refreshed
+  // only when a slot is actually claimed; failed probes (over-limit) and releases
+  // never touch EXPIRE — so an orphaned counter from a worker that died mid-sync
+  // can't have its expiry indefinitely shoved forward by subsequent admit attempts,
+  // and ages out within CONNECTION_CONCURRENCY_TTL_SECONDS of the last successful
+  // admit.
   const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
     const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
-    const count = await keyStore.incrementBy(key, 1);
-
-    if (count <= 0) {
-      logger.warn(
-        `SecretSync connection concurrency counter drifted non-positive after admit [connectionId=${connectionId}] [count=${count}]`
-      );
-    }
-
-    try {
-      // INCR on a missing key creates it without a TTL; EXPIRE is what arms it. Calling
-      // this on every path prevents an unarmed key from permanently locking the connection
-      // if a future admit returns over-limit and skips setExpiry.
-      await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
-
-      if (count > CONNECTION_CONCURRENCY_LIMIT) {
-        await keyStore.incrementBy(key, -1);
-        return false;
-      }
-
-      return true;
-    } catch (err) {
-      await keyStore.incrementBy(key, -1).catch(() => {});
-      throw err;
-    }
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+      key,
+      CONNECTION_CONCURRENCY_LIMIT,
+      CONNECTION_CONCURRENCY_TTL_SECONDS
+    );
+    return count !== -1;
   };
 
   const $releaseConnectionConcurrency = async (connectionId: string) => {
     const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
-    await keyStore.incrementBy(key, -1);
-    // EXPIRE on a missing key is a no-op; on an existing one it refreshes the TTL. The
-    // counter can briefly go negative if the key TTL expired while a job was running, but
-    // it self-corrects as orphan releases land and future admits' INCRs climb back up.
-    await keyStore.setExpiry(key, CONNECTION_CONCURRENCY_TTL_SECONDS);
+    await keyStore.decrementByOrDelete(key);
   };
 
   const $getInfisicalSecrets = async (
@@ -1230,7 +1211,7 @@ export const secretSyncQueueFactory = ({
         await lock.release();
       }
     },
-    { concurrency: 5 }
+    { concurrency: 15 }
   );
 
   const startDailySecretSyncRetryJob = () => {
