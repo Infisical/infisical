@@ -88,7 +88,8 @@ export enum ApiDocsTags {
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
-  Events = "Event Subscriptions"
+  Events = "Event Subscriptions",
+  GatewaysV3 = "Gateways"
 }
 
 export const GROUPS = {
@@ -1399,6 +1400,7 @@ export const DASHBOARD = {
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1416,7 +1418,8 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
-    includeSecretRotations: "Whether to include secret rotations in the response."
+    includeSecretRotations: "Whether to include secret rotations in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response."
   }
 } as const;
 
@@ -2585,7 +2588,9 @@ export const CertificateAuthorities = {
       maxPathLength:
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
-        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      crlDistributionPointUrls:
+        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is always included as the primary."
     }
   }
 };
@@ -2727,6 +2732,9 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    DEVIN: {
+      apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
+    },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
       accessToken: "The Access Token used to access GitLab.",
@@ -2786,6 +2794,11 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    DATADOG: {
+      url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
+      apiKey: "The Datadog API key used to authenticate.",
+      applicationKey: "The Datadog Application key used to authenticate."
+    },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
       port: "The port number of the SSH server (default: 22).",
@@ -2812,6 +2825,19 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    OVH: {
+      privateKey:
+        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+      certificate:
+        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+    },
+    SNOWFLAKE: {
+      account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
+      username: "The username (login name) used to authenticate with Snowflake.",
+      password: "The Programmatic Access Token used to authenticate with Snowflake."
     },
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
@@ -3025,6 +3051,9 @@ export const SecretSyncs = {
       mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
       path: "The Hashicorp Vault path to sync secrets to."
     },
+    OVH: {
+      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
+    },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
@@ -3050,6 +3079,9 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    DEVIN: {
+      orgId: "The Devin organization ID to sync secrets to."
     },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",
@@ -3127,6 +3159,10 @@ export const SecretSyncs = {
       repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
       branch:
         "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
+    },
+    SNOWFLAKE: {
+      database: "The name of the Snowflake database to sync secrets to.",
+      schema: "The name of the Snowflake schema (within the database) to sync secrets to."
     }
   }
 };
@@ -3185,6 +3221,9 @@ export const SecretRotations = {
   RECONCILE: {
     rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
   },
+  CHECK_CREDENTIALS: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to check active credentials for.`
+  }),
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:
@@ -3282,6 +3321,9 @@ export const SecretRotations = {
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3345,6 +3387,10 @@ export const SecretRotations = {
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
+      applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
     }
   }
 };
@@ -3600,5 +3646,31 @@ export const SECRET_SHARING = {
   },
   DELETE: {
     id: "The ID of the shared secret to delete."
+  }
+} as const;
+
+export const GATEWAYS = {
+  CREATE: {
+    name: "Name of the gateway.",
+    authMethod:
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+  },
+  UPDATE: {
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+  },
+  AUTH_METHOD: {
+    stsEndpoint: "The endpoint URL for the AWS STS API.",
+    allowedPrincipalArns:
+      "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
+    allowedAccountIds:
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+  },
+  LOGIN: {
+    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;

@@ -8,7 +8,6 @@ import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
@@ -184,7 +183,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
+    logger.info(`daily-resource-cleanup: audit log started`);
     do {
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -217,7 +216,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       }
       isRetrying = numberOfRetryOnFailure > 0;
     } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
-    logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
+    logger.info(`daily-resource-cleanup: audit log completed`);
   };
 
   const getApproximateRowCount: TAuditLogDALFactory["getApproximateRowCount"] = async () => {

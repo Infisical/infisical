@@ -12,8 +12,7 @@ const checkboxVariants = cva(
     "outline-none group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2",
     "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed",
     "disabled:opacity-50 cursor-pointer",
-    "aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20",
-    "dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+    "aria-invalid:border-danger aria-invalid:ring-danger/40",
     "border-foreground/15 inner-shadow text-foreground hover:bg-foreground/10 hover:border-foreground/20"
   ),
   {
@@ -52,6 +51,7 @@ type CheckboxProps = Omit<
     isIndeterminate?: boolean;
     isChecked?: boolean;
     isRequired?: boolean;
+    isError?: boolean;
   };
 
 function Checkbox({
@@ -61,12 +61,14 @@ function Checkbox({
   isIndeterminate,
   isChecked,
   isRequired,
+  isError,
   ...props
 }: CheckboxProps) {
   return (
     <CheckboxPrimitive
       data-slot="checkbox"
       className={cn(checkboxVariants({ variant }), className)}
+      aria-invalid={isError}
       {...props}
       checked={isChecked}
       disabled={isDisabled}

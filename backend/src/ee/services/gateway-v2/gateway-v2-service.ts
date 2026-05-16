@@ -3,9 +3,8 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TableName, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -15,7 +14,7 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { ActorAuthMethod, ActorType, AuthTokenType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -40,7 +39,8 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
-import { TGatewayEnrollmentTokenDALFactory } from "./gateway-enrollment-token-dal";
+import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
+import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { GatewayHealthCheckStatus, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
@@ -54,7 +54,6 @@ type TGatewayV2ServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
-  gatewayEnrollmentTokenDAL: TGatewayEnrollmentTokenDALFactory;
   relayDAL: TRelayDALFactory;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
@@ -67,6 +66,10 @@ type TGatewayV2ServiceFactoryDep = {
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
   aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
+  resourceAuthMethodService: Pick<
+    TResourceAuthMethodServiceFactory,
+    "initAtCreate" | "loadView" | "mintToken" | "loginWithToken"
+  >;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -76,7 +79,6 @@ export const gatewayV2ServiceFactory = ({
   kmsService,
   relayService,
   gatewayV2DAL,
-  gatewayEnrollmentTokenDAL,
   relayDAL,
   permissionService,
   orgDAL,
@@ -87,17 +89,9 @@ export const gatewayV2ServiceFactory = ({
   pamDiscoverySourceDAL,
   identityKubernetesAuthDAL,
   aiMcpServerDAL,
-  pkiDiscoveryConfigDAL
+  pkiDiscoveryConfigDAL,
+  resourceAuthMethodService
 }: TGatewayV2ServiceFactoryDep) => {
-  const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
-
-  const $generateEnrollmentToken = () => {
-    const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
-    const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-    const expiresAt = new Date(Date.now() + ENROLLMENT_TOKEN_TTL_SECONDS * 1000);
-    return { plainToken, tokenHash, expiresAt };
-  };
-
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -353,27 +347,9 @@ export const gatewayV2ServiceFactory = ({
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
 
-    // Check enrollment token status for each gateway
-    const allTokens = await gatewayEnrollmentTokenDAL.find({ orgId: orgPermission.orgId });
-    const now = new Date();
-    const tokenStatusMap = new Map<string, "pending" | "expired">();
-    for (const token of allTokens) {
-      if (!token.usedAt && token.gatewayId) {
-        const isExpired = token.expiresAt <= now;
-        const current = tokenStatusMap.get(token.gatewayId);
-        // A non-expired token takes priority over an expired one
-        if (!isExpired) {
-          tokenStatusMap.set(token.gatewayId, "pending");
-        } else if (!current) {
-          tokenStatusMap.set(token.gatewayId, "expired");
-        }
-      }
-    }
-
     return gateways.map((gateway) => ({
       ...gateway,
-      connectedResourcesCount: countMap.get(gateway.id) ?? 0,
-      enrollmentTokenStatus: tokenStatusMap.get(gateway.id) ?? null
+      connectedResourcesCount: countMap.get(gateway.id) ?? 0
     }));
   };
 
@@ -829,17 +805,22 @@ export const gatewayV2ServiceFactory = ({
     if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
 
     try {
-      const [gateway] = await gatewayV2DAL.upsert(
-        [
-          {
-            orgId,
-            name,
-            identityId: actorId,
-            relayId: relay.id
-          }
-        ],
-        ["identityId"]
-      );
+      const gateway = await gatewayV2DAL.transaction(async (tx) => {
+        const [upserted] = await gatewayV2DAL.upsert(
+          [
+            {
+              orgId,
+              name,
+              identityId: actorId,
+              relayId: relay.id
+            }
+          ],
+          ["identityId"],
+          tx
+        );
+
+        return upserted;
+      });
 
       return await $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
     } catch (err) {
@@ -1204,13 +1185,15 @@ export const gatewayV2ServiceFactory = ({
     actorId,
     actorType,
     actorAuthMethod,
-    name
+    name,
+    authMethod
   }: {
     orgId: string;
     actorId: string;
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     name: string;
+    authMethod: { method: "aws"; config: TAwsAuthMethodConfig } | { method: "token" };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType,
@@ -1238,8 +1221,9 @@ export const gatewayV2ServiceFactory = ({
         });
       }
 
+      let created;
       try {
-        return await gatewayV2DAL.create({ orgId, name }, tx);
+        created = await gatewayV2DAL.create({ orgId, name }, tx);
       } catch (err) {
         if (
           err instanceof DatabaseError &&
@@ -1249,64 +1233,13 @@ export const gatewayV2ServiceFactory = ({
         }
         throw err;
       }
+
+      await resourceAuthMethodService.initAtCreate({ gatewayId: created.id, authMethod }, tx);
+
+      return created;
     });
 
     return gateway;
-  };
-
-  const configureTokenAuth = async ({
-    orgPermission,
-    gatewayId
-  }: {
-    orgPermission: OrgServiceActor;
-    gatewayId: string;
-  }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.EditGateways,
-      OrgPermissionSubjects.Gateway
-    );
-
-    const gateway = await gatewayV2DAL.findById(gatewayId);
-    if (!gateway || gateway.orgId !== orgPermission.orgId) {
-      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
-    }
-
-    if (gateway.identityId) {
-      throw new BadRequestError({ message: "Cannot configure token auth for identity-based gateways" });
-    }
-
-    const gatewayToken = $generateEnrollmentToken();
-
-    const record = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
-      // Delete any existing unused enrollment tokens for this gateway
-      const existingTokens = await gatewayEnrollmentTokenDAL.find({ gatewayId }, { tx });
-      const unusedTokenIds = existingTokens.filter((t) => !t.usedAt).map((t) => t.id);
-      if (unusedTokenIds.length > 0) {
-        await gatewayEnrollmentTokenDAL.delete({ $in: { id: unusedTokenIds } }, tx);
-      }
-
-      return gatewayEnrollmentTokenDAL.create(
-        {
-          orgId: orgPermission.orgId,
-          tokenHash: gatewayToken.tokenHash,
-          ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
-          expiresAt: gatewayToken.expiresAt,
-          gatewayId
-        },
-        tx
-      );
-    });
-
-    return { ...record, token: gatewayToken.plainToken, gatewayName: gateway.name };
   };
 
   const connectGateway = async ({
@@ -1351,60 +1284,7 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const enrollGateway = async ({ token }: { token: string }) => {
-    const tokenHash = crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
-
-    const tokenRecord = await gatewayEnrollmentTokenDAL.findOne({ tokenHash });
-    if (!tokenRecord) {
-      throw new BadRequestError({ message: "Invalid enrollment token" });
-    }
-
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new BadRequestError({ message: "Enrollment token has expired" });
-    }
-
-    if (!tokenRecord.gatewayId) {
-      throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
-    }
-
-    const { orgId } = tokenRecord;
-
-    // Consume the token and bump tokenVersion in a single transaction.
-    const gateway = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
-      const rows = await tx(TableName.GatewayEnrollmentTokens)
-        .where({ id: tokenRecord.id })
-        .whereNull("usedAt")
-        .update({ usedAt: new Date() })
-        .returning("*");
-      if (rows.length === 0) {
-        throw new BadRequestError({ message: "Enrollment token has already been used" });
-      }
-
-      const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId!, tx);
-      if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
-      return gatewayV2DAL.updateById(
-        existing.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
-        tx
-      );
-    });
-
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        gatewayId: gateway.id,
-        orgId,
-        authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN,
-        tokenVersion: gateway.tokenVersion
-      },
-      appCfg.AUTH_SECRET
-    );
-
-    return {
-      accessToken,
-      gatewayId: gateway.id,
-      gatewayName: gateway.name,
-      orgId
-    };
+    return resourceAuthMethodService.loginWithToken({ token });
   };
 
   return {
@@ -1422,7 +1302,6 @@ export const gatewayV2ServiceFactory = ({
     enrollGateway,
     // V3
     createGateway,
-    configureTokenAuth,
     connectGateway
   };
 };

@@ -47,7 +47,12 @@ const Pagination = ({
   const canGoLast = page < upperLimit;
 
   return (
-    <div className={twMerge("flex w-full items-center justify-end px-2 pt-2", className)}>
+    <div
+      className={twMerge(
+        "flex w-full items-center justify-end px-2 pt-2 text-foreground",
+        className
+      )}
+    >
       {startAdornment}
       <div className={twMerge("mr-4 flex items-center space-x-2", startAdornment && "ml-auto")}>
         <div className="text-xs">

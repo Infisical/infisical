@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -47,6 +49,8 @@ type TPkiDiscoveryServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
 
@@ -71,6 +75,8 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryScanHistoryDAL,
   permissionService,
   gatewayV2DAL,
+  gatewayPoolDAL,
+  gatewayPoolService,
   queuePkiDiscoveryScan
 }: TPkiDiscoveryServiceFactoryDep) => {
   const createDiscovery = async ({
@@ -82,11 +88,16 @@ export const pkiDiscoveryServiceFactory = ({
     isAutoScanEnabled,
     scanIntervalDays,
     gatewayId,
+    gatewayPoolId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TCreatePkiDiscoveryDTO) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -129,6 +140,12 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actorOrgId,
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+      });
     }
 
     try {
@@ -140,7 +157,8 @@ export const pkiDiscoveryServiceFactory = ({
         targetConfig,
         isAutoScanEnabled: isAutoScanEnabled ?? false,
         scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
-        gatewayId,
+        gatewayId: gatewayPoolId ? null : gatewayId,
+        gatewayPoolId: gatewayPoolId ?? null,
         isActive: true
       });
 
@@ -164,12 +182,17 @@ export const pkiDiscoveryServiceFactory = ({
     isAutoScanEnabled,
     scanIntervalDays,
     gatewayId,
+    gatewayPoolId,
     isActive,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TUpdatePkiDiscoveryDTO) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const discovery = await pkiDiscoveryConfigDAL.findById(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
@@ -215,7 +238,16 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (gatewayPoolId && gatewayPoolId !== discovery.gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actorOrgId,
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+      });
     }
+
+    const gatewayIdValue = gatewayPoolId ? null : gatewayId;
+    const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
 
     try {
       const updatedDiscovery = await pkiDiscoveryConfigDAL.updateById(discoveryId, {
@@ -224,7 +256,8 @@ export const pkiDiscoveryServiceFactory = ({
         targetConfig,
         isAutoScanEnabled,
         scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
-        gatewayId,
+        gatewayId: gatewayIdValue,
+        gatewayPoolId: gatewayPoolIdValue,
         isActive
       });
 
@@ -292,14 +325,20 @@ export const pkiDiscoveryServiceFactory = ({
     );
 
     let gatewayName: string | null = null;
+    let gatewayPoolName: string | null = null;
     if (discovery.gatewayId) {
       const gateway = await gatewayV2DAL.findOne({ id: discovery.gatewayId });
       if (gateway) {
         gatewayName = gateway.name;
       }
+    } else if (discovery.gatewayPoolId) {
+      const pool = await gatewayPoolDAL.findById(discovery.gatewayPoolId);
+      if (pool) {
+        gatewayPoolName = pool.name;
+      }
     }
 
-    return { ...discovery, gatewayName };
+    return { ...discovery, gatewayName, gatewayPoolName };
   };
 
   const listDiscoveries = async ({

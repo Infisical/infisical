@@ -277,6 +277,10 @@ export enum ProjectPermissionPamAccountPolicyActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionPamInsightsActions {
+  Read = "read"
+}
+
 export enum ProjectPermissionPamDiscoveryActions {
   Read = "read",
   Create = "create",
@@ -291,6 +295,15 @@ export enum ProjectPermissionMcpEndpointActions {
   Edit = "edit",
   Delete = "delete",
   Connect = "connect"
+}
+
+export enum ProjectPermissionHoneyTokenActions {
+  Read = "read",
+  ReadCredentials = "read-credentials",
+  Create = "create",
+  Edit = "edit",
+  Reset = "reset",
+  Revoke = "revoke"
 }
 
 export enum ProjectPermissionApprovalRequestActions {
@@ -443,9 +456,11 @@ export enum ProjectPermissionSub {
   PamSessions = "pam-sessions",
   PamAccountPolicies = "pam-account-policies",
   PamDiscovery = "pam-discovery",
+  PamInsights = "pam-insights",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
+  HoneyTokens = "honey-tokens",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   Insights = "insights"
@@ -735,10 +750,12 @@ export type ProjectPermissionSet =
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
   | [ProjectPermissionPamAccountPolicyActions, ProjectPermissionSub.PamAccountPolicies]
   | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
+  | [ProjectPermissionPamInsightsActions, ProjectPermissionSub.PamInsights]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
+  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
   | [
       ProjectPermissionMcpEndpointActions,
       (

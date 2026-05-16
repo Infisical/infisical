@@ -122,6 +122,7 @@ export type TAddUsersToGroupByUserIds = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   tx?: Knex;
+  shouldFailOnMissingMembers?: boolean;
 };
 
 export type TAddIdentitiesToGroup = {
@@ -140,6 +141,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   tx?: Knex;
+  shouldFailOnMissingMembers?: boolean;
 };
 
 export type TRemoveIdentitiesFromGroup = {

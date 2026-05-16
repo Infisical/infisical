@@ -256,6 +256,18 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type
       });
 
+      if (req.query.offset === 0) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.query.projectId,
+          event: {
+            type: EventType.VIEW_AUDIT_LOGS,
+            metadata: {}
+          }
+        });
+      }
+
       return { auditLogs };
     }
   });

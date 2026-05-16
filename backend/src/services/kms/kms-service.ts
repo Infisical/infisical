@@ -404,8 +404,27 @@ export const kmsServiceFactory = ({
     { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
-    // daniel: currently we only support imports for encrypt/decrypt keys
-    verifyKeyTypeAndAlgorithm(keyUsage, algorithm, { forceType: KmsKeyUsage.ENCRYPT_DECRYPT });
+    verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
+
+    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+      const expectedLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
+      if (key.length !== expectedLength) {
+        throw new BadRequestError({
+          message: `Invalid key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+        });
+      }
+    }
+
+    if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+      const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
+      try {
+        getPublicKeyFromPrivateKey(key);
+      } catch {
+        throw new BadRequestError({
+          message: "Invalid private key material. Expected a PKCS8 PEM-encoded private key."
+        });
+      }
+    }
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
@@ -415,7 +434,7 @@ export const kmsServiceFactory = ({
       const kmsDoc = await kmsDAL.create(
         {
           name: sanitizedName,
-          keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+          keyUsage,
           orgId,
           isReserved,
           projectId,

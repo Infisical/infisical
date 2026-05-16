@@ -229,7 +229,7 @@ export const secretSharingServiceFactory = ({
       let displayUsername: string | undefined;
 
       if (actor === ActorType.USER) {
-        const user = await userDAL.findById(actorId);
+        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
         if (!user) {
           throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
@@ -237,7 +237,9 @@ export const secretSharingServiceFactory = ({
 
         displayUsername = user.username;
       } else if (actor === ActorType.IDENTITY) {
-        const identity = await identityDAL.findById(actorId);
+        const identity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+          identityDAL.findById(actorId)
+        );
 
         if (!identity) {
           throw new NotFoundError({ message: `Identity with ID '${actorId}' not found` });
@@ -438,7 +440,7 @@ export const secretSharingServiceFactory = ({
       });
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
-      const user = await userDAL.findById(actorId);
+      const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
       if (!user) {
         throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
@@ -575,7 +577,7 @@ export const secretSharingServiceFactory = ({
 
     if (!actorId) return false;
 
-    const user = await userDAL.findById(actorId);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
     if (!user || !user.email) return false;
 
     return (sharedSecret.authorizedEmails as string[]).includes(user.email);

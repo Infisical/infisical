@@ -7,6 +7,7 @@ import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
   BaseApprovalRequestSchema,
+  BaseCheckPolicyMatchResponseSchema,
   BaseCreateApprovalPolicySchema,
   BaseCreateApprovalRequestSchema,
   BaseUpdateApprovalPolicySchema
@@ -149,4 +150,13 @@ export const CreatePamAccessRequestSchema = BaseCreateApprovalRequestSchema.exte
 // Grants
 export const PamAccessRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({
   attributes: PamAccessPolicyRequestDataSchema
+});
+
+// Check Policy Match Response
+export const PamAccessCheckPolicyMatchResponseSchema = BaseCheckPolicyMatchResponseSchema.extend({
+  constraints: z
+    .object({
+      accessDuration: z.object({ max: z.string() })
+    })
+    .optional()
 });

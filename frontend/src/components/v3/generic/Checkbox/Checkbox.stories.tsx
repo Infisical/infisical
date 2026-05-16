@@ -1,5 +1,17 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLegend,
+  FieldSet,
+  FieldTitle
+} from "../Field";
+import { Label } from "../Label";
 import { Checkbox } from "./Checkbox";
 
 /**
@@ -36,7 +48,10 @@ const meta = {
       control: "boolean"
     }
   },
-  args: { isChecked: false, isDisabled: false }
+  args: { isChecked: false, isDisabled: false },
+  globals: {
+    backgrounds: { value: "card" }
+  }
 } satisfies Meta<typeof Checkbox>;
 
 export default meta;
@@ -206,4 +221,138 @@ export const Disabled: Story = {
       }
     }
   }
+};
+
+export const Indeterminate: Story = {
+  name: "State: Indeterminate",
+  args: {
+    variant: "outline",
+    isIndeterminate: true
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pass `isIndeterminate` for the mixed-selection state — used by parent checkboxes when only some children are selected. The minus icon replaces the check, signaling 'partial' rather than 'on' or 'off'."
+      }
+    }
+  }
+};
+
+export const WithLabel: Story = {
+  name: "Example: With Label",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The minimum accessible pairing — a `Label` whose `htmlFor` matches the `Checkbox`'s `id`. Clicking the label toggles the checkbox."
+      }
+    }
+  },
+  render: () => (
+    <div className="flex w-80 items-center gap-3">
+      <Checkbox id="checkbox-terms" />
+      <Label htmlFor="checkbox-terms">I agree to the terms of service</Label>
+    </div>
+  )
+};
+
+export const WithDescription: Story = {
+  name: "Example: With Description",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pair a `Checkbox` with `FieldTitle` and `FieldDescription` inside a horizontal `Field` for the canonical settings-row layout — checkbox on the left, title and helper text on the right."
+      }
+    }
+  },
+  render: () => (
+    <Field orientation="horizontal" className="w-[420px]">
+      <Checkbox id="checkbox-deploy" defaultChecked />
+      <FieldContent>
+        <FieldTitle>Deploy events</FieldTitle>
+        <FieldDescription>
+          Email me when a deploy completes, fails, or is rolled back.
+        </FieldDescription>
+      </FieldContent>
+    </Field>
+  )
+};
+
+function WithValidationErrorRender() {
+  const [accepted, setAccepted] = useState(false);
+  return (
+    <Field className="w-[420px]">
+      <Field orientation="horizontal">
+        <Checkbox
+          id="checkbox-terms-required"
+          isChecked={accepted}
+          onCheckedChange={(next) => setAccepted(next === true)}
+          isError={!accepted}
+        />
+        <FieldContent>
+          <FieldTitle>I agree to the terms of service</FieldTitle>
+          <FieldDescription>
+            By checking this box you consent to our terms and privacy policy.
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+      {!accepted && <FieldError>You must accept the terms to continue.</FieldError>}
+    </Field>
+  );
+}
+
+export const WithValidationError: Story = {
+  name: "Example: With Validation Error",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Setting `isError` flips `aria-invalid="true"` on the `Checkbox`, which paints the danger border and lets assistive tech announce the error — same contract as `Input`. Pair with a `FieldError` for required-acknowledgement flows (terms, policies, destructive confirmations); the error clears as soon as the user checks the box.'
+      }
+    }
+  },
+  render: () => <WithValidationErrorRender />
+};
+
+export const InFieldSet: Story = {
+  name: "Example: In Field Set",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Wrap related boolean controls in a `FieldSet` with a `FieldLegend` for semantic grouping — the legend acts as a single accessible label for the entire set. The canonical layout for a notifications, permissions, or feature-flag picker."
+      }
+    }
+  },
+  render: () => (
+    <FieldSet className="w-[420px]">
+      <FieldLegend>Notifications</FieldLegend>
+      <FieldDescription>Choose which events should email you.</FieldDescription>
+      <FieldGroup>
+        <Field orientation="horizontal">
+          <Checkbox id="notify-deploys" defaultChecked />
+          <FieldContent>
+            <FieldTitle>Deploy events</FieldTitle>
+            <FieldDescription>When a deploy completes, fails, or is rolled back.</FieldDescription>
+          </FieldContent>
+        </Field>
+        <Field orientation="horizontal">
+          <Checkbox id="notify-access" />
+          <FieldContent>
+            <FieldTitle>Access changes</FieldTitle>
+            <FieldDescription>When roles or permissions change for this project.</FieldDescription>
+          </FieldContent>
+        </Field>
+        <Field orientation="horizontal">
+          <Checkbox id="notify-billing" defaultChecked />
+          <FieldContent>
+            <FieldTitle>Billing updates</FieldTitle>
+            <FieldDescription>Invoices, plan changes, and usage alerts.</FieldDescription>
+          </FieldContent>
+        </Field>
+      </FieldGroup>
+    </FieldSet>
+  )
 };

@@ -10,9 +10,11 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionEmailDomainActions,
   OrgPermissionGroupActions,
+  OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
@@ -48,6 +50,12 @@ const emailDomainPermissionSchema = z
     [OrgPermissionEmailDomainActions.Create]: z.boolean().optional(),
     [OrgPermissionEmailDomainActions.VerifyDomain]: z.boolean().optional(),
     [OrgPermissionEmailDomainActions.Delete]: z.boolean().optional()
+  })
+  .optional();
+
+const honeyTokenPermissionSchema = z
+  .object({
+    [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional()
   })
   .optional();
 
@@ -100,7 +108,8 @@ const orgGatewayPermissionSchema = z
     [OrgGatewayPermissionActions.EditGateways]: z.boolean().optional(),
     [OrgGatewayPermissionActions.DeleteGateways]: z.boolean().optional(),
     [OrgGatewayPermissionActions.CreateGateways]: z.boolean().optional(),
-    [OrgGatewayPermissionActions.AttachGateways]: z.boolean().optional()
+    [OrgGatewayPermissionActions.AttachGateways]: z.boolean().optional(),
+    [OrgGatewayPermissionActions.RevokeGatewayAccess]: z.boolean().optional()
   })
   .optional();
 
@@ -140,6 +149,13 @@ const adminConsolePermissionSchmea = z
   })
   .optional();
 
+const projectPermissionSchema = z
+  .object({
+    [OrgPermissionProjectActions.Create]: z.boolean().optional(),
+    [OrgPermissionProjectActions.RequestAccess]: z.boolean().optional()
+  })
+  .optional();
+
 const secretSharingPermissionSchema = z
   .object({
     [OrgPermissionSecretShareAction.ManageSettings]: z.boolean().optional()
@@ -175,11 +191,7 @@ export const formSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      project: z
-        .object({
-          create: z.boolean().optional()
-        })
-        .optional(),
+      project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
       member: generalPermissionSchema,
       groups: groupPermissionSchema,
@@ -205,7 +217,8 @@ export const formSchema = z.object({
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
-      "email-domains": emailDomainPermissionSchema
+      "email-domains": emailDomainPermissionSchema,
+      "honey-tokens": honeyTokenPermissionSchema
     })
     .optional()
 });

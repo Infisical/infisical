@@ -404,6 +404,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
       route("/$discoveryType/$discoverySourceId", "pam/PamDiscoveryDetailPage/route.tsx")
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
+    route("/insights", "pam/InsightsPage/route.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
     route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
     route("/approvals", [
@@ -446,7 +447,10 @@ const organizationRoutes = route("/organizations/$orgId", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", "organization/NetworkingPage/route.tsx")
+  route("/networking", [
+    index("organization/NetworkingPage/route.tsx"),
+    route("/gateways/$gatewayId", "organization/NetworkingPage/GatewayDetailsByIDPage/route.tsx")
+  ])
 ]);
 
 export const routes = rootRoute("root.tsx", [

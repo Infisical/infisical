@@ -27,7 +27,7 @@ export const PamSessionPage = () => {
               <PageHeader
                 scope={ProjectType.PAM}
                 title="Sessions"
-                description="Filter and search through account sessions."
+                description="View and filter account sessions."
               />
               <PamSessionSection />
             </div>

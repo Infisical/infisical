@@ -1,26 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { faCircleXmark } from "@fortawesome/free-regular-svg-icons";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faFilter,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { FilterIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
   EmptyState,
-  IconButton,
-  Input,
+  IconButton as IconButtonV2,
   Pagination,
   Table,
   TableContainer,
@@ -29,7 +16,18 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { ROUTE_PATHS } from "@app/const/routes";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
@@ -58,20 +56,12 @@ type Props = {
 };
 
 export const PamSessionsTable = ({ sessions }: Props) => {
-  const navigate = useNavigate({ from: ROUTE_PATHS.Pam.SessionsPage.path });
-
-  const { search: initSearch } = useSearch({
-    from: ROUTE_PATHS.Pam.SessionsPage.id
-  });
-
   const [filters, setFilters] = useState<Filters>({
     resourceType: [],
     status: []
   });
 
   const {
-    search,
-    setSearch,
     setPage,
     page,
     perPage,
@@ -83,90 +73,18 @@ export const PamSessionsTable = ({ sessions }: Props) => {
     setOrderDirection,
     setOrderBy
   } = usePagination<OrderBy>(OrderBy.CreatedAt, {
-    initPerPage: 20,
-    initSearch
+    initPerPage: 20
   });
 
   useEffect(() => {
     setOrderDirection(OrderByDirection.DESC);
   }, []);
 
-  const sessionsWithMatches = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
-
-    if (!searchValue) {
-      return sessions.map((session) => ({
-        session,
-        isMatch: true,
-        filteredLogs: []
-      }));
-    }
-
-    return sessions.map((session) => {
-      const {
-        resourceType,
-        accountName,
-        actorEmail,
-        actorIp,
-        actorName,
-        actorUserAgent,
-        id,
-        resourceName,
-        userId,
-        logs
-      } = session;
-
-      const { name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
-
-      const isMetaMatch =
-        resourceTypeName.toLowerCase().includes(searchValue) ||
-        accountName.toLowerCase().includes(searchValue) ||
-        actorEmail.toLowerCase().includes(searchValue) ||
-        actorIp.toLowerCase().includes(searchValue) ||
-        actorName.toLowerCase().includes(searchValue) ||
-        actorUserAgent.toLowerCase().includes(searchValue) ||
-        id.toLowerCase().includes(searchValue) ||
-        (userId ?? "").toLowerCase().includes(searchValue) ||
-        resourceName.toLowerCase().includes(searchValue);
-
-      const filteredLogs =
-        searchValue.length >= 2
-          ? logs.filter((log) => {
-              // Handle command logs (database sessions)
-              if ("input" in log && "output" in log) {
-                return (
-                  log.input.toLowerCase().includes(searchValue) ||
-                  log.output.toLowerCase().includes(searchValue)
-                );
-              }
-              // Handle terminal events (SSH sessions)
-              if ("data" in log) {
-                try {
-                  const decodedData = atob(log.data);
-                  return decodedData.toLowerCase().includes(searchValue);
-                } catch {
-                  return false;
-                }
-              }
-              return false;
-            })
-          : [];
-
-      return {
-        session,
-        isMatch: isMetaMatch || filteredLogs.length > 0,
-        filteredLogs
-      };
-    });
-  }, [sessions, search]);
-
   const filteredSessions = useMemo(
     () =>
-      sessionsWithMatches
-        .filter((item) => {
-          if (!item.isMatch) return false;
-
-          const { resourceType, status } = item.session;
+      sessions
+        .filter((session) => {
+          const { resourceType, status } = session;
           if (
             (filters.resourceType.length && !filters.resourceType.includes(resourceType)) ||
             (filters.status.length && !filters.status.includes(status))
@@ -176,10 +94,7 @@ export const PamSessionsTable = ({ sessions }: Props) => {
           return true;
         })
         .sort((a, b) => {
-          const [one, two] =
-            orderDirection === OrderByDirection.ASC
-              ? [a.session, b.session]
-              : [b.session, a.session];
+          const [one, two] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
           switch (orderBy) {
             case OrderBy.Account:
@@ -199,7 +114,7 @@ export const PamSessionsTable = ({ sessions }: Props) => {
             }
           }
         }),
-    [sessionsWithMatches, orderDirection, orderBy, filters]
+    [sessions, orderDirection, orderBy, filters]
   );
 
   useResetPageHelper({
@@ -230,76 +145,62 @@ export const PamSessionsTable = ({ sessions }: Props) => {
 
   const isTableFiltered = Boolean(filters.resourceType.length || filters.status.length);
   const isContentEmpty = !filteredSessions.length;
-  const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
+  const isFilteredEmpty = isContentEmpty && isTableFiltered;
+
+  const availableStatuses = [...new Set(sessions.map(({ status }) => status))];
+  const availableResourceTypes = [...new Set(sessions.map(({ resourceType }) => resourceType))];
 
   return (
     <div>
-      <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => {
-            const newSearch = e.target.value;
-            setSearch(newSearch);
-            navigate({
-              search: (prev) => ({ ...prev, search: newSearch || undefined }),
-              replace: true
-            });
-          }}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search sessions and logs..."
-          className="flex-1"
-        />
+      <div className="flex justify-end">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter sessions"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
+          <DropdownMenuTrigger className="outline-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  className="relative"
+                  size="md"
+                  variant={isTableFiltered ? "project" : "outline"}
+                >
+                  <FilterIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Filter sessions</TooltipContent>
+            </Tooltip>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
-            <DropdownMenuLabel>Session Status</DropdownMenuLabel>
-            {sessions.length ? (
-              [...new Set(sessions.map(({ status }) => status))].map((status) => {
-                return (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setFilters((prev) => ({
-                        ...prev,
-                        status: prev.status.includes(status)
-                          ? prev.status.filter((a) => a !== status)
-                          : [...prev.status, status]
-                      }));
-                    }}
-                    key={status}
-                    icon={
-                      filters.status.includes(status) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
-                  >
-                    {status[0].toUpperCase() + status.slice(1)}
-                  </DropdownMenuItem>
-                );
-              })
+            <DropdownMenuLabel>Status</DropdownMenuLabel>
+            {availableStatuses.length ? (
+              availableStatuses.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={filters.status.includes(status)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFilters((prev) => ({
+                      ...prev,
+                      status: prev.status.includes(status)
+                        ? prev.status.filter((a) => a !== status)
+                        : [...prev.status, status]
+                    }));
+                  }}
+                >
+                  {status[0].toUpperCase() + status.slice(1)}
+                </DropdownMenuCheckboxItem>
+              ))
             ) : (
-              <DropdownMenuItem isDisabled>No Sessions</DropdownMenuItem>
+              <p className="px-2 py-1.5 text-sm text-muted">No sessions</p>
             )}
+            <DropdownMenuSeparator />
             <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
-            {sessions.length ? (
-              [...new Set(sessions.map(({ resourceType }) => resourceType))].map((type) => {
+            {availableResourceTypes.length ? (
+              availableResourceTypes.map((type) => {
                 const { name, image } = PAM_RESOURCE_TYPE_MAP[type];
 
                 return (
-                  <DropdownMenuItem
+                  <DropdownMenuCheckboxItem
+                    key={type}
+                    checked={filters.resourceType.includes(type)}
                     onClick={(e) => {
                       e.preventDefault();
                       setFilters((prev) => ({
@@ -309,27 +210,18 @@ export const PamSessionsTable = ({ sessions }: Props) => {
                           : [...prev.resourceType, type]
                       }));
                     }}
-                    key={type}
-                    icon={
-                      filters.resourceType.includes(type) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
                   >
-                    <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} resource type`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
-                      <span>{name}</span>
-                    </div>
-                  </DropdownMenuItem>
+                    <img
+                      alt={`${name} resource type`}
+                      src={`/images/integrations/${image}`}
+                      className="h-4 w-4"
+                    />
+                    {name}
+                  </DropdownMenuCheckboxItem>
                 );
               })
             ) : (
-              <DropdownMenuItem isDisabled>No Sessions</DropdownMenuItem>
+              <p className="px-2 py-1.5 text-sm text-muted">No sessions</p>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -341,66 +233,61 @@ export const PamSessionsTable = ({ sessions }: Props) => {
               <Th>
                 <div className="flex items-center">
                   Account
-                  <IconButton
+                  <IconButtonV2
                     variant="plain"
                     className={getClassName(OrderBy.Account)}
-                    ariaLabel="sort"
+                    ariaLabel="Sort"
                     onClick={() => handleSort(OrderBy.Account)}
                   >
                     <FontAwesomeIcon icon={getColSortIcon(OrderBy.Account)} />
-                  </IconButton>
+                  </IconButtonV2>
                 </div>
               </Th>
               <Th>
                 <div className="flex items-center">
                   Actor
-                  <IconButton
+                  <IconButtonV2
                     variant="plain"
                     className={getClassName(OrderBy.Actor)}
-                    ariaLabel="sort"
+                    ariaLabel="Sort"
                     onClick={() => handleSort(OrderBy.Actor)}
                   >
                     <FontAwesomeIcon icon={getColSortIcon(OrderBy.Actor)} />
-                  </IconButton>
+                  </IconButtonV2>
                 </div>
               </Th>
               <Th>
                 <div className="flex items-center">
                   Created At
-                  <IconButton
+                  <IconButtonV2
                     variant="plain"
                     className={getClassName(OrderBy.CreatedAt)}
-                    ariaLabel="sort"
+                    ariaLabel="Sort"
                     onClick={() => handleSort(OrderBy.CreatedAt)}
                   >
                     <FontAwesomeIcon icon={getColSortIcon(OrderBy.CreatedAt)} />
-                  </IconButton>
+                  </IconButtonV2>
                 </div>
               </Th>
               <Th>
                 <div className="flex items-center">
                   Ended At
-                  <IconButton
+                  <IconButtonV2
                     variant="plain"
                     className={getClassName(OrderBy.EndedAt)}
-                    ariaLabel="sort"
+                    ariaLabel="Sort"
                     onClick={() => handleSort(OrderBy.EndedAt)}
                   >
                     <FontAwesomeIcon icon={getColSortIcon(OrderBy.EndedAt)} />
-                  </IconButton>
+                  </IconButtonV2>
                 </div>
               </Th>
               <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {currentPageData.map(({ session, filteredLogs }) => (
-              <PamSessionRow
-                key={session.id}
-                session={session}
-                search={search.trim().toLowerCase()}
-                filteredLogs={filteredLogs}
-              />
+            {currentPageData.map((session) => (
+              <PamSessionRow key={session.id} session={session} />
             ))}
           </TBody>
         </Table>
@@ -415,8 +302,8 @@ export const PamSessionsTable = ({ sessions }: Props) => {
         )}
         {isContentEmpty && (
           <EmptyState
-            title={isSearchEmpty ? "No sessions match search" : "No sessions"}
-            icon={isSearchEmpty ? faSearch : faCircleXmark}
+            title={isFilteredEmpty ? "No sessions match filters" : "No sessions"}
+            icon={isFilteredEmpty ? faSearch : faCircleXmark}
           />
         )}
       </TableContainer>

@@ -120,7 +120,9 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const requestedByUser = await userDAL.findById(actorId);
+    const requestedByUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () =>
+      userDAL.findById(actorId)
+    );
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
@@ -363,7 +365,7 @@ export const accessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "This access request has expired" });
     }
 
-    const editedByUser = await userDAL.findById(actorId);
+    const editedByUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
     if (!editedByUser) throw new NotFoundError({ message: "Editing user not found" });
 
@@ -871,7 +873,9 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const targetUser = await userDAL.findById(accessApprovalRequest.requestedByUserId);
+    const targetUser = await requestMemoize(requestMemoKeys.userFindById(accessApprovalRequest.requestedByUserId), () =>
+      userDAL.findById(accessApprovalRequest.requestedByUserId)
+    );
     if (!targetUser) throw new NotFoundError({ message: "Target user not found" });
 
     const memberSubject = subject(ProjectPermissionSub.Member, {

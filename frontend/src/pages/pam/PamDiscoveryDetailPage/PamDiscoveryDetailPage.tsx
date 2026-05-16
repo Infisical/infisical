@@ -55,6 +55,7 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+import { useListGatewayPools } from "@app/hooks/api/gateway-pools/queries";
 import type {
   TPamDiscoverySource,
   TPamDiscoverySourceRunProgress
@@ -143,7 +144,9 @@ const DiscoveryConfigurationSection = ({
   onEdit: VoidFunction;
 }) => {
   const { data: gateways } = useQuery(gatewaysQueryKeys.list());
+  const { data: pools } = useListGatewayPools();
   const gateway = gateways?.find((g) => g.id === source.gatewayId);
+  const pool = pools?.find((p) => p.id === source.gatewayPoolId);
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
@@ -165,6 +168,12 @@ const DiscoveryConfigurationSection = ({
           <Detail>
             <DetailLabel>Gateway</DetailLabel>
             <DetailValue>{gateway?.name ?? "Unknown"}</DetailValue>
+          </Detail>
+        )}
+        {source.gatewayPoolId && (
+          <Detail>
+            <DetailLabel>Gateway Pool</DetailLabel>
+            <DetailValue>{pool?.name ?? "Unknown"}</DetailValue>
           </Detail>
         )}
         <Detail>

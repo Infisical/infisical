@@ -9,6 +9,7 @@ import {
   TRotateAppConnectionCredentialsDTO,
   TUpdateAppConnectionDTO
 } from "@app/hooks/api/appConnections/types";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 
 export const useCreateAppConnection = () => {
   const queryClient = useQueryClient();
@@ -24,6 +25,7 @@ export const useCreateAppConnection = () => {
     onSuccess: ({ projectId, app }) => {
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -42,6 +44,7 @@ export const useUpdateAppConnection = () => {
     onSuccess: ({ projectId, app }) => {
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
       // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
@@ -75,6 +78,7 @@ export const useDeleteAppConnection = () => {
     onSuccess: ({ projectId, app }) => {
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
       // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });

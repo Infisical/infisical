@@ -5,7 +5,6 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 
 export type TUserNotificationDALFactory = ReturnType<typeof userNotificationDALFactory>;
 
@@ -70,7 +69,7 @@ export const userNotificationDALFactory = (db: TDbClient) => {
     let deletedNotificationIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: prune notifications started`);
+    logger.info(`daily-resource-cleanup: prune notifications started`);
     do {
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -110,10 +109,10 @@ export const userNotificationDALFactory = (db: TDbClient) => {
 
     if (numberOfRetryOnFailure >= MAX_RETRY_ON_FAILURE) {
       logger.error(
-        `${QueueName.DailyResourceCleanUp}: prune notifications completed with persistent errors after ${MAX_RETRY_ON_FAILURE} retries. Some notifications might not have been pruned.`
+        `daily-resource-cleanup: prune notifications completed with persistent errors after ${MAX_RETRY_ON_FAILURE} retries. Some notifications might not have been pruned.`
       );
     } else {
-      logger.info(`${QueueName.DailyResourceCleanUp}: prune notifications completed`);
+      logger.info(`daily-resource-cleanup: prune notifications completed`);
     }
   };
 

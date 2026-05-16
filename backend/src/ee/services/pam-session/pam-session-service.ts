@@ -139,9 +139,7 @@ export const pamSessionServiceFactory = ({
 
     const sessions = await pamSessionDAL.findByProjectId(projectId);
 
-    return {
-      sessions: await Promise.all(sessions.map((session) => decryptSession(session, projectId, kmsService)))
-    };
+    return { sessions };
   };
 
   const updateLogsById = async ({ sessionId, logs }: TUpdateSessionLogsDTO, actor: OrgServiceActor) => {
@@ -308,7 +306,7 @@ export const pamSessionServiceFactory = ({
       void (async () => {
         let relayConn: net.Socket | null = null;
         try {
-          const user = await userDAL.findById(actor.id);
+          const user = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
           const certs = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId: session.gatewayId,
             sessionId,

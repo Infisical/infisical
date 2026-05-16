@@ -16,7 +16,6 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 
 export type TSnapshotDALFactory = ReturnType<typeof snapshotDALFactory>;
 
@@ -620,8 +619,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
    */
   const pruneExcessSnapshots = async () => {
     const PRUNE_FOLDER_BATCH_SIZE = 10000;
+    const ORPHAN_PRUNE_BATCH_SIZE = 10000;
+    const ORPHAN_QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const ORPHAN_MAX_RETRY_ON_FAILURE = 3;
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret snapshots started`);
+    logger.info(`daily-resource-cleanup: pruning secret snapshots started`);
     try {
       let uuidOffset = "00000000-0000-0000-0000-000000000000";
       // cleanup snapshots from current folders
@@ -725,19 +727,75 @@ export const snapshotDALFactory = (db: TDbClient) => {
         }
       }
 
-      // cleanup orphaned snapshots (those that don't belong to an existing folder and folder version)
-      await db(TableName.Snapshot)
-        .whereNotIn("folderId", (qb) => {
-          void qb
-            .select("folderId")
-            .from(TableName.SecretFolderVersion)
-            .union((qb1) => void qb1.select("id").from(TableName.SecretFolder));
-        })
-        .delete();
+      // cleanup orphaned snapshots (those that don't belong to an existing folder and folder version).
+      let orphanCursor = "00000000-0000-0000-0000-000000000000";
+      let orphanRetryCount = 0;
+      let orphanBatchHadRows = true;
+      logger.info(`daily-resource-cleanup: pruning orphaned secret snapshots started`);
+      while (orphanBatchHadRows) {
+        // Bind to a const so the transaction closure doesn't capture the mutable
+        // `orphanCursor` from the loop scope (no-loop-func).
+        const cursor = orphanCursor;
+        try {
+          const result = await db.transaction(async (trx) => {
+            // SET LOCAL: scope the timeout to this transaction so it auto-reverts on commit/rollback
+            // and doesn't leak back to the connection pool.
+            await trx.raw(`SET LOCAL statement_timeout = ${ORPHAN_QUERY_TIMEOUT_MS}`);
+
+            const batch = await trx(TableName.Snapshot)
+              .where("id", ">", cursor)
+              .orderBy("id", "asc")
+              .limit(ORPHAN_PRUNE_BATCH_SIZE)
+              .select("id");
+
+            if (batch.length === 0) {
+              return { nextCursor: cursor, scanned: 0, deleted: 0 };
+            }
+
+            const batchIds = batch.map((row) => row.id);
+            const lastId = batchIds[batchIds.length - 1];
+
+            const deleted = await trx(TableName.Snapshot)
+              .whereIn("id", batchIds)
+              .whereNotExists(
+                (qb) =>
+                  void qb
+                    .select(trx.raw("1"))
+                    .from(TableName.SecretFolder)
+                    .whereRaw(`"${TableName.SecretFolder}"."id" = "${TableName.Snapshot}"."folderId"`)
+              )
+              .whereNotExists(
+                (qb) =>
+                  void qb
+                    .select(trx.raw("1"))
+                    .from(TableName.SecretFolderVersion)
+                    .whereRaw(`"${TableName.SecretFolderVersion}"."folderId" = "${TableName.Snapshot}"."folderId"`)
+              )
+              .delete();
+
+            return { nextCursor: lastId, scanned: batch.length, deleted };
+          });
+
+          orphanCursor = result.nextCursor;
+          orphanBatchHadRows = result.scanned > 0;
+          orphanRetryCount = 0;
+        } catch (err) {
+          orphanRetryCount += 1;
+          logger.error(err, `Failed to prune orphaned snapshots starting after id=${cursor}`);
+          if (orphanRetryCount >= ORPHAN_MAX_RETRY_ON_FAILURE) {
+            logger.error(`Giving up on orphaned snapshot prune after ${ORPHAN_MAX_RETRY_ON_FAILURE} retries`);
+            break;
+          }
+        } finally {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 10); // breathing room for the db between batches
+          });
+        }
+      }
     } catch (error) {
       throw new DatabaseError({ error, name: "SnapshotPrune" });
     }
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret snapshots completed`);
+    logger.info(`daily-resource-cleanup: pruning secret snapshots completed`);
   };
 
   // special query for migration for secret v2

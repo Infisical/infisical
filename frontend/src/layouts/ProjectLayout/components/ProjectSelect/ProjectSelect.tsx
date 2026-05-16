@@ -22,6 +22,7 @@ import {
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
+  OrgPermissionProjectActions,
   OrgPermissionSubjects,
   useOrganization,
   useProject,
@@ -34,14 +35,13 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
-const PROJECT_TYPE_NAME: Record<ProjectType, string> = {
+const PROJECT_TYPE_NAME: Partial<Record<ProjectType, string>> = {
   [ProjectType.SecretManager]: "Secrets Management",
   [ProjectType.CertificateManager]: "Certificate Manager",
   [ProjectType.SSH]: "SSH",
   [ProjectType.KMS]: "KMS",
   [ProjectType.PAM]: "PAM",
-  [ProjectType.SecretScanning]: "Secret Scanning",
-  [ProjectType.AI]: "Agent Sentinel"
+  [ProjectType.SecretScanning]: "Secret Scanning"
 };
 
 const ProjectSelectInner = () => {
@@ -123,7 +123,7 @@ const ProjectSelectInner = () => {
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
           <Badge variant="project" className="mb-hidden lg:inline-flex">
-            {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
+            {(currentWorkspace.type && PROJECT_TYPE_NAME[currentWorkspace.type]) || "Project"}
           </Badge>
         </Link>
         <PopoverTrigger asChild>
@@ -140,7 +140,7 @@ const ProjectSelectInner = () => {
                 {projectsSortedByFav.map((workspace) => (
                   <CommandItem
                     key={workspace.id}
-                    value={`${workspace.name} ${PROJECT_TYPE_NAME[workspace.type]}`}
+                    value={`${workspace.name} ${PROJECT_TYPE_NAME[workspace.type] || workspace.type}`}
                     onSelect={() => handleSelectProject(workspace.id)}
                     className="gap-2"
                   >
@@ -152,7 +152,7 @@ const ProjectSelectInner = () => {
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm">{workspace.name}</span>
                       <span className="text-[11px] text-muted">
-                        {PROJECT_TYPE_NAME[workspace.type]}
+                        {PROJECT_TYPE_NAME[workspace.type] || workspace.type}
                       </span>
                     </div>
                     <IconButton
@@ -187,7 +187,7 @@ const ProjectSelectInner = () => {
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
-                    I={OrgPermissionActions.Create}
+                    I={OrgPermissionProjectActions.Create}
                     a={OrgPermissionSubjects.Project}
                   >
                     {(isAllowed) => (

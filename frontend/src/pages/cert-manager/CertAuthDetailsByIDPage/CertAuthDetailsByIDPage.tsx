@@ -34,6 +34,7 @@ import {
   CaCertificatesSection,
   CaCrlsSection,
   CaDetailsSection,
+  CaDistributionPointsSection,
   CaGenerateRootCertModal,
   CaRenewalModal,
   CaSigningConfigSection
@@ -156,6 +157,7 @@ const Page = () => {
                       handlePopUpOpen={handlePopUpOpen}
                     />
                     <CaCrlsSection caId={data.id} />
+                    <CaDistributionPointsSection caId={data.id} />
                   </div>
                 </div>
               </div>

@@ -5,6 +5,7 @@ import { Auth0ClientSecretRotationListItemSchema } from "@app/ee/services/secret
 import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
@@ -43,7 +44,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
   HpIloRotationListItemSchema,
-  SupabaseApiKeyRotationListItemSchema
+  SupabaseApiKeyRotationListItemSchema,
+  DatadogApplicationKeySecretRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

@@ -15,7 +15,11 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -272,9 +276,13 @@ export const projectServiceFactory = ({
 
     if (
       permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
-      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+      permission.cannot(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project)
     ) {
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+    }
+
+    if (type === ProjectType.AI) {
+      throw new BadRequestError({ message: "Agent Sentinel projects are not supported" });
     }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
@@ -336,13 +344,18 @@ export const projectServiceFactory = ({
           tx
         );
       } catch (err) {
-        if (
-          err instanceof DatabaseError &&
-          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
-        ) {
-          throw new BadRequestError({
-            message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
-          });
+        if (err instanceof DatabaseError) {
+          const code = (err.error as { code?: string })?.code;
+          if (code === DatabaseErrorCode.UniqueViolation) {
+            throw new BadRequestError({
+              message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
+            });
+          }
+          if (code === DatabaseErrorCode.StringDataRightTruncation) {
+            throw new BadRequestError({
+              message: "One or more fields exceed the allowed length. Please shorten and try again."
+            });
+          }
         }
         throw err;
       }
@@ -902,10 +915,18 @@ export const projectServiceFactory = ({
 
       return updatedProject;
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({
-          message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
-        });
+      if (err instanceof DatabaseError) {
+        const code = (err.error as { code?: string })?.code;
+        if (code === DatabaseErrorCode.UniqueViolation) {
+          throw new BadRequestError({
+            message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
+          });
+        }
+        if (code === DatabaseErrorCode.StringDataRightTruncation) {
+          throw new BadRequestError({
+            message: "One or more fields exceed the allowed length. Please shorten and try again."
+          });
+        }
       }
       throw err;
     }
@@ -2316,15 +2337,27 @@ export const projectServiceFactory = ({
   };
 
   const requestProjectAccess = async ({ permission, comment, projectId }: TProjectAccessRequestDTO) => {
-    // check user belong to org
-    await permissionService.getOrgPermission({
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (!project) {
+      throw new NotFoundError({
+        message: `Project with ID ${projectId} not found`
+      });
+    }
+    // check user belong to org and has permission to request project access
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
       actor: permission.type,
       actorId: permission.id,
-      orgId: permission.orgId,
+      orgId: project.orgId,
       actorAuthMethod: permission.authMethod,
       actorOrgId: permission.orgId,
       scope: OrganizationActionScope.Any
     });
+    ForbiddenError.from(orgPermission).throwUnlessCan(
+      OrgPermissionProjectActions.RequestAccess,
+      OrgPermissionSubjects.Project
+    );
 
     const projectMember = await permissionService
       .getProjectPermission({
@@ -2388,10 +2421,9 @@ export const projectServiceFactory = ({
     }
 
     const org = await orgDAL.findOne({ id: permission.orgId });
-    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-      projectDAL.findById(projectId)
+    const userDetails = await requestMemoize(requestMemoKeys.userFindById(permission.id), () =>
+      userDAL.findById(permission.id)
     );
-    const userDetails = await userDAL.findById(permission.id);
     const appCfg = getConfig();
 
     let projectTypeUrl = project.type;

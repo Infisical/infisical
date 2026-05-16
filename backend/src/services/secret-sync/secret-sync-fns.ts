@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "@app/ee/services/secret-sync/chef";
@@ -52,6 +53,7 @@ import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
+import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
   DigitalOceanAppPlatformSyncFns
@@ -70,10 +72,12 @@ import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
 import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
+import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
@@ -120,8 +124,11 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
   [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION,
   [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION,
+  [SecretSync.OVH]: OVH_SYNC_LIST_OPTION,
+  [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
-  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION
+  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -161,6 +168,7 @@ type TSyncSecretDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const getKeyWithSchema = ({
@@ -286,7 +294,7 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
   ): Promise<TSyncSecretsResult | void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -296,7 +304,13 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap, secretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
+        return GithubSyncFns.syncSecrets(
+          secretSync,
+          schemaSecretMap,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        );
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
@@ -335,7 +349,13 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
+        return HCVaultSyncFns.syncSecrets(
+          secretSync,
+          schemaSecretMap,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        );
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
@@ -382,10 +402,16 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.OVH:
+        return OvhSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Devin:
+        return DevinSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Ona:
         return OnaSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Snowflake:
+        return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -394,7 +420,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -455,7 +481,7 @@ export const SecretSyncFns = {
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.HCVault:
-        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService, gatewayV2Service);
+        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService, gatewayV2Service, gatewayPoolService);
         break;
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
@@ -526,11 +552,20 @@ export const SecretSyncFns = {
       case SecretSync.ExternalInfisical:
         secretMap = await ExternalInfisicalSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.OVH:
+        secretMap = await OvhSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Devin:
+        secretMap = await DevinSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Ona:
         secretMap = await OnaSyncFns.getSecrets();
         break;
       case SecretSync.TravisCI:
         secretMap = await TravisCISyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Snowflake:
+        secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -545,7 +580,7 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -555,7 +590,13 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
+        return GithubSyncFns.removeSecrets(
+          secretSync,
+          schemaSecretMap,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        );
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
@@ -592,7 +633,13 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
+        return HCVaultSyncFns.removeSecrets(
+          secretSync,
+          schemaSecretMap,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        );
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
@@ -641,10 +688,16 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.OVH:
+        return OvhSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Devin:
+        return DevinSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Ona:
         return OnaSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Snowflake:
+        return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

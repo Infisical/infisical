@@ -27,6 +27,7 @@ import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-a
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
+  buildCrlDistributionPointUrls,
   createSerialNumber,
   expandInternalCa,
   getCaCertChain,
@@ -524,14 +525,15 @@ export const pkiSubscriberServiceFactory = ({
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
+    const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
+    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
-      new x509.CRLDistributionPointsExtension([distributionPointUrl]),
+      new x509.CRLDistributionPointsExtension(cdpUrls),
       new x509.AuthorityInfoAccessExtension({
         caIssuers: new x509.GeneralName("url", caIssuerUrl)
       }),

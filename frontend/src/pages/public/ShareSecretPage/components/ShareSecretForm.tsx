@@ -183,7 +183,6 @@ export const ShareSecretForm = ({
       setSecretLink(link.toString());
 
       navigator.clipboard.writeText(link.toString());
-      setCopyTextSecret("secret");
 
       createNotification({
         text: "Shared secret link copied to clipboard.",

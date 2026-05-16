@@ -1,0 +1,21 @@
+version: v0.159.21
+releasedAt: 2026-04-24T10:59:55-03:00
+sourceTag: v0.159.21
+previousTag: v0.159.20
+impactLevel: none
+summary: No self-hosted upgrade action. Changes are limited to group listing
+  behavior and do not affect deployment, configuration, or database schema.
+requiresDbMigration: false
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-08T21:49:16.883Z
+  sourceRange:
+    from: v0.159.20
+    to: v0.159.21

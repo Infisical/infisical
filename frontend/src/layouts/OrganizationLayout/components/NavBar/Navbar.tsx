@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { AnnouncementNavButton } from "@app/components/announcements/AnnouncementNavButton";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -659,6 +660,7 @@ export const Navbar = () => {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        <AnnouncementNavButton />
         <NotificationDropdown />
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>

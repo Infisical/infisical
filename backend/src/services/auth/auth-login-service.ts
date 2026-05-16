@@ -543,6 +543,14 @@ export const authLoginServiceFactory = ({
         throw new BadRequestError({ message: "Invalid credentials" });
       }
 
+      const serverCfg = await getServerCfg();
+      if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL)) {
+        const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+        if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+          throw new BadRequestError({ message: "Invalid credentials" });
+        }
+      }
+
       await verifyCaptcha(user.consecutiveFailedPasswordAttempts, captchaToken);
 
       if (!(await crypto.hashing().compareHash(password, user.hashedPassword))) {

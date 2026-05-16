@@ -49,6 +49,9 @@ const meta = {
         disable: true
       }
     }
+  },
+  globals: {
+    backgrounds: { value: "card" }
   }
 } satisfies Meta<typeof Field>;
 
@@ -124,7 +127,7 @@ export const FieldGroupExample: Story = {
     docs: {
       description: {
         story:
-          "Stack related fields in a `FieldGroup` for consistent vertical rhythm (`gap-5`). The group also provides the `@container` query context that the `responsive` orientation keys off of."
+          "Stack related fields in a `FieldGroup` for consistent vertical rhythm. The group also establishes the container-query context that the `responsive` orientation keys off of."
       }
     }
   },
@@ -136,7 +139,7 @@ export const FieldGroupExample: Story = {
       </Field>
       <Field>
         <FieldLabel htmlFor="group-email">Email</FieldLabel>
-        <Input id="group-email" type="email" defaultValue="scott@infisical.com" />
+        <Input id="group-email" type="email" defaultValue="john@infisical.com" />
         <FieldDescription>
           Used for sign-in and critical notifications. Cannot be changed.
         </FieldDescription>
@@ -187,7 +190,7 @@ export const FieldSetExample: Story = {
     docs: {
       description: {
         story:
-          "Wrap related boolean controls in a `FieldSet` with a `FieldLegend` for semantic grouping — the legend serves as a single accessible label for the entire set, and `FieldDescription` right after the legend applies an extra top-negative-margin to tuck it close."
+          "Wrap related boolean controls in a `FieldSet` with a `FieldLegend` for semantic grouping — the legend acts as a single accessible label for the entire set. A `FieldDescription` placed immediately after the legend tucks in close to it, then the `FieldGroup` of checkboxes follows below."
       }
     }
   },

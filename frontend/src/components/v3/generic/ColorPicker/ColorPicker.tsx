@@ -71,7 +71,7 @@ const ColorPicker = forwardRef<HTMLInputElement, ColorPickerProps>(
               aria-label="Pick a color"
             />
           </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-3" align="end">
+          <PopoverContent className="w-[220px] p-0" align="end">
             <HexColorPicker
               color={isValidHex ? localColor : "#000000"}
               onChange={handlePickerChange}

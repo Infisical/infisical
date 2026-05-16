@@ -9,6 +9,18 @@ const config: StorybookConfig = {
   framework: {
     name: "@storybook/react-vite",
     options: {}
+  },
+  viteFinal: async (viteConfig) => {
+    // The main app's vite.config.ts uses experimental.renderBuiltUrl to route
+    // asset URLs through window.__toCdnUrl(...), a runtime function injected
+    // by the standalone Docker deployment's serving layer. Storybook's static
+    // deploy (e.g. Render) has no such injection, so strip the override and
+    // let Vite emit plain relative URLs.
+    const { renderBuiltUrl, ...experimental } = viteConfig.experimental ?? {};
+    return {
+      ...viteConfig,
+      experimental
+    };
   }
 };
 export default config;

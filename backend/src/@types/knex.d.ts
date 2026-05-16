@@ -164,9 +164,6 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
-  TGatewayEnrollmentTokens,
-  TGatewayEnrollmentTokensInsert,
-  TGatewayEnrollmentTokensUpdate,
   TGatewayPoolMemberships,
   TGatewayPoolMembershipsInsert,
   TGatewayPoolMembershipsUpdate,
@@ -191,6 +188,18 @@ import {
   TGroups,
   TGroupsInsert,
   TGroupsUpdate,
+  THoneyTokenConfigs,
+  THoneyTokenConfigsInsert,
+  THoneyTokenConfigsUpdate,
+  THoneyTokenEvents,
+  THoneyTokenEventsInsert,
+  THoneyTokenEventsUpdate,
+  THoneyTokens,
+  THoneyTokenSecretMappings,
+  THoneyTokenSecretMappingsInsert,
+  THoneyTokenSecretMappingsUpdate,
+  THoneyTokensInsert,
+  THoneyTokensUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -446,9 +455,18 @@ import {
   TRelays,
   TRelaysInsert,
   TRelaysUpdate,
+  TResourceAuthMethods,
+  TResourceAuthMethodsInsert,
+  TResourceAuthMethodsUpdate,
+  TResourceAwsAuths,
+  TResourceAwsAuthsInsert,
+  TResourceAwsAuthsUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
+  TResourceTokenAuths,
+  TResourceTokenAuthsInsert,
+  TResourceTokenAuthsUpdate,
   TRoles,
   TRolesInsert,
   TRolesUpdate,
@@ -718,6 +736,11 @@ import {
 import { TPamDomains, TPamDomainsInsert, TPamDomainsUpdate } from "@app/db/schemas/pam-domains";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import {
+  TPamProjectRecordingConfigs,
+  TPamProjectRecordingConfigsInsert,
+  TPamProjectRecordingConfigsUpdate
+} from "@app/db/schemas/pam-project-recording-configs";
+import {
   TPamResourceFavorites,
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
@@ -733,6 +756,11 @@ import {
   TPamSessionEventBatchesInsert,
   TPamSessionEventBatchesUpdate
 } from "@app/db/schemas/pam-session-event-batches";
+import {
+  TPamSessionEventChunks,
+  TPamSessionEventChunksInsert,
+  TPamSessionEventChunksUpdate
+} from "@app/db/schemas/pam-session-event-chunks";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
@@ -1506,6 +1534,22 @@ declare module "knex/types/tables" {
       TGithubOrgSyncConfigsInsert,
       TGithubOrgSyncConfigsUpdate
     >;
+    [TableName.HoneyTokenConfig]: KnexOriginal.CompositeTableType<
+      THoneyTokenConfigs,
+      THoneyTokenConfigsInsert,
+      THoneyTokenConfigsUpdate
+    >;
+    [TableName.HoneyToken]: KnexOriginal.CompositeTableType<THoneyTokens, THoneyTokensInsert, THoneyTokensUpdate>;
+    [TableName.HoneyTokenEvent]: KnexOriginal.CompositeTableType<
+      THoneyTokenEvents,
+      THoneyTokenEventsInsert,
+      THoneyTokenEventsUpdate
+    >;
+    [TableName.HoneyTokenSecretMapping]: KnexOriginal.CompositeTableType<
+      THoneyTokenSecretMappings,
+      THoneyTokenSecretMappingsInsert,
+      THoneyTokenSecretMappingsUpdate
+    >;
     [TableName.FolderCommit]: KnexOriginal.CompositeTableType<
       TFolderCommits,
       TFolderCommitsInsert,
@@ -1584,10 +1628,20 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
-    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
-      TGatewayEnrollmentTokens,
-      TGatewayEnrollmentTokensInsert,
-      TGatewayEnrollmentTokensUpdate
+    [TableName.ResourceTokenAuth]: KnexOriginal.CompositeTableType<
+      TResourceTokenAuths,
+      TResourceTokenAuthsInsert,
+      TResourceTokenAuthsUpdate
+    >;
+    [TableName.ResourceAuthMethod]: KnexOriginal.CompositeTableType<
+      TResourceAuthMethods,
+      TResourceAuthMethodsInsert,
+      TResourceAuthMethodsUpdate
+    >;
+    [TableName.ResourceAwsAuth]: KnexOriginal.CompositeTableType<
+      TResourceAwsAuths,
+      TResourceAwsAuthsInsert,
+      TResourceAwsAuthsUpdate
     >;
     [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
     [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<
@@ -1624,6 +1678,16 @@ declare module "knex/types/tables" {
       TPamSessionEventBatches,
       TPamSessionEventBatchesInsert,
       TPamSessionEventBatchesUpdate
+    >;
+    [TableName.PamSessionEventChunk]: KnexOriginal.CompositeTableType<
+      TPamSessionEventChunks,
+      TPamSessionEventChunksInsert,
+      TPamSessionEventChunksUpdate
+    >;
+    [TableName.PamProjectRecordingConfig]: KnexOriginal.CompositeTableType<
+      TPamProjectRecordingConfigs,
+      TPamProjectRecordingConfigsInsert,
+      TPamProjectRecordingConfigsUpdate
     >;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
       TPamDiscoverySources,

@@ -4,8 +4,9 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -15,7 +16,7 @@ import { CLEANUP_BATCH_SIZE, CleanupRunStatus } from "./certificate-cleanup-type
 
 type TCertificateCleanupQueueFactoryDep = {
   db: TDbClient;
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   certificateCleanupConfigDAL: TCertificateCleanupConfigDALFactory;
   certificateDAL: Pick<TCertificateDALFactory, "delete">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "delete">;
@@ -26,7 +27,7 @@ export type TCertificateCleanupQueueFactory = ReturnType<typeof certificateClean
 
 export const certificateCleanupQueueFactory = ({
   db,
-  queueService,
+  cronJob,
   certificateCleanupConfigDAL,
   certificateDAL,
   certificateRequestDAL,
@@ -150,56 +151,50 @@ export const certificateCleanupQueueFactory = ({
     return { deletedCount, errors: errorMessages.length };
   };
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.CertificateCleanup,
+      pattern: "0 2 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`${QueueJobs.CertificateCleanup}: started`);
 
-    queueService.start(QueueName.CertificateCleanup, async () => {
-      logger.info(`${QueueJobs.CertificateCleanup}: started`);
+        const configs = await certificateCleanupConfigDAL.find({ isEnabled: true });
 
-      const configs = await certificateCleanupConfigDAL.find({ isEnabled: true });
+        logger.info(`${QueueJobs.CertificateCleanup}: found ${configs.length} projects with cleanup enabled`);
 
-      logger.info(`${QueueJobs.CertificateCleanup}: found ${configs.length} projects with cleanup enabled`);
+        let totalDeleted = 0;
+        let totalErrors = 0;
 
-      let totalDeleted = 0;
-      let totalErrors = 0;
+        for (const config of configs) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const result = await processProjectCleanup(config);
+            totalDeleted += result.deletedCount;
+            totalErrors += result.errors;
 
-      for (const config of configs) {
-        try {
-          const result = await processProjectCleanup(config);
-          totalDeleted += result.deletedCount;
-          totalErrors += result.errors;
-
-          if (result.deletedCount > 0) {
-            logger.info(
-              `${QueueJobs.CertificateCleanup}: project ${config.projectId} — deleted ${result.deletedCount} certificates`
-            );
+            if (result.deletedCount > 0) {
+              logger.info(
+                `${QueueJobs.CertificateCleanup}: project ${config.projectId} — deleted ${result.deletedCount} certificates`
+              );
+            }
+          } catch (err) {
+            totalErrors += 1;
+            logger.error(err, `${QueueJobs.CertificateCleanup}: failed for project ${config.projectId}`);
+            // eslint-disable-next-line no-await-in-loop
+            await certificateCleanupConfigDAL.updateById(config.id, {
+              lastRunStatus: CleanupRunStatus.Error,
+              lastRunAt: new Date(),
+              lastRunMessage: String((err as Error).message || "Unknown error").slice(0, 500)
+            });
           }
-        } catch (err) {
-          totalErrors += 1;
-          logger.error(err, `${QueueJobs.CertificateCleanup}: failed for project ${config.projectId}`);
-
-          await certificateCleanupConfigDAL.updateById(config.id, {
-            lastRunStatus: CleanupRunStatus.Error,
-            lastRunAt: new Date(),
-            lastRunMessage: String((err as Error).message || "Unknown error").slice(0, 500)
-          });
         }
+
+        logger.info(
+          `${QueueJobs.CertificateCleanup}: completed — deleted ${totalDeleted} total, ${totalErrors} errors`
+        );
       }
-
-      logger.info(`${QueueJobs.CertificateCleanup}: completed — deleted ${totalDeleted} total, ${totalErrors} errors`);
-    });
-
-    await queueService.upsertJobScheduler(
-      QueueName.CertificateCleanup,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CertificateCleanup}`,
-      { pattern: "0 2 * * *" },
-      { name: QueueJobs.CertificateCleanup }
-    );
-
-    queueService.listen(QueueName.CertificateCleanup, "failed", (_, err) => {
-      logger.error(err, `${QueueName.CertificateCleanup}: job failed`);
     });
   };
 

@@ -81,7 +81,9 @@ const hasAccountsWithDependencies = (resourceType: PamResourceType) =>
   resourceType === PamResourceType.Windows;
 
 const getAccountType = (account: TPamAccount): string | undefined => {
-  if (account.resource?.resourceType === PamResourceType.Windows) {
+  // AD-domain accounts surfaced on a Windows resource page have
+  // account.resource === null but still carry internalMetadata.accountType.
+  if (account.resource?.resourceType === PamResourceType.Windows || account.domain) {
     return (account as TWindowsAccount).internalMetadata?.accountType;
   }
   return undefined;
@@ -128,7 +130,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     setAppliedMetadataEntries([]);
   };
 
-  const { data: domainData } = useGetPamDomainById(
+  const { data: domainData, isPending: isDomainPending } = useGetPamDomainById(
     PamDomainType.ActiveDirectory,
     resource.domainId || undefined,
     { enabled: !!resource.domainId }
@@ -254,26 +256,42 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
-    const { requiresApproval } = await checkPolicyMatch({
+    const accountIdentity =
+      account.domainId && domainData?.connectionDetails.domain
+        ? `${domainData.connectionDetails.domain}:${account.name}`
+        : account.name;
+
+    const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
         resourceName: resource.name,
-        accountName: account.name
+        accountName: accountIdentity
       }
     });
 
     if (requiresApproval) {
       handlePopUpOpen("requestAccount", {
         resourceName: resource.name,
-        accountName: account.name,
-        accountAccessed: true
+        accountName: accountIdentity,
+        accountAccessed: true,
+        accessDurationMax: constraints?.accessDuration.max
       });
       return;
     }
 
     if (account.resource?.resourceType === PamResourceType.AwsIam) {
       handlePopUpOpen("awsIamReason", { account });
+    } else if (account.domainId) {
+      handlePopUpOpen("accessAccount", {
+        account,
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          projectId: resource.projectId
+        }
+      });
     } else {
       handlePopUpOpen("accessAccount", { account });
     }
@@ -528,25 +546,26 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {/* TODO: Disabled for Windows Server and Active Directory accounts until RDP is implemented */}
-                      {resource.resourceType !== PamResourceType.Windows && !account.domainId && (
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPamAccountActions.Access}
-                          a={ProjectPermissionSub.PamAccounts}
+                      <ProjectPermissionCan
+                        I={ProjectPermissionPamAccountActions.Access}
+                        a={ProjectPermissionSub.PamAccounts}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          isDisabled={
+                            !!account.domainId &&
+                            (isDomainPending || !domainData?.connectionDetails.domain)
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            accessAccount(account);
+                          }}
                         >
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              accessAccount(account);
-                            }}
-                          >
-                            <LogInIcon />
-                            Connect
-                          </Button>
-                        </ProjectPermissionCan>
-                      )}
+                          <LogInIcon />
+                          Connect
+                        </Button>
+                      </ProjectPermissionCan>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">
@@ -649,6 +668,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           if (!isOpen) setAccessReason(undefined);
         }}
         account={popUp.accessAccount.data?.account}
+        resource={popUp.accessAccount.data?.resource}
         projectId={projectId!}
         reason={accessReason}
       />
@@ -672,6 +692,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
+        accessDurationMax={popUp.requestAccount.data?.accessDurationMax}
       />
 
       <PamUpdateAccountModal

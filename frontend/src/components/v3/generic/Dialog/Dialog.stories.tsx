@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { Label } from "../Label";
+import { Separator } from "../Separator";
 import {
   Dialog,
   DialogClose,
@@ -102,7 +103,7 @@ export const WithForm: Story = {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="dialog-email">Email</Label>
-            <Input id="dialog-email" type="email" defaultValue="scott@infisical.com" />
+            <Input id="dialog-email" type="email" defaultValue="jane@infisical.com" />
           </div>
         </div>
         <DialogFooter>
@@ -155,7 +156,7 @@ export const ScrollableContent: Story = {
     docs: {
       description: {
         story:
-          "For long content, wrap the body in a scrollable container with `max-h-[...] overflow-y-auto`. The header and footer stay anchored while the middle scrolls — common for terms, changelogs, and audit log previews."
+          "For long content, anchor the header and footer while the middle scrolls — common for terms, changelogs, and audit log previews. Wrap the scroll region between two `Separator`s in a single column so the rules sit flush against the scrolling content (the parent's gap would otherwise push padding between them)."
       }
     }
   },
@@ -169,16 +170,20 @@ export const ScrollableContent: Story = {
           <DialogTitle>Terms of service</DialogTitle>
           <DialogDescription>Please review the terms before continuing.</DialogDescription>
         </DialogHeader>
-        <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto text-sm text-foreground">
-          {Array.from({ length: 10 }).map((_, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <p key={i}>
-              <span className="font-medium">Section {i + 1}.</span> Lorem ipsum dolor sit amet,
-              consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
-              magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi
-              ut aliquip ex ea commodo consequat.
-            </p>
-          ))}
+        <div className="flex flex-col">
+          <Separator />
+          <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto py-4 text-sm text-foreground">
+            {Array.from({ length: 10 }).map((_, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <p key={i}>
+                <span className="font-medium">Section {i + 1}.</span> Lorem ipsum dolor sit amet,
+                consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
+                magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+                nisi ut aliquip ex ea commodo consequat.
+              </p>
+            ))}
+          </div>
+          <Separator />
         </div>
         <DialogFooter>
           <DialogClose asChild>

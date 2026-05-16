@@ -2,6 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
+  BoxesIcon as SubOrgIcon,
+  BoxIcon as ProjectIcon,
+  Building2Icon as OrgIcon,
   CheckIcon,
   CircleXIcon,
   ExternalLinkIcon,
@@ -10,7 +13,6 @@ import {
   TriangleAlertIcon
 } from "lucide-react";
 
-import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
 import { Button } from "./Button";
 
 /**

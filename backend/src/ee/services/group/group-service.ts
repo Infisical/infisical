@@ -582,10 +582,16 @@ export const groupServiceFactory = ({
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
-      return unlinkGroupFromSubOrg({ groupId: id, groupMembershipId: groupMembership.id, actorOrgId });
+      const unlinkedGroup = await unlinkGroupFromSubOrg({
+        groupId: id,
+        groupMembershipId: groupMembership.id,
+        actorOrgId
+      });
+      return { group: unlinkedGroup, isUnlinked: true };
     }
 
-    return deleteOwnedGroup({ groupId: id, actorOrgId });
+    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorOrgId });
+    return { group: deletedGroup, isUnlinked: false };
   };
 
   const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
@@ -928,7 +934,7 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
-    return users[0];
+    return { user: users[0], group: groupMembership.group };
   };
 
   const addMachineIdentityToGroup = async ({
@@ -1009,7 +1015,7 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL
     });
 
-    return identities[0];
+    return { identity: identities[0], group: groupMembership.group };
   };
 
   const removeUserFromGroup = async ({
@@ -1101,7 +1107,7 @@ export const groupServiceFactory = ({
       identityIds: []
     });
 
-    return users[0];
+    return { user: users[0], group: groupMembership.group };
   };
 
   const removeMachineIdentityFromGroup = async ({
@@ -1187,7 +1193,7 @@ export const groupServiceFactory = ({
       identityIds: [identityId]
     });
 
-    return identities[0];
+    return { identity: identities[0], group: groupMembership.group };
   };
 
   return {
