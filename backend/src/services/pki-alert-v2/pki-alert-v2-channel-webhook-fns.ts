@@ -19,6 +19,7 @@ import {
   TPkiWebhookPayload,
   TWebhookChannelConfig
 } from "./pki-alert-v2-types";
+import { buildAlertViewUrl } from "./pki-alert-v2-url-fns";
 
 const PKI_WEBHOOK_TIMEOUT = 7 * 1000;
 
@@ -94,15 +95,6 @@ const WEBHOOK_EVENT_SUBJECT: Record<PkiWebhookEventType, string> = {
   [PkiWebhookEventType.CERTIFICATE_TEST]: "certificate-test"
 };
 
-const buildViewUrl = (params: { appUrl: string; alert: TAlertInfo }): string => {
-  const { appUrl, alert } = params;
-  const projectBase = `${appUrl}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}`;
-  if (alert.applicationId && alert.applicationName) {
-    return `${projectBase}/applications/${alert.applicationName}`;
-  }
-  return `${projectBase}/inventory`;
-};
-
 const buildEventData = (params: {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
@@ -120,7 +112,7 @@ const buildEventData = (params: {
     certificates: transformCertificates(params.certificates),
     metadata: {
       totalCertificates: params.certificates.length,
-      viewUrl: buildViewUrl({ appUrl: params.appUrl, alert: params.alert })
+      viewUrl: buildAlertViewUrl(params.appUrl, params.alert)
     }
   }
 });

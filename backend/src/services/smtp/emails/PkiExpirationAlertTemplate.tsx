@@ -6,7 +6,7 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 interface PkiExpirationAlertTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   alertName: string;
   alertBeforeDays: number;
-  projectId: string;
+  viewUrl: string;
   eventLabel?: string;
   items: { type: string; friendlyName: string; serialNumber: string; expiryDate: string; revocationReason?: string }[];
 }
@@ -28,7 +28,7 @@ export const PkiExpirationAlertTemplate = ({
   alertName,
   siteUrl,
   alertBeforeDays,
-  projectId,
+  viewUrl,
   eventLabel = "Expiration",
   items
 }: PkiExpirationAlertTemplateProps) => {
@@ -102,7 +102,7 @@ export const PkiExpirationAlertTemplate = ({
       </Section>
 
       <Section className="text-center mt-[32px] mb-[16px]">
-        <BaseButton href={`${siteUrl}/projects/cert-manager/${projectId}/policies`}>View Certificate Alerts</BaseButton>
+        <BaseButton href={viewUrl}>View Certificate Alerts</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -127,6 +127,6 @@ PkiExpirationAlertTemplate.PreviewProps = {
     }
   ],
   alertName: "Production SSL Certificate Expiration Alert",
-  projectId: "c3b0ef29-915b-4cb1-8684-65b91b7fe02d",
+  viewUrl: "https://infisical.com/organizations/org-1/projects/cert-manager/proj-1/inventory",
   siteUrl: "https://infisical.com"
 } as PkiExpirationAlertTemplateProps;

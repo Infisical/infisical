@@ -19,6 +19,7 @@ import {
   TSlackChannelConfig,
   TSlackPayload
 } from "./pki-alert-v2-types";
+import { buildAlertViewUrl } from "./pki-alert-v2-url-fns";
 
 const SLACK_WEBHOOK_TIMEOUT = 7 * 1000;
 
@@ -96,7 +97,7 @@ export const buildSlackPayload = ({
   const displayCertificates = sortedCertificates.slice(0, 2);
   const remainingCount = totalCertificates - displayCertificates.length;
 
-  const viewUrl = `${appUrl}/projects/cert-manager/${alert.projectId}/policies`;
+  const viewUrl = buildAlertViewUrl(appUrl, alert);
 
   const headerText = `${label} Alert: ${alert.name}`;
 

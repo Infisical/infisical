@@ -715,9 +715,8 @@ export const pkiAlertV2ServiceFactory = ({
             const result = await sendEmailNotificationWithRetry(
               smtpService,
               config,
-              alertName,
+              alertData,
               alertBeforeDays,
-              projectId,
               matchingCertificates,
               channel.id,
               eventType
