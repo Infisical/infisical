@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/infisical/api/internal/services/auditlog"
-	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/license"
 	"github.com/infisical/api/internal/services/permission"
@@ -13,7 +13,7 @@ import (
 )
 
 type platformServices struct {
-	authenticator auth.Authenticator
+	authenticator apiauth.Authenticator
 	permission    *permission.Service
 	kms           *kms.Service
 	license       *license.Service
@@ -42,7 +42,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 		KeyStore: infra.KeyStore,
 	})
 
-	authenticator := auth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore)
+	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore)
 
 	permissionSvc := permission.NewService(infra.Logger, &permission.Deps{DB: infra.DB})
 

@@ -1,4 +1,4 @@
-package auth
+package apiauth
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/libs/errutil"
-	"github.com/infisical/api/internal/services/actor"
+	"github.com/infisical/api/internal/services/auth"
 )
 
 // maxMachineIdentityTokenAge is the maximum TTL in seconds for identity access tokens.
@@ -64,14 +64,14 @@ func (a Authenticator) JWTAuth(ctx context.Context, token string, sc *security.J
 	}
 
 	// Map scheme name to expected auth mode.
-	var expectedMode AuthMode
+	var expectedMode auth.AuthMode
 	switch sc.Name {
 	case "jwt":
-		expectedMode = AuthModeJWT
+		expectedMode = auth.AuthModeJWT
 	case "identity_access_token":
-		expectedMode = AuthModeIdentityAccessToken
+		expectedMode = auth.AuthModeIdentityAccessToken
 	case "service_token":
-		expectedMode = AuthModeServiceToken
+		expectedMode = auth.AuthModeServiceToken
 	default:
 		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("invalid token"))
 	}
@@ -82,19 +82,19 @@ func (a Authenticator) JWTAuth(ctx context.Context, token string, sc *security.J
 	}
 
 	var (
-		identity *Identity
+		identity *auth.Identity
 		err      error
 	)
 	switch expectedMode {
-	case AuthModeJWT:
+	case auth.AuthModeJWT:
 		identity, err = a.validateJWT(ctx, token)
-	case AuthModeIdentityAccessToken:
+	case auth.AuthModeIdentityAccessToken:
 		ipAddress := ""
-		if httpInfo := HTTPInfoFromContext(ctx); httpInfo != nil {
+		if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
 			ipAddress = httpInfo.IPAddress
 		}
 		identity, err = a.validateIdentityAccessToken(ctx, token, ipAddress)
-	case AuthModeServiceToken:
+	case auth.AuthModeServiceToken:
 		identity, err = a.validateServiceToken(ctx, token)
 	}
 
@@ -106,19 +106,19 @@ func (a Authenticator) JWTAuth(ctx context.Context, token string, sc *security.J
 	}
 
 	// Populate HTTP layer fields from context (set by HTTPInfoMiddleware).
-	if httpInfo := HTTPInfoFromContext(ctx); httpInfo != nil {
+	if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
 		identity.IPAddress = httpInfo.IPAddress
 		identity.UserAgent = httpInfo.UserAgent
 		identity.UserAgentType = httpInfo.UserAgentType
 	}
 
-	return WithIdentity(ctx, identity), nil
+	return auth.WithIdentity(ctx, identity), nil
 }
 
 // TODO(gov0): Missing test
 // validateJWT performs real JWT validation.
 // Exact port of fnValidateJwtIdentity in auth-token-service.ts:212-285.
-func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity, error) {
+func (a Authenticator) validateJWT(ctx context.Context, token string) (*auth.Identity, error) {
 	// 1. Parse and verify JWT signature (HS256 only).
 	claims := &UserJWTClaims{}
 	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
@@ -133,7 +133,7 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 	}
 
 	// 2. Validate authTokenType.
-	if claims.AuthTokenType != AuthTokenTypeAccessToken {
+	if claims.AuthTokenType != auth.AuthTokenTypeAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateJWT: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
@@ -191,7 +191,7 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 				return nil, errutil.Forbidden("Sub-organization does not belong to the token's organization").WithErrf("validateJWT(subOrgId=%s, claimOrgId=%s): org mismatch", subOrg.ID, claims.OrganizationID)
 			}
 
-			orgMembership, err := a.findEffectiveOrgMembership(ctx, actor.TypeUser, user.ID, subOrg.ID, "accepted")
+			orgMembership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeUser, user.ID, subOrg.ID, "accepted")
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateJWT(userId=%s, orgId=%s): %w", user.ID, subOrg.ID, err)
 			}
@@ -215,7 +215,7 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 				return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateJWT(orgId=%s): %w", claims.OrganizationID, err)
 			}
 
-			orgMembership, err := a.findEffectiveOrgMembership(ctx, actor.TypeUser, user.ID, claims.OrganizationID, "accepted")
+			orgMembership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeUser, user.ID, claims.OrganizationID, "accepted")
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateJWT(userId=%s, orgId=%s): %w", user.ID, claims.OrganizationID, err)
 			}
@@ -245,19 +245,19 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 		username = user.Username.V
 	}
 
-	return &Identity{
-		AuthMode:      AuthModeJWT,
-		Actor:         actor.TypeUser,
+	return &auth.Identity{
+		AuthMode:      auth.AuthModeJWT,
+		Actor:         auth.ActorTypeUser,
 		ActorID:       user.ID,
 		OrgID:         orgID,
 		RootOrgID:     rootOrgID,
 		ParentOrgID:   parentOrgID,
 		OrgName:       orgName,
-		AuthMethod:    actor.AuthMethod(claims.AuthMethod),
+		AuthMethod:    auth.ActorAuthMethod(claims.AuthMethod),
 		IsSuperAdmin:  isSuperAdmin,
 		IsMfaVerified: claims.IsMfaVerified,
 		MfaMethod:     claims.MfaMethod,
-		UserAuthInfo: &UserAuthInfo{
+		UserAuthInfo: &auth.UserAuthInfo{
 			UserID: user.ID,
 			Email:  email,
 		},
@@ -270,7 +270,7 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*Identity
 // Port of fnValidateIdentityAccessTokenFast in identity-access-token-service.ts.
 // New-format tokens carry all claims in the JWT for stateless validation; legacy tokens
 // fall back to DB lookup.
-func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*Identity, error) {
+func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
 	// 1. Parse and verify JWT signature (HS256 only).
 	claims := &IdentityJWTClaims{}
 	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
@@ -284,7 +284,7 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	}
 
 	// 2. Validate authTokenType.
-	if claims.AuthTokenType != AuthTokenTypeIdentityAccessToken {
+	if claims.AuthTokenType != auth.AuthTokenTypeIdentityAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
@@ -292,7 +292,7 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	var (
 		identityID   = claims.IdentityID
 		identityName string
-		authMethod   actor.IdentityAuthMethod
+		authMethod   auth.IdentityAuthMethod
 		orgID        uuid.UUID
 		rootOrgID    uuid.UUID
 		parentOrgID  uuid.UUID
@@ -301,7 +301,7 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	if claims.HasFullRenewClaims() {
 		// New-format token: use claims directly (stateless validation)
 		identityName = claims.IdentityName
-		authMethod = actor.IdentityAuthMethod(claims.AuthMethod)
+		authMethod = auth.IdentityAuthMethod(claims.AuthMethod)
 		orgID = claims.OrgID
 		rootOrgID = claims.RootOrgID
 		parentOrgID = claims.ParentOrgID
@@ -311,11 +311,8 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 		if err != nil {
 			return nil, errutil.DatabaseErr("Failed to find identity access token").WithErrf("validateIdentityAccessToken(tokenId=%s): %w", claims.IdentityAccessTokenID, err)
 		}
-		if accessToken == nil {
-			return nil, errutil.Unauthorized("No identity access token found").WithErrf("validateIdentityAccessToken(tokenId=%s): token not found in DB", claims.IdentityAccessTokenID)
-		}
-		if accessToken.IsAccessTokenRevoked {
-			return nil, errutil.Unauthorized("Failed to authorize revoked access token, access token is revoked").WithErrf("validateIdentityAccessToken(tokenId=%s): token is revoked", accessToken.ID)
+		if accessToken == nil || accessToken.IsAccessTokenRevoked {
+			return nil, errutil.Unauthorized("Cannot renew revoked or unknown access token").WithErrf("validateIdentityAccessToken(tokenId=%s): token not found or revoked", claims.IdentityAccessTokenID)
 		}
 
 		identityName = accessToken.IdentityName
@@ -354,7 +351,7 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	}
 
 	// 5. Check org membership.
-	membership, err := a.findEffectiveOrgMembership(ctx, actor.TypeIdentity, identityID, orgID, "")
+	membership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeIdentity, identityID, orgID, "")
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): %w", identityID, orgID, err)
 	}
@@ -387,7 +384,7 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	}
 
 	// 6. Build identity auth info (for audit logging).
-	identityAuthInfo := &IdentityAuthInfo{
+	identityAuthInfo := &auth.AuthInfo{
 		IdentityID:   identityID,
 		IdentityName: identityName,
 		AuthMethod:   authMethod,
@@ -405,14 +402,14 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	}
 
 	// 7. Build identity.
-	return &Identity{
-		AuthMode:         AuthModeIdentityAccessToken,
-		Actor:            actor.TypeIdentity,
+	return &auth.Identity{
+		AuthMode:         auth.AuthModeIdentityAccessToken,
+		Actor:            auth.ActorTypeIdentity,
 		ActorID:          identityID,
 		OrgID:            orgID,
 		RootOrgID:        rootOrgID,
 		ParentOrgID:      parentOrgID,
-		AuthMethod:       actor.AuthMethod(authMethod),
+		AuthMethod:       auth.ActorAuthMethod(authMethod),
 		IdentityAuthInfo: identityAuthInfo,
 		Name:             identityName,
 	}, nil
@@ -420,7 +417,7 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 
 // validateServiceToken performs real service token validation.
 // Exact port of fnValidateServiceToken in service-token-service.ts:172-199.
-func (a Authenticator) validateServiceToken(ctx context.Context, token string) (*Identity, error) {
+func (a Authenticator) validateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
 	// 1. Split token: "st.<tokenID>.<tokenSecret>"
 	parts := strings.SplitN(token, ".", 3)
 	if len(parts) != 3 || parts[0] != "st" {
@@ -471,9 +468,9 @@ func (a Authenticator) validateServiceToken(ctx context.Context, token string) (
 
 	// 7. Build identity.
 	orgID, rootOrgID, parentOrgID, orgName := resolveOrgHierarchy(org)
-	return &Identity{
-		AuthMode:    AuthModeServiceToken,
-		Actor:       actor.TypeService,
+	return &auth.Identity{
+		AuthMode:    auth.AuthModeServiceToken,
+		Actor:       auth.ActorTypeService,
 		ActorID:     serviceToken.ID,
 		OrgID:       orgID,
 		RootOrgID:   rootOrgID,
@@ -532,20 +529,20 @@ type projectRow struct {
 
 // identityAccessTokenRow holds the identity_access_tokens columns + joined identity fields.
 type identityAccessTokenRow struct {
-	ID                       uuid.UUID                `db:"id"`
-	AccessTokenTTL           int64                    `db:"access_token_ttl"`
-	AccessTokenMaxTTL        int64                    `db:"access_token_max_ttl"`
-	AccessTokenNumUses       int64                    `db:"access_token_num_uses"`
-	AccessTokenNumUsesLimit  int64                    `db:"access_token_num_uses_limit"`
-	AccessTokenLastRenewedAt sql.Null[time.Time]      `db:"access_token_last_renewed_at"`
-	IsAccessTokenRevoked     bool                     `db:"is_access_token_revoked"`
-	IdentityID               uuid.UUID                `db:"identity_id"`
-	CreatedAt                sql.Null[time.Time]      `db:"created_at"`
-	AuthMethod               actor.IdentityAuthMethod `db:"auth_method"`
-	AccessTokenPeriod        int64                    `db:"access_token_period"`
-	SubOrganizationID        sql.Null[uuid.UUID]      `db:"sub_organization_id"`
-	IdentityOrgID            uuid.UUID                `db:"identity_org_id"`
-	IdentityName             string                   `db:"identity_name"`
+	ID                       uuid.UUID               `db:"id"`
+	AccessTokenTTL           int64                   `db:"access_token_ttl"`
+	AccessTokenMaxTTL        int64                   `db:"access_token_max_ttl"`
+	AccessTokenNumUses       int64                   `db:"access_token_num_uses"`
+	AccessTokenNumUsesLimit  int64                   `db:"access_token_num_uses_limit"`
+	AccessTokenLastRenewedAt sql.Null[time.Time]     `db:"access_token_last_renewed_at"`
+	IsAccessTokenRevoked     bool                    `db:"is_access_token_revoked"`
+	IdentityID               uuid.UUID               `db:"identity_id"`
+	CreatedAt                sql.Null[time.Time]     `db:"created_at"`
+	AuthMethod               auth.IdentityAuthMethod `db:"auth_method"`
+	AccessTokenPeriod        int64                   `db:"access_token_period"`
+	SubOrganizationID        sql.Null[uuid.UUID]     `db:"sub_organization_id"`
+	IdentityOrgID            uuid.UUID               `db:"identity_org_id"`
+	IdentityName             string                  `db:"identity_name"`
 }
 
 // serviceTokenRow holds the subset of service_tokens used by the authenticator.
@@ -648,7 +645,7 @@ func (a Authenticator) findProjectByID(ctx context.Context, id string) (*project
 	return &project, nil
 }
 
-// findIdentityAccessTokenByID returns the token (joined with identity) if not revoked, or nil.
+// findIdentityAccessTokenByID returns the token (joined with identity), or nil if not found.
 func (a Authenticator) findIdentityAccessTokenByID(ctx context.Context, id string) (*identityAccessTokenRow, error) {
 	query := `
 		SELECT
@@ -668,7 +665,7 @@ func (a Authenticator) findIdentityAccessTokenByID(ctx context.Context, id strin
 			identity.name AS identity_name
 		FROM identity_access_tokens token
 		INNER JOIN identities identity ON token."identityId" = identity.id
-		WHERE token.id = @id AND token."isAccessTokenRevoked" = false
+		WHERE token.id = @id
 	`
 	args := pgx.NamedArgs{"id": id}
 
@@ -731,9 +728,9 @@ func (a Authenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID)
 // findEffectiveOrgMembership returns the first effective org membership for an actor (user or identity),
 // including direct membership and membership via groups.
 // Exact port of Node.js orgDAL.findEffectiveOrgMembership.
-func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType actor.Type, actorID, orgID uuid.UUID, filterStatus string) (*membershipRow, error) {
+func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType auth.ActorType, actorID, orgID uuid.UUID, filterStatus string) (*membershipRow, error) {
 	var actorCondition string
-	if actorType == actor.TypeUser {
+	if actorType == auth.ActorTypeUser {
 		actorCondition = `(
 			membership."actorUserId" = @actorID
 			OR membership."actorGroupId" IN (
@@ -788,34 +785,34 @@ func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType
 
 // findTrustedIPsByAuthMethod returns the parsed trusted IPs for an identity's auth method.
 // Exact port of Node.js identityDAL.getTrustedIpsByAuthMethod.
-func (a Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod actor.IdentityAuthMethod) ([]TrustedIP, error) {
+func (a Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod auth.IdentityAuthMethod) ([]TrustedIP, error) {
 	var tableName string
 	switch authMethod {
-	case actor.IdentityAuthMethodUniversal:
+	case auth.IdentityAuthMethodUniversal:
 		tableName = "identity_universal_auths"
-	case actor.IdentityAuthMethodKubernetes:
+	case auth.IdentityAuthMethodKubernetes:
 		tableName = "identity_kubernetes_auths"
-	case actor.IdentityAuthMethodGCP:
+	case auth.IdentityAuthMethodGCP:
 		tableName = "identity_gcp_auths"
-	case actor.IdentityAuthMethodAliCloud:
+	case auth.IdentityAuthMethodAliCloud:
 		tableName = "identity_alicloud_auths"
-	case actor.IdentityAuthMethodAWS:
+	case auth.IdentityAuthMethodAWS:
 		tableName = "identity_aws_auths"
-	case actor.IdentityAuthMethodAzure:
+	case auth.IdentityAuthMethodAzure:
 		tableName = "identity_azure_auths"
-	case actor.IdentityAuthMethodToken:
+	case auth.IdentityAuthMethodToken:
 		tableName = "identity_token_auths"
-	case actor.IdentityAuthMethodTLSCert:
+	case auth.IdentityAuthMethodTLSCert:
 		tableName = "identity_tls_cert_auths"
-	case actor.IdentityAuthMethodOCI:
+	case auth.IdentityAuthMethodOCI:
 		tableName = "identity_oci_auths"
-	case actor.IdentityAuthMethodOIDC:
+	case auth.IdentityAuthMethodOIDC:
 		tableName = "identity_oidc_auths"
-	case actor.IdentityAuthMethodJWT:
+	case auth.IdentityAuthMethodJWT:
 		tableName = "identity_jwt_auths"
-	case actor.IdentityAuthMethodLDAP:
+	case auth.IdentityAuthMethodLDAP:
 		tableName = "identity_ldap_auths"
-	case actor.IdentityAuthMethodSPIFFE:
+	case auth.IdentityAuthMethodSPIFFE:
 		tableName = "identity_spiffe_auths"
 	default:
 		return nil, nil

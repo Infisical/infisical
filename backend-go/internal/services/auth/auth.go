@@ -6,9 +6,75 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
-	"github.com/infisical/api/internal/services/actor"
 )
+
+// ActorType identifies the kind of entity performing an action.
+type ActorType string
+
+const (
+	ActorTypeUser     ActorType = "user"
+	ActorTypeIdentity ActorType = "identity"
+	ActorTypeService  ActorType = "service"
+)
+
+// ActorAuthMethod represents the authentication method used by the actor (e.g. "jwt", "api-key").
+// An empty string means no specific method (e.g. platform-level actions).
+type ActorAuthMethod string
+
+// IdentityAuthMethod represents the authentication method used by machine identities.
+type IdentityAuthMethod string
+
+const (
+	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal_auth"
+	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes_auth"
+	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp_auth"
+	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud_auth"
+	IdentityAuthMethodAWS        IdentityAuthMethod = "aws_auth"
+	IdentityAuthMethodAzure      IdentityAuthMethod = "azure_auth"
+	IdentityAuthMethodToken      IdentityAuthMethod = "token_auth"
+	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls_cert_auth"
+	IdentityAuthMethodOCI        IdentityAuthMethod = "oci_auth"
+	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc_auth"
+	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt_auth"
+	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap_auth"
+	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe_auth"
+)
+
+// AuthOIDC holds OIDC-specific claims from the identity JWT payload.
+// Used for permission template interpolation (e.g., {{identity.auth.oidc.sub}}).
+type AuthOIDC struct {
+	Claims map[string]string
+}
+
+// AuthKubernetes holds Kubernetes-specific metadata from the identity JWT payload.
+// Used for permission template interpolation (e.g., {{identity.auth.kubernetes.namespace}}).
+type AuthKubernetes struct {
+	Namespace string
+	Name      string
+}
+
+// AuthAWS holds AWS-specific principal details from the identity JWT payload.
+// Used for permission template interpolation (e.g., {{identity.auth.aws.accountId}}).
+type AuthAWS struct {
+	AccountID    string
+	ARN          string
+	UserID       string
+	Partition    string
+	Service      string
+	ResourceType string
+	ResourceName string
+}
+
+// AuthInfo holds auth-method-specific claims for permission template interpolation.
+// Set by the auth layer, read by the permission service.
+type AuthInfo struct {
+	IdentityID   uuid.UUID
+	IdentityName string
+	AuthMethod   IdentityAuthMethod
+	OIDC         *AuthOIDC
+	Kubernetes   *AuthKubernetes
+	AWS          *AuthAWS
+}
 
 // AuthMode identifies the authentication mechanism used by the caller.
 type AuthMode string
@@ -43,30 +109,17 @@ type UserAuthInfo struct {
 	Email  string
 }
 
-// IdentityAuthInfo is an alias for actor.AuthInfo for backward compatibility.
-// Port of Node.js requestContext.identityAuthInfo.
-type IdentityAuthInfo = actor.AuthInfo
-
-// IdentityAuthOIDC is an alias for actor.AuthOIDC for backward compatibility.
-type IdentityAuthOIDC = actor.AuthOIDC
-
-// IdentityAuthKubernetes is an alias for actor.AuthKubernetes for backward compatibility.
-type IdentityAuthKubernetes = actor.AuthKubernetes
-
-// IdentityAuthAWS is an alias for actor.AuthAWS for backward compatibility.
-type IdentityAuthAWS = actor.AuthAWS
-
 // Identity holds the resolved actor information extracted from a request token.
 // It is the Go equivalent of the Node.js backend's req.auth / req.permission object.
 type Identity struct {
 	AuthMode     AuthMode
-	Actor        actor.Type
+	Actor        ActorType
 	ActorID      uuid.UUID
 	OrgID        uuid.UUID
 	RootOrgID    uuid.UUID
 	ParentOrgID  uuid.UUID
 	OrgName      string
-	AuthMethod   actor.AuthMethod
+	AuthMethod   ActorAuthMethod
 	IsSuperAdmin bool
 
 	// MFA fields (for JWT user auth).
@@ -76,7 +129,7 @@ type Identity struct {
 	// UserAuthInfo is set for JWT (user) auth. Used for audit logging.
 	UserAuthInfo *UserAuthInfo
 	// IdentityAuthInfo is set for identity access token auth. Used for audit logging.
-	IdentityAuthInfo *IdentityAuthInfo
+	IdentityAuthInfo *AuthInfo
 
 	// HTTP layer fields (populated by middleware, used for audit logging).
 	IPAddress     string
@@ -90,6 +143,7 @@ type Identity struct {
 
 type ctxKey struct{}
 type httpInfoKey struct{}
+type authInfoKey struct{}
 
 // HTTPInfo holds HTTP request information for audit logging.
 type HTTPInfo struct {
@@ -118,4 +172,15 @@ func WithIdentity(ctx context.Context, id *Identity) context.Context {
 func IdentityFromContext(ctx context.Context) *Identity {
 	id, _ := ctx.Value(ctxKey{}).(*Identity)
 	return id
+}
+
+// WithAuthInfo stores the actor auth info in the context.
+func WithAuthInfo(ctx context.Context, info *AuthInfo) context.Context {
+	return context.WithValue(ctx, authInfoKey{}, info)
+}
+
+// AuthInfoFromContext returns the actor auth info stored in ctx, or nil if absent.
+func AuthInfoFromContext(ctx context.Context) *AuthInfo {
+	info, _ := ctx.Value(authInfoKey{}).(*AuthInfo)
+	return info
 }

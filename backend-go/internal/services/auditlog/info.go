@@ -2,7 +2,6 @@ package auditlog
 
 import (
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/services/permission"
 )
 
 // AuditLogInfo holds the pre-built audit log context from an identity.
@@ -31,7 +30,7 @@ func BuildAuditLogInfo(identity *auth.Identity) *AuditLogInfo {
 
 func buildActor(identity *auth.Identity) Actor {
 	switch identity.Actor {
-	case permission.ActorTypeUser:
+	case auth.ActorTypeUser:
 		return Actor{
 			Type: ActorTypeUser,
 			Metadata: UserActorMetadata{
@@ -41,7 +40,7 @@ func buildActor(identity *auth.Identity) Actor {
 				AuthMethod: string(identity.AuthMethod),
 			},
 		}
-	case permission.ActorTypeIdentity:
+	case auth.ActorTypeIdentity:
 		return Actor{
 			Type: ActorTypeIdentity,
 			Metadata: IdentityActorMetadata{
@@ -50,7 +49,7 @@ func buildActor(identity *auth.Identity) Actor {
 				AuthMethod: string(identity.AuthMethod),
 			},
 		}
-	case permission.ActorTypeService:
+	case auth.ActorTypeService:
 		return Actor{
 			Type: ActorTypeService,
 			Metadata: ServiceActorMetadata{

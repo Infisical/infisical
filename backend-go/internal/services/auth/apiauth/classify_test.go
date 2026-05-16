@@ -1,9 +1,11 @@
-package auth
+package apiauth
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"testing"
+
+	"github.com/infisical/api/internal/services/auth"
 )
 
 // makeJWT builds a minimal unsigned JWT with the given payload claims for testing.
@@ -17,24 +19,24 @@ func makeJWT(claims map[string]any) string {
 func TestClassifyToken_VariousInputTypes(t *testing.T) {
 	t.Run("service token", func(t *testing.T) {
 		mode := ClassifyToken("st.abc123.secretpart")
-		if mode != AuthModeServiceToken {
-			t.Errorf("expected %q, got %q", AuthModeServiceToken, mode)
+		if mode != auth.AuthModeServiceToken {
+			t.Errorf("expected %q, got %q", auth.AuthModeServiceToken, mode)
 		}
 	})
 
 	t.Run("JWT access token", func(t *testing.T) {
-		token := makeJWT(map[string]any{"authTokenType": string(AuthTokenTypeAccessToken), "userId": "u1"})
+		token := makeJWT(map[string]any{"authTokenType": string(auth.AuthTokenTypeAccessToken), "userId": "u1"})
 		mode := ClassifyToken(token)
-		if mode != AuthModeJWT {
-			t.Errorf("expected %q, got %q", AuthModeJWT, mode)
+		if mode != auth.AuthModeJWT {
+			t.Errorf("expected %q, got %q", auth.AuthModeJWT, mode)
 		}
 	})
 
 	t.Run("identity access token", func(t *testing.T) {
-		token := makeJWT(map[string]any{"authTokenType": string(AuthTokenTypeIdentityAccessToken), "identityId": "id1"})
+		token := makeJWT(map[string]any{"authTokenType": string(auth.AuthTokenTypeIdentityAccessToken), "identityId": "id1"})
 		mode := ClassifyToken(token)
-		if mode != AuthModeIdentityAccessToken {
-			t.Errorf("expected %q, got %q", AuthModeIdentityAccessToken, mode)
+		if mode != auth.AuthModeIdentityAccessToken {
+			t.Errorf("expected %q, got %q", auth.AuthModeIdentityAccessToken, mode)
 		}
 	})
 

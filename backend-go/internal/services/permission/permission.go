@@ -17,24 +17,9 @@ import (
 	"github.com/infisical/api/internal/database/pg/sqln"
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/fn"
-	"github.com/infisical/api/internal/services/actor"
+	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission/project"
 )
-
-// ActorType identifies the kind of entity performing an action.
-// Type alias for actor.Type for backward compatibility.
-type ActorType = actor.Type
-
-const (
-	ActorTypeUser     ActorType = actor.TypeUser
-	ActorTypeIdentity ActorType = actor.TypeIdentity
-	ActorTypeService  ActorType = actor.TypeService
-)
-
-// ActorAuthMethod represents the authentication method used by the actor (e.g. "jwt", "api-key").
-// An empty string means no specific method (e.g. platform-level actions).
-// Type alias for actor.AuthMethod for backward compatibility.
-type ActorAuthMethod = actor.AuthMethod
 
 // ActionProjectType scopes the permission check to a specific project type.
 type ActionProjectType string
@@ -50,10 +35,10 @@ const (
 
 // GetProjectPermissionArgs holds the input for a project-level permission check.
 type GetProjectPermissionArgs struct {
-	Actor             ActorType
+	Actor             auth.ActorType
 	ActorID           uuid.UUID
 	ProjectID         string // text in DB
-	ActorAuthMethod   ActorAuthMethod
+	ActorAuthMethod   auth.ActorAuthMethod
 	ActorOrgID        uuid.UUID
 	ActionProjectType ActionProjectType
 }
@@ -117,7 +102,7 @@ func NewService(logger *slog.Logger, deps *Deps) *Service {
 // Exact port of permission-service.ts:403-573.
 func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPermissionArgs) (*GetProjectPermissionResult, error) {
 	// 1. SERVICE actor → delegate to service token path
-	if args.Actor == ActorTypeService {
+	if args.Actor == auth.ActorTypeService {
 		return p.getServiceTokenProjectPermission(ctx, args.ActorID.String(), args.ProjectID, args.ActorOrgID, args.ActionProjectType)
 	}
 
@@ -129,7 +114,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// - Swap actor/actorId if assumption is valid
 
 	// 3. Validate actor type
-	if args.Actor != ActorTypeUser && args.Actor != ActorTypeIdentity {
+	if args.Actor != auth.ActorTypeUser && args.Actor != auth.ActorTypeIdentity {
 		return nil, errutil.BadRequest("Invalid actor provided").WithErrf("GetProjectPermission: unsupported actor type %s", args.Actor)
 	}
 
@@ -196,7 +181,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// Implementation requires:
 	// - validateOrgSSO function checking orgAuthEnforced, googleSsoAuthEnforced, bypassOrgAuthEnabled
 	// - Org-level permission check for SSO bypass capability
-	// - Only applies to ActorTypeUser
+	// - Only applies to auth.ActorTypeUser
 
 	// 11. Build rules
 	rules, parseErrors := buildProjectPermissionRules(permissionFromRoles)
@@ -214,7 +199,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 
 	// 13. Fetch username
 	var username string
-	if args.Actor == ActorTypeUser {
+	if args.Actor == auth.ActorTypeUser {
 		username, err = p.findUserUsername(ctx, args.ActorID)
 		if err != nil {
 			return nil, errutil.DatabaseErr("finding user username").WithErrf("GetProjectPermission(userId=%s): %w", args.ActorID, err)
@@ -419,7 +404,7 @@ func checkProjectEnforcement(projectDetails *projectDetail) func(string) bool {
 // for use in permission template variable interpolation.
 // Port of permission-service.ts:528-532.
 func buildIdentityAuthMap(ctx context.Context, actorID uuid.UUID) map[string]any {
-	authInfo := actor.AuthInfoFromContext(ctx)
+	authInfo := auth.AuthInfoFromContext(ctx)
 	if authInfo == nil {
 		return map[string]any{}
 	}
@@ -472,7 +457,7 @@ type getPermissionParams struct {
 	OrgID     uuid.UUID
 	ProjectID string
 	ActorID   uuid.UUID
-	ActorType ActorType
+	ActorType auth.ActorType
 }
 
 // RoleInfo represents a single role assignment from the permission query.
@@ -555,7 +540,7 @@ var permissionGrouper = sqln.Grouper[permissionData, uuid.UUID]{
 func (s *Service) getPermission(ctx context.Context, params *getPermissionParams) ([]permissionData, error) {
 	// Build actor subquery for group membership
 	var groupSubquery string
-	if params.ActorType == ActorTypeUser {
+	if params.ActorType == auth.ActorTypeUser {
 		groupSubquery = `
 			SELECT grp.id FROM groups grp
 			INNER JOIN user_group_membership ugm ON ugm."groupId" = grp.id
@@ -573,7 +558,7 @@ func (s *Service) getPermission(ctx context.Context, params *getPermissionParams
 	where := qb.NewWhere().Add(`membership."scopeOrgId" = @orgID`)
 
 	// Actor condition
-	if params.ActorType == ActorTypeUser {
+	if params.ActorType == auth.ActorTypeUser {
 		where.Add(`(membership."actorUserId" = @actorID OR membership."actorGroupId" IN (` + groupSubquery + `))`)
 	} else {
 		where.Add(`(membership."actorIdentityId" = @actorID OR membership."actorGroupId" IN (` + groupSubquery + `))`)
@@ -588,7 +573,7 @@ func (s *Service) getPermission(ctx context.Context, params *getPermissionParams
 
 	// Build additional privilege join condition
 	apJoinCond := qb.NewWhere()
-	if params.ActorType == ActorTypeIdentity {
+	if params.ActorType == auth.ActorTypeIdentity {
 		apJoinCond.Add(`membership."actorIdentityId" = addlPriv."actorIdentityId"`)
 	} else {
 		apJoinCond.Add(`membership."actorUserId" = addlPriv."actorUserId"`)
@@ -601,7 +586,7 @@ func (s *Service) getPermission(ctx context.Context, params *getPermissionParams
 
 	// Build metadata join condition
 	metaJoinCond := qb.NewWhere()
-	if params.ActorType == ActorTypeUser {
+	if params.ActorType == auth.ActorTypeUser {
 		metaJoinCond.Add(`identityMeta."userId" = @actorID`).Add(`membership."scopeOrgId" = identityMeta."orgId"`)
 	} else {
 		metaJoinCond.Add(`identityMeta."identityId" = @actorID`)

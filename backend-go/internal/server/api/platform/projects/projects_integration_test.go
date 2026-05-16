@@ -13,7 +13,7 @@ import (
 	"github.com/infisical/api/internal/server/api/platform/projects"
 	projectssvr "github.com/infisical/api/internal/server/gen/http/projects/server"
 	genprojects "github.com/infisical/api/internal/server/gen/projects"
-	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
@@ -39,7 +39,7 @@ func setupMux(t *testing.T) *testutil.TestMux {
 
 	permLib := permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 
-	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
+	authenticator := apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 
 	svc := projects.NewService(testutil.NopLogger(), projects.Deps{
 		Authenticator: authenticator,

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/permission/project"
 	"github.com/infisical/api/internal/testutil"
@@ -42,7 +43,7 @@ func newPermissionService() *permission.Service {
 	return permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 }
 
-func getProjectPermission(t *testing.T, actorType permission.ActorType, actorID string) *permission.GetProjectPermissionResult {
+func getProjectPermission(t *testing.T, actorType auth.ActorType, actorID string) *permission.GetProjectPermissionResult {
 	t.Helper()
 	ctx := context.Background()
 	svc := newPermissionService()
@@ -69,7 +70,7 @@ func TestIdentityAdmin_CanDoEverything(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "admin-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Secrets CRUD
@@ -117,7 +118,7 @@ func TestIdentityMember_LimitedAccess(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "member-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("member"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Members CAN read/create/edit/delete secrets
@@ -147,7 +148,7 @@ func TestIdentityViewer_ReadOnly(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "viewer-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Viewers CAN read (viewer has describeSecret + readValue, not the combined "read" action)
@@ -193,7 +194,7 @@ func TestIdentityNoAccess_DeniedEverything(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "no-access-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// No-access CANNOT do anything
@@ -217,7 +218,7 @@ func TestIdentityNotMember_Forbidden(t *testing.T) {
 	svc := newPermissionService()
 
 	_, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeIdentity,
+		Actor:             auth.ActorTypeIdentity,
 		ActorID:           uuid.MustParse(identity.ID),
 		ProjectID:         proj.ID,
 		ActorAuthMethod:   "",
@@ -237,7 +238,7 @@ func TestUserAdmin_CanDoEverything(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "admin-user@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"admin"})
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	result := getProjectPermission(t, auth.ActorTypeUser, user.ID)
 	ability := result.Permission.Ability
 
 	// Admin can do everything
@@ -259,7 +260,7 @@ func TestUserViewer_ReadOnly(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "viewer-user@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"viewer"})
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	result := getProjectPermission(t, auth.ActorTypeUser, user.ID)
 	ability := result.Permission.Ability
 
 	// Can read (viewer has describeSecret + readValue, not combined "read")
@@ -291,7 +292,7 @@ func TestWrongOrgID_Forbidden(t *testing.T) {
 
 	fakeOrgID := uuid.New()
 	_, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeIdentity,
+		Actor:             auth.ActorTypeIdentity,
 		ActorID:           uuid.MustParse(identity.ID),
 		ProjectID:         proj.ID,
 		ActorAuthMethod:   "",
@@ -312,7 +313,7 @@ func TestWrongProjectType_BadRequest(t *testing.T) {
 
 	// Project is secret-manager, but we request certificate-manager
 	_, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeIdentity,
+		Actor:             auth.ActorTypeIdentity,
 		ActorID:           uuid.MustParse(identity.ID),
 		ProjectID:         proj.ID,
 		ActorAuthMethod:   "",
@@ -328,13 +329,13 @@ func TestProjectTypeAny_Allowed(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "any-type-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	// ActionProjectTypeAny is used by getProjectPermission helper via ActionProjectTypeSecretManager,
 	// but let's test Any explicitly
 	ctx := context.Background()
 	svc := newPermissionService()
 	resultAny, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeIdentity,
+		Actor:             auth.ActorTypeIdentity,
 		ActorID:           uuid.MustParse(identity.ID),
 		ProjectID:         proj.ID,
 		ActorAuthMethod:   "",
@@ -361,7 +362,7 @@ func TestNonExistentProject_NotFound(t *testing.T) {
 	svc := newPermissionService()
 
 	_, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeIdentity,
+		Actor:             auth.ActorTypeIdentity,
 		ActorID:           uuid.MustParse(identity.ID),
 		ProjectID:         "non-existent-project-id",
 		ActorAuthMethod:   "",
@@ -381,7 +382,7 @@ func TestMemberships_ReturnedCorrectly(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "membership-check-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("member"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 
 	require.NotEmpty(t, result.Memberships, "memberships should not be empty")
 	assert.True(t, result.HasRole("member"))
@@ -398,7 +399,7 @@ func TestHasProjectEnforcement_ReturnsFunction(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "enforcement-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 
 	require.NotNil(t, result.HasProjectEnforcement)
 	// Default project should not have encrypted metadata enforcement
@@ -425,7 +426,7 @@ func TestIdentityCustomRole_SecretsReadCreateOnly(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "custom-role-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// CAN read and create secrets
@@ -461,7 +462,7 @@ func TestUserCustomRole_SecretsReadCreateOnly(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "custom-role-user@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{customRole.Slug})
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	result := getProjectPermission(t, auth.ActorTypeUser, user.ID)
 	ability := result.Permission.Ability
 
 	// CAN read and create secrets
@@ -497,7 +498,7 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "env-scoped-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// CAN read secrets in "dev" environment
@@ -535,7 +536,7 @@ func TestIdentityCustomRole_GlobSecretPath(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "glob-path-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// CAN read secrets under /app/
@@ -562,7 +563,7 @@ func TestGroupAdmin_UserInheritsFullAccess(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, "admin")
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	result := getProjectPermission(t, auth.ActorTypeUser, user.ID)
 	ability := result.Permission.Ability
 
 	// User inherits admin permissions through group
@@ -585,7 +586,7 @@ func TestGroupViewer_UserInheritsReadOnly(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, "viewer")
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	result := getProjectPermission(t, auth.ActorTypeUser, user.ID)
 	ability := result.Permission.Ability
 
 	// User inherits viewer permissions through group (describeSecret + readValue, not combined "read")
@@ -620,7 +621,7 @@ func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, customRole.Slug)
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	result := getProjectPermission(t, auth.ActorTypeUser, user.ID)
 	ability := result.Permission.Ability
 
 	// CAN read secrets and folders through group's custom role
@@ -654,7 +655,7 @@ func TestGroupNotMember_UserDenied(t *testing.T) {
 	svc := newPermissionService()
 
 	_, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeUser,
+		Actor:             auth.ActorTypeUser,
 		ActorID:           uuid.MustParse(user.ID),
 		ProjectID:         proj.ID,
 		ActorAuthMethod:   "",
@@ -682,7 +683,7 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 		},
 	}, nil)
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Base viewer permissions still work
@@ -714,7 +715,7 @@ func TestIdentityAdditionalPrivilege_WithConditions(t *testing.T) {
 		},
 	}, nil)
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// CAN read secrets in dev via additional privilege
@@ -748,7 +749,7 @@ func TestUserAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	// Use testProj.ID instead of the shared proj.ID
 	svc := newPermissionService()
 	result, err := svc.GetProjectPermission(context.Background(), &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeUser,
+		Actor:             auth.ActorTypeUser,
 		ActorID:           uuid.MustParse(user.ID),
 		ProjectID:         testProj.ID,
 		ActorAuthMethod:   "",
@@ -790,7 +791,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 		},
 	}, nil)
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Both additional privileges are merged
@@ -825,7 +826,7 @@ func TestIdentityTemporaryRole_ActiveGrantsAccess(t *testing.T) {
 		},
 	})
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Active temporary admin role grants full access
@@ -859,7 +860,7 @@ func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
 	ctx := context.Background()
 	svc := newPermissionService()
 	result, err := svc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
-		Actor:             permission.ActorTypeIdentity,
+		Actor:             auth.ActorTypeIdentity,
 		ActorID:           uuid.MustParse(identity.ID),
 		ProjectID:         proj.ID,
 		ActorAuthMethod:   "",
@@ -895,7 +896,7 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 		},
 	})
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Permanent viewer permissions still work
@@ -925,7 +926,7 @@ func TestIdentityTemporaryAdditionalPrivilege_ActiveGrantsAccess(t *testing.T) {
 		},
 	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().UTC().Format(time.RFC3339)})
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Active temporary additional privilege grants read
@@ -948,7 +949,7 @@ func TestIdentityTemporaryAdditionalPrivilege_ExpiredDeniesAccess(t *testing.T) 
 		},
 	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)})
 
-	result := getProjectPermission(t, permission.ActorTypeIdentity, identity.ID)
+	result := getProjectPermission(t, auth.ActorTypeIdentity, identity.ID)
 	ability := result.Permission.Ability
 
 	// Expired temporary additional privilege grants nothing (base role is no-access)

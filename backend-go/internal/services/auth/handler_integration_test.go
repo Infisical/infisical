@@ -20,14 +20,14 @@ import (
 
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/libs/errutil"
-	"github.com/infisical/api/internal/services/actor"
 	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/testutil/infra"
 )
 
 var (
 	stack         *infra.Stack
-	authenticator auth.Authenticator
+	authenticator apiauth.Authenticator
 	memKeyStore   *keystore.MemoryKeyStore
 )
 
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 		MustStart()
 
 	memKeyStore = keystore.NewMemoryKeyStore()
-	authenticator = auth.NewAuthenticator(stack.DB(), infra.AuthSecret, memKeyStore)
+	authenticator = apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, memKeyStore)
 
 	code := m.Run()
 	stack.Stop()
@@ -50,9 +50,9 @@ func TestMain(m *testing.M) {
 // JWT Signing Helpers
 // =============================================================================
 
-func signUserJWT(t *testing.T, secret string, mut func(*auth.UserJWTClaims)) string {
+func signUserJWT(t *testing.T, secret string, mut func(*apiauth.UserJWTClaims)) string {
 	t.Helper()
-	claims := &auth.UserJWTClaims{
+	claims := &apiauth.UserJWTClaims{
 		AuthTokenType:  auth.AuthTokenTypeAccessToken,
 		UserID:         uuid.MustParse(stack.NodeJS().UserID()),
 		TokenVersionID: uuid.New(),
@@ -72,9 +72,9 @@ func signUserJWT(t *testing.T, secret string, mut func(*auth.UserJWTClaims)) str
 	return tokenString
 }
 
-func signIdentityJWT(t *testing.T, secret string, mut func(*auth.IdentityJWTClaims)) string {
+func signIdentityJWT(t *testing.T, secret string, mut func(*apiauth.IdentityJWTClaims)) string {
 	t.Helper()
-	claims := &auth.IdentityJWTClaims{
+	claims := &apiauth.IdentityJWTClaims{
 		AuthTokenType:         auth.AuthTokenTypeIdentityAccessToken,
 		IdentityID:            uuid.New(),
 		IdentityAccessTokenID: uuid.New().String(),
@@ -136,7 +136,7 @@ func TestJWTAuth_UserToken_Valid(t *testing.T) {
 	identity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, identity)
 	assert.Equal(t, auth.AuthModeJWT, identity.AuthMode)
-	assert.Equal(t, actor.TypeUser, identity.Actor)
+	assert.Equal(t, auth.ActorTypeUser, identity.Actor)
 	assert.Equal(t, uuid.MustParse(stack.NodeJS().UserID()), identity.ActorID)
 	assert.Equal(t, uuid.MustParse(stack.NodeJS().OrgID()), identity.OrgID)
 	// Verify user-specific fields are populated
@@ -173,7 +173,7 @@ func TestJWTAuth_UserToken_Errors(t *testing.T) {
 		{
 			name: "expired token",
 			token: func(t *testing.T) string {
-				return signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+				return signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 					c.ExpiresAt = jwt.NewNumericDate(time.Now().Add(-time.Hour))
 				})
 			},
@@ -185,7 +185,7 @@ func TestJWTAuth_UserToken_Errors(t *testing.T) {
 		{
 			name: "wrong auth token type",
 			token: func(t *testing.T) string {
-				return signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+				return signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 					c.AuthTokenType = "wrong-type"
 				})
 			},
@@ -196,7 +196,7 @@ func TestJWTAuth_UserToken_Errors(t *testing.T) {
 		{
 			name: "session not found",
 			token: func(t *testing.T) string {
-				return signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+				return signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 					c.TokenVersionID = uuid.New() // non-existent session
 				})
 			},
@@ -208,7 +208,7 @@ func TestJWTAuth_UserToken_Errors(t *testing.T) {
 		{
 			name: "user not found",
 			token: func(t *testing.T) string {
-				return signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+				return signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 					c.UserID = uuid.New() // non-existent user
 				})
 			},
@@ -247,7 +247,7 @@ func TestJWTAuth_UserToken_StaleAccessVersion(t *testing.T) {
 	})
 
 	// Create token with access_version = 1 (stale)
-	token := signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 		c.TokenVersionID = sessionID
 		c.AccessVersion = 1 // Different from DB's 5
 	})
@@ -262,10 +262,11 @@ func TestJWTAuth_UserToken_StaleAccessVersion(t *testing.T) {
 func TestJWTAuth_UserToken_UserLocked(t *testing.T) {
 	// Create a user that is permanently locked
 	lockedUserID := uuid.New()
+	testEmail := "locked-" + uuid.New().String() + "@test.com"
 	_, err := stack.DB().Primary().Exec(context.Background(), `
-		INSERT INTO users (id, email, "isAccepted", "isLocked", "createdAt", "updatedAt")
-		VALUES (@userID, @email, true, true, NOW(), NOW())
-	`, pgx.NamedArgs{"userID": lockedUserID, "email": "locked-" + uuid.New().String() + "@test.com"})
+		INSERT INTO users (id, email, username, "isAccepted", "isLocked", "createdAt", "updatedAt")
+		VALUES (@userID, @email, @username, true, true, NOW(), NOW())
+	`, pgx.NamedArgs{"userID": lockedUserID, "email": testEmail, "username": testEmail})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = stack.DB().Primary().Exec(context.Background(),
@@ -286,7 +287,7 @@ func TestJWTAuth_UserToken_UserLocked(t *testing.T) {
 			pgx.NamedArgs{"sessionID": sessionID})
 	})
 
-	token := signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 		c.UserID = lockedUserID
 		c.TokenVersionID = sessionID
 		c.AccessVersion = 1
@@ -301,11 +302,12 @@ func TestJWTAuth_UserToken_UserLocked(t *testing.T) {
 func TestJWTAuth_UserToken_UserTemporarilyLocked(t *testing.T) {
 	// Create a user that is temporarily locked (lock expires in the future)
 	tempLockedUserID := uuid.New()
+	testEmail := "templocked-" + uuid.New().String() + "@test.com"
 	lockEnd := time.Now().Add(time.Hour) // Locked for another hour
 	_, err := stack.DB().Primary().Exec(context.Background(), `
-		INSERT INTO users (id, email, "isAccepted", "temporaryLockDateEnd", "createdAt", "updatedAt")
-		VALUES (@userID, @email, true, @lockEnd, NOW(), NOW())
-	`, pgx.NamedArgs{"userID": tempLockedUserID, "email": "templocked-" + uuid.New().String() + "@test.com", "lockEnd": lockEnd})
+		INSERT INTO users (id, email, username, "isAccepted", "temporaryLockDateEnd", "createdAt", "updatedAt")
+		VALUES (@userID, @email, @username, true, @lockEnd, NOW(), NOW())
+	`, pgx.NamedArgs{"userID": tempLockedUserID, "email": testEmail, "username": testEmail, "lockEnd": lockEnd})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = stack.DB().Primary().Exec(context.Background(),
@@ -326,7 +328,7 @@ func TestJWTAuth_UserToken_UserTemporarilyLocked(t *testing.T) {
 			pgx.NamedArgs{"sessionID": sessionID})
 	})
 
-	token := signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 		c.UserID = tempLockedUserID
 		c.TokenVersionID = sessionID
 		c.AccessVersion = 1
@@ -341,10 +343,11 @@ func TestJWTAuth_UserToken_UserTemporarilyLocked(t *testing.T) {
 func TestJWTAuth_UserToken_UserNotAccepted(t *testing.T) {
 	// Create a user that has not accepted
 	notAcceptedUserID := uuid.New()
+	testEmail := "notaccepted-" + uuid.New().String() + "@test.com"
 	_, err := stack.DB().Primary().Exec(context.Background(), `
-		INSERT INTO users (id, email, "isAccepted", "createdAt", "updatedAt")
-		VALUES (@userID, @email, false, NOW(), NOW())
-	`, pgx.NamedArgs{"userID": notAcceptedUserID, "email": "notaccepted-" + uuid.New().String() + "@test.com"})
+		INSERT INTO users (id, email, username, "isAccepted", "createdAt", "updatedAt")
+		VALUES (@userID, @email, @username, false, NOW(), NOW())
+	`, pgx.NamedArgs{"userID": notAcceptedUserID, "email": testEmail, "username": testEmail})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = stack.DB().Primary().Exec(context.Background(),
@@ -365,7 +368,7 @@ func TestJWTAuth_UserToken_UserNotAccepted(t *testing.T) {
 			pgx.NamedArgs{"sessionID": sessionID})
 	})
 
-	token := signUserJWT(t, infra.AuthSecret, func(c *auth.UserJWTClaims) {
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
 		c.UserID = notAcceptedUserID
 		c.TokenVersionID = sessionID
 		c.AccessVersion = 1
@@ -389,7 +392,7 @@ func TestJWTAuth_IdentityToken_Valid(t *testing.T) {
 	identity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, identity)
 	assert.Equal(t, auth.AuthModeIdentityAccessToken, identity.AuthMode)
-	assert.Equal(t, actor.TypeIdentity, identity.Actor)
+	assert.Equal(t, auth.ActorTypeIdentity, identity.Actor)
 	assert.NotEqual(t, uuid.Nil, identity.ActorID)
 	assert.Equal(t, uuid.MustParse(stack.NodeJS().OrgID()), identity.OrgID)
 	// Verify identity-specific fields
@@ -415,7 +418,7 @@ func TestJWTAuth_IdentityToken_Errors(t *testing.T) {
 		{
 			name: "expired token",
 			token: func(t *testing.T) string {
-				return signIdentityJWT(t, infra.AuthSecret, func(c *auth.IdentityJWTClaims) {
+				return signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 					c.ExpiresAt = jwt.NewNumericDate(time.Now().Add(-time.Hour))
 				})
 			},
@@ -426,7 +429,7 @@ func TestJWTAuth_IdentityToken_Errors(t *testing.T) {
 		{
 			name: "wrong auth token type",
 			token: func(t *testing.T) string {
-				return signIdentityJWT(t, infra.AuthSecret, func(c *auth.IdentityJWTClaims) {
+				return signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 					c.AuthTokenType = "wrong-type"
 				})
 			},
@@ -437,13 +440,13 @@ func TestJWTAuth_IdentityToken_Errors(t *testing.T) {
 		{
 			name: "token not found in DB (legacy path)",
 			token: func(t *testing.T) string {
-				return signIdentityJWT(t, infra.AuthSecret, func(c *auth.IdentityJWTClaims) {
+				return signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 					c.IdentityAccessTokenID = uuid.New().String()
 				})
 			},
 			assertError: func(t *testing.T, err error) {
 				assertUnauthorized(t, err)
-				assert.Contains(t, err.Error(), "No identity access token found")
+				assert.Contains(t, err.Error(), "Cannot renew revoked or unknown access token")
 			},
 		},
 	}
@@ -478,7 +481,7 @@ func TestJWTAuth_IdentityToken_CustomIdentity(t *testing.T) {
 	authIdentity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, authIdentity)
 	assert.Equal(t, auth.AuthModeIdentityAccessToken, authIdentity.AuthMode)
-	assert.Equal(t, actor.TypeIdentity, authIdentity.Actor)
+	assert.Equal(t, auth.ActorTypeIdentity, authIdentity.Actor)
 	assert.Equal(t, uuid.MustParse(identity.ID), authIdentity.ActorID)
 }
 
@@ -593,7 +596,7 @@ func TestJWTAuth_ServiceToken_Valid(t *testing.T) {
 	identity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, identity)
 	assert.Equal(t, auth.AuthModeServiceToken, identity.AuthMode)
-	assert.Equal(t, actor.TypeService, identity.Actor)
+	assert.Equal(t, auth.ActorTypeService, identity.Actor)
 	assert.Equal(t, st.ID, identity.ActorID.String())
 }
 
@@ -637,10 +640,7 @@ func TestJWTAuth_ServiceToken_Expired(t *testing.T) {
 	// Create a service token that expires in 1 second
 	expiresIn := 1
 	st := nodejs.CreateServiceToken(t, proj.ID, "dev", &expiresIn)
-	t.Cleanup(func() {
-		// Token may be auto-deleted when expired, ignore errors
-		nodejs.DeleteServiceToken(t, st.ID)
-	})
+	// No cleanup needed - token is auto-deleted when expired
 
 	// Wait for expiration
 	time.Sleep(2 * time.Second)
@@ -673,7 +673,7 @@ func TestJWTAuth_IdentityToken_NumUsesLimitExhausted(t *testing.T) {
 	token := nodejs.GetIdentityAccessToken(t, identity.ID)
 
 	// Parse to get token ID
-	claims := &auth.IdentityJWTClaims{}
+	claims := &apiauth.IdentityJWTClaims{}
 	_, _ = jwt.ParseWithClaims(token, claims, func(_ *jwt.Token) (any, error) {
 		return []byte(infra.AuthSecret), nil
 	})
@@ -690,7 +690,7 @@ func TestJWTAuth_IdentityToken_NumUsesLimitExhausted(t *testing.T) {
 
 	// Create a new authenticator that checks numUsesLimit
 	// We need to sign a token WITH numUsesLimit claim
-	tokenWithLimit := signIdentityJWT(t, infra.AuthSecret, func(c *auth.IdentityJWTClaims) {
+	tokenWithLimit := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 		c.IdentityID = uuid.MustParse(identity.ID)
 		c.OrgID = uuid.MustParse(stack.NodeJS().OrgID())
 		c.RootOrgID = uuid.MustParse(stack.NodeJS().OrgID())
@@ -704,7 +704,7 @@ func TestJWTAuth_IdentityToken_NumUsesLimitExhausted(t *testing.T) {
 	_, err = authenticator.JWTAuth(context.Background(), tokenWithLimit, &security.JWTScheme{Name: "identity_access_token"})
 
 	assertUnauthorized(t, err)
-	assert.Contains(t, err.Error(), "exceeded")
+	assert.Contains(t, err.Error(), "usage limit")
 }
 
 // =============================================================================
@@ -726,7 +726,7 @@ func TestJWTAuth_UserToken_AlgNoneAttack(t *testing.T) {
 func TestJWTAuth_UserToken_WrongAlgorithm(t *testing.T) {
 	// Try to use RS256 when the server expects HS256
 	// This tests that the server properly validates the algorithm
-	token := jwt.NewWithClaims(jwt.SigningMethodHS384, &auth.UserJWTClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS384, &apiauth.UserJWTClaims{
 		AuthTokenType:  auth.AuthTokenTypeAccessToken,
 		UserID:         uuid.MustParse(stack.NodeJS().UserID()),
 		TokenVersionID: uuid.New(),
@@ -785,7 +785,7 @@ func TestJWTAuth_IdentityToken_LegacyRevoked(t *testing.T) {
 	})
 
 	// Create a legacy token (no full renew claims) pointing to this DB row
-	legacyToken := signIdentityJWT(t, infra.AuthSecret, func(c *auth.IdentityJWTClaims) {
+	legacyToken := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 		c.IdentityID = identityID
 		c.IdentityAccessTokenID = tokenID.String()
 		// Don't set OrgID, RootOrgID, ParentOrgID, AuthMethod, AccessTokenTTL

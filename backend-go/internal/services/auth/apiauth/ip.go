@@ -1,8 +1,9 @@
-package auth
+package apiauth
 
 import (
 	"encoding/json"
 	"net"
+	"strconv"
 
 	"github.com/infisical/api/internal/libs/errutil"
 )
@@ -46,7 +47,7 @@ func checkIPAgainstBlocklist(ipAddress string, trustedIPs []TrustedIP) error {
 		}
 
 		if tip.Prefix > 0 {
-			_, cidr, err := net.ParseCIDR(tip.IPAddress + "/" + itoa(tip.Prefix))
+			_, cidr, err := net.ParseCIDR(tip.IPAddress + "/" + strconv.Itoa(tip.Prefix))
 			if err != nil {
 				continue
 			}
@@ -59,21 +60,4 @@ func checkIPAgainstBlocklist(ipAddress string, trustedIPs []TrustedIP) error {
 	}
 
 	return errutil.Forbidden("You are not allowed to access this resource from the current IP address").WithErrf("checkIPAgainstBlocklist: IP %s not in allowlist", ipAddress)
-}
-
-// itoa converts an int to its decimal string representation without importing strconv.
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	buf := make([]byte, 0, 4)
-	for n > 0 {
-		buf = append(buf, byte('0'+n%10))
-		n /= 10
-	}
-	// reverse
-	for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
-		buf[i], buf[j] = buf[j], buf[i]
-	}
-	return string(buf)
 }

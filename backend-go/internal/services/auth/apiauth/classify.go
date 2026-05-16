@@ -1,38 +1,40 @@
-package auth
+package apiauth
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"strings"
+
+	"github.com/infisical/api/internal/services/auth"
 )
 
 // peekClaims is a minimal struct for peeking at the token type
 // without performing signature verification.
 type peekClaims struct {
-	AuthTokenType AuthTokenType `json:"authTokenType"`
+	AuthTokenType auth.AuthTokenType `json:"authTokenType"`
 }
 
 // ClassifyToken determines the AuthMode from a raw token string
 // using cheap checks only (string prefix, base64 decode) — no crypto.
-func ClassifyToken(token string) AuthMode {
+func ClassifyToken(token string) auth.AuthMode {
 	if strings.HasPrefix(token, "st.") {
-		return AuthModeServiceToken
+		return auth.AuthModeServiceToken
 	}
 
 	claims := peekJWTClaims(token)
 	switch claims.AuthTokenType {
-	case AuthTokenTypeAccessToken:
-		return AuthModeJWT
-	case AuthTokenTypeIdentityAccessToken:
-		return AuthModeIdentityAccessToken
-	case AuthTokenTypeRefreshToken,
-		AuthTokenTypeSignupToken,
-		AuthTokenTypeMfaToken,
-		AuthTokenTypeProviderToken,
-		AuthTokenTypeAPIKey,
-		AuthTokenTypeServiceAccessToken,
-		AuthTokenTypeServiceRefreshToken,
-		AuthTokenTypeSCIMToken:
+	case auth.AuthTokenTypeAccessToken:
+		return auth.AuthModeJWT
+	case auth.AuthTokenTypeIdentityAccessToken:
+		return auth.AuthModeIdentityAccessToken
+	case auth.AuthTokenTypeRefreshToken,
+		auth.AuthTokenTypeSignupToken,
+		auth.AuthTokenTypeMfaToken,
+		auth.AuthTokenTypeProviderToken,
+		auth.AuthTokenTypeAPIKey,
+		auth.AuthTokenTypeServiceAccessToken,
+		auth.AuthTokenTypeServiceRefreshToken,
+		auth.AuthTokenTypeSCIMToken:
 		return ""
 	}
 

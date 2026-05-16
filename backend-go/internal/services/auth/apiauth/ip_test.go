@@ -1,4 +1,4 @@
-package auth
+package apiauth
 
 import (
 	"testing"
@@ -138,25 +138,4 @@ func TestCheckIPAgainstBlocklist_VariousScenarios(t *testing.T) {
 			t.Fatalf("expected allowed within IPv6 CIDR: %v", err)
 		}
 	})
-}
-
-func TestItoa_ConvertsIntToString(t *testing.T) {
-	tests := []struct {
-		input    int
-		expected string
-	}{
-		{0, "0"},
-		{1, "1"},
-		{8, "8"},
-		{24, "24"},
-		{128, "128"},
-		{255, "255"},
-	}
-
-	for _, tc := range tests {
-		got := itoa(tc.input)
-		if got != tc.expected {
-			t.Errorf("itoa(%d) = %q, want %q", tc.input, got, tc.expected)
-		}
-	}
 }

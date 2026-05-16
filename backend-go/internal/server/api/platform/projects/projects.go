@@ -4,9 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/infisical/api/internal/services/auth"
-
 	genprojects "github.com/infisical/api/internal/server/gen/projects"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/permission"
 )
 
@@ -15,14 +14,14 @@ type permissionGetter interface {
 }
 
 type service struct {
-	auth.Authenticator
+	apiauth.Authenticator
 	logger     *slog.Logger
 	permission permissionGetter
 }
 
 // Deps holds the dependencies for the projects service.
 type Deps struct {
-	Authenticator auth.Authenticator
+	Authenticator apiauth.Authenticator
 	Permission    permissionGetter
 }
 

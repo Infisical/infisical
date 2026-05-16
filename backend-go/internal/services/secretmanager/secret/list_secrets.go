@@ -27,18 +27,18 @@ const (
 // ListSecretsOpts contains options for listing secrets.
 // Note: Imports are always loaded and included in the result.
 type ListSecretsOpts struct {
-	ProjectID                        string
-	Environment                      string
-	SecretPath                       string
-	UserID                           *uuid.UUID
-	ViewSecretValue                  bool
-	ExpandSecretReferences           bool
-	Recursive                        bool
-	PersonalOverridesBehavior        PersonalOverridesBehavior
-	ExpandPersonalOverrides          bool
-	TagSlugs                         []string
-	MetadataFilter                   []MetadataFilter
-	Access                           AccessControl
+	ProjectID                         string
+	Environment                       string
+	SecretPath                        string
+	UserID                            *uuid.UUID
+	ViewSecretValue                   bool
+	ExpandSecretReferences            bool
+	Recursive                         bool
+	PersonalOverridesBehavior         PersonalOverridesBehavior
+	ExpandPersonalOverrides           bool
+	TagSlugs                          []string
+	MetadataFilter                    []MetadataFilter
+	Access                            AccessControl
 	ThrowOnMissingReadValuePermission bool
 }
 

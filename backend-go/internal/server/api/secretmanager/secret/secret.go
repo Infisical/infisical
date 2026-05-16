@@ -10,6 +10,7 @@ import (
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/permission"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
@@ -41,7 +42,7 @@ type SecretsService interface {
 
 // Handler implements the Goa secrets service interface.
 type Handler struct {
-	auth.Authenticator
+	apiauth.Authenticator
 	logger     *slog.Logger
 	permission PermissionService
 	project    ProjectService
@@ -52,7 +53,7 @@ type Handler struct {
 // Deps holds the dependencies for the secrets handler.
 type Deps struct {
 	Logger        *slog.Logger
-	Authenticator auth.Authenticator
+	Authenticator apiauth.Authenticator
 	Permission    PermissionService
 	Project       ProjectService
 	AuditLog      AuditLogService
@@ -267,7 +268,7 @@ func (h *Handler) buildImportsResponse(
 
 // getUserID extracts user ID from identity if actor is a user.
 func getUserID(identity *auth.Identity) *uuid.UUID {
-	if identity.Actor == permission.ActorTypeUser {
+	if identity.Actor == auth.ActorTypeUser {
 		return &identity.ActorID
 	}
 	return nil
@@ -279,7 +280,7 @@ func getSecretType(identity *auth.Identity, requestedType string) string {
 		return "shared"
 	}
 	switch identity.Actor {
-	case permission.ActorTypeIdentity, permission.ActorTypeService:
+	case auth.ActorTypeIdentity, auth.ActorTypeService:
 		return "shared"
 	default:
 		return requestedType

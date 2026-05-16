@@ -1,4 +1,4 @@
-package auth
+package apiauth
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/infisical/api/internal/services/auth"
 )
 
 // =============================================================================
@@ -18,22 +20,22 @@ func TestClassifyToken_ServiceToken(t *testing.T) {
 	tests := []struct {
 		name     string
 		token    string
-		expected AuthMode
+		expected auth.AuthMode
 	}{
 		{
 			name:     "valid service token format",
 			token:    "st." + uuid.New().String() + ".secret123",
-			expected: AuthModeServiceToken,
+			expected: auth.AuthModeServiceToken,
 		},
 		{
 			name:     "service token with only prefix and id",
 			token:    "st." + uuid.New().String(),
-			expected: AuthModeServiceToken,
+			expected: auth.AuthModeServiceToken,
 		},
 		{
 			name:     "service token with empty parts after prefix",
 			token:    "st..",
-			expected: AuthModeServiceToken,
+			expected: auth.AuthModeServiceToken,
 		},
 		{
 			name:     "wrong prefix sv",
@@ -66,19 +68,19 @@ func TestClassifyToken_JWT(t *testing.T) {
 	tests := []struct {
 		name     string
 		token    string
-		expected AuthMode
+		expected auth.AuthMode
 	}{
 		{
 			name: "JWT with accessToken type",
 			// payload: {"authTokenType":"accessToken"}
 			token:    "eyJhbGciOiJIUzI1NiJ9.eyJhdXRoVG9rZW5UeXBlIjoiYWNjZXNzVG9rZW4ifQ.sig",
-			expected: AuthModeJWT,
+			expected: auth.AuthModeJWT,
 		},
 		{
 			name: "JWT with identityAccessToken type",
 			// payload: {"authTokenType":"identityAccessToken"}
 			token:    "eyJhbGciOiJIUzI1NiJ9.eyJhdXRoVG9rZW5UeXBlIjoiaWRlbnRpdHlBY2Nlc3NUb2tlbiJ9.sig",
-			expected: AuthModeIdentityAccessToken,
+			expected: auth.AuthModeIdentityAccessToken,
 		},
 		{
 			name: "JWT with refreshToken type returns empty",
@@ -138,7 +140,7 @@ func TestClassifyToken_Malformed(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := ClassifyToken(tt.token)
-			assert.Equal(t, AuthMode(""), result, "malformed token should return empty AuthMode")
+			assert.Equal(t, auth.AuthMode(""), result, "malformed token should return empty AuthMode")
 		})
 	}
 }
@@ -462,6 +464,10 @@ func RegisteredClaimsWithJTI(jti string) jwt.RegisteredClaims {
 func TestParseUsesRemaining(t *testing.T) {
 	t.Parallel()
 
+	ten := int64(10)
+	zero := int64(0)
+	negFive := int64(-5)
+
 	tests := []struct {
 		name     string
 		input    string
@@ -475,17 +481,17 @@ func TestParseUsesRemaining(t *testing.T) {
 		{
 			name:     "valid positive number",
 			input:    "10",
-			expected: new(int64(10)),
+			expected: &ten,
 		},
 		{
 			name:     "zero",
 			input:    "0",
-			expected: new(int64(0)),
+			expected: &zero,
 		},
 		{
 			name:     "negative number",
 			input:    "-5",
-			expected: new(int64(-5)),
+			expected: &negFive,
 		},
 		{
 			name:     "non-numeric returns nil",

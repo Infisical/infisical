@@ -17,6 +17,7 @@ import (
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/project"
@@ -52,7 +53,7 @@ func newSecretsHandler(t *testing.T) gensecrets.Service {
 
 	permSvc := permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 
-	authenticator := auth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
+	authenticator := apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
@@ -99,7 +100,7 @@ func listSecretsAsAdmin(t *testing.T, identityID, orgID string, payload *gensecr
 
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      permission.ActorTypeIdentity,
+		Actor:      auth.ActorTypeIdentity,
 		ActorID:    uuid.MustParse(identityID),
 		OrgID:      uuid.MustParse(orgID),
 		AuthMethod: "",
@@ -803,7 +804,7 @@ func TestListSecretsV4_PersonalOverrides_NeverInclude(t *testing.T) {
 	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeJWT,
-		Actor:      permission.ActorTypeUser,
+		Actor:      auth.ActorTypeUser,
 		ActorID:    uuid.MustParse(nodejs.UserID()),
 		OrgID:      uuid.MustParse(nodejs.OrgID()),
 		AuthMethod: "",
@@ -841,7 +842,7 @@ func TestListSecretsV4_PersonalOverrides_Priority(t *testing.T) {
 	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeJWT,
-		Actor:      permission.ActorTypeUser,
+		Actor:      auth.ActorTypeUser,
 		ActorID:    uuid.MustParse(nodejs.UserID()),
 		OrgID:      uuid.MustParse(nodejs.OrgID()),
 		AuthMethod: "",
@@ -1509,7 +1510,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
-			Actor:      permission.ActorTypeUser,
+			Actor:      auth.ActorTypeUser,
 			ActorID:    uuid.MustParse(nodejs.UserID()),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1537,7 +1538,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
-			Actor:      permission.ActorTypeUser,
+			Actor:      auth.ActorTypeUser,
 			ActorID:    uuid.MustParse(nodejs.UserID()),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1563,7 +1564,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
-			Actor:      permission.ActorTypeUser,
+			Actor:      auth.ActorTypeUser,
 			ActorID:    uuid.MustParse(nodejs.UserID()),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1589,7 +1590,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
-			Actor:      permission.ActorTypeUser,
+			Actor:      auth.ActorTypeUser,
 			ActorID:    uuid.MustParse(nodejs.UserID()),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1613,7 +1614,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
-			Actor:      permission.ActorTypeIdentity,
+			Actor:      auth.ActorTypeIdentity,
 			ActorID:    uuid.MustParse(identity.ID),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1635,7 +1636,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
-			Actor:      permission.ActorTypeIdentity,
+			Actor:      auth.ActorTypeIdentity,
 			ActorID:    uuid.MustParse(identity.ID),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1658,7 +1659,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
-			Actor:      permission.ActorTypeIdentity,
+			Actor:      auth.ActorTypeIdentity,
 			ActorID:    uuid.MustParse(identity.ID),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1681,7 +1682,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
-			Actor:      permission.ActorTypeIdentity,
+			Actor:      auth.ActorTypeIdentity,
 			ActorID:    uuid.MustParse(identity.ID),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1702,7 +1703,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
-			Actor:      permission.ActorTypeIdentity,
+			Actor:      auth.ActorTypeIdentity,
 			ActorID:    uuid.MustParse(identity.ID),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1737,7 +1738,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
-			Actor:      permission.ActorTypeUser,
+			Actor:      auth.ActorTypeUser,
 			ActorID:    uuid.MustParse(nodejs.UserID()),
 			OrgID:      uuid.MustParse(nodejs.OrgID()),
 			AuthMethod: "",
@@ -1777,7 +1778,7 @@ func TestGetSecretByName_ExpandsSameFolderRefsWithoutImports(t *testing.T) {
 	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      permission.ActorTypeIdentity,
+		Actor:      auth.ActorTypeIdentity,
 		ActorID:    uuid.MustParse(identity.ID),
 		OrgID:      uuid.MustParse(nodejs.OrgID()),
 		AuthMethod: "",
@@ -1817,7 +1818,7 @@ func TestGetSecretByName_ExpandsNestedRefsWithoutImports(t *testing.T) {
 	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      permission.ActorTypeIdentity,
+		Actor:      auth.ActorTypeIdentity,
 		ActorID:    uuid.MustParse(identity.ID),
 		OrgID:      uuid.MustParse(nodejs.OrgID()),
 		AuthMethod: "",
