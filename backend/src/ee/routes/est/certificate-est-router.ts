@@ -163,10 +163,6 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       const { identifier } = req.params;
       const identifierType = await getIdentifierType(identifier);
 
-      if (!identifierType) {
-        throw new BadRequestError({ message: "Certificate template or profile not found" });
-      }
-
       if (identifierType === "profile") {
         return server.services.certificateEstV3.simpleEnrollByProfile({
           csr: req.body,
@@ -204,10 +200,6 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       const { identifier } = req.params;
       const identifierType = await getIdentifierType(identifier);
 
-      if (!identifierType) {
-        throw new BadRequestError({ message: "Certificate template or profile not found" });
-      }
-
       if (identifierType === "profile") {
         return server.services.certificateEstV3.simpleReenrollByProfile({
           csr: req.body,
@@ -241,11 +233,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
       void res.header("Content-Transfer-Encoding", "base64");
 
+      // cacerts is the only EST endpoint reachable without the preHandler resolving
+      // an identifier (it is unauthenticated per RFC 7030), so it validates here.
       const { identifier } = req.params;
       const identifierType = await getIdentifierType(identifier);
 
       if (!identifierType) {
-        throw new BadRequestError({ message: "Certificate template or profile not found" });
+        throw new NotFoundError({ message: "Certificate template or profile not found" });
       }
 
       if (identifierType === "profile") {
