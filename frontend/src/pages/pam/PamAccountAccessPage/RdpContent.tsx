@@ -99,15 +99,6 @@ export const RdpContent = ({ account, projectId, reason }: RdpContentProps) => {
               Disconnect
             </button>
           )}
-          {(sessionEnded || error) && (
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="ml-2 text-mineshaft-400 hover:text-green-400"
-            >
-              Reconnect
-            </button>
-          )}
         </span>
         <div className="flex items-center gap-4">
           <span>

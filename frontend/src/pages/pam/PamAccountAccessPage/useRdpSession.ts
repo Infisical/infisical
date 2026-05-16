@@ -63,9 +63,14 @@ const ensureRdpBackend = () => {
       }
       return originalFetch(input, init);
     };
-    rdpBackendInitialized = initRdpBackend("INFO").finally(() => {
-      window.fetch = originalFetch;
-    });
+    rdpBackendInitialized = initRdpBackend("INFO")
+      .catch((e) => {
+        rdpBackendInitialized = null;
+        throw e;
+      })
+      .finally(() => {
+        window.fetch = originalFetch;
+      });
   }
   return rdpBackendInitialized;
 };
