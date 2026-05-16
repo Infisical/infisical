@@ -277,19 +277,22 @@ export const groupServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    if (!isLinkedGroup && name) {
-      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
-      if (existingGroup && existingGroup.id !== id) {
-        throw new BadRequestError({
-          message: `Failed to update group with name '${name}'. Group with the same name already exists`
-        });
-      }
-    }
-
     const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
       const [nameSlugRow] =
         !isLinkedGroup && (name || slug)
-          ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+          ? await groupDAL
+              .update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+              .catch((err) => {
+                if (
+                  err instanceof DatabaseError &&
+                  (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+                ) {
+                  throw new BadRequestError({
+                    message: `This name or slug is already in use by another group in your organization. Please choose a different one.`
+                  });
+                }
+                throw err;
+              })
           : [];
 
       if (role) {
