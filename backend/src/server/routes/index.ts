@@ -3132,6 +3132,7 @@ export const registerRoutes = async (
     pamAccountDAL,
     pamAccountPolicyDAL,
     pamResourceDAL,
+    pamProjectRecordingConfigDAL,
     permissionService,
     auditLogService,
     tokenService,

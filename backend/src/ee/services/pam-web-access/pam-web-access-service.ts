@@ -34,6 +34,8 @@ import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-e
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
+import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
@@ -74,6 +76,7 @@ type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
   pamAccountPolicyDAL: Pick<TPamAccountPolicyDALFactory, "findById">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
+  pamProjectRecordingConfigDAL: Pick<TPamProjectRecordingConfigDALFactory, "findByProjectId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -116,6 +119,7 @@ export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamAccountPolicyDAL,
   pamResourceDAL,
+  pamProjectRecordingConfigDAL,
   permissionService,
   auditLogService,
   tokenService,
@@ -200,6 +204,16 @@ export const pamWebAccessServiceFactory = ({
       throw new BadRequestError({
         message: "Web access is not supported for this resource type"
       });
+    }
+
+    if (resource.resourceType === PamResource.Windows) {
+      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(projectId);
+      if (!recordingConfig || recordingConfig.storageBackend === PamRecordingStorageBackend.Postgres) {
+        throw new BadRequestError({
+          message:
+            "Windows resources require an external (S3) session recording configuration. Postgres storage is not supported for RDP sessions. Configure an S3 bucket in project settings before accessing Windows accounts."
+        });
+      }
     }
 
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
