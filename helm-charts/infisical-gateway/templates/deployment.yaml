@@ -15,7 +15,7 @@ metadata:
 spec:
   {{- if .Values.gateway.enrollment.method }}
   replicas: 1
-  {{- if .Values.persistence.enabled }}
+  {{- if or .Values.persistence.enabled .Values.sessionRecordingPersistence.enabled }}
   strategy:
     type: Recreate
   {{- end }}
@@ -56,15 +56,28 @@ spec:
         - name: infisical-cache
           emptyDir: {}
         {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-        {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+        {{- if or .Values.sessionRecordingPersistence.enabled (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
         - name: session-recordings
+          {{- if .Values.sessionRecordingPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.sessionRecordingPersistence.existingClaim | default (printf "%s-session-recordings" (include "infisical-gateway.fullname" .)) }}
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         {{- end }}
         {{- else }}
-        - name: infisical-gateway-session-recordings-data
-          emptyDir: {}
         - name: infisical-gateway-cached-relay-data
           emptyDir: {}
+        {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+        {{- if or .Values.sessionRecordingPersistence.enabled (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
+        - name: infisical-gateway-session-recordings-data
+          {{- if .Values.sessionRecordingPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.sessionRecordingPersistence.existingClaim | default (printf "%s-session-recordings" (include "infisical-gateway.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
         {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -112,7 +125,7 @@ spec:
             - name: infisical-cache
               mountPath: /var/lib/infisical
             {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-            {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            {{- if or .Values.sessionRecordingPersistence.enabled (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
             - name: session-recordings
               mountPath: {{ $sessionPath }}
             {{- end }}
@@ -132,7 +145,7 @@ spec:
             - name: infisical-gateway-cached-relay-data
               mountPath: /var/lib/infisical
             {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-            {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            {{- if or .Values.sessionRecordingPersistence.enabled (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
             - name: infisical-gateway-session-recordings-data
               mountPath: {{ $sessionPath }}
             {{- end }}

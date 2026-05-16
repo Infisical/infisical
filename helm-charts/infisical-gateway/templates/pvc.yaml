@@ -15,3 +15,21 @@ spec:
     requests:
       storage: {{ .Values.persistence.size | quote }}
 {{- end }}
+---
+{{- if and .Values.sessionRecordingPersistence.enabled (not .Values.sessionRecordingPersistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infisical-gateway.fullname" . }}-session-recordings
+  labels:
+    {{- include "infisical-gateway.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.sessionRecordingPersistence.accessModes | nindent 4 }}
+  {{- if .Values.sessionRecordingPersistence.storageClass }}
+  storageClassName: {{ .Values.sessionRecordingPersistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.sessionRecordingPersistence.size | quote }}
+{{- end }}

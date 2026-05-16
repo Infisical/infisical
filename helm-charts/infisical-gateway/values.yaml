@@ -55,6 +55,16 @@ persistence:
     - ReadWriteOnce
   existingClaim: ""
 
+# Persistent storage for PAM session recordings.
+# When disabled, recordings are stored in an emptyDir and lost on pod restart.
+sessionRecordingPersistence:
+  enabled: false
+  storageClass: ""
+  size: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  existingClaim: ""
+
 resources:
   limits:
     cpu: 500m
