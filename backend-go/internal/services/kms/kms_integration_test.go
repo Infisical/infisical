@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/services/kms"
+	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
 )
 
@@ -43,7 +44,7 @@ func TestMain(m *testing.M) {
 func setupService(t *testing.T) *kms.Service {
 	t.Helper()
 
-	svc, err := kms.NewService(&kms.Deps{
+	svc, err := kms.NewService(context.Background(), testutil.NopLogger(), &kms.Deps{
 		DB:     stack.DB(),
 		HSM:    nil,
 		Config: stack.Config(),

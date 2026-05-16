@@ -48,7 +48,7 @@ func NewRegistry(ctx context.Context, infra *Infra) (*Registry, func(), error) {
 		return nil, nil, fmt.Errorf("platform services: %w", err)
 	}
 
-	secretManagerSvc := newSecretManagerServices(infra, platformSvc)
+	secretManagerSvc := newSecretManagerServices(ctx, infra, platformSvc)
 
 	platformHandlers := newPlatformHandlers(infra.Logger, platformSvc)
 	secretManagerHandlers := newSecretManagerHandlers(infra.Logger, platformSvc, secretManagerSvc)

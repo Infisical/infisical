@@ -112,7 +112,7 @@ type Service struct {
 }
 
 // NewService creates a new queue service using an existing Redis client.
-func NewService(logger *slog.Logger, redisClient redis.UniversalClient) *Service {
+func NewService(_ context.Context, logger *slog.Logger, redisClient redis.UniversalClient) *Service {
 	client := asynq.NewClientFromRedisClient(redisClient)
 	mux := asynq.NewServeMux()
 

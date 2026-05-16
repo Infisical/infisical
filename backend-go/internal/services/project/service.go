@@ -34,7 +34,7 @@ type Service struct {
 }
 
 // NewService creates a new project service.
-func NewService(logger *slog.Logger, deps *Deps) *Service {
+func NewService(_ context.Context, logger *slog.Logger, deps *Deps) *Service {
 	return &Service{
 		logger: logger.With(slog.String("service", "project")),
 		db:     deps.DB,

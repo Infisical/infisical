@@ -59,7 +59,7 @@ type Deps struct {
 	KeyStore keyStore
 }
 
-func NewService(ctx context.Context, logger *slog.Logger, deps Deps) *Service {
+func NewService(ctx context.Context, logger *slog.Logger, deps *Deps) *Service {
 	svc := &Service{
 		logger:         logger.With(slog.String("svc", "license")),
 		onPremFeatures: DefaultFeatures(),

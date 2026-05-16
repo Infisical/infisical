@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+
 	"github.com/infisical/api/internal/services/secretmanager/environment"
 	"github.com/infisical/api/internal/services/secretmanager/secret"
 	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
@@ -14,12 +16,12 @@ type secretManagerServices struct {
 	secret       *secret.Service
 }
 
-func newSecretManagerServices(infra *Infra, platform *platformServices) *secretManagerServices {
-	secretFolderSvc := secretfolder.NewService(&secretfolder.Deps{DB: infra.DB})
-	secretImportSvc := secretimport.NewService(&secretimport.Deps{DB: infra.DB})
-	environmentSvc := environment.NewService(&environment.Deps{DB: infra.DB})
+func newSecretManagerServices(ctx context.Context, infra *Infra, platform *platformServices) *secretManagerServices {
+	secretFolderSvc := secretfolder.NewService(ctx, infra.Logger, &secretfolder.Deps{DB: infra.DB})
+	secretImportSvc := secretimport.NewService(ctx, infra.Logger, &secretimport.Deps{DB: infra.DB})
+	environmentSvc := environment.NewService(ctx, infra.Logger, &environment.Deps{DB: infra.DB})
 
-	secretSvc := secret.NewService(infra.Logger, &secret.Deps{
+	secretSvc := secret.NewService(ctx, infra.Logger, &secret.Deps{
 		DB:                  infra.DB,
 		SecretFolderService: secretFolderSvc,
 		SecretImportService: secretImportSvc,

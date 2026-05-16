@@ -17,20 +17,19 @@ Never edit `gen/` directories — always regenerate.
 
 ## Code Rules
 
-- **Linting**: `make lint` must pass. No `//nolint` unless justified.
-- **Constructor**: `(logger *slog.Logger, deps *Deps)` — deps struct name ends with `Deps`, pass by pointer.
-- **Context**: Every I/O method takes `context.Context` first. Constructors are the exception.
-- **Logger**: Pass `*slog.Logger` via constructor — never use `slog.Default()`.
-- **Interfaces**: Both handlers and services define narrow interfaces for dependencies (consumer-defined). Accept interfaces, not concrete types.
-- **Visibility**: Only expose methods or fields that are needed. Keep everything else private (lowercase).
-- **No DAL layer**: Services directly use `pg.DB` and execute raw pgx queries.
-- **Error wrapping**: Wrap database errors at service level with context:
+- **Linting**: `make lint` must pass. No `//nolint` without justification.
+- **Service Constructor signature**: `(ctx context.Context, logger *slog.Logger, deps *Deps)`. Deps struct name ends with `Deps`, passed by pointer. Every I/O method (including constructors) takes `context.Context` first.
+- **Logger**: Pass `*slog.Logger` via constructor — never `slog.Default()`.
+- **Interfaces**: Consumer-defined — both handlers and services declare narrow interfaces for their dependencies. Accept interfaces, not concrete types.
+- **Visibility**: Expose only what's needed; everything else lowercase.
+- **No DAL layer**: Services use `pg.DB` directly with raw pgx queries.
+- **Error wrapping**: Wrap DB errors at service level with context:
   ```go
   errutil.DatabaseErr("Failed to load").WithErrf("FuncName(arg=%s): %w", arg, err)
   errutil.Forbidden("Access denied").WithErrf("FuncName: permission check failed")
   ```
 - **Lean code**: Inline single-use helpers.
-- **Test naming**: Follow `Test<FunctionName>_<Scenario>` pattern.
+- **Test naming**: `Test<FunctionName>_<Scenario>`.
 
 ## Architecture
 
@@ -61,13 +60,12 @@ internal/
 ```
 
 **Two tiers:**
-
-- `server/api/` — DI wiring + Goa endpoint implementations. Handlers are 1:1 with endpoints.
-- `services/` — Business logic. No Goa dependency. Directly uses `pg.DB` for queries.
+- `server/api/` — DI wiring + Goa endpoint implementations. Handlers 1:1 with endpoints.
+- `services/` — Business logic. No Goa dependency. Uses `pg.DB` directly.
 
 ### Wiring (Composition Root)
 
-All service and handler initialization lives in `server/api/`:
+All service/handler initialization lives in `server/api/`:
 
 ```
 server/api/
@@ -84,38 +82,31 @@ Pattern: initialize as local variables first, then assign to struct fields.
 
 ### Handler vs Service Responsibilities
 
-**Handlers** (`server/api/`) are thin orchestration layers. They only:
+**Handlers** (`server/api/`) — thin orchestration:
 1. Extract identity from context
-2. Call permission service to get user permissions
+2. Call permission service for user permissions
 3. Resolve IDs (e.g., project ID from slug) via shared services
 4. Call domain service with opts (including AccessChecker for permission filtering)
 5. Build API response from service result
 6. Create audit logs
 
-**Services** (`services/`) contain all domain logic:
-- Data fetching and aggregation
-- Decryption/encryption
-- Permission filtering (via AccessChecker interface passed in opts)
-- Business rules (import chaining, secret expansion, personal overrides)
+**Services** (`services/`) — domain logic: data fetching/aggregation, decryption/encryption, permission filtering (via AccessChecker in opts), business rules (import chaining, secret expansion, personal overrides).
 
-**AccessChecker pattern**: Services accept an optional `AccessChecker` interface in opts. Pass `nil` to skip permission checks (for internal/integration use). This keeps permission logic in handlers while letting services enforce it.
+**AccessChecker pattern**: Services accept an optional `AccessChecker` interface in opts. Pass `nil` to skip permission checks (internal/integration use). Keeps permission logic in handlers while letting services enforce it.
 
-**Database access**: Services receive `pg.DB` and execute raw pgx queries using helper packages.
-
-**Read replicas**: `pg.DB` wraps primary + replica pools. Use `db.Primary()` for writes, `db.Replica()` for reads.
+**Database access**: Services receive `pg.DB` and execute raw pgx queries via helper packages. `pg.DB` wraps primary + replica pools — use `db.Primary()` for writes, `db.Replica()` for reads.
 
 ### Query Helpers
 
-**`qb` package** — Query builders for dynamic SQL:
+**`qb` package** — dynamic SQL builders:
 
 ```go
-// WHERE builder (for SELECT with named args)
+// WHERE (SELECT with named args)
 args := pgx.NamedArgs{"folderID": folderID}
 where := qb.NewWhere().
     Add("folder_id = @folderID").
     AddIf(len(keys) > 0, "key = ANY(@keys)")
 args["keys"] = keys
-
 query := `SELECT * FROM secrets WHERE ` + where.String()
 rows, err := db.Replica().Query(ctx, query, args)
 
@@ -139,7 +130,7 @@ sql, args := qb.Delete("secrets").
     Build()
 ```
 
-**`sqln` package** — Transform flat LEFT JOIN rows into nested structs:
+**`sqln` package** — flatten LEFT JOIN rows into nested structs:
 
 ```go
 secrets := sqln.GroupRows(flatSecrets, sqln.Grouper[Secret, uuid.UUID]{
@@ -163,9 +154,7 @@ if err != nil {
     return err
 }
 defer lock.Rollback(ctx)  // safety net
-
 // ... do work within lock ...
-
 lock.Release(ctx)  // commits transaction
 ```
 
@@ -184,9 +173,9 @@ args := pgx.NamedArgs{"folderID": folderID}
 rows, err := db.Replica().Query(ctx, query, args)
 ```
 
-**Table aliases**: Use clear, readable aliases — not single letters. For example, `memberships m`, `membership_roles mr`, `organizations o`, `additional_privileges ap`. Aliases should be obvious abbreviations of the table name.
+**Table aliases**: clear, readable — not single letters. E.g., `memberships m`, `membership_roles mr`, `organizations o`, `additional_privileges ap`. Obvious abbreviations of the table name.
 
-Scan rows using `pgx.CollectRows` or manual scanning:
+Scan with `pgx.CollectRows` or manually:
 
 ```go
 secrets, err := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])

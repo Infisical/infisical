@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/google/uuid"
@@ -100,6 +101,7 @@ type Service struct {
 	mu                sync.RWMutex
 	rootEncryptionKey []byte // loaded during Start(), protected by mu
 
+	logger        *slog.Logger
 	encryptionKey []byte     // decoded during Start(), used to decrypt root key
 	db            pg.DB      // database operations
 	hsm           HsmService // nil when HSM is not configured
@@ -119,8 +121,9 @@ type Deps struct {
 
 // NewService creates a new KMS service.
 // The encryption key is decoded during Start() based on FIPS mode determination.
-func NewService(deps *Deps) (*Service, error) {
+func NewService(_ context.Context, logger *slog.Logger, deps *Deps) (*Service, error) {
 	return &Service{
+		logger:               logger.With(slog.String("service", "kms")),
 		db:                   deps.DB,
 		hsm:                  deps.HSM,
 		rawEncryptionKey:     deps.Config.EncryptionKey,

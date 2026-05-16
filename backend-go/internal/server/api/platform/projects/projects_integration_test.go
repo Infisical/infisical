@@ -3,6 +3,7 @@
 package projects_test
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"testing"
@@ -37,7 +38,8 @@ func TestMain(m *testing.M) {
 func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
-	permLib := permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
+	ctx := context.Background()
+	permLib := permission.NewService(ctx, testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 
 	authenticator := apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 

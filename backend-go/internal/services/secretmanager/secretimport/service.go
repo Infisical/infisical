@@ -3,6 +3,7 @@ package secretimport
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -26,11 +27,15 @@ type Deps struct {
 }
 
 type Service struct {
-	db pg.DB
+	logger *slog.Logger
+	db     pg.DB
 }
 
-func NewService(deps *Deps) *Service {
-	return &Service{db: deps.DB}
+func NewService(_ context.Context, logger *slog.Logger, deps *Deps) *Service {
+	return &Service{
+		logger: logger.With(slog.String("service", "secretimport")),
+		db:     deps.DB,
+	}
 }
 
 // LoadProjectImports fetches all secret imports for a project and builds an in-memory lookup.

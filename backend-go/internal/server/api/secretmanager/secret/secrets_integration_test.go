@@ -51,33 +51,35 @@ func TestMain(m *testing.M) {
 func newSecretsHandler(t *testing.T) gensecrets.Service {
 	t.Helper()
 
-	permSvc := permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
+	ctx := context.Background()
+
+	permSvc := permission.NewService(ctx, testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 
 	authenticator := apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, keystore.NewMemoryKeyStore())
 
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
 
-	kmsSvc, err := kms.NewService(&kms.Deps{
+	kmsSvc, err := kms.NewService(ctx, testutil.NopLogger(), &kms.Deps{
 		DB:     stack.DB(),
 		HSM:    nil,
 		Config: stack.Config(),
 	})
 	require.NoError(t, err)
 
-	err = kmsSvc.Start(context.Background(), false)
+	err = kmsSvc.Start(ctx, false)
 	require.NoError(t, err)
 
-	projectSvc := project.NewService(testutil.NopLogger(), &project.Deps{DB: stack.DB()})
+	projectSvc := project.NewService(ctx, testutil.NopLogger(), &project.Deps{DB: stack.DB()})
 
-	queueSvc := queue.NewService(testutil.NopLogger(), redisClient)
+	queueSvc := queue.NewService(ctx, testutil.NopLogger(), redisClient)
 
-	auditLogSvc := auditlog.NewService(testutil.NopLogger(), &auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
+	auditLogSvc := auditlog.NewService(ctx, testutil.NopLogger(), &auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
 
-	secretFolderSvc := secretfolder.NewService(&secretfolder.Deps{DB: stack.DB()})
-	secretImportSvc := secretimport.NewService(&secretimport.Deps{DB: stack.DB()})
+	secretFolderSvc := secretfolder.NewService(ctx, testutil.NopLogger(), &secretfolder.Deps{DB: stack.DB()})
+	secretImportSvc := secretimport.NewService(ctx, testutil.NopLogger(), &secretimport.Deps{DB: stack.DB()})
 
-	secretsSvc := secretSvc.NewService(testutil.NopLogger(), &secretSvc.Deps{
+	secretsSvc := secretSvc.NewService(ctx, testutil.NopLogger(), &secretSvc.Deps{
 		DB:                  stack.DB(),
 		SecretFolderService: secretFolderSvc,
 		SecretImportService: secretImportSvc,

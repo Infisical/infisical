@@ -22,7 +22,7 @@ type platformServices struct {
 }
 
 func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, error) {
-	kmsSvc, err := kms.NewService(&kms.Deps{
+	kmsSvc, err := kms.NewService(ctx, infra.Logger, &kms.Deps{
 		DB:     infra.DB,
 		HSM:    infra.HSM,
 		Config: infra.Config,
@@ -36,7 +36,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 		return nil, fmt.Errorf("kms start: %w", err)
 	}
 
-	licenseSvc := license.NewService(ctx, infra.Logger, license.Deps{
+	licenseSvc := license.NewService(ctx, infra.Logger, &license.Deps{
 		Config:   infra.Config,
 		DB:       infra.DB,
 		KeyStore: infra.KeyStore,
@@ -44,16 +44,16 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 
 	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore)
 
-	permissionSvc := permission.NewService(infra.Logger, &permission.Deps{DB: infra.DB})
+	permissionSvc := permission.NewService(ctx, infra.Logger, &permission.Deps{DB: infra.DB})
 
-	projectSvc := project.NewService(infra.Logger, &project.Deps{DB: infra.DB})
+	projectSvc := project.NewService(ctx, infra.Logger, &project.Deps{DB: infra.DB})
 
-	auditLogSvc := auditlog.NewService(infra.Logger, &auditlog.Deps{
+	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,
 		Config: infra.Config,
 	})
 
-	auditLogQueueHandler := auditlog.NewQueueHandler(infra.Logger, &auditlog.QueueHandlerDeps{
+	auditLogQueueHandler := auditlog.NewQueueHandler(ctx, infra.Logger, &auditlog.QueueHandlerDeps{
 		DB:       infra.DB,
 		Project:  projectSvc,
 		License:  licenseSvc,

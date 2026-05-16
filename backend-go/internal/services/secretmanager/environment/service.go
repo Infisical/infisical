@@ -3,6 +3,7 @@ package environment
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -24,11 +25,15 @@ type Deps struct {
 }
 
 type Service struct {
-	db pg.DB
+	logger *slog.Logger
+	db     pg.DB
 }
 
-func NewService(deps *Deps) *Service {
-	return &Service{db: deps.DB}
+func NewService(_ context.Context, logger *slog.Logger, deps *Deps) *Service {
+	return &Service{
+		logger: logger.With(slog.String("service", "environment")),
+		db:     deps.DB,
+	}
 }
 
 func (s *Service) GetBySlug(ctx context.Context, projectID, slug string) (*Environment, error) {

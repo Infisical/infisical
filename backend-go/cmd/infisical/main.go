@@ -73,7 +73,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 
 	// Initialize KeyStore and Queue.
 	ks := keystore.NewKeyStore(redisClient)
-	queueSvc := queue.NewService(logger, redisClient)
+	queueSvc := queue.NewService(ctx, logger, redisClient)
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 
 	registry, cleanup, err := api.NewRegistry(ctx, &api.Infra{

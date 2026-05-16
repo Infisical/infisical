@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 }
 
 func newPermissionService() *permission.Service {
-	return permission.NewService(testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
+	return permission.NewService(context.Background(), testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
 }
 
 func getProjectPermission(t *testing.T, actorType auth.ActorType, actorID string) *permission.GetProjectPermissionResult {

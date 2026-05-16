@@ -134,7 +134,7 @@ type Deps struct {
 }
 
 // NewService creates a new server config service.
-func NewService(logger *slog.Logger, deps Deps) *Service {
+func NewService(_ context.Context, logger *slog.Logger, deps *Deps) *Service {
 	return &Service{
 		db:       deps.DB,
 		keyStore: deps.KeyStore,
