@@ -58,8 +58,7 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
 
   const v2Gateways = gateways?.filter((g) => !g.isV1) ?? [];
 
-  const isOnline = (gw: (typeof v2Gateways)[number]) =>
-    isGatewayHealthy(gw);
+  const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
   return (
     <Select
