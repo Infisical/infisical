@@ -34,13 +34,12 @@ import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-e
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
-import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
 import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
 import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
+import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceConnectionDetails } from "../pam-resource/pam-resource-fns";
 import {
@@ -51,6 +50,7 @@ import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "../pa
 import { TSSHAccountCredentials, TSSHResourceConnectionDetails } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
+import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { handlePostgresSession } from "./pam-postgres-session-handler";
 import { handleRdpSession } from "./pam-rdp-session-handler";
 import { handleRedisSession } from "./pam-redis-session-handler";
