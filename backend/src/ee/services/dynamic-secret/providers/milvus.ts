@@ -8,6 +8,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -21,10 +22,11 @@ const generatePassword = () => {
   return customAlphabet(charset, 32)();
 };
 
-const buildBaseUrl = (host: string, port: number) => {
-  const hasScheme = host.startsWith("http://") || host.startsWith("https://");
-  const normalized = hasScheme ? host : `http://${host}`;
-  return `${normalized}:${port}`;
+const buildBaseUrl = (providerInputs: TMilvusProviderInputs) => {
+  const hostHasScheme = /^https?:\/\//i.test(providerInputs.host);
+  const scheme = providerInputs.ca ? "https" : "http";
+  const normalizedHost = hostHasScheme ? providerInputs.host : `${scheme}://${providerInputs.host}`;
+  return `${normalizedHost}:${providerInputs.port}`;
 };
 
 const deriveRoleName = (username: string) => `infisical_role_${username}`;
@@ -32,29 +34,32 @@ const deriveRoleName = (username: string) => `infisical_role_${username}`;
 export const MilvusProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: object) => {
     const providerInputs = await DynamicSecretMilvusSchema.parseAsync(inputs);
-    const { hostname } = new URL(buildBaseUrl(providerInputs.host, providerInputs.port));
-    await verifyHostInputValidity({ host: hostname, isDynamicSecret: true });
+    const sanitizedHost = providerInputs.host.replace(/^https?:\/\//i, "");
+
+    await blockLocalAndPrivateIpAddresses(sanitizedHost);
+    await verifyHostInputValidity({ host: sanitizedHost, isDynamicSecret: true });
     return providerInputs;
   };
 
   const $requestConfig = (providerInputs: TMilvusProviderInputs) => ({
-    baseURL: buildBaseUrl(providerInputs.host, providerInputs.port),
+    baseURL: buildBaseUrl(providerInputs),
     headers: {
       Authorization: `Bearer ${providerInputs.username}:${providerInputs.password}`,
       "Content-Type": "application/json"
     },
     timeout: 30000,
     maxRedirects: 0,
-    ...(providerInputs.ca && {
-      httpsAgent: new https.Agent({
-        ca: providerInputs.ca,
-        rejectUnauthorized: providerInputs.sslRejectUnauthorized
-      })
+    httpsAgent: new https.Agent({
+      ca: providerInputs.ca || undefined,
+      rejectUnauthorized: providerInputs.sslRejectUnauthorized
     })
   });
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs as object);
+    const requestConfig = $requestConfig(providerInputs);
+
+    await blockLocalAndPrivateIpAddresses(requestConfig.baseURL);
     try {
       await request.post(
         "/v2/vectordb/users/describe",
@@ -81,6 +86,8 @@ export const MilvusProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs as object);
     const requestConfig = $requestConfig(providerInputs);
 
+    await blockLocalAndPrivateIpAddresses(requestConfig.baseURL);
+
     const username = await generateUsername(usernameTemplate, {
       decryptedDynamicSecretInputs: inputs,
       dynamicSecret,
@@ -103,11 +110,11 @@ export const MilvusProvider = (): TDynamicProviderFns => {
         await Promise.all(
           providerInputs.privileges.map((privilege) =>
             request.post(
-              "/v2/vectordb/roles/grant_privilege_v2",
+              "/v2/vectordb/roles/grant_privilege",
               {
                 roleName,
                 objectType: privilege.objectType,
-                collectionName: privilege.objectName,
+                objectName: privilege.objectName,
                 privilege: privilege.privilege,
                 dbName: privilege.dbName ?? providerInputs.database
               },
@@ -152,6 +159,8 @@ export const MilvusProvider = (): TDynamicProviderFns => {
     const requestConfig = $requestConfig(providerInputs);
     const username = entityId;
     const roleName = deriveRoleName(username);
+
+    await blockLocalAndPrivateIpAddresses(requestConfig.baseURL);
 
     try {
       try {

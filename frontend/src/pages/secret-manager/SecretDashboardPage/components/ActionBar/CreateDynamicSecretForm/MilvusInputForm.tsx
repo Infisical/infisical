@@ -1,5 +1,5 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
@@ -13,9 +13,10 @@ import {
   FormLabel,
   IconButton,
   Input,
-  SecretInput,
   Select,
-  SelectItem
+  SelectItem,
+  Switch,
+  Tooltip
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, MILVUS_OBJECT_TYPES } from "@app/hooks/api/dynamicSecret/types";
@@ -44,7 +45,7 @@ const formSchema = z.object({
       )
       .default([]),
     ca: z.string().optional(),
-    sslRejectUnauthorized: z.boolean().optional()
+    sslRejectUnauthorized: z.boolean().default(true)
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -101,7 +102,8 @@ export const MilvusInputForm = ({
         username: "root",
         password: "",
         database: "default",
-        privileges: []
+        privileges: [],
+        sslRejectUnauthorized: true
       },
       environment: isSingleEnvironmentMode ? environments[0] : undefined,
       usernameTemplate: "{{randomUsername}}"
@@ -200,7 +202,7 @@ export const MilvusInputForm = ({
               Configuration
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <Controller
                   control={control}
                   name="provider.host"
@@ -210,7 +212,7 @@ export const MilvusInputForm = ({
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
-                      helperText="Include the URL scheme (http:// or https://). Defaults to http if omitted."
+                      helperText="Optional URL scheme. Defaults to https when a CA is provided, otherwise http."
                     >
                       <Input {...field} placeholder="http://localhost" />
                     </FormControl>
@@ -237,33 +239,26 @@ export const MilvusInputForm = ({
                   name="provider.username"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Admin Username"
+                      label="Username"
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} placeholder="root" />
+                      <Input {...field} autoComplete="off" />
                     </FormControl>
                   )}
                 />
                 <Controller
                   control={control}
                   name="provider.password"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Admin Password"
+                      label="Password"
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <SecretInput
-                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                        value={value}
-                        valueAlwaysHidden
-                        rows={1}
-                        wrap="hard"
-                        onChange={(e) => onChange(e.target.value)}
-                      />
+                      <Input {...field} type="password" autoComplete="new-password" />
                     </FormControl>
                   )}
                 />
@@ -424,7 +419,7 @@ export const MilvusInputForm = ({
                   >
                     <Input
                       {...field}
-                      value={field.value || undefined}
+                      value={field.value || ""}
                       className="border-mineshaft-600 bg-mineshaft-900 text-sm"
                       placeholder="{{randomUsername}}"
                     />
@@ -443,6 +438,37 @@ export const MilvusInputForm = ({
                     helperText="PEM-encoded CA certificate for verifying the Milvus server's TLS certificate."
                   >
                     <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="provider.sslRejectUnauthorized"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                    <Switch
+                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      id="milvus-ssl-reject-unauthorized"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={value}
+                      onCheckedChange={onChange}
+                    >
+                      <p className="w-full">
+                        SSL Reject Unauthorized
+                        <Tooltip
+                          className="max-w-md"
+                          content={
+                            <p>
+                              If enabled, the server certificate will be verified against the list
+                              of supplied CAs. Disable this option if you are using a self-signed
+                              certificate.
+                            </p>
+                          }
+                        >
+                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                        </Tooltip>
+                      </p>
+                    </Switch>
                   </FormControl>
                 )}
               />

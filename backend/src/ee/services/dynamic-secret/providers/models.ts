@@ -348,7 +348,7 @@ export const DynamicSecretMongoAtlasSchema = z.object({
 
 export const DynamicSecretMongoDBSchema = z.object({
   host: z.string().min(1).trim().toLowerCase(),
-  port: z.number().optional().nullable(),
+  port: z.number(),
   username: z.string().min(1).trim(),
   password: z.string().min(1).trim(),
   database: z.string().min(1).trim(),
@@ -720,8 +720,14 @@ export const DynamicSecretCouchbaseSchema = z.object({
 });
 
 export const DynamicSecretMilvusSchema = z.object({
-  host: z.string().trim().min(1).describe("Milvus endpoint host, including the URL scheme (e.g. http://localhost)"),
-  port: z.number(),
+  host: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "Milvus endpoint host. URL scheme is optional; defaults to https when a CA is provided, otherwise http (e.g. localhost or http://localhost)."
+    ),
+  port: z.number().int().min(1).max(65535),
   username: z.string().trim().min(1).describe("Admin username used to manage Milvus users and roles"),
   password: z.string().trim().min(1).describe("Admin password used to manage Milvus users and roles"),
   database: z.string().trim().min(1).default("default").describe("Default Milvus database used for privilege grants"),

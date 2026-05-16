@@ -1,5 +1,5 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
@@ -13,15 +13,26 @@ import {
   FormLabel,
   IconButton,
   Input,
-  SecretInput,
   Select,
-  SelectItem
+  SelectItem,
+  Switch,
+  Tooltip
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
-import { MILVUS_OBJECT_TYPES, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import {
+  DynamicSecretProviders,
+  MILVUS_OBJECT_TYPES,
+  TDynamicSecret,
+  TDynamicSecretProvider
+} from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../MetadataForm";
+
+type MilvusInputs = Extract<
+  TDynamicSecretProvider,
+  { type: DynamicSecretProviders.Milvus }
+>["inputs"];
 
 const formSchema = z.object({
   inputs: z
@@ -109,8 +120,8 @@ export const EditDynamicSecretMilvusForm = ({
       metadata: dynamicSecret.metadata,
       usernameTemplate: dynamicSecret.usernameTemplate,
       inputs: {
-        ...(dynamicSecret.inputs as any),
-        privileges: (dynamicSecret.inputs as any)?.privileges ?? []
+        ...(dynamicSecret.inputs as MilvusInputs),
+        privileges: (dynamicSecret.inputs as MilvusInputs)?.privileges ?? []
       }
     }
   });
@@ -217,7 +228,7 @@ export const EditDynamicSecretMilvusForm = ({
               Configuration
             </div>
             <div className="flex flex-col space-y-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <Controller
                   control={control}
                   name="inputs.host"
@@ -227,6 +238,7 @@ export const EditDynamicSecretMilvusForm = ({
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
+                      helperText="Optional URL scheme. Defaults to https when a CA is provided, otherwise http."
                     >
                       <Input {...field} placeholder="http://localhost" />
                     </FormControl>
@@ -258,28 +270,21 @@ export const EditDynamicSecretMilvusForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} />
+                      <Input {...field} autoComplete="off" />
                     </FormControl>
                   )}
                 />
                 <Controller
                   control={control}
                   name="inputs.password"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Password"
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <SecretInput
-                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                        value={value || ""}
-                        valueAlwaysHidden
-                        rows={1}
-                        wrap="hard"
-                        onChange={(e) => onChange(e.target.value)}
-                      />
+                      <Input {...field} type="password" autoComplete="new-password" />
                     </FormControl>
                   )}
                 />
@@ -454,8 +459,40 @@ export const EditDynamicSecretMilvusForm = ({
                     isOptional
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
+                    helperText="PEM-encoded CA certificate for verifying the Milvus server's TLS certificate."
                   >
                     <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="inputs.sslRejectUnauthorized"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                    <Switch
+                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      id="milvus-edit-ssl-reject-unauthorized"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={value ?? true}
+                      onCheckedChange={onChange}
+                    >
+                      <p className="w-full">
+                        SSL Reject Unauthorized
+                        <Tooltip
+                          className="max-w-md"
+                          content={
+                            <p>
+                              If enabled, the server certificate will be verified against the list
+                              of supplied CAs. Disable this option if you are using a self-signed
+                              certificate.
+                            </p>
+                          }
+                        >
+                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                        </Tooltip>
+                      </p>
+                    </Switch>
                   </FormControl>
                 )}
               />
