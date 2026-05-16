@@ -3,6 +3,7 @@ import { MongoClient } from "mongodb";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -182,10 +183,17 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
     return secrets;
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TMongoDBCredentialsRotationGeneratedCredentials
+  > = async (activeCredentials) => {
+    await $validateCredentials(activeCredentials);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

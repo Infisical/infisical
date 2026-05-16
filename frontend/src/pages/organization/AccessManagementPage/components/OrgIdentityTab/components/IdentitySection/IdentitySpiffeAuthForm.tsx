@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -21,6 +21,8 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import { useAddIdentitySpiffeAuth, useUpdateIdentitySpiffeAuth } from "@app/hooks/api";
 import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api/identities/queries";
@@ -28,26 +30,6 @@ import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
-
-const commonSchema = z.object({
-  trustDomain: z.string().trim().min(1, "Trust domain is required"),
-  allowedSpiffeIds: z.string().trim().min(1, "Allowed SPIFFE IDs are required"),
-  allowedAudiences: z.string().trim().min(1, "Allowed audiences are required"),
-  accessTokenTrustedIps: z
-    .array(
-      z.object({
-        ipAddress: z.string().max(50)
-      })
-    )
-    .min(1),
-  accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
-    message: "Access Token TTL cannot be greater than 315360000"
-  }),
-  accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
-    message: "Access Token Max TTL cannot be greater than 315360000"
-  }),
-  accessTokenNumUsesLimit: z.string()
-});
 
 const trustBundleDistributionSchema = z.discriminatedUnion("profile", [
   z.object({
@@ -62,11 +44,26 @@ const trustBundleDistributionSchema = z.discriminatedUnion("profile", [
   })
 ]);
 
-const schema = commonSchema.extend({
-  trustBundleDistribution: trustBundleDistributionSchema
-});
+const buildSchema = (maxAccessTokenTTL: number) => {
+  const common = z.object({
+    trustDomain: z.string().trim().min(1, "Trust domain is required"),
+    allowedSpiffeIds: z.string().trim().min(1, "Allowed SPIFFE IDs are required"),
+    allowedAudiences: z.string().trim().min(1, "Allowed audiences are required"),
+    accessTokenTrustedIps: z
+      .array(
+        z.object({
+          ipAddress: z.string().max(50)
+        })
+      )
+      .min(1),
+    accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+    accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+    accessTokenNumUsesLimit: z.string()
+  });
+  return common.extend({ trustBundleDistribution: trustBundleDistributionSchema });
+};
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -79,13 +76,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentitySpiffeAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -101,6 +100,8 @@ export const IdentitySpiffeAuthForm = ({
     enabled: isUpdate
   });
 
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+
   const {
     watch,
     control,
@@ -108,7 +109,7 @@ export const IdentitySpiffeAuthForm = ({
     reset,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       trustDomain: "",
       allowedSpiffeIds: "",
@@ -411,8 +412,9 @@ export const IdentitySpiffeAuthForm = ({
                 label="Access Token TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -425,8 +427,9 @@ export const IdentitySpiffeAuthForm = ({
                 label="Access Token Max TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />

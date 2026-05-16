@@ -1,10 +1,30 @@
-import { faInfoCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch, Tooltip } from "@app/components/v2";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle,
+  IconButton,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -16,10 +36,13 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SSOModal } from "./SSOModal";
 
-// Auth providers that support group sync
 const GROUP_SYNC_SUPPORTED_PROVIDERS = ["google-saml"] as const;
 
-export const OrgSSOSection = (): JSX.Element => {
+type Props = {
+  onSwitchProvider?: () => void;
+};
+
+export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
@@ -79,8 +102,6 @@ export const OrgSSOSection = (): JSX.Element => {
     try {
       if (subscription?.samlSSO && currentOrg) {
         if (!data) {
-          // case: SAML SSO is not configured
-          // -> initialize empty SAML SSO configuration
           await createMutateAsync({
             organizationId: currentOrg.id,
             authProvider: "okta-saml",
@@ -105,117 +126,136 @@ export const OrgSSOSection = (): JSX.Element => {
   const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
 
   return (
-    <div className="space-y-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xl font-medium text-gray-200">SAML</p>
-          <p className="mb-2 text-gray-400">Manage SAML authentication configuration</p>
-        </div>
-        {!isPending && (
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Button onClick={addSSOBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                Manage
-              </Button>
-            )}
-          </OrgPermissionCan>
-        )}
-      </div>
-      <div>
-        <div className="mb-2 flex items-center justify-between pt-4">
-          <h2 className="text-md text-mineshaft-100">Enable SAML</h2>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>SAML</CardTitle>
+          <CardDescription>Manage SAML authentication configuration.</CardDescription>
           {!isPending && (
-            <OrgPermissionCan
-              I={OrgPermissionActions.Edit}
-              a={OrgPermissionSubjects.Sso}
-              tooltipProps={{
-                className: "max-w-sm",
-                side: "left"
-              }}
-              allowedLabel={
-                isGoogleOAuthEnabled
-                  ? "You cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
-                  : undefined
-              }
-              renderTooltip={isGoogleOAuthEnabled}
-            >
-              {(isAllowed) => (
-                <div>
-                  <Switch
-                    id="enable-saml-sso"
-                    onCheckedChange={(value) => handleSamlSSOToggle(value)}
-                    isChecked={data ? data.isActive : false}
-                    isDisabled={!isAllowed || isGoogleOAuthEnabled}
-                  />
-                </div>
-              )}
-            </OrgPermissionCan>
+            <CardAction>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="sm" aria-label="SAML configuration options">
+                    <MoreHorizontal />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+                    {(isAllowed) => (
+                      <DropdownMenuItem isDisabled={!isAllowed} onClick={addSSOBtnClick}>
+                        <Pencil />
+                        Edit Configuration
+                      </DropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
+                  {onSwitchProvider && (
+                    <DropdownMenuItem onClick={onSwitchProvider}>
+                      <ArrowLeftRight />
+                      Switch Method
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </CardAction>
           )}
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          Allow members to authenticate into Infisical with SAML
-        </p>
-      </div>
-      {data && GROUP_SYNC_SUPPORTED_PROVIDERS.includes(data.authProvider) && (
-        <div className="py-4">
-          <div className="mb-2 flex justify-between">
-            <div className="text-md flex items-center text-mineshaft-100">
-              <span>SAML Group Membership Mapping</span>
-              <Tooltip
-                className="max-w-lg"
-                content={
-                  <>
-                    <p>
-                      When this feature is enabled, Infisical will automatically sync group
-                      memberships between the SAML provider and Infisical. Users will be added to
-                      Infisical groups that match their SAML group names.
-                    </p>
-                    <p className="mt-4">
-                      To use this feature you must include group claims in the SAML response as a
-                      &quot;groups&quot; attribute.
-                    </p>
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href="https://infisical.com/docs/documentation/platform/sso/overview"
-                    >
-                      See your SAML provider docs for details.
-                    </a>
-                    <p className="mt-4 text-yellow">
-                      <FontAwesomeIcon className="mr-1" icon={faWarning} />
-                      Group membership changes in the SAML provider only sync with Infisical when a
-                      user logs in via SAML. For example, if you remove a user from a group in the
-                      SAML provider, this change will not be reflected in Infisical until their next
-                      SAML login. To ensure this behavior, Infisical recommends enabling Enforce
-                      SAML SSO.
-                    </p>
-                  </>
-                }
-              >
-                <FontAwesomeIcon
-                  icon={faInfoCircle}
-                  size="sm"
-                  className="mt-0.5 ml-1 inline-block text-mineshaft-400"
-                />
-              </Tooltip>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Switch
-                  id="enable-saml-group-sync"
-                  isChecked={data?.enableGroupSync ?? false}
-                  onCheckedChange={(value) => handleSamlGroupManagement(value)}
-                  isDisabled={!isAllowed}
-                />
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Enable SAML</FieldTitle>
+                <FieldDescription>
+                  Allow members to authenticate into Infisical with SAML.
+                </FieldDescription>
+              </FieldContent>
+              {!isPending && (
+                <OrgPermissionCan
+                  I={OrgPermissionActions.Edit}
+                  a={OrgPermissionSubjects.Sso}
+                  tooltipProps={{
+                    className: "max-w-sm",
+                    side: "left"
+                  }}
+                  allowedLabel={
+                    isGoogleOAuthEnabled
+                      ? "You cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+                      : undefined
+                  }
+                  renderTooltip={isGoogleOAuthEnabled}
+                >
+                  {(isAllowed) => (
+                    <div>
+                      <Switch
+                        id="enable-saml-sso"
+                        variant="org"
+                        checked={data ? data.isActive : false}
+                        onCheckedChange={(value) => handleSamlSSOToggle(value)}
+                        disabled={!isAllowed || isGoogleOAuthEnabled}
+                      />
+                    </div>
+                  )}
+                </OrgPermissionCan>
               )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Infisical will manage user group memberships based on the SAML provider
-          </p>
-        </div>
-      )}
+            </Field>
+            {data && GROUP_SYNC_SUPPORTED_PROVIDERS.includes(data.authProvider) && (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>
+                    SAML Group Membership Mapping
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-lg">
+                        <p>
+                          When this feature is enabled, Infisical will automatically sync group
+                          memberships between the SAML provider and Infisical. Users will be added
+                          to Infisical groups that match their SAML group names.
+                        </p>
+                        <p className="mt-3">
+                          To use this feature you must include group claims in the SAML response as
+                          a &quot;groups&quot; attribute.{" "}
+                          <a
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline underline-offset-2 hover:text-foreground"
+                            href="https://infisical.com/docs/documentation/platform/sso/overview"
+                          >
+                            See your SAML provider docs for details.
+                          </a>
+                        </p>
+                        <p className="mt-3 flex items-start gap-1.5 text-warning">
+                          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                          <span>
+                            Group membership changes in the SAML provider only sync with Infisical
+                            when a user logs in via SAML — removing a user from a group in the SAML
+                            provider will not be reflected in Infisical until their next SAML login.
+                            Enable Enforce SAML SSO to ensure this behavior.
+                          </span>
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldTitle>
+                  <FieldDescription>
+                    Infisical will manage user group memberships based on the SAML provider.
+                  </FieldDescription>
+                </FieldContent>
+                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+                  {(isAllowed) => (
+                    <Switch
+                      id="enable-saml-group-sync"
+                      variant="org"
+                      checked={data?.enableGroupSync ?? false}
+                      onCheckedChange={(value) => handleSamlGroupManagement(value)}
+                      disabled={!isAllowed}
+                    />
+                  )}
+                </OrgPermissionCan>
+              </Field>
+            )}
+          </FieldGroup>
+        </CardContent>
+      </Card>
       <SSOModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
@@ -227,6 +267,6 @@ export const OrgSSOSection = (): JSX.Element => {
         text={popUp.upgradePlan.data?.text}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
-    </div>
+    </>
   );
 };

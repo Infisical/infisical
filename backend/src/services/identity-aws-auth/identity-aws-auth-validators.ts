@@ -51,7 +51,11 @@ export const validatePrincipalArns = z
       const arns = data.split(",");
       // Return true only if every item matches one of the allowed ARN formats
       // and checks whether the provided regex is safe
-      return arns.map((el) => el.trim()).every((arn) => safe(`^${arn.replaceAll("*", ".*")}$`) && arnRegex.test(arn));
+      return arns
+        .map((el) => el.trim())
+        .every(
+          (arn) => safe(`^${arn.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`) && arnRegex.test(arn)
+        );
     },
     {
       message:

@@ -10,11 +10,38 @@ export type TGatewayPool = {
   connectedResourcesCount: number;
 };
 
+type ConnectedProjectResource = {
+  id: string;
+  name: string;
+  projectId: string;
+  projectName: string | null;
+};
+
 export type TGatewayPoolConnectedResources = {
   kubernetesAuths: {
     id: string;
     identityId: string;
     identityName: string | null;
+  }[];
+  pkiDiscoveryConfigs: ConnectedProjectResource[];
+  pamDomains: ConnectedProjectResource[];
+  pamResources: (ConnectedProjectResource & { resourceType: string })[];
+  pamDiscoverySources: (ConnectedProjectResource & { discoveryType: string })[];
+  appConnections: {
+    id: string;
+    name: string;
+    app: string;
+    projectId: string | null;
+    projectName: string | null;
+  }[];
+  dynamicSecrets: {
+    id: string;
+    name: string;
+    type: string;
+    folderId: string;
+    projectId: string;
+    projectName: string;
+    environmentSlug: string;
   }[];
 };
 

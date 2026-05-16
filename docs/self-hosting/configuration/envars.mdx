@@ -3,21 +3,26 @@ title: "Environment Variables"
 description: "Read how to configure environment variables for self-hosted Infisical."
 ---
 
-Infisical accepts all configurations via environment variables. For a minimal self-hosted instance, at least `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI` and `REDIS_URL` must be defined.
+Infisical accepts all configuration via environment variables. For a minimal self-hosted instance, at least `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL` must be defined.
 However, you can configure additional settings to activate more features as needed.
 
 ## General platform
 
-Used to configure platform-specific security and operational settings
+Used to configure platform-specific security and operational settings.
 
 <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
-  16`
+  Must be a random 16-byte hex string. Can be generated with `openssl rand -hex
+  16`.
+
+  <Warning>
+    For FIPS-enabled deployments, `ENCRYPTION_KEY` must be a 256-bit
+    base64-encoded key instead. Generate it with `openssl rand -base64 32`.
+  </Warning>
 </ParamField>
 
 <ParamField query="AUTH_SECRET" type="string" default="none" required>
-  Must be a random 32 byte base64 string. Can be generated with `openssl rand
-  -base64 32`
+  Must be a random 32-byte base64 string. Can be generated with `openssl rand
+  -base64 32`.
 </ParamField>
 
 <ParamField query="SITE_URL" type="string" default="none" required>
@@ -45,7 +50,7 @@ Example values:
 </ParamField>
 
 <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
-  Telemetry helps us improve Infisical but if you want to disable it you may set
+  Telemetry helps us improve Infisical, but if you want to disable it, you may set
   this to `false`.
 </ParamField>
 
@@ -91,7 +96,7 @@ Example values:
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
-The following environment variables can be used to configure the Infisical Rest API to allow or restrict access to resources from different origins.
+The following environment variables can be used to configure the Infisical REST API to allow or restrict access to resources from different origins.
 
 <ParamField query="CORS_ALLOWED_ORIGINS" type="string" optional>
 
@@ -112,7 +117,7 @@ Defaults to reflecting the headers specified in the request's Access-Control-Req
 
 ## Data Layer
 
-The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
+The platform uses Postgres to persist all of its data and Redis for caching and background tasks.
 
 ### PostgreSQL
 
@@ -145,7 +150,7 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
       Remember to base64 encode the certificate before setting it as the `DB_ROOT_CERT` environment variable. `cat /path/to/certificate.pem | base64`.
 
       ```bash
-      DB_ROOT_CERT=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1 # .... (base64 encoded certificate)
+      DB_ROOT_CERT=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1 # .... (base64-encoded certificate)
       DB_CONNECTION_URI=<rds-endpoint>?sslmode=verify-ca # or verify-full depending on your security policies
       ```
     </Accordion>
@@ -226,7 +231,7 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
 
 <Info>
-**Active-passive** setup is recommended for Redis. Infisical has not been tested with **Active-active** setup for Redis and may result in undocumented behavior. 
+An **active-passive** setup is recommended for Redis. Infisical has not been tested with an **active-active** Redis setup, which may result in undocumented behavior.
 </Info>
 
 <Tabs>
@@ -288,7 +293,7 @@ Redis is used for caching and background tasks. You can use either a standalone 
       Enable Redis TLS encryption on connection.
     </ParamField>
     <ParamField query="REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE" type="boolean" default="false">
-      Enable this if you are using AWS encrypt on transit for Elasticache cluster. For more information refer ![here](https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls).
+      Enable this if you are using in-transit encryption for an AWS ElastiCache cluster. For more information, refer to the [ioredis documentation](https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls).
     </ParamField>
     <ParamField query="REDIS_USERNAME" type="string" default="none">
       Authentication username for Redis Node
@@ -308,7 +313,7 @@ Redis is used for caching and background tasks. You can use either a standalone 
       192.168.65.254:26379,192.168.65.254:26380 ```
     </ParamField>
 
-    The paramters like username, password, tls, redis type of the primary instance will be inherited.
+    Parameters such as username, password, TLS, and Redis type are inherited from the primary instance.
 
   </Tab>
 </Tabs>
@@ -372,7 +377,7 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 <ParamField query="SMTP_REQUIRE_TLS" type="bool" default="true" optional>
   If this is `true` and `SMTP_PORT` is not 465 then Infisical tries to use
   STARTTLS even if the server does not advertise support for it. If the
-  connection can not be encrypted then message is not sent.
+  connection cannot be encrypted, then the message is not sent.
 </ParamField>
 
 <ParamField
@@ -391,9 +396,9 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 <ParamField query="SMTP_CUSTOM_CA_CERT" type="string" default="none" optional>
     If your SMTP server uses a certificate signed by a custom Certificate Authority, you should set this variable so that Infisical can trust the custom CA.
 
-    This variable **must be a base64 encoded PEM certificate**. Use the following command to encode your certificate: `echo "<certificate>" | base64`
+    This variable **must be a base64-encoded PEM certificate**. Use the following command to encode your certificate: `echo "<certificate>" | base64`
 
-    Infisical highly encourages the following variables be used alongside this one for maximum security:
+    Infisical strongly recommends using the following variables alongside this one for maximum security:
     - `SMTP_REQUIRE_TLS=true`
     - `SMTP_TLS_REJECT_UNAUTHORIZED=true`
 
@@ -447,11 +452,11 @@ SMTP_FROM_NAME=Infisical
 
 <Accordion title="AWS SES">
   <Steps>
-    <Step title="Create a verifed identity">
+    <Step title="Create a verified identity">
       This will be used to verify the email you are sending from.
       ![Create SES identity](../../images/self-hosting/configuration/email/ses-create-identity.png)
       <Info>
-        If you AWS SES is under sandbox mode, you will only be able to send emails to verified identies.
+        If AWS SES is in sandbox mode, you will only be able to send emails to verified identities.
       </Info>
     </Step>
     <Step title="Create an account and configure AWS SES">
@@ -530,7 +535,7 @@ SMTP_FROM_NAME=Infisical
 
 ![go to resend smtp settings](../../images/self-hosting/configuration/email/email-resend-smtp-settings.png)
 
-5. With the API Key, you can now set your SMTP environment variables variables:
+5. With the API Key, you can now set your SMTP environment variables:
 
 ```
 SMTP_HOST=smtp.resend.com
@@ -641,8 +646,8 @@ SSL: Available on ports 465, 8465, and 443
 
 ## Authentication
 
-By default, users can only login via email/password based login method.
-To login into Infisical with OAuth providers such as Google, configure the associated variables.
+By default, users can only log in via the email/password-based login method.
+To log in to Infisical with OAuth providers such as Google, configure the associated variables.
 
 <ParamField query="DEFAULT_SAML_ORG_SLUG" type="string">
 
@@ -651,7 +656,7 @@ When set, all visits to the Infisical login page will automatically redirect use
 </ParamField>
 
 <Accordion title="Google">
-  Follow detailed guide to configure [Google SSO](/documentation/platform/sso/google)
+  Follow the detailed guide to configure [Google SSO](/documentation/platform/sso/google).
 
   <ParamField query="CLIENT_ID_GOOGLE_LOGIN" type="string" default="none" optional>
   OAuth2 client ID for Google login
@@ -661,8 +666,8 @@ When set, all visits to the Infisical login page will automatically redirect use
   </ParamField>
 </Accordion>
 
-<Accordion title="Github">
-  Follow detailed guide to configure [GitHub SSO](/documentation/platform/sso/github)
+<Accordion title="GitHub">
+  Follow the detailed guide to configure [GitHub SSO](/documentation/platform/sso/github).
 
   <ParamField query="CLIENT_ID_GITHUB_LOGIN" type="string" default="none" optional>
     OAuth2 client ID for GitHub login
@@ -672,8 +677,8 @@ When set, all visits to the Infisical login page will automatically redirect use
   </ParamField>
 </Accordion>
 
-<Accordion title="Gitlab">
-  Follow detailed guide to configure [GitLab SSO](/documentation/platform/sso/gitlab)
+<Accordion title="GitLab">
+  Follow the detailed guide to configure [GitLab SSO](/documentation/platform/sso/gitlab).
 
   <ParamField query="CLIENT_ID_GITLAB_LOGIN" type="string" default="none" optional>
     OAuth2 client ID for GitLab login
@@ -841,20 +846,20 @@ You can configure Infisical to collect and expose telemetry data for analytics a
   type="string"
   default="false"
 >
-  Whether or not to collect and expose telemetry data.
+  Whether to collect and expose telemetry data.
 </ParamField>
 
 <ParamField query="OTEL_EXPORT_TYPE" type="enum" optional>
   Supported types are `prometheus` and `otlp`.
 
-If export type is set to `prometheus`, metric data will be exposed in port 9464 in the `/metrics` path.
+If the export type is set to `prometheus`, metric data will be exposed on port 9464 at the `/metrics` path.
 
-If export type is set to `otlp`, you will have to configure a value for `OTEL_EXPORT_OTLP_ENDPOINT`.
+If the export type is set to `otlp`, you will have to configure a value for `OTEL_EXPORT_OTLP_ENDPOINT`.
 
 </ParamField>
 
 <ParamField query="OTEL_EXPORT_OTLP_ENDPOINT" type="string">
-  Where telemetry data would be pushed to for collection. This is only
+  Where telemetry data is pushed for collection. This is only
   applicable when `OTEL_EXPORT_TYPE` is set to `otlp`.
 </ParamField>
 

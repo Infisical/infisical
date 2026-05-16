@@ -51,7 +51,7 @@ type TMembershipUserServiceFactoryDep = {
   userDAL: TUserDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission"
+    "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission" | "getOrgPermissionByRoles"
   >;
   licenseService: TLicenseServiceFactory;
   projectKeyDAL: TProjectKeyDALFactory;
@@ -189,6 +189,8 @@ export const membershipUserServiceFactory = ({
       }
 
       rolesToUse = [{ isTemporary: false, role: defaultRole }];
+      // Expose resolved roles to onCreateMembershipUserGuard's boundary check
+      data.roles = rolesToUse;
     }
 
     const hasNoPermanentRole = rolesToUse.every((el) => el.isTemporary);

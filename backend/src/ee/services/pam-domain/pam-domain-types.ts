@@ -5,6 +5,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPostRotateContext } from "../pam-resource/pam-resource-types";
@@ -21,6 +22,7 @@ export type TPamDomain = {
   name: string;
   domainType: PamDomainType;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   discoveryFingerprint?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +35,7 @@ export type TCreateDomainDTO = {
   name: string;
   domainType: PamDomainType;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   connectionDetails: TPamDomainConnectionDetails;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
@@ -41,6 +44,7 @@ export type TUpdateDomainDTO = {
   domainId: string;
   name?: string;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   connectionDetails?: TPamDomainConnectionDetails;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
@@ -65,6 +69,10 @@ export type TPamDomainServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 

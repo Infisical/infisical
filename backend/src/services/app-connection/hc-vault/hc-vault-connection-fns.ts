@@ -3,6 +3,7 @@ import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { request } from "@app/lib/config/request";
@@ -129,13 +130,24 @@ type TokenRespData = {
 };
 
 export const requestWithHCVaultGateway = async <T>(
-  appConnection: { gatewayId?: string | null },
+  appConnection: { gatewayId?: string | null; gatewayPoolId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   requestConfig: AxiosRequestConfig,
-  gatewayDetails?: TGatewayDetails
+  gatewayDetails?: TGatewayDetails,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<AxiosResponse<T>> => {
-  const { gatewayId } = appConnection;
+  const { gatewayId: directGatewayId, gatewayPoolId } = appConnection;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   const url = new URL(requestConfig.url as string);
   await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));

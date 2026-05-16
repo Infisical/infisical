@@ -160,6 +160,7 @@ import {
   TOctopusDeploySyncWithCredentials
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
+import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -172,6 +173,12 @@ import {
   TRenderSyncListItem,
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
+import {
+  TSnowflakeSync,
+  TSnowflakeSyncInput,
+  TSnowflakeSyncListItem,
+  TSnowflakeSyncWithCredentials
+} from "./snowflake";
 import {
   TSupabaseSync,
   TSupabaseSyncInput,
@@ -231,9 +238,11 @@ export type TSecretSync =
   | TCircleCISync
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
+  | TOvhSync
   | TDevinSync
   | TOnaSync
-  | TTravisCISync;
+  | TTravisCISync
+  | TSnowflakeSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -273,9 +282,11 @@ export type TSecretSyncWithCredentials =
   | TCircleCISyncWithCredentials
   | TAzureEntraIdScimSyncWithCredentials
   | TExternalInfisicalSyncWithCredentials
+  | TOvhSyncWithCredentials
   | TDevinSyncWithCredentials
   | TOnaSyncWithCredentials
-  | TTravisCISyncWithCredentials;
+  | TTravisCISyncWithCredentials
+  | TSnowflakeSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -315,9 +326,11 @@ export type TSecretSyncInput =
   | TCircleCISyncInput
   | TAzureEntraIdScimSyncInput
   | TExternalInfisicalSyncInput
+  | TOvhSyncInput
   | TDevinSyncInput
   | TOnaSyncInput
-  | TTravisCISyncInput;
+  | TTravisCISyncInput
+  | TSnowflakeSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -357,9 +370,11 @@ export type TSecretSyncListItem =
   | TCircleCISyncListItem
   | TAzureEntraIdScimSyncListItem
   | TExternalInfisicalSyncListItem
+  | TOvhSyncListItem
   | TDevinSyncListItem
   | TOnaSyncListItem
-  | TTravisCISyncListItem;
+  | TTravisCISyncListItem
+  | TSnowflakeSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

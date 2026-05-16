@@ -42,10 +42,7 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  createDistinguishedName,
-  parseDistinguishedName
-} from "@app/services/certificate-authority/certificate-authority-fns";
+import { createDistinguishedName, extractDnParts } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -1130,7 +1127,7 @@ export const certificateV3ServiceFactory = ({
         keyAlgorithm: effectiveKeyAlgorithm,
         isFromProfile: true,
         organization: certificateRequestWithDefaults.organization,
-        organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+        ou: certificateRequestWithDefaults.organizationalUnit,
         country: certificateRequestWithDefaults.country,
         state: certificateRequestWithDefaults.state,
         locality: certificateRequestWithDefaults.locality,
@@ -1508,7 +1505,7 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const csrSubjectParsed = parseDistinguishedName(new x509.Pkcs10CertificateRequest(csr).subject);
+    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
     const mergedSubject = {
       ...csrSubjectParsed,
       commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,
@@ -2145,6 +2142,11 @@ export const certificateV3ServiceFactory = ({
 
       const certificateRequest = {
         commonName: originalCert.commonName || undefined,
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined,
         keyUsages: parseKeyUsages(originalCert.keyUsages),
         extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         subjectAlternativeNames: originalCert.altNames
@@ -2222,6 +2224,11 @@ export const certificateV3ServiceFactory = ({
             signatureAlgorithm: originalSignatureAlgorithm,
             keyAlgorithm: originalKeyAlgorithm,
             isFromProfile: true,
+            organization: originalCert.subjectOrganization || undefined,
+            ou: originalCert.subjectOrganizationalUnit || undefined,
+            country: originalCert.subjectCountry || undefined,
+            state: originalCert.subjectState || undefined,
+            locality: originalCert.subjectLocality || undefined,
             actor,
             actorId,
             actorAuthMethod,
@@ -2356,7 +2363,12 @@ export const certificateV3ServiceFactory = ({
         status: CertificateRequestStatus.ISSUED,
         certificateId: newCert.id,
         ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
 
       // Copy metadata from original cert to new cert and cert request
@@ -2410,7 +2422,12 @@ export const certificateV3ServiceFactory = ({
         metadata: `Renewed from certificate ID: ${originalCert.id}`,
         status: CertificateRequestStatus.PENDING,
         ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined
       });
 
       certificateRequestId = certificateRequest.id;

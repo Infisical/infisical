@@ -74,20 +74,31 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       tags: [ApiDocsTags.PkiDiscovery],
       operationId: "createPkiDiscovery",
       description: "Create a new PKI discovery configuration",
-      body: z.object({
-        projectId: z.string().describe("The ID of the project"),
-        name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
-        description: z.string().max(500).optional().describe("Description of the discovery configuration"),
-        discoveryType: z
-          .nativeEnum(PkiDiscoveryType)
-          .optional()
-          .default(PkiDiscoveryType.Network)
-          .describe("Type of discovery scan"),
-        targetConfig: NetworkTargetConfigSchema.describe("Target configuration for discovery scans"),
-        isAutoScanEnabled: z.boolean().optional().default(false).describe("Enable automatic scheduled scans"),
-        scanIntervalDays: z.number().min(1).max(365).optional().describe("Interval in days between automatic scans"),
-        gatewayId: z.string().uuid().optional().describe("Gateway ID for scanning private networks")
-      }),
+      body: z
+        .object({
+          projectId: z.string().describe("The ID of the project"),
+          name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
+          description: z.string().max(500).optional().describe("Description of the discovery configuration"),
+          discoveryType: z
+            .nativeEnum(PkiDiscoveryType)
+            .optional()
+            .default(PkiDiscoveryType.Network)
+            .describe("Type of discovery scan"),
+          targetConfig: NetworkTargetConfigSchema.describe("Target configuration for discovery scans"),
+          isAutoScanEnabled: z.boolean().optional().default(false).describe("Enable automatic scheduled scans"),
+          scanIntervalDays: z.number().min(1).max(365).optional().describe("Interval in days between automatic scans"),
+          gatewayId: z.string().uuid().optional().describe("Gateway ID for scanning private networks"),
+          gatewayPoolId: z.string().uuid().optional().describe("Gateway pool ID for scanning private networks")
+        })
+        .superRefine((data, ctx) => {
+          if (data.gatewayId && data.gatewayPoolId) {
+            ctx.addIssue({
+              path: ["gatewayPoolId"],
+              code: z.ZodIssueCode.custom,
+              message: "Cannot specify both a gateway and a gateway pool"
+            });
+          }
+        }),
       response: {
         200: PkiDiscoveryConfigsSchema
       }
@@ -97,7 +108,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         req.body.targetConfig.ipRanges,
         req.body.targetConfig.ports,
         req.body.targetConfig.domains,
-        !!req.body.gatewayId
+        !!req.body.gatewayId || !!req.body.gatewayPoolId
       );
       if (!validation.valid) {
         throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
@@ -112,6 +123,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         isAutoScanEnabled: req.body.isAutoScanEnabled,
         scanIntervalDays: req.body.scanIntervalDays,
         gatewayId: req.body.gatewayId,
+        gatewayPoolId: req.body.gatewayPoolId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -209,7 +221,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       response: {
         200: PkiDiscoveryConfigsSchema.extend({
           linkedInstallationsCount: z.number().optional(),
-          gatewayName: z.string().nullable().optional()
+          gatewayName: z.string().nullable().optional(),
+          gatewayPoolName: z.string().nullable().optional()
         })
       }
     },
@@ -253,29 +266,47 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       params: z.object({
         discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
       }),
-      body: z.object({
-        name: slugSchema({ field: "Name", max: 100 }).optional().describe("Name of the discovery configuration"),
-        description: z.string().max(500).optional().nullable().describe("Description of the discovery configuration"),
-        targetConfig: NetworkTargetConfigSchema.optional().describe("Target configuration for discovery scans"),
-        isAutoScanEnabled: z.boolean().optional().describe("Enable automatic scheduled scans"),
-        scanIntervalDays: z
-          .number()
-          .min(1)
-          .max(365)
-          .optional()
-          .nullable()
-          .describe("Interval in days between automatic scans"),
-        gatewayId: z.string().uuid().optional().nullable().describe("Gateway ID for scanning private networks"),
-        isActive: z.boolean().optional().describe("Whether the discovery configuration is active")
-      }),
+      body: z
+        .object({
+          name: slugSchema({ field: "Name", max: 100 }).optional().describe("Name of the discovery configuration"),
+          description: z.string().max(500).optional().nullable().describe("Description of the discovery configuration"),
+          targetConfig: NetworkTargetConfigSchema.optional().describe("Target configuration for discovery scans"),
+          isAutoScanEnabled: z.boolean().optional().describe("Enable automatic scheduled scans"),
+          scanIntervalDays: z
+            .number()
+            .min(1)
+            .max(365)
+            .optional()
+            .nullable()
+            .describe("Interval in days between automatic scans"),
+          gatewayId: z.string().uuid().optional().nullable().describe("Gateway ID for scanning private networks"),
+          gatewayPoolId: z
+            .string()
+            .uuid()
+            .optional()
+            .nullable()
+            .describe("Gateway pool ID for scanning private networks"),
+          isActive: z.boolean().optional().describe("Whether the discovery configuration is active")
+        })
+        .superRefine((data, ctx) => {
+          if (data.gatewayId && data.gatewayPoolId) {
+            ctx.addIssue({
+              path: ["gatewayPoolId"],
+              code: z.ZodIssueCode.custom,
+              message: "Cannot specify both a gateway and a gateway pool"
+            });
+          }
+        }),
       response: {
         200: PkiDiscoveryConfigsSchema
       }
     },
     handler: async (req) => {
       if (req.body.targetConfig) {
-        let hasGateway = req.body.gatewayId !== null && req.body.gatewayId !== undefined;
-        if (!hasGateway && req.body.gatewayId === undefined) {
+        let hasGateway =
+          (req.body.gatewayId !== null && req.body.gatewayId !== undefined) ||
+          (req.body.gatewayPoolId !== null && req.body.gatewayPoolId !== undefined);
+        if (!hasGateway && req.body.gatewayId === undefined && req.body.gatewayPoolId === undefined) {
           const existing = await server.services.pkiDiscovery.getDiscovery({
             discoveryId: req.params.discoveryId,
             actor: req.permission.type,
@@ -283,7 +314,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId
           });
-          hasGateway = !!existing.gatewayId;
+          hasGateway = !!existing.gatewayId || !!existing.gatewayPoolId;
         }
         const validation = validateTargetConfig(
           req.body.targetConfig.ipRanges,
@@ -304,6 +335,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         isAutoScanEnabled: req.body.isAutoScanEnabled,
         scanIntervalDays: req.body.scanIntervalDays ?? undefined,
         gatewayId: req.body.gatewayId,
+        gatewayPoolId: req.body.gatewayPoolId,
         isActive: req.body.isActive,
         actor: req.permission.type,
         actorId: req.permission.id,

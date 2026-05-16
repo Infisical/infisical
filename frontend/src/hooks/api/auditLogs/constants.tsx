@@ -404,7 +404,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   // External Migration
   [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
   [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
-  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration"
+  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
+  [EventType.GATEWAY_CREATE]: "Create gateway",
+  [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
+  [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Gateway login",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Gateway login failed",
+  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update gateway auth method",
+  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke gateway access"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

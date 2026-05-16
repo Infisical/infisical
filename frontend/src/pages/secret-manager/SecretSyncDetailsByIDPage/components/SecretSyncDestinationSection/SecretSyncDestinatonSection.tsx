@@ -41,8 +41,10 @@ import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSec
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
 import { OnaSyncDestinationSection } from "./OnaSyncDestinationSection";
+import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
@@ -178,6 +180,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.ExternalInfisical:
       DestinationComponents = <ExternalInfisicalSyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.OVH:
+      DestinationComponents = <OvhSyncDestinationSection secretSync={secretSync} />;
+      break;
     case SecretSync.Devin:
       DestinationComponents = <DevinSyncDestinationSection secretSync={secretSync} />;
       break;
@@ -186,6 +191,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.TravisCI:
       DestinationComponents = <TravisCISyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Snowflake:
+      DestinationComponents = <SnowflakeSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

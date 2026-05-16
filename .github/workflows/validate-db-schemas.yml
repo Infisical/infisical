@@ -21,16 +21,16 @@ jobs:
             ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
         steps:
             - name: ☁️ Checkout source
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
-            - uses: KengoTODA/actions-setup-docker-compose@v1
+            - uses: KengoTODA/actions-setup-docker-compose@477353946803dd64eaa44008b865b6bfc88cab4e # v1.2.4
               if: ${{ env.ACT }}
               name: Install `docker compose` for local simulations
               with:
                   version: "2.14.2"
             - name: 🔧 Setup Node 22
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3 latest (consider upgrading to v4)
               with:
                   node-version: "22"
                   cache: "npm"

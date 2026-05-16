@@ -683,7 +683,7 @@ describe("Validate Permission Boundary: Checking Parent $GLOB operator", () => {
         }
       ])
     }
-  ])("Child $operator truthy cases", ({ childPermission }) => {
+  ])("Child $operator (parent /hello/** $GLOB) truthy cases", ({ childPermission }) => {
     const permissionBoundary = validatePermissionBoundary(parentPermission, childPermission);
     expect(permissionBoundary.isValid).toBeTruthy();
   });
@@ -737,8 +737,193 @@ describe("Validate Permission Boundary: Checking Parent $GLOB operator", () => {
         }
       ])
     }
-  ])("Child $operator falsy cases", ({ childPermission }) => {
+  ])("Child $operator (parent /hello/** $GLOB) falsy cases", ({ childPermission }) => {
     const permissionBoundary = validatePermissionBoundary(parentPermission, childPermission);
     expect(permissionBoundary.isValid).toBeFalsy();
+  });
+});
+
+describe("Validate Permission Boundary: glob-subset of glob (positive parent)", () => {
+  // Regression for the literal-string-match flaw: `picomatch.isMatch('/apps/**', '/apps/*')`
+  // returns true because `**` is two literal characters with no `/`, so the previous boundary
+  // logic accepted `/apps/**` as a "subset" of `/apps/*` and let callers widen single-segment
+  // scope to recursive scope. The new check uses set containment over the two glob languages.
+  test("Child $glob broader than parent $glob is rejected ('/apps/*' parent, '/apps/**' child)", () => {
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/*" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/**" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
+  test("Child $glob equally narrow than parent $glob is accepted ('/apps/*' parent, '/apps/foo' child)", () => {
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/*" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/foo" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
+  });
+
+  test("Disjoint glob siblings ('/apps/*' parent, '/secret/*' child) is rejected", () => {
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/*" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/secret/*" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+});
+
+describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {
+  // Regression for the inverted-rule bypass: a caller with positive `read` plus a deny rule
+  // scoped to `/secret/**` must not be able to mint a child rule scoped to `/**`, because the
+  // child grants exactly the access the parent's deny region forbids. The previous check only
+  // tested "child fully contained in deny region", missing the "child broader than deny region"
+  // case.
+  test("Child broader than parent's deny region is rejected (deny '/secret/**' + child '/**')", () => {
+    const parentPermission = createMongoAbility([
+      { action: "read", subject: "secrets" },
+      {
+        action: "read",
+        subject: "secrets",
+        inverted: true,
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/secret/**" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: "read",
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/**" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
+  test("Child without the deny-region's constrained field is rejected (deny path='/secret/**' + child {})", () => {
+    const parentPermission = createMongoAbility([
+      { action: "read", subject: "secrets" },
+      {
+        action: "read",
+        subject: "secrets",
+        inverted: true,
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/secret/**" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([{ action: "read", subject: "secrets" }]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+  });
+
+  test("Child fully outside the deny region is accepted (deny '/secret/**' + child '/apps/**')", () => {
+    const parentPermission = createMongoAbility([
+      { action: "read", subject: "secrets" },
+      {
+        action: "read",
+        subject: "secrets",
+        inverted: true,
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/secret/**" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: "read",
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/**" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
+  });
+
+  test("Child disjoint from deny via a different field is accepted (deny env=dev path='/secret/**' + child env=prod)", () => {
+    const parentPermission = createMongoAbility([
+      { action: "read", subject: "secrets" },
+      {
+        action: "read",
+        subject: "secrets",
+        inverted: true,
+        conditions: {
+          environment: { [PermissionConditionOperators.$EQ]: "dev" },
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/secret/**" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: "read",
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$EQ]: "prod" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
+  });
+
+  test("Unconditional inverted rule denies all subsets", () => {
+    const parentPermission = createMongoAbility([
+      { action: "read", subject: "secrets" },
+      { action: "read", subject: "secrets", inverted: true }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: "read",
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$EQ]: "/" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
   });
 });

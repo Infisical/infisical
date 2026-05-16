@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring"];
 
   const rotations = [
     {
@@ -160,6 +160,15 @@ export const RotationsBrowser = () => {
       category: "Cloud Providers",
       rotationType: "Dual-Phase",
     },
+    {
+      name: "Datadog Application Key",
+      slug: "datadog-application-key",
+      path: "/documentation/platform/secret-rotation/datadog-application-key-secret",
+      description:
+        "Learn how to automatically rotate Datadog application keys.",
+      category: "Monitoring",
+      rotationType: "Dual-Phase",
+    }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

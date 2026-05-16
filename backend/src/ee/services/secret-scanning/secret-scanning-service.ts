@@ -7,7 +7,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TGitAppDALFactory } from "./git-app-dal";
 import { TGitAppInstallSessionDALFactory } from "./git-app-install-session-dal";
@@ -189,6 +189,11 @@ export const secretScanningServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
+
+    const existingRisk = await secretScanningDAL.findById(riskId);
+    if (!existingRisk || existingRisk.orgId !== actorOrgId) {
+      throw new BadRequestError({ message: "Risk not found or access denied" });
+    }
 
     const isRiskResolved = Boolean(
       [

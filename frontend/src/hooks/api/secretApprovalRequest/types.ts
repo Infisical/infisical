@@ -36,6 +36,7 @@ export type TSecretApprovalSecChange = {
   secretValueHidden?: boolean;
   secretComment?: string;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   tags?: string[];
 };
 

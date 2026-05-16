@@ -31,6 +31,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     isPlatformManagedCredentials?: boolean;
     isAutoRotationEnabled?: boolean | null;
     gatewayId?: string | null;
+    gatewayPoolId?: string | null;
     projectId?: string;
     rotation?: TCreateAppConnectionCredentialRotationSchema | null;
   }>;
@@ -40,6 +41,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    gatewayPoolId?: string | null;
     isAutoRotationEnabled?: boolean | null;
     rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
   }>;
@@ -288,6 +290,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         description,
         isPlatformManagedCredentials,
         gatewayId,
+        gatewayPoolId,
         projectId,
         isAutoRotationEnabled,
         rotation
@@ -302,6 +305,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           description,
           isPlatformManagedCredentials,
           gatewayId,
+          gatewayPoolId,
           projectId,
           rotation,
           isAutoRotationEnabled: isAutoRotationEnabled ?? false
@@ -369,6 +373,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         description,
         isPlatformManagedCredentials,
         gatewayId,
+        gatewayPoolId,
         rotation,
         isAutoRotationEnabled
       } = req.body;
@@ -382,6 +387,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           description,
           isPlatformManagedCredentials,
           gatewayId,
+          gatewayPoolId,
           isAutoRotationEnabled: isAutoRotationEnabled ?? undefined,
           rotation: rotation ?? undefined
         },

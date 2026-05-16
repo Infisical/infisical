@@ -155,6 +155,18 @@ export const useRequestEmailChangeOTP = () => {
   });
 };
 
+export const useVerifyCurrentEmailOTP = () => {
+  return useMutation({
+    mutationFn: async ({ otpCode }: { otpCode: string }) => {
+      const { data } = await apiRequest.post<{ success: boolean; newEmail: string }>(
+        "/api/v2/users/me/email-change/verify-current",
+        { otpCode }
+      );
+      return data;
+    }
+  });
+};
+
 export const useUpdateUserEmail = () => {
   const queryClient = useQueryClient();
   return useMutation({

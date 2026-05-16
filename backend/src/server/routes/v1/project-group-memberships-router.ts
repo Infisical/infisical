@@ -7,6 +7,7 @@ import {
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -139,7 +140,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
         (req.body.role
           ? [{ role: req.body.role, isTemporary: false }]
           : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
-      await server.services.membershipGroup.createMembership({
+      const { group } = await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: { groupId: req.params.groupId, roles },
         scopeData: {
@@ -157,6 +158,27 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
           projectId: req.params.projectId
         },
         selector: { groupId: req.params.groupId }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.ADD_GROUP_TO_PROJECT,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name,
+            roles: roles.map((r) => ({
+              role: r.role,
+              isTemporary: r.isTemporary,
+              ...(r.isTemporary && {
+                temporaryMode: r.temporaryMode,
+                temporaryRange: r.temporaryRange,
+                temporaryAccessStartTime: r.temporaryAccessStartTime
+              })
+            }))
+          }
+        }
       });
 
       return {
@@ -259,7 +281,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      const { membership: groupMembership } = await server.services.membershipGroup.updateMembership({
+      const { membership: groupMembership, group } = await server.services.membershipGroup.updateMembership({
         permission: req.permission,
         selector: { groupId: req.params.groupId },
         data: { roles: req.body.roles },
@@ -267,6 +289,27 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
           projectId: req.params.projectId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_GROUP_PROJECT_MEMBERSHIP,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name,
+            roles: req.body.roles.map((r) => ({
+              role: r.role,
+              isTemporary: r.isTemporary,
+              ...(r.isTemporary && {
+                temporaryMode: r.temporaryMode,
+                temporaryRange: r.temporaryRange,
+                temporaryAccessStartTime: r.temporaryAccessStartTime
+              })
+            }))
+          }
         }
       });
 
@@ -302,13 +345,25 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
+      const { membership: groupMembership, group } = await server.services.membershipGroup.deleteMembership({
         permission: req.permission,
         selector: { groupId: req.params.groupId },
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
           projectId: req.params.projectId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.REMOVE_GROUP_FROM_PROJECT,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name
+          }
         }
       });
 

@@ -71,7 +71,8 @@ export enum OrgPermissionGatewayActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  RevokeGatewayAccess = "revoke-gateway-access"
 }
 
 export enum OrgPermissionGatewayPoolActions {
@@ -125,6 +126,15 @@ export enum OrgPermissionEmailDomainActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionHoneyTokenActions {
+  Setup = "setup"
+}
+
+export enum OrgPermissionProjectActions {
+  Create = "create",
+  RequestAccess = "request-access"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
@@ -153,7 +163,8 @@ export enum OrgPermissionSubjects {
   Relay = "relay",
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
-  EmailDomains = "email-domains"
+  EmailDomains = "email-domains",
+  HoneyTokens = "honey-tokens"
 }
 
 export type AppConnectionSubjectFields = {
@@ -162,7 +173,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
-  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
+  | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -194,7 +205,8 @@ export type OrgPermissionSet =
   | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
-  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -218,7 +230,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Project).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_ENUM([OrgPermissionActions.Create]).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionProjectActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Role).describe("The entity this permission pertains to."),
@@ -357,6 +371,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.HoneyTokens).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionHoneyTokenActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -364,7 +384,8 @@ const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.Edit, OrgPermissionSubjects.SubOrganization);
@@ -471,6 +492,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.RevokeGatewayAccess, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionGatewayPoolActions.ListGatewayPools, OrgPermissionSubjects.GatewayPool);
   can(OrgPermissionGatewayPoolActions.CreateGatewayPools, OrgPermissionSubjects.GatewayPool);
@@ -513,6 +535,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionEmailDomainActions.Create, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionEmailDomainActions.VerifyDomain, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionEmailDomainActions.Delete, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionHoneyTokenActions.Setup, OrgPermissionSubjects.HoneyTokens);
 
   return rules;
 };
@@ -523,7 +546,8 @@ const buildMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);

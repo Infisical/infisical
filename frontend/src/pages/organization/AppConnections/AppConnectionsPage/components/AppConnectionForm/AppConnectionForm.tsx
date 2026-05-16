@@ -32,6 +32,7 @@ import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DevinConnectionForm } from "./DevinConnectionForm";
 import { DigiCertConnectionForm } from "./DigiCertConnectionForm";
@@ -61,11 +62,13 @@ import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OnaConnectionForm } from "./OnaConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
+import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
+import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -288,12 +291,18 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.OVH:
+        return <OVHConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Ona:
         return <OnaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DigiCert:
         return <DigiCertConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Snowflake:
+        return <SnowflakeConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Datadog:
+        return <DatadogConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -509,12 +518,18 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.OVH:
+        return <OVHConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Ona:
         return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DigiCert:
         return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Snowflake:
+        return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Datadog:
+        return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

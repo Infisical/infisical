@@ -265,6 +265,10 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
 
+    if (type === ProjectType.AI) {
+      throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
+    }
+
     if (environments && type !== ProjectType.SecretManager) {
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }

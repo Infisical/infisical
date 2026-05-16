@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   AsteriskIcon,
+  Check,
   ChevronDownIcon,
   EditIcon,
   HandshakeIcon,
   InfoIcon,
+  LoaderCircleIcon,
   RefreshCwIcon,
   TrashIcon,
   XIcon
@@ -58,6 +61,7 @@ type Props = {
   onReconcile: (secretRotation: TSecretRotationV2) => void;
   onViewGeneratedCredentials: (secretRotation: TSecretRotationV2) => void;
   onDelete: (secretRotation: TSecretRotationV2) => void;
+  onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -82,9 +86,21 @@ export const SecretRotationTableRow = ({
   onRotate,
   onViewGeneratedCredentials,
   onDelete,
-  onReconcile
+  onReconcile,
+  onCheckActiveCredentials
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
+
+  const handleCheckActiveCredentials = async (secretRotation: TSecretRotationV2) => {
+    if (checkingRotationId) return;
+    setCheckingRotationId(secretRotation.id);
+    try {
+      await onCheckActiveCredentials(secretRotation);
+    } finally {
+      setCheckingRotationId(null);
+    }
+  };
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2; // secret key row + icon
@@ -110,6 +126,39 @@ export const SecretRotationTableRow = ({
           "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
         )}
       >
+        <ProjectPermissionCan
+          I={ProjectPermissionSecretRotationActions.ReadGeneratedCredentials}
+          a={subject(ProjectPermissionSub.SecretRotation, {
+            environment: environment.slug,
+            secretPath: folder.path,
+            ...(secretRotation.connectionId && {
+              connectionId: secretRotation.connectionId
+            })
+          })}
+        >
+          {(isAllowed) => {
+            const isCheckingRotation = checkingRotationId === secretRotation.id;
+            return (
+              <Tooltip>
+                <TooltipTrigger>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                      isCheckingRotation && "w-7"
+                    )}
+                    isDisabled={!isAllowed || Boolean(checkingRotationId)}
+                    onClick={() => handleCheckActiveCredentials(secretRotation)}
+                  >
+                    {isCheckingRotation ? <LoaderCircleIcon className="animate-spin" /> : <Check />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Validate Credentials</TooltipContent>
+              </Tooltip>
+            );
+          }}
+        </ProjectPermissionCan>
         <ProjectPermissionCan
           I={ProjectPermissionSecretRotationActions.ReadGeneratedCredentials}
           a={subject(ProjectPermissionSub.SecretRotation, {
@@ -326,8 +375,8 @@ export const SecretRotationTableRow = ({
                     className={twMerge(
                       "ml-auto flex items-center transition-[margin] duration-300",
                       shouldShowReconciliationButton(singleEnvRotation)
-                        ? "group-hover:mr-40"
-                        : "group-hover:mr-32"
+                        ? "group-hover:mr-48"
+                        : "group-hover:mr-40"
                     )}
                   >
                     <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
@@ -424,7 +473,7 @@ export const SecretRotationTableRow = ({
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300",
-                                  showReconcileButton ? "group-hover:mr-40" : "group-hover:mr-32"
+                                  showReconcileButton ? "group-hover:mr-48" : "group-hover:mr-40"
                                 )}
                               >
                                 <SecretRotationV2StatusBadge secretRotation={secretRotation} />

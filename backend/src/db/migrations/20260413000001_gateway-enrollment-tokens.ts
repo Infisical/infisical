@@ -17,8 +17,11 @@ export async function up(knex: Knex): Promise<void> {
     }
   });
 
-  if (!(await knex.schema.hasTable(TableName.GatewayEnrollmentTokens))) {
-    await knex.schema.createTable(TableName.GatewayEnrollmentTokens, (t) => {
+  // Literal table name (not TableName enum) is intentional: migration 20260430143000
+  // renames this table to resource_token_auths, so the enum value no longer exists.
+  // Don't replace with the enum.
+  if (!(await knex.schema.hasTable("gateway_enrollment_tokens"))) {
+    await knex.schema.createTable("gateway_enrollment_tokens", (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
@@ -32,13 +35,13 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.GatewayEnrollmentTokens);
+    await createOnUpdateTrigger(knex, "gateway_enrollment_tokens");
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await dropOnUpdateTrigger(knex, TableName.GatewayEnrollmentTokens);
-  await knex.schema.dropTableIfExists(TableName.GatewayEnrollmentTokens);
+  await dropOnUpdateTrigger(knex, "gateway_enrollment_tokens");
+  await knex.schema.dropTableIfExists("gateway_enrollment_tokens");
 
   // Restore identityId to not-null and remove tokenVersion (only safe if no null rows exist)
   await knex.schema.alterTable(TableName.GatewayV2, (t) => {

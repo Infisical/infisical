@@ -5,7 +5,7 @@ import RE2 from "re2";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
+import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import {
   CertKeyAlgorithm,
@@ -195,8 +195,8 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
   try {
     const certObj = new x509.X509Certificate(decryptedCertificate);
 
-    // Parse subject DN to extract attributes
-    const parsedDn = parseDistinguishedName(certObj.subject);
+    // Extract subject DN attributes directly from the x509 Name object
+    const parsedDn = extractDnParts(certObj.subjectName);
     const subject: TCertificateSubject = {
       commonName: parsedDn.commonName,
       organization: parsedDn.organization,

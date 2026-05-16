@@ -57,6 +57,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES } from "../pam-account-policy/pam-account-policy-constants";
 import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
@@ -75,6 +76,7 @@ import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
+import { TWindowsAccountCredentials } from "../pam-resource/windows-server/windows-server-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
@@ -114,6 +116,7 @@ type TPamAccountServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
@@ -149,6 +152,7 @@ export const pamAccountServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayPoolService,
   auditLogService,
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
@@ -176,6 +180,7 @@ export const pamAccountServiceFactory = ({
         resourceType: resource.resourceType,
         domainType: null as string | null,
         gatewayId: resource.gatewayId,
+        gatewayPoolId: resource.gatewayPoolId ?? null,
         encryptedConnectionDetails: resource.encryptedConnectionDetails,
         encryptedResourceMetadata: resource.encryptedResourceMetadata,
         encryptedRotationAccountCredentials: resource.encryptedRotationAccountCredentials,
@@ -192,6 +197,7 @@ export const pamAccountServiceFactory = ({
       resourceType: null as string | null,
       domainType: domain.domainType,
       gatewayId: domain.gatewayId,
+      gatewayPoolId: domain.gatewayPoolId ?? null,
       encryptedConnectionDetails: domain.encryptedConnectionDetails,
       encryptedResourceMetadata: null as Buffer | null,
       encryptedRotationAccountCredentials: null as Buffer | null,
@@ -246,6 +252,7 @@ export const pamAccountServiceFactory = ({
       })
     );
 
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(parent);
     let factory;
     if (parent.isResource) {
       const connectionDetails = await decryptResourceConnectionDetails({
@@ -263,7 +270,7 @@ export const pamAccountServiceFactory = ({
       factory = PAM_RESOURCE_FACTORY_MAP[parent.resourceType as PamResource](
         parent.resourceType as PamResource,
         connectionDetails,
-        parent.gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         parent.projectId,
         resourceInternalMetadata
@@ -277,7 +284,7 @@ export const pamAccountServiceFactory = ({
       factory = PAM_DOMAIN_FACTORY_MAP[parent.domainType as PamDomainType](
         parent.domainType as PamDomainType,
         connectionDetails,
-        parent.gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         parent.projectId
       );
@@ -426,6 +433,7 @@ export const pamAccountServiceFactory = ({
     }
 
     if (credentials !== undefined) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(parent);
       let factory;
       if (parent.isResource) {
         const connectionDetails = await decryptResourceConnectionDetails({
@@ -443,7 +451,7 @@ export const pamAccountServiceFactory = ({
         factory = PAM_RESOURCE_FACTORY_MAP[parent.resourceType as PamResource](
           parent.resourceType as PamResource,
           connectionDetails,
-          parent.gatewayId,
+          effectiveGatewayId,
           gatewayV2Service,
           account.projectId,
           resourceInternalMetadata
@@ -457,7 +465,7 @@ export const pamAccountServiceFactory = ({
         factory = PAM_DOMAIN_FACTORY_MAP[parent.domainType as PamDomainType](
           parent.domainType as PamDomainType,
           connectionDetails,
-          parent.gatewayId,
+          effectiveGatewayId,
           gatewayV2Service,
           account.projectId
         );
@@ -742,18 +750,67 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
 
-    // Find account by name within the resource
-    const account = await pamAccountDAL.findOne({
-      projectId,
-      resourceId: resource.id,
-      name: inputAccountName
-    });
+    // Wire format for AD-domain accounts is `<fqdn>:<slug>` (e.g.
+    // 'corp.example.com:administrator'). PAM slugs can't contain ':' so the
+    // separator is unambiguous. Plain `<slug>` routes to the local bucket.
+    const colonIdx = inputAccountName.indexOf(":");
+    const isDomainAccount = colonIdx !== -1;
+    const accountSlug = isDomainAccount ? inputAccountName.slice(colonIdx + 1) : inputAccountName;
+    const fqdnHint = isDomainAccount ? inputAccountName.slice(0, colonIdx) : null;
 
-    if (!account) {
+    if (isDomainAccount && resource.resourceType !== PamResource.Windows) {
+      throw new BadRequestError({
+        message: `Domain account access is only supported for Windows resources`
+      });
+    }
+
+    // accountIdentity is fed to the approval layer; the FQDN prefix on domain
+    // accounts prevents a like-named local-account grant from matching.
+    const lookupAccount = async () => {
+      if (!isDomainAccount) {
+        const localAccount = await pamAccountDAL.findOne({
+          projectId,
+          resourceId: resource.id,
+          name: accountSlug
+        });
+        if (!localAccount) return null;
+        return { account: localAccount, accountIdentity: localAccount.name };
+      }
+      if (!resource.domainId) {
+        throw new BadRequestError({
+          message: `Resource '${inputResourceName}' is not joined to a domain`
+        });
+      }
+      const domain = await pamDomainDAL.findById(resource.domainId);
+      if (!domain) {
+        throw new NotFoundError({ message: `Domain with ID '${resource.domainId}' not found` });
+      }
+      const domainConn = await decryptDomainConnectionDetails({
+        projectId,
+        encryptedConnectionDetails: domain.encryptedConnectionDetails,
+        kmsService
+      });
+      if (domainConn.domain.toLowerCase() !== fqdnHint?.toLowerCase()) {
+        throw new BadRequestError({
+          message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
+        });
+      }
+      const domainAccount = await pamAccountDAL.findOne({
+        projectId,
+        domainId: resource.domainId,
+        name: accountSlug
+      });
+      if (!domainAccount) return null;
+      return { account: domainAccount, accountIdentity: `${domainConn.domain}:${domainAccount.name}` };
+    };
+    const lookup = await lookupAccount();
+
+    if (!lookup) {
       throw new NotFoundError({
         message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
       });
     }
+    const { account, accountIdentity } = lookup;
 
     const trimmedReason = reason?.trim() || null;
 
@@ -762,7 +819,7 @@ export const pamAccountServiceFactory = ({
     const inputs = {
       resourceId: resource.id,
       resourceName: resource.name,
-      accountName: account.name
+      accountName: accountIdentity
     };
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
@@ -799,12 +856,20 @@ export const pamAccountServiceFactory = ({
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
 
+      // On Access, resourceName/resourceType match the connect-target (the
+      // Windows host the credentials are used against), and for domain
+      // accounts domainName/domainType additionally scope to the parent.
+      // Other actions (create/read/update/delete) keep resourceName as the
+      // account's parent, which is undefined for domain accounts.
+      const domain = isDomainAccount && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
+
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
-          resourceName: resource.name,
           accountName: account.name,
+          resourceName: resource.name,
           resourceType: resource.resourceType,
+          ...(isDomainAccount && domain && { domainName: domain.name, domainType: domain.domainType }),
           metadata: accountMeta[account.id] || []
         })
       );
@@ -823,7 +888,7 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    const actorUser = await userDAL.findById(actor.id);
+    const actorUser = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
     if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     // If no mfaSessionId is provided, create a new MFA session
@@ -895,11 +960,12 @@ export const pamAccountServiceFactory = ({
       await mfaSessionService.deleteMfaSession(mfaSessionId);
     }
 
-    const { connectionDetails, gatewayId, resourceType } = await decryptResource(
-      resource,
-      account.projectId,
-      kmsService
-    );
+    const decryptedResource = await decryptResource(resource, account.projectId, kmsService);
+    const { connectionDetails, resourceType } = decryptedResource;
+    const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: decryptedResource.gatewayId,
+      gatewayPoolId: decryptedResource.gatewayPoolId
+    });
 
     if (resourceType === PamResource.Windows) {
       const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
@@ -911,7 +977,7 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    const user = await userDAL.findById(actor.id);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     if (resourceType === PamResource.AwsIam) {
@@ -975,10 +1041,10 @@ export const pamAccountServiceFactory = ({
       };
     }
 
-    // For gateway-based resources (Postgres, MySQL, SSH), create session first
-    //
-    // Recording secrets are generated lazily at credential fetch time so the raw
-    // upload token can be returned exactly once to the gateway without persisting it
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
+    }
+
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -990,15 +1056,13 @@ export const pamAccountServiceFactory = ({
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
       accountId: account.id,
-      resourceId: resource.id,
+      resourceId: isDomainAccount ? null : resource.id,
+      selectedResourceId: isDomainAccount ? resource.id : null,
       userId: actor.id,
+      gatewayId,
       expiresAt: new Date(Date.now() + duration),
       reason: trimmedReason
     });
-
-    if (!gatewayId) {
-      throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
-    }
 
     const { host, port } = (() => {
       if (resourceType === PamResource.Kubernetes) {
@@ -1044,6 +1108,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
       case PamResource.MsSQL:
+      case PamResource.OracleDB:
       case PamResource.MongoDB:
         {
           const connectionCredentials = (await decryptResourceConnectionDetails({
@@ -1088,6 +1153,19 @@ export const pamAccountServiceFactory = ({
             kmsService,
             projectId
           })) as TSSHAccountCredentials;
+
+          metadata = {
+            username: credentials.username
+          };
+        }
+        break;
+      case PamResource.Windows:
+        {
+          const credentials = (await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          })) as TWindowsAccountCredentials;
 
           metadata = {
             username: credentials.username
@@ -1227,17 +1305,22 @@ export const pamAccountServiceFactory = ({
     const account = await pamAccountDAL.findById(session.accountId);
     if (!account) throw new NotFoundError({ message: `Account with ID '${session.accountId}' not found` });
 
-    const resource = await pamResourceDAL.findById(account.resourceId!);
-    if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+    const resourceId = session.selectedResourceId ?? account.resourceId;
+    if (!resourceId) {
+      throw new NotFoundError({ message: `Session '${sessionId}' has no associated resource` });
+    }
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
-    if (resource.gatewayId) {
-      const authorized =
-        actor.type === ActorType.GATEWAY ? resource.gatewayId === actor.id : resource.gatewayIdentityId === actor.id;
-      if (!authorized) {
-        throw new ForbiddenRequestError({
-          message: "Gateway does not have access to fetch the PAM session credentials"
-        });
-      }
+    if (!session.gatewayId) {
+      throw new BadRequestError({ message: "Session has no associated gateway" });
+    }
+    const authorized =
+      actor.type === ActorType.GATEWAY ? session.gatewayId === actor.id : session.gatewayIdentityId === actor.id;
+    if (!authorized) {
+      throw new ForbiddenRequestError({
+        message: "Gateway does not have access to fetch the PAM session credentials"
+      });
     }
 
     const decryptedAccount = await decryptAccount(account, session.projectId, kmsService);
@@ -1368,6 +1451,39 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    if (decryptedResource.resourceType === PamResource.Windows) {
+      const { hostname, ...rest } = decryptedResource.connectionDetails;
+
+      // The bridge forwards `domain` to IronRDP for NTLM CredSSP against AD.
+      let domainName: string | undefined;
+      if (account.domainId) {
+        const domain = await pamDomainDAL.findById(account.domainId);
+        if (!domain) {
+          throw new NotFoundError({ message: `Domain with ID '${account.domainId}' not found` });
+        }
+        const domainConnectionDetails = await decryptDomainConnectionDetails({
+          projectId: session.projectId,
+          encryptedConnectionDetails: domain.encryptedConnectionDetails,
+          kmsService
+        });
+        domainName = domainConnectionDetails.domain;
+      }
+
+      return {
+        credentials: {
+          ...rest,
+          host: hostname,
+          ...decryptedAccount.credentials,
+          ...(domainName ? { domain: domainName } : {})
+        },
+        policyRules,
+        projectId: project.id,
+        account,
+        sessionStarted,
+        recording: sessionRecordingSecrets
+      };
+    }
+
     return {
       credentials: {
         ...decryptedResource.connectionDetails,
@@ -1470,11 +1586,14 @@ export const pamAccountServiceFactory = ({
       }
       logResourceType = resource.resourceType;
 
-      const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
-        resource,
-        account.projectId,
-        kmsService
-      );
+      const decrypted = await decryptResource(resource, account.projectId, kmsService);
+      const {
+        connectionDetails,
+        rotationAccountCredentials,
+        gatewayId,
+        gatewayPoolId: rotationGatewayPoolId,
+        resourceType
+      } = decrypted;
       if (!rotationAccountCredentials) {
         logger.warn(
           `[Rotation] Decrypted rotation credentials missing for account [accountId=${account.id}], releasing lock`
@@ -1516,10 +1635,14 @@ export const pamAccountServiceFactory = ({
         return;
       }
 
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId,
+        gatewayPoolId: rotationGatewayPoolId
+      });
       const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
         resourceType as PamResource,
         connectionDetails,
-        gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         account.projectId
       );
@@ -1765,7 +1888,7 @@ export const pamAccountServiceFactory = ({
     if (!mfaSessionId && accountWithParent.requireMfa) {
       // actorOrgId equals project.orgId: getProjectPermission above guarantees project existence
       // and org membership, so no separate project lookup is needed to resolve the org ID.
-      const actorUser = await userDAL.findById(actorId);
+      const actorUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
 
       const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>

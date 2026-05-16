@@ -8,6 +8,7 @@ import {
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -85,7 +86,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         (req.body.role
           ? [{ role: req.body.role, isTemporary: false }]
           : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
-      const { membership: groupMembership } = await server.services.membershipGroup.createMembership({
+      const { membership: groupMembership, group } = await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: {
           groupId,
@@ -95,6 +96,27 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
           projectId: req.params.projectId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.ADD_GROUP_TO_PROJECT,
+          metadata: {
+            groupId,
+            groupName: group.name,
+            roles: roles.map((r) => ({
+              role: r.role,
+              isTemporary: r.isTemporary,
+              ...(r.isTemporary && {
+                temporaryMode: r.temporaryMode,
+                temporaryRange: r.temporaryRange,
+                temporaryAccessStartTime: r.temporaryAccessStartTime
+              })
+            }))
+          }
         }
       });
 
@@ -155,7 +177,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const { membership: groupMembership } = await server.services.membershipGroup.updateMembership({
+      const { membership: groupMembership, group } = await server.services.membershipGroup.updateMembership({
         permission: req.permission,
         selector: {
           groupId: req.params.groupId
@@ -167,6 +189,27 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
           projectId: req.params.projectId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_GROUP_PROJECT_MEMBERSHIP,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name,
+            roles: req.body.roles.map((r) => ({
+              role: r.role,
+              isTemporary: r.isTemporary,
+              ...(r.isTemporary && {
+                temporaryMode: r.temporaryMode,
+                temporaryRange: r.temporaryRange,
+                temporaryAccessStartTime: r.temporaryAccessStartTime
+              })
+            }))
+          }
         }
       });
 
@@ -204,7 +247,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
+      const { membership: groupMembership, group } = await server.services.membershipGroup.deleteMembership({
         permission: req.permission,
         selector: {
           groupId: req.params.groupId
@@ -213,6 +256,18 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
           projectId: req.params.projectId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.REMOVE_GROUP_FROM_PROJECT,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name
+          }
         }
       });
 

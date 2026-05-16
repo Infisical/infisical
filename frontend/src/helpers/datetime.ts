@@ -23,6 +23,8 @@ export const formatDateTime = ({
   return format(date, dateFormat);
 };
 
+export const SECONDS_PER_DAY = 86400;
+
 // Helper function to convert seconds to value and unit
 export const getObjectFromSeconds = (
   totalSeconds: number,

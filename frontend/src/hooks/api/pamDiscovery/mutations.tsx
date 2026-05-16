@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { gatewayPoolsQueryKeys } from "../gateway-pools/queries";
 import { pamDiscoveryKeys } from "./queries";
 import {
   TCreatePamDiscoverySourceDTO,
@@ -23,6 +24,7 @@ export const useCreatePamDiscoverySource = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamDiscoveryKeys.sources() });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -43,6 +45,7 @@ export const useUpdatePamDiscoverySource = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamDiscoveryKeys.all });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -58,6 +61,7 @@ export const useDeletePamDiscoverySource = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamDiscoveryKeys.sources() });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };

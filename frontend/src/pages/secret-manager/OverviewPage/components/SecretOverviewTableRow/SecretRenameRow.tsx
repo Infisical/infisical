@@ -69,6 +69,10 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       secret?.overrideAction === SecretActionType.Modified
   );
 
+  const isManagedSecret = secrets.some(
+    (secret) => secret?.isRotatedSecret || secret?.isHoneyTokenSecret
+  );
+
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
 
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -177,7 +181,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           render={({ field, fieldState: { error } }) => (
             <Input
               autoComplete="off"
-              isReadOnly={isReadOnly || secrets.filter(Boolean).length === 0}
+              isReadOnly={isReadOnly || isManagedSecret || secrets.filter(Boolean).length === 0}
               autoCapitalization={currentProject?.autoCapitalization}
               variant="plain"
               isDisabled={isOverriden}
@@ -191,7 +195,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
         />
       </div>
 
-      {isReadOnly || isOverriden ? (
+      {isReadOnly || isOverriden || isManagedSecret ? (
         <span className="mr-5 rounded-md bg-mineshaft-500 px-2">Read Only</span>
       ) : (
         <div className="group flex w-20 items-center justify-center border-l border-mineshaft-500 py-1">

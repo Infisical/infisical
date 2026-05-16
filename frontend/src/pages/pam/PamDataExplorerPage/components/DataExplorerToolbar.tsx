@@ -14,7 +14,9 @@ import { Button } from "@app/components/v3/generic/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/generic/Popover";
 
 import type { ColumnInfo } from "../data-explorer-types";
+import type { ExportFormat } from "../data-export";
 import type { FilterCondition, SortCondition } from "../sql-generation";
+import { ExportDropdown } from "./ExportDropdown";
 import { FilterPopover } from "./FilterPopover";
 import { SortPopover } from "./SortPopover";
 
@@ -41,6 +43,9 @@ type DataExplorerToolbarProps = {
   isDataLoading?: boolean;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  onExport: (format: ExportFormat) => void;
+  onCopy: (format: ExportFormat) => void;
+  hasData: boolean;
 };
 
 export const DataExplorerToolbar = ({
@@ -65,7 +70,10 @@ export const DataExplorerToolbar = ({
   hasPrimaryKey,
   isDataLoading = false,
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  onExport,
+  onCopy,
+  hasData
 }: DataExplorerToolbarProps) => {
   const rangeStart = totalCount === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + pageSize, totalCount);
@@ -161,6 +169,9 @@ export const DataExplorerToolbar = ({
         >
           <ChevronRightIcon className="size-3.5" />
         </Button>
+
+        {/* Export */}
+        <ExportDropdown onExport={onExport} onCopy={onCopy} disabled={!hasData} />
 
         {/* Refresh */}
         <Button

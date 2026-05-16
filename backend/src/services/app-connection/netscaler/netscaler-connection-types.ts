@@ -19,7 +19,7 @@ export type TValidateNetScalerConnectionCredentialsSchema = typeof ValidateNetSc
 
 export type TNetScalerConnectionConfig = DiscriminativePick<
   TNetScalerConnectionInput,
-  "method" | "app" | "credentials" | "gatewayId"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

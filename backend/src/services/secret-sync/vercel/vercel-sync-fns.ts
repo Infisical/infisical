@@ -318,6 +318,72 @@ const updateSecret = async (
   }
 };
 
+// A project-scope record is "merged" when it covers more than just the sync's env.
+const isProjectRecordMerged = (vercelSecret: VercelApiSecret) => {
+  const totalScope = vercelSecret.target.length + (vercelSecret.customEnvironmentIds?.length ?? 0);
+  return totalScope > 1;
+};
+
+// Remove the sync's env from an existing Vercel project record, preserving the original value
+// for the remaining environments. Falls back to a full delete if removing our env would leave
+// the record with no scope at all.
+const detachEnvFromProjectSecret = async (
+  secretSync: TVercelSyncWithCredentials,
+  vercelSecret: VercelApiSecret,
+  attempt = 0
+): Promise<void> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiToken }
+    }
+  } = secretSync;
+
+  if (destinationConfig.scope !== VercelSyncScope.Project) {
+    throw new SecretSyncError({
+      message: "Invalid scope for Vercel secret sync",
+      shouldRetry: false
+    });
+  }
+
+  const newTarget = vercelSecret.target.filter((t) => t !== destinationConfig.env);
+  const newCustomEnvironmentIds = (vercelSecret.customEnvironmentIds ?? []).filter(
+    (id) => id !== destinationConfig.env
+  );
+
+  if (newTarget.length === 0 && newCustomEnvironmentIds.length === 0) {
+    await deleteSecret(secretSync, vercelSecret);
+    return;
+  }
+
+  try {
+    await request.patch(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${destinationConfig.app}/env/${vercelSecret.id}?teamId=${destinationConfig.teamId}`,
+      {
+        ...(vercelSecret.type !== "sensitive" && { key: vercelSecret.key }),
+        type: vercelSecret.type,
+        target: newTarget,
+        customEnvironmentIds: newCustomEnvironmentIds
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+  } catch (error) {
+    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+      await sleep();
+      return detachEnvFromProjectSecret(secretSync, vercelSecret, attempt + 1);
+    }
+    throw new SecretSyncError({
+      error,
+      secretKey: vercelSecret.key
+    });
+  }
+};
+
 // ===== Team-scoped shared environment variable functions =====
 
 type TeamDestinationConfig = Extract<TVercelSyncWithCredentials["destinationConfig"], { scope: VercelSyncScope.Team }>;
@@ -330,15 +396,53 @@ const setsEqual = (a: readonly string[] | undefined, b: readonly string[] | unde
   return av.every((v) => bSet.has(v));
 };
 
-const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
-  const expectedType = destinationConfig.sensitive ? "sensitive" : "encrypted";
-  if (envVar.type !== expectedType) return false;
+const isSubset = (a: readonly string[] | undefined, b: readonly string[] | undefined) => {
+  const bSet = new Set(b ?? []);
+  return (a ?? []).every((v) => bSet.has(v));
+};
 
+// Ownership is by exact (target, projectId, applyToAllCustomEnvironments) scope match.
+const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
   const effectiveTargets = destinationConfig.sensitive
     ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
     : destinationConfig.targetEnvironments;
 
-  return setsEqual(envVar.target, effectiveTargets) && setsEqual(envVar.projectId, destinationConfig.targetProjects);
+  return (
+    setsEqual(envVar.target, effectiveTargets) &&
+    setsEqual(envVar.projectId, destinationConfig.targetProjects) &&
+    Boolean(envVar.applyToAllCustomEnvironments) === Boolean(destinationConfig.applyToAllCustomEnvironments)
+  );
+};
+
+// True when an existing team shared env var's scope is a strict superset of the sync's scope
+const teamVarStrictlyCoversSyncScope = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
+  const effectiveTargets =
+    (destinationConfig.sensitive
+      ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
+      : destinationConfig.targetEnvironments) ?? [];
+
+  if (!isSubset(effectiveTargets, envVar.target)) return false;
+
+  const ourProjects = destinationConfig.targetProjects ?? [];
+  const varProjects = envVar.projectId ?? [];
+
+  // var.projectId empty means "team-wide / all projects" in Vercel
+  if (varProjects.length > 0) {
+    if (ourProjects.length === 0) return false;
+    if (!isSubset(ourProjects, varProjects)) return false;
+  }
+
+  // If our sync claims all-custom-environments, the existing var must also have it set —
+  // otherwise it doesn't cover the custom-env dimension we need.
+  const ourApplyAll = Boolean(destinationConfig.applyToAllCustomEnvironments);
+  const varApplyAll = Boolean(envVar.applyToAllCustomEnvironments);
+  if (ourApplyAll && !varApplyAll) return false;
+
+  // Scopes must not be exactly equal. If they are, this is the "owned" path.
+  const targetEqual = setsEqual(envVar.target, effectiveTargets);
+  const projectEqual = setsEqual(varProjects, ourProjects);
+  const applyAllEqual = ourApplyAll === varApplyAll;
+  return !(targetEqual && projectEqual && applyAllEqual);
 };
 
 const listTeamSharedEnvVarsWithRetries = async (
@@ -670,17 +774,119 @@ const deleteTeamSharedEnvVar = async (
   }
 };
 
+// Detach this sync's scope from a team shared env var that strictly covers it. PATCHes the
+// var to remove our targets and projects, preserving its original value/type for the remaining
+// scopes. If the detach would leave the var with no scope at all, falls back to a full delete.
+const detachTeamSharedEnvVar = async (
+  secretSync: TVercelSyncWithCredentials,
+  envVar: VercelSharedEnvVar,
+  attempt = 0
+): Promise<void> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiToken }
+    }
+  } = secretSync;
+
+  if (destinationConfig.scope !== VercelSyncScope.Team) {
+    throw new SecretSyncError({
+      message: "Invalid scope for team-level Vercel secret sync",
+      shouldRetry: false
+    });
+  }
+
+  const ourEffectiveTargets =
+    (destinationConfig.sensitive
+      ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
+      : destinationConfig.targetEnvironments) ?? [];
+  const ourTargetsSet = new Set<string>(ourEffectiveTargets);
+
+  // Vercel's conflict space for team shared env vars spans (key, target) and the
+  // applyToAllCustomEnvironments flag — projectId is metadata about which projects see the
+  // var on its scopes, not part of the conflict space.
+  const newTarget = (envVar.target ?? []).filter((t) => !ourTargetsSet.has(t));
+
+  // If our sync wants all-custom coverage and the existing var also has it, we must release
+  // that claim on the existing var so our new dedicated record can take it.
+  const ourApplyAll = Boolean(destinationConfig.applyToAllCustomEnvironments);
+  const varApplyAll = Boolean(envVar.applyToAllCustomEnvironments);
+  const newApplyAll = ourApplyAll ? false : varApplyAll;
+
+  if (newTarget.length === 0 && !newApplyAll) {
+    // No scope remains — the var has nothing to cover. Full delete.
+    await deleteTeamSharedEnvVar(secretSync, envVar);
+    return;
+  }
+
+  try {
+    const { data: updateResponse } = await request.patch<{
+      updated: VercelSharedEnvVar[];
+      failed: { error: { code: string; message: string } }[];
+    }>(
+      `${IntegrationUrls.VERCEL_API_URL}/v1/env?teamId=${destinationConfig.teamId}`,
+      {
+        updates: {
+          [envVar.id]: {
+            target: newTarget,
+            applyToAllCustomEnvironments: newApplyAll
+          }
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    if (updateResponse.failed?.length > 0) {
+      throw new SecretSyncError({
+        message: `Failed to detach scope from shared env var: ${updateResponse.failed[0].error.message}`,
+        secretKey: envVar.key,
+        shouldRetry: false
+      });
+    }
+  } catch (error) {
+    if (error instanceof SecretSyncError) throw error;
+    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+      await sleep();
+      return detachTeamSharedEnvVar(secretSync, envVar, attempt + 1);
+    }
+    throw new SecretSyncError({ error, secretKey: envVar.key });
+  }
+};
+
 export const VercelSyncFns = {
   syncSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
+      const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
       const sharedEnvVarsMap = new Map(allSharedEnvVars.map((s) => [s.key, s]));
+
+      // Vars whose scope strictly covers ours — Vercel rejects creating an overlapping var,
+      // so we must split (detach our scope from the existing var, then create a dedicated
+      // record)
+      const mergedSharedEnvVarsMap = new Map(
+        allSharedEnvVars
+          .filter((envVar) => teamVarStrictlyCoversSyncScope(envVar, teamDestinationConfig))
+          .map((s) => [s.key, s])
+      );
 
       const { targetEnvironments, targetProjects, sensitive, applyToAllCustomEnvironments } =
         secretSync.destinationConfig;
 
       for await (const key of Object.keys(secretMap)) {
         const existingVar = sharedEnvVarsMap.get(key);
+        const mergedVar = mergedSharedEnvVarsMap.get(key);
+
+        if (mergedVar) {
+          await detachTeamSharedEnvVar(secretSync, mergedVar);
+          await createTeamSharedEnvVar(secretSync, key, secretMap[key].value);
+          // eslint-disable-next-line no-continue
+          continue;
+        }
 
         if (!existingVar) {
           await createTeamSharedEnvVar(secretSync, key, secretMap[key].value);
@@ -730,7 +936,6 @@ export const VercelSyncFns = {
 
       if (secretSync.syncOptions.disableSecretDeletion) return;
 
-      const teamDestinationConfig = secretSync.destinationConfig;
       const ownedEnvVars = allSharedEnvVars.filter((envVar) =>
         isTeamSharedEnvVarOwnedByThisSync(envVar, teamDestinationConfig)
       );
@@ -761,6 +966,15 @@ export const VercelSyncFns = {
         continue;
       }
 
+      // Merged record (covers other environments too): detach our env from it — preserving
+      // the original value for the remaining environments — then create a dedicated record.
+      if (isProjectRecordMerged(existingSecret)) {
+        await detachEnvFromProjectSecret(secretSync, existingSecret);
+        await createSecret(secretSync, secretMap, key);
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       // Vercel does not allow changing a secret's `type` between encrypted and sensitive
       // via PATCH, so we delete and recreate when the desired sensitivity differs.
       const existingIsSensitive = existingSecret.type === "sensitive";
@@ -781,6 +995,12 @@ export const VercelSyncFns = {
       if (!matchesSchema(vercelSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
         // eslint-disable-next-line no-continue
         continue;
+
+      // Skip merged rows: delete removes the whole multi-env record, not only this sync's scope.
+      if (isProjectRecordMerged(vercelSecret)) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
 
       if (!secretMap[vercelSecret.key]) {
         await deleteSecret(secretSync, vercelSecret);

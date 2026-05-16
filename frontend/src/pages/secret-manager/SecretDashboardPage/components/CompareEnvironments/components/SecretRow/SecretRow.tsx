@@ -5,7 +5,8 @@ import {
   faEyeSlash,
   faFileImport,
   faKey,
-  faRotate
+  faRotate,
+  faShieldHalved
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -196,6 +197,11 @@ export const SecretRow = ({
                               {secret?.isRotatedSecret && (
                                 <Tooltip content="Rotated Secret">
                                   <FontAwesomeIcon icon={faRotate} />
+                                </Tooltip>
+                              )}
+                              {secret?.isHoneyTokenSecret && (
+                                <Tooltip content="Honey Token Secret">
+                                  <FontAwesomeIcon icon={faShieldHalved} className="text-yellow" />
                                 </Tooltip>
                               )}
                               {secret?.valueOverride && (

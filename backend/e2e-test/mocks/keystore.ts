@@ -18,6 +18,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       return "OK";
     },
     setExpiry: async () => 0,
+    ttl: async () => -1,
     setItemWithExpiry: async (key, value) => {
       store[key] = value;
       return "OK";

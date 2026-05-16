@@ -50,6 +50,18 @@ The `.env.dev.example` file already includes the SMTP variables pre-configured f
 
 To view captured emails, open the Mailhog web UI at [http://localhost:8025](http://localhost:8025).
 
+#### Queue Management with BullBoard
+
+The dev Docker Compose includes [BullBoard](https://github.com/felixmosh/bull-board), a web UI for monitoring and managing BullMQ job queues. This is useful for debugging async job processing, viewing queue status, and inspecting failed jobs during development.
+
+To start BullBoard, use the `queue` profile:
+
+```bash
+docker compose -f docker-compose.dev.yml --profile queue up
+```
+
+Once running, access the BullBoard UI at [http://localhost:3008](http://localhost:3008) to view and manage queues in real-time.
+
 #### Shutdown local server
 
 ```bash

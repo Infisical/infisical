@@ -11,7 +11,7 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
-import { parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
+import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
@@ -23,7 +23,7 @@ import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from
  */
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
   const csrObj = new x509.Pkcs10CertificateRequest(csr);
-  const subject = parseDistinguishedName(csrObj.subject);
+  const subject = extractDnParts(csrObj.subjectName);
 
   const certificateRequest: TCertificateRequest = {
     commonName: subject.commonName,

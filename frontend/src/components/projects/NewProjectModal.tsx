@@ -44,7 +44,7 @@ const formSchema = z.object({
   description: z
     .string()
     .trim()
-    .max(256, "Description too long, max length is 256 characters")
+    .max(1024, "Description too long, max length is 1024 characters")
     .optional(),
   type: z.nativeEnum(ProjectType),
   kmsKeyId: z.string(),
@@ -80,10 +80,6 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "PAM",
     value: ProjectType.PAM
-  },
-  {
-    label: "Agent Sentinel",
-    value: ProjectType.AI
   }
 ];
 

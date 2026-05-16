@@ -152,6 +152,7 @@ const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.AppConnections]: "App Connections",
   [ProjectPermissionSub.PamAccounts]: "PAM Accounts",
   [ProjectPermissionSub.McpEndpoints]: "MCP Endpoints",
+  [ProjectPermissionSub.HoneyTokens]: "Honey Tokens",
   [ProjectPermissionSub.Role]: "Roles",
   [ProjectPermissionSub.Member]: "User Management",
   [ProjectPermissionSub.Groups]: "Groups",

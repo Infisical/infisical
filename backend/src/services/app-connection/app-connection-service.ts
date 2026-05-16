@@ -9,6 +9,7 @@ import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-c
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -84,6 +85,8 @@ import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDatadogConnectionCredentialsSchema } from "./datadog";
+import { datadogConnectionService } from "./datadog/datadog-connection-service";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
@@ -131,6 +134,7 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateOnaConnectionCredentialsSchema } from "./ona";
 import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
+import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
@@ -138,6 +142,8 @@ import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
+import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
+import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
@@ -164,6 +170,10 @@ export type TAppConnectionServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+  >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
@@ -232,10 +242,13 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
+  [AppConnection.OVH]: ValidateOvhConnectionCredentialsSchema,
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
-  [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema
+  [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
+  [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
+  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -245,6 +258,7 @@ export const appConnectionServiceFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   gatewayDAL,
   gatewayV2DAL,
   projectDAL,
@@ -413,6 +427,7 @@ export const appConnectionServiceFactory = ({
       app,
       credentials,
       gatewayId,
+      gatewayPoolId,
       projectId,
       rotation,
       isAutoRotationEnabled,
@@ -420,6 +435,10 @@ export const appConnectionServiceFactory = ({
     }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -477,6 +496,20 @@ export const appConnectionServiceFactory = ({
       }
     }
 
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actor.orgId,
+        actor
+      });
+    }
+
+    let validationGatewayId: string | null | undefined = gatewayId;
+    if (gatewayPoolId) {
+      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      validationGatewayId = picked.id;
+    }
+
     await enterpriseAppCheck(
       licenseService,
       app,
@@ -490,7 +523,7 @@ export const appConnectionServiceFactory = ({
         credentials,
         method,
         orgId: actor.orgId,
-        gatewayId
+        gatewayId: validationGatewayId
       } as TAppConnectionConfig,
       gatewayService,
       gatewayV2Service,
@@ -513,7 +546,8 @@ export const appConnectionServiceFactory = ({
               encryptedCredentials,
               method,
               app,
-              gatewayId,
+              gatewayId: gatewayPoolId ? null : gatewayId,
+              gatewayPoolId: gatewayPoolId ?? null,
               projectId,
               isAutoRotationEnabled,
               ...params
@@ -544,7 +578,7 @@ export const appConnectionServiceFactory = ({
             orgId: actor.orgId,
             credentials: validatedCredentials,
             method,
-            gatewayId
+            gatewayId: validationGatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
           gatewayService,
@@ -569,9 +603,21 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, gatewayId, isAutoRotationEnabled, rotation, ...params }: TUpdateAppConnectionDTO,
+    {
+      connectionId,
+      credentials,
+      gatewayId,
+      gatewayPoolId,
+      isAutoRotationEnabled,
+      rotation,
+      ...params
+    }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
@@ -630,6 +676,36 @@ export const appConnectionServiceFactory = ({
       }
     }
 
+    // Mutual exclusion: setting one clears the other.
+    let gatewayIdValue: string | null | undefined;
+    let gatewayPoolIdValue: string | null | undefined;
+    if (gatewayId !== undefined && gatewayPoolId !== undefined) {
+      gatewayIdValue = gatewayId;
+      gatewayPoolIdValue = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      gatewayIdValue = gatewayId;
+      gatewayPoolIdValue = gatewayId !== null ? null : undefined;
+    } else if (gatewayPoolId !== undefined) {
+      gatewayPoolIdValue = gatewayPoolId;
+      gatewayIdValue = gatewayPoolId !== null ? null : undefined;
+    }
+
+    const effectiveGatewayIdForUpdate = gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
+    const effectiveGatewayPoolIdForUpdate =
+      gatewayPoolIdValue !== undefined ? gatewayPoolIdValue : appConnection.gatewayPoolId;
+
+    if (effectiveGatewayPoolIdForUpdate) {
+      const isNewPoolAttachment =
+        gatewayPoolId !== undefined && gatewayPoolId !== appConnection.gatewayPoolId && gatewayPoolId !== null;
+      if (isNewPoolAttachment) {
+        await gatewayPoolService.resolveAttachableGatewayFromPool({
+          poolId: effectiveGatewayPoolIdForUpdate,
+          orgId: actor.orgId,
+          actor
+        });
+      }
+    }
+
     // prevent updating credentials or management status if platform managed
     if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {
       throw new BadRequestError({
@@ -638,10 +714,16 @@ export const appConnectionServiceFactory = ({
     }
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
+    let validationGatewayId: string | null | undefined;
 
     const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
 
     if (credentials) {
+      validationGatewayId = effectiveGatewayIdForUpdate;
+      if (effectiveGatewayPoolIdForUpdate) {
+        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
+        validationGatewayId = picked.id;
+      }
       if (
         !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
           method,
@@ -660,7 +742,7 @@ export const appConnectionServiceFactory = ({
           orgId: actor.orgId,
           credentials,
           method,
-          gatewayId
+          gatewayId: validationGatewayId
         } as TAppConnectionConfig,
         gatewayService,
         gatewayV2Service,
@@ -687,7 +769,8 @@ export const appConnectionServiceFactory = ({
           {
             orgId: actor.orgId,
             encryptedCredentials,
-            gatewayId,
+            ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
+            ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
             ...params
           },
           tx
@@ -720,7 +803,7 @@ export const appConnectionServiceFactory = ({
               orgId: actor.orgId,
               credentials: updatedCredentials,
               method,
-              gatewayId
+              gatewayId: validationGatewayId
             } as TAppConnectionConfig,
             (platformCredentials) => updateConnection(platformCredentials, tx),
             gatewayService,
@@ -1072,7 +1155,7 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
     triggerCredentialRotation,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
+    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
@@ -1085,7 +1168,7 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
@@ -1109,6 +1192,7 @@ export const appConnectionServiceFactory = ({
     northflank: northflankConnectionService(connectAppConnectionById),
     externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
+    datadog: datadogConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
@@ -1117,6 +1201,7 @@ export const appConnectionServiceFactory = ({
     azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
-    travisCI: travisCIConnectionService(connectAppConnectionById)
+    travisCI: travisCIConnectionService(connectAppConnectionById),
+    snowflake: snowflakeConnectionService(connectAppConnectionById)
   };
 };

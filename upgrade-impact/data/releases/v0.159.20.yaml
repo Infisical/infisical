@@ -1,0 +1,44 @@
+version: v0.159.20
+releasedAt: 2026-04-24T12:14:15+05:30
+sourceTag: v0.159.20
+previousTag: v0.159.19
+impactLevel: low
+summary: Startup runs two additive database migrations. The new proxy trust
+  setting is optional because leaving it unset preserves existing forwarded-IP
+  behavior.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM session reason column
+    description: Adds a nullable `reason` column to `pam_sessions`. Existing rows
+      remain valid and startup applies it only if the table exists and the
+      column is missing.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260417245211_pam-session-reason.ts
+        path: backend/src/db/migrations/20260417245211_pam-session-reason.ts
+        description: Adds nullable reason column if missing
+  - title: Certificate request private key column
+    description: Adds a nullable `encryptedPrivateKey` column to
+      `certificate_requests`. Existing rows remain valid and startup applies it
+      only if the table exists and the column is missing.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260421135044_add-digicert-external-ca-columns.ts
+        path: backend/src/db/migrations/20260421135044_add-digicert-external-ca-columns.ts
+        description: Adds nullable encryptedPrivateKey column
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-08T21:49:59.071Z
+  sourceRange:
+    from: v0.159.19
+    to: v0.159.20

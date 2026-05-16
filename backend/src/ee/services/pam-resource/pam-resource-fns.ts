@@ -9,6 +9,7 @@ import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-
 import { getMongoDBResourceListItem } from "./mongodb/mongodb-resource-fns";
 import { getMsSQLResourceListItem } from "./mssql/mssql-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
+import { getOracleResourceListItem } from "./oracle/oracle-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails, TPamResourceInternalMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 import { getRedisResourceListItem } from "./redis/redis-resource-fns";
@@ -20,6 +21,7 @@ export const listResourceOptions = () => {
     getPostgresResourceListItem(),
     getMySQLResourceListItem(),
     getMsSQLResourceListItem(),
+    getOracleResourceListItem(),
     getAwsIamResourceListItem(),
     getKubernetesResourceListItem(),
     getRedisResourceListItem(),
