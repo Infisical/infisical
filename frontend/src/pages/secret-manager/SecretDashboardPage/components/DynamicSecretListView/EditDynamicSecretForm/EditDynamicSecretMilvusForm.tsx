@@ -490,6 +490,7 @@ export const EditDynamicSecretMilvusForm = ({
                     label="Username Template"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
+                    helperText="Milvus usernames are limited to 32 characters. Longer template output is truncated automatically."
                   >
                     <Input
                       {...field}

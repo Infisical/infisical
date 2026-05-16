@@ -23,8 +23,10 @@ The Infisical Milvus dynamic secret allows you to generate Milvus credentials on
   </Step>
   <Step title="Select Milvus">
     Choose Milvus from the list of available dynamic secret providers.
+    ![Milvus Option](../../../images/platform/dynamic-secrets/milvus/milvus_option.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
+    ![Milvus form](../../../images/platform/dynamic-secrets/milvus/milvus_form.png)
     <ParamField path="Secret Name" type="string" required>
       Name by which you want the secret to be referenced
     </ParamField>
@@ -74,8 +76,16 @@ The Infisical Milvus dynamic secret allows you to generate Milvus credentials on
 
     <DynamicSecretUsernameTemplateParamField />
 
+    <ParamField path="Gateway" type="string">
+      A gateway may be required if your Milvus instance is not publicly accessible (e.g. in a private VPC). Select a configured gateway to route traffic through it.
+    </ParamField>
+
     <ParamField path="CA Certificate" type="string">
-      Optional PEM-encoded CA certificate for verifying the Milvus server's TLS certificate. Required when Milvus uses a self-signed or private CA.
+      Optional PEM-encoded CA certificate for verifying the Milvus server's TLS certificate. Required when Milvus uses a self-signed or private CA. Providing a CA also enables HTTPS automatically.
+    </ParamField>
+
+    <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
     </ParamField>
 
   </Step>

@@ -52,7 +52,13 @@ const buildBaseUrl = (providerInputs: TMilvusProviderInputs, host: string, port:
   return `${scheme}://${sanitizedHost}:${port}`;
 };
 
-const deriveRoleName = (username: string) => `infisical_role_${username}`;
+export const MILVUS_MAX_USERNAME_LENGTH = 32;
+export const MILVUS_ROLE_PREFIX = "infisical_role_";
+
+export const sanitizeMilvusUsername = (username: string) => username.substring(0, MILVUS_MAX_USERNAME_LENGTH);
+
+export const deriveRoleName = (username: string) =>
+  `${MILVUS_ROLE_PREFIX}${username}`.substring(0, MILVUS_MAX_USERNAME_LENGTH);
 
 export const MilvusProvider = ({
   gatewayService,
@@ -197,11 +203,15 @@ export const MilvusProvider = ({
     const { inputs, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs as object);
 
-    const username = await generateUsername(usernameTemplate, {
-      decryptedDynamicSecretInputs: inputs,
-      dynamicSecret,
-      identity
-    });
+    const username = await generateUsername(
+      usernameTemplate,
+      {
+        decryptedDynamicSecretInputs: inputs,
+        dynamicSecret,
+        identity
+      },
+      sanitizeMilvusUsername
+    );
     const password = generatePassword();
     const roleName = deriveRoleName(username);
 
