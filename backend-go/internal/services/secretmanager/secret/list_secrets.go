@@ -27,18 +27,19 @@ const (
 // ListSecretsOpts contains options for listing secrets.
 // Note: Imports are always loaded and included in the result.
 type ListSecretsOpts struct {
-	ProjectID                 string
-	Environment               string
-	SecretPath                string
-	UserID                    *uuid.UUID
-	ViewSecretValue           bool
-	ExpandSecretReferences    bool
-	Recursive                 bool
-	PersonalOverridesBehavior PersonalOverridesBehavior
-	ExpandPersonalOverrides   bool
-	TagSlugs                  []string
-	MetadataFilter            []MetadataFilter
-	Access                    AccessControl
+	ProjectID                        string
+	Environment                      string
+	SecretPath                       string
+	UserID                           *uuid.UUID
+	ViewSecretValue                  bool
+	ExpandSecretReferences           bool
+	Recursive                        bool
+	PersonalOverridesBehavior        PersonalOverridesBehavior
+	ExpandPersonalOverrides          bool
+	TagSlugs                         []string
+	MetadataFilter                   []MetadataFilter
+	Access                           AccessControl
+	ThrowOnMissingReadValuePermission bool
 }
 
 // ListSecretsResult contains the results of listing secrets.
@@ -51,19 +52,16 @@ type ListSecretsResult struct {
 
 // ListSecrets retrieves secrets for a project/environment/path with full processing.
 func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*ListSecretsResult, error) {
-	// 1. Load all folders for project
 	folderLookup, err := s.secretFolderService.LoadFolders(ctx, opts.ProjectID, nil)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load folders").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 2. Get starting environment by slug (every env has a root folder)
 	envID, ok := folderLookup.GetEnvIDBySlug(opts.Environment)
 	if !ok {
 		return nil, errutil.NotFound("Environment not found")
 	}
 
-	// 3. Resolve direct folders
 	var directFolderIDs []uuid.UUID
 	directPaths := make(map[uuid.UUID]string)
 
@@ -85,7 +83,6 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		directPaths[node.ID] = opts.SecretPath
 	}
 
-	// 4. Load imports and resolve chain
 	importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("ListSecrets: %w", err)
@@ -112,7 +109,6 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		}
 	}
 
-	// 5. Fetch secrets from all folders
 	allFolderIDs := make([]uuid.UUID, 0, len(directFolderIDs)+len(allImports))
 	allFolderIDs = append(allFolderIDs, directFolderIDs...)
 	for _, imp := range allImports {
@@ -132,7 +128,6 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		return nil, errutil.DatabaseErr("Failed to load secrets").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 6. Get cipher pair for decryption
 	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
 		ProjectID: opts.ProjectID,
@@ -141,8 +136,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("ListSecrets: %w", err)
 	}
 
-	// 7. Process secrets with permission filtering
-	directSecrets, importedSecrets := s.processSecretsWithPermissions(
+	directSecrets, importedSecrets, err := s.processSecretsWithPermissions(
 		ctx,
 		secrets,
 		directFolderIDs,
@@ -152,19 +146,21 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		folderLookup,
 		importLookup,
 		secretProcessorOpts{
-			ViewSecretValue: opts.ViewSecretValue,
-			Access:          opts.Access,
-			CipherPair:      cipherPair,
-			RequestedPath:   opts.SecretPath,
-			Recursive:       opts.Recursive,
+			ViewSecretValue:                   opts.ViewSecretValue,
+			Access:                            opts.Access,
+			CipherPair:                        cipherPair,
+			RequestedPath:                     opts.SecretPath,
+			Recursive:                         opts.Recursive,
+			ThrowOnMissingReadValuePermission: opts.ThrowOnMissingReadValuePermission,
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
 
-	// 8. Apply personal overrides behavior
 	directSecrets = filterByPersonalOverridesBehavior(directSecrets, opts.PersonalOverridesBehavior)
 	importedSecrets = filterByPersonalOverridesBehavior(importedSecrets, opts.PersonalOverridesBehavior)
 
-	// 9. Expand secret references if requested
 	if opts.ExpandSecretReferences {
 		// Build expansion list: direct secrets first, then imported in reverse import order
 		allSecrets := buildExpansionSecretList(directSecrets, importedSecrets, allImports)
@@ -206,11 +202,12 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 
 // secretProcessorOpts configures secret processing.
 type secretProcessorOpts struct {
-	ViewSecretValue bool
-	Access          AccessControl
-	CipherPair      *kms.CipherPair
-	RequestedPath   string
-	Recursive       bool
+	ViewSecretValue                   bool
+	Access                            AccessControl
+	CipherPair                        *kms.CipherPair
+	RequestedPath                     string
+	Recursive                         bool
+	ThrowOnMissingReadValuePermission bool
 }
 
 // processSecretsWithPermissions filters and decrypts secrets based on permissions.
@@ -224,7 +221,7 @@ func (s *Service) processSecretsWithPermissions(
 	folderLookup *secretfolder.FolderLookup,
 	importLookup *secretimport.ImportLookup,
 	opts secretProcessorOpts,
-) (directSecrets, importedSecrets []ProcessedSecret) {
+) (directSecrets, importedSecrets []ProcessedSecret, err error) {
 	directFolderSet := make(map[uuid.UUID]bool, len(directFolderIDs))
 	for _, id := range directFolderIDs {
 		directFolderSet[id] = true
@@ -275,6 +272,10 @@ func (s *Service) processSecretsWithPermissions(
 			}
 		}
 
+		if opts.ThrowOnMissingReadValuePermission && opts.ViewSecretValue && !canReadValue {
+			return nil, nil, errutil.Forbidden("Missing read value permission for secret %s", sec.Key)
+		}
+
 		valueHidden := !opts.ViewSecretValue || !canReadValue
 		rawValue, displayValue, secretComment, metadata, decryptErrs := decryptSecretFields(sec, opts.CipherPair, valueHidden)
 		if decryptErrs.HasErrors() {
@@ -305,7 +306,7 @@ func (s *Service) processSecretsWithPermissions(
 		}
 	}
 
-	return directSecrets, importedSecrets
+	return directSecrets, importedSecrets, nil
 }
 
 // filterByPersonalOverridesBehavior filters secrets based on personal overrides behavior.

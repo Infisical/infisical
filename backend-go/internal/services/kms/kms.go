@@ -321,6 +321,7 @@ func (s *Service) decryptKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte
 // decryptKmsKeyMaterial decrypts the key material from a kmsKeyWithAssociatedKms record.
 // Branches on internal (local AES-GCM) vs external (cloud provider — not yet implemented).
 func (s *Service) decryptKmsKeyMaterial(kmsKeyDoc *kmsKeyWithAssociatedKms) ([]byte, error) {
+	// TODO(go): fix this before mileston
 	if kmsKeyDoc.ExternalKmsID.Valid {
 		panic("external KMS not implemented")
 	}

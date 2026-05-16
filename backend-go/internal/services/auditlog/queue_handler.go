@@ -106,7 +106,6 @@ func (h *QueueHandler) HandleAuditLog(ctx context.Context, dto *CreateAuditLogDT
 	orgID := dto.OrgID
 	var proj *project.Project
 
-	fmt.Println("Audit log started")
 	if orgID == nil && dto.ProjectID == nil {
 		h.logger.ErrorContext(ctx, "audit log task missing orgId and projectId")
 		return fmt.Errorf("missing orgId and projectId")

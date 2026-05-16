@@ -32,25 +32,21 @@ type GetSecretByNameResult struct {
 
 // GetSecretByName retrieves a single secret by name with full processing.
 func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts) (*GetSecretByNameResult, error) {
-	// 1. Load all folders for project
 	folderLookup, err := s.secretFolderService.LoadFolders(ctx, opts.ProjectID, nil)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load folders").WithErrf("GetSecretByName: %w", err)
 	}
 
-	// 2. Get starting environment by slug (every env has a root folder)
 	envID, ok := folderLookup.GetEnvIDBySlug(opts.Environment)
 	if !ok {
 		return nil, errutil.NotFound("Environment not found")
 	}
 
-	// 3. Get folder
 	folderNode, ok := folderLookup.GetByPath(envID, opts.SecretPath)
 	if !ok {
 		return nil, errutil.NotFound("Folder not found")
 	}
 
-	// 4. Get cipher pair
 	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
 		ProjectID: opts.ProjectID,
@@ -59,7 +55,6 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("GetSecretByName: %w", err)
 	}
 
-	// 5. Find secret
 	secretType := opts.SecretType
 	if secretType == "" {
 		secretType = "shared"
@@ -73,7 +68,6 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 	secretEnv := opts.Environment
 	secretPath := opts.SecretPath
 
-	// 6. Search imports if not found
 	var importLookup *secretimport.ImportLookup
 	var allImports []secretimport.ResolvedImport
 
@@ -114,7 +108,13 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		return nil, errutil.NotFound("Secret not found")
 	}
 
-	// 7. Check permissions
+	// Verify personal secret ownership (defense in depth)
+	if foundSecret.Type == "personal" {
+		if opts.UserID == nil || !foundSecret.UserID.Valid || foundSecret.UserID.V != *opts.UserID {
+			return nil, errutil.Forbidden("Cannot access personal secret belonging to another user")
+		}
+	}
+
 	tagSlugs := make([]string, len(foundSecret.Tags))
 	for i, tag := range foundSecret.Tags {
 		tagSlugs[i] = tag.Slug
@@ -129,14 +129,15 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		return nil, errutil.Forbidden("Read value denied")
 	}
 
-	// 8. Decrypt value and comment
 	valueHidden := !opts.ViewSecretValue || !canReadValue
 
 	rawValue, displayValue, secretComment, metadata, decryptErrs := decryptSecretFields(foundSecret, cipherPair, valueHidden)
-	if decryptErrs.HasErrors() {
-		s.logger.WarnContext(ctx, "secret decryption errors (fail-open: returning empty values)",
+	if decryptErrs.ValueErr != nil {
+		return nil, errutil.InternalServer("Failed to decrypt secret value").WithErrf("GetSecretByName(secretId=%s): %w", foundSecret.ID, decryptErrs.ValueErr)
+	}
+	if decryptErrs.CommentErr != nil || decryptErrs.MetadataErr != nil {
+		s.logger.WarnContext(ctx, "non-critical decryption errors",
 			slog.String("secretId", foundSecret.ID.String()),
-			slog.Any("valueErr", decryptErrs.ValueErr),
 			slog.Any("commentErr", decryptErrs.CommentErr),
 			slog.Any("metadataErr", decryptErrs.MetadataErr))
 	}
@@ -153,7 +154,6 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		ValueHidden: valueHidden,
 	}
 
-	// 9. Expand references if requested
 	if opts.ExpandSecretReferences && !valueHidden && rawValue != "" {
 		// Load imports if not already loaded
 		if importLookup == nil {

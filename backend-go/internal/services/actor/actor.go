@@ -1,5 +1,3 @@
-// Package actor provides shared types and context helpers for actor identity
-// used by both auth and permission packages to avoid import cycles.
 package actor
 
 import (
