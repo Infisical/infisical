@@ -6,7 +6,9 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -119,20 +121,25 @@ export const gitHubAppServiceFactory = ({
 
     const apps = await gitHubAppDAL.find({ orgId: orgPermission.orgId });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
-    });
+    const dbApps: TSanitizedGitHubApp[] = [];
+    if (apps.length > 0) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: orgPermission.orgId
+      });
 
-    const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
-      id: app.id,
-      orgId: app.orgId,
-      name: app.name,
-      appId: decryptor({ cipherTextBlob: app.encryptedAppId }).toString(),
-      slug: decryptor({ cipherTextBlob: app.encryptedSlug }).toString(),
-      createdAt: app.createdAt,
-      updatedAt: app.updatedAt
-    }));
+      for (const app of apps) {
+        dbApps.push({
+          id: app.id,
+          orgId: app.orgId,
+          name: app.name,
+          appId: decryptor({ cipherTextBlob: app.encryptedAppId }).toString(),
+          slug: decryptor({ cipherTextBlob: app.encryptedSlug }).toString(),
+          createdAt: app.createdAt,
+          updatedAt: app.updatedAt
+        });
+      }
+    }
 
     const { INF_APP_CONNECTION_GITHUB_APP_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
 
@@ -348,6 +355,17 @@ export const gitHubAppServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
+    const existingByName = await gitHubAppDAL.findOne({ orgId, name });
+    if (existingByName) {
+      throw new BadRequestError({
+        message: `A GitHub App with name "${name}" already exists in this organization.`
+      });
+    }
+
+    if (githubHost) {
+      await blockLocalAndPrivateIpAddresses(`https://${githubHost}`);
+    }
+
     let manifestResponse: TGitHubAppManifestResponse;
     try {
       const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
@@ -374,22 +392,34 @@ export const gitHubAppServiceFactory = ({
       orgId
     });
 
-    const created = await gitHubAppDAL.create({
-      orgId,
-      name,
-      encryptedAppId: encryptor({ plainText: Buffer.from(String(manifestResponse.id)) }).cipherTextBlob,
-      encryptedClientId: encryptor({ plainText: Buffer.from(manifestResponse.client_id) }).cipherTextBlob,
-      encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
-      encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
-      encryptedSlug: encryptor({ plainText: Buffer.from(manifestResponse.slug) }).cipherTextBlob
-    });
+    let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
+    try {
+      created = await gitHubAppDAL.create({
+        orgId,
+        name,
+        encryptedAppId: encryptor({ plainText: Buffer.from(String(manifestResponse.id)) }).cipherTextBlob,
+        encryptedClientId: encryptor({ plainText: Buffer.from(manifestResponse.client_id) }).cipherTextBlob,
+        encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
+        encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
+        encryptedSlug: encryptor({ plainText: Buffer.from(manifestResponse.slug) }).cipherTextBlob
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `A GitHub App with name "${name}" already exists in this organization.`
+        });
+      }
+      throw err;
+    }
 
     const callbackUrl = new URL(`${SITE_URL}/organizations/${orgId}/app-connections/github/manifest/callback`);
     callbackUrl.searchParams.set("gitHubAppId", created.id ?? "");
     callbackUrl.searchParams.set("slug", manifestResponse.slug);
     callbackUrl.searchParams.set("installState", installState);
     callbackUrl.searchParams.set("instanceType", instanceType);
-    callbackUrl.searchParams.set("host", githubHost);
+    if (githubHost) {
+      callbackUrl.searchParams.set("host", githubHost);
+    }
 
     return { redirectUrl: callbackUrl.toString() };
   };
