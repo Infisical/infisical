@@ -208,10 +208,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 </TableRow>
               )}
               {memberGateways.map((gw) => {
-                const isOnline = isGatewayHealthy(
-                  gw.heartbeat,
-                  "heartbeatTTL" in gw ? gw.heartbeatTTL : null
-                );
+                const isOnline = isGatewayHealthy(gw);
 
                 return (
                   <TableRow key={gw.id}>

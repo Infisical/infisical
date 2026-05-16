@@ -64,9 +64,7 @@ export const NetworkHealthBanner = () => {
     () =>
       gateways?.filter((g) => {
         if (g.isV1) return false;
-        if (!("heartbeat" in g)) return false;
-        if (g.heartbeat === null && !("heartbeatTTL" in g && g.heartbeatTTL)) return false;
-        return !isGatewayHealthy(g.heartbeat, "heartbeatTTL" in g ? g.heartbeatTTL : null);
+        return !isGatewayHealthy(g);
       }).length ?? 0,
     [gateways]
   );

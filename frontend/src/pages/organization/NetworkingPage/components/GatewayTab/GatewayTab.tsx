@@ -324,9 +324,7 @@ export const GatewayTab = withPermission(
                                     Copy ID
                                   </DropdownMenuItem>
                                   {!el.isV1 &&
-                                    ("heartbeat" in el
-                                      ? !!el.heartbeat || !!el.heartbeatTTL
-                                      : false) && (
+                                    (!!el.heartbeat || !!el.heartbeatTTL) && (
                                       <DropdownMenuItem
                                         icon={<FontAwesomeIcon icon={faHeartPulse} />}
                                         onClick={() => handleTriggerHealthCheck(el.id)}

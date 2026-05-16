@@ -44,7 +44,7 @@ const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
   if (!gateway.heartbeat && !gateway.heartbeatTTL) {
     return <Badge variant="warning">Unregistered</Badge>;
   }
-  if (isGatewayHealthy(gateway.heartbeat, gateway.heartbeatTTL)) {
+  if (isGatewayHealthy(gateway)) {
     return <Badge variant="success">Healthy</Badge>;
   }
   return <Badge variant="danger">Unreachable</Badge>;
