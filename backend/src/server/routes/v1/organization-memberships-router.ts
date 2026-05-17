@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AccessScope, GroupsSchema, TemporaryPermissionMode } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
@@ -143,7 +144,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      await server.services.membershipGroup.createMembership({
+      const { group } = await server.services.membershipGroup.createMembership({
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -159,6 +160,28 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         permission: req.permission,
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
         selector: { groupId: req.params.groupId }
+      });
+
+      // this endpoint is only possible in suborg
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.LINK_GROUP_TO_SUB_ORG,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name,
+            roles: req.body.roles.map((r) => ({
+              role: r.role,
+              isTemporary: r.isTemporary,
+              ...(r.isTemporary && {
+                temporaryMode: r.temporaryMode,
+                temporaryRange: r.temporaryRange,
+                temporaryAccessStartTime: r.temporaryAccessStartTime
+              })
+            }))
+          }
+        }
       });
 
       return {
@@ -252,7 +275,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      await server.services.membershipGroup.updateMembership({
+      const { group } = await server.services.membershipGroup.updateMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
         selector: { groupId: req.params.groupId },
@@ -263,6 +286,27 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         permission: req.permission,
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
         selector: { groupId: req.params.groupId }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_GROUP_ORG_MEMBERSHIP,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name,
+            roles: req.body.roles.map((r) => ({
+              role: r.role,
+              isTemporary: r.isTemporary,
+              ...(r.isTemporary && {
+                temporaryMode: r.temporaryMode,
+                temporaryRange: r.temporaryRange,
+                temporaryAccessStartTime: r.temporaryAccessStartTime
+              })
+            }))
+          }
+        }
       });
 
       return {
@@ -305,10 +349,23 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      const { membership } = await server.services.membershipGroup.deleteMembership({
+      const { membership, group } = await server.services.membershipGroup.deleteMembership({
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
         permission: req.permission,
         selector: { groupId: req.params.groupId }
+      });
+
+      // this endpoint is only possible in suborg
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UNLINK_GROUP_FROM_SUB_ORG,
+          metadata: {
+            groupId: req.params.groupId,
+            groupName: group.name
+          }
+        }
       });
 
       return {

@@ -455,6 +455,12 @@ Supports conditions and permission inversion.
 | `delete`           | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
 | `read-credentials` | View sensitive account credentials like passwords and private keys | `resourceName`, `accountName`, `resourceType`, `metadata` |
 
+#### Subject: `pam-insights`
+
+| Action | Description |
+| ------ | ----------- |
+| `read` | View the PAM insights dashboard, including resource and account totals, session activity, top actors, resource breakdown, and upcoming rotations |
+
 ## Condition Operators
 
 When defining conditions for permissions, you can use the following operators to match values:

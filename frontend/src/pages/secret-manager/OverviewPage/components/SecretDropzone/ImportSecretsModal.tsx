@@ -700,7 +700,7 @@ const ImportSecretsContent = ({
 
       <DialogFooter>
         {!showUploadStep && !initialParsedSecrets && (
-          <Button variant="ghost" onClick={handleBack} className="mr-auto">
+          <Button variant="outline" onClick={handleBack} className="mr-auto">
             Back
           </Button>
         )}

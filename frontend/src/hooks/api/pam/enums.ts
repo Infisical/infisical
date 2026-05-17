@@ -32,7 +32,7 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
-export enum TerminalChannelType {
+export enum SessionChannelType {
   Terminal = "terminal",
   Exec = "exec",
   Sftp = "sftp"

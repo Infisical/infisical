@@ -7,11 +7,12 @@ import { createNotification } from "@app/components/notifications";
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { TPamCommandLog } from "@app/hooks/api/pam";
+import { isBrokenChunkMarker, TBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
 
 import { formatLogContent } from "./PamSessionLogsSection.utils";
 
 type Props = {
-  logs: TPamCommandLog[];
+  logs: (TPamCommandLog | TBrokenChunkMarker)[];
   scrollToLogIndex?: number;
 };
 
@@ -41,7 +42,9 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
     }
     handledScrollIndexRef.current = scrollToLogIndex;
     setSearch("");
-    setExpandedLogTimestamps(new Set([target.timestamp]));
+    if (!isBrokenChunkMarker(target)) {
+      setExpandedLogTimestamps(new Set([target.timestamp]));
+    }
     setTimeout(() => {
       document
         .getElementById(`log-${scrollToLogIndex}`)
@@ -61,6 +64,7 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
   const filteredLogs = useMemo(
     () =>
       logs.filter((log) => {
+        if (isBrokenChunkMarker(log)) return true;
         const searchValue = search.trim().toLowerCase();
         return (
           log.input.toLowerCase().includes(searchValue) ||
@@ -85,11 +89,22 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
 
       <div className="flex grow flex-col gap-2 overflow-y-auto text-xs">
         {filteredLogs.length > 0 ? (
-          filteredLogs.map((log) => {
+          filteredLogs.map((log, idx) => {
+            if (isBrokenChunkMarker(log)) {
+              return (
+                <div
+                  key={`broken-${log.chunkIndex}`}
+                  className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"
+                >
+                  Chunk {log.chunkIndex} unavailable: {log.message}
+                </div>
+              );
+            }
+
             const originalIndex = logs.indexOf(log) + 1;
             const isExpanded = search.length || expandedLogTimestamps.has(log.timestamp);
             const formattedInput = formatLogContent(log.input);
-            const logKey = `${log.timestamp}-${originalIndex}`;
+            const logKey = `${log.timestamp}-${idx}`;
 
             return (
               <button

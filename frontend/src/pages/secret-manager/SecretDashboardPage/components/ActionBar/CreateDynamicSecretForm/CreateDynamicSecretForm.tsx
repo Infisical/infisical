@@ -25,6 +25,7 @@ import { ProjectEnv } from "@app/hooks/api/types";
 
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
+import { AwsMemoryDbInputForm } from "./AwsMemoryDbInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { AzureSqlDatabaseInputForm } from "./AzureSqlDatabaseInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
@@ -81,6 +82,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faAws} size="lg" />,
     provider: DynamicSecretProviders.AwsElastiCache,
     title: "AWS ElastiCache"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faAws} size="lg" />,
+    provider: DynamicSecretProviders.AwsMemoryDb,
+    title: "AWS MemoryDB"
   },
   {
     icon: <FontAwesomeIcon icon={faAws} size="lg" />,
@@ -304,6 +310,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <AwsElastiCacheInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.AwsMemoryDb && (
+              <motion.div
+                key="dynamic-aws-memorydb-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <AwsMemoryDbInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

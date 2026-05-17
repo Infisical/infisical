@@ -19,7 +19,7 @@ export type TValidateSshConnectionCredentialsSchema = typeof ValidateSshConnecti
 
 export type TSshConnectionConfig = DiscriminativePick<
   TSshConnectionInput,
-  "method" | "app" | "credentials" | "gatewayId"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

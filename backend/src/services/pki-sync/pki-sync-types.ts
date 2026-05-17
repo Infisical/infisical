@@ -47,6 +47,7 @@ export type TPkiSync = {
     description?: string;
     version: number;
     gatewayId?: string;
+    gatewayPoolId?: string | null;
     createdAt: Date;
     updatedAt: Date;
     isPlatformManagedCredentials?: boolean;
@@ -65,6 +66,7 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     credentials: Record<string, unknown>;
     orgId: string;
     gatewayId?: string;
+    gatewayPoolId?: string | null;
   };
 };
 

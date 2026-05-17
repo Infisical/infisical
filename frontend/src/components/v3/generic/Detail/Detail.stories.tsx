@@ -30,6 +30,9 @@ const meta = {
         disable: true
       }
     }
+  },
+  globals: {
+    backgrounds: { value: "card" }
   }
 } satisfies Meta<typeof Detail>;
 
@@ -60,7 +63,7 @@ export const Group: Story = {
     docs: {
       description: {
         story:
-          "Wrap multiple `Detail`s in a `DetailGroup` to stack them with consistent vertical spacing (`gap-y-4`). Use for entity metadata sections like profile fields or integration settings."
+          "Wrap multiple `Detail`s in a `DetailGroup` to stack them with consistent vertical spacing. Use for entity metadata sections like profile fields or integration settings."
       }
     }
   },
@@ -94,7 +97,7 @@ export const GroupWithHeader: Story = {
     docs: {
       description: {
         story:
-          "Place a `DetailGroupHeader` as the first child of a `DetailGroup` to title the section. Use `flex items-center justify-between` on the header to align an inline action like an edit `IconButton`."
+          "Place a `DetailGroupHeader` as the first child of a `DetailGroup` to title the section. Pair the title with a trailing inline action — an edit `IconButton`, a copy button, an external link — to put a contextual control beside the section name."
       }
     }
   },
@@ -130,7 +133,7 @@ export const BadgeValues: Story = {
     docs: {
       description: {
         story:
-          'Use `Badge` inside `DetailValue` for status, scope, or boolean-like fields — far more scannable than plain text. Combine with inline text via `className="flex items-center gap-1.5"` on the value for mixed content.'
+          "Use `Badge` inside `DetailValue` for status, scope, or boolean-like fields — far more scannable than plain text. Mix badges with inline text by laying the value out as a flex row when a single field needs both."
       }
     }
   },

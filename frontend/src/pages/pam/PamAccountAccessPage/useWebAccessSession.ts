@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
+import ms from "ms";
 import { Readline } from "xterm-readline";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 
+import { DEFAULT_ACCESS_DURATION } from "../constants";
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
 
 import "@xterm/xterm/css/xterm.css";
@@ -277,6 +279,7 @@ export const useWebAccessSession = ({
               policyId?: string;
               policyName?: string;
               policyType?: string;
+              constraints?: { accessDuration: { max: string } };
             };
           };
         };
@@ -361,6 +364,9 @@ export const useWebAccessSession = ({
       // Check for PolicyViolationError
       if (axiosErr?.response?.data?.error === "PolicyViolationError") {
         const policyName = axiosErr.response!.data!.details?.policyName ?? "Unknown Policy";
+        const accessDurationMax =
+          axiosErr.response!.data!.details?.constraints?.accessDuration.max ??
+          DEFAULT_ACCESS_DURATION;
 
         terminal.write(`\r\nThis account is protected by approval policy: "${policyName}"\r\n`);
 
@@ -388,7 +394,10 @@ export const useWebAccessSession = ({
             {
               projectId,
               requestData: {
-                accessDuration: "1h",
+                accessDuration:
+                  ms(accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
+                    ? accessDurationMax
+                    : DEFAULT_ACCESS_DURATION,
                 resourceName,
                 accountName
               },

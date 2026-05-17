@@ -182,6 +182,7 @@ export const useGetProjectSecretsOverview = (
     includeImports,
     includeDynamicSecrets,
     includeSecretRotations,
+    includeHoneyTokens,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -214,6 +215,7 @@ export const useGetProjectSecretsOverview = (
       includeImports,
       includeDynamicSecrets,
       includeSecretRotations,
+      includeHoneyTokens,
       environments
     }),
     queryFn: async () => {
@@ -231,6 +233,7 @@ export const useGetProjectSecretsOverview = (
         includeImports,
         includeDynamicSecrets,
         includeSecretRotations,
+        includeHoneyTokens,
         environments
       });
 
@@ -241,7 +244,7 @@ export const useGetProjectSecretsOverview = (
       return resp;
     },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
-      const { secrets, secretRotations, ...select } = data;
+      const { secrets, secretRotations, honeyTokens, ...select } = data;
       const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
 
       const uniqueFolders = select.folders ? unique(select.folders, (i) => i.name) : [];
@@ -252,6 +255,7 @@ export const useGetProjectSecretsOverview = (
 
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
       const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
+      const uniqueHoneyTokens = honeyTokens ? unique(honeyTokens, (i) => i.name) : [];
 
       return {
         ...select,
@@ -262,11 +266,13 @@ export const useGetProjectSecretsOverview = (
             secrets: mergePersonalRotationSecrets(rotation.secrets)
           };
         }),
+        honeyTokens,
         totalUniqueSecretsInPage: uniqueSecrets.length,
         totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
         totalUniqueFoldersInPage: uniqueFolders.length,
         totalUniqueSecretImportsInPage: uniqueSecretImports.length,
-        totalUniqueSecretRotationsInPage: uniqueSecretRotations.length
+        totalUniqueSecretRotationsInPage: uniqueSecretRotations.length,
+        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length
       };
     }, []),
     placeholderData: (previousData) => previousData
@@ -288,6 +294,7 @@ export const useGetProjectSecretsDetails = (
     includeImports,
     includeDynamicSecrets,
     includeSecretRotations,
+    includeHoneyTokens,
     tags
   }: TGetDashboardProjectSecretsDetailsDTO,
   options?: Omit<
@@ -326,6 +333,7 @@ export const useGetProjectSecretsDetails = (
       includeImports,
       includeDynamicSecrets,
       includeSecretRotations,
+      includeHoneyTokens,
       tags
     }),
     queryFn: async () => {
@@ -343,6 +351,7 @@ export const useGetProjectSecretsDetails = (
         includeImports,
         includeDynamicSecrets,
         includeSecretRotations,
+        includeHoneyTokens,
         tags
       });
 

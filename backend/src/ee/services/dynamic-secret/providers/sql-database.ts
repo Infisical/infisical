@@ -13,6 +13,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
@@ -114,18 +115,20 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
 type TSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const SqlDatabaseProvider = ({
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
     const [hostIp] = await verifyHostInputValidity({
       host: providerInputs.host,
-      isGateway: Boolean(providerInputs.gatewayId),
+      isGateway: Boolean(providerInputs.gatewayId || providerInputs.gatewayPoolId),
       isDynamicSecret: true
     });
     validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
@@ -165,7 +168,9 @@ export const SqlDatabaseProvider = ({
     */
     const isAzureSql = isMsSQLClient && new RE2(/\.database\.windows\.net$/i).test(providerInputs.originalHost);
     const azureServerLabel =
-      isAzureSql && providerInputs.gatewayId ? providerInputs.originalHost?.split(".")[0] : undefined;
+      isAzureSql && (providerInputs.gatewayId || providerInputs.gatewayPoolId)
+        ? providerInputs.originalHost?.split(".")[0]
+        : undefined;
     const effectiveUser =
       isAzureSql && !providerInputs.username.includes("@") && azureServerLabel
         ? `${providerInputs.username}@${azureServerLabel}`
@@ -177,7 +182,7 @@ export const SqlDatabaseProvider = ({
         database: providerInputs.database,
         port: providerInputs.port,
         host:
-          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId
+          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId && !providerInputs.gatewayPoolId
             ? providerInputs.hostIp
             : providerInputs.host,
         user: effectiveUser,
@@ -204,8 +209,9 @@ export const SqlDatabaseProvider = ({
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId(providerInputs);
     const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: providerInputs.gatewayId as string,
+      gatewayId: effectiveGatewayId as string,
       targetHost: providerInputs.host,
       targetPort: providerInputs.port
     });
@@ -224,7 +230,7 @@ export const SqlDatabaseProvider = ({
       );
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId as string);
     await withGatewayProxy(
       async (port) => {
         await gatewayCallback("localhost", port);
@@ -267,7 +273,7 @@ export const SqlDatabaseProvider = ({
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -329,7 +335,7 @@ export const SqlDatabaseProvider = ({
         await db.destroy();
       }
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -372,7 +378,7 @@ export const SqlDatabaseProvider = ({
         await db.destroy();
       }
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -421,7 +427,7 @@ export const SqlDatabaseProvider = ({
         await db.destroy();
       }
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.gatewayPoolId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();

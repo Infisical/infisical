@@ -1,6 +1,7 @@
 import { faGlobe, faLayerGroup, faServer } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { twMerge } from "tailwind-merge";
 
 import { Select, SelectItem, Tooltip } from "@app/components/v2";
 import { useSubscription } from "@app/context";
@@ -19,6 +20,9 @@ type Props = {
   onChange: (value: GatewayPickerValue) => void;
   isDisabled?: boolean;
   className?: string;
+  isRequired?: boolean;
+  placeholder?: string;
+  variant?: "v2" | "v3";
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -27,7 +31,15 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 const SectionDivider = () => <div className="my-1 h-px bg-mineshaft-600" />;
 
-export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props) => {
+export const GatewayPicker = ({
+  value,
+  onChange,
+  isDisabled,
+  className,
+  isRequired,
+  placeholder,
+  variant = "v2"
+}: Props) => {
   const { subscription } = useSubscription();
   const showPools = subscription?.gatewayPool;
 
@@ -39,7 +51,7 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
 
   const isLoading = isGatewaysLoading || (showPools && isPoolsLoading);
 
-  let selectValue = "internet";
+  let selectValue = isRequired ? "" : "internet";
   if (value.gatewayPoolId) {
     selectValue = `pool:${value.gatewayPoolId}`;
   } else if (value.gatewayId) {
@@ -65,27 +77,41 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
     (!("lastHealthCheckStatus" in gw) ||
       gw.lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed);
 
+  const itemHoverV3 =
+    "[&_[data-radix-collection-item]:hover]:bg-foreground/5 [&_[data-radix-collection-item][data-highlighted]]:bg-foreground/5";
+
   return (
     <Select
       value={selectValue}
       onValueChange={handleChange}
       isDisabled={isDisabled}
       isLoading={Boolean(isLoading)}
-      className={className}
-      dropdownContainerClassName="max-w-none"
+      containerClassName="contents"
+      className={twMerge(
+        "w-full",
+        variant === "v3" && "h-9 border-border bg-transparent text-foreground",
+        className
+      )}
+      dropdownContainerClassName={twMerge(
+        "max-w-none",
+        variant === "v3" && `border-border bg-popover text-foreground ${itemHoverV3}`
+      )}
       position="popper"
       side="bottom"
+      placeholder={placeholder}
     >
-      <SelectItem value="internet">
-        <div className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faGlobe} className="size-3.5 text-mineshaft-400" />
-          Internet Gateway
-        </div>
-      </SelectItem>
+      {!isRequired && (
+        <SelectItem value="internet">
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faGlobe} className="size-3.5 text-mineshaft-400" />
+            Internet Gateway
+          </div>
+        </SelectItem>
+      )}
 
       {showPools && pools && pools.length > 0 && (
         <>
-          <SectionDivider />
+          {!isRequired && <SectionDivider />}
           <SectionLabel>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -118,7 +144,7 @@ export const GatewayPicker = ({ value, onChange, isDisabled, className }: Props)
 
       {v2Gateways.length > 0 && (
         <>
-          <SectionDivider />
+          {(!isRequired || (showPools && pools && pools.length > 0)) && <SectionDivider />}
           <SectionLabel>
             <div className="flex items-center gap-2">
               <FontAwesomeIcon icon={faServer} className="size-3" />

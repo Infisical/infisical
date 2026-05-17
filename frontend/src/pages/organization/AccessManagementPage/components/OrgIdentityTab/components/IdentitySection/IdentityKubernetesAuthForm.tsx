@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faInfoCircle, faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,6 +29,8 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddIdentityKubernetesAuth,
@@ -49,87 +51,84 @@ import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityFormTab } from "./types";
 import { VaultKubernetesAuthImportModal } from "./VaultKubernetesAuthImportModal";
 
-const schema = z
-  .object({
-    tokenReviewMode: z
-      .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
-      .default(IdentityKubernetesAuthTokenReviewMode.Api),
-    kubernetesHost: z.string().optional().nullable(),
-    tokenReviewerJwt: z.string().optional(),
-    gatewayId: z.string().optional().nullable(),
-    gatewayPoolId: z.string().optional().nullable(),
-    allowedNames: z.string(),
-    allowedNamespaces: z.string(),
-    allowedAudience: z.string(),
-    caCert: z.string().optional(),
-    verifyTlsCertificate: z.boolean().default(true),
-    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token TTL cannot be greater than 315360000"
-    }),
-    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token Max TTL cannot be greater than 315360000"
-    }),
-    accessTokenNumUsesLimit: z.string(),
-    accessTokenTrustedIps: z
-      .array(
-        z.object({
-          ipAddress: z.string().max(50)
-        })
-      )
-      .min(1)
-  })
-  .superRefine((data, ctx) => {
-    if (
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !data.kubernetesHost?.length
-    ) {
-      ctx.addIssue({
-        path: ["kubernetesHost"],
-        code: z.ZodIssueCode.custom,
-        message: "When token review mode is set to API, a Kubernetes host must be provided"
-      });
-    }
+const buildSchema = (maxAccessTokenTTL: number) =>
+  z
+    .object({
+      tokenReviewMode: z
+        .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
+        .default(IdentityKubernetesAuthTokenReviewMode.Api),
+      kubernetesHost: z.string().optional().nullable(),
+      tokenReviewerJwt: z.string().optional(),
+      gatewayId: z.string().optional().nullable(),
+      gatewayPoolId: z.string().optional().nullable(),
+      allowedNames: z.string(),
+      allowedNamespaces: z.string(),
+      allowedAudience: z.string(),
+      caCert: z.string().optional(),
+      verifyTlsCertificate: z.boolean().default(true),
+      accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+      accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+      accessTokenNumUsesLimit: z.string(),
+      accessTokenTrustedIps: z
+        .array(
+          z.object({
+            ipAddress: z.string().max(50)
+          })
+        )
+        .min(1)
+    })
+    .superRefine((data, ctx) => {
+      if (
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        !data.kubernetesHost?.length
+      ) {
+        ctx.addIssue({
+          path: ["kubernetesHost"],
+          code: z.ZodIssueCode.custom,
+          message: "When token review mode is set to API, a Kubernetes host must be provided"
+        });
+      }
 
-    if (
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-      !data.gatewayId &&
-      !data.gatewayPoolId
-    ) {
-      ctx.addIssue({
-        path: ["gatewayId"],
-        code: z.ZodIssueCode.custom,
-        message:
-          "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
-      });
-    }
+      if (
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+        !data.gatewayId &&
+        !data.gatewayPoolId
+      ) {
+        ctx.addIssue({
+          path: ["gatewayId"],
+          code: z.ZodIssueCode.custom,
+          message:
+            "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+        });
+      }
 
-    if (
-      data.verifyTlsCertificate &&
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !data.caCert?.length
-    ) {
-      ctx.addIssue({
-        path: ["caCert"],
-        code: z.ZodIssueCode.custom,
-        message: "A CA certificate is required when TLS certificate verification is enabled."
-      });
-    }
+      if (
+        data.verifyTlsCertificate &&
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        !data.caCert?.length
+      ) {
+        ctx.addIssue({
+          path: ["caCert"],
+          code: z.ZodIssueCode.custom,
+          message: "A CA certificate is required when TLS certificate verification is enabled."
+        });
+      }
 
-    if (
-      data.verifyTlsCertificate === false &&
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      data.caCert?.length
-    ) {
-      ctx.addIssue({
-        path: ["verifyTlsCertificate"],
-        code: z.ZodIssueCode.custom,
-        message:
-          "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
-      });
-    }
-  });
+      if (
+        data.verifyTlsCertificate === false &&
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        data.caCert?.length
+      ) {
+        ctx.addIssue({
+          path: ["verifyTlsCertificate"],
+          code: z.ZodIssueCode.custom,
+          message:
+            "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
+        });
+      }
+    });
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -142,13 +141,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentityKubernetesAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -174,6 +175,8 @@ export const IdentityKubernetesAuthForm = ({
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+
   const {
     control,
     handleSubmit,
@@ -183,7 +186,7 @@ export const IdentityKubernetesAuthForm = ({
 
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
       kubernetesHost: "",
@@ -672,8 +675,9 @@ export const IdentityKubernetesAuthForm = ({
                 tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -687,8 +691,9 @@ export const IdentityKubernetesAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />

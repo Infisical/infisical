@@ -651,6 +651,16 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.user.username ?? "",
+        properties: {
+          username: user.user.username,
+          email: user.user.email ?? "",
+          signupMethod: "admin_init"
+        }
+      });
+
       const adminDistinctId = user.user.username ?? user.user.email ?? "";
       if (adminDistinctId) {
         void server.services.telemetry.identifyUser(
@@ -808,6 +818,16 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           email: user.user.email ?? "",
           lastName: user.user.lastName || "",
           firstName: user.user.firstName || ""
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.user.username ?? "",
+        properties: {
+          username: user.user.username,
+          email: user.user.email ?? "",
+          signupMethod: "admin_bootstrap"
         }
       });
 

@@ -1,7 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CheckIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  BoxesIcon as SubOrgIcon,
+  BoxIcon as ProjectIcon,
+  Building2Icon as OrgIcon,
+  CheckIcon,
+  CircleXIcon,
+  InfoIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
-import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
 import { Alert, AlertDescription, AlertTitle } from "./Alert";
 
 /**

@@ -26,6 +26,7 @@ const buildConnectionJoin = (qb: Knex.QueryBuilder, db: TDbClient) =>
       db.ref("description").withSchema(TableName.AppConnection).as("appConnectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("appConnectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("appConnectionGatewayId"),
+      db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("appConnectionGatewayPoolId"),
       db.ref("projectId").withSchema(TableName.AppConnection).as("appConnectionProjectId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("appConnectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("appConnectionUpdatedAt")
@@ -46,6 +47,7 @@ const mapResultToConnection = (raw: Record<string, unknown>) => {
           description: raw.appConnectionDescription,
           version: raw.appConnectionVersion,
           gatewayId: raw.appConnectionGatewayId,
+          gatewayPoolId: raw.appConnectionGatewayPoolId,
           projectId: raw.appConnectionProjectId,
           createdAt: raw.appConnectionCreatedAt as Date,
           updatedAt: raw.appConnectionUpdatedAt as Date,

@@ -116,6 +116,17 @@ Once all required approvals for all steps are obtained, access is automatically 
 
 When a request is rejected, the workflow ends and no access is granted.
 
+## Role-based Permission Conditions
+
+In addition to approval policies, project roles can scope PAM-account access using CASL conditions (Project > Access Control > Roles > edit role > PAM Accounts).
+
+The `resourceName` and `resourceType` conditions behave slightly differently depending on the action:
+
+- **Access action**: both conditions match the resource the user is connecting *through*. For local accounts this is the same resource the account belongs to. For domain accounts (Active Directory) it is the Windows host the credentials are being used against, not the account's domain parent.
+- **All other actions** (read, create, update, delete): both conditions match the resource the account belongs to. Domain accounts have no owning resource, so these conditions don't apply to them for non-Access actions; use `domainName` / `domainType` to scope domain accounts instead.
+
+`domainName` and `domainType` match the account's domain parent in every action, and are only set for domain accounts.
+
 ## FAQ
 
 <AccordionGroup>

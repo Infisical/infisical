@@ -1,8 +1,9 @@
 /* eslint-disable no-await-in-loop */
 
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
@@ -12,6 +13,7 @@ import { CertificateOrigin, PkiAlertEventType, TNotificationConfig, TPkiFilterRu
 
 type TPkiAlertV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   pkiAlertV2Service: Pick<TPkiAlertV2ServiceFactory, "sendAlertNotifications" | "sendEventNotifications">;
   pkiAlertV2DAL: Pick<TPkiAlertV2DALFactory, "findByProjectId" | "findMatchingCertificates" | "getDistinctProjectIds">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "findRecentlyAlertedCertificates">;
@@ -21,6 +23,7 @@ export type TPkiAlertV2QueueServiceFactory = ReturnType<typeof pkiAlertV2QueueSe
 
 export const pkiAlertV2QueueServiceFactory = ({
   queueService,
+  cronJob,
   pkiAlertV2Service,
   pkiAlertV2DAL,
   pkiAlertHistoryDAL
@@ -235,22 +238,8 @@ export const pkiAlertV2QueueServiceFactory = ({
     });
   };
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
-
-    queueService.start(QueueName.DailyPkiAlertV2Processing, async () => {
-      try {
-        logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task started`);
-        await processDailyAlerts();
-        logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task completed successfully`);
-      } catch (error) {
-        logger.error(error, `${QueueJobs.DailyPkiAlertV2Processing}: queue task failed`);
-        throw error;
-      }
-    });
-
+  const init = () => {
+    // PkiAlertV2Event is event-driven (ad-hoc per certificate event) — stays on BullMQ
     queueService.start(QueueName.PkiAlertV2Event, async (job) => {
       try {
         logger.info(`${QueueJobs.PkiAlertV2ProcessEvent}: processing ${job.data.eventType} event`);
@@ -262,12 +251,16 @@ export const pkiAlertV2QueueServiceFactory = ({
       }
     });
 
-    await queueService.upsertJobScheduler(
-      QueueName.DailyPkiAlertV2Processing,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyPkiAlertV2Processing}`,
-      { pattern: "0 0 * * *" },
-      { name: QueueJobs.DailyPkiAlertV2Processing }
-    );
+    cronJob.register({
+      name: CronJobName.DailyPkiAlertV2Processing,
+      pattern: "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info("cron[daily-pki-alert-v2-processing]: task started");
+        await processDailyAlerts();
+      }
+    });
   };
 
   return {

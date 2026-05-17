@@ -4,23 +4,31 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { TerminalChannelType, TTerminalEvent } from "@app/hooks/api/pam";
+import { SessionChannelType, TSessionEvent } from "@app/hooks/api/pam";
+import { isBrokenChunkMarker, TBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
 
 import { aggregateTerminalEvents } from "./terminal-utils";
 
 const CHANNEL_LABEL_MAP: Record<string, string> = {
-  [TerminalChannelType.Exec]: "Exec",
-  [TerminalChannelType.Sftp]: "SFTP"
+  [SessionChannelType.Exec]: "Exec",
+  [SessionChannelType.Sftp]: "SFTP"
 };
 
 type Props = {
-  events: TTerminalEvent[];
+  events: (TSessionEvent | TBrokenChunkMarker)[];
 };
 
 export const TerminalEventView = ({ events }: Props) => {
   const [search, setSearch] = useState("");
 
-  const aggregatedEvents = useMemo(() => aggregateTerminalEvents(events), [events]);
+  const markers = useMemo(() => events.filter(isBrokenChunkMarker), [events]);
+
+  const realEvents = useMemo(
+    () => events.filter((e): e is TSessionEvent => !isBrokenChunkMarker(e)),
+    [events]
+  );
+
+  const aggregatedEvents = useMemo(() => aggregateTerminalEvents(realEvents), [realEvents]);
 
   const filteredEvents = useMemo(
     () =>
@@ -46,6 +54,16 @@ export const TerminalEventView = ({ events }: Props) => {
       </div>
 
       <div className="flex grow flex-col gap-2 overflow-y-auto text-xs">
+        {markers.length > 0 && (
+          <div className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+            <span>Some terminal output may be missing due to unavailable chunks.</span>
+            {markers.map((m) => (
+              <span key={m.chunkIndex} className="text-warning/70">
+                Chunk {m.chunkIndex}: {m.message}
+              </span>
+            ))}
+          </div>
+        )}
         {filteredEvents.length > 0 ? (
           filteredEvents.map((event, index) => {
             const eventKey = `${event.timestamp}-${index}`;

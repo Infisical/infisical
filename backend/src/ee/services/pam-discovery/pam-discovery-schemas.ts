@@ -33,16 +33,19 @@ export const BasePamDiscoverySourceSchema = PamDiscoverySourcesSchema.omit({
   status: z.nativeEnum(PamDiscoverySourceStatus)
 });
 
+// No .superRefine — would turn into ZodEffects and break .extend() in per-type schemas.
 export const BaseCreatePamDiscoverySourceSchema = z.object({
   projectId: z.string().uuid(),
   name: slugSchema({ field: "name" }),
-  gatewayId: z.string().uuid(),
+  gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional(),
   schedule: z.nativeEnum(PamDiscoverySchedule)
 });
 
 export const BaseUpdatePamDiscoverySourceSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
   gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional(),
   schedule: z.nativeEnum(PamDiscoverySchedule).optional()
 });
 

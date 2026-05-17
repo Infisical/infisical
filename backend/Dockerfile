@@ -79,7 +79,7 @@ RUN apt-get update && apt-get install -y \
     bash \
     git \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.14 \
+    && apt-get update && apt-get install -y infisical=0.43.79 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini

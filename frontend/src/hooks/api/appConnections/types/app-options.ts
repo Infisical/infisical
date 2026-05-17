@@ -247,6 +247,13 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TOvhConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OVH;
+};
+export type TDevinConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Devin;
+};
+
 export type TOnaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Ona;
 };
@@ -257,6 +264,14 @@ export type TDigiCertConnectionOption = TAppConnectionOptionBase & {
 
 export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TravisCI;
+};
+
+export type TSnowflakeConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Snowflake;
+};
+
+export type TDatadogConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Datadog;
 };
 
 export type TAppConnectionOption =
@@ -318,9 +333,13 @@ export type TAppConnectionOption =
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
   | TAnthropicConnectionOption
+  | TOvhConnectionOption
+  | TDevinConnectionOption
   | TOnaConnectionOption
   | TDigiCertConnectionOption
-  | TTravisCIConnectionOption;
+  | TTravisCIConnectionOption
+  | TSnowflakeConnectionOption
+  | TDatadogConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -381,7 +400,11 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
+  [AppConnection.OVH]: TOvhConnectionOption;
+  [AppConnection.Devin]: TDevinConnectionOption;
   [AppConnection.Ona]: TOnaConnectionOption;
   [AppConnection.DigiCert]: TDigiCertConnectionOption;
   [AppConnection.TravisCI]: TTravisCIConnectionOption;
+  [AppConnection.Snowflake]: TSnowflakeConnectionOption;
+  [AppConnection.Datadog]: TDatadogConnectionOption;
 };

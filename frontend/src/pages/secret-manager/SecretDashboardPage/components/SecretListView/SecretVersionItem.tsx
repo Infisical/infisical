@@ -369,7 +369,7 @@ export const SecretVersionItem = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!secret?.isRotatedSecret && canReadValue && (
+          {!secret?.isRotatedSecret && !secret?.isHoneyTokenSecret && canReadValue && (
             <div
               className={`flex items-center justify-center ${version === currentVersion ? "hidden" : ""}`}
             >
@@ -396,23 +396,26 @@ export const SecretVersionItem = ({
             </div>
           )}
 
-          {!secret?.isRotatedSecret && canEditSecret && !isRedacted && (
-            <div
-              className={`flex items-center justify-center ${version === currentVersion ? "hidden" : ""}`}
-            >
-              <Tooltip content="Redact Secret Value">
-                <IconButton
-                  ariaLabel="Redact"
-                  variant="outline_bg"
-                  size="sm"
-                  className="h-8 w-8 rounded-md"
-                  onClick={() => handlePopUpOpen("redactSecretValue")}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </Tooltip>
-            </div>
-          )}
+          {!secret?.isRotatedSecret &&
+            !secret?.isHoneyTokenSecret &&
+            canEditSecret &&
+            !isRedacted && (
+              <div
+                className={`flex items-center justify-center ${version === currentVersion ? "hidden" : ""}`}
+              >
+                <Tooltip content="Redact Secret Value">
+                  <IconButton
+                    ariaLabel="Redact"
+                    variant="outline_bg"
+                    size="sm"
+                    className="h-8 w-8 rounded-md"
+                    onClick={() => handlePopUpOpen("redactSecretValue")}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </IconButton>
+                </Tooltip>
+              </div>
+            )}
         </div>
       </div>
     </>

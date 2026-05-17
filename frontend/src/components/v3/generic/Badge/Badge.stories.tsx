@@ -4,6 +4,9 @@ import {
   AlertTriangleIcon,
   AsteriskIcon,
   BanIcon,
+  BoxesIcon as SubOrgIcon,
+  BoxIcon as ProjectIcon,
+  Building2Icon as OrgIcon,
   CheckIcon,
   ChevronsUpDownIcon,
   CircleXIcon,
@@ -15,7 +18,6 @@ import {
   UserIcon
 } from "lucide-react";
 
-import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
 import { ButtonGroup } from "../ButtonGroup";
 import { Badge } from "./Badge";
 

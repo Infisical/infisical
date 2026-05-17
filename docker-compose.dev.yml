@@ -65,6 +65,21 @@ services:
     ports:
       - "8085:8081"
 
+  bull-board:
+    container_name: infisical-dev-bull-board
+    image: venatum/bull-board:3.3.7
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BULL_VERSION=BULLMQ
+      - BULL_PREFIX=bull
+    ports:
+      - "3008:3000"
+    profiles: [queue]
+
   db-test:
     profiles: ["test"]
     image: postgres:14-alpine

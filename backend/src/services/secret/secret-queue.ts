@@ -26,6 +26,8 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
@@ -238,7 +240,9 @@ export const secretQueueFactory = ({
           return user?.email || user?.username || changedBy;
         }
         case ActorType.IDENTITY: {
-          const identity = await identityDAL.findById(changedBy);
+          const identity = await requestMemoize(requestMemoKeys.identityFindById(changedBy), () =>
+            identityDAL.findById(changedBy)
+          );
           return identity?.name || changedBy;
         }
         case ActorType.SERVICE: {

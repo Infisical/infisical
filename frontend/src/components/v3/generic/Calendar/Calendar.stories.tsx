@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { CalendarIcon } from "lucide-react";
 
+import { Button } from "../Button";
+import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { Calendar } from "./Calendar";
 
 /**
@@ -171,4 +174,36 @@ export const DisabledDates: Story = {
     }
   },
   render: () => <DisabledDatesStory />
+};
+
+const InPopoverStory = () => {
+  const [selected, setSelected] = useState<Date | undefined>();
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-56 justify-start">
+          <CalendarIcon />
+          {selected
+            ? selected.toLocaleDateString(undefined, { dateStyle: "medium" })
+            : "Pick a date"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar mode="single" selected={selected} onSelect={setSelected} />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+export const InPopover: Story = {
+  name: "Example: In Popover",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The canonical date-picker pattern: a `Button` shows the selected date, clicking it opens the `Calendar` in a `Popover`. Set `className="w-auto p-0"` on `PopoverContent` so the calendar\'s own padding controls the layout (the popover\'s default padding would double-pad the grid). Use `align="start"` so the popover anchors to the trigger\'s leading edge.'
+      }
+    }
+  },
+  render: () => <InPopoverStory />
 };
