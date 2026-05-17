@@ -50,12 +50,18 @@ export enum OrgIdentityOrderBy {
   Role = "role"
 }
 
+export enum IdentityScope {
+  Organization = "organization",
+  Project = "project"
+}
+
 export type TSearchOrgIdentitiesByOrgIdDAL = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
   orgId: string;
+  scopes?: IdentityScope[];
   searchFilter?: Partial<{
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;

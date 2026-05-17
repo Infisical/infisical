@@ -52,6 +52,17 @@ export type IdentityMembershipOrg = {
   metadata: { key: string; value: string; id: string }[];
   role: "admin" | "member" | "viewer" | "no-access" | "custom";
   customRole?: TOrgRole;
+  project?: Pick<Project, "id" | "name" | "type"> | null;
+  roles?: Array<{
+    id: string;
+    role: string;
+    customRoleSlug: string | null;
+    isTemporary: boolean;
+    temporaryMode: string | null;
+    temporaryRange: string | null;
+    temporaryAccessStartTime: string | null;
+    temporaryAccessEndTime: string | null;
+  }>;
   createdAt: string;
   updatedAt: string;
 };
@@ -949,11 +960,18 @@ export type TProjectIdentityMembershipsListV2 = {
   totalCount: number;
 };
 
+export enum IdentityScope {
+  Organization = "organization",
+  // eslint-disable-next-line @typescript-eslint/no-shadow
+  Project = "project"
+}
+
 export type TSearchIdentitiesDTO = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
+  scopes?: IdentityScope[];
   search: {
     name?: { $contains: string };
     role?: { $in: string[] };

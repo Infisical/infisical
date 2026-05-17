@@ -17,6 +17,7 @@ import {
   IdentityOciAuth,
   IdentityOidcAuth,
   IdentityProjectMembershipV1,
+  IdentityScope,
   IdentitySpiffeAuth,
   IdentityTlsCertAuth,
   IdentityTokenAuth,
@@ -70,18 +71,25 @@ export const useGetOrgIdentityMembershipById = (identityId: string) => {
 };
 
 export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
-  const { limit, search, offset, orderBy, orderDirection } = dto;
+  const { limit, search, offset, orderBy, orderDirection, scopes } = dto;
   return useQuery({
     queryKey: identitiesKeys.searchIdentities(dto),
     queryFn: async () => {
+      const includesProjectScope = scopes?.includes(IdentityScope.Project) ?? false;
+      const endpoint = includesProjectScope
+        ? "/api/v2/identities/search"
+        : "/api/v1/identities/search";
       const { data } = await apiRequest.post<{
         identities: IdentityMembershipOrg[];
         totalCount: number;
-      }>("/api/v1/identities/search", {
+        orgCount?: number;
+        projectCount?: number;
+      }>(endpoint, {
         limit,
         offset,
         orderBy,
         orderDirection,
+        scopes,
         search
       });
       return data;

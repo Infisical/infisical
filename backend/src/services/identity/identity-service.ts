@@ -10,7 +10,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -26,6 +26,7 @@ import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
+  IdentityScope,
   TCreateIdentityDTO,
   TDeleteIdentityDTO,
   TGetIdentityByIdDTO,
@@ -482,6 +483,71 @@ export const identityServiceFactory = ({
     return { identityMemberships: docs, totalCount };
   };
 
+  const searchOrgIdentitiesAdminView = async ({
+    orgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    searchFilter = {},
+    scopes
+  }: TSearchOrgIdentitiesByOrgIdDTO) => {
+    const { permission, hasRole } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
+    const resolvedScopes = scopes?.length ? scopes : [IdentityScope.Organization];
+    const includesProjectScope = resolvedScopes.includes(IdentityScope.Project);
+    if (includesProjectScope && !hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can include project identities" });
+    }
+
+    const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentities({
+      orgId,
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      searchFilter,
+      scopes: resolvedScopes
+    });
+
+    const identityIds = docs.map((doc) => doc.identity.id);
+    const roleRows = await identityOrgMembershipDAL.getEffectiveRolesByIdentityIds(identityIds, orgId);
+    const rolesByIdentity = new Map<string, Omit<(typeof roleRows)[number], "identityId">[]>();
+    roleRows.forEach(({ identityId, ...rest }) => {
+      const existing = rolesByIdentity.get(identityId) ?? [];
+      existing.push(rest);
+      rolesByIdentity.set(identityId, existing);
+    });
+
+    const enrichedDocs = docs.map(({ role: _role, roleId: _roleId, customRole: _customRole, ...rest }) => ({
+      ...rest,
+      roles: rolesByIdentity.get(rest.identity.id) ?? []
+    }));
+
+    if (!includesProjectScope) {
+      return { identityMemberships: enrichedDocs, totalCount };
+    }
+
+    const { orgCount, projectCount } = await identityOrgMembershipDAL.getOrgIdentityScopeCounts({
+      orgId,
+      searchFilter
+    });
+
+    return { identityMemberships: enrichedDocs, totalCount, orgCount, projectCount };
+  };
+
   const listProjectIdentitiesByIdentityId = async ({
     identityId,
     actor,
@@ -517,6 +583,7 @@ export const identityServiceFactory = ({
     listOrgIdentities,
     getIdentityById,
     searchOrgIdentities,
+    searchOrgIdentitiesAdminView,
     listProjectIdentitiesByIdentityId
   };
 };

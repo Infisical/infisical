@@ -26,6 +26,7 @@ import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
 import {
+  IdentityScope,
   OrgIdentityOrderBy,
   TListOrgIdentitiesByOrgIdDTO,
   TSearchOrgIdentitiesByOrgIdDAL
@@ -409,17 +410,20 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       searchFilter,
-      orgId
+      orgId,
+      scopes
     }: TSearchOrgIdentitiesByOrgIdDAL,
     tx?: Knex
   ) => {
     try {
+      const includesOrganizationScope = !scopes || scopes.includes(IdentityScope.Organization);
+      const includesProjectScope = scopes?.includes(IdentityScope.Project) ?? false;
+
       const searchQuery = (tx || db.replicaNode())(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
-        .whereNull(`${TableName.Identity}.projectId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .orderBy(
@@ -435,6 +439,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           )
         )
         .as("searchedIdentities");
+
+      if (includesOrganizationScope && !includesProjectScope) {
+        void searchQuery.whereNull(`${TableName.Identity}.projectId`);
+      } else if (includesProjectScope && !includesOrganizationScope) {
+        void searchQuery.whereNotNull(`${TableName.Identity}.projectId`);
+      }
 
       if (searchFilter) {
         buildKnexFilterForSearchResource(searchQuery, searchFilter, (attr) => {
@@ -460,6 +470,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .join<TSubquery>(searchQuery, `${TableName.Membership}.id`, "searchedIdentities.id")
         .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.Project, `${TableName.Identity}.projectId`, `${TableName.Project}.id`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
@@ -539,6 +550,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
+          db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId"),
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("type").withSchema(TableName.Project).as("projectType"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -593,6 +607,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identityId,
           identityOrgId,
           identityName,
+          identityProjectId,
+          projectName,
+          projectType,
           hasDeleteProtection,
           role,
           roleId,
@@ -634,11 +651,19 @@ export const identityOrgDALFactory = (db: TDbClient) => {
                 description: crDescription
               }
             : undefined,
+          project: identityProjectId
+            ? {
+                id: identityProjectId,
+                name: projectName,
+                type: projectType
+              }
+            : null,
           identity: {
             id: identityId as string,
             name: identityName,
             hasDeleteProtection,
             orgId: identityOrgId,
+            projectId: (identityProjectId as string | null) ?? null,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
@@ -698,5 +723,110 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { find, findOne, countAllOrgIdentities, searchIdentities };
+  const getOrgIdentityScopeCounts = async (
+    { orgId, searchFilter }: Pick<TSearchOrgIdentitiesByOrgIdDAL, "orgId" | "searchFilter">,
+    tx?: Knex
+  ) => {
+    try {
+      const baseQuery = (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
+
+      if (searchFilter) {
+        buildKnexFilterForSearchResource(baseQuery, searchFilter, (attr) => {
+          switch (attr) {
+            case "role":
+              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+            case "name":
+              return `${TableName.Identity}.name`;
+            default:
+              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+          }
+        });
+      }
+
+      const row = await baseQuery
+        .select<{
+          orgCount: string;
+          projectCount: string;
+        }>(
+          db.raw(`COUNT(*) FILTER (WHERE ${TableName.Identity}."projectId" IS NULL) as "orgCount"`),
+          db.raw(`COUNT(*) FILTER (WHERE ${TableName.Identity}."projectId" IS NOT NULL) as "projectCount"`)
+        )
+        .first();
+
+      return {
+        orgCount: Number(row?.orgCount ?? 0),
+        projectCount: Number(row?.projectCount ?? 0)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "getOrgIdentityScopeCounts" });
+    }
+  };
+
+  const getEffectiveRolesByIdentityIds = async (identityIds: string[], orgId: string, tx?: Knex) => {
+    if (!identityIds.length) return [];
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Membership)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+        .whereIn(`${TableName.Membership}.actorIdentityId`, identityIds)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where((qb) => {
+          void qb
+            .where((orgQb) => {
+              void orgQb
+                .whereNull(`${TableName.Identity}.projectId`)
+                .andWhere(`${TableName.Membership}.scope`, AccessScope.Organization);
+            })
+            .orWhere((projectQb) => {
+              void projectQb
+                .whereNotNull(`${TableName.Identity}.projectId`)
+                .andWhere(`${TableName.Membership}.scope`, AccessScope.Project)
+                .andWhereRaw(`"${TableName.Membership}"."scopeProjectId" = "${TableName.Identity}"."projectId"`);
+            });
+        })
+        .select<
+          {
+            identityId: string;
+            id: string;
+            role: string;
+            customRoleSlug: string | null;
+            isTemporary: boolean;
+            temporaryMode: string | null;
+            temporaryRange: string | null;
+            temporaryAccessStartTime: Date | null;
+            temporaryAccessEndTime: Date | null;
+          }[]
+        >(
+          db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
+          db.ref("id").withSchema(TableName.MembershipRole),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("isTemporary").withSchema(TableName.MembershipRole),
+          db.ref("temporaryMode").withSchema(TableName.MembershipRole),
+          db.ref("temporaryRange").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole)
+        );
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "getEffectiveRolesByIdentityIds" });
+    }
+  };
+
+  return {
+    find,
+    findOne,
+    countAllOrgIdentities,
+    searchIdentities,
+    getOrgIdentityScopeCounts,
+    getEffectiveRolesByIdentityIds
+  };
 };
