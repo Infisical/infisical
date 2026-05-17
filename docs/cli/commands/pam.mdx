@@ -18,7 +18,7 @@ All PAM commands require the user to be logged in via `infisical login`.
 ```
 infisical pam
 ├── db
-│   └── access       (start local database proxy)
+│   └── access       (start local database proxy: PostgreSQL, MySQL, MS SQL, MongoDB, Oracle)
 ├── ssh
 │   ├── access       (start interactive SSH session)
 │   ├── exec         (execute single command over SSH)
@@ -116,6 +116,8 @@ The command displays a connection string based on the database type:
 | PostgreSQL | `postgres://<username>@localhost:<port>/<database>` |
 | MySQL | `mysql://<username>@localhost:<port>/<database>` |
 | MS SQL Server | `sqlserver://<username>@localhost:<port>?database=<database>&encrypt=false&trustServerCertificate=true` |
+| MongoDB | `mongodb://<username>@localhost:<port>/<database>` |
+| Oracle | `<username>/password@localhost:<port>/<service-name>` |
 
 </Accordion>
 

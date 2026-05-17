@@ -80,7 +80,7 @@ The PAM Resource represents the Windows server you want to manage access to.
     </ParamField>
 
     <ParamField path="Active Directory Domain" type="string">
-      Optionally select an [Active Directory](/documentation/platform/pam/getting-started/resources/active-directory) resource to associate this Windows server with an AD domain. See [Domain Join](#domain-join) below for more details.
+      Optionally select an [Active Directory](/documentation/platform/pam/resources/active-directory) resource to associate this Windows server with an AD domain. See [Domain Join](#domain-join) below for more details.
     </ParamField>
 
     Clicking **Create Resource** will trigger a connection test from the selected Gateway to your Windows server. Infisical verifies that the server is reachable and responds to RDP connection requests.
@@ -125,7 +125,7 @@ A PAM Account represents a specific Windows user account on the server. You can 
 
 ## Domain Join
 
-Windows Server resources can be associated with an [Active Directory](/documentation/platform/pam/getting-started/resources/active-directory) resource to represent domain membership. This is useful for organizing your infrastructure and understanding which servers belong to which AD domain.
+Windows Server resources can be associated with an [Active Directory](/documentation/platform/pam/resources/active-directory) resource to represent domain membership. This is useful for organizing your infrastructure and understanding which servers belong to which AD domain.
 
 When creating or editing a Windows Server resource, select an AD domain from the **Active Directory Domain** dropdown. Once associated:
 
