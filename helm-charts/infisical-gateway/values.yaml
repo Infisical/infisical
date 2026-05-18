@@ -49,9 +49,9 @@ gateway:
 # Required when enrollment.method=token so credentials survive pod restarts.
 # Optional when enrollment.method=aws since it re-authenticates via STS on every start.
 persistence:
-  enabled: false
+  enabled: true
   storageClass: ""
-  size: 50Gi
+  size: 5Gi
   accessModes:
     - ReadWriteOnce
   existingClaim: ""
