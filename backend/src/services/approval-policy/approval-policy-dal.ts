@@ -116,13 +116,13 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       const policyIds = policies.map((p) => p.id);
 
-      const [steps, bypassersRaw] = await Promise.all([
-        dbInstance(TableName.ApprovalPolicySteps).whereIn("policyId", policyIds).orderBy("stepNumber", "asc"),
-        dbInstance(TableName.ApprovalPolicyBypassers)
-          .whereIn("policyId", policyIds)
-          .select("policyId", "userId", "groupId")
-      ]);
-      const bypassers = bypassersRaw as { policyId: string; userId: string | null; groupId: string | null }[];
+      const steps = await dbInstance(TableName.ApprovalPolicySteps)
+        .whereIn("policyId", policyIds)
+        .orderBy("stepNumber", "asc");
+
+      const bypassers = (await dbInstance(TableName.ApprovalPolicyBypassers)
+        .whereIn("policyId", policyIds)
+        .select("policyId", "userId", "groupId")) as { policyId: string; userId: string | null; groupId: string | null }[];
 
       const bypassersByPolicyId = bypassers.reduce<Record<string, PolicyBypasser[]>>((acc, row) => {
         const list = acc[row.policyId] || [];
