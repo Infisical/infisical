@@ -49,7 +49,7 @@ export type TGatewayPoolMember = {
   id: string;
   name: string;
   heartbeat: string | null;
-  lastHealthCheckStatus: string | null;
+  heartbeatTTL: number | null;
 };
 
 export type TGatewayPoolWithMembers = {
