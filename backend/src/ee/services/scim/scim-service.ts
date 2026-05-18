@@ -1318,8 +1318,11 @@ export const scimServiceFactory = ({
       updatedGroup = await processReplacement(outerTx);
       await $syncNewMembersRoles(updatedGroup, members, outerTx);
     } else {
-      updatedGroup = await groupDAL.transaction(processReplacement);
-      await $syncNewMembersRoles(updatedGroup, members);
+      updatedGroup = await groupDAL.transaction(async (tx) => {
+        const replacedGroup = await processReplacement(tx);
+        await $syncNewMembersRoles(updatedGroup, members, tx);
+        return replacedGroup;
+      });
     }
 
     return updatedGroup;
