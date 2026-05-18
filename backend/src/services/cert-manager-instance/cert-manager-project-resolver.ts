@@ -28,10 +28,7 @@ const resolveCertManagerProjectId = async (
   }
   if (org.defaultCertManagerProjectId) return org.defaultCertManagerProjectId;
 
-  throw new BadRequestError({
-    message:
-      "This organization has multiple Certificate Manager projects but no default is set. An org Admin must set the default in the Certificate Manager settings."
-  });
+  return "";
 };
 
 export type TCertManagerProjectResolverFactory = ReturnType<typeof certManagerProjectResolverFactory>;
