@@ -9,7 +9,7 @@ import {
 } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
 
-import { ApproverType, EnforcementLevel } from "./approval-policy-enums";
+import { ApprovalPolicyScope, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 
 const ApprovalPolicyStepSchema = z.object({
   name: z.string().min(1).max(128).nullable().optional(),
@@ -46,7 +46,8 @@ export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
 });
 
 export const BaseCreateApprovalPolicySchema = z.object({
-  projectId: z.string().uuid(),
+  scope: z.nativeEnum(ApprovalPolicyScope),
+  scopeId: z.string().uuid(),
   name: z.string().min(1).max(128),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array(),
@@ -90,7 +91,8 @@ export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
 });
 
 export const BaseCreateApprovalRequestSchema = z.object({
-  projectId: z.string().uuid(),
+  scope: z.nativeEnum(ApprovalPolicyScope),
+  scopeId: z.string().uuid(),
   justification: z.string().max(256).nullable().optional(),
   requestDuration: z
     .string()

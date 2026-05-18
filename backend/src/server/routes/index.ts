@@ -258,6 +258,8 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
+import { certManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -388,6 +390,8 @@ import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgAssetDALFactory } from "@app/services/org-asset/org-asset-dal";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { orgProductStatsDALFactory } from "@app/services/org-product-stats/org-product-stats-dal";
+import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
 import { pamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
@@ -398,6 +402,11 @@ import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-
 import { pkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
 import { pkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { pkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
+import { pkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
+import { pkiApplicationEnrollmentServiceFactory } from "@app/services/pki-application/pki-application-enrollment-service";
+import { pkiApplicationMembershipServiceFactory } from "@app/services/pki-application/pki-application-membership-service";
+import { pkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
+import { pkiApplicationServiceFactory } from "@app/services/pki-application/pki-application-service";
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
@@ -571,6 +580,7 @@ export const registerRoutes = async (
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
+  const orgProductStatsDAL = orgProductStatsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -1141,6 +1151,7 @@ export const registerRoutes = async (
     reminderService,
     membershipRoleDAL,
     membershipUserDAL,
+    membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
     additionalPrivilegeDAL
@@ -1151,6 +1162,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     orgDAL,
+    projectDAL,
     permissionService
   });
 
@@ -1200,6 +1212,10 @@ export const registerRoutes = async (
   const offlineUsageReportService = offlineUsageReportServiceFactory({
     offlineUsageReportDAL,
     licenseService
+  });
+
+  const orgProductStatsService = orgProductStatsServiceFactory({
+    orgProductStatsDAL
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -1289,6 +1305,8 @@ export const registerRoutes = async (
   const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
   const certificateProfileDAL = certificateProfileDALFactory(db);
+  const pkiApplicationDAL = pkiApplicationDALFactory(db);
+  const pkiApplicationProfileDAL = pkiApplicationProfileDALFactory(db);
   const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
@@ -1334,6 +1352,10 @@ export const registerRoutes = async (
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
+  const approvalRequestDAL = approvalRequestDALFactory(db);
+  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
+  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
@@ -1428,7 +1450,53 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     projectDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiApplicationProfileDAL
+  });
+
+  const pkiApplicationService = pkiApplicationServiceFactory({
+    pkiApplicationDAL,
+    pkiApplicationProfileDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    approvalPolicyDAL,
+    approvalRequestDAL,
+    permissionService
+  });
+
+  const pkiApplicationMembershipService = pkiApplicationMembershipServiceFactory({
+    pkiApplicationDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    userDAL,
+    identityDAL,
+    groupDAL,
+    approvalPolicyDAL
+  });
+
+  const certManagerProjectResolver = certManagerProjectResolverFactory({
+    orgDAL,
+    projectDAL
+  });
+
+  const certManagerInstanceService = certManagerInstanceServiceFactory({
+    db,
+    orgDAL,
+    projectDAL,
+    permissionService
+  });
+
+  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
+    pkiApplicationDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
+    kmsService,
+    projectDAL,
+    permissionService
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
@@ -2145,7 +2213,8 @@ export const registerRoutes = async (
     kmsService,
     notificationService,
     projectMembershipDAL,
-    projectDAL
+    projectDAL,
+    pkiApplicationDAL
   });
 
   const pkiAlertV2Queue = pkiAlertV2QueueServiceFactory({
@@ -2229,11 +2298,6 @@ export const registerRoutes = async (
     permissionService,
     licenseService
   });
-
-  const approvalRequestDAL = approvalRequestDALFactory(db);
-  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
-  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
-  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
 
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
@@ -2643,7 +2707,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     certificateAuthorityService,
     resourceMetadataDAL,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    pkiApplicationDAL
   });
 
   const digicertCaFns = DigiCertCertificateAuthorityFns({
@@ -2718,6 +2783,8 @@ export const registerRoutes = async (
     approvalPolicyBypassersDAL,
     permissionService,
     projectMembershipDAL,
+    membershipDAL,
+    pkiApplicationDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
@@ -2755,7 +2822,8 @@ export const registerRoutes = async (
     identityDAL,
     approvalPolicyService,
     resourceMetadataDAL,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    pkiApplicationProfileDAL
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2786,7 +2854,8 @@ export const registerRoutes = async (
     licenseService,
     certificateProfileDAL,
     estEnrollmentConfigDAL,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    pkiApplicationProfileDAL
   });
 
   const pkiScepService = pkiScepServiceFactory({
@@ -2808,7 +2877,8 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateIssuanceQueue,
     auditLogService,
-    permissionService
+    permissionService,
+    pkiApplicationProfileDAL
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -2843,7 +2913,9 @@ export const registerRoutes = async (
     auditLogService,
     approvalPolicyDAL,
     approvalPolicyService,
-    certificateRequestDAL
+    certificateRequestDAL,
+    pkiApplicationProfileDAL,
+    acmeEnrollmentConfigDAL
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({
@@ -3309,6 +3381,7 @@ export const registerRoutes = async (
     authToken: tokenService,
     superAdmin: superAdminService,
     offlineUsageReport: offlineUsageReportService,
+    orgProductStats: orgProductStatsService,
     project: projectService,
     projectMembership: projectMembershipService,
     projectKey: projectKeyService,
@@ -3370,6 +3443,11 @@ export const registerRoutes = async (
     certificateTemplate: certificateTemplateService,
     certificatePolicy: certificatePolicyService,
     certificateProfile: certificateProfileService,
+    pkiApplication: pkiApplicationService,
+    pkiApplicationMembership: pkiApplicationMembershipService,
+    pkiApplicationEnrollment: pkiApplicationEnrollmentService,
+    certManagerProjectResolver,
+    certManagerInstance: certManagerInstanceService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,

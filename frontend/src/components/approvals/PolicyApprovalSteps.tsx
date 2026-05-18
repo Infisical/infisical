@@ -9,10 +9,15 @@ import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
+import { useListPkiApplicationMembers } from "@app/hooks/api/pkiApplications";
 
 import { TFormWithApprovalSteps } from "./ApprovalStepsSchema";
 
-export const PolicyApprovalSteps = () => {
+type Props = {
+  applicationId?: string;
+};
+
+export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
   const { control } = useFormContext<TFormWithApprovalSteps>();
 
   const { currentProject } = useProject();
@@ -20,6 +25,7 @@ export const PolicyApprovalSteps = () => {
 
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
+  const { data: appMembers = [] } = useListPkiApplicationMembers(applicationId ?? "");
 
   const {
     fields: stepFields,
@@ -30,24 +36,47 @@ export const PolicyApprovalSteps = () => {
     name: "steps"
   });
 
-  const memberOptions = useMemo(
-    () =>
-      members.map((member) => ({
-        id: member.user.id,
-        type: ApproverType.User,
-        isOrgMembershipActive: member.user.isOrgMembershipActive
-      })),
-    [members]
-  );
+  const memberOptions = useMemo(() => {
+    if (applicationId) {
+      return appMembers
+        .filter((m) => Boolean(m.actorUserId))
+        .map((m) => ({
+          id: m.actorUserId as string,
+          type: ApproverType.User,
+          isOrgMembershipActive: true
+        }));
+    }
+    return members.map((member) => ({
+      id: member.user.id,
+      type: ApproverType.User,
+      isOrgMembershipActive: member.user.isOrgMembershipActive
+    }));
+  }, [applicationId, appMembers, members]);
 
-  const groupOptions = useMemo(
-    () =>
-      groups?.map(({ group }) => ({
-        id: group.id,
-        type: ApproverType.Group
-      })),
-    [groups]
-  );
+  const groupOptions = useMemo(() => {
+    if (applicationId) {
+      return appMembers
+        .filter((m) => Boolean(m.actorGroupId))
+        .map((m) => ({ id: m.actorGroupId as string, type: ApproverType.Group }));
+    }
+    return groups?.map(({ group }) => ({ id: group.id, type: ApproverType.Group })) ?? [];
+  }, [applicationId, appMembers, groups]);
+
+  const userLabel = (userId: string) => {
+    if (applicationId) {
+      const m = appMembers.find((member) => member.actorUserId === userId);
+      return m?.details?.name || m?.details?.username || m?.details?.email || userId;
+    }
+    const member = members.find((m) => m.user.id === userId);
+    return member ? getMemberLabel(member) : userId;
+  };
+  const groupLabel = (groupId: string) => {
+    if (applicationId) {
+      const m = appMembers.find((member) => member.actorGroupId === groupId);
+      return m?.details?.name || groupId;
+    }
+    return groups?.find(({ group }) => group.id === groupId)?.group.name ?? groupId;
+  };
 
   return (
     <div className="space-y-4">
@@ -167,11 +196,7 @@ export const PolicyApprovalSteps = () => {
                             placeholder="Select users..."
                             options={memberOptions}
                             getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => {
-                              const member = members?.find((m) => m.user.id === option.id);
-                              if (!member) return option.id;
-                              return getMemberLabel(member);
-                            }}
+                            getOptionLabel={(option) => userLabel(option.id)}
                             value={userApprovers}
                             onChange={(selected) => {
                               const newApprovers = [
@@ -202,10 +227,7 @@ export const PolicyApprovalSteps = () => {
                             placeholder="Select groups..."
                             options={groupOptions}
                             getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) =>
-                              groups?.find(({ group }) => group.id === option.id)?.group.name ??
-                              option.id
-                            }
+                            getOptionLabel={(option) => groupLabel(option.id)}
                             value={groupApprovers}
                             onChange={(selected) => {
                               const newApprovers = [

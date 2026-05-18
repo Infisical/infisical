@@ -28,6 +28,8 @@ export enum TableName {
   PkiCertificateTemplateV2 = "pki_certificate_templates_v2",
   PkiCertificatePolicy = "pki_certificate_policies",
   PkiCertificateProfile = "pki_certificate_profiles",
+  PkiApplication = "pki_applications",
+  PkiApplicationProfile = "pki_application_profiles",
   PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
   PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
@@ -351,6 +353,17 @@ export enum ProjectMembershipRole {
   KmsCryptographicOperator = "cryptographic-operator"
 }
 
+export enum ApplicationMembershipRole {
+  Admin = "admin",
+  Operator = "operator",
+  Auditor = "auditor",
+  Custom = "custom"
+}
+
+export enum ResourceType {
+  CertificateApplication = "certificate-application"
+}
+
 export enum SecretEncryptionAlgo {
   AES_256_GCM = "aes-256-gcm"
 }
@@ -441,6 +454,8 @@ export enum AccessScope {
   Organization = "organization",
   Project = "project"
 }
+
+export const RESOURCE_SCOPE = "resource";
 
 export type AccessScopeData =
   | {

@@ -4,6 +4,7 @@ import { PkiCertificateInstallationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -21,7 +22,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       operationId: "listPkiInstallations",
       description: "List PKI certificate installations for a project",
       querystring: z.object({
-        projectId: z.string().describe("The ID of the project"),
+        projectId: z.string().optional().describe(openApiHidden()),
         discoveryId: z.string().uuid().optional().describe("Filter by discovery configuration ID"),
         certificateId: z.string().uuid().optional().describe("Filter by certificate ID"),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
@@ -42,8 +43,9 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
       const { installations, totalCount } = await server.services.pkiInstallation.listInstallations({
-        projectId: req.query.projectId,
+        projectId,
         discoveryId: req.query.discoveryId,
         certificateId: req.query.certificateId,
         offset: req.query.offset,
@@ -57,7 +59,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.GET_PKI_INSTALLATIONS,
           metadata: {

@@ -148,6 +148,8 @@ export * from "./pki-alert-history-certificate";
 export * from "./pki-alerts";
 export * from "./pki-alerts-v2";
 export * from "./pki-api-enrollment-configs";
+export * from "./pki-application-profiles";
+export * from "./pki-applications";
 export * from "./pki-certificate-installation-certs";
 export * from "./pki-certificate-installations";
 export * from "./pki-certificate-policies";

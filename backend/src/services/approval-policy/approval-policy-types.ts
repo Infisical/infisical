@@ -7,7 +7,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 
-import { ApprovalPolicyType, ApproverType, EnforcementLevel } from "./approval-policy-enums";
+import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
@@ -87,7 +87,8 @@ export interface PolicyBypasser {
 
 // Policy DTOs
 export interface TCreatePolicyDTO {
-  projectId: TApprovalPolicy["projectId"];
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   name: TApprovalPolicy["name"];
   maxRequestTtl?: TApprovalPolicy["maxRequestTtl"];
   conditions: TApprovalPolicy["conditions"]["conditions"];
@@ -111,7 +112,8 @@ export interface TUpdatePolicyDTO {
 
 // Request DTOs
 export interface TCreateRequestDTO {
-  projectId: TApprovalRequest["projectId"];
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   requestData: TApprovalRequest["requestData"]["requestData"];
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;

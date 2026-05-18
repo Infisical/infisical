@@ -5,6 +5,7 @@ import {
   BanIcon,
   CheckCircleIcon,
   ClipboardCopyIcon,
+  KeyRoundIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -28,6 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
@@ -58,6 +60,8 @@ import {
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { RequestSigningAccessModal } from "../../ApprovalsPage/components/CodeSigningRequestsTab/RequestSigningAccessModal";
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { EditSignerModal } from "../../SignerDetailPage/components/EditSignerModal";
 
 type Props = {
@@ -76,6 +80,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const [debouncedSearch] = useDebounce(search, 300);
   const [deleteSignerId, setDeleteSignerId] = useState<string | null>(null);
   const [editSigner, setEditSigner] = useState<TSigner | null>(null);
+  const [requestAccessSigner, setRequestAccessSigner] = useState<TSigner | null>(null);
 
   const { data, isLoading } = useListSigners({
     projectId,
@@ -102,7 +107,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
         <CardHeader>
           <CardTitle>
             Signers
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/code-signing" />
+            <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
           </CardTitle>
           <CardDescription>Manage signers and control who can sign artifacts.</CardDescription>
           <CardAction>
@@ -199,6 +204,17 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             <ClipboardCopyIcon />
                             Copy ID
                           </DropdownMenuItem>
+                          {signer.approvalPolicyId ? (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRequestAccessSigner(signer);
+                              }}
+                            >
+                              <KeyRoundIcon />
+                              Request Signing Access
+                            </DropdownMenuItem>
+                          ) : null}
                           <ProjectPermissionCan
                             I={ProjectPermissionCodeSigningActions.Edit}
                             a={ProjectPermissionSub.CodeSigners}
@@ -266,9 +282,10 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             </TableBody>
           </Table>
           {!isLoading && signers.length === 0 && (
-            <Empty>
+            <Empty className="border border-solid">
               <EmptyHeader>
-                <EmptyTitle>No signers found</EmptyTitle>
+                <EmptyTitle>No signers yet</EmptyTitle>
+                <EmptyDescription>Create a signer to start signing artifacts</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
@@ -302,6 +319,13 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           projectId={projectId}
         />
       )}
+      <RequestSigningAccessModal
+        isOpen={Boolean(requestAccessSigner)}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccessSigner(null);
+        }}
+        signer={requestAccessSigner ?? undefined}
+      />
     </>
   );
 };

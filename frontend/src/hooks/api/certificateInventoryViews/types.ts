@@ -9,6 +9,7 @@ export type TInventoryViewFilters = {
   keySizes?: number[];
   caIds?: string[];
   profileIds?: string[];
+  applicationIds?: string[];
   source?: string | string[];
 };
 
@@ -45,15 +46,14 @@ export type TListInventoryViewsResponse = {
 };
 
 export type TCreateInventoryViewDTO = {
-  projectId: string;
   name: string;
   filters: TInventoryViewFilters;
   columns?: string[];
   isShared?: boolean;
+  applicationId?: string;
 };
 
 export type TUpdateInventoryViewDTO = {
-  projectId: string;
   viewId: string;
   name?: string;
   filters?: TInventoryViewFilters;
@@ -62,6 +62,5 @@ export type TUpdateInventoryViewDTO = {
 };
 
 export type TDeleteInventoryViewDTO = {
-  projectId: string;
   viewId: string;
 };

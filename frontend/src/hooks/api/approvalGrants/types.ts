@@ -1,4 +1,4 @@
-import { ApprovalPolicyType } from "../approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "../approvalPolicies";
 
 export enum ApprovalGrantStatus {
   Active = "active",
@@ -45,7 +45,8 @@ export type TApprovalGrant = {
 // DTOs
 export type TListApprovalGrantsDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  id: string;
 };
 
 export type TGetApprovalGrantByIdDTO = {

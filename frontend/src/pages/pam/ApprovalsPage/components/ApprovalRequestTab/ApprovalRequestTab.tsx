@@ -40,7 +40,11 @@ import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import { getUserTablePreference, PreferenceKey } from "@app/helpers/userTablePreferences";
 import { usePagination } from "@app/hooks";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApproverType
+} from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
@@ -104,7 +108,8 @@ export const ApprovalRequestTab = () => {
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.PamAccess,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 

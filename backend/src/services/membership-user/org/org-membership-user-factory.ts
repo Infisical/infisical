@@ -1,11 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, ResourceType } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionMemberActions } from "@app/ee/services/permission/project-permission";
+import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -24,7 +26,10 @@ import { TMembershipUserDALFactory } from "../membership-user-dal";
 import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TOrgMembershipUserScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getOrgPermissionByRoles" | "getResourcePermission"
+  >;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   userDAL: Pick<TUserDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -63,27 +68,43 @@ export const newOrgMembershipUserFactory = ({
     dto,
     newMembers
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
-
-    if (dto.data.roles.length) {
-      const permissionRoles = await permissionService.getOrgPermissionByRoles(
-        dto.data.roles.map((el) => el.role),
-        dto.permission.orgId
+    if (dto.bootstrapForApplication) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        projectId: dto.bootstrapForApplication.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: dto.bootstrapForApplication.applicationId,
+        actorAuthMethod: dto.permission.authMethod,
+        actorOrgId: dto.permission.orgId
+      });
+      ForbiddenError.from(resourcePermission).throwUnlessCan(
+        ProjectPermissionMemberActions.Create,
+        ResourcePermissionSub.Member
       );
-      for (const permissionRole of permissionRoles) {
-        assertPermissionBoundary(
-          permission,
-          permissionRole.permission,
-          "Cannot grant a role exceeding your own privileges to a new org member"
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        orgId: dto.permission.orgId,
+        actorAuthMethod: dto.permission.authMethod,
+        actorOrgId: dto.permission.orgId,
+        scope: OrganizationActionScope.Any
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+
+      if (dto.data.roles.length) {
+        const permissionRoles = await permissionService.getOrgPermissionByRoles(
+          dto.data.roles.map((el) => el.role),
+          dto.permission.orgId
         );
+        for (const permissionRole of permissionRoles) {
+          assertPermissionBoundary(
+            permission,
+            permissionRole.permission,
+            "Cannot grant a role exceeding your own privileges to a new org member"
+          );
+        }
       }
     }
 

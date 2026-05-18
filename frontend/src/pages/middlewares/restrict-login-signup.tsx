@@ -10,8 +10,11 @@ import { z } from "zod";
 import { Button } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
+import { getLastProject } from "@app/helpers/lastProject";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { userKeys } from "@app/hooks/api/users";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { GtmHead } from "@app/hooks/useGtm";
 
 const QueryParamsSchema = z.object({
@@ -113,9 +116,19 @@ export const Route = createFileRoute("/_restrict-login-signup")({
 
     const orgId = data.subOrganizationId || data.organizationId;
     if (orgId) {
+      const user = await context.queryClient
+        .ensureQueryData({
+          queryKey: userKeys.getUser,
+          queryFn: fetchUserDetails
+        })
+        .catch(() => null);
+
+      const lastProjectId = user?.id ? getLastProject(user.id, orgId) : null;
+
       throw redirect({
         to: "/organizations/$orgId/projects",
-        params: { orgId }
+        params: { orgId },
+        search: lastProjectId ? { projectRedirect: lastProjectId } : undefined
       });
     }
   },

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -103,12 +105,27 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectId = async (policyType: ApprovalPolicyType, projectId: string) => {
+  const findByProjectId = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    options?: { scopeType?: string | null; scopeId?: string | null }
+  ) => {
     try {
       const dbInstance = db.replicaNode();
-      const policies = await dbInstance(TableName.ApprovalPolicies)
+      const baseQuery = dbInstance(TableName.ApprovalPolicies)
         .where({ type: policyType, projectId })
         .orderBy("id", "asc");
+
+      if (options?.scopeType === null) {
+        void baseQuery.whereNull("scopeType");
+      } else if (typeof options?.scopeType === "string") {
+        void baseQuery.where({ scopeType: options.scopeType });
+        if (typeof options?.scopeId === "string") {
+          void baseQuery.where({ scopeId: options.scopeId });
+        }
+      }
+
+      const policies = await baseQuery;
 
       if (!policies.length) {
         return [];
@@ -191,12 +208,136 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Return the list of policies (with name + id) that include the given subject as an approver
+   * on any step. The subject is identified by `userId` OR `groupId` (not both). Used to block
+   * removing a member from an application while they're still wired up as a reviewer.
+   */
+  const findPoliciesWhereSubjectIsApprover = async (args: {
+    projectId: string;
+    scopeType?: string;
+    scopeId?: string;
+    userId?: string;
+    groupId?: string;
+  }) => {
+    try {
+      const dbInstance = db.replicaNode();
+
+      const baseQuery = dbInstance(TableName.ApprovalPolicies)
+        .where({ projectId: args.projectId })
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .innerJoin(
+          TableName.ApprovalPolicyStepApprovers,
+          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+          `${TableName.ApprovalPolicySteps}.id`
+        );
+
+      if (typeof args.scopeType === "string") {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
+        if (typeof args.scopeId === "string") {
+          void baseQuery.where(`${TableName.ApprovalPolicies}.scopeId`, args.scopeId);
+        }
+      }
+
+      if (args.userId) {
+        void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+      } else if (args.groupId) {
+        void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupId);
+      } else {
+        return [];
+      }
+
+      const rows = await baseQuery
+        .distinct(`${TableName.ApprovalPolicies}.id`, `${TableName.ApprovalPolicies}.name`)
+        .select<{ id: string; name: string }[]>();
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find policies where subject is approver" });
+    }
+  };
+
+  const deleteStepApproversBySubject = async (
+    args: {
+      projectId: string;
+      scopeType?: string;
+      scopeId?: string;
+      userId?: string;
+      groupId?: string;
+    },
+    tx?: Knex
+  ): Promise<{ id: string; name: string }[]> => {
+    try {
+      if (!args.userId && !args.groupId) return [];
+
+      const conn = tx || db;
+
+      const policiesToTouchQuery = conn(TableName.ApprovalPolicies)
+        .where(`${TableName.ApprovalPolicies}.projectId`, args.projectId)
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .innerJoin(
+          TableName.ApprovalPolicyStepApprovers,
+          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+          `${TableName.ApprovalPolicySteps}.id`
+        );
+
+      if (typeof args.scopeType === "string") {
+        void policiesToTouchQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
+        if (typeof args.scopeId === "string") {
+          void policiesToTouchQuery.where(`${TableName.ApprovalPolicies}.scopeId`, args.scopeId);
+        }
+      }
+
+      if (args.userId) {
+        void policiesToTouchQuery.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+      } else if (args.groupId) {
+        void policiesToTouchQuery.where(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupId);
+      }
+
+      const affectedPolicies = (await policiesToTouchQuery
+        .distinct(`${TableName.ApprovalPolicies}.id`, `${TableName.ApprovalPolicies}.name`)
+        .select<{ id: string; name: string }[]>()) as { id: string; name: string }[];
+
+      if (affectedPolicies.length === 0) return [];
+
+      const affectedPolicyIds = affectedPolicies.map((p) => p.id);
+
+      const stepIds = (
+        await conn(TableName.ApprovalPolicySteps).whereIn("policyId", affectedPolicyIds).select<{ id: string }[]>("id")
+      ).map((s) => s.id);
+
+      if (stepIds.length === 0) return affectedPolicies;
+
+      const deleteQuery = conn(TableName.ApprovalPolicyStepApprovers).whereIn("policyStepId", stepIds);
+      if (args.userId) {
+        void deleteQuery.andWhere("userId", args.userId);
+      } else if (args.groupId) {
+        void deleteQuery.andWhere("groupId", args.groupId);
+      }
+      await deleteQuery.delete();
+
+      return affectedPolicies;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete step approvers by subject" });
+    }
+  };
+
   return {
     ...orm,
     findStepsByPolicyId,
     findBypassersByPolicyId,
     findBypassersByPolicyIds,
-    findByProjectId
+    findByProjectId,
+    findPoliciesWhereSubjectIsApprover,
+    deleteStepApproversBySubject
   };
 };
 

@@ -42,6 +42,7 @@ import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approva
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { TPamAccessPolicy } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -833,7 +834,12 @@ export const pamAccountServiceFactory = ({
           details: {
             policyId: policy.id,
             policyName: policy.name,
-            policyType: policy.type
+            policyType: policy.type,
+            constraints: {
+              accessDuration: {
+                max: (policy as TPamAccessPolicy).constraints.constraints.accessDuration.max
+              }
+            }
           }
         });
       }

@@ -14,14 +14,14 @@ import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pk
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const NetworkTargetConfigSchema = z
   .object({
-    ipRanges: z.array(z.string()).optional(),
-    domains: z.array(z.string()).optional(),
+    ipRanges: z.array(z.string().max(64)).optional(),
+    domains: z.array(z.string().max(253)).optional(),
     ports: z.string().default(DEFAULT_TLS_PORTS)
   })
   .refine((data) => (data.ipRanges && data.ipRanges.length > 0) || (data.domains && data.domains.length > 0), {
@@ -76,7 +76,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       description: "Create a new PKI discovery configuration",
       body: z
         .object({
-          projectId: z.string().describe("The ID of the project"),
+          projectId: z.string().optional().describe(openApiHidden()),
           name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
           description: z.string().max(500).optional().describe("Description of the discovery configuration"),
           discoveryType: z
@@ -114,8 +114,9 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
       }
 
+      const projectId = req.internalCertManagerProjectId;
       const discovery = await server.services.pkiDiscovery.createDiscovery({
-        projectId: req.body.projectId,
+        projectId,
         name: req.body.name,
         description: req.body.description,
         discoveryType: req.body.discoveryType,
@@ -132,7 +133,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId,
         event: {
           type: EventType.CREATE_PKI_DISCOVERY,
           metadata: {
@@ -159,7 +160,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPkiDiscoveries",
       description: "List PKI discovery configurations for a project",
       querystring: z.object({
-        projectId: z.string().describe("The ID of the project"),
+        projectId: z.string().optional().describe(openApiHidden()),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
         limit: z.coerce.number().min(1).max(100).optional().default(25).describe("Pagination limit"),
         search: z.string().optional().describe("Search filter for name or description")
@@ -177,8 +178,9 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
       const { discoveries, totalCount } = await server.services.pkiDiscovery.listDiscoveries({
-        projectId: req.query.projectId,
+        projectId,
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
@@ -190,7 +192,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.GET_PKI_DISCOVERIES,
           metadata: {

@@ -4,6 +4,11 @@ export enum ApprovalPolicyType {
   CertCodeSigning = "cert-code-signing"
 }
 
+export enum ApprovalPolicyScope {
+  Project = "project",
+  PkiApplication = "pki-application"
+}
+
 export enum ApproverType {
   Group = "group",
   User = "user"
@@ -78,13 +83,16 @@ export type TApprovalPolicy = {
   bypassForMachineIdentities?: boolean;
   enforcementLevel: EnforcementLevel;
   bypassers: PolicyBypasser[];
+  scopeType?: ApprovalPolicyScope | string | null;
+  scopeId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TCreateApprovalPolicyDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   name: string;
   maxRequestTtl?: string | null;
   conditions: PamAccessPolicyConditions | CertRequestPolicyConditions | CodeSigningPolicyConditions;
@@ -124,7 +132,8 @@ export type TGetApprovalPolicyByIdDTO = {
 
 export type TListApprovalPoliciesDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
 };
 
 export type TDeleteApprovalPolicyDTO = {

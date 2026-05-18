@@ -6,6 +6,7 @@ export {
 } from "./mutations";
 export { approvalPolicyQuery } from "./queries";
 export {
+  ApprovalPolicyScope,
   type ApprovalPolicyStep,
   ApprovalPolicyType,
   ApproverType,

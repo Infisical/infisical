@@ -2,15 +2,19 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -24,6 +28,7 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
@@ -48,6 +53,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
   TCertificateFingerprints,
   TCertificateSubject,
@@ -64,8 +70,17 @@ import {
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById" | "findWithFullDetails"
+    | "findOne"
+    | "deleteById"
+    | "update"
+    | "find"
+    | "transaction"
+    | "create"
+    | "findById"
+    | "findWithFullDetails"
+    | "updateById"
   >;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -74,9 +89,9 @@ type TCertificateServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -105,8 +120,31 @@ export const certificateServiceFactory = ({
   pkiSyncQueue,
   certificateAuthorityService,
   resourceMetadataDAL,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  pkiApplicationDAL
 }: TCertificateServiceFactoryDep) => {
+  const $canActOnCertViaApplication = async (
+    cert: { applicationId?: string | null; projectId: string },
+    action: ResourcePermissionCertificateActions,
+    actor: {
+      type: Parameters<TPermissionServiceFactory["getResourcePermission"]>[0]["actor"];
+      id: string;
+      authMethod: Parameters<TPermissionServiceFactory["getResourcePermission"]>[0]["actorAuthMethod"];
+      orgId: string;
+    }
+  ): Promise<boolean> => {
+    if (!cert.applicationId) return false;
+    const { permission } = await permissionService.getResourcePermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: cert.projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: cert.applicationId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    return permission.can(action, ResourcePermissionSub.Certificates);
+  };
   /**
    * Return details for certificate with serial number [serialNumber]
    */
@@ -135,18 +173,25 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certWithDetails.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certWithDetails.commonName,
-        altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: certWithDetails.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    const readSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: certWithDetails.commonName,
+      altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: certWithDetails.serialNumber,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.Read, readSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        certWithDetails,
+        ResourcePermissionCertificateActions.Read,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, readSubject);
+      }
+    }
 
     // Extract additional details from the joined result while creating clean cert object
-    const { caName, profileName, ...cert } = certWithDetails;
+    const { caName, profileName, applicationName, ...cert } = certWithDetails;
 
     // Extract subject, fingerprints, and basicConstraints
     let certSubject: TCertificateSubject | undefined;
@@ -218,6 +263,7 @@ export const certificateServiceFactory = ({
         basicConstraints,
         caName,
         profileName,
+        applicationName,
         metadata: certMetadata
       }
     };
@@ -248,15 +294,26 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    const certSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      metadata: certMetadata
+    });
+    if (cert.applicationId) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to read this certificate's private key"
+        });
+      }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+    }
 
     const { certPrivateKey } = await getCertificateCredentials({
       certId: cert.id,
@@ -278,27 +335,43 @@ export const certificateServiceFactory = ({
   const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Delete,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    if (cert.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: cert.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: cert.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Delete,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: cert.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Delete,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName,
+          altNames: cert.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: cert.serialNumber,
+          metadata: certMetadata
+        })
+      );
+    }
 
     let deletedCert;
     try {
@@ -362,29 +435,45 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Delete,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
+    if (cert.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: ca.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: cert.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Delete,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: ca.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Delete,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName,
+          altNames: cert.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: cert.serialNumber,
+          friendlyName: cert.friendlyName,
+          status: cert.status,
+          metadata: certMetadata
+        })
+      );
+    }
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
@@ -439,7 +528,8 @@ export const certificateServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: cert.id,
         projectId: ca.projectId,
-        eventType: PkiAlertEventType.REVOCATION
+        eventType: PkiAlertEventType.REVOCATION,
+        applicationId: cert.applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI revocation alert event");
@@ -480,15 +570,23 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    const readSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.Read, readSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(cert, ResourcePermissionCertificateActions.Read, {
+        type: actor,
+        id: actorId,
+        authMethod: actorAuthMethod,
+        orgId: actorOrgId
+      });
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, readSubject);
+      }
+    }
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -548,7 +646,9 @@ export const certificateServiceFactory = ({
    * Import certificate
    */
   const importCert = async ({
+    projectId: projectIdInput,
     projectSlug,
+    applicationId,
     pkiCollectionId,
     actorId,
     actorAuthMethod,
@@ -561,23 +661,52 @@ export const certificateServiceFactory = ({
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
 
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-    const projectId = project.id;
+    const resolveProjectId = async (): Promise<string> => {
+      if (projectIdInput) return projectIdInput;
+      if (projectSlug) {
+        const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+        if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+        return project.id;
+      }
+      throw new BadRequestError({ message: "Either projectId or projectSlug is required" });
+    };
+    const projectId = await resolveProjectId();
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (applicationId) {
+      const application = await pkiApplicationDAL.findById(applicationId);
+      if (!application || application.projectId !== projectId) {
+        throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
+      }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Import,
-      ProjectPermissionSub.Certificates
-    );
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Import,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Import,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     // Check PKI collection
     if (collectionId) {
@@ -713,6 +842,7 @@ export const certificateServiceFactory = ({
             notBefore,
             notAfter,
             projectId,
+            applicationId: applicationId ?? null,
             keyUsages,
             extendedKeyUsages,
             ...parsedFields
@@ -793,28 +923,39 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
+    const certSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      friendlyName: cert.friendlyName,
+      status: cert.status,
+      metadata: certMetadata
+    });
+    if (!permission.can(ProjectPermissionCertificateActions.Read, certSubject)) {
+      const allowedByApplication = await $canActOnCertViaApplication(cert, ResourcePermissionCertificateActions.Read, {
+        type: actor,
+        id: actorId,
+        authMethod: actorAuthMethod,
+        orgId: actorOrgId
+      });
+      if (!allowedByApplication) {
+        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, certSubject);
+      }
+    }
+    if (cert.applicationId) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to read this certificate's private key"
+        });
+      }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+    }
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -926,17 +1067,28 @@ export const certificateServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: cert.serialNumber,
-        friendlyName: cert.friendlyName,
-        status: cert.status,
-        metadata: certMetadata
-      })
-    );
+    const certSubject = subject(ProjectPermissionSub.Certificates, {
+      commonName: cert.commonName,
+      altNames: cert.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: cert.serialNumber,
+      friendlyName: cert.friendlyName,
+      status: cert.status,
+      metadata: certMetadata
+    });
+    if (cert.applicationId) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      );
+      if (!allowedByApplication) {
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to read this certificate's private key"
+        });
+      }
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+    }
 
     // Get certificate bundle (certificate, chain, private key)
     const { certificate, certificateChain, privateKey } = await getCertBundle({
@@ -965,6 +1117,48 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const assignCertificateToApplication = async ({
+    certificateId,
+    applicationId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAssignCertToApplicationDTO) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with id '${certificateId}' not found.` });
+    }
+
+    if (cert.applicationId) {
+      throw new BadRequestError({
+        message: "This certificate is already assigned to an Application and cannot be moved."
+      });
+    }
+
+    const application = await pkiApplicationDAL.findById(applicationId);
+    if (!application || application.projectId !== cert.projectId) {
+      throw new NotFoundError({ message: `Application with id '${applicationId}' not found in this project.` });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: cert.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    if (!hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only project admins can assign certificates to an Application."
+      });
+    }
+
+    const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+    return { certificate: updatedCert, application };
+  };
+
   return {
     getCert,
     getCertPrivateKey,
@@ -973,6 +1167,7 @@ export const certificateServiceFactory = ({
     getCertBody,
     importCert,
     getCertBundle,
-    getCertPkcs12
+    getCertPkcs12,
+    assignCertificateToApplication
   };
 };

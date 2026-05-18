@@ -60,7 +60,7 @@ import {
   PamAccessGrantAttributes,
   useRevokeApprovalGrant
 } from "@app/hooks/api/approvalGrants";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 
 const revokeGrantSchema = z.object({
   revocationReason: z.string().max(256).optional()
@@ -94,7 +94,8 @@ export const RequestGrantTab = () => {
   const { data: grants = [], isPending: isGrantsLoading } = useQuery(
     approvalGrantQuery.list({
       policyType: ApprovalPolicyType.PamAccess,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      id: projectId
     })
   );
 

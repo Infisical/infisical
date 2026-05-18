@@ -1,26 +1,30 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CodeSigningGrantsTab } from "../ApprovalsPage/components/CodeSigningGrantsTab";
 import { CodeSigningPolicyTab } from "../ApprovalsPage/components/CodeSigningPolicyTab";
-import { CodeSigningRequestsTab } from "../ApprovalsPage/components/CodeSigningRequestsTab";
 import { CreateSignerModal } from "./components/CreateSignerModal";
 import { SignersTable } from "./components/SignersTable";
+
+const TABS = ["signers", "signing-policies", "grants"] as const;
 
 export const CodeSigningPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
+  const navigate = useNavigate();
   const { selectedTab } = useSearch({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/"
   });
 
-  const activeTab = selectedTab || "signers";
+  const activeTab: (typeof TABS)[number] = TABS.includes(selectedTab as (typeof TABS)[number])
+    ? (selectedTab as (typeof TABS)[number])
+    : "signers";
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   return (
@@ -32,19 +36,42 @@ export const CodeSigningPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Code Signing"
-          description="Manage signers and control who can sign artifacts."
+          description="Securely sign code and artifacts with centralized key management and approval workflows."
         />
-        <div>
-          {activeTab === "signers" && (
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) =>
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
+              params: { orgId: currentProject.orgId, projectId: currentProject.id },
+              search: { selectedTab: v }
+            })
+          }
+        >
+          <TabList>
+            <Tab variant="project" value="signers">
+              Signers
+            </Tab>
+            <Tab variant="project" value="grants">
+              Grants
+            </Tab>
+            <Tab variant="project" value="signing-policies">
+              Signer Policies
+            </Tab>
+          </TabList>
+          <TabPanel value="signers">
             <SignersTable
               projectId={currentProject.id}
               onCreateSigner={() => setIsCreateOpen(true)}
             />
-          )}
-          {activeTab === "signing-requests" && <CodeSigningRequestsTab />}
-          {activeTab === "signing-policies" && <CodeSigningPolicyTab />}
-          {activeTab === "grants" && <CodeSigningGrantsTab />}
-        </div>
+          </TabPanel>
+          <TabPanel value="grants">
+            <CodeSigningGrantsTab />
+          </TabPanel>
+          <TabPanel value="signing-policies">
+            <CodeSigningPolicyTab />
+          </TabPanel>
+        </Tabs>
       </div>
       <CreateSignerModal
         isOpen={isCreateOpen}

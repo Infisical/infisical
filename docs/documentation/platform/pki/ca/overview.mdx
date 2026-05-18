@@ -1,13 +1,91 @@
 ---
-title: "Overview"
+title: "Certificate Authorities"
 sidebarTitle: "Overview"
+description: "Set up Certificate Authorities to issue certificates across your organization."
 ---
 
-Before issuing and managing certificates with Infisical, you'll need to configure a Certificate Authority (CA).
+A Certificate Authority (CA) is the entity that signs and issues X.509 certificates. Before teams can issue certificates through Applications, product admins need to configure at least one CA.
 
-This is the trusted entity that signs and validates the X.509 certificates used to secure your end-entities.
+Certificate Manager supports two types of CAs:
 
-Infisical supports two categories of CAs:
+<CardGroup cols={2}>
+  <Card title="Private CA" icon="lock" href="/documentation/platform/pki/ca/private-ca">
+    **Managed by Infisical**
+    
+    Create root and intermediate CAs directly in Infisical. Ideal for internal services, mTLS, and private networks where public trust isn't required.
+  </Card>
+  <Card title="External CA" icon="building-columns" href="/documentation/platform/pki/ca/external-ca">
+    **Integrated with Infisical**
+    
+    Connect to public CAs (Let's Encrypt, DigiCert) or enterprise PKI (AWS PCA, Azure ADCS, Venafi). Use existing infrastructure or issue publicly trusted certificates.
+  </Card>
+</CardGroup>
 
-- [Internal CA](/documentation/platform/pki/ca/private-ca): Internally operated root and intermediate CAs managed within Infisical. This is useful if you need complete control over your PKI and are issuing certificates for private networks, internal services, or managed devices.
-- [External CA](/documentation/platform/pki/ca/external-ca): Third-party public (e.g. Let's Encrypt, DigiCert) or private (e.g. AWS Private CA, HashiCorp Vault PKI, etc.) CAs that can be integrated with Infisical. This is useful if you want to leverage existing PKI infrastructure or issue publicly trusted certificates.
+## Which Should I Use?
+
+| Use Case | Recommended CA |
+|----------|----------------|
+| Internal services, mTLS between microservices | Private CA |
+| Public-facing websites needing browser trust | External CA (Let's Encrypt, DigiCert) |
+| Enterprise with existing PKI infrastructure | External CA (AWS PCA, Azure ADCS, Venafi) |
+| IoT devices, internal device fleet | Private CA |
+| Regulated environments with specific CA requirements | External CA (your approved provider) |
+
+## Private CA Hierarchy
+
+When using Private CAs, you typically create a hierarchy:
+
+```
+Root CA (offline, long-lived)
+└── Intermediate CA (online, issues certificates)
+    └── Leaf Certificates (TLS, mTLS, devices)
+```
+
+<Info>
+  Best practice: Keep your Root CA offline or with minimal usage. Create one or more Intermediate CAs to issue day-to-day certificates. This limits exposure if an Intermediate CA is compromised.
+</Info>
+
+## External CA Integrations
+
+Infisical integrates with major public and private CA providers:
+
+<CardGroup cols={3}>
+  <Card title="Let's Encrypt" icon="lock" href="/documentation/platform/pki/ca/lets-encrypt">
+    Free, automated, publicly trusted certificates.
+  </Card>
+  <Card title="DigiCert" icon="shield-check" href="/documentation/platform/pki/ca/digicert">
+    Enterprise-grade public and private certificates.
+  </Card>
+  <Card title="AWS PCA" icon="aws" href="/documentation/platform/pki/ca/aws-pca">
+    Private CA managed in AWS.
+  </Card>
+  <Card title="Azure ADCS" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
+    Active Directory Certificate Services.
+  </Card>
+  <Card title="Venafi" icon="building" href="/documentation/platform/pki/ca/venafi">
+    Enterprise certificate lifecycle management.
+  </Card>
+  <Card title="ACME CAs" icon="robot" href="/documentation/platform/pki/ca/acme-ca">
+    Any ACME-compatible CA.
+  </Card>
+</CardGroup>
+
+[View all External CA integrations →](/documentation/platform/pki/ca/external-ca)
+
+## Next Steps
+
+<Steps>
+  <Step title="Create or connect a CA">
+    Set up a [Private CA](/documentation/platform/pki/ca/private-ca) or connect an [External CA](/documentation/platform/pki/ca/external-ca).
+  </Step>
+  <Step title="Create a Certificate Policy">
+    Define the rules for certificates — allowed domains, validity periods, key algorithms.
+    
+    [Certificate Policies →](/documentation/platform/pki/settings/policies)
+  </Step>
+  <Step title="Create a Certificate Profile">
+    Combine your CA with a policy to create a reusable profile that teams can consume.
+    
+    [Certificate Profiles →](/documentation/platform/pki/settings/profiles)
+  </Step>
+</Steps>

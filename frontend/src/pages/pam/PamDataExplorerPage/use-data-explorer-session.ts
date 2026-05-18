@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import ms from "ms";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 
+import { DEFAULT_ACCESS_DURATION } from "../constants";
 import type {
   DataExplorerClientMessage,
   DataExplorerServerMessage,
@@ -31,6 +33,7 @@ type ApprovalState = {
   required: boolean;
   policyName?: string;
   policyId?: string;
+  accessDurationMax?: string;
   creating: boolean;
   submitted: boolean;
   approvalRequestId?: string;
@@ -239,6 +242,7 @@ export const useDataExplorerSession = ({
                 mfaMethod?: string;
                 policyId?: string;
                 policyName?: string;
+                constraints?: { accessDuration: { max: string } };
               };
             };
           };
@@ -262,6 +266,7 @@ export const useDataExplorerSession = ({
             required: true,
             policyName: details?.policyName,
             policyId: details?.policyId,
+            accessDurationMax: details?.constraints?.accessDuration.max,
             creating: false,
             submitted: false
           });
@@ -347,7 +352,11 @@ export const useDataExplorerSession = ({
           {
             projectId,
             requestData: {
-              accessDuration: "1h",
+              accessDuration:
+                approvalState.accessDurationMax &&
+                ms(approvalState.accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
+                  ? approvalState.accessDurationMax
+                  : DEFAULT_ACCESS_DURATION,
               resourceName,
               accountName
             },
