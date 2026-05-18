@@ -213,6 +213,8 @@ export const auditLogStreamServiceFactory = ({
 
     const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
 
+    await resetFailureTracking(logStreamId);
+
     return decryptLogStream(deletedLogStream, kmsService);
   };
 
