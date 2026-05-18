@@ -192,7 +192,9 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         alertQuery = alertQuery.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
       }
 
-      alertQuery = alertQuery.orderBy(`${TableName.PkiAlertsV2}.createdAt`, "desc");
+      alertQuery = alertQuery
+        .orderBy(`${TableName.PkiAlertsV2}.createdAt`, "desc")
+        .orderBy(`${TableName.PkiAlertsV2}.id`, "asc");
 
       if (filters?.limit) {
         alertQuery = alertQuery.limit(filters.limit);

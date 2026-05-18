@@ -99,6 +99,7 @@ export const signerDALFactory = (db: TDbClient) => {
 
       return (await query
         .orderBy(`${TableName.PkiSigners}.createdAt`, "desc")
+        .orderBy(`${TableName.PkiSigners}.id`, "asc")
         .offset(offset)
         .limit(limit)) as TSignerWithCertificateSummary[];
     } catch (error) {
