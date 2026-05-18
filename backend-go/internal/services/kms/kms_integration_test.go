@@ -228,6 +228,7 @@ func TestProjectCipherPair_CreatesFromScratch(t *testing.T) {
 	require.Equal(t, plaintext, decrypted)
 }
 
+// TODO(go): fix the naming convention. Think about go way of this
 func TestProjectCipherPair_Idempotent(t *testing.T) {
 	svc := startedService(t)
 	ctx := context.Background()
