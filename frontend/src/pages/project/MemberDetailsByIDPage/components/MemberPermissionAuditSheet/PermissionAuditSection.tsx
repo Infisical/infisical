@@ -5,7 +5,6 @@ import {
   Badge,
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow
@@ -34,9 +33,21 @@ const matchesSearch = (action: ActionAudit, term: string): boolean => {
   return haystack.includes(needle);
 };
 
+const resourceMatches = (resource: ResourceAudit, term: string): boolean => {
+  if (!term) return true;
+  const needle = term.toLowerCase();
+  return (
+    resource.label.toLowerCase().includes(needle) ||
+    resource.description.toLowerCase().includes(needle)
+  );
+};
+
 export const PermissionAuditSection = ({ resource, stateFilter, search }: Props) => {
+  const resourceHit = resourceMatches(resource, search);
   const visibleActions = resource.actions.filter(
-    (a) => matchesSearch(a, search) && (stateFilter === "all" || a.state === stateFilter)
+    (a) =>
+      (resourceHit || matchesSearch(a, search)) &&
+      (stateFilter === "all" || a.state === stateFilter)
   );
 
   const grantedCount = resource.allowedCount + resource.conditionalCount;
@@ -73,13 +84,6 @@ export const PermissionAuditSection = ({ resource, stateFilter, search }: Props)
               {visibleActions.map((audit) => (
                 <PermissionAuditRow key={audit.action} audit={audit} />
               ))}
-              {visibleActions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-xs text-muted">
-                    —
-                  </TableCell>
-                </TableRow>
-              ) : null}
             </TableBody>
           </Table>
         )}

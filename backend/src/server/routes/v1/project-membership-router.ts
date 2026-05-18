@@ -175,7 +175,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               isTemporary: z.boolean(),
               temporaryAccessStartTime: z.string().optional(),
               temporaryAccessEndTime: z.string().optional(),
-              permissions: z.any().array()
+              permissions: z.array(z.unknown())
             })
             .array()
         })

@@ -53,6 +53,15 @@ const STATE_FILTERS: { id: StateFilter; label: string }[] = [
   { id: "forbid", label: "Forbidden" }
 ];
 
+const resourceMatchesSearch = (resource: ResourceAudit, term: string): boolean => {
+  if (!term) return true;
+  const needle = term.toLowerCase();
+  return (
+    resource.label.toLowerCase().includes(needle) ||
+    resource.description.toLowerCase().includes(needle)
+  );
+};
+
 const actionMatchesSearch = (action: ResourceAudit["actions"][number], term: string): boolean => {
   if (!term) return true;
   const needle = term.toLowerCase();
@@ -107,11 +116,14 @@ export const MemberPermissionAuditSheet = ({
   }, [data, projectType]);
 
   const filteredResources = useMemo(() => {
-    return resources.filter((r) =>
-      r.actions.some(
-        (a) => actionMatchesSearch(a, search) && (stateFilter === "all" || a.state === stateFilter)
-      )
-    );
+    return resources.filter((r) => {
+      const resourceMatches = resourceMatchesSearch(r, search);
+      return r.actions.some(
+        (a) =>
+          (resourceMatches || actionMatchesSearch(a, search)) &&
+          (stateFilter === "all" || a.state === stateFilter)
+      );
+    });
   }, [resources, search, stateFilter]);
 
   const counts = useMemo(
