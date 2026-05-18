@@ -214,16 +214,6 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
-    if (resource.resourceType === PamResource.Windows) {
-      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(projectId);
-      if (!recordingConfig || recordingConfig.storageBackend === PamRecordingStorageBackend.Postgres) {
-        throw new BadRequestError({
-          message:
-            "Windows resources require an external (S3) session recording configuration. Postgres storage is not supported for RDP sessions. Configure an S3 bucket in project settings before accessing Windows accounts."
-        });
-      }
-    }
-
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
     if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
       throw new BadRequestError({
@@ -296,6 +286,16 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({
           message: "A reason is required to access this account",
           name: "PAM_REASON_REQUIRED"
+        });
+      }
+    }
+
+    if (resource.resourceType === PamResource.Windows) {
+      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(projectId);
+      if (!recordingConfig || recordingConfig.storageBackend === PamRecordingStorageBackend.Postgres) {
+        throw new BadRequestError({
+          message:
+            "Windows resources require an external (S3) session recording configuration. Postgres storage is not supported for RDP sessions. Configure an S3 bucket in project settings before accessing Windows accounts."
         });
       }
     }
