@@ -82,7 +82,6 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
       });
 
       tcpSocket.on("close", () => {
-        if (cleanedUp) return;
         logger.info({ sessionId }, "rdp session: tcp socket closed");
         onCleanup();
         try {
