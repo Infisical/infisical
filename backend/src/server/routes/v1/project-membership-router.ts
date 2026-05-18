@@ -198,6 +198,18 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         targetUserId: userId
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.params.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
+          metadata: {
+            targetUserId: userId,
+            membershipId: req.params.membershipId
+          }
+        }
+      });
+
       return { sources };
     }
   });

@@ -66,6 +66,7 @@ export enum EventType {
   DELETE_ENVIRONMENT = "delete-environment",
   ADD_PROJECT_MEMBER = "add-project-member",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",

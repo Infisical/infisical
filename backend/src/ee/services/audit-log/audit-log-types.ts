@@ -311,6 +311,7 @@ export enum EventType {
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -2337,6 +2338,14 @@ interface RemoveProjectMemberEvent {
   metadata: {
     userId: string;
     email: string;
+  };
+}
+
+interface GetProjectMemberPermissionAuditEvent {
+  type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT;
+  metadata: {
+    targetUserId: string;
+    membershipId: string;
   };
 }
 
@@ -7144,6 +7153,7 @@ export type Event =
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent
+  | GetProjectMemberPermissionAuditEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent

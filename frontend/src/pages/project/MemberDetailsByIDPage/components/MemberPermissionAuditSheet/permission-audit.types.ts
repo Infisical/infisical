@@ -1,7 +1,7 @@
 import { ProjectPermissionSub } from "@app/context/ProjectPermissionContext";
 import { TPermissionAuditSource, TPermissionAuditSourceType } from "@app/hooks/api/projects/types";
 
-export type AuditState = "allow" | "conditional" | "deny";
+export type AuditState = "allow" | "conditional" | "forbid";
 
 export type ActionDescriptor = {
   action: string;
@@ -27,6 +27,11 @@ export type SourceRef = {
   temporaryAccessEndTime?: string;
 };
 
+export type AuditCondition = {
+  kind: "allow" | "forbid";
+  conditions: Record<string, unknown>;
+};
+
 export type ActionAudit = {
   action: string;
   label: string;
@@ -34,7 +39,10 @@ export type ActionAudit = {
   isLegacy?: boolean;
   state: AuditState;
   grantedBy: SourceRef[];
-  conditions: Record<string, unknown>[];
+  // Sources whose unconditional inverted rules cause an explicit forbid.
+  // Distinguishes "no rule grants this" (N/A, muted) from "a role forbids this" (red).
+  forbiddenBy: SourceRef[];
+  conditions: AuditCondition[];
 };
 
 export type ResourceAudit = {

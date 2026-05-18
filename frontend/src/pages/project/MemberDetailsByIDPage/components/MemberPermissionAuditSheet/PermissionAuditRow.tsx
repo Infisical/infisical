@@ -16,7 +16,10 @@ type Props = {
 };
 
 export const PermissionAuditRow = ({ audit }: Props) => {
-  const [primarySource, ...extraSources] = audit.grantedBy;
+  const isForbidden = audit.grantedBy.length === 0 && audit.forbiddenBy.length > 0;
+  const displaySources = audit.grantedBy.length > 0 ? audit.grantedBy : audit.forbiddenBy;
+  const [primarySource, ...extraSources] = displaySources;
+  const overflowLabel = isForbidden ? "Also forbidden by" : "Also granted by";
 
   return (
     <TableRow className="h-12">
@@ -29,14 +32,14 @@ export const PermissionAuditRow = ({ audit }: Props) => {
         </div>
       </TableCell>
       <TableCell>
-        <StatePill state={audit.state} conditions={audit.conditions} />
+        <StatePill state={audit.state} conditions={audit.conditions} isForbidden={isForbidden} />
       </TableCell>
       <TableCell>
         {!primarySource ? (
           <span className="text-muted">—</span>
         ) : (
           <div className="flex items-center gap-1">
-            <SourcePill source={primarySource} />
+            <SourcePill source={primarySource} forbidding={isForbidden} />
             {extraSources.length > 0 ? (
               <HoverCard openDelay={150}>
                 <HoverCardTrigger asChild>
@@ -50,11 +53,11 @@ export const PermissionAuditRow = ({ audit }: Props) => {
                 </HoverCardTrigger>
                 <HoverCardContent align="end" className="w-auto min-w-56 p-2">
                   <div className="mb-2 text-xs font-semibold text-mineshaft-100">
-                    Also granted by
+                    {overflowLabel}
                   </div>
                   <div className="flex flex-col items-start gap-1">
                     {extraSources.map((source) => (
-                      <SourcePill key={source.id} source={source} />
+                      <SourcePill key={source.id} source={source} forbidding={isForbidden} />
                     ))}
                   </div>
                 </HoverCardContent>

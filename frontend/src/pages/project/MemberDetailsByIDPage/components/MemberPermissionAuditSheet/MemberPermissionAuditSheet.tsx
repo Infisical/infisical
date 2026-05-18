@@ -50,13 +50,18 @@ const STATE_FILTERS: { id: StateFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "allow", label: "Allowed" },
   { id: "conditional", label: "Conditional" },
-  { id: "deny", label: "Denied" }
+  { id: "forbid", label: "Forbidden" }
 ];
 
 const actionMatchesSearch = (action: ResourceAudit["actions"][number], term: string): boolean => {
   if (!term) return true;
   const needle = term.toLowerCase();
-  const haystack = [action.label, action.description ?? "", ...action.grantedBy.map((s) => s.name)]
+  const haystack = [
+    action.label,
+    action.description ?? "",
+    ...action.grantedBy.map((s) => s.name),
+    ...action.forbiddenBy.map((s) => s.name)
+  ]
     .join(" ")
     .toLowerCase();
   return haystack.includes(needle);
@@ -66,13 +71,13 @@ const countMatching = (resources: ResourceAudit[], state: AuditState): number =>
   resources.reduce((sum, r) => sum + r.actions.filter((a) => a.state === state).length, 0);
 
 const getCount = (
-  counts: { all: number; allow: number; conditional: number; deny: number },
+  counts: { all: number; allow: number; conditional: number; forbid: number },
   id: StateFilter
 ): number => {
   if (id === "all") return counts.all;
   if (id === "allow") return counts.allow;
   if (id === "conditional") return counts.conditional;
-  return counts.deny;
+  return counts.forbid;
 };
 
 export const MemberPermissionAuditSheet = ({
@@ -114,7 +119,7 @@ export const MemberPermissionAuditSheet = ({
       all: resources.reduce((sum, r) => sum + r.actions.length, 0),
       allow: countMatching(resources, "allow"),
       conditional: countMatching(resources, "conditional"),
-      deny: countMatching(resources, "deny")
+      forbid: countMatching(resources, "forbid")
     }),
     [resources]
   );
@@ -213,9 +218,9 @@ export const MemberPermissionAuditSheet = ({
               <SplitIcon className="size-3 text-warning" /> Conditional
             </span>
             <span className="flex items-center gap-1">
-              <BanIcon className="size-3 text-danger" /> Deny
+              <BanIcon className="size-3 text-danger" /> Forbid
             </span>
-            <span className="flex items-center gap-1 text-muted">— N/A</span>
+            <span className="flex items-center gap-1 text-muted">— No Grant (Forbid)</span>
           </div>
         </div>
 

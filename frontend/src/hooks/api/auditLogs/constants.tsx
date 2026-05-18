@@ -51,6 +51,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
   [EventType.ADD_PROJECT_MEMBER]: "Add member",
   [EventType.REMOVE_PROJECT_MEMBER]: "Remove member",
+  [EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT]: "View member permission audit",
   [EventType.CREATE_FOLDER]: "Create folder",
   [EventType.UPDATE_FOLDER]: "Update folder",
   [EventType.DELETE_FOLDER]: "Delete folder",
@@ -457,6 +458,7 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
 const sharedProjectEvents = [
   EventType.ADD_PROJECT_MEMBER,
   EventType.REMOVE_PROJECT_MEMBER,
+  EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
   EventType.CREATE_PROJECT_ROLE,
   EventType.UPDATE_PROJECT_ROLE,
   EventType.DELETE_PROJECT_ROLE,

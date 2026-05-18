@@ -23,7 +23,12 @@ type Props = {
 const matchesSearch = (action: ActionAudit, term: string): boolean => {
   if (!term) return true;
   const needle = term.toLowerCase();
-  const haystack = [action.label, action.description ?? "", ...action.grantedBy.map((s) => s.name)]
+  const haystack = [
+    action.label,
+    action.description ?? "",
+    ...action.grantedBy.map((s) => s.name),
+    ...action.forbiddenBy.map((s) => s.name)
+  ]
     .join(" ")
     .toLowerCase();
   return haystack.includes(needle);

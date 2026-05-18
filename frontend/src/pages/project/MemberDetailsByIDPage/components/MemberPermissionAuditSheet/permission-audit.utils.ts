@@ -5,6 +5,7 @@ import { TPermissionAuditSource } from "@app/hooks/api/projects/types";
 
 import {
   ActionAudit,
+  AuditCondition,
   AuditState,
   ResolvedSource,
   ResourceAudit,
@@ -54,74 +55,86 @@ const evaluateActionForSubject = (
   isLegacy: boolean,
   sources: ResolvedSource[]
 ): ActionAudit => {
-  const grantedBy: SourceRef[] = [];
-  const conditions: Record<string, unknown>[] = [];
-  let hasUnconditionalAllow = false;
-  let hasConditionalAllow = false;
+  const hasConditions = (r: { conditions?: Record<string, unknown> }) =>
+    Boolean(r.conditions && Object.keys(r.conditions).length > 0);
 
-  sources.forEach((source) => {
-    const matchingRules = source.rules.filter((rule) => ruleMatches(rule, action, subject));
-    const hasConditions = (r: { conditions?: Record<string, unknown> }) =>
-      Boolean(r.conditions && Object.keys(r.conditions).length > 0);
+  // CASL combines rules across ALL sources into a single ability and applies
+  // inverted (forbid) rules to subtract from allows, regardless of which source
+  // declared them. So a forbid in one role overrides an allow in another.
+  type SourcedRule = ResolvedSource["rules"][number] & { source: ResolvedSource };
+  const matchingRules: SourcedRule[] = sources.flatMap((source) =>
+    source.rules
+      .filter((rule) => ruleMatches(rule, action, subject))
+      .map((rule) => ({ ...rule, source }))
+  );
 
-    const unconditionalAllowRule = matchingRules.find((r) => !r.inverted && !hasConditions(r));
-    const conditionalAllowRules = matchingRules.filter((r) => !r.inverted && hasConditions(r));
-    const unconditionalDenyRule = matchingRules.find((r) => r.inverted && !hasConditions(r));
-    const conditionalDenyRules = matchingRules.filter((r) => r.inverted && hasConditions(r));
+  const unconditionalAllowRules = matchingRules.filter((r) => !r.inverted && !hasConditions(r));
+  const conditionalAllowRules = matchingRules.filter((r) => !r.inverted && hasConditions(r));
+  const unconditionalDenyRules = matchingRules.filter((r) => r.inverted && !hasConditions(r));
+  const conditionalDenyRules = matchingRules.filter((r) => r.inverted && hasConditions(r));
 
-    // CASL applies inverted (forbid) rules after allow rules to subtract from
-    // them. An unconditional forbid fully revokes any grant from this source.
-    if (unconditionalDenyRule) return;
-
-    let sourceState: "unconditional" | "conditional" | "none";
-    if (unconditionalAllowRule) {
-      sourceState = conditionalDenyRules.length > 0 ? "conditional" : "unconditional";
-    } else if (conditionalAllowRules.length > 0) {
-      sourceState = "conditional";
-    } else {
-      sourceState = "none";
-    }
-
-    if (sourceState === "none") return;
-
-    conditionalAllowRules.forEach((r) => {
-      if (r.conditions) conditions.push(r.conditions);
-    });
-    conditionalDenyRules.forEach((r) => {
-      if (r.conditions) conditions.push(r.conditions);
-    });
-
-    grantedBy.push({
-      id: source.id,
-      type: source.type,
-      name: source.name,
-      slug: source.slug,
-      groupName: source.groupName,
-      isTemporary: source.isTemporary,
-      temporaryAccessEndTime: source.temporaryAccessEndTime
-    });
-    if (sourceState === "unconditional") hasUnconditionalAllow = true;
-    else hasConditionalAllow = true;
+  const toSourceRef = (source: ResolvedSource): SourceRef => ({
+    id: source.id,
+    type: source.type,
+    name: source.name,
+    slug: source.slug,
+    groupName: source.groupName,
+    isTemporary: source.isTemporary,
+    temporaryAccessEndTime: source.temporaryAccessEndTime
   });
 
-  let state: AuditState;
-  if (hasUnconditionalAllow) {
-    state = "allow";
-  } else if (hasConditionalAllow) {
-    state = "conditional";
-  } else {
-    state = "deny";
-  }
+  const dedupeSources = (rules: SourcedRule[]): SourceRef[] => {
+    const seen = new Set<string>();
+    const refs: SourceRef[] = [];
+    rules.forEach((r) => {
+      if (seen.has(r.source.id)) return;
+      seen.add(r.source.id);
+      refs.push(toSourceRef(r.source));
+    });
+    return refs;
+  };
 
-  return {
+  const baseResult = {
     action,
     label,
     description,
-    isLegacy,
-    state,
-    grantedBy,
-    conditions
+    isLegacy
   };
+
+  // An unconditional forbid anywhere fully revokes the action — attribute it to
+  // the source(s) that declared the inverted rule(s) so the UI can show them.
+  if (unconditionalDenyRules.length > 0) {
+    return {
+      ...baseResult,
+      state: "forbid",
+      grantedBy: [],
+      forbiddenBy: dedupeSources(unconditionalDenyRules),
+      conditions: []
+    };
+  }
+
+  if (unconditionalAllowRules.length === 0 && conditionalAllowRules.length === 0) {
+    return { ...baseResult, state: "forbid", grantedBy: [], forbiddenBy: [], conditions: [] };
+  }
+
+  const conditions: AuditCondition[] = [];
+  conditionalAllowRules.forEach((r) => {
+    if (r.conditions) conditions.push({ kind: "allow", conditions: r.conditions });
+  });
+  conditionalDenyRules.forEach((r) => {
+    if (r.conditions) conditions.push({ kind: "forbid", conditions: r.conditions });
+  });
+
+  const grantedBy = dedupeSources([...unconditionalAllowRules, ...conditionalAllowRules]);
+
+  let state: AuditState;
+  if (unconditionalAllowRules.length > 0 && conditionalDenyRules.length === 0) {
+    state = "allow";
+  } else {
+    state = "conditional";
+  }
+
+  return { ...baseResult, state, grantedBy, forbiddenBy: [], conditions };
 };
 
 export const evaluateResource = (
@@ -142,7 +155,7 @@ export const evaluateResource = (
   // Hide legacy actions unless this user actually has them granted — keeps the
   // table focused on the modern action set while still surfacing legacy grants
   // for users who haven't migrated.
-  const actions = allActions.filter((a) => !a.isLegacy || a.state !== "deny");
+  const actions = allActions.filter((a) => !a.isLegacy || a.state !== "forbid");
 
   const allowedCount = actions.filter((a) => a.state === "allow").length;
   const conditionalCount = actions.filter((a) => a.state === "conditional").length;
@@ -173,26 +186,27 @@ export const evaluateAllResources = (
 ): ResourceAudit[] => descriptors.map((d) => evaluateResource(d, sources));
 
 export type ConditionEntry = {
+  kind: "allow" | "forbid";
   field: string;
   operator: string;
   value: string;
 };
 
-export const formatConditionEntries = (conditions: Record<string, unknown>): ConditionEntry[] => {
-  return Object.entries(conditions).map(([field, value]) => {
+export const formatConditionEntries = (condition: AuditCondition): ConditionEntry[] => {
+  return Object.entries(condition.conditions).map(([field, value]) => {
     if (value && typeof value === "object") {
       const entries = Object.entries(value as Record<string, unknown>);
-      if (entries.length === 0) return { field, operator: "eq", value: "" };
+      if (entries.length === 0) return { kind: condition.kind, field, operator: "eq", value: "" };
       const [operator, operand] = entries[0];
       const opLabel = operator.replace(/^\$/, "");
       const operandStr = Array.isArray(operand) ? operand.join(", ") : String(operand);
-      return { field, operator: opLabel, value: operandStr };
+      return { kind: condition.kind, field, operator: opLabel, value: operandStr };
     }
-    return { field, operator: "eq", value: String(value) };
+    return { kind: condition.kind, field, operator: "eq", value: String(value) };
   });
 };
 
-export const formatCondition = (conditions: Record<string, unknown>): string[] =>
-  formatConditionEntries(conditions).map((e) =>
+export const formatCondition = (condition: AuditCondition): string[] =>
+  formatConditionEntries(condition).map((e) =>
     e.value ? `${e.field} ${e.operator} ${e.value}` : e.field
   );

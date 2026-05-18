@@ -8,6 +8,7 @@ const HEADER: CsvRow = [
   "Action",
   "Action Description",
   "Access",
+  "Source Role",
   "Source Name",
   "Source Type",
   "Group Name",
@@ -19,7 +20,7 @@ const HEADER: CsvRow = [
 const ACCESS_LABEL = {
   allow: "Allowed",
   conditional: "Conditional",
-  deny: "Denied"
+  forbid: "Forbidden"
 } as const;
 
 const SOURCE_TYPE_LABEL = {
@@ -43,18 +44,23 @@ const toCsv = (rows: CsvRow[]): string =>
 const conditionsToString = (audit: ActionAudit): string =>
   audit.conditions
     .flatMap((c) => formatConditionEntries(c))
-    .map((e) => (e.value ? `${e.field} ${e.operator} ${e.value}` : e.field))
+    .map((e) => {
+      const base = e.value ? `${e.field} ${e.operator} ${e.value}` : e.field;
+      return e.kind === "forbid" ? `FORBID ${base}` : base;
+    })
     .join("; ");
 
 const rowForSource = (
   resource: ResourceAudit,
   audit: ActionAudit,
-  source: SourceRef | undefined
+  source: SourceRef | undefined,
+  sourceRole: "Grants" | "Forbids" | ""
 ): CsvRow => [
   resource.label,
   audit.label,
   audit.description ?? "",
   ACCESS_LABEL[audit.state],
+  sourceRole,
   source?.name ?? "",
   source ? SOURCE_TYPE_LABEL[source.type] : "",
   source?.groupName ?? "",
@@ -68,12 +74,15 @@ export const buildAuditCsv = (resources: ResourceAudit[]): string => {
 
   resources.forEach((resource) => {
     resource.actions.forEach((audit) => {
-      if (audit.grantedBy.length === 0) {
-        rows.push(rowForSource(resource, audit, undefined));
+      if (audit.grantedBy.length === 0 && audit.forbiddenBy.length === 0) {
+        rows.push(rowForSource(resource, audit, undefined, ""));
         return;
       }
       audit.grantedBy.forEach((source) => {
-        rows.push(rowForSource(resource, audit, source));
+        rows.push(rowForSource(resource, audit, source, "Grants"));
+      });
+      audit.forbiddenBy.forEach((source) => {
+        rows.push(rowForSource(resource, audit, source, "Forbids"));
       });
     });
   });

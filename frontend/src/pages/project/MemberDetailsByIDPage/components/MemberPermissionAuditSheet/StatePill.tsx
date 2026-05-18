@@ -1,6 +1,7 @@
 import { BanIcon, CheckIcon, SplitIcon } from "lucide-react";
 
 import {
+  Badge,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -12,21 +13,24 @@ import {
   TableRow
 } from "@app/components/v3";
 
-import { AuditState } from "./permission-audit.types";
+import { AuditCondition, AuditState } from "./permission-audit.types";
 import { formatConditionEntries } from "./permission-audit.utils";
 
 type Props = {
   state: AuditState;
-  conditions?: Record<string, unknown>[];
+  conditions?: AuditCondition[];
+  // When true, the forbid state was produced by an explicit inverted rule (red).
+  // When false, forbid means no rule grants the action (muted N/A).
+  isForbidden?: boolean;
 };
 
 const STATE_LABEL: Record<AuditState, string> = {
   allow: "Allowed",
   conditional: "Conditional",
-  deny: "Denied"
+  forbid: "Forbidden"
 };
 
-export const StatePill = ({ state, conditions }: Props) => {
+export const StatePill = ({ state, conditions, isForbidden }: Props) => {
   if (state === "allow") {
     return <CheckIcon className="size-4 text-success" aria-label={STATE_LABEL[state]} />;
   }
@@ -49,6 +53,7 @@ export const StatePill = ({ state, conditions }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-20">Effect</TableHead>
                 <TableHead className="w-32">Field</TableHead>
                 <TableHead className="w-20">Operator</TableHead>
                 <TableHead>Value</TableHead>
@@ -56,7 +61,13 @@ export const StatePill = ({ state, conditions }: Props) => {
             </TableHeader>
             <TableBody>
               {entries.map((entry) => (
-                <TableRow key={`${entry.field}-${entry.operator}-${entry.value}`}>
+                <TableRow key={`${entry.kind}-${entry.field}-${entry.operator}-${entry.value}`}>
+                  <TableCell>
+                    <Badge variant={entry.kind === "allow" ? "success" : "danger"}>
+                      {entry.kind === "allow" ? <CheckIcon /> : <BanIcon />}
+                      <span>{entry.kind === "allow" ? "Allow" : "Forbid"}</span>
+                    </Badge>
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{entry.field}</TableCell>
                   <TableCell className="font-mono text-xs text-mineshaft-300">
                     {entry.operator}
@@ -70,5 +81,12 @@ export const StatePill = ({ state, conditions }: Props) => {
       </HoverCard>
     );
   }
-  return <BanIcon className="size-4 text-danger" aria-label={STATE_LABEL[state]} />;
+  if (isForbidden) {
+    return <BanIcon className="size-4 text-danger" aria-label={STATE_LABEL[state]} />;
+  }
+  return (
+    <span className="text-xs text-muted" aria-label="No access">
+      —
+    </span>
+  );
 };

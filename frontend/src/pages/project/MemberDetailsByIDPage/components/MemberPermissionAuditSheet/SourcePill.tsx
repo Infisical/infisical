@@ -25,20 +25,22 @@ const displayName = (source: SourceRef): string => {
 
 type Props = {
   source: SourceRef;
+  forbidding?: boolean;
 };
 
-export const SourcePill = ({ source }: Props) => {
+export const SourcePill = ({ source, forbidding = false }: Props) => {
   const Icon = TYPE_ICON[source.type];
   const tooltipParts: string[] = [TYPE_LABEL[source.type]];
   if (source.groupName) tooltipParts.push(`via group "${source.groupName}"`);
   if (source.isTemporary && source.temporaryAccessEndTime) {
     tooltipParts.push(`Expires ${new Date(source.temporaryAccessEndTime).toLocaleString()}`);
   }
+  if (forbidding) tooltipParts.unshift("Forbids this action");
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="neutral">
+        <Badge variant={forbidding ? "danger" : "neutral"}>
           <Icon />
           <span>{displayName(source)}</span>
           {source.isTemporary ? <ClockIcon /> : null}
