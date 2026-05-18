@@ -42,6 +42,7 @@ import {
 import { APPROVAL_POLICY_FACTORY_MAP } from "./approval-policy-factory";
 import {
   ApprovalPolicyStep,
+  BreakGlassBypassMetadata,
   PolicyBypasser,
   TApprovalPolicy,
   TApprovalPolicyInputs,
@@ -50,6 +51,7 @@ import {
   TCreatePolicyDTO,
   TCreateRequestDTO,
   TCreateRequestFromPolicyDTO,
+  TDecorationContext,
   TPostApprovalContext,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
@@ -84,15 +86,6 @@ type TApprovalPolicyServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
-export type BreakGlassBypassMetadata = {
-  grantId: string;
-  resourceName?: string;
-  accountName?: string;
-  accessDuration: string;
-  bypassReason: string;
-  approverCount: number;
-};
-
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
 
 export const approvalPolicyServiceFactory = ({
@@ -117,13 +110,6 @@ export const approvalPolicyServiceFactory = ({
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
     notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
-
-  type TDecorationContext = {
-    getUserGroupIds: () => Promise<Set<string>>;
-    grantsByRequestId?: Map<string, { isBreakGlass: boolean; bypassReason: string | null }>;
-    policyById?: Map<string, TApprovalPolicies>;
-    bypassersByPolicyId?: Map<string, PolicyBypasser[]>;
-  };
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;

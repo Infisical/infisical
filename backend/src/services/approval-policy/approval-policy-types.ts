@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TApprovalPolicies } from "@app/db/schemas";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -51,6 +52,22 @@ export type TBypassAffordances = {
   canBreakGlass: boolean;
   isBreakGlass: boolean;
   bypassReason: string | null;
+};
+
+export type BreakGlassBypassMetadata = {
+  grantId: string;
+  resourceName?: string;
+  accountName?: string;
+  accessDuration: string;
+  bypassReason: string;
+  approverCount: number;
+};
+
+export type TDecorationContext = {
+  getUserGroupIds: () => Promise<Set<string>>;
+  grantsByRequestId?: Map<string, { isBreakGlass: boolean; bypassReason: string | null }>;
+  policyById?: Map<string, TApprovalPolicies>;
+  bypassersByPolicyId?: Map<string, PolicyBypasser[]>;
 };
 
 export interface ApprovalPolicyStep {
