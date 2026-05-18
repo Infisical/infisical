@@ -425,7 +425,7 @@ export const registerApprovalPolicyEndpoints = ({
       }),
       body: z.object({
         comment: z.string().optional(),
-        bypassReason: z.string().min(10).max(1000).optional()
+        bypassReason: z.string().min(10).max(500).optional()
       }),
       response: {
         200: z.object({

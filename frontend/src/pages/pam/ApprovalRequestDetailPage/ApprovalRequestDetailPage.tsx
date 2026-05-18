@@ -131,7 +131,7 @@ const PageContent = () => {
             <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5 text-red-400" />
             <div>
               <div className="font-semibold">Approval Policy Bypassed</div>
-              <div className="text-xs text-red-200/80">
+              <div className="text-xs break-words text-red-200/80">
                 {request.bypassReason
                   ? `Reason: "${request.bypassReason}"`
                   : "This request was approved without obtaining the required approval."}

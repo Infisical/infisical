@@ -40,7 +40,7 @@ const ReviewFormSchema = z
   .object({
     comment: z.string().max(1000).optional(),
     bypassApproval: z.boolean().default(false),
-    bypassReason: z.string().max(1000).optional()
+    bypassReason: z.string().max(500).optional()
   })
   .superRefine((data, ctx) => {
     if (data.bypassApproval && (data.bypassReason ?? "").trim().length < 10) {
