@@ -593,7 +593,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value
       "telemetry-aggregated-events",
-      "certificate-v3-auto-renewal"
+      "certificate-v3-auto-renewal",
+      "ca-crl-rotation",
+      "digicert-order-polling"
     ];
     await Promise.allSettled(
       staleQueueNames.map(async (name) => {
