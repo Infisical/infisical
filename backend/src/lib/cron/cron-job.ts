@@ -108,7 +108,14 @@ const RELEASE_SLOT_IF_MINE_LUA = `if redis.call('get', KEYS[1]) == ARGV[1] then 
 // ── types ─────────────────────────────────────────────────────────────────────
 
 type Handler = () => Promise<void>;
-type CronEntry = { name: string; pattern: string; maxAttempts: number; handler: Handler; runHashTtlS: number };
+type CronEntry = {
+  name: string;
+  pattern: string;
+  maxAttempts: number;
+  handler: Handler;
+  runHashTtlS: number;
+  handlerTimeoutMs?: number;
+};
 class HandlerTimeoutError extends Error {
   constructor(message: string) {
     super(message);
@@ -254,7 +261,8 @@ export const cronJobFactory = ({
     handler,
     runHashTtlS,
     maxAttempts = 3,
-    enabled = true
+    enabled = true,
+    handlerTimeoutMs: entryHandlerTimeoutMs
   }: {
     name: string;
     pattern: string;
@@ -262,6 +270,7 @@ export const cronJobFactory = ({
     runHashTtlS: number;
     maxAttempts?: number;
     enabled?: boolean;
+    handlerTimeoutMs?: number;
   }) => {
     if (!enabled) {
       logger.info(`cron[${name}]: disabled`);
@@ -269,7 +278,7 @@ export const cronJobFactory = ({
     }
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
-    entries.set(name, { name, pattern, maxAttempts, handler, runHashTtlS });
+    entries.set(name, { name, pattern, maxAttempts, handler, runHashTtlS, handlerTimeoutMs: entryHandlerTimeoutMs });
     logger.info(`cron[${name}]: registered (pattern="${pattern}")`);
   };
 
@@ -361,7 +370,7 @@ export const cronJobFactory = ({
     logger.info(`cron[${entry.name}]: start (attempt ${attempt}/${entry.maxAttempts}) [id=${id}]`);
 
     try {
-      await withTimeout(() => entry.handler(), handlerTimeoutMs);
+      await withTimeout(() => entry.handler(), entry.handlerTimeoutMs ?? handlerTimeoutMs);
       await markCompleted(id);
       logger.info(`cron[${entry.name}]: complete [id=${id}] [duration_ms=${Date.now() - startMs}]`);
     } catch (err) {

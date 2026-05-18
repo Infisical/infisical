@@ -79,6 +79,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       name: CronJobName.DailyResourceCleanup,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: 30 * 60_000,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         logger.info(`cron[${CronJobName.DailyResourceCleanup}]: task started`);
