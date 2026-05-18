@@ -1237,6 +1237,12 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
 
+    if (ca.projectId !== profile.projectId) {
+      throw new ForbiddenRequestError({
+        message: "Invalid Certificate Authority"
+      });
+    }
+
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1485,6 +1491,12 @@ export const certificateV3ServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
+    }
+
+    if (ca.projectId !== profile.projectId) {
+      throw new ForbiddenRequestError({
+        message: "Invalid Certificate Authority"
+      });
     }
 
     validateCaSupport(ca, "CSR signing");
