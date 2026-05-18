@@ -21,9 +21,9 @@ dbSchemaChanges:
         path: backend/src/db/migrations/20260504432352_cert-manager-applications.ts
         description: Creates PKI application tables
   - title: Certificate Manager project backfill
-    description: Organizations without a cert-manager project get a new default
-      "Certificate Manager" project during migration. Organizations with exactly
-      one existing cert-manager project get it set as the default.
+    description: Certificate Manager moves from multiple projects to single instance per organizations. Organizations without a cert-manager project get a new default
+      "Certificate Manager" instance during migration. Organizations with exactly
+      one existing cert-manager project get it set as the default Certificate Manager instance.
     action: No manual action required; Infisical runs this migration during startup.
       If startup fails during migration, keep the previous version running and
       inspect migration logs before retrying.
