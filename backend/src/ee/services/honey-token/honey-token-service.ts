@@ -1046,7 +1046,7 @@ export const honeyTokenServiceFactory = ({
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
 
-        void auditLogService
+        await auditLogService
           .createAuditLog({
             actor: {
               type: ActorType.UNKNOWN_USER,
@@ -1068,7 +1068,6 @@ export const honeyTokenServiceFactory = ({
               }
             }
           })
-          .catch(() => {});
       }
     }
     /* eslint-enable no-continue */
