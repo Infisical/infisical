@@ -2,6 +2,7 @@ import { PackRule, unpackRules } from "@casl/ability/extra";
 
 import { ProjectPermissionSub } from "@app/context/ProjectPermissionContext";
 import { TPermissionAuditSource } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import {
   ActionAudit,
@@ -152,10 +153,16 @@ export const evaluateResource = (
     )
   );
 
-  // Hide legacy actions unless this user actually has them granted — keeps the
-  // table focused on the modern action set while still surfacing legacy grants
-  // for users who haven't migrated.
-  const actions = allActions.filter((a) => !a.isLegacy || a.state !== "forbid");
+  // Hide legacy actions unless they're granted by a custom role or additional
+  // privilege. Built-in roles grant legacy actions for backward compat, which is
+  // noise; only surface legacy when the user has explicitly opted in via custom
+  // permissions (so they can see what to migrate).
+  const isBuiltInRoleSource = (s: SourceRef): boolean =>
+    (s.type === "role" || s.type === "group_role") && s.slug !== ProjectMembershipRole.Custom;
+  const actions = allActions.filter((a) => {
+    if (!a.isLegacy) return true;
+    return a.grantedBy.some((s) => !isBuiltInRoleSource(s));
+  });
 
   const allowedCount = actions.filter((a) => a.state === "allow").length;
   const conditionalCount = actions.filter((a) => a.state === "conditional").length;
