@@ -10,19 +10,26 @@ import { useRdpSession } from "./useRdpSession";
 type RdpContentProps = {
   account: TPamAccount;
   projectId: string;
+  resourceId: string;
+  resourceName: string;
   reason?: string;
 };
 
-export const RdpContent = ({ account, projectId, reason }: RdpContentProps) => {
+export const RdpContent = ({
+  account,
+  projectId,
+  resourceId,
+  resourceName,
+  reason
+}: RdpContentProps) => {
   const [sessionEnded, setSessionEnded] = useState(false);
-
-  const destination = account.resource?.name ?? "";
 
   const { containerRef, isConnected, error, disconnect, reconnect } = useRdpSession({
     accountId: account.id,
     projectId,
-    resourceName: account.resource?.name ?? "",
-    destination,
+    resourceId,
+    resourceName,
+    destination: resourceName,
     reason,
     onSessionEnd: () => setSessionEnded(true)
   });
@@ -103,7 +110,7 @@ export const RdpContent = ({ account, projectId, reason }: RdpContentProps) => {
         <div className="flex items-center gap-4">
           <span>
             <span className="text-mineshaft-400">Resource:</span>{" "}
-            <span className="text-mineshaft-300">{account.resource?.name}</span>
+            <span className="text-mineshaft-300">{resourceName}</span>
           </span>
           <span className="text-mineshaft-500">|</span>
           <span>

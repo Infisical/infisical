@@ -712,7 +712,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         projectId: z.string().uuid(),
         mfaSessionId: z.string().optional(),
-        reason: z.string().trim().max(1000).optional()
+        reason: z.string().trim().max(1000).optional(),
+        resourceId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -734,7 +735,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         auditLogInfo: req.auditLogInfo,
         mfaSessionId: req.body.mfaSessionId,
-        reason: req.body.reason
+        reason: req.body.reason,
+        resourceId: req.body.resourceId
       });
 
       await server.services.telemetry
@@ -816,6 +818,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             accountId: z.string(),
             projectId: z.string(),
             orgId: z.string(),
+            resourceId: z.string(),
             resourceName: z.string(),
             accountName: z.string(),
             actorEmail: z.string(),
@@ -844,6 +847,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           accountId: payload.accountId,
           projectId: payload.projectId,
           orgId: payload.orgId,
+          resourceId: payload.resourceId,
           resourceName: payload.resourceName,
           accountName: payload.accountName,
           actorEmail: payload.actorEmail,

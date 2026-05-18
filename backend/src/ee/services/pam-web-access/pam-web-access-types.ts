@@ -77,4 +77,5 @@ export type TIssueWebSocketTicketDTO = {
   auditLogInfo: AuditLogInfo;
   mfaSessionId?: string;
   reason?: string;
+  resourceId?: string;
 };

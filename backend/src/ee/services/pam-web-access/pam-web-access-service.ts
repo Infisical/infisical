@@ -104,6 +104,7 @@ type THandleWebSocketConnectionDTO = {
   accountId: string;
   projectId: string;
   orgId: string;
+  resourceId: string;
   resourceName: string;
   accountName: string;
   auditLogInfo: AuditLogInfo;
@@ -177,7 +178,8 @@ export const pamWebAccessServiceFactory = ({
     actorName,
     auditLogInfo,
     mfaSessionId,
-    reason
+    reason,
+    resourceId: requestResourceId
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findById(accountId);
 
@@ -191,14 +193,19 @@ export const pamWebAccessServiceFactory = ({
 
     const trimmedReason = reason?.trim() || null;
 
-    if (!account.resourceId) {
-      throw new BadRequestError({ message: "Web access is only available for resource-backed accounts" });
+    const effectiveResourceId = account.resourceId ?? requestResourceId;
+    if (!effectiveResourceId) {
+      throw new BadRequestError({ message: "A resourceId is required for web access" });
     }
 
-    const resource = await pamResourceDAL.findById(account.resourceId);
+    const resource = await pamResourceDAL.findById(effectiveResourceId);
 
     if (!resource) {
-      throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+      throw new NotFoundError({ message: `Resource with ID '${effectiveResourceId}' not found` });
+    }
+
+    if (resource.projectId !== projectId) {
+      throw new NotFoundError({ message: `Resource with ID '${effectiveResourceId}' not found` });
     }
 
     if (!SUPPORTED_WEB_ACCESS_RESOURCES.includes(resource.resourceType as PamResource)) {
@@ -350,6 +357,7 @@ export const pamWebAccessServiceFactory = ({
         accountId,
         projectId,
         orgId,
+        resourceId: resource.id,
         resourceName: resource.name,
         accountName: account.name,
         actorEmail,
@@ -381,6 +389,7 @@ export const pamWebAccessServiceFactory = ({
     accountId,
     projectId,
     orgId,
+    resourceId: ticketResourceId,
     resourceName,
     accountName,
     auditLogInfo,
@@ -493,11 +502,12 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Invalid account or project" });
       }
 
-      if (!account.resourceId) {
-        throw new BadRequestError({ message: "Web access is only available for resource-backed accounts" });
+      const effectiveResourceId = account.resourceId ?? ticketResourceId;
+      if (!effectiveResourceId) {
+        throw new BadRequestError({ message: "A resourceId is required for domain accounts" });
       }
 
-      const resource = await pamResourceDAL.findById(account.resourceId);
+      const resource = await pamResourceDAL.findById(effectiveResourceId);
       if (!resource) {
         throw new BadRequestError({ message: "Resource not found" });
       }
@@ -543,6 +553,8 @@ export const pamWebAccessServiceFactory = ({
       const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
       const expiresAt = new Date(Date.now() + DEFAULT_WEB_SESSION_DURATION_MS);
 
+      const isDomainAccount = !account.resourceId;
+
       session = await pamSessionDAL.create({
         status: PamSessionStatus.Starting,
         accessMethod: "web",
@@ -556,7 +568,8 @@ export const pamWebAccessServiceFactory = ({
         resourceName: resource.name,
         resourceType: resource.resourceType,
         accountId: account.id,
-        resourceId: resource.id,
+        resourceId: isDomainAccount ? null : resource.id,
+        selectedResourceId: isDomainAccount ? resource.id : null,
         userId,
         gatewayId: effectiveGatewayId,
         reason: accessReason?.trim() || null

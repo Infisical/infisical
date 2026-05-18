@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
 
-import { PamResourceType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
+import {
+  PamResourceType,
+  TPamAccount,
+  useGetPamAccountById,
+  useGetPamResourceById
+} from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { RdpContent } from "./RdpContent";
@@ -106,8 +111,21 @@ const PageContent = () => {
     resourceId?: string;
   };
 
-  const { accountId, projectId, orgId } = params;
+  const {
+    accountId,
+    projectId,
+    orgId,
+    resourceType: routeResourceType,
+    resourceId: routeResourceId
+  } = params;
   const { data: account, isPending } = useGetPamAccountById(accountId);
+
+  const isDomainAccount = !!account && !account.resourceId;
+  const { data: domainResource } = useGetPamResourceById(
+    routeResourceType as PamResourceType,
+    routeResourceId,
+    { enabled: isDomainAccount && !!routeResourceType && !!routeResourceId }
+  );
 
   if (isPending) {
     return (
@@ -125,6 +143,8 @@ const PageContent = () => {
     );
   }
 
+  const effectiveResourceType = account.resource?.resourceType ?? routeResourceType;
+
   // SSH uses inline terminal prompts for reason — bypass the upfront ReasonGate so the
   // approval prompt and reason prompt render in the same terminal stream, in order.
   if (account.resource?.resourceType === PamResourceType.SSH) {
@@ -137,8 +157,16 @@ const PageContent = () => {
         if (account.resource?.resourceType === PamResourceType.Postgres) {
           return <PamDataExplorerPage reason={reason} />;
         }
-        if (account.resource?.resourceType === PamResourceType.Windows) {
-          return <RdpContent account={account} projectId={projectId!} reason={reason} />;
+        if (effectiveResourceType === PamResourceType.Windows) {
+          return (
+            <RdpContent
+              account={account}
+              projectId={projectId!}
+              resourceId={account.resource?.id ?? routeResourceId ?? ""}
+              resourceName={account.resource?.name ?? domainResource?.name ?? ""}
+              reason={reason}
+            />
+          );
         }
         return (
           <TerminalContent
