@@ -36,6 +36,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
 import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
@@ -75,6 +76,7 @@ const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, P
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
+  pamDomainDAL: Pick<TPamDomainDALFactory, "findById">;
   pamAccountPolicyDAL: Pick<TPamAccountPolicyDALFactory, "findById">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   pamProjectRecordingConfigDAL: Pick<TPamProjectRecordingConfigDALFactory, "findByProjectId">;
@@ -119,6 +121,7 @@ type THandleWebSocketConnectionDTO = {
 };
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
+  pamDomainDAL,
   pamAccountPolicyDAL,
   pamResourceDAL,
   pamProjectRecordingConfigDAL,
@@ -266,6 +269,7 @@ export const pamWebAccessServiceFactory = ({
       });
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
+      const domain = !account.resourceId && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
@@ -273,6 +277,7 @@ export const pamWebAccessServiceFactory = ({
           resourceName: resource.name,
           accountName: account.name,
           resourceType: resource.resourceType,
+          ...(domain && { domainName: domain.name, domainType: domain.domainType }),
           metadata: accountMeta[account.id] || []
         })
       );

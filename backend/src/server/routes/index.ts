@@ -3202,6 +3202,7 @@ export const registerRoutes = async (
 
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
+    pamDomainDAL,
     pamAccountPolicyDAL,
     pamResourceDAL,
     pamProjectRecordingConfigDAL,
