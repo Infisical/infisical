@@ -378,9 +378,7 @@ const DuplicateSecretContent = ({
       </div>
 
       <SheetFooter className="border-t">
-        <SheetClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </SheetClose>
+
         <Button
           type="submit"
           variant="project"
@@ -394,6 +392,9 @@ const DuplicateSecretContent = ({
         >
           <PlusIcon /> Duplicate
         </Button>
+        <SheetClose asChild>
+          <Button variant="outline">Cancel</Button>
+        </SheetClose>
       </SheetFooter>
     </form>
   );
