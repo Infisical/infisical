@@ -26,6 +26,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -3717,6 +3718,26 @@ export const secretServiceFactory = ({
 
       return { createdSecrets: created, updatedSecrets: updated };
     });
+
+    const events: TProjectEventPayload[] = [];
+    if (createdSecrets.length) {
+      events.push({
+        type: ProjectEvents.SecretCreate,
+        secretKeys: createdSecrets.map((s) => s.secretKey),
+        secretPath: destinationFolder.path,
+        environment: destinationFolder.environment.slug,
+        projectId
+      });
+    }
+    if (updatedSecrets.length) {
+      events.push({
+        type: ProjectEvents.SecretUpdate,
+        secretKeys: updatedSecrets.map((s) => s.secretKey),
+        secretPath: destinationFolder.path,
+        environment: destinationFolder.environment.slug,
+        projectId
+      });
+    }
 
     await snapshotService.performSnapshot(destinationFolder.id);
     await secretQueueService.syncSecrets({

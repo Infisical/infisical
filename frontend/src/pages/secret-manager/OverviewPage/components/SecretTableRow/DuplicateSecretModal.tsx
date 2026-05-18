@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Checkbox,
   Field,
@@ -19,7 +18,10 @@ import {
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { useProject } from "@app/context";
@@ -69,6 +71,7 @@ type Props = {
   secrets: DuplicateSecretTarget[];
   secretPath: string;
   sourceEnvironment: { slug: string; name: string };
+  canCopySecretValue?: boolean;
 };
 
 type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
@@ -81,10 +84,13 @@ type EnvironmentOption = {
   slug: string;
 };
 
+const VALUE_COPY_DENIED_TOOLTIP = "You do not have permission to view this secret value";
+
 const DuplicateSecretContent = ({
   secrets,
   secretPath,
   sourceEnvironment,
+  canCopySecretValue = true,
   onClose
 }: ContentProps) => {
   const {
@@ -101,7 +107,7 @@ const DuplicateSecretContent = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       environmentIds: [],
-      include: DEFAULT_INCLUDE,
+      include: { ...DEFAULT_INCLUDE, value: canCopySecretValue },
       shouldOverwrite: false
     }
   });
@@ -193,29 +199,24 @@ const DuplicateSecretContent = ({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-1 flex-col">
-      <div className="flex flex-col gap-4 px-4 pb-4">
+    <form
+      onSubmit={handleSubmit(handleFormSubmit)}
+      className="flex flex-1 flex-col overflow-hidden"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
         <Field>
           <FieldLabel>Source</FieldLabel>
           <FieldContent className="gap-3">
-            <div className="flex items-center gap-7 rounded-md border border-border bg-container px-4 py-3">
-              <div className="min-w-0">
+            <div className="flex flex-wrap items-start gap-x-7 gap-y-3 rounded-md border border-border bg-container px-4 py-3">
+              <div className="min-w-0 basis-full">
                 <div className="text-xs text-accent">Environment</div>
-                <div className="mt-1 text-sm font-medium">
-                  <Badge variant="info" isTruncatable title={sourceEnvironment.name}>
-                    {sourceEnvironment.name}
-                  </Badge>
-                </div>
+                <div className="mt-1 text-sm font-medium break-words">{sourceEnvironment.name}</div>
               </div>
-              <div className="h-8 w-px bg-border" />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 basis-full">
                 <div className="text-xs text-accent">Path</div>
-                <div className="mt-1 truncate font-mono text-sm text-foreground" title={secretPath}>
-                  {secretPath}
-                </div>
+                <div className="mt-1 font-mono text-sm break-all text-foreground">{secretPath}</div>
               </div>
             </div>
-
             <div>
               <div className="mb-1.5 text-xs text-accent">Secrets ({secrets.length})</div>
               <div className="max-h-48 thin-scrollbar divide-y divide-border overflow-y-auto rounded-md border border-border bg-container">
@@ -224,7 +225,7 @@ const DuplicateSecretContent = ({
                     key={s.id}
                     className="flex min-w-0 items-center gap-2 px-3 py-2 text-sm text-foreground"
                   >
-                    <KeyIcon className="text-muted-foreground size-3.5 shrink-0" />
+                    <KeyIcon className="size-3.5 shrink-0 text-secret" />
                     <span className="truncate">{s.name}</span>
                   </div>
                 ))}
@@ -287,23 +288,59 @@ const DuplicateSecretContent = ({
                 <div className="divide-y divide-border rounded-md border border-border">
                   {INCLUDE_OPTIONS.map((opt) => {
                     const id = `duplicate-include-${opt.key}`;
+                    const isValueOptionDisabled = opt.key === "value" && !canCopySecretValue;
+
+                    const rowContent = (
+                      <>
+                        <Checkbox
+                          id={id}
+                          variant="project"
+                          isChecked={value[opt.key]}
+                          isDisabled={isValueOptionDisabled}
+                          onCheckedChange={() => {
+                            if (isValueOptionDisabled) return;
+                            onChange({ ...value, [opt.key]: !value[opt.key] });
+                          }}
+                          className="mt-0.5"
+                        />
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className={
+                              isValueOptionDisabled
+                                ? "text-sm text-muted"
+                                : "text-sm text-foreground"
+                            }
+                          >
+                            {opt.label}
+                          </span>
+                          <span className="text-xs text-muted">{opt.description}</span>
+                        </div>
+                      </>
+                    );
+
+                    if (isValueOptionDisabled) {
+                      return (
+                        <Tooltip key={opt.key} open={undefined}>
+                          <TooltipTrigger asChild>
+                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                            <span tabIndex={0} className="block">
+                              <div className="flex cursor-not-allowed items-start gap-3 p-3">
+                                {rowContent}
+                              </div>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{VALUE_COPY_DENIED_TOOLTIP}</TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+
                     return (
                       <label
                         key={opt.key}
                         htmlFor={id}
                         className="flex cursor-pointer items-start gap-3 p-3"
                       >
-                        <Checkbox
-                          id={id}
-                          variant="project"
-                          isChecked={value[opt.key]}
-                          onCheckedChange={() => onChange({ ...value, [opt.key]: !value[opt.key] })}
-                          className="mt-0.5"
-                        />
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-sm text-foreground">{opt.label}</span>
-                          <span className="text-xs text-muted">{opt.description}</span>
-                        </div>
+                        {rowContent}
                       </label>
                     );
                   })}
@@ -340,7 +377,7 @@ const DuplicateSecretContent = ({
         />
       </div>
 
-      <SheetFooter>
+      <SheetFooter className="border-t">
         <SheetClose asChild>
           <Button variant="outline">Cancel</Button>
         </SheetClose>
@@ -364,12 +401,12 @@ const DuplicateSecretContent = ({
 
 export const DuplicateSecretModal = ({ isOpen, onOpenChange, ...props }: Props) => (
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent className="overflow-y-auto sm:max-w-xl">
-      <SheetHeader>
-        <SheetTitle>Duplicate Secret</SheetTitle>
+    <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-hidden sm:max-w-lg">
+      <SheetHeader className="border-b">
+        <SheetTitle>Duplicate Secret{props.secrets.length > 1 ? "s" : ""}</SheetTitle>
         <SheetDescription>
-          Copy the selected secret{props.secrets.length > 1 ? "s" : ""} and their metadata into one
-          or more environments.
+          Copy the selected secret{props.secrets.length > 1 ? "s" : ""} and their properties into
+          one or more environments.
         </SheetDescription>
       </SheetHeader>
       <DuplicateSecretContent {...props} onClose={() => onOpenChange(false)} />

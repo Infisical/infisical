@@ -1658,43 +1658,29 @@ export const SecretEditTableRow = ({
                       : "Create Secret to View Access"}
                   </TooltipContent>
                 </Tooltip>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName,
-                    secretTags: ["*"]
-                  })}
+                <Tooltip
+                  open={isManagedSecret || isCreatable ? undefined : false}
+                  disableHoverableContent
                 >
-                  {(isAllowed) => (
-                    <Tooltip
-                      open={isManagedSecret || isCreatable || !isAllowed ? undefined : false}
-                      disableHoverableContent
+                  <TooltipTrigger className="block w-full">
+                    <DropdownMenuItem
+                      onClick={() => handlePopUpOpen("duplicateSecret")}
+                      isDisabled={isManagedSecret || isCreatable || !secretId}
                     >
-                      <TooltipTrigger className="block w-full">
-                        <DropdownMenuItem
-                          onClick={() => handlePopUpOpen("duplicateSecret")}
-                          isDisabled={isManagedSecret || isCreatable || !secretId || !isAllowed}
-                        >
-                          <CopyPlus />
-                          Duplicate Secret
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        {!isAllowed
-                          ? "Access Denied"
-                          : isCreatable
-                            ? "Create Secret First"
-                            : isHoneyTokenSecret
-                              ? "Cannot Duplicate Honey Token Secret"
-                              : isRotatedSecret
-                                ? "Cannot Duplicate Rotated Secret"
-                                : "Duplicate Secret"}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </ProjectPermissionCan>
+                      <CopyPlus />
+                      Duplicate Secret
+                    </DropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {isCreatable
+                      ? "Create Secret First"
+                      : isHoneyTokenSecret
+                        ? "Cannot Duplicate Honey Token Secret"
+                        : isRotatedSecret
+                          ? "Cannot Duplicate Rotated Secret"
+                          : "Duplicate Secret"}
+                  </TooltipContent>
+                </Tooltip>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={subject(ProjectPermissionSub.Secrets, {
@@ -1884,6 +1870,7 @@ export const SecretEditTableRow = ({
         secrets={secretId ? [{ id: secretId, name: secretName }] : []}
         secretPath={secretPath}
         sourceEnvironment={{ slug: environment, name: environmentName }}
+        canCopySecretValue={!secretValueHidden}
       />
     </>
   );

@@ -346,23 +346,15 @@ export const SelectionPanel = ({
     id: secret.id,
     name: secret.key
   }));
+  const canCopySecretValues = selectedSecretEntries.every(
+    ([, secret]) => !secret.secretValueHidden
+  );
 
   const duplicateSourceEnvSlugForPermission =
     selectedKeysCount > 0 && duplicateSourceEnvSlugs.size === 1
       ? selectedSecretEntries[0]?.[0]
       : undefined;
-  const canCreateInDuplicateSourceEnv = Boolean(
-    duplicateSourceEnvSlugForPermission &&
-      permission.can(
-        ProjectPermissionSecretActions.Create,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: duplicateSourceEnvSlugForPermission,
-          secretPath,
-          secretName: "*",
-          secretTags: ["*"]
-        })
-      )
-  );
+  const canCreateInDuplicateSourceEnv = Boolean(duplicateSourceEnvSlugForPermission);
   const shouldShowBulkDuplicate =
     selectedKeysCount > 0 && (duplicateSourceEnvSlugs.size !== 1 || canCreateInDuplicateSourceEnv);
 
@@ -499,6 +491,7 @@ export const SelectionPanel = ({
           secrets={duplicateSecrets}
           secretPath={secretPath}
           sourceEnvironment={{ slug: duplicateSourceEnv.slug, name: duplicateSourceEnv.name }}
+          canCopySecretValue={canCopySecretValues}
         />
       )}
     </>
