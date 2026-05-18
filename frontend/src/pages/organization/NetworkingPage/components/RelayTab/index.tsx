@@ -1,1 +1,1 @@
-export { RelayTab } from "./RelayTab";
+export {};

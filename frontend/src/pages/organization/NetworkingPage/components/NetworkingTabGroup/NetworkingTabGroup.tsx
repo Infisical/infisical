@@ -3,8 +3,8 @@ import { useSearch } from "@tanstack/react-router";
 import { TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 
-import { GatewayTab } from "../GatewayTab/GatewayTab";
-import { RelayTab } from "../RelayTab/RelayTab";
+import { GatewaysSection } from "../GatewaysSection/GatewaysSection";
+import { RelaysSection } from "../RelaysSection/RelaysSection";
 
 export const NetworkingTabGroup = () => {
   const selectedTab = useSearch({
@@ -13,18 +13,14 @@ export const NetworkingTabGroup = () => {
     structuralSharing: true
   });
 
-  const tabs = [
-    { key: "gateways", component: GatewayTab },
-    { key: "relays", component: RelayTab }
-  ];
-
   return (
     <Tabs orientation="vertical" value={selectedTab}>
-      {tabs.map(({ key, component: Component }) => (
-        <TabPanel value={key} key={`tab-panel-${key}`}>
-          <Component />
-        </TabPanel>
-      ))}
+      <TabPanel value="gateways">
+        <GatewaysSection />
+      </TabPanel>
+      <TabPanel value="relays">
+        <RelaysSection />
+      </TabPanel>
     </Tabs>
   );
 };

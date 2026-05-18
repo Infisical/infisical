@@ -1,1 +1,1 @@
-export { GatewayTab } from "./GatewayTab";
+export {};
