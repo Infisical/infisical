@@ -21,7 +21,10 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { assertCaInProfileProject, getCaCertChain } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  getCaCertChain
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import {
   extractAlgorithmsFromCSR,
