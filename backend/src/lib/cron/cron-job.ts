@@ -115,6 +115,7 @@ type CronEntry = {
   handler: Handler;
   runHashTtlS: number;
   handlerTimeoutMs?: number;
+  leaseDurationMs?: number;
 };
 class HandlerTimeoutError extends Error {
   constructor(message: string) {
@@ -262,7 +263,8 @@ export const cronJobFactory = ({
     runHashTtlS,
     maxAttempts = 3,
     enabled = true,
-    handlerTimeoutMs: entryHandlerTimeoutMs
+    handlerTimeoutMs: entryHandlerTimeoutMs,
+    leaseDurationMs: entryLeaseDurationMs
   }: {
     name: string;
     pattern: string;
@@ -271,6 +273,7 @@ export const cronJobFactory = ({
     maxAttempts?: number;
     enabled?: boolean;
     handlerTimeoutMs?: number;
+    leaseDurationMs?: number;
   }) => {
     if (!enabled) {
       logger.info(`cron[${name}]: disabled`);
@@ -278,7 +281,24 @@ export const cronJobFactory = ({
     }
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
-    entries.set(name, { name, pattern, maxAttempts, handler, runHashTtlS, handlerTimeoutMs: entryHandlerTimeoutMs });
+
+    const effectiveHandlerTimeoutMs = entryHandlerTimeoutMs ?? handlerTimeoutMs;
+    const effectiveLeaseDurationMs = entryLeaseDurationMs ?? leaseDurationMs;
+    if (effectiveHandlerTimeoutMs > effectiveLeaseDurationMs) {
+      throw new Error(
+        `cron[${name}] handlerTimeoutMs (${effectiveHandlerTimeoutMs}) must be <= leaseDurationMs (${effectiveLeaseDurationMs})`
+      );
+    }
+
+    entries.set(name, {
+      name,
+      pattern,
+      maxAttempts,
+      handler,
+      runHashTtlS,
+      handlerTimeoutMs: entryHandlerTimeoutMs,
+      leaseDurationMs: entryLeaseDurationMs
+    });
     logger.info(`cron[${name}]: registered (pattern="${pattern}")`);
   };
 
@@ -448,7 +468,9 @@ export const cronJobFactory = ({
     // Track the in-flight run so stop() can wait for it to settle before
     // tearing down. Lock-contention rejections settle within a tick, so they
     // don't measurably delay shutdown drain.
-    const tracked = redlock.using([LEASE_KEY(id)], leaseDurationMs, () => executeUnderLease(entry, id, attempts + 1));
+    const tracked = redlock.using([LEASE_KEY(id)], entry.leaseDurationMs ?? leaseDurationMs, () =>
+      executeUnderLease(entry, id, attempts + 1)
+    );
     inFlight.add(tracked);
     try {
       await tracked;
