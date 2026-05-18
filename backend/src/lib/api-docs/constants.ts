@@ -67,6 +67,8 @@ export enum ApiDocsTags {
   PkiCertificatePolicies = "PKI Certificate Policies",
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateProfiles = "PKI Certificate Profiles",
+  PkiApplications = "PKI Applications",
+  CertManagerInstance = "Certificate Manager Instance",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
   PkiDiscovery = "PKI Discovery",

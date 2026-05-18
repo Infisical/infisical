@@ -22,7 +22,7 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
-  lastHealthCheckStatus: true
+  heartbeatTTL: true
 }).extend({
   canRevoke: z.boolean()
 });

@@ -70,13 +70,13 @@ export const ProjectNavLink = ({
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>
+          {Boolean(item.badgeCount) && (
+            <Badge variant="warning" isSquare className="ml-auto">
+              {item.badgeCount}
+            </Badge>
+          )}
         </Link>
       </SidebarMenuButton>
-      {Boolean(item.badgeCount) && (
-        <Badge variant="warning" className="absolute top-[10.5px] right-4">
-          {item.badgeCount}
-        </Badge>
-      )}
     </SidebarMenuItem>
   );
 };

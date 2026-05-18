@@ -168,8 +168,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             id: z.string(),
             name: z.string(),
             createdAt: z.date(),
-            heartbeat: z.date().nullable().optional(),
-            lastHealthCheckStatus: z.string().nullable().optional()
+            heartbeat: z.date().nullable().optional()
           })
         )
       }

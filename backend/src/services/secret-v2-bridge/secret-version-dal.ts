@@ -14,7 +14,6 @@ import {
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 
 export type TSecretVersionV2DALFactory = ReturnType<typeof secretVersionV2BridgeDALFactory>;
 
@@ -169,7 +168,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
   };
 
   const pruneExcessVersions = async () => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2 started`);
+    logger.info(`daily-resource-cleanup: pruning secret version v2 started`);
     try {
       await db(TableName.SecretVersionV2)
         .with("version_cte", (qb) => {
@@ -197,7 +196,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         name: "Secret Version Prune"
       });
     }
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2 completed`);
+    logger.info(`daily-resource-cleanup: pruning secret version v2 completed`);
   };
 
   const findVersionsBySecretIdWithActors = async ({

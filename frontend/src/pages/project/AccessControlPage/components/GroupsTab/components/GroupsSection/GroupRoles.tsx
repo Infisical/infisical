@@ -279,6 +279,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
 
     await updateGroupWorkspaceRole.mutateAsync({
       projectId: currentProject?.id || "",
+      projectType: currentProject?.type,
       groupId,
       roles: selectedRoles
     });
@@ -398,7 +399,8 @@ export const GroupRoles = ({
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
-    currentProject?.id ?? ""
+    currentProject?.id ?? "",
+    currentProject?.type
   );
 
   const assignRoleConditions = useMemo(

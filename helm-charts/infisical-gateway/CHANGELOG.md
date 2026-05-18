@@ -1,3 +1,10 @@
+## 1.1.0 (May 11, 2026)
+* Added support for the new enrollment-based gateway registration flow (`gateway.enrollment.method: token` or `aws`).
+* Added PersistentVolumeClaim support (`persistence.*`) for credential storage across pod restarts.
+* Added optional Secret template for inline enrollment token values (`gateway.enrollment.token.value`).
+* Updated default CLI image version from `0.43.39` to `0.43.84`.
+* The legacy machine identity flow (`secret.name` with envFrom) remains fully supported when `gateway.enrollment.method` is unset.
+
 ## 1.0.4 (December 9, 2025)
 * Updated default CLI image version from `0.43.0` to `0.43.39`.
 * Added new `gateway.pamSessionRecordingsDirectory`, allowing users to specify the folder where temporary session recording files for PAM are stored. Defaults to `/var/lib/infisical/session_recordings`

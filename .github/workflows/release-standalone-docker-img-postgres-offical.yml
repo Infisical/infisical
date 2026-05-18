@@ -48,7 +48,7 @@ jobs:
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
             - name: 📦 Build backend and export to Docker
-              uses: depot/build-push-action@f78af826a1c272c4b60c485e934974b515094928 # Main / v1, Mar 10, 2026
+              uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
                   token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -65,6 +65,10 @@ jobs:
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                       DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
                       DD_GIT_COMMIT_SHA=${{ github.sha }}
+                  secrets: |
+                      contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
+                      contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
+                      contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
               uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
@@ -111,7 +115,7 @@ jobs:
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
             - name: 📦 Build backend and export to Docker
-              uses: depot/build-push-action@f78af826a1c272c4b60c485e934974b515094928 # Main / v1, Mar 10, 2026
+              uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
                   token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -126,6 +130,10 @@ jobs:
                   build-args: |
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+                  secrets: |
+                      contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
+                      contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
+                      contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-tests]
@@ -143,13 +151,24 @@ jobs:
               echo "Creating tag in Infisical/infisical-omnibus: $TAG_NAME"
               LATEST_SHA=$(gh api repos/Infisical/infisical-omnibus/git/refs/heads/main --jq '.object.sha')
               echo "Latest SHA: $LATEST_SHA"
-              
+
               gh api repos/Infisical/infisical-omnibus/git/refs \
                 --method POST \
                 --field ref="refs/tags/$TAG_NAME" \
                 --field sha="$LATEST_SHA"
-              
+
               echo "Successfully created tag $TAG_NAME"
             fi
           env:
             GH_TOKEN: ${{ secrets.OMNIBUS_RELEASE_TOKEN }}
+
+    generate-upgrade-impact:
+        name: Generate upgrade impact PR
+        needs: [infisical-standalone, infisical-fips-standalone, trigger-binary-release]
+        permissions:
+            contents: write
+            pull-requests: write
+        uses: ./.github/workflows/generate-upgrade-impact.yml
+        with:
+            tag: ${{ github.ref_name }}
+        secrets: inherit

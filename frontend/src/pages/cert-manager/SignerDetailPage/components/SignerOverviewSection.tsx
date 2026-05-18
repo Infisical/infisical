@@ -125,7 +125,7 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
                       orgId: currentOrg.id,
                       projectId
                     }}
-                    search={{ tab: "approvals", subtab: "policies" }}
+                    search={{ selectedTab: "signing-policies" }}
                     className="flex items-center gap-1 text-primary hover:underline"
                   >
                     {signer.approvalPolicyName}

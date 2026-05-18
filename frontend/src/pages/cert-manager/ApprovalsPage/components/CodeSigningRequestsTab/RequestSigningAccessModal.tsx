@@ -19,15 +19,17 @@ import {
 import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
-import { useListSigners } from "@app/hooks/api/signers";
+import { TSigner, useListSigners } from "@app/hooks/api/signers";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  signer?: TSigner;
 };
 
 const toDatetimeLocalValue = (date: Date): string => {
@@ -79,20 +81,18 @@ const formSchema = z
 
 type FormData = z.infer<typeof formSchema>;
 
-const Content = ({ onOpenChange }: Props) => {
+const Content = ({ onOpenChange, signer: presetSigner }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: createApprovalRequest, isPending: isSubmitting } =
     useCreateApprovalRequest();
 
-  const { data: signersData } = useListSigners({
-    projectId,
-    limit: 100
-  });
+  const { data: signersData } = useListSigners({ projectId, limit: 100 });
 
   const { data: policies = [] } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 
@@ -113,7 +113,7 @@ const Content = ({ onOpenChange }: Props) => {
     resolver: zodResolver(formSchema),
     mode: "onChange",
     defaultValues: {
-      signerId: "",
+      signerId: presetSigner?.id ?? "",
       justification: "",
       windowStart: getDefaultWindowStart(),
       windowEnd: getDefaultWindowEnd(),
@@ -133,8 +133,8 @@ const Content = ({ onOpenChange }: Props) => {
   const selectedSignerId = watch("signerId");
 
   const selectedSigner = useMemo(
-    () => signers.find((s) => s.id === selectedSignerId),
-    [signers, selectedSignerId]
+    () => presetSigner ?? signers.find((s) => s.id === selectedSignerId),
+    [presetSigner, signers, selectedSignerId]
   );
 
   const selectedPolicy = useMemo(
@@ -185,7 +185,8 @@ const Content = ({ onOpenChange }: Props) => {
 
     await createApprovalRequest({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId,
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId,
       justification: formData.justification || null,
       requestData: {
         signerId: selectedSigner.id,
@@ -208,32 +209,45 @@ const Content = ({ onOpenChange }: Props) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Controller
-        name="signerId"
-        control={control}
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Signer"
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            helperText="Select the signer you want to request signing access for"
-          >
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              placeholder="Select a signer..."
-              className="w-full"
+      {presetSigner ? (
+        <FormControl label="Signer">
+          <Input
+            value={
+              presetSigner.certificateCommonName
+                ? `${presetSigner.name} (${presetSigner.certificateCommonName})`
+                : presetSigner.name
+            }
+            isReadOnly
+          />
+        </FormControl>
+      ) : (
+        <Controller
+          name="signerId"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Signer"
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              helperText="Select the signer you want to request signing access for"
             >
-              {signers.map((signer) => (
-                <SelectItem key={signer.id} value={signer.id}>
-                  {signer.name}
-                  {signer.certificateCommonName ? ` (${signer.certificateCommonName})` : ""}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                placeholder="Select a signer..."
+                className="w-full"
+              >
+                {signers.map((signer) => (
+                  <SelectItem key={signer.id} value={signer.id}>
+                    {signer.name}
+                    {signer.certificateCommonName ? ` (${signer.certificateCommonName})` : ""}
+                  </SelectItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        />
+      )}
       {hasTimeConstraint && (
         <div className="grid grid-cols-2 gap-4">
           <Controller
@@ -321,7 +335,7 @@ const Content = ({ onOpenChange }: Props) => {
 };
 
 export const RequestSigningAccessModal = (props: Props) => {
-  const { isOpen, onOpenChange } = props;
+  const { isOpen, onOpenChange, signer } = props;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -329,6 +343,7 @@ export const RequestSigningAccessModal = (props: Props) => {
         className="max-w-2xl pb-2"
         title="Request Signing Access"
         subTitle="Request approval to sign with a code signing key"
+        key={signer?.id ?? "no-preset"}
       >
         <Content {...props} />
       </ModalContent>

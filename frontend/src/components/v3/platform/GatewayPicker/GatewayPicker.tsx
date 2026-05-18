@@ -7,7 +7,7 @@ import { Select, SelectItem, Tooltip } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
 type GatewayPickerValue = {
@@ -70,12 +70,7 @@ export const GatewayPicker = ({
 
   const v2Gateways = gateways?.filter((g) => !g.isV1) ?? [];
 
-  const isOnline = (gw: (typeof v2Gateways)[number]) =>
-    "heartbeat" in gw &&
-    gw.heartbeat &&
-    new Date(gw.heartbeat).getTime() > Date.now() - 60 * 60 * 1000 &&
-    (!("lastHealthCheckStatus" in gw) ||
-      gw.lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed);
+  const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
   const itemHoverV3 =
     "[&_[data-radix-collection-item]:hover]:bg-foreground/5 [&_[data-radix-collection-item][data-highlighted]]:bg-foreground/5";

@@ -1,8 +1,9 @@
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -27,6 +28,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
   queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -45,6 +47,7 @@ export const pkiDiscoveryQueueFactory = ({
   projectDAL,
   kmsService,
   queueService,
+  cronJob,
   gatewayV2Service,
   gatewayV2DAL,
   gatewayPoolService
@@ -104,14 +107,16 @@ export const pkiDiscoveryQueueFactory = ({
       }
     });
 
-    void queueService
-      .upsertJobScheduler(
-        QueueName.PkiDiscoveryScan,
-        `${JOB_SCHEDULER_PREFIX}:pki-discovery-scheduled-scan`,
-        { pattern: "0 2 * * *" },
-        { name: QueueJobs.PkiDiscoveryScheduledScan }
-      )
-      .catch((err) => logger.error(err, "Failed to schedule PKI discovery cron"));
+    cronJob.register({
+      name: CronJobName.PkiDiscoveryScheduledScan,
+      pattern: "0 2 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        await queueService.queue(QueueName.PkiDiscoveryScan, QueueJobs.PkiDiscoveryScheduledScan, undefined as never, {
+          jobId: CronJobName.PkiDiscoveryScheduledScan
+        });
+      }
+    });
   };
 
   const queuePkiDiscoveryScan = async (discoveryId: string) => {

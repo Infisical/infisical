@@ -1,3 +1,11 @@
+{{- if eq .Values.gateway.enrollment.method "token" }}
+  {{- if not .Values.persistence.enabled }}
+    {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
+  {{- end }}
+  {{- if not (or .Values.gateway.enrollment.token.value .Values.gateway.enrollment.token.existingSecretRef) }}
+    {{- fail "gateway.enrollment.token.value or gateway.enrollment.token.existingSecretRef is required when gateway.enrollment.method is 'token'." }}
+  {{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,6 +13,13 @@ metadata:
   labels:
     {{- include "infisical-gateway.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.gateway.enrollment.method }}
+  replicas: 1
+  {{- if .Values.persistence.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "infisical-gateway.selectorLabels" . | nindent 6 }}
@@ -30,10 +45,27 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if .Values.gateway.enrollment.method }}
+        - name: gateway-credentials
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-credentials" (include "infisical-gateway.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: infisical-cache
+          emptyDir: {}
+        {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+        {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+        - name: session-recordings
+          emptyDir: {}
+        {{- end }}
+        {{- else }}
         - name: infisical-gateway-session-recordings-data
           emptyDir: {}
         - name: infisical-gateway-cached-relay-data
           emptyDir: {}
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -42,6 +74,49 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.gateway.enrollment.method }}
+          {{- if .Values.gateway.enrollment.credentialsSecretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.gateway.enrollment.credentialsSecretRef }}
+          {{- end }}
+          env:
+            - name: HOME
+              value: /home/infisical
+            {{- if eq .Values.gateway.enrollment.method "token" }}
+            - name: INFISICAL_ENROLLMENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.gateway.enrollment.token.existingSecretRef | default (printf "%s-enrollment-token" (include "infisical-gateway.fullname" .)) }}
+                  key: {{ .Values.gateway.enrollment.token.secretKey | default "enrollment-token" }}
+            {{- end }}
+          args:
+            - gateway
+            - start
+            - {{ required "gateway.name is required when gateway.enrollment.method is set" .Values.gateway.name | quote }}
+            - --enroll-method={{ .Values.gateway.enrollment.method }}
+            - --domain={{ required "gateway.domain is required when gateway.enrollment.method is set" .Values.gateway.domain }}
+            {{- if eq .Values.gateway.enrollment.method "token" }}
+            - --token=$(INFISICAL_ENROLLMENT_TOKEN)
+            {{- end }}
+            {{- if eq .Values.gateway.enrollment.method "aws" }}
+            - --gateway-id={{ required "gateway.enrollment.aws.gatewayId is required when gateway.enrollment.method is 'aws'" .Values.gateway.enrollment.aws.gatewayId }}
+            {{- end }}
+            {{- if .Values.gateway.relayName }}
+            - --target-relay-name={{ .Values.gateway.relayName }}
+            {{- end }}
+            - --pam-session-recording-path={{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+          volumeMounts:
+            - name: gateway-credentials
+              mountPath: /home/infisical
+            - name: infisical-cache
+              mountPath: /var/lib/infisical
+            {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+            {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            - name: session-recordings
+              mountPath: {{ $sessionPath }}
+            {{- end }}
+          {{- else }}
           args:
             - gateway
             - start
@@ -61,6 +136,7 @@ spec:
             - name: infisical-gateway-session-recordings-data
               mountPath: {{ $sessionPath }}
             {{- end }}
+          {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

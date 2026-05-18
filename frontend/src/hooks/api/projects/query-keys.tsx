@@ -65,6 +65,8 @@ export const projectKeys = {
     notAfterTo,
     notBeforeFrom,
     notBeforeTo,
+    applicationId,
+    applicationIds,
     sortBy,
     sortOrder
   }: {
@@ -91,6 +93,8 @@ export const projectKeys = {
     notAfterTo?: Date;
     notBeforeFrom?: Date;
     notBeforeTo?: Date;
+    applicationId?: string;
+    applicationIds?: string[];
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   }) =>
@@ -119,6 +123,8 @@ export const projectKeys = {
         notAfterTo,
         notBeforeFrom,
         notBeforeTo,
+        applicationId,
+        applicationIds,
         sortBy,
         sortOrder
       }

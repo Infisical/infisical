@@ -1,8 +1,8 @@
 import json
+import logging
 import os
-import shutil
-
 import pathlib
+import shutil
 import typing
 from copy import deepcopy
 
@@ -10,7 +10,6 @@ import httpx
 from behave.runner import Context
 from dotenv import load_dotenv
 from faker import Faker
-import logging
 
 from features.steps.utils import clean_all_nock, restore_nock
 
@@ -74,20 +73,17 @@ def bootstrap_infisical(context: Context):
         auth_token = body["token"]
         headers = dict(authorization=f"Bearer {auth_token}")
 
-        project_slug = faker.slug()
-        resp = client.post(
-            "/api/v1/projects",
+        resp = client.get(
+            f"/api/v2/organizations/{org['id']}/workspaces",
             headers=headers,
-            json={
-                "projectName": project_slug,
-                "projectDescription": faker.paragraph(),
-                "template": "default",
-                "type": "cert-manager",
-            },
         )
         resp.raise_for_status()
-        body = resp.json()
-        project = body["project"]
+        workspaces = resp.json()["workspaces"]
+        if not workspaces:
+            raise RuntimeError(
+                "Expected an auto-provisioned Cert Manager project after admin signup"
+            )
+        project = workspaces[0]
 
         ca_slug = faker.slug()
         resp = client.post(

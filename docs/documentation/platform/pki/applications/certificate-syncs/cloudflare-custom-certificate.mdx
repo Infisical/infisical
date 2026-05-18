@@ -1,0 +1,158 @@
+---
+title: "Cloudflare Custom Certificate"
+sidebarTitle: "Cloudflare"
+description: "Deploy custom SSL certificates to Cloudflare zones."
+---
+
+Deploy custom SSL certificates to your Cloudflare zones. Certificates synced to Cloudflare are used for HTTPS traffic to your domains.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificates to sync, then configure the Cloudflare destination.
+</Info>
+
+## Prerequisites
+
+- A [Cloudflare Connection](/integrations/app-connections/cloudflare)
+
+<Warning>
+  Cloudflare has a default quota of **one custom certificate per zone** on most plans. Enterprise plans may have higher quotas. Check your plan's limit before syncing multiple certificates.
+</Warning>
+
+## Create a Cloudflare Sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+        2. Select the **Cloudflare Custom Certificate** option.
+
+        3. Configure the **Destination**:
+            - **Cloudflare Connection**: The Cloudflare Connection to authenticate with.
+            - **Zone**: The Cloudflare zone (domain) for the certificates.
+
+        4. Configure the **Sync Options**:
+            - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
+            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
+
+        5. Configure the **Details**:
+            - **Name**: The name of your sync (slug-friendly).
+            - **Description**: Optional description.
+
+        6. Select which certificates should be synced.
+
+        7. Review and click **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create a **Cloudflare Custom Certificate Sync**, make an API request to the [Create Cloudflare Custom Certificate Sync](/api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create) API endpoint.
+
+        ### Sample request
+
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/cloudflare-custom-certificate \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-cloudflare-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "destination": "cloudflare-custom-certificate",
+            "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000",
+                "660f1234-e29b-41d4-a716-446655440001"
+            ],
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "certificateNameSchema": "myapp-{{certificateId}}"
+            },
+            "destinationConfig": {
+                "zoneId": "023e105f4ecef8ad9ca31a8372d0c353"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-cloudflare-cert-sync",
+                "description": "an example certificate sync",
+                "destination": "cloudflare-custom-certificate",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "zoneId": "023e105f4ecef8ad9ca31a8372d0c353"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "certificateNameSchema": "myapp-{{certificateId}}"
+                },
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+                "createdAt": "2023-01-01T00:00:00.000Z",
+                "updatedAt": "2023-01-01T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+
+</Tabs>
+
+## Certificate Management
+
+The Cloudflare Custom Certificate Sync provides:
+
+- **Automatic Deployment**: Deploy certificates in Infisical to Cloudflare as Custom certificates.
+- **Certificate Updates**: Update certificates in Cloudflare when renewals occur.
+- **Expiration Handling**: Optionally remove expired certificates from Cloudflare (if enabled).
+- **Chain Management**: Properly bundle certificate chains for optimal browser compatibility.
+
+<Note>
+  Cloudflare Custom Certificate Syncs support both automatic and manual
+  synchronization modes. When auto-sync is enabled, certificates are
+  automatically deployed as they are issued or renewed.
+</Note>
+
+## Manual Certificate Sync
+
+You can manually trigger certificate synchronization to Cloudflare using the sync certificates functionality. This is useful for:
+
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## FAQ
+
+<Accordion title="Can I import certificates from Cloudflare back into Infisical?">
+  Cloudflare does not support importing certificates back into Infisical
+  due to security limitations where private keys cannot be extracted from Cloudflare.
+</Accordion>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+    Import certificates into ACM for AWS services.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

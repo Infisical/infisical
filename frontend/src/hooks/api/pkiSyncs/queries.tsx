@@ -14,7 +14,10 @@ import {
 export const pkiSyncKeys = {
   all: ["pki-sync"] as const,
   options: () => [...pkiSyncKeys.all, "options"] as const,
-  list: (projectId: string) => [...pkiSyncKeys.all, "list", projectId] as const,
+  list: (projectId: string, applicationId?: string) =>
+    applicationId
+      ? ([...pkiSyncKeys.all, "list", projectId, "application", applicationId] as const)
+      : ([...pkiSyncKeys.all, "list", projectId] as const),
   listWithCertificate: (projectId: string, certificateId: string) =>
     [...pkiSyncKeys.all, "list", projectId, "with-certificate", certificateId] as const,
   byId: (syncId: string, projectId: string) =>
@@ -60,10 +63,19 @@ export const usePkiSyncOption = (destination: PkiSync) => {
   return { syncOption, isPending };
 };
 
-export const fetchPkiSyncsByProjectId = async (projectId: string, certificateId?: string) => {
-  const params: { projectId: string; certificateId?: string } = { projectId };
+export const fetchPkiSyncsByProjectId = async (
+  projectId: string,
+  certificateId?: string,
+  applicationId?: string
+) => {
+  const params: { projectId: string; certificateId?: string; applicationId?: string } = {
+    projectId
+  };
   if (certificateId) {
     params.certificateId = certificateId;
+  }
+  if (applicationId) {
+    params.applicationId = applicationId;
   }
 
   const { data } = await apiRequest.get<TListPkiSyncs>("/api/v1/cert-manager/syncs", {
@@ -78,12 +90,13 @@ export const useListPkiSyncs = (
   options?: Omit<
     UseQueryOptions<TPkiSync[], unknown, TPkiSync[], ReturnType<typeof pkiSyncKeys.list>>,
     "queryKey" | "queryFn"
-  >
+  > & { applicationId?: string }
 ) => {
+  const { applicationId, ...queryOptions } = options ?? {};
   return useQuery({
-    queryKey: pkiSyncKeys.list(projectId),
-    queryFn: () => fetchPkiSyncsByProjectId(projectId),
-    ...options
+    queryKey: pkiSyncKeys.list(projectId, applicationId),
+    queryFn: () => fetchPkiSyncsByProjectId(projectId, undefined, applicationId),
+    ...queryOptions
   });
 };
 

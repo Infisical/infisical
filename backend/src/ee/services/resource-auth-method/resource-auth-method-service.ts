@@ -453,7 +453,7 @@ export const resourceAuthMethodServiceFactory = ({
       if (resource.type === RESOURCE_TYPE_GATEWAY) {
         await gatewayV2DAL.updateById(
           resource.id,
-          { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
+          { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
           tx
         );
       } else {
@@ -537,7 +537,7 @@ export const resourceAuthMethodServiceFactory = ({
       const refreshed = await gatewayV2DAL.updateById(resource.id, {
         $incr: { tokenVersion: 1 },
         heartbeat: null,
-        lastHealthCheckStatus: null
+        heartbeatTTL: null
       });
       refreshedTokenVersion = refreshed.tokenVersion;
     } else {
@@ -611,7 +611,7 @@ export const resourceAuthMethodServiceFactory = ({
         if (!existing) throw new NotFoundError({ message: `Gateway ${linkedResourceId} not found` });
         return gatewayV2DAL.updateById(
           existing.id,
-          { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
+          { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
           tx
         );
       });

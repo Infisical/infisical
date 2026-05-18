@@ -1462,8 +1462,7 @@ export const relayServiceFactory = ({
       id: g.id,
       name: g.name,
       createdAt: g.createdAt,
-      heartbeat: g.heartbeat,
-      lastHealthCheckStatus: g.lastHealthCheckStatus
+      heartbeat: g.heartbeat
     }));
   };
 

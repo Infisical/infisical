@@ -5,7 +5,7 @@ import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
-import { GatewayHealthCheckStatus } from "./gateway-v2-types";
+import { HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
 
 export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 
@@ -27,20 +27,23 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (isHeartbeatStale) {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        // Gateway is stale when: heartbeat + heartbeatTTL + buffer < NOW(), OR heartbeatTTL = 0
+        // Only consider gateways that have heartbeat (registered and probed at least once)
+        void query.whereNotNull(`${TableName.GatewayV2}.heartbeat`);
         void query.where((builder) => {
           void builder
-            .where(`${TableName.GatewayV2}.heartbeat`, "<", oneHourAgo)
-            .orWhere(`${TableName.GatewayV2}.lastHealthCheckStatus`, GatewayHealthCheckStatus.Failed);
+            .where(
+              db.raw(
+                `"${TableName.GatewayV2}"."heartbeat" + make_interval(secs => COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) < NOW()`
+              )
+            )
+            .orWhere(`${TableName.GatewayV2}.heartbeatTTL`, 0);
         });
+        // Notification cooldown: only alert if never alerted or last alert was over 1 hour ago
         void query.where((v) => {
           void v
             .whereNull(`${TableName.GatewayV2}.healthAlertedAt`)
-            .orWhere(
-              `${TableName.GatewayV2}.healthAlertedAt`,
-              "<",
-              db.ref("heartbeat").withSchema(TableName.GatewayV2)
-            );
+            .orWhere(`${TableName.GatewayV2}.healthAlertedAt`, "<", db.raw("NOW() - interval '1 hour'"));
         });
       }
 

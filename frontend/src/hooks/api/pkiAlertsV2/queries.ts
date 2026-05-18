@@ -24,6 +24,14 @@ export const pkiAlertsV2Keys = {
 };
 
 const fetchPkiAlertsV2 = async (params: TGetPkiAlertsV2): Promise<TGetPkiAlertsV2Response> => {
+  if (params.applicationId) {
+    const { applicationId, ...rest } = params;
+    const { data } = await apiRequest.get<TGetPkiAlertsV2Response>(
+      `/api/v1/cert-manager/applications/${applicationId}/alerts`,
+      { params: rest }
+    );
+    return data;
+  }
   const { data } = await apiRequest.get<TGetPkiAlertsV2Response>("/api/v1/cert-manager/alerts", {
     params
   });
@@ -73,7 +81,6 @@ export const useGetPkiAlertsV2 = (
   return useQuery({
     queryKey: pkiAlertsV2Keys.allPkiAlertsV2(params),
     queryFn: () => fetchPkiAlertsV2(params),
-    enabled: !!params.projectId,
     ...options
   });
 };
@@ -134,7 +141,7 @@ export const useGetPkiAlertV2CurrentMatchingCertificates = (
   return useQuery({
     queryKey: pkiAlertsV2Keys.pkiAlertV2CurrentMatchingCertificates(params),
     queryFn: () => fetchPkiAlertV2CurrentMatchingCertificates(params),
-    enabled: !!params.projectId && params.filters !== undefined,
+    enabled: params.filters !== undefined,
     placeholderData: (previousData) => previousData,
     ...options
   });

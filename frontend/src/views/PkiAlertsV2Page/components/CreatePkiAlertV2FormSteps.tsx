@@ -81,6 +81,8 @@ interface CreatePkiAlertV2FormStepsProps {
   expandedChannel: string | undefined;
   setExpandedChannel: (channel: string | undefined) => void;
   showPreview?: boolean;
+  showFilters?: boolean;
+  applicationId?: string;
 }
 
 type ChannelUIState = {
@@ -95,7 +97,9 @@ type ChannelUIState = {
 export const CreatePkiAlertV2FormSteps = ({
   expandedChannel,
   setExpandedChannel,
-  showPreview = true
+  showPreview = true,
+  showFilters = true,
+  applicationId
 }: CreatePkiAlertV2FormStepsProps) => {
   const {
     control,
@@ -141,7 +145,6 @@ export const CreatePkiAlertV2FormSteps = ({
   const { data: currentCertificatesData, isLoading: isLoadingCurrentCertificates } =
     useGetPkiAlertV2CurrentMatchingCertificates(
       {
-        projectId: currentProject?.id || "",
         filters: watchedFilters || [],
         ...(watchedEventType === PkiAlertEventTypeV2.EXPIRATION
           ? { alertBefore: watchedAlertBefore || "30d" }
@@ -263,9 +266,9 @@ export const CreatePkiAlertV2FormSteps = ({
 
     try {
       const result = await testWebhookConfig({
-        projectId: currentProject.id,
         url: webhookConfig.url,
-        signingSecret: webhookConfig.signingSecret || undefined
+        signingSecret: webhookConfig.signingSecret || undefined,
+        applicationId
       });
 
       if (result.success) {
@@ -416,9 +419,10 @@ export const CreatePkiAlertV2FormSteps = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm text-bunker-300">Daily Alerts</span>
+                    <span className="text-sm text-bunker-300">Repeat daily until expiry</span>
                     <p className="text-xs text-bunker-400">
-                      Send notifications daily from the alert threshold until expiry
+                      Send a reminder every day from the alert threshold until the certificate
+                      expires.
                     </p>
                   </div>
                   <Switch
@@ -433,153 +437,157 @@ export const CreatePkiAlertV2FormSteps = ({
         </div>
       </Tab.Panel>
 
-      <Tab.Panel>
-        <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
-            Add filter rules to specify which certificates should trigger this alert. Leave empty to
-            monitor all certificates.
-          </p>
+      {showFilters && (
+        <Tab.Panel>
+          <div className="space-y-6">
+            <p className="mb-4 text-sm text-bunker-300">
+              Add filter rules to specify which certificates should trigger this alert. Leave empty
+              to monitor all certificates.
+            </p>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <FormLabel label="Certificate Filter Rules" />
-              <Button
-                type="button"
-                variant="outline_bg"
-                size="sm"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={addFilter}
-              >
-                Add Filter
-              </Button>
-            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel label="Certificate Filter Rules" />
+                <Button
+                  type="button"
+                  variant="outline_bg"
+                  size="sm"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={addFilter}
+                >
+                  Add Filter
+                </Button>
+              </div>
 
-            {watchedFilters?.map((filter, index) => (
-              <div
-                key={`filter-${index}`}
-                className="space-y-2 rounded-md border border-mineshaft-600 p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-mineshaft-100">
-                    Filter Rule #{index + 1}
-                  </h4>
-                  <IconButton
-                    size="sm"
-                    variant="plain"
-                    colorSchema="danger"
-                    ariaLabel="Remove filter"
-                    onClick={() => removeFilter(index)}
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </IconButton>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="md:col-span-1">
-                    <FormControl label="Field">
-                      <Select
-                        value={filter.field}
-                        onValueChange={(value) =>
-                          updateFilter(index, {
-                            field: value as PkiFilterFieldV2,
-                            operator:
-                              value === PkiFilterFieldV2.INCLUDE_CAS
-                                ? PkiFilterOperatorV2.EQUALS
-                                : filter.operator,
-                            value: isValueBoolean(value as PkiFilterFieldV2) ? false : ""
-                          })
-                        }
-                        className="w-full min-w-[200px]"
-                      >
-                        <SelectItem value={PkiFilterFieldV2.COMMON_NAME}>Common Name</SelectItem>
-                        <SelectItem value={PkiFilterFieldV2.PROFILE_NAME}>Profile Name</SelectItem>
-                        <SelectItem value={PkiFilterFieldV2.SAN}>
-                          Subject Alternative Names
-                        </SelectItem>
-                        <SelectItem value={PkiFilterFieldV2.INCLUDE_CAS}>
-                          Include Certificate Authorities
-                        </SelectItem>
-                      </Select>
-                    </FormControl>
+              {watchedFilters?.map((filter, index) => (
+                <div
+                  key={`filter-${index}`}
+                  className="space-y-2 rounded-md border border-mineshaft-600 p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-mineshaft-100">
+                      Filter Rule #{index + 1}
+                    </h4>
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      colorSchema="danger"
+                      ariaLabel="Remove filter"
+                      onClick={() => removeFilter(index)}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </IconButton>
                   </div>
 
-                  <div className="md:col-span-1">
-                    <FormControl label="Operator">
-                      <Select
-                        value={filter.operator}
-                        onValueChange={(value) =>
-                          updateFilter(index, { operator: value as PkiFilterOperatorV2 })
-                        }
-                        className="w-full min-w-[140px]"
-                      >
-                        {getFieldOperators(filter.field).map((operator) => (
-                          <SelectItem key={operator} value={operator}>
-                            {operator
-                              .replace(/_/g, " ")
-                              .toLowerCase()
-                              .replace(/\b\w/g, (l) => l.toUpperCase())}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </div>
-
-                  <div className="md:col-span-1">
-                    <FormControl label="Value">
-                      {isValueBoolean(filter.field) ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="md:col-span-1">
+                      <FormControl label="Field">
                         <Select
-                          value={String(filter.value)}
+                          value={filter.field}
                           onValueChange={(value) =>
-                            updateFilter(index, { value: value === "true" })
+                            updateFilter(index, {
+                              field: value as PkiFilterFieldV2,
+                              operator:
+                                value === PkiFilterFieldV2.INCLUDE_CAS
+                                  ? PkiFilterOperatorV2.EQUALS
+                                  : filter.operator,
+                              value: isValueBoolean(value as PkiFilterFieldV2) ? false : ""
+                            })
                           }
-                          className="w-full"
+                          className="w-full min-w-[200px]"
                         >
-                          <SelectItem value="true">Yes</SelectItem>
-                          <SelectItem value="false">No</SelectItem>
+                          <SelectItem value={PkiFilterFieldV2.COMMON_NAME}>Common Name</SelectItem>
+                          <SelectItem value={PkiFilterFieldV2.PROFILE_NAME}>
+                            Profile Name
+                          </SelectItem>
+                          <SelectItem value={PkiFilterFieldV2.SAN}>
+                            Subject Alternative Names
+                          </SelectItem>
+                          <SelectItem value={PkiFilterFieldV2.INCLUDE_CAS}>
+                            Include Certificate Authorities
+                          </SelectItem>
                         </Select>
-                      ) : (
-                        <Input
-                          value={
-                            Array.isArray(filter.value)
-                              ? filter.value.join(", ")
-                              : String(filter.value || "")
+                      </FormControl>
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormControl label="Operator">
+                        <Select
+                          value={filter.operator}
+                          onValueChange={(value) =>
+                            updateFilter(index, { operator: value as PkiFilterOperatorV2 })
                           }
-                          onChange={(e) => {
-                            const { value } = e.target;
-                            updateFilter(index, { value });
-                          }}
-                          onBlur={(e) => {
-                            const { value } = e.target;
-                            if (canOperatorTakeArray(filter.operator) && value.includes(",")) {
-                              const finalValue = value
-                                .split(",")
-                                .map((v) => v.trim())
-                                .filter(Boolean);
-                              updateFilter(index, { value: finalValue });
+                          className="w-full min-w-[140px]"
+                        >
+                          {getFieldOperators(filter.field).map((operator) => (
+                            <SelectItem key={operator} value={operator}>
+                              {operator
+                                .replace(/_/g, " ")
+                                .toLowerCase()
+                                .replace(/\b\w/g, (l) => l.toUpperCase())}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormControl label="Value">
+                        {isValueBoolean(filter.field) ? (
+                          <Select
+                            value={String(filter.value)}
+                            onValueChange={(value) =>
+                              updateFilter(index, { value: value === "true" })
                             }
-                          }}
-                          placeholder={
-                            canOperatorTakeArray(filter.operator)
-                              ? "example.com, test.com"
-                              : "example.com"
-                          }
-                          className="w-full"
-                        />
-                      )}
-                    </FormControl>
+                            className="w-full"
+                          >
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={
+                              Array.isArray(filter.value)
+                                ? filter.value.join(", ")
+                                : String(filter.value || "")
+                            }
+                            onChange={(e) => {
+                              const { value } = e.target;
+                              updateFilter(index, { value });
+                            }}
+                            onBlur={(e) => {
+                              const { value } = e.target;
+                              if (canOperatorTakeArray(filter.operator) && value.includes(",")) {
+                                const finalValue = value
+                                  .split(",")
+                                  .map((v) => v.trim())
+                                  .filter(Boolean);
+                                updateFilter(index, { value: finalValue });
+                              }
+                            }}
+                            placeholder={
+                              canOperatorTakeArray(filter.operator)
+                                ? "example.com, test.com"
+                                : "example.com"
+                            }
+                            className="w-full"
+                          />
+                        )}
+                      </FormControl>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {(!watchedFilters || watchedFilters.length === 0) && (
-              <div className="py-8 text-center text-bunker-400">
-                No filter rules configured. This alert will monitor all certificates.
-              </div>
-            )}
+              {(!watchedFilters || watchedFilters.length === 0) && (
+                <div className="py-8 text-center text-bunker-400">
+                  No filter rules configured. This alert will monitor all certificates.
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </Tab.Panel>
+        </Tab.Panel>
+      )}
 
       {showPreview && (
         <Tab.Panel>
@@ -704,7 +712,7 @@ export const CreatePkiAlertV2FormSteps = ({
                   Add Channel
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={4}>
+              <DropdownMenuContent align="end" sideOffset={4} className="z-[70]">
                 <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.EMAIL)}>
                   <FontAwesomeIcon icon={faEnvelope} className="mr-2" />
                   Email
@@ -996,7 +1004,7 @@ export const CreatePkiAlertV2FormSteps = ({
                 </GenericFieldLabel>
               )}
               {watchedEventType === PkiAlertEventTypeV2.EXPIRATION && (
-                <GenericFieldLabel label="Daily Alerts">
+                <GenericFieldLabel label="Repeat daily until expiry">
                   {watch("notificationConfig.enableDailyNotification") ? "Enabled" : "Disabled"}
                 </GenericFieldLabel>
               )}
@@ -1006,34 +1014,36 @@ export const CreatePkiAlertV2FormSteps = ({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Filter Rules</span>
+          {showFilters && (
+            <div className="flex flex-col gap-3">
+              <div className="w-full border-b border-mineshaft-600">
+                <span className="text-sm text-mineshaft-300">Filter Rules</span>
+              </div>
+              <div className="flex flex-wrap gap-x-8 gap-y-2">
+                {watchedFilters && watchedFilters.length > 0 ? (
+                  watchedFilters.map((filter, index) => (
+                    <GenericFieldLabel key={`review-filter-${index}`} label={`Rule ${index + 1}`}>
+                      <span className="font-mono text-xs">
+                        {filter.field
+                          .replace(/_/g, " ")
+                          .toLowerCase()
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}{" "}
+                        {filter.operator
+                          .replace(/_/g, " ")
+                          .toLowerCase()
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}{" "}
+                        &quot;{String(filter.value)}&quot;
+                      </span>
+                    </GenericFieldLabel>
+                  ))
+                ) : (
+                  <span className="text-bunker-400">
+                    No filter rules - will monitor all certificates
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-x-8 gap-y-2">
-              {watchedFilters && watchedFilters.length > 0 ? (
-                watchedFilters.map((filter, index) => (
-                  <GenericFieldLabel key={`review-filter-${index}`} label={`Rule ${index + 1}`}>
-                    <span className="font-mono text-xs">
-                      {filter.field
-                        .replace(/_/g, " ")
-                        .toLowerCase()
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}{" "}
-                      {filter.operator
-                        .replace(/_/g, " ")
-                        .toLowerCase()
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}{" "}
-                      &quot;{String(filter.value)}&quot;
-                    </span>
-                  </GenericFieldLabel>
-                ))
-              ) : (
-                <span className="text-bunker-400">
-                  No filter rules - will monitor all certificates
-                </span>
-              )}
-            </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-3">
             <div className="w-full border-b border-mineshaft-600">

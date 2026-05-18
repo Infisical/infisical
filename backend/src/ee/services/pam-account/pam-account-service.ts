@@ -42,6 +42,7 @@ import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approva
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { TPamAccessPolicy } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -763,13 +764,17 @@ export const pamAccountServiceFactory = ({
       });
     }
 
+    // accountIdentity is fed to the approval layer; the FQDN prefix on domain
+    // accounts prevents a like-named local-account grant from matching.
     const lookupAccount = async () => {
       if (!isDomainAccount) {
-        return pamAccountDAL.findOne({
+        const localAccount = await pamAccountDAL.findOne({
           projectId,
           resourceId: resource.id,
           name: accountSlug
         });
+        if (!localAccount) return null;
+        return { account: localAccount, accountIdentity: localAccount.name };
       }
       if (!resource.domainId) {
         throw new BadRequestError({
@@ -790,19 +795,22 @@ export const pamAccountServiceFactory = ({
           message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
         });
       }
-      return pamAccountDAL.findOne({
+      const domainAccount = await pamAccountDAL.findOne({
         projectId,
         domainId: resource.domainId,
         name: accountSlug
       });
+      if (!domainAccount) return null;
+      return { account: domainAccount, accountIdentity: `${domainConn.domain}:${domainAccount.name}` };
     };
-    const account = await lookupAccount();
+    const lookup = await lookupAccount();
 
-    if (!account) {
+    if (!lookup) {
       throw new NotFoundError({
         message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
       });
     }
+    const { account, accountIdentity } = lookup;
 
     const trimmedReason = reason?.trim() || null;
 
@@ -811,7 +819,7 @@ export const pamAccountServiceFactory = ({
     const inputs = {
       resourceId: resource.id,
       resourceName: resource.name,
-      accountName: account.name
+      accountName: accountIdentity
     };
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
@@ -826,7 +834,12 @@ export const pamAccountServiceFactory = ({
           details: {
             policyId: policy.id,
             policyName: policy.name,
-            policyType: policy.type
+            policyType: policy.type,
+            constraints: {
+              accessDuration: {
+                max: (policy as TPamAccessPolicy).constraints.constraints.accessDuration.max
+              }
+            }
           }
         });
       }
@@ -843,19 +856,20 @@ export const pamAccountServiceFactory = ({
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
 
-      // For domain accounts the subject scopes to {domainName, domainType} (matching
-      // create/list/etc). Using {resourceName, resourceType} would let a role keyed on
-      // a single resource authorize every domain account, and a role keyed on the
-      // domain wouldn't match because the field would be undefined.
+      // On Access, resourceName/resourceType match the connect-target (the
+      // Windows host the credentials are used against), and for domain
+      // accounts domainName/domainType additionally scope to the parent.
+      // Other actions (create/read/update/delete) keep resourceName as the
+      // account's parent, which is undefined for domain accounts.
       const domain = isDomainAccount && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
           accountName: account.name,
-          ...(isDomainAccount && domain
-            ? { domainName: domain.name, domainType: domain.domainType }
-            : { resourceName: resource.name, resourceType: resource.resourceType }),
+          resourceName: resource.name,
+          resourceType: resource.resourceType,
+          ...(isDomainAccount && domain && { domainName: domain.name, domainType: domain.domainType }),
           metadata: accountMeta[account.id] || []
         })
       );
@@ -955,10 +969,10 @@ export const pamAccountServiceFactory = ({
 
     if (resourceType === PamResource.Windows) {
       const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
-      if (!recordingConfig) {
+      if (!recordingConfig || recordingConfig.storageBackend === PamRecordingStorageBackend.Postgres) {
         throw new BadRequestError({
           message:
-            "Windows resources require an external session recording configuration. Configure session recording in project settings before accessing Windows accounts."
+            "Windows resources require an external (S3) session recording configuration. Postgres storage is not supported for RDP sessions. Configure an S3 bucket in project settings before accessing Windows accounts."
         });
       }
     }
@@ -1349,6 +1363,13 @@ export const pamAccountServiceFactory = ({
       const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
       const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
 
+      if (resource.resourceType === PamResource.Windows && storageBackend === PamRecordingStorageBackend.Postgres) {
+        throw new BadRequestError({
+          message:
+            "Windows (RDP) sessions require an external (S3) recording backend. Postgres storage is not supported for RDP recordings."
+        });
+      }
+
       const { sessionKey, uploadToken, encryptedSessionKey, uploadTokenHash } = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
@@ -1371,6 +1392,14 @@ export const pamAccountServiceFactory = ({
     } else if (session.status === PamSessionStatus.Active && session.encryptedSessionKey) {
       const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
       const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+
+      if (resource.resourceType === PamResource.Windows && storageBackend === PamRecordingStorageBackend.Postgres) {
+        throw new BadRequestError({
+          message:
+            "Windows (RDP) sessions require an external (S3) recording backend. Postgres storage is not supported for RDP recordings."
+        });
+      }
+
       const sessionKey = await decryptSessionKey({
         projectId: session.projectId,
         sessionId,

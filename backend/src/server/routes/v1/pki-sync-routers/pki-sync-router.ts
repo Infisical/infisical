@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -10,7 +11,7 @@ import { CertificateSyncStatus } from "@app/services/certificate-sync/certificat
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
-const PkiSyncSchema = z.object({
+export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable().optional(),
@@ -19,6 +20,7 @@ const PkiSyncSchema = z.object({
   destinationConfig: z.record(z.unknown()),
   syncOptions: z.record(z.unknown()),
   projectId: z.string().uuid(),
+  applicationId: z.string().uuid().nullable().optional(),
   subscriberId: z.string().uuid().nullable().optional(),
   connectionId: z.string().uuid(),
   createdAt: z.date(),
@@ -138,8 +140,9 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all the PKI Syncs for the specified project.",
       querystring: z.object({
-        projectId: z.string().trim().min(1),
-        certificateId: z.string().uuid().optional()
+        projectId: z.string().trim().optional().describe(openApiHidden()),
+        certificateId: z.string().uuid().optional(),
+        applicationId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
@@ -148,11 +151,15 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        query: { projectId, certificateId },
+        query: { certificateId, applicationId },
         permission
       } = req;
+      const projectId = req.internalCertManagerProjectId;
 
-      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId, certificateId }, permission);
+      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId(
+        { projectId, certificateId, applicationId },
+        permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -200,7 +207,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           type: EventType.GET_PKI_SYNC,
           metadata: {
             syncId: pkiSyncId,
-            destination: pkiSync.destination
+            destination: pkiSync.destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -253,7 +261,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
             syncId: pkiSyncId,
             destination: pkiSyncInfo.destination,
             count: certificates.length,
-            certificateIds: certificates.map((c) => c.certificateId)
+            certificateIds: certificates.map((c) => c.certificateId),
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
           }
         }
       });
@@ -313,7 +322,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSyncInfo.name
+            name: pkiSyncInfo.name,
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
           }
         }
       });
@@ -362,7 +372,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSyncInfo.name
+            name: pkiSyncInfo.name,
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
           }
         }
       });
