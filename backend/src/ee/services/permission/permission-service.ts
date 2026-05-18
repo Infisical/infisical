@@ -1008,13 +1008,6 @@ export const permissionServiceFactory = ({
       privilegeNameById[p.id] = p.name;
     });
 
-    const now = new Date();
-    const isActiveTemporary = <T extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
-      item: T
-    ): boolean =>
-      !item.isTemporary ||
-      (item.isTemporary && Boolean(item.temporaryAccessEndTime) && now < (item.temporaryAccessEndTime as Date));
-
     const sources: Awaited<ReturnType<TPermissionServiceFactory["getMembershipPermissionAudit"]>>["sources"] = [];
 
     targetMemberships.forEach((membership) => {
@@ -1022,7 +1015,7 @@ export const permissionServiceFactory = ({
       const groupId = isGroupInherited ? (membership.actorGroupId as string) : undefined;
       const groupName = groupId ? groupNameById[groupId] : undefined;
 
-      const activeRoles = (membership.roles ?? []).filter(isActiveTemporary);
+      const activeRoles = (membership.roles ?? []).filter(isActiveRole);
       activeRoles.forEach((role) => {
         const isCustom = role.role === ProjectMembershipRole.Custom;
         const builtRules = buildProjectPermissionRules([
@@ -1033,8 +1026,8 @@ export const permissionServiceFactory = ({
         sources.push({
           id: role.id,
           type: isGroupInherited ? "group_role" : "role",
-          name: isCustom ? role.customRoleSlug || "Custom" : role.role,
-          slug: role.customRoleSlug || role.role,
+          name: isCustom ? role.customRoleName || role.customRoleSlug || "Custom" : role.role,
+          slug: isCustom ? ProjectMembershipRole.Custom : role.role,
           groupId,
           groupName,
           isTemporary: Boolean(role.isTemporary),
@@ -1046,7 +1039,7 @@ export const permissionServiceFactory = ({
 
       if (isGroupInherited) return;
 
-      const activePrivileges = (membership.additionalPrivileges ?? []).filter(isActiveTemporary);
+      const activePrivileges = (membership.additionalPrivileges ?? []).filter(isActiveRole);
       activePrivileges.forEach((priv) => {
         const builtRules = buildProjectPermissionRules([
           { role: ProjectMembershipRole.Custom, permissions: priv.permissions }

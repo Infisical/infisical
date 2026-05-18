@@ -61,31 +61,47 @@ const evaluateActionForSubject = (
 
   sources.forEach((source) => {
     const matchingRules = source.rules.filter((rule) => ruleMatches(rule, action, subject));
-    const sourceAllowsUnconditionally = matchingRules.some(
-      (r) => !r.inverted && (!r.conditions || Object.keys(r.conditions).length === 0)
-    );
-    const conditionalRules = matchingRules.filter(
-      (r) => !r.inverted && r.conditions && Object.keys(r.conditions).length > 0
-    );
-    const sourceAllowsConditionally = conditionalRules.length > 0;
+    const hasConditions = (r: { conditions?: Record<string, unknown> }) =>
+      Boolean(r.conditions && Object.keys(r.conditions).length > 0);
 
-    conditionalRules.forEach((r) => {
+    const unconditionalAllowRule = matchingRules.find((r) => !r.inverted && !hasConditions(r));
+    const conditionalAllowRules = matchingRules.filter((r) => !r.inverted && hasConditions(r));
+    const unconditionalDenyRule = matchingRules.find((r) => r.inverted && !hasConditions(r));
+    const conditionalDenyRules = matchingRules.filter((r) => r.inverted && hasConditions(r));
+
+    // CASL applies inverted (forbid) rules after allow rules to subtract from
+    // them. An unconditional forbid fully revokes any grant from this source.
+    if (unconditionalDenyRule) return;
+
+    let sourceState: "unconditional" | "conditional" | "none";
+    if (unconditionalAllowRule) {
+      sourceState = conditionalDenyRules.length > 0 ? "conditional" : "unconditional";
+    } else if (conditionalAllowRules.length > 0) {
+      sourceState = "conditional";
+    } else {
+      sourceState = "none";
+    }
+
+    if (sourceState === "none") return;
+
+    conditionalAllowRules.forEach((r) => {
+      if (r.conditions) conditions.push(r.conditions);
+    });
+    conditionalDenyRules.forEach((r) => {
       if (r.conditions) conditions.push(r.conditions);
     });
 
-    if (sourceAllowsUnconditionally || sourceAllowsConditionally) {
-      grantedBy.push({
-        id: source.id,
-        type: source.type,
-        name: source.name,
-        slug: source.slug,
-        groupName: source.groupName,
-        isTemporary: source.isTemporary,
-        temporaryAccessEndTime: source.temporaryAccessEndTime
-      });
-      if (sourceAllowsUnconditionally) hasUnconditionalAllow = true;
-      else hasConditionalAllow = true;
-    }
+    grantedBy.push({
+      id: source.id,
+      type: source.type,
+      name: source.name,
+      slug: source.slug,
+      groupName: source.groupName,
+      isTemporary: source.isTemporary,
+      temporaryAccessEndTime: source.temporaryAccessEndTime
+    });
+    if (sourceState === "unconditional") hasUnconditionalAllow = true;
+    else hasConditionalAllow = true;
   });
 
   let state: AuditState;
