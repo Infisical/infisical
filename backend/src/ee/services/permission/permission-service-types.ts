@@ -1,4 +1,5 @@
-import { MongoAbility } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule } from "@casl/ability/extra";
 import { MongoQuery } from "@ucast/mongo2js";
 
 import { ActionProjectType, OrganizationActionScope, ResourceType, TMemberships } from "@app/db/schemas";
@@ -42,6 +43,28 @@ export type TGetResourcePermissionArg = {
   resourceId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId?: string;
+};
+
+export type TGetMembershipPermissionAuditArg = {
+  actor: ActorType;
+  actorId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
+  projectId: string;
+  targetUserId: string;
+};
+
+export type TPermissionAuditSource = {
+  id: string;
+  type: "role" | "group_role" | "additional_privilege";
+  name: string;
+  slug?: string;
+  groupId?: string;
+  groupName?: string;
+  isTemporary: boolean;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+  permissions: PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
 };
 
 export type TGetOrgPermissionArg = {
@@ -142,4 +165,7 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
+  getMembershipPermissionAudit: (arg: TGetMembershipPermissionAuditArg) => Promise<{
+    sources: TPermissionAuditSource[];
+  }>;
 };
