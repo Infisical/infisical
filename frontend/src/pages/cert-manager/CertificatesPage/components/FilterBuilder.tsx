@@ -27,6 +27,7 @@ type Props = {
   onClearAll: () => void;
   onSaveView?: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
+  hiddenFieldKeys?: string[];
 };
 
 const getFieldDef = (
@@ -94,12 +95,14 @@ const FilterRow = ({
   rule,
   onUpdate,
   onRemove,
-  dynamicFieldOptions: dynOpts
+  dynamicFieldOptions: dynOpts,
+  availableFields
 }: {
   rule: FilterRule;
   onUpdate: (updated: FilterRule) => void;
   onRemove: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
+  availableFields: FilterFieldDefinition[];
 }) => {
   const fieldDef = getFieldDef(rule.field, dynOpts);
 
@@ -199,7 +202,7 @@ const FilterRow = ({
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper" align="start">
-          {FILTER_FIELDS.map((f) => (
+          {availableFields.map((f) => (
             <SelectItem key={f.key} value={f.key}>
               {f.label}
             </SelectItem>
@@ -245,8 +248,12 @@ export const FilterBuilder = ({
   onCancel,
   onClearAll,
   onSaveView,
-  dynamicFieldOptions
+  dynamicFieldOptions,
+  hiddenFieldKeys
 }: Props) => {
+  const availableFields = hiddenFieldKeys?.length
+    ? FILTER_FIELDS.filter((f) => !hiddenFieldKeys.includes(f.key))
+    : FILTER_FIELDS;
   const hasEmptyRules = rules.some(isRuleEmpty);
 
   const handleApplyWithValidation = () => {
@@ -260,7 +267,7 @@ export const FilterBuilder = ({
   };
 
   const handleAddRule = () => {
-    const defaultField = FILTER_FIELDS[0];
+    const defaultField = availableFields[0] ?? FILTER_FIELDS[0];
     onChange([
       ...rules,
       {
@@ -309,6 +316,7 @@ export const FilterBuilder = ({
                 onUpdate={(updated) => handleUpdateRule(index, updated)}
                 onRemove={() => handleRemoveRule(index)}
                 dynamicFieldOptions={dynamicFieldOptions}
+                availableFields={availableFields}
               />
             </div>
           ))}

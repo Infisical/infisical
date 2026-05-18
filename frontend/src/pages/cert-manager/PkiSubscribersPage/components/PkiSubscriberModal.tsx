@@ -161,13 +161,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const projectId = currentProject.id;
   const { data: subscribers } = useListWorkspacePkiSubscribers(projectId);
-  const { data: cas } = useListCasByProjectId(projectId);
+  const { data: cas } = useListCasByProjectId();
   const [tabValue, setTabValue] = useState<FormTab>(FormTab.Configuration);
 
   const { data: pkiSubscriber } = useGetPkiSubscriber({
-    subscriberName:
-      (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || "",
-    projectId
+    subscriberName: (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || ""
   });
 
   const { mutateAsync: createMutateAsync } = useCreatePkiSubscriber();
@@ -213,7 +211,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   // Fetch Azure ADCS templates when Azure CA is selected
   const { data: azureTemplates } = useGetAzureAdcsTemplates({
     caId: selectedCa?.type === CaType.AZURE_AD_CS ? selectedCaId : "",
-    projectId,
     isAzureAdcsCa: true
   });
 
@@ -345,7 +342,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (pkiSubscriber) {
       await updateMutateAsync({
         subscriberName: pkiSubscriber.name,
-        projectId,
         name,
         caId,
         commonName,
@@ -365,7 +361,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     } else {
       await createMutateAsync({
-        projectId,
         name,
         caId,
         commonName,

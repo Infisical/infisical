@@ -7,6 +7,7 @@ import picomatch from "picomatch";
 import { apiRequest } from "@app/config/request";
 import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/types";
+import { rolesBase } from "@app/hooks/api/certManagerAccess";
 import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 
@@ -50,26 +51,30 @@ export const roleQueryKeys = {
     ["user-project-permissions", { projectId }] as const
 };
 
-export const getProjectRoles = async (projectId: string) => {
+export const getProjectRoles = async (projectId: string, projectType?: string) => {
   const { data } = await apiRequest.get<{ roles: Array<Omit<TProjectRole, "permissions">> }>(
-    `/api/v1/projects/${projectId}/roles`
+    rolesBase(projectType, projectId)
   );
   return data.roles;
 };
 
-export const useGetProjectRoles = (projectId: string) =>
+export const useGetProjectRoles = (projectId: string, projectType?: string) =>
   useQuery({
     queryKey: roleQueryKeys.getProjectRoles(projectId),
-    queryFn: () => getProjectRoles(projectId),
+    queryFn: () => getProjectRoles(projectId, projectType),
     enabled: Boolean(projectId)
   });
 
-export const useGetProjectRoleBySlug = (projectId: string, roleSlug: string) =>
+export const useGetProjectRoleBySlug = (
+  projectId: string,
+  roleSlug: string,
+  projectType?: string
+) =>
   useQuery({
     queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, roleSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ role: TProjectRole }>(
-        `/api/v1/projects/${projectId}/roles/slug/${roleSlug}`
+        `${rolesBase(projectType, projectId)}/slug/${roleSlug}`
       );
       return data.role;
     },

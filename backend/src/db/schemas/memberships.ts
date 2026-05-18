@@ -23,7 +23,9 @@ export const MembershipsSchema = z.object({
   lastLoginTime: z.date().nullable().optional(),
   projectFavorites: z.string().array().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  scopeResourceType: z.string().nullable().optional(),
+  scopeResourceId: z.string().nullable().optional()
 });
 
 export type TMemberships = z.infer<typeof MembershipsSchema>;

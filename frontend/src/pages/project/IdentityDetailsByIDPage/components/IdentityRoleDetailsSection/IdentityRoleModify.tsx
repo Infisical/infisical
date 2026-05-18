@@ -71,7 +71,7 @@ type Props = {
 };
 
 export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
   const { permission } = useProjectPermission();
@@ -181,6 +181,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
 
     await updateProjectIdentityMembership.mutateAsync({
       projectId,
+      projectType: currentProject?.type,
       identityId: identityProjectMembership.identity.id,
       roles: sanitizedRoles
     });

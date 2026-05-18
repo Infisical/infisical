@@ -1,8 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -12,6 +13,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -69,12 +71,13 @@ type TPkiAlertV2ServiceFactoryDep = {
   >;
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
 };
 
 export type TPkiAlertV2ServiceFactory = ReturnType<typeof pkiAlertV2ServiceFactory>;
@@ -88,8 +91,46 @@ export const pkiAlertV2ServiceFactory = ({
   kmsService,
   notificationService,
   projectMembershipDAL,
-  projectDAL
+  projectDAL,
+  pkiApplicationDAL
 }: TPkiAlertV2ServiceFactoryDep) => {
+  const $assertCanActOnAlert = async (
+    action: ProjectPermissionActions,
+    projectId: string,
+    applicationId: string | null | undefined,
+    ctx: {
+      actor: Parameters<TPermissionServiceFactory["getProjectPermission"]>[0]["actor"];
+      actorId: string;
+      actorAuthMethod: Parameters<TPermissionServiceFactory["getProjectPermission"]>[0]["actorAuthMethod"];
+      actorOrgId?: string;
+    }
+  ) => {
+    if (applicationId) {
+      const { permission: resourcePerm } = await permissionService.getResourcePermission({
+        actor: ctx.actor,
+        actorId: ctx.actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod: ctx.actorAuthMethod,
+        actorOrgId: ctx.actorOrgId
+      });
+      ForbiddenError.from(resourcePerm).throwUnlessCan(action, ResourcePermissionSub.PkiAlerts);
+      return null;
+    }
+
+    const projectPerm = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(projectPerm.permission).throwUnlessCan(action, ProjectPermissionSub.PkiAlerts);
+    return projectPerm;
+  };
+
   // Helper to encrypt channel config before storing in DB
   const encryptChannelConfig = (
     config: TChannelConfig,
@@ -124,6 +165,7 @@ export const pkiAlertV2ServiceFactory = ({
       filters: (alert.filters ?? []) as TPkiFilterRule[],
       enabled: alert.enabled ?? true,
       projectId: alert.projectId,
+      applicationId: alert.applicationId ?? null,
       channels: (alert.channels || []).map((channel) => {
         const config = decryptChannelConfig<TChannelConfig>(channel, decryptor);
 
@@ -167,6 +209,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const createAlert = async ({
     projectId,
+    applicationId,
     name,
     description,
     eventType,
@@ -180,16 +223,18 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateAlertV2DTO): Promise<TAlertV2Response> => {
-    const { permission } = await permissionService.getProjectPermission({
+    if (!applicationId) {
+      throw new BadRequestError({
+        message: "Alerts must be created inside an Application. Open the Application's Alerts tab and click Add Alert."
+      });
+    }
+
+    await $assertCanActOnAlert(ProjectPermissionActions.Create, projectId, applicationId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
 
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {
       throw new BadRequestError({ message: "alertBefore is required for expiration alerts" });
@@ -226,6 +271,7 @@ export const pkiAlertV2ServiceFactory = ({
       const alert = await pkiAlertV2DAL.create(
         {
           projectId,
+          applicationId: applicationId ?? null,
           name,
           description,
           eventType,
@@ -258,6 +304,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const getAlertById = async ({
     alertId,
+    applicationId,
     actorId,
     actorAuthMethod,
     actor,
@@ -265,17 +312,18 @@ export const pkiAlertV2ServiceFactory = ({
   }: TGetAlertV2DTO): Promise<TAlertV2Response> => {
     const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
+    if (applicationId && alert.applicationId !== applicationId) {
+      throw new NotFoundError({
+        message: `Alert with ID '${alertId}' is not scoped to application '${applicationId}'.`
+      });
+    }
 
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Read, alert.projectId, alert.applicationId, {
       actor,
       actorId,
-      projectId: alert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -287,6 +335,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const listAlerts = async ({
     projectId,
+    applicationId,
     search,
     eventType,
     enabled,
@@ -297,18 +346,14 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TListAlertsV2DTO): Promise<TListAlertsV2Response> => {
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Read, projectId, applicationId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
-
-    const filters = { search, eventType, enabled, limit, offset };
+    const filters = { search, eventType, enabled, limit, offset, applicationId };
 
     const { alerts, total } = await pkiAlertV2DAL.findByProjectIdWithCount(projectId, filters);
 
@@ -325,6 +370,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const updateAlert = async ({
     alertId,
+    applicationId,
     name,
     description,
     eventType,
@@ -340,17 +386,18 @@ export const pkiAlertV2ServiceFactory = ({
   }: TUpdateAlertV2DTO): Promise<TAlertV2Response> => {
     let alert = await pkiAlertV2DAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
+    if (applicationId && alert.applicationId !== applicationId) {
+      throw new NotFoundError({
+        message: `Alert with ID '${alertId}' is not scoped to application '${applicationId}'.`
+      });
+    }
 
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Edit, alert.projectId, alert.applicationId, {
       actor,
       actorId,
-      projectId: alert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
 
     const resultingEventType = eventType ?? (alert.eventType as PkiAlertEventType);
     const resultingAlertBefore = alertBefore !== undefined ? alertBefore : alert.alertBefore;
@@ -475,6 +522,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const deleteAlert = async ({
     alertId,
+    applicationId,
     actorId,
     actorAuthMethod,
     actor,
@@ -482,17 +530,18 @@ export const pkiAlertV2ServiceFactory = ({
   }: TDeleteAlertV2DTO): Promise<TAlertV2Response> => {
     const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
+    if (applicationId && alert.applicationId !== applicationId) {
+      throw new NotFoundError({
+        message: `Alert with ID '${alertId}' is not scoped to application '${applicationId}'.`
+      });
+    }
 
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Delete, alert.projectId, alert.applicationId, {
       actor,
       actorId,
-      projectId: alert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -517,16 +566,12 @@ export const pkiAlertV2ServiceFactory = ({
     const alert = await pkiAlertV2DAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Read, alert.projectId, alert.applicationId, {
       actor,
       actorId,
-      projectId: alert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
     const options: {
       limit: number;
@@ -534,12 +579,14 @@ export const pkiAlertV2ServiceFactory = ({
       showPreview?: boolean;
       excludeAlerted?: boolean;
       alertId?: string;
+      applicationId?: string;
     } = {
       limit,
       offset,
       showPreview: true,
       excludeAlerted: alert.eventType === PkiAlertEventType.EXPIRATION,
-      alertId
+      alertId,
+      ...(alert.applicationId ? { applicationId: alert.applicationId } : {})
     };
 
     const result = await pkiAlertV2DAL.findMatchingCertificates(
@@ -610,6 +657,7 @@ export const pkiAlertV2ServiceFactory = ({
     alertName,
     alertBefore,
     projectId,
+    applicationId,
     eventType,
     channels,
     matchingCertificates,
@@ -619,6 +667,7 @@ export const pkiAlertV2ServiceFactory = ({
     alertName: string;
     alertBefore?: string;
     projectId: string;
+    applicationId?: string;
     eventType: PkiAlertEventType;
     channels: Array<{
       id: string;
@@ -635,11 +684,19 @@ export const pkiAlertV2ServiceFactory = ({
     const errors: string[] = [];
 
     const alertBeforeDays = alertBefore ? parseTimeToDays(alertBefore) : 0;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (!project) throw new NotFoundError({ message: `Project '${projectId}' not found` });
+    const application = applicationId ? await pkiApplicationDAL.findById(applicationId) : null;
     const alertData: TAlertInfo = {
       id: alertId,
       name: alertName,
       ...(alertBefore ? { alertBefore } : {}),
-      projectId
+      projectId,
+      orgId: project.orgId,
+      ...(applicationId ? { applicationId } : {}),
+      ...(application?.name ? { applicationName: application.name } : {})
     };
     const webhookEventType = alertEventTypeToWebhookEventType[eventType];
 
@@ -658,9 +715,8 @@ export const pkiAlertV2ServiceFactory = ({
             const result = await sendEmailNotificationWithRetry(
               smtpService,
               config,
-              alertName,
+              alertData,
               alertBeforeDays,
-              projectId,
               matchingCertificates,
               channel.id,
               eventType
@@ -731,31 +787,26 @@ export const pkiAlertV2ServiceFactory = ({
       // Send in-app notifications to project admins
       try {
         const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-        const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-          projectDAL.findById(projectId)
+
+        const projectAdmins = projectMembers.filter((member) =>
+          member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
         );
 
-        if (project) {
-          const projectAdmins = projectMembers.filter((member) =>
-            member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
+        if (projectAdmins.length > 0) {
+          const alertingPath = `/organizations/${project.orgId}/projects/cert-manager/${projectId}/alerting`;
+          const truncatedError =
+            notificationError.length > 200 ? `${notificationError.substring(0, 200)}...` : notificationError;
+
+          await notificationService.createUserNotifications(
+            projectAdmins.map((admin) => ({
+              userId: admin.userId,
+              orgId: project.orgId,
+              type: NotificationType.PKI_ALERT_CHANNEL_FAILED,
+              title: `PKI Alert Channel Failed: ${alertName}`,
+              body: `Your PKI alert **${alertName}** failed to deliver notifications: \`${truncatedError}\``,
+              link: alertingPath
+            }))
           );
-
-          if (projectAdmins.length > 0) {
-            const alertingPath = `/organizations/${project.orgId}/projects/cert-manager/${projectId}/alerting`;
-            const truncatedError =
-              notificationError.length > 200 ? `${notificationError.substring(0, 200)}...` : notificationError;
-
-            await notificationService.createUserNotifications(
-              projectAdmins.map((admin) => ({
-                userId: admin.userId,
-                orgId: project.orgId,
-                type: NotificationType.PKI_ALERT_CHANNEL_FAILED,
-                title: `PKI Alert Channel Failed: ${alertName}`,
-                body: `Your PKI alert **${alertName}** failed to deliver notifications: \`${truncatedError}\``,
-                link: alertingPath
-              }))
-            );
-          }
         }
       } catch (notifyErr) {
         logger.error(notifyErr, `Failed to send in-app notification for PKI alert channel failure: ${alertId}`);
@@ -780,7 +831,8 @@ export const pkiAlertV2ServiceFactory = ({
     const filters = (alert.filters ?? []) as TPkiFilterRule[];
 
     const { certificates } = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
-      alertBefore: parseTimeToPostgresInterval(alertBefore)
+      alertBefore: parseTimeToPostgresInterval(alertBefore),
+      ...(alert.applicationId ? { applicationId: alert.applicationId } : {})
     });
 
     const matchingCertificates = certificates.filter(
@@ -794,6 +846,7 @@ export const pkiAlertV2ServiceFactory = ({
       alertName: alert.name,
       alertBefore,
       projectId,
+      applicationId: alert.applicationId ?? undefined,
       eventType: PkiAlertEventType.EXPIRATION,
       channels,
       matchingCertificates,
@@ -810,15 +863,17 @@ export const pkiAlertV2ServiceFactory = ({
     if (channels.length === 0) return;
 
     const filters = (alert.filters ?? []) as TPkiFilterRule[];
+    const applicationScope = alert.applicationId ? { applicationId: alert.applicationId } : {};
 
-    const allCertificates: TCertificatePreview[] = [];
-    for (const certId of certificateIds) {
-      // eslint-disable-next-line no-await-in-loop
-      const { certificates } = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
-        certificateId: certId
-      });
-      allCertificates.push(...certificates);
-    }
+    const matchingPerCert = await Promise.all(
+      certificateIds.map((certId) =>
+        pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
+          certificateId: certId,
+          ...applicationScope
+        })
+      )
+    );
+    const allCertificates: TCertificatePreview[] = matchingPerCert.flatMap((r) => r.certificates);
 
     const matchingCertificates = allCertificates.filter((cert) => cert.enrollmentType !== CertificateOrigin.CA);
 
@@ -829,6 +884,7 @@ export const pkiAlertV2ServiceFactory = ({
       alertName: alert.name,
       alertBefore: alert.alertBefore ?? undefined,
       projectId,
+      applicationId: alert.applicationId ?? undefined,
       eventType,
       channels,
       matchingCertificates,
@@ -838,6 +894,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const testWebhookConfig = async ({
     projectId,
+    applicationId,
     url,
     signingSecret,
     actorId,
@@ -845,24 +902,28 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TTestWebhookConfigDTO): Promise<{ success: boolean; error?: string }> => {
-    // Permission check - user must have edit access to PKI alerts in this project
-    const { permission } = await permissionService.getProjectPermission({
+    await $assertCanActOnAlert(ProjectPermissionActions.Edit, projectId, applicationId, {
       actor,
       actorId,
-      projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (!project) throw new NotFoundError({ message: `Project '${projectId}' not found` });
+    const application = applicationId ? await pkiApplicationDAL.findById(applicationId) : null;
 
     // Create test data (SSRF validation is done in sendWebhookNotification)
     const alertData: TAlertInfo = {
       id: "00000000-0000-0000-0000-000000000000",
       name: "Test Alert",
       alertBefore: "30d",
-      projectId
+      projectId,
+      orgId: project.orgId,
+      ...(applicationId ? { applicationId } : {}),
+      ...(application?.name ? { applicationName: application.name } : {})
     };
 
     const testCertificates: TCertificatePreview[] = [

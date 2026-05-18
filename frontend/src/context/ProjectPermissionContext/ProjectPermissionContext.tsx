@@ -24,7 +24,9 @@ export const useProjectPermission = () => {
   } = useSuspenseQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ projectId }),
     queryFn: () => fetchUserProjectPermissions({ projectId }),
-    staleTime: Infinity,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
       const ability = evaluatePermissionsAbility(rule);

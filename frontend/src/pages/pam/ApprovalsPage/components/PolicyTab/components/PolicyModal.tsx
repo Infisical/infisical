@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   PamAccessPolicyConditions,
   PamAccessPolicyConstraints,
@@ -128,7 +129,8 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       } else {
         await createPolicy({
           policyType: ApprovalPolicyType.PamAccess,
-          projectId: currentProject.id,
+          scope: ApprovalPolicyScope.Project,
+          scopeId: currentProject.id,
           ...data
         });
         createNotification({

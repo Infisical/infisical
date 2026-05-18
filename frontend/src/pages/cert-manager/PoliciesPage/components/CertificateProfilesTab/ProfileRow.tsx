@@ -7,8 +7,6 @@ import {
   faCopy,
   faEdit,
   faEllipsis,
-  faEye,
-  faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,44 +18,27 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Td,
-  Tooltip,
-  Tr
+  Tooltip
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { TableCell, TableRow } from "@app/components/v3";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp, useToggle } from "@app/hooks";
+import { useToggle } from "@app/hooks";
 import { useGetInternalCaById } from "@app/hooks/api/ca/queries";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
-import {
-  EnrollmentType,
-  IssuerType,
-  TCertificateProfile
-} from "@app/hooks/api/certificateProfiles";
-import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
+import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
-  onRevealProfileAcmeEabSecret: (profile: TCertificateProfile) => void;
-  onViewScepDetails: (profile: TCertificateProfile) => void;
   onDeleteProfile: (profile: TCertificateProfile) => void;
 }
 
-export const ProfileRow = ({
-  profile,
-  onEditProfile,
-  onRevealProfileAcmeEabSecret,
-  onViewScepDetails,
-  onDeleteProfile
-}: Props) => {
+export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) => {
   const isInternalCa = !profile.certificateAuthority?.isExternal;
   const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
-
-  const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -77,25 +58,9 @@ export const ProfileRow = ({
     policyId: profile.certificatePolicyId
   });
 
-  const getEnrollmentTypeBadge = (enrollmentType: string) => {
-    const config = {
-      api: { variant: "ghost" as const, label: "API" },
-      est: { variant: "ghost" as const, label: "EST" },
-      acme: { variant: "ghost" as const, label: "ACME" },
-      scep: { variant: "ghost" as const, label: "SCEP" }
-    } as const;
-
-    const configKey = Object.keys(config).includes(enrollmentType)
-      ? (enrollmentType as keyof typeof config)
-      : "api";
-    const { variant, label } = config[configKey];
-
-    return <Badge variant={variant}>{label}</Badge>;
-  };
-
   return (
-    <Tr key={profile.id} className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
-      <Td>
+    <TableRow key={profile.id}>
+      <TableCell>
         <div className="flex items-center gap-2">
           <div className="text-mineshaft-300">{profile.slug}</div>
           {profile.description && (
@@ -104,9 +69,8 @@ export const ProfileRow = ({
             </Tooltip>
           )}
         </div>
-      </Td>
-      <Td className="text-start">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
-      <Td className="text-start">
+      </TableCell>
+      <TableCell className="text-start">
         <span className="text-sm text-mineshaft-300">
           {profile.issuerType === IssuerType.SELF_SIGNED
             ? "Self-signed"
@@ -116,13 +80,13 @@ export const ProfileRow = ({
                 caData?.configuration.commonName ||
                 profile.caId}
         </span>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <span className="text-sm text-mineshaft-300">
           {policyData?.name || profile.certificatePolicyId}
         </span>
-      </Td>
-      <Td className="text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">
             <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -156,66 +120,6 @@ export const ProfileRow = ({
                 )
               }
             </ProjectPermissionCan>
-            {profile.enrollmentType === EnrollmentType.ACME && (
-              <ProjectPermissionCan
-                I={ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret}
-                a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
-              >
-                {(isAllowed) =>
-                  isAllowed && (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRevealProfileAcmeEabSecret(profile);
-                      }}
-                      icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
-                    >
-                      Reveal ACME EAB
-                    </DropdownMenuItem>
-                  )
-                }
-              </ProjectPermissionCan>
-            )}
-            {profile.enrollmentType === EnrollmentType.SCEP && (
-              <ProjectPermissionCan
-                I={ProjectPermissionCertificateProfileActions.Read}
-                a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
-              >
-                {(isAllowed) =>
-                  isAllowed && (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewScepDetails(profile);
-                      }}
-                      icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
-                    >
-                      View SCEP Details
-                    </DropdownMenuItem>
-                  )
-                }
-              </ProjectPermissionCan>
-            )}
-            {profile.enrollmentType === EnrollmentType.API && (
-              <ProjectPermissionCan
-                I={ProjectPermissionCertificateProfileActions.IssueCert}
-                a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
-              >
-                {(isAllowed) =>
-                  isAllowed && (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePopUpToggle("issueCertificate");
-                      }}
-                      icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
-                    >
-                      Request Certificate
-                    </DropdownMenuItem>
-                  )
-                }
-              </ProjectPermissionCan>
-            )}
             <ProjectPermissionCan
               I={ProjectPermissionCertificateProfileActions.Delete}
               a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
@@ -236,12 +140,7 @@ export const ProfileRow = ({
             </ProjectPermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
-        <CertificateIssuanceModal
-          popUp={popUp}
-          handlePopUpToggle={handlePopUpToggle}
-          profileId={profile.id}
-        />
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

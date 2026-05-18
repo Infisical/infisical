@@ -45,7 +45,8 @@ export const CertificatesSchema = z.object({
   pathLength: z.number().nullable().optional(),
   source: z.string().nullable().optional(),
   discoveryMetadata: z.unknown().nullable().optional(),
-  externalMetadata: z.unknown().nullable().optional()
+  externalMetadata: z.unknown().nullable().optional(),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

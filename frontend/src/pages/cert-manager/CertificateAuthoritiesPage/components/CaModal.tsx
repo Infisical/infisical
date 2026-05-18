@@ -224,7 +224,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       // create
       await createMutateAsync({
-        projectId: currentProject.id,
         name,
         type,
         status,

@@ -21,6 +21,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
 import { MembersTable } from "./MembersTable";
@@ -28,6 +29,8 @@ import { MembersTable } from "./MembersTable";
 export const MembersSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 
@@ -43,6 +46,7 @@ export const MembersSection = () => {
 
     await removeUserFromWorkspace({
       projectId: currentProject.id,
+      projectType: currentProject.type,
       usernames: [username],
       orgId: currentOrg.id
     });
@@ -58,10 +62,12 @@ export const MembersSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Project Users
+            {isCertManager ? "Users" : `${productLabel} Users`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </CardTitle>
-          <CardDescription>Invite and manage project users</CardDescription>
+          <CardDescription>
+            {`Invite and manage ${productLabel.toLowerCase()} users`}
+          </CardDescription>
           <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
@@ -74,7 +80,7 @@ export const MembersSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <UserPlusIcon />
-                  Add Users to Project
+                  {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -88,7 +94,7 @@ export const MembersSection = () => {
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         deleteKey="remove"
-        title="Do you want to remove this user from the project?"
+        title={`Do you want to remove this user from the ${productLabel.toLowerCase()}?`}
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
       />

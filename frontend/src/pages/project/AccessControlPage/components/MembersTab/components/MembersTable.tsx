@@ -54,6 +54,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
@@ -80,9 +81,11 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   });
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
-  const { data: projectRoles } = useGetProjectRoles(projectId);
+  const { data: projectRoles } = useGetProjectRoles(projectId, currentProject?.type);
 
   const {
     search,
@@ -191,7 +194,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search project users..."
+            placeholder={isCertManager ? "Search users..." : "Search project users..."}
           />
         </InputGroup>
         <DropdownMenu>
@@ -201,7 +204,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Filter by Project Role</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+            </DropdownMenuLabel>
             {projectRoles?.map(({ id, slug, name }) => (
               <DropdownMenuCheckboxItem
                 key={id}
@@ -222,9 +227,14 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
+              {/* eslint-disable-next-line no-nested-ternary */}
               {search || isTableFiltered
-                ? "No project users match search"
-                : "No project users found"}
+                ? isCertManager
+                  ? "No users match search"
+                  : "No project users match search"
+                : isCertManager
+                  ? "No users found"
+                  : "No project users found"}
             </EmptyTitle>
             <EmptyDescription>
               {search || isTableFiltered
@@ -262,7 +272,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead>Project Role</TableHead>
+                <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
                 <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
@@ -290,6 +300,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                   const name =
                     u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
                   const email = u?.email || inviteEmail;
+                  const detailKey = isCertManager ? u.id : membershipId;
 
                   return (
                     <TableRow
@@ -303,7 +314,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                             params: {
                               projectId,
-                              membershipId
+                              membershipId: detailKey
                             }
                           });
                         }
@@ -313,7 +324,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                           to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                           params: {
                             projectId,
-                            membershipId
+                            membershipId: detailKey
                           }
                         })
                       }
@@ -454,7 +465,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                   }}
                                 >
                                   <UserXIcon />
-                                  Remove User From Project
+                                  {`Remove User From ${productLabel}`}
                                 </DropdownMenuItem>
                               )}
                             </ProjectPermissionCan>

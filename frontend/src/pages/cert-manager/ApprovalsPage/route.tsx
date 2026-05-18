@@ -6,7 +6,8 @@ import { ApprovalsPage } from "./ApprovalsPage";
 
 const ApprovalsSearchSchema = z.object({
   selectedTab: z.string().optional().default("requests"),
-  section: z.enum(["certificates", "code-signing"]).optional().default("certificates")
+  section: z.enum(["certificates", "code-signing"]).optional().default("certificates"),
+  legacy: z.enum(["true"]).optional()
 });
 
 export const Route = createFileRoute(
