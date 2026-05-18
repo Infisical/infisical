@@ -14,6 +14,7 @@ import {
   IdentityKubernetesAuth,
   IdentityLdapAuth,
   IdentityMembershipOrg,
+  IdentityMembershipSearchResult,
   IdentityOciAuth,
   IdentityOidcAuth,
   IdentityProjectMembershipV1,
@@ -21,6 +22,7 @@ import {
   IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
+  SearchIdentitiesScope,
   TSearchIdentitiesDTO
 } from "./types";
 
@@ -70,18 +72,19 @@ export const useGetOrgIdentityMembershipById = (identityId: string) => {
 };
 
 export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
-  const { limit, search, offset, orderBy, orderDirection } = dto;
+  const { limit, search, offset, orderBy, orderDirection, scope } = dto;
   return useQuery({
     queryKey: identitiesKeys.searchIdentities(dto),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
-        identities: IdentityMembershipOrg[];
+        identities: IdentityMembershipSearchResult[];
         totalCount: number;
-      }>("/api/v1/identities/search", {
+      }>("/api/v2/identities/search", {
         limit,
         offset,
         orderBy,
         orderDirection,
+        scope: scope ?? [SearchIdentitiesScope.Organization],
         search
       });
       return data;

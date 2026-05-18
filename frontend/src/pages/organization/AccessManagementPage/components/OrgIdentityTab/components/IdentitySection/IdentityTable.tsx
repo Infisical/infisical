@@ -315,12 +315,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                 data?.identities?.map(
                   ({
                     identity: { id, name, orgId },
-                    role,
-                    customRole,
+                    roles: membershipRoles,
                     lastLoginAuthMethod,
                     lastLoginTime
                   }) => {
                     const isSubOrgIdentity = currentOrg.id === orgId;
+                    const primaryRole = membershipRoles?.[0];
+                    const role = primaryRole?.role ?? "";
+                    const customRoleSlug = primaryRole?.customRoleSlug ?? null;
 
                     return (
                       <TableRow
@@ -359,7 +361,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           >
                             {(isAllowed) => (
                               <Select
-                                value={role === "custom" ? (customRole?.slug as string) : role}
+                                value={role === "custom" ? (customRoleSlug as string) : role}
                                 disabled={!isAllowed}
                                 onValueChange={(selectedRole) =>
                                   handleChangeRole({

@@ -1,6 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  TableName,
+  TRoles
+} from "@app/db/schemas";
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -9,12 +16,14 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -26,11 +35,13 @@ import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
+  SearchIdentitiesScope,
   TCreateIdentityDTO,
   TDeleteIdentityDTO,
   TGetIdentityByIdDTO,
   TListOrgIdentitiesByOrgIdDTO,
   TListProjectIdentitiesByIdentityIdDTO,
+  TSearchIdentitiesV2DTO,
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
@@ -42,12 +53,16 @@ type TIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getOrgPermissionByRoles" | "getProjectPermission"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  projectDAL: Pick<TProjectDALFactory, "findUserProjects" | "findIdentityProjects">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -64,7 +79,8 @@ export const identityServiceFactory = ({
   orgDAL,
   membershipIdentityDAL,
   membershipRoleDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  projectDAL
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -482,6 +498,85 @@ export const identityServiceFactory = ({
     return { identityMemberships: docs, totalCount };
   };
 
+  const searchOrgIdentitiesV2 = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    scope,
+    searchFilter = {}
+  }: TSearchIdentitiesV2DTO) => {
+    const uniqueScope = Array.from(new Set(scope));
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    const canReadOrgIdentities = permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    const wantsOrgScope = uniqueScope.includes(SearchIdentitiesScope.Organization);
+    if (wantsOrgScope && !canReadOrgIdentities) {
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
+
+    let accessibleProjectIds: string[] = [];
+    const wantsProjectScope = uniqueScope.includes(SearchIdentitiesScope.Project);
+    if (wantsProjectScope) {
+      const actorProjects =
+        actor === ActorType.USER
+          ? await projectDAL.findUserProjects(actorId, actorOrgId)
+          : await projectDAL.findIdentityProjects(actorId, actorOrgId);
+
+      const uniqueProjectIds = Array.from(new Set(actorProjects.map((p) => p.id)));
+      const projectAccessChecks = await Promise.all(
+        uniqueProjectIds.map(async (projectId) => {
+          try {
+            const { permission: projectPermission } = await permissionService.getProjectPermission({
+              actor,
+              actorId,
+              actionProjectType: ActionProjectType.Any,
+              actorAuthMethod,
+              projectId,
+              actorOrgId
+            });
+            return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
+              ? projectId
+              : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      accessibleProjectIds = projectAccessChecks.filter((id): id is string => Boolean(id));
+    }
+
+    const effectiveScope = uniqueScope.filter((s) => s !== SearchIdentitiesScope.Organization || canReadOrgIdentities);
+
+    if (!effectiveScope.length) {
+      return { identityMemberships: [], totalCount: 0 };
+    }
+
+    const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentitiesV2({
+      orgId: actorOrgId,
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      searchFilter,
+      scope: effectiveScope,
+      accessibleProjectIds
+    });
+
+    return { identityMemberships: docs, totalCount };
+  };
+
   const listProjectIdentitiesByIdentityId = async ({
     identityId,
     actor,
@@ -517,6 +612,7 @@ export const identityServiceFactory = ({
     listOrgIdentities,
     getIdentityById,
     searchOrgIdentities,
+    searchOrgIdentitiesV2,
     listProjectIdentitiesByIdentityId
   };
 };

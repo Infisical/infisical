@@ -63,3 +63,34 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
 };
 
 export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
+
+export enum SearchIdentitiesScope {
+  Organization = "organization",
+  Project = "project"
+}
+
+export type TSearchIdentitiesV2DAL = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  orgId: string;
+  scope: SearchIdentitiesScope[];
+  accessibleProjectIds: string[];
+  searchFilter?: Partial<{
+    name: Omit<TSearchResourceOperator, "number">;
+    role: Omit<TSearchResourceOperator, "number">;
+  }>;
+};
+
+export type TSearchIdentitiesV2DTO = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  scope: SearchIdentitiesScope[];
+  searchFilter?: Partial<{
+    name: Omit<TSearchResourceOperator, "number">;
+    role: Omit<TSearchResourceOperator, "number">;
+  }>;
+} & TOrgPermission;

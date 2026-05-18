@@ -949,13 +949,59 @@ export type TProjectIdentityMembershipsListV2 = {
   totalCount: number;
 };
 
+export enum SearchIdentitiesScope {
+  Organization = "organization",
+  // eslint-disable-next-line @typescript-eslint/no-shadow
+  Project = "project"
+}
+
 export type TSearchIdentitiesDTO = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
+  scope?: SearchIdentitiesScope[];
   search: {
     name?: { $contains: string };
     role?: { $in: string[] };
+  };
+};
+
+export type IdentityMembershipSearchRole = {
+  id: string;
+  role: "admin" | "member" | "viewer" | "no-access" | "custom" | string;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
+  customRoleSlug?: string | null;
+  customRoleDescription?: string | null;
+  customRolePermissions?: unknown;
+  isTemporary: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: string | null;
+  temporaryAccessEndTime?: string | null;
+};
+
+export type IdentityMembershipSearchResult = {
+  id: string;
+  identityId: string;
+  scope: SearchIdentitiesScope;
+  orgId: string;
+  projectId?: string | null;
+  project?: {
+    id: string;
+    name: string;
+    slug: string;
+    type: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAuthMethod?: IdentityAuthMethod | null;
+  lastLoginTime?: string | null;
+  roles: IdentityMembershipSearchRole[];
+  /** @deprecated use `roles` */
+  customRole?: TOrgRole;
+  identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
+    authMethods: IdentityAuthMethod[];
   };
 };

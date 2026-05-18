@@ -2000,7 +2000,8 @@ export const registerRoutes = async (
     keyStore,
     orgDAL,
     membershipIdentityDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    projectDAL
   });
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({

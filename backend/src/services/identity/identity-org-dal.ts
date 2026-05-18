@@ -27,7 +27,9 @@ import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
 import {
   OrgIdentityOrderBy,
+  SearchIdentitiesScope,
   TListOrgIdentitiesByOrgIdDTO,
+  TSearchIdentitiesV2DAL,
   TSearchOrgIdentitiesByOrgIdDAL
 } from "@app/services/identity/identity-types";
 
@@ -698,5 +700,359 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { find, findOne, countAllOrgIdentities, searchIdentities };
+  const searchIdentitiesV2 = async (
+    {
+      limit,
+      offset = 0,
+      orderBy = OrgIdentityOrderBy.Name,
+      orderDirection = OrderByDirection.ASC,
+      searchFilter,
+      orgId,
+      scope,
+      accessibleProjectIds
+    }: TSearchIdentitiesV2DAL,
+    tx?: Knex
+  ) => {
+    try {
+      const includeOrgScope = scope.includes(SearchIdentitiesScope.Organization);
+      const includeProjectScope = scope.includes(SearchIdentitiesScope.Project);
+
+      const applyScopeFilter = (qb: Knex.QueryBuilder) => {
+        void qb.whereNotNull(`${TableName.Membership}.actorIdentityId`);
+
+        const orgScopeBranch = (sub: Knex.QueryBuilder) => {
+          void sub
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .where(`${TableName.Membership}.scopeOrgId`, orgId);
+        };
+
+        const projectScopeBranch = (sub: Knex.QueryBuilder) => {
+          if (accessibleProjectIds.length === 0) {
+            void sub.whereRaw("1 = 0");
+          } else {
+            void sub
+              .where(`${TableName.Membership}.scope`, AccessScope.Project)
+              .where(`${TableName.Membership}.scopeOrgId`, orgId)
+              .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
+          }
+        };
+
+        if (includeOrgScope && includeProjectScope) {
+          void qb.where((nested) => {
+            void nested.where((sub) => orgScopeBranch(sub)).orWhere((sub) => projectScopeBranch(sub));
+          });
+        } else if (includeOrgScope) {
+          orgScopeBranch(qb);
+        } else if (includeProjectScope) {
+          projectScopeBranch(qb);
+        } else {
+          void qb.whereRaw("1 = 0");
+        }
+      };
+
+      const searchedMemberships = (tx || db.replicaNode())(TableName.Membership)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+        .where(applyScopeFilter)
+        .groupBy(`${TableName.Membership}.id`, `${TableName.Identity}.name`)
+        .select(`${TableName.Membership}.id`)
+        .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
+        .select<{ id: string; identityName: string; roleSort: string; total_count: string }>(
+          db.raw(`MIN(COALESCE(??, ??)) as "roleSort"`, [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`])
+        )
+        .select<{ id: string; identityName: string; roleSort: string; total_count: string }>(
+          db.raw(`COUNT(*) OVER() as total_count`)
+        );
+
+      if (searchFilter) {
+        buildKnexFilterForSearchResource(searchedMemberships, searchFilter, (attr) => {
+          switch (attr) {
+            case "role":
+              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+            case "name":
+              return `${TableName.Identity}.name`;
+            default:
+              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+          }
+        });
+      }
+
+      if (orderBy === OrgIdentityOrderBy.Role) {
+        void searchedMemberships.orderBy("roleSort", orderDirection);
+      } else {
+        void searchedMemberships.orderBy("identityName", orderDirection);
+      }
+
+      if (limit) {
+        void searchedMemberships.offset(offset).limit(limit);
+      }
+
+      const searchedMembershipsSubquery = searchedMemberships.as("searchedMemberships");
+      type TSubquery = Awaited<typeof searchedMemberships>;
+
+      const query = (tx || db.replicaNode())(TableName.Membership)
+        .join<TSubquery>(searchedMembershipsSubquery, `${TableName.Membership}.id`, "searchedMemberships.id")
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+        .leftJoin(TableName.Project, `${TableName.Project}.id`, `${TableName.Membership}.scopeProjectId`)
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
+        })
+        .leftJoin(
+          TableName.IdentityUniversalAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityUniversalAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityGcpAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityGcpAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityAliCloudAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityAliCloudAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityAwsAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityAwsAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityKubernetesAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityOciAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityOciAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityOidcAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityOidcAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityAzureAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityAzureAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityTokenAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityTokenAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityJwtAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityJwtAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityLdapAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityLdapAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentitySpiffeAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("scope").withSchema(TableName.Membership).as("membershipScope"),
+          db.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
+          db.ref("scopeProjectId").withSchema(TableName.Membership).as("scopeProjectId"),
+          db.ref("total_count").withSchema("searchedMemberships"),
+          db.ref("createdAt").withSchema(TableName.Membership),
+          db.ref("updatedAt").withSchema(TableName.Membership),
+          db.ref("lastLoginAuthMethod").withSchema(TableName.Membership),
+          db.ref("lastLoginTime").withSchema(TableName.Membership),
+          db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
+          db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
+
+          db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
+          db.ref("isTemporary").withSchema(TableName.MembershipRole),
+          db.ref("temporaryMode").withSchema(TableName.MembershipRole),
+          db.ref("temporaryRange").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
+
+          db.ref("id").as("projectIdRef").withSchema(TableName.Project),
+          db.ref("name").as("projectName").withSchema(TableName.Project),
+          db.ref("slug").as("projectSlug").withSchema(TableName.Project),
+          db.ref("type").as("projectType").withSchema(TableName.Project),
+
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
+          db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
+          db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
+          db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
+          db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
+        )
+        .select(db.ref("id").as("crId").withSchema(TableName.Role))
+        .select(db.ref("name").as("crName").withSchema(TableName.Role))
+        .select(db.ref("slug").as("crSlug").withSchema(TableName.Role))
+        .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
+        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role))
+        .select(
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
+        );
+
+      if (orderBy === OrgIdentityOrderBy.Role) {
+        void query.orderBy("searchedMemberships.roleSort", orderDirection);
+      } else {
+        void query.orderBy("searchedMemberships.identityName", orderDirection);
+      }
+
+      const docs = await query;
+
+      const formattedDocs = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: ({
+          identityId,
+          identityOrgId,
+          identityName,
+          hasDeleteProtection,
+          total_count,
+          id,
+          membershipScope,
+          orgId: membershipOrgId,
+          scopeProjectId,
+          projectIdRef,
+          projectName,
+          projectSlug,
+          projectType,
+          uaId,
+          alicloudId,
+          awsId,
+          gcpId,
+          jwtId,
+          kubernetesId,
+          ociId,
+          oidcId,
+          azureId,
+          tokenId,
+          ldapId,
+          spiffeId,
+          createdAt,
+          updatedAt,
+          lastLoginTime,
+          lastLoginAuthMethod
+        }) => ({
+          id,
+          identityId: identityId as string,
+          scope: membershipScope as SearchIdentitiesScope,
+          orgId: membershipOrgId,
+          projectId: scopeProjectId,
+          total_count: total_count as string,
+          createdAt,
+          updatedAt,
+          lastLoginTime,
+          lastLoginAuthMethod,
+          project: projectIdRef
+            ? {
+                id: projectIdRef,
+                name: projectName,
+                slug: projectSlug,
+                type: projectType
+              }
+            : null,
+          identity: {
+            id: identityId as string,
+            name: identityName,
+            hasDeleteProtection,
+            orgId: identityOrgId,
+            authMethods: buildAuthMethods({
+              uaId,
+              alicloudId,
+              awsId,
+              gcpId,
+              kubernetesId,
+              ociId,
+              oidcId,
+              azureId,
+              tokenId,
+              jwtId,
+              ldapId,
+              spiffeId
+            })
+          }
+        }),
+        childrenMapper: [
+          {
+            key: "membershipRoleId",
+            label: "roles" as const,
+            mapper: ({
+              membershipRoleId,
+              role,
+              roleId,
+              crId,
+              crName,
+              crSlug,
+              crDescription,
+              crPermission,
+              isTemporary,
+              temporaryMode,
+              temporaryRange,
+              temporaryAccessStartTime,
+              temporaryAccessEndTime
+            }) => ({
+              id: membershipRoleId,
+              role,
+              customRoleId: roleId,
+              customRoleName: crName ?? null,
+              customRoleSlug: crSlug ?? null,
+              customRoleDescription: crDescription ?? null,
+              customRolePermissions: crPermission ?? null,
+              isTemporary,
+              temporaryMode,
+              temporaryRange,
+              temporaryAccessStartTime,
+              temporaryAccessEndTime,
+              customRole: roleId
+                ? {
+                    id: crId,
+                    name: crName,
+                    slug: crSlug,
+                    permissions: crPermission,
+                    description: crDescription
+                  }
+                : undefined
+            })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
+
+      return { docs: formattedDocs, totalCount: Number(formattedDocs?.[0]?.total_count ?? 0) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SearchIdentitiesV2" });
+    }
+  };
+
+  return { find, findOne, countAllOrgIdentities, searchIdentities, searchIdentitiesV2 };
 };

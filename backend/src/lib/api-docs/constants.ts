@@ -208,6 +208,19 @@ export const IDENTITIES = {
     limit: "The number of identities to return.",
     orderBy: "The column to order identities by.",
     orderDirection: "The direction to order identities in."
+  },
+  SEARCH_V2: {
+    scope:
+      "Array of scopes to search across. Accepts 'organization' to include organization-level identities and/or 'project' to include identities from projects the caller has access to. Defaults to ['organization'].",
+    search: {
+      desc: "The filters to apply to the search.",
+      name: "The name of the identity to filter by.",
+      role: "The role of the identity to filter by."
+    },
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
   }
 } as const;
 
