@@ -35,12 +35,6 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
       return;
     }
 
-    try {
-      req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.permission.orgId);
-    } catch (err) {
-      // Swallow only the resolver's expected "no project / no default" errors so endpoints that infer the
-      // project from another entity (profileId, certId, alertId, etc.) keep working.
-      if (!(err instanceof BadRequestError)) throw err;
-    }
+    req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.permission.orgId);
   });
 });
