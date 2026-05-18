@@ -5,6 +5,7 @@ import { logger } from "@app/lib/logger";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 
 const RDP_TCP_CONNECT_TIMEOUT_MS = 30_000;
+const WS_HIGH_WATER_MARK = 1024 * 1024;
 
 const wsRawToBuffer = (raw: Buffer | ArrayBuffer | Buffer[]): Buffer => {
   if (Buffer.isBuffer(raw)) return raw;
@@ -66,8 +67,18 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
             logger.error(err, "rdp session: ws send failed");
             if (!cleanedUp) onCleanup();
             teardown();
+            return;
+          }
+          if (socket.bufferedAmount > WS_HIGH_WATER_MARK) {
+            tcpSocket.pause();
           }
         });
+      });
+
+      socket.on("drain", () => {
+        if (!cleanedUp && !tcpSocket.destroyed) {
+          tcpSocket.resume();
+        }
       });
 
       tcpSocket.on("close", () => {
