@@ -81,7 +81,7 @@ type TPamWebAccessServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "countActiveWebSessions" | "endSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -668,10 +668,7 @@ export const pamWebAccessServiceFactory = ({
       // Starting -> Active via startSession() and generates recording secrets.
       // Setting Active here first would prevent recording secrets from being created.
       if (resource.resourceType !== PamResource.Windows) {
-        await pamSessionDAL.updateById(session.id, {
-          status: PamSessionStatus.Active,
-          startedAt: new Date()
-        });
+        await pamSessionDAL.activateSession(session.id);
       }
 
       logger.info({ accountId, sessionId: session.id }, "Web access session established");
