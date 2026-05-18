@@ -19,6 +19,17 @@ type TCertificateRequestWithCertificate = TCertificateRequests & {
   profileName: string | null;
 };
 
+const expandStatusFilter = (status: string): string[] => {
+  if (status === CertificateRequestStatus.PENDING) {
+    return [
+      CertificateRequestStatus.PENDING,
+      CertificateRequestStatus.PENDING_APPROVAL,
+      CertificateRequestStatus.PENDING_VALIDATION
+    ];
+  }
+  return [status];
+};
+
 type TCertificateRequestQueryResult = TCertificateRequests & {
   certId: string | null;
   certSerialNumber: string | null;
@@ -126,13 +137,24 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      applicationId?: string;
       metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateRequests[]> => {
     try {
-      const { offset = 0, limit = 20, search, status, fromDate, toDate, profileIds, metadataFilter } = options;
+      const {
+        offset = 0,
+        limit = 20,
+        search,
+        status,
+        fromDate,
+        toDate,
+        profileIds,
+        applicationId,
+        metadataFilter
+      } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -146,6 +168,10 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.whereIn(`${TableName.CertificateRequests}.profileId`, profileIds);
       }
 
+      if (applicationId) {
+        query = query.where(`${TableName.CertificateRequests}.applicationId`, applicationId);
+      }
+
       if (search) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
         const sanitizedSearch = sanitizeSqlLikeString(search);
@@ -157,7 +183,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (status) {
-        query = query.where(`${TableName.CertificateRequests}.status`, status);
+        query = query.whereIn(`${TableName.CertificateRequests}.status`, expandStatusFilter(status));
       }
 
       if (fromDate) {
@@ -200,13 +226,14 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      applicationId?: string;
       metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
-      const { search, status, fromDate, toDate, profileIds, metadataFilter } = options;
+      const { search, status, fromDate, toDate, profileIds, applicationId, metadataFilter } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -217,6 +244,10 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .where(`${TableName.CertificateRequests}.projectId`, projectId);
       if (profileIds && profileIds.length > 0) {
         query = query.whereIn(`${TableName.CertificateRequests}.profileId`, profileIds);
+      }
+
+      if (applicationId) {
+        query = query.where(`${TableName.CertificateRequests}.applicationId`, applicationId);
       }
 
       if (search) {
@@ -230,7 +261,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (status) {
-        query = query.where(`${TableName.CertificateRequests}.status`, status);
+        query = query.whereIn(`${TableName.CertificateRequests}.status`, expandStatusFilter(status));
       }
 
       if (fromDate) {
@@ -271,6 +302,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      applicationId?: string;
       sortBy?: string;
       sortOrder?: "asc" | "desc";
       metadataFilter?: Array<{ key: string; value?: string }>;
@@ -287,6 +319,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         fromDate,
         toDate,
         profileIds,
+        applicationId,
         sortBy = "createdAt",
         sortOrder = "desc",
         metadataFilter
@@ -308,6 +341,10 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.whereIn(`${TableName.CertificateRequests}.profileId`, profileIds);
       }
 
+      if (applicationId) {
+        query = query.where(`${TableName.CertificateRequests}.applicationId`, applicationId);
+      }
+
       query = query
         .select(selectAllTableCols(TableName.CertificateRequests))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
@@ -327,7 +364,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (status) {
-        query = query.where(`${TableName.CertificateRequests}.status`, status);
+        query = query.whereIn(`${TableName.CertificateRequests}.status`, expandStatusFilter(status));
       }
 
       if (fromDate) {

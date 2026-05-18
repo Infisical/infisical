@@ -3,7 +3,7 @@ import { z } from "zod";
 import { isValidAwsRegion } from "@app/lib/aws/region";
 import { slugSchema } from "@app/server/lib/schemas";
 
-import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenType } from "./honey-token-enums";
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
   accessKeyId: z.string(),
@@ -21,16 +21,14 @@ export const AwsHoneyTokenEventMetadataSchema = z.object({
   requestParameters: z.unknown().nullable().optional()
 });
 
-export type TAwsHoneyTokenEventMetadata = z.infer<typeof AwsHoneyTokenEventMetadataSchema>;
-
-export const HoneyTokenEventMetadataSchema = z.discriminatedUnion("eventType", [
+export const HoneyTokenWebhookPayloadSchema = z.discriminatedUnion("type", [
   z.object({
-    eventType: z.literal(HoneyTokenEventType.AWS),
-    metadata: AwsHoneyTokenEventMetadataSchema
+    type: z.literal(HoneyTokenType.AWS),
+    event: AwsHoneyTokenEventMetadataSchema.optional()
   })
 ]);
 
-export type THoneyTokenEventMetadata = z.infer<typeof HoneyTokenEventMetadataSchema>;
+export type THoneyTokenWebhookPayload = z.infer<typeof HoneyTokenWebhookPayloadSchema>;
 
 // --- Config schemas (typed shape for the encrypted config blob per provider) ---
 

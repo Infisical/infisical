@@ -10,7 +10,8 @@ import {
 } from "../approval-policy-schemas";
 
 export const CertRequestPolicyInputsSchema = z.object({
-  profileName: z.string()
+  profileName: z.string(),
+  applicationId: z.string().uuid().optional()
 });
 
 export const CertRequestPolicyConditionsSchema = z

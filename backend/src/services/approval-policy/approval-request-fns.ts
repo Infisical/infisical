@@ -31,6 +31,8 @@ export interface TCreateApprovalRequestWithStepsParams {
   machineIdentityId?: string | null;
   requesterName: string;
   requesterEmail: string;
+  scopeType?: string | null;
+  scopeId?: string | null;
 }
 
 export type TApprovalRequestWithSteps = TApprovalRequests & {
@@ -64,7 +66,9 @@ export const createApprovalRequestWithSteps = async (
     requesterUserId,
     machineIdentityId,
     requesterName,
-    requesterEmail
+    requesterEmail,
+    scopeType,
+    scopeId
   }: TCreateApprovalRequestWithStepsParams,
   dependencies: {
     approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "transaction">;
@@ -90,7 +94,9 @@ export const createApprovalRequestWithSteps = async (
         justification,
         currentStep: 1,
         requestData: { version: 1, requestData },
-        expiresAt
+        expiresAt,
+        scopeType: scopeType ?? null,
+        scopeId: scopeId ?? null
       },
       tx
     );

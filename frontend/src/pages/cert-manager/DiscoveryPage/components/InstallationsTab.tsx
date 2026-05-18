@@ -1,28 +1,36 @@
 import { useEffect, useState } from "react";
-import { faEllipsis, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
-  Input,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionSub,
@@ -81,125 +89,140 @@ export const InstallationsTab = ({ projectId }: Props) => {
   };
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4">
-        <div>
-          <h2 className="text-lg font-semibold">Installations</h2>
-          <p className="text-sm text-mineshaft-400">
-            View and manage certificate installations identified by discovery scans.
-          </p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Installations</CardTitle>
+        <CardDescription>
+          Every place a certificate was found during a scan, identified by its host and port.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4">
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search by name, IP, or domain…"
+            />
+          </InputGroup>
         </div>
-      </div>
-      <div className="mb-4">
-        <Input
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search by name, IP, or domain..."
-          className="flex-1"
-        />
-      </div>
 
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Certificate</Th>
-              <Th>Gateway</Th>
-              <Th>Certs</Th>
-              <Th>Last Seen</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={6} innerKey="installations" />}
-            {!isPending && installations.length === 0 && (
-              <Tr>
-                <Td colSpan={6}>
-                  <EmptyState title="No installations found" />
-                </Td>
-              </Tr>
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {isPending ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : installations.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No installations found</EmptyTitle>
+              <EmptyDescription>
+                Run a discovery job to surface the certificates currently served across your
+                infrastructure.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Certificate</TableHead>
+                  <TableHead>Gateway</TableHead>
+                  <TableHead>Certs</TableHead>
+                  <TableHead>Last Seen</TableHead>
+                  <TableHead className="w-5" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {installations.map((installation) => (
+                  <TableRow
+                    key={installation.id}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      navigate({
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId,
+                          installationId: installation.id
+                        }
+                      })
+                    }
+                  >
+                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
+                    <TableCell>
+                      {installation.primaryCertName || <span className="text-accent">—</span>}
+                    </TableCell>
+                    <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
+                    <TableCell>
+                      {installation.certificatesCount ?? installation.certificates?.length ?? 0}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" size="xs">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPkiCertificateInstallationActions.Edit}
+                            a={ProjectPermissionSub.PkiCertificateInstallations}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() => handlePopUpOpen("editInstallation", installation)}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPkiCertificateInstallationActions.Delete}
+                            a={ProjectPermissionSub.PkiCertificateInstallations}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() => handlePopUpOpen("deleteInstallation", installation)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {totalCount > PAGE_SIZE && (
+              <div className="mt-4 flex justify-end">
+                <Pagination
+                  count={totalCount}
+                  page={page}
+                  perPage={PAGE_SIZE}
+                  onChangePage={setPage}
+                  onChangePerPage={() => {}}
+                />
+              </div>
             )}
-            {!isPending &&
-              installations.map((installation) => (
-                <Tr
-                  key={installation.id}
-                  className="cursor-pointer hover:bg-mineshaft-700"
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
-                      params: {
-                        orgId: currentOrg.id,
-                        projectId,
-                        installationId: installation.id
-                      }
-                    })
-                  }
-                >
-                  <Td>{installation.name || getEndpoint(installation)}</Td>
-                  <Td>
-                    {installation.primaryCertName || <span className="text-mineshaft-400">-</span>}
-                  </Td>
-                  <Td>{getGatewayLabel(installation) || "N/A"}</Td>
-                  <Td>
-                    {installation.certificatesCount ?? installation.certificates?.length ?? 0}
-                  </Td>
-                  <Td>{format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}</Td>
-                  <Td onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="plain" colorSchema="secondary" size="xs">
-                          <FontAwesomeIcon icon={faEllipsis} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPkiCertificateInstallationActions.Edit}
-                          a={ProjectPermissionSub.PkiCertificateInstallations}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              isDisabled={!isAllowed}
-                              onClick={() => handlePopUpOpen("editInstallation", installation)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPkiCertificateInstallationActions.Delete}
-                          a={ProjectPermissionSub.PkiCertificateInstallations}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              isDisabled={!isAllowed}
-                              onClick={() => handlePopUpOpen("deleteInstallation", installation)}
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
-              ))}
-          </TBody>
-        </Table>
-      </TableContainer>
-
-      {totalCount > PAGE_SIZE && (
-        <div className="mt-4 flex justify-end">
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={PAGE_SIZE}
-            onChangePage={setPage}
-            onChangePerPage={() => {}}
-          />
-        </div>
-      )}
+          </>
+        )}
+      </CardContent>
 
       <EditInstallationModal
         isOpen={popUp.editInstallation.isOpen}
@@ -219,6 +242,6 @@ export const InstallationsTab = ({ projectId }: Props) => {
           "this installation"
         }
       />
-    </div>
+    </Card>
   );
 };

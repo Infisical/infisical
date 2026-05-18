@@ -4,6 +4,7 @@ import { CertificateCleanupConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -21,7 +22,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       description: "Get certificate cleanup configuration for a project",
       tags: [ApiDocsTags.PkiCertificates],
       querystring: z.object({
-        projectId: z.string().trim().describe("Project ID")
+        projectId: z.string().trim().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -31,7 +32,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const config = await server.services.certificateCleanup.getConfig({
-        projectId: req.query.projectId,
+        projectId: req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -54,7 +55,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       description: "Create or update certificate cleanup configuration for a project",
       tags: [ApiDocsTags.PkiCertificates],
       body: z.object({
-        projectId: z.string().trim().describe("Project ID"),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         isEnabled: z.boolean().optional().describe("Enable cleanup"),
         postExpiryRetentionDays: z
           .number()
@@ -73,7 +74,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const config = await server.services.certificateCleanup.updateConfig({
-        projectId: req.body.projectId,
+        projectId: req.internalCertManagerProjectId,
         isEnabled: req.body.isEnabled,
         postExpiryRetentionDays: req.body.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: req.body.skipCertsWithActiveSyncs,
@@ -85,11 +86,11 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.UPDATE_CERTIFICATE_CLEANUP_CONFIG,
           metadata: {
-            projectId: req.body.projectId,
+            projectId: req.internalCertManagerProjectId,
             isEnabled: config.isEnabled,
             postExpiryRetentionDays: config.postExpiryRetentionDays,
             skipCertsWithActiveSyncs: config.skipCertsWithActiveSyncs

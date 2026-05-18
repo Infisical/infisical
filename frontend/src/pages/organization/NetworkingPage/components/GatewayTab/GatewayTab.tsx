@@ -227,7 +227,7 @@ export const GatewayTab = withPermission(
                         <Tooltip
                           asChild={false}
                           className="normal-case"
-                          content="The last known healthcheck. Triggers every 1 hour."
+                          content="The last known healthcheck. Triggers every 3 minutes."
                         >
                           <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
                         </Tooltip>
@@ -300,9 +300,7 @@ export const GatewayTab = withPermission(
                           <Td>
                             <GatewayHealthStatus
                               heartbeat={"heartbeat" in el ? el.heartbeat : null}
-                              lastHealthCheckStatus={
-                                "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
-                              }
+                              heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </Td>
                           <Td className="w-5" onClick={(e) => e.stopPropagation()}>
@@ -325,17 +323,14 @@ export const GatewayTab = withPermission(
                                   >
                                     Copy ID
                                   </DropdownMenuItem>
-                                  {!el.isV1 &&
-                                    ("heartbeat" in el
-                                      ? !!el.heartbeat || !!el.lastHealthCheckStatus
-                                      : false) && (
-                                      <DropdownMenuItem
-                                        icon={<FontAwesomeIcon icon={faHeartPulse} />}
-                                        onClick={() => handleTriggerHealthCheck(el.id)}
-                                      >
-                                        Trigger Health Check
-                                      </DropdownMenuItem>
-                                    )}
+                                  {!el.isV1 && (!!el.heartbeat || !!el.heartbeatTTL) && (
+                                    <DropdownMenuItem
+                                      icon={<FontAwesomeIcon icon={faHeartPulse} />}
+                                      onClick={() => handleTriggerHealthCheck(el.id)}
+                                    >
+                                      Trigger Health Check
+                                    </DropdownMenuItem>
+                                  )}
                                   {el.isV1 && (
                                     <OrgPermissionCan
                                       I={OrgGatewayPermissionActions.EditGateways}

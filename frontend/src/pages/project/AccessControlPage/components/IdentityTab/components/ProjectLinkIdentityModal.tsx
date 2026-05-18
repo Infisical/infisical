@@ -30,7 +30,7 @@ type Props = {
 };
 
 export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
 
   // const [searchValue, setSearchValue] = useState("");
 
@@ -39,7 +39,8 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
   // TODO: name search needs to be implemented on the backend
   const { data: identityMembershipOrgs, isPending: isMembershipsLoading } = useQuery({
     ...projectIdentityMembershipQuery.listAvailable({
-      projectId
+      projectId,
+      projectType: currentProject?.type
       // identityName: debouncedSearchValue
     }),
     placeholderData: (prev) => prev
@@ -47,11 +48,15 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
 
   const { data: identityMembershipsData } = useListProjectIdentityMemberships({
     projectId,
+    projectType: currentProject?.type,
     limit: 1000 // TODO: this is temp to preserve functionality for larger projects, will optimize in PR referenced above
   });
   const identityMemberships = identityMembershipsData?.identityMemberships;
 
-  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
+  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(
+    projectId,
+    currentProject?.type
+  );
 
   const { mutateAsync: createProjectIdentityMembershipMutateAsync } =
     useCreateProjectIdentityMembership();
@@ -78,6 +83,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ identity, role }: FormData) => {
     await createProjectIdentityMembershipMutateAsync({
       projectId,
+      projectType: currentProject?.type,
       identityId: identity.id,
       role: role.slug || undefined
     });

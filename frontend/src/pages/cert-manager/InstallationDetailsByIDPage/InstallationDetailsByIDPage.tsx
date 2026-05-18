@@ -56,7 +56,8 @@ const Page = () => {
       handlePopUpClose("deleteInstallation");
       navigate({
         to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-        params: { orgId, projectId }
+        params: { orgId, projectId },
+        search: { selectedTab: "installations" }
       });
     } catch {
       // Error handled by mutation
@@ -76,6 +77,7 @@ const Page = () => {
         <Link
           to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
           params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+          search={{ selectedTab: "installations" }}
           className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
         >
           <ChevronLeftIcon size={16} />

@@ -8,11 +8,22 @@ export type TCertificateInventoryViewDALFactory = ReturnType<typeof certificateI
 export const certificateInventoryViewDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.CertificateInventoryView);
 
-  const findByProjectId = async (projectId: string, userId?: string): Promise<TCertificateInventoryViews[]> => {
+  const findByProjectId = async (
+    projectId: string,
+    userId?: string,
+    applicationId?: string | null
+  ): Promise<TCertificateInventoryViews[]> => {
     try {
       const query = db
         .replicaNode()(TableName.CertificateInventoryView)
         .where({ projectId })
+        .andWhere((scopeQb) => {
+          if (applicationId) {
+            void scopeQb.where({ applicationId });
+          } else {
+            void scopeQb.whereNull("applicationId");
+          }
+        })
         .andWhere((qb) => {
           void qb.where({ isShared: true });
           if (userId) {

@@ -112,6 +112,13 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
     operators: [{ value: "in", label: "in" }],
     valueType: "multi-select",
     options: []
+  },
+  {
+    key: "applicationId",
+    label: "Application",
+    operators: [{ value: "in", label: "in" }],
+    valueType: "multi-select",
+    options: []
   }
 ];
 
@@ -171,6 +178,11 @@ export const filtersToSearchParams = (rules: FilterRule[]): TInventoryViewFilter
       case "profileId":
         if (Array.isArray(rule.value) && rule.value.length > 0) {
           params.profileIds = rule.value;
+        }
+        break;
+      case "applicationId":
+        if (Array.isArray(rule.value) && rule.value.length > 0) {
+          params.applicationIds = rule.value;
         }
         break;
       default:

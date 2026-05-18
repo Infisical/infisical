@@ -59,6 +59,7 @@ type TCreatePkiSyncDTOBase = {
   subscriberId?: string | null;
   certificateIds?: string[];
   projectId: string;
+  applicationId?: string;
 };
 
 export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {

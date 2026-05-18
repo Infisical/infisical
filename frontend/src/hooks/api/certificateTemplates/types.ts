@@ -70,7 +70,6 @@ export type TCreateCertificateTemplateV2DTO = {
   commonName: string;
   subjectAlternativeName: string;
   ttl: string;
-  projectId: string;
   keyUsages: string[];
   extendedKeyUsages: string[];
 };
@@ -82,14 +81,12 @@ export type TUpdateCertificateTemplateV2DTO = {
   commonName?: string;
   subjectAlternativeName?: string;
   ttl?: string;
-  projectId: string;
   keyUsages?: string[];
   extendedKeyUsages?: string[];
 };
 
 export type TDeleteCertificateTemplateV2DTO = {
   templateName: string;
-  projectId: string;
 };
 
 export type TCreateEstConfigDTO = {
@@ -119,5 +116,4 @@ export type TEstConfig = {
 export type TListCertificateTemplatesDTO = {
   limit?: number;
   offset?: number;
-  projectId: string;
 };

@@ -21,14 +21,10 @@ export const CredentialRotationFailedTemplate = ({
   content
 }: CredentialRotationFailedTemplateProps) => {
   return (
-    <BaseEmailWrapper
-      title="Credential Rotation Failed"
-      preview="A credential rotation failed."
-      siteUrl={siteUrl}
-    >
+    <BaseEmailWrapper title="Credential Rotation Failed" preview="A credential rotation failed." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        Your <strong>{rotationType}</strong> credential rotation for connection{" "}
-        <strong>{connectionName}</strong> failed to rotate
+        Your <strong>{rotationType}</strong> credential rotation for connection <strong>{connectionName}</strong> failed
+        to rotate
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong>Connection</strong>

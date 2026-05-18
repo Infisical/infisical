@@ -30,6 +30,7 @@ export type TRootPkiSync = {
   updatedAt: string;
   isAutoSyncEnabled: boolean;
   projectId: string;
+  applicationId?: string | null;
   subscriberId?: string | null;
   syncStatus: PkiSyncStatus | null;
   lastSyncJobId: string | null;

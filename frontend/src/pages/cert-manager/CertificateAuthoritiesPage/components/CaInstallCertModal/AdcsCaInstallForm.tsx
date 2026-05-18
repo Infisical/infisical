@@ -76,7 +76,7 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   const { data: existingSigningConfig } = useGetCaSigningConfig(caId, { enabled: !!caId });
   const { mutateAsync: createSigningConfig } = useCreateCaSigningConfig();
   const { mutateAsync: updateSigningConfig } = useUpdateCaSigningConfig();
-  const { mutateAsync: installAdcsCert } = useInstallCaCertificateAdcs(currentProject.id);
+  const { mutateAsync: installAdcsCert } = useInstallCaCertificateAdcs();
 
   const onFormSubmit = async ({
     appConnectionId,

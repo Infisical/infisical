@@ -356,6 +356,12 @@ import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
+  TPkiApplicationProfiles,
+  TPkiApplicationProfilesInsert,
+  TPkiApplicationProfilesUpdate,
+  TPkiApplications,
+  TPkiApplicationsInsert,
+  TPkiApplicationsUpdate,
   TPkiCertificateInstallationCerts,
   TPkiCertificateInstallationCertsInsert,
   TPkiCertificateInstallationCertsUpdate,
@@ -900,6 +906,16 @@ declare module "knex/types/tables" {
       TPkiCertificateProfiles,
       TPkiCertificateProfilesInsert,
       TPkiCertificateProfilesUpdate
+    >;
+    [TableName.PkiApplication]: KnexOriginal.CompositeTableType<
+      TPkiApplications,
+      TPkiApplicationsInsert,
+      TPkiApplicationsUpdate
+    >;
+    [TableName.PkiApplicationProfile]: KnexOriginal.CompositeTableType<
+      TPkiApplicationProfiles,
+      TPkiApplicationProfilesInsert,
+      TPkiApplicationProfilesUpdate
     >;
     [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiEstEnrollmentConfigs,
