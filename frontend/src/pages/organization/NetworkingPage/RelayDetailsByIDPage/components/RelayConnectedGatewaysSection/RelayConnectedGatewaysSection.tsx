@@ -26,7 +26,10 @@ import {
   ItemTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { TRelayConnectedGateway, useGetRelayConnectedGateways } from "@app/hooks/api/relays/queries";
+import {
+  TRelayConnectedGateway,
+  useGetRelayConnectedGateways
+} from "@app/hooks/api/relays/queries";
 
 type StatusGroup = "healthy" | "unreachable" | "unregistered";
 
@@ -37,7 +40,10 @@ const classifyGateway = (g: TRelayConnectedGateway): StatusGroup => {
   return "unreachable";
 };
 
-const STATUS_CONFIG: Record<StatusGroup, { label: string; variant: "success" | "danger" | "warning" }> = {
+const STATUS_CONFIG: Record<
+  StatusGroup,
+  { label: string; variant: "success" | "danger" | "warning" }
+> = {
   healthy: { label: "Healthy", variant: "success" },
   unreachable: { label: "Unreachable", variant: "danger" },
   unregistered: { label: "Unregistered", variant: "warning" }
@@ -60,13 +66,10 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
 
   const grouped = useMemo(() => {
     if (!gateways) return {};
-    const groups: Partial<Record<StatusGroup, TRelayConnectedGateway[]>> = {};
-    for (const g of gateways) {
+    return gateways.reduce<Partial<Record<StatusGroup, TRelayConnectedGateway[]>>>((groups, g) => {
       const status = classifyGateway(g);
-      if (!groups[status]) groups[status] = [];
-      groups[status]!.push(g);
-    }
-    return groups;
+      return { ...groups, [status]: [...(groups[status] || []), g] };
+    }, {});
   }, [gateways]);
 
   const total = gateways?.length ?? 0;
