@@ -242,7 +242,6 @@ export const approvalPolicyServiceFactory = ({
     bypassReason: string;
   }): Promise<{
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
-    audit: "break-glass";
     bypassMetadata: BreakGlassBypassMetadata;
   }> => {
     if (bypassReason.trim().length < 10) {
@@ -363,7 +362,7 @@ export const approvalPolicyServiceFactory = ({
     };
 
     if (recipientUserIds.length === 0) {
-      return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
+      return { request: await $decorateRequest(result, actor), bypassMetadata };
     }
 
     try {
@@ -429,7 +428,7 @@ export const approvalPolicyServiceFactory = ({
       );
     }
 
-    return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
+    return { request: await $decorateRequest(result, actor), bypassMetadata };
   };
 
   const create = async (
@@ -965,7 +964,6 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType
   ): Promise<{
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
-    audit: "standard" | "break-glass";
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
     const request = await approvalRequestDAL.findById(requestId);
@@ -1157,7 +1155,7 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const decorated = await $decorateRequest(newRequest, actor);
-    return { request: decorated, audit: "standard" };
+    return { request: decorated };
   };
 
   const rejectRequest = async (requestId: string, { comment }: { comment?: string }, actor: OrgServiceActor) => {

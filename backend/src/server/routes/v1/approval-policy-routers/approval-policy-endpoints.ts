@@ -435,28 +435,14 @@ export const registerApprovalPolicyEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { request, audit, bypassMetadata } = await server.services.approvalPolicy.approveRequest(
+      const { request, bypassMetadata } = await server.services.approvalPolicy.approveRequest(
         req.params.requestId,
         req.body,
         req.permission,
         policyType
       );
 
-      if (audit === "standard") {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: request.projectId,
-          event: {
-            type: EventType.APPROVAL_REQUEST_APPROVE,
-            metadata: {
-              policyType,
-              requestId: req.params.requestId,
-              comment: req.body.comment
-            }
-          }
-        });
-      } else if (audit === "break-glass" && bypassMetadata) {
+      if (request.isBreakGlass && bypassMetadata) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -469,6 +455,20 @@ export const registerApprovalPolicyEndpoints = ({
               requestId: request.id,
               granteeUserId: req.permission.id,
               ...bypassMetadata
+            }
+          }
+        });
+      } else {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: request.projectId,
+          event: {
+            type: EventType.APPROVAL_REQUEST_APPROVE,
+            metadata: {
+              policyType,
+              requestId: req.params.requestId,
+              comment: req.body.comment
             }
           }
         });
