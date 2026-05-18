@@ -40,12 +40,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "incrementByWithExpiry"
-    | "getItem"
-    | "getItems"
-    | "setItemWithExpiryNX"
-    | "deleteItem"
-    | "deleteItemsByKeyIn"
+    "incrementByWithExpiry" | "getItem" | "getItems" | "setItemWithExpiryNX" | "deleteItem" | "deleteItemsByKeyIn"
   >;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -106,6 +101,16 @@ export const auditLogStreamServiceFactory = ({
     });
 
     return { ...logStream, credentials: validatedCredentials } as TAuditLogStream;
+  };
+
+  const resetFailureTracking = async (streamId: string) => {
+    const liveBucketMinutes = Math.ceil(BUCKET_TTL_SECONDS / 60);
+    const nowMinuteBucket = Math.floor(Date.now() / 60000);
+    const bucketKeys = Array.from({ length: liveBucketMinutes }, (_, i) =>
+      KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket - i)
+    );
+
+    await keyStore.deleteItemsByKeyIn([KeyStorePrefixes.AuditLogStreamAlertSent(streamId), ...bucketKeys]);
   };
 
   const updateById = async (
@@ -297,16 +302,6 @@ export const auditLogStreamServiceFactory = ({
       .catch((err) =>
         logger.error(err, `Failed to send audit log stream failure email [streamId=${streamId}] [orgId=${orgId}]`)
       );
-  };
-
-  const resetFailureTracking = async (streamId: string) => {
-    const liveBucketMinutes = Math.ceil(BUCKET_TTL_SECONDS / 60);
-    const nowMinuteBucket = Math.floor(Date.now() / 60000);
-    const bucketKeys = Array.from({ length: liveBucketMinutes }, (_, i) =>
-      KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket - i)
-    );
-
-    await keyStore.deleteItemsByKeyIn([KeyStorePrefixes.AuditLogStreamAlertSent(streamId), ...bucketKeys]);
   };
 
   const evaluateErrorBucketSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
