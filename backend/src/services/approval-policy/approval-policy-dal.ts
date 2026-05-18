@@ -122,7 +122,11 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       const bypassers = (await dbInstance(TableName.ApprovalPolicyBypassers)
         .whereIn("policyId", policyIds)
-        .select("policyId", "userId", "groupId")) as { policyId: string; userId: string | null; groupId: string | null }[];
+        .select("policyId", "userId", "groupId")) as {
+        policyId: string;
+        userId: string | null;
+        groupId: string | null;
+      }[];
 
       const bypassersByPolicyId = bypassers.reduce<Record<string, PolicyBypasser[]>>((acc, row) => {
         const list = acc[row.policyId] || [];
