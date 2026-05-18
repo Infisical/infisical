@@ -100,7 +100,7 @@ export const membershipGroupServiceFactory = ({
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
 
-    await factory.onCreateMembershipGroupGuard(dto);
+    const { group } = await factory.onCreateMembershipGroupGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -182,14 +182,14 @@ export const membershipGroupServiceFactory = ({
       return doc;
     });
 
-    return { membership };
+    return { membership, group };
   };
 
   const updateMembership = async (dto: TUpdateMembershipGroupDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onUpdateMembershipGroupGuard(dto);
+    const { group } = await factory.onUpdateMembershipGroupGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -297,14 +297,14 @@ export const membershipGroupServiceFactory = ({
       return { ...doc, roles };
     });
 
-    return { membership: membershipDoc };
+    return { membership: membershipDoc, group };
   };
 
   const deleteMembership = async (dto: TDeleteMembershipGroupDTO) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onDeleteMembershipGroupGuard(dto);
+    const { group } = await factory.onDeleteMembershipGroupGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipGroupDAL.findOne({
@@ -371,7 +371,7 @@ export const membershipGroupServiceFactory = ({
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
       return doc;
     });
-    return { membership: membershipDoc };
+    return { membership: membershipDoc, group };
   };
 
   const listMemberships = async (dto: TListMembershipGroupDTO) => {

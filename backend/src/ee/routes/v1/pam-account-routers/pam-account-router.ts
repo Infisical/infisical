@@ -29,6 +29,10 @@ import {
   MySQLAccountCredentialsSchema,
   SanitizedMySQLAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import {
+  OracleAccountCredentialsSchema,
+  SanitizedOracleAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import {
@@ -69,6 +73,7 @@ const SanitizedAccountSchema = z
     SanitizedRedisAccountWithResourceSchema,
     SanitizedAwsIamAccountWithResourceSchema,
     SanitizedWindowsAccountWithResourceSchema,
+    SanitizedOracleAccountWithResourceSchema,
     SanitizedActiveDirectoryAccountWithDomainSchema
   ])
   .and(
@@ -127,6 +132,10 @@ const AccountCredentialsResponseSchema = z.discriminatedUnion("parentType", [
   AccountCredentialsBaseSchema.extend({
     parentType: z.literal(PamResource.Windows),
     credentials: WindowsAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    parentType: z.literal(PamResource.OracleDB),
+    credentials: OracleAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     parentType: z.literal(PamDomainType.ActiveDirectory),
@@ -557,6 +566,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.OracleDB) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Windows) }),
           // AWS IAM (no gateway, returns short-lived STS credentials usable by both CLI and console)
           z.object({

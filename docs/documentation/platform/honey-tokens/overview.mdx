@@ -10,6 +10,54 @@ Each honey token is planted alongside your real secrets so it appears genuine. A
 
 At this time, we only support [AWS IAM](/documentation/platform/honey-tokens/aws/usage) credentials as honey tokens, but we're planning to support more providers in the near future.
 
+The short video below walks through how honey tokens work in Infisical and how to use them to catch unauthorized access to your secrets.
+
+<br />
+
+
+<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
+  <iframe
+    src="https://www.youtube.com/embed/ifgwwuQ_C30"
+    title="YouTube video player"
+    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<br />
+
+## Permissions
+
+Honey tokens use two levels of permissions: **organization-level** permissions for the one-time setup, and **project-level** permissions for day-to-day usage.
+
+### Organization Permissions (Setup)
+
+| Action | Description |
+| --- | --- |
+| **Setup** | Configure honey token settings in Organization Settings (AWS connection, CloudFormation stack, etc.) |
+
+Only organization **Admins** have the `Setup` permission by default. This is required to connect, manage, and verify the honey token configuration.
+
+### Project Permissions (Usage)
+
+| Action | Description | Admin | Member | Viewer |
+| --- | --- | --- | --- | --- |
+| **Read** | View honey tokens, their status, and trigger events | Yes | Yes | Yes |
+| **Read Credentials** | View the actual decoy credential values (e.g., AWS access keys) | Yes | No | No |
+| **Create** | Create new honey tokens and plant decoy secrets | Yes | No | No |
+| **Edit** | Update honey token name, description, or secret mappings | Yes | No | No |
+| **Reset** | Reset a triggered honey token back to active status | Yes | No | No |
+| **Revoke** | Permanently deactivate and remove a honey token | Yes | No | No |
+
+<Note>
+  By default, only project **Admins** have full honey token permissions. **Members** and **Viewers** can only view honey tokens. To grant additional honey token permissions to non-admin roles, create a [custom role](/documentation/platform/access-controls/role-based-access-controls) with the desired actions.
+</Note>
+
+<Note>
+  Honey token credentials are stored as regular secrets in your project. Users also need the appropriate **Secrets** permissions (`Read`) for the relevant environment and secret path to view the planted decoy secrets in the secrets dashboard.
+</Note>
+
 ## Getting Started
 
 <Steps>

@@ -146,7 +146,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     try {
       const identity: { name: string } = { name: "" };
       if (actor === ActorType.USER) {
-        const user = await userDAL.findById(actorId);
+        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
         if (user) {
           identity.name = extractEmailUsername(user.username);
         }

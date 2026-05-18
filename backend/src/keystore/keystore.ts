@@ -36,7 +36,8 @@ export const PgSqlLock = {
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
-  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`)
+  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
+  ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -84,6 +85,7 @@ export const KeyStorePrefixes = {
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
+  UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
@@ -110,6 +112,9 @@ export const KeyStorePrefixes = {
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+  EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
+  EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
+  EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
@@ -140,6 +145,8 @@ export const KeyStoreTtls = {
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
+  EmailSignupOtpInSeconds: 300, // 5 minutes
+  EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
   AdminConfigInSeconds: 60,
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
@@ -179,6 +186,7 @@ export type TKeyStoreFactory = {
   getItem: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
+  ttl: (key: string) => Promise<number>;
   setItemWithExpiry: (
     key: string,
     expiryInSeconds: number | string,
@@ -321,6 +329,8 @@ export const keyStoreFactory = (
 
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
 
+  const ttl = async (key: string) => primaryRedis.ttl(key);
+
   const getKeysByPattern = async (pattern: string, limit?: number) => {
     let cursor = "0";
     const allKeys: string[] = [];
@@ -440,6 +450,7 @@ export const keyStoreFactory = (
     setItem,
     getItem,
     setExpiry,
+    ttl,
     setItemWithExpiry,
     setItemWithExpiryNX,
     deleteItem,

@@ -22,7 +22,8 @@ export const PamResourcesSchema = z.object({
   encryptedResourceMetadata: zodBuffer.nullable().optional(),
   discoveryFingerprint: z.string().nullable().optional(),
   domainId: z.string().uuid().nullable().optional(),
-  encryptedSessionSummaryConfig: zodBuffer.nullable().optional()
+  encryptedSessionSummaryConfig: zodBuffer.nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TPamResources = z.infer<typeof PamResourcesSchema>;

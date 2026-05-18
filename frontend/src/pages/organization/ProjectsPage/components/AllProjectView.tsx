@@ -30,7 +30,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
@@ -52,6 +57,7 @@ type Props = {
   isAddingProjectsAllowed: boolean;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
+  showAllProjects?: boolean;
 };
 
 export const AllProjectView = ({
@@ -59,7 +65,8 @@ export const AllProjectView = ({
   onUpgradePlan,
   isAddingProjectsAllowed,
   projectListView,
-  onProjectListViewChange
+  onProjectListViewChange,
+  showAllProjects
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -129,7 +136,9 @@ export const AllProjectView = ({
   return (
     <div>
       <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        {showAllProjects && (
+          <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        )}
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
           containerClassName="w-full ml-2"
@@ -220,7 +229,10 @@ export const AllProjectView = ({
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
           {(isOldProjectPermissionAllowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+            <OrgPermissionCan
+              I={OrgPermissionProjectActions.Create}
+              an={OrgPermissionSubjects.Project}
+            >
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
@@ -337,13 +349,19 @@ export const AllProjectView = ({
                         Join as Admin
                       </Button>
                     ) : (
-                      <Button
-                        size="xs"
-                        variant="outline_bg"
-                        onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                      <OrgPermissionCan
+                        I={OrgPermissionProjectActions.RequestAccess}
+                        an={OrgPermissionSubjects.Project}
+                        passThrough={false}
                       >
-                        Request Access
-                      </Button>
+                        <Button
+                          size="xs"
+                          variant="outline_bg"
+                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                        >
+                          Request Access
+                        </Button>
+                      </OrgPermissionCan>
                     )
                   }
                 </OrgPermissionCan>

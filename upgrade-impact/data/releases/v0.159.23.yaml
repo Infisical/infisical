@@ -1,0 +1,50 @@
+version: v0.159.23
+releasedAt: 2026-04-29T11:56:04+05:30
+sourceTag: v0.159.23
+previousTag: v0.159.22
+impactLevel: low
+summary: Adds an automatic database migration for gateway pools and an optional
+  SMTP_HELO_HOST setting for stricter SMTP relays.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Gateway pools migration
+    description: Startup adds gateway_pools, gateway_pool_memberships, and a
+      nullable gatewayPoolId on Kubernetes auth records. Existing data remains
+      compatible.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260414000001_add-gateway-pools.ts
+        path: backend/src/db/migrations/20260414000001_add-gateway-pools.ts
+        description: Creates gateway pool tables
+configChanges:
+  - title: SMTP HELO hostname
+    description: You can now set SMTP_HELO_HOST to control the EHLO/HELO hostname.
+      This helps when your SMTP relay rejects container hostnames that are not
+      valid FQDNs.
+    action: Set SMTP_HELO_HOST to a relay-accepted FQDN if outbound email fails
+      after upgrade or your relay validates sender hostnames.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: Adds SMTP_HELO_HOST env var
+      - type: file
+        ref: docs/self-hosting/configuration/envars.mdx
+        path: docs/self-hosting/configuration/envars.mdx
+        description: Documents container hostname fallback
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-08T21:48:47.989Z
+  sourceRange:
+    from: v0.159.22
+    to: v0.159.23

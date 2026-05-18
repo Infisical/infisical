@@ -26,7 +26,7 @@ import {
   isPqcCryptoKey,
   PqcCryptoKey
 } from "@app/lib/crypto/pqc";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -122,7 +122,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
@@ -279,11 +279,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     ...dto
   }: TCreateCaDTO) => {
     let projectId: string;
-    if (!dto.isInternal) {
+    if (dto.isInternal) {
+      projectId = dto.projectId;
+    } else if (dto.projectId) {
+      projectId = dto.projectId;
+    } else if (dto.projectSlug) {
       const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actorOrgId);
       if (!project) throw new NotFoundError({ message: `Project with slug '${dto.projectSlug}' not found` });
       projectId = project.id;
-
+    } else {
+      throw new BadRequestError({ message: "Either projectId or projectSlug is required" });
+    }
+    if (!dto.isInternal) {
       const { permission } = await permissionService.getProjectPermission({
         actor: dto.actor,
         actorId: dto.actorId,
@@ -297,8 +304,6 @@ export const internalCertificateAuthorityServiceFactory = ({
         ProjectPermissionCertificateAuthorityActions.Create,
         subject(ProjectPermissionSub.CertificateAuthorities, { name: commonName })
       );
-    } else {
-      projectId = dto.projectId;
     }
 
     if (keyAlgorithm.startsWith("SLH-DSA")) {
@@ -1100,11 +1105,30 @@ export const internalCertificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    let notBefore: Date | undefined;
+    let notAfter: Date | undefined;
+    let maxPathLength: number | undefined;
+    try {
+      const certObj = new x509.X509Certificate(certificate);
+      notBefore = certObj.notBefore;
+      notAfter = certObj.notAfter;
+      const basicConstraintsExt = certObj.getExtension(x509.BasicConstraintsExtension);
+      if (basicConstraintsExt && basicConstraintsExt.ca) {
+        maxPathLength = basicConstraintsExt.pathLength ?? -1;
+      }
+    } catch {
+      // ignore parse errors and return undefined values
+    }
+
     return {
       certificate,
       certificateChain,
       serialNumber,
       certId,
+      notBefore,
+      notAfter,
+      maxPathLength,
+      parentCaId: ca.internalCa.parentCaId ?? undefined,
       ca: expandInternalCa(ca)
     };
   };
@@ -1440,6 +1464,10 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId, tx);
     if (!parentCa.internalCa) throw new NotFoundError({ message: `Parent CA with ID '${parentCaId}' not found` });
+
+    if (intermediateCa.projectId !== parentCa.projectId) {
+      throw new ForbiddenRequestError({ message: "Intermediate and Parent CA must belong to the same project" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

@@ -6,12 +6,14 @@ description: "One-time organization setup for AWS honey tokens."
 
 <Info>
   This setup is performed **once per organization** by an admin. After
-  completing these steps, any project member can [create honey
+  completing these steps, any project member with the appropriate [permissions](/documentation/platform/honey-tokens/overview#permissions) can [create honey
   tokens](/documentation/platform/honey-tokens/aws/usage) without repeating this
   process.
 </Info>
 
 ## Prerequisites
+
+- You must have the organization-level **Honey Tokens → Setup** permission. By default, only organization **Admins** have this permission.
 
 - Create an [AWS App Connection](/integrations/app-connections/aws) at the organization level with the following IAM permissions:
 

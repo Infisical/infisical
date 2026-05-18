@@ -22,6 +22,10 @@ import {
   MySQLResourceListItemSchema,
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import {
+  OracleResourceListItemSchema,
+  SanitizedOracleResourceSchema
+} from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PamResource, PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { PAM_AI_INSIGHT_MODELS } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import {
@@ -54,7 +58,8 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedAwsIamResourceSchema,
   SanitizedMongoDBResourceSchema,
   SanitizedRedisResourceSchema,
-  SanitizedWindowsResourceSchema
+  SanitizedWindowsResourceSchema,
+  SanitizedOracleResourceSchema
 ]);
 
 const SanitizedResourceWithFavoriteSchema = z.intersection(
@@ -71,7 +76,8 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   AwsIamResourceListItemSchema,
   MongoDBResourceListItemSchema,
   RedisResourceListItemSchema,
-  WindowsResourceListItemSchema
+  WindowsResourceListItemSchema,
+  OracleResourceListItemSchema
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {

@@ -79,6 +79,12 @@ export const GenericCreateAppConnectionFieldsSchema = (
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+      gatewayPoolId: supportsGateways
+        ? z.string().uuid().nullish().describe("The Gateway Pool ID to use for this connection.")
+        : z
+            .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
       isAutoRotationEnabled: supportsCredentialRotation
         ? z.boolean().optional().describe(AppConnections.CREATE(app).isAutoRotationEnabled)
@@ -104,6 +110,13 @@ export const GenericCreateAppConnectionFieldsSchema = (
           path: ["rotation"]
         });
       }
+      if (data.gatewayId && data.gatewayPoolId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Cannot specify both a gateway and a gateway pool",
+          path: ["gatewayPoolId"]
+        });
+      }
     });
 
 export const GenericUpdateAppConnectionFieldsSchema = (
@@ -114,42 +127,58 @@ export const GenericUpdateAppConnectionFieldsSchema = (
     supportsCredentialRotation = false
   }: TAppConnectionBaseConfig = {}
 ) =>
-  z.object({
-    name: slugSchema({ field: "name" }).describe(AppConnections.UPDATE(app).name).optional(),
-    description: z
-      .string()
-      .trim()
-      .max(256, "Description cannot exceed 256 characters")
-      .nullish()
-      .describe(AppConnections.UPDATE(app).description),
-    isPlatformManagedCredentials: supportsPlatformManagedCredentials
-      ? z.boolean().optional().describe(AppConnections.UPDATE(app).isPlatformManagedCredentials)
-      : z
-          .literal(false, {
-            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
-          })
-          .optional()
-          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
-    gatewayId: supportsGateways
-      ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
-      : z
-          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
-          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
-          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+  z
+    .object({
+      name: slugSchema({ field: "name" }).describe(AppConnections.UPDATE(app).name).optional(),
+      description: z
+        .string()
+        .trim()
+        .max(256, "Description cannot exceed 256 characters")
+        .nullish()
+        .describe(AppConnections.UPDATE(app).description),
+      isPlatformManagedCredentials: supportsPlatformManagedCredentials
+        ? z.boolean().optional().describe(AppConnections.UPDATE(app).isPlatformManagedCredentials)
+        : z
+            .literal(false, {
+              errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            })
+            .optional()
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+      gatewayId: supportsGateways
+        ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+        : z
+            .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+      gatewayPoolId: supportsGateways
+        ? z.string().uuid().nullish().describe("The Gateway Pool ID to use for this connection.")
+        : z
+            .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
-    isAutoRotationEnabled: supportsCredentialRotation
-      ? z.boolean().optional().describe(AppConnections.UPDATE(app).isAutoRotationEnabled)
-      : z
-          .literal(false, {
-            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
-          })
-          .optional()
-          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+      isAutoRotationEnabled: supportsCredentialRotation
+        ? z.boolean().optional().describe(AppConnections.UPDATE(app).isAutoRotationEnabled)
+        : z
+            .literal(false, {
+              errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            })
+            .optional()
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
-    rotation: supportsCredentialRotation
-      ? UpdateAppConnectionCredentialRotationSchema.optional().describe(AppConnections.UPDATE(app).rotation)
-      : z
-          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
-          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
-          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
-  });
+      rotation: supportsCredentialRotation
+        ? UpdateAppConnectionCredentialRotationSchema.optional().describe(AppConnections.UPDATE(app).rotation)
+        : z
+            .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+            .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+            .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
+    })
+    .superRefine((data, ctx) => {
+      if (data.gatewayId && data.gatewayPoolId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Cannot specify both a gateway and a gateway pool",
+          path: ["gatewayPoolId"]
+        });
+      }
+    });

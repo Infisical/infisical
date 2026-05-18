@@ -16,6 +16,7 @@ import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -34,6 +35,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
 };
 
 export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3ServiceFactory>;
@@ -48,8 +50,25 @@ export const certificateEstV3ServiceFactory = ({
   licenseService,
   certificateProfileDAL,
   estEnrollmentConfigDAL,
-  certificatePolicyDAL
+  certificatePolicyDAL,
+  pkiApplicationProfileDAL
 }: TCertificateEstV3ServiceFactoryDep) => {
+  const resolveEstConfigId = async (
+    profile: { estConfigId?: string | null },
+    profileId: string,
+    applicationId?: string
+  ): Promise<string | null> => {
+    if (applicationId && pkiApplicationProfileDAL) {
+      const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
+      if (!junction) {
+        throw new NotFoundError({
+          message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+        });
+      }
+      return junction.estConfigId ?? null;
+    }
+    return profile.estConfigId ?? null;
+  };
   const validateEstClientCertificate = async (
     estConfig: { disableBootstrapCaValidation?: boolean | null; encryptedCaChain?: Buffer | null },
     projectId: string,
@@ -100,22 +119,25 @@ export const certificateEstV3ServiceFactory = ({
   const simpleEnrollByProfile = async ({
     csr,
     profileId,
-    sslClientCert
+    sslClientCert,
+    applicationId
   }: {
     csr: string;
     profileId: string;
     sslClientCert: string;
+    applicationId?: string;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
-    if (!profile.estConfigId) {
+    const estConfigId = await resolveEstConfigId(profile, profileId, applicationId);
+    if (!estConfigId) {
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
     }
 
@@ -125,7 +147,7 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId);
+    const estConfig = await estEnrollmentConfigDAL.findById(estConfigId);
     if (!estConfig) {
       throw new NotFoundError({ message: "EST configuration not found" });
     }
@@ -160,7 +182,8 @@ export const certificateEstV3ServiceFactory = ({
       profileId,
       csr,
       validity: { ttl },
-      enrollmentType: EnrollmentType.EST
+      enrollmentType: EnrollmentType.EST,
+      applicationId
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -180,22 +203,25 @@ export const certificateEstV3ServiceFactory = ({
   const simpleReenrollByProfile = async ({
     csr,
     profileId,
-    sslClientCert
+    sslClientCert,
+    applicationId
   }: {
     csr: string;
     profileId: string;
     sslClientCert: string;
+    applicationId?: string;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
-    if (!profile.estConfigId) {
+    const estConfigId = await resolveEstConfigId(profile, profileId, applicationId);
+    if (!estConfigId) {
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
     }
 
@@ -205,7 +231,7 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId);
+    const estConfig = await estEnrollmentConfigDAL.findById(estConfigId);
     if (!estConfig) {
       throw new NotFoundError({ message: "EST configuration not found" });
     }
@@ -306,7 +332,8 @@ export const certificateEstV3ServiceFactory = ({
       profileId,
       csr,
       validity: { ttl },
-      enrollmentType: EnrollmentType.EST
+      enrollmentType: EnrollmentType.EST,
+      applicationId
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -323,17 +350,18 @@ export const certificateEstV3ServiceFactory = ({
     return convertRawCertsToPkcs7([certObj.rawData]);
   };
 
-  const getCaCertsByProfile = async ({ profileId }: { profileId: string }) => {
+  const getCaCertsByProfile = async ({ profileId, applicationId }: { profileId: string; applicationId?: string }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.EST) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
       throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
-    if (!profile.estConfigId) {
+    const estConfigId = await resolveEstConfigId(profile, profileId, applicationId);
+    if (!estConfigId) {
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
     }
 
@@ -343,7 +371,7 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId);
+    const estConfig = await estEnrollmentConfigDAL.findById(estConfigId);
     if (!estConfig) {
       throw new NotFoundError({ message: "EST configuration not found" });
     }

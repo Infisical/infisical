@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -309,7 +309,18 @@ const constructPermissionErrorMessage = (
   }`;
 };
 
+const assertPermissionBoundary = (actorPermission: MongoAbility, managedPermission: MongoAbility, message: string) => {
+  const boundary = validatePermissionBoundary(actorPermission, managedPermission);
+  if (!boundary.isValid) {
+    throw new PermissionBoundaryError({
+      message,
+      details: { missingPermissions: boundary.missingPermissions }
+    });
+  }
+};
+
 export {
+  assertPermissionBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   isAuthMethodSaml,

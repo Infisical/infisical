@@ -110,6 +110,7 @@ export const PamAccessAccountModal = ({
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
       case PamResourceType.MsSQL:
+      case PamResourceType.OracleDB:
       case PamResourceType.MongoDB:
         return base("db");
       case PamResourceType.Redis:

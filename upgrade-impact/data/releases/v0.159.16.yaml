@@ -1,0 +1,32 @@
+version: v0.159.16
+releasedAt: 2026-04-17T17:49:54-03:00
+sourceTag: v0.159.16
+previousTag: v0.159.15
+impactLevel: low
+summary: Adds one startup-run database migration for webhook event filters. No
+  required self-hosted config or deployment changes.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Webhook event filters column
+    description: Infisical adds a nullable text[] column on the webhook table for
+      event-specific webhook delivery settings. Existing rows remain compatible
+      because the column is only added when missing.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260409120000_add-webhook-event-toggles.ts
+        path: backend/src/db/migrations/20260409120000_add-webhook-event-toggles.ts
+        description: Adds nullable filteredEvents column if missing
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-08T21:51:21.609Z
+  sourceRange:
+    from: v0.159.15
+    to: v0.159.16

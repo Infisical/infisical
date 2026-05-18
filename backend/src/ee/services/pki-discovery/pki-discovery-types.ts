@@ -61,7 +61,8 @@ export type TCreatePkiDiscoveryDTO = {
   targetConfig: TPkiDiscoveryTargetConfig;
   isAutoScanEnabled?: boolean;
   scanIntervalDays?: number;
-  gatewayId?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdatePkiDiscoveryDTO = {
@@ -72,6 +73,7 @@ export type TUpdatePkiDiscoveryDTO = {
   isAutoScanEnabled?: boolean;
   scanIntervalDays?: number;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   isActive?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 

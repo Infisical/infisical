@@ -99,7 +99,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
   >;
 };
 
@@ -276,8 +276,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
-  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
-    if (!caCert.length) return false;
+  const $resolveEffectiveVerifyTlsCertificate = (
+    caCert: string | null | undefined,
+    storedVerify: boolean | null | undefined
+  ): boolean => {
+    if (!caCert?.length) return false;
     return storedVerify ?? false;
   };
 
@@ -1018,7 +1021,12 @@ export const identityKubernetesAuthServiceFactory = ({
       return doc;
     });
 
-    return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.scopeOrgId };
+    return {
+      ...identityKubernetesAuth,
+      caCert: caCert ?? "",
+      tokenReviewerJwt,
+      orgId: identityMembershipOrg.scopeOrgId
+    };
   };
 
   const updateKubernetesAuth = async ({
@@ -1235,7 +1243,7 @@ export const identityKubernetesAuthServiceFactory = ({
     }
     const effectiveVerifyTlsCertificate =
       resolvedVerifyTlsCertificate ??
-      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert ?? "", identityKubernetesAuth.verifyTlsCertificate);
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert, identityKubernetesAuth.verifyTlsCertificate);
 
     if (
       effectiveVerifyTlsCertificate &&
@@ -1544,7 +1552,10 @@ export const identityKubernetesAuthServiceFactory = ({
     // Detaching the auth method must invalidate any tokens already issued
     // through it; without this, leaked tokens authenticate up to MAX_AGE
     // even after the admin pulled the auth method.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.KUBERNETES_AUTH
+    });
 
     return revokedIdentityKubernetesAuth;
   };

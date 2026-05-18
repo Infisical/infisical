@@ -40,6 +40,7 @@ import {
   useGetWorkspaceUserDetails
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
@@ -59,7 +60,7 @@ export const Page = () => {
   } = useUser();
 
   const { data: membershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetWorkspaceUserDetails(projectId, membershipId);
+    useGetWorkspaceUserDetails(projectId, membershipId, currentProject?.type);
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const assumePrivileges = useAssumeProjectPrivileges();
@@ -99,6 +100,7 @@ export const Page = () => {
 
     await removeUserFromWorkspace({
       projectId,
+      projectType: currentProject?.type,
       usernames: [membershipDetails?.user?.username],
       orgId: currentOrg.id
     });
@@ -125,6 +127,7 @@ export const Page = () => {
   }
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
@@ -142,7 +145,7 @@ export const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Project Users
+            {isCertManager ? "Users" : "Project Users"}
           </Link>
           <PageHeader
             scope={currentProject.type}
@@ -154,15 +157,23 @@ export const Page = () => {
                   membershipDetails.inviteEmail ||
                   "Unnamed User"
             }
-            description="Configure and manage project access control"
+            description={
+              isCertManager
+                ? "Configure and manage certificate manager access control"
+                : "Configure and manage project access control"
+            }
           >
             {isOwnProjectMembershipDetails ? (
               <Tooltip
                 side="right"
-                content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+                content={
+                  isCertManager
+                    ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
+                    : "You cannot modify your own membership. Ask a project admin to make changes to your membership."
+                }
               >
                 <Badge variant="info" className="ml-2">
-                  <InfoIcon /> Your project membership
+                  <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
                 </Badge>
               </Tooltip>
             ) : (
@@ -185,31 +196,33 @@ export const Page = () => {
                   >
                     Copy User ID
                   </DropdownMenuItem>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionMemberActions.AssumePrivileges}
-                    a={ProjectPermissionSub.Member}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        isDisabled={!isAllowed}
-                        onClick={() =>
-                          handlePopUpOpen("assumePrivileges", {
-                            userId: membershipDetails.user.id
-                          })
-                        }
-                      >
-                        Assume Privileges
-                        <Tooltip
-                          side="bottom"
-                          content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                  {!isCertManager && (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionMemberActions.AssumePrivileges}
+                      a={ProjectPermissionSub.Member}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenuItem
+                          isDisabled={!isAllowed}
+                          onClick={() =>
+                            handlePopUpOpen("assumePrivileges", {
+                              userId: membershipDetails.user.id
+                            })
+                          }
                         >
-                          <div>
-                            <InfoIcon className="text-muted" />
-                          </div>
-                        </Tooltip>
-                      </DropdownMenuItem>
-                    )}
-                  </ProjectPermissionCan>
+                          Assume Privileges
+                          <Tooltip
+                            side="bottom"
+                            content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                          >
+                            <div>
+                              <InfoIcon className="text-muted" />
+                            </div>
+                          </Tooltip>
+                        </DropdownMenuItem>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                   <ProjectPermissionCan
                     I={ProjectPermissionMemberActions.Delete}
                     a={ProjectPermissionSub.Member}
@@ -220,7 +233,9 @@ export const Page = () => {
                         isDisabled={!isAllowed}
                         onClick={() => handlePopUpOpen("removeMember")}
                       >
-                        Remove User From Project
+                        {isCertManager
+                          ? "Remove User From Certificate Manager"
+                          : "Remove User From Project"}
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
@@ -241,7 +256,9 @@ export const Page = () => {
                   })
                 }
               />
-              <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+              {!isCertManager && (
+                <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+              )}
             </div>
           </div>
           <DeleteActionModal

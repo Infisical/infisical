@@ -1,0 +1,39 @@
+version: v0.159.17
+releasedAt: 2026-04-18T12:45:00+02:00
+sourceTag: v0.159.17
+previousTag: v0.159.16
+impactLevel: low
+summary: Adds an automatic database migration for external migration configs
+  used by Vault and Doppler imports. No config or deployment changes are
+  required for existing self-hosted installs.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: External migration configs table
+    description: Startup adds a new external_migration_configs table and copies
+      existing Vault migration config records into it with encrypted
+      provider-specific config data.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts
+        path: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts
+        description: Creates shared migration config table
+      - type: file
+        ref: backend/src/db/schemas/external-migration-configs.ts
+        path: backend/src/db/schemas/external-migration-configs.ts
+        description: Schema includes provider and encryptedConfig
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-08T21:51:02.430Z
+  sourceRange:
+    from: v0.159.16
+    to: v0.159.17

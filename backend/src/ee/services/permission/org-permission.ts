@@ -126,8 +126,19 @@ export enum OrgPermissionEmailDomainActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionCertManagerActions {
+  Read = "read",
+  ManageInstance = "manage-instance",
+  ManageSettings = "manage-settings"
+}
+
 export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
+}
+
+export enum OrgPermissionProjectActions {
+  Create = "create",
+  RequestAccess = "request-access"
 }
 
 export enum OrgPermissionSubjects {
@@ -159,6 +170,7 @@ export enum OrgPermissionSubjects {
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
+  CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens"
 }
 
@@ -168,7 +180,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
-  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
+  | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -201,6 +213,7 @@ export type OrgPermissionSet =
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 const AppConnectionConditionSchema = z
@@ -225,7 +238,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Project).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_ENUM([OrgPermissionActions.Create]).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionProjectActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Role).describe("The entity this permission pertains to."),
@@ -366,6 +381,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.CertManager).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionCertManagerActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.HoneyTokens).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionHoneyTokenActions).describe(
       "Describe what action an entity can take."
@@ -377,7 +398,8 @@ const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.Edit, OrgPermissionSubjects.SubOrganization);
@@ -529,6 +551,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionEmailDomainActions.Delete, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionHoneyTokenActions.Setup, OrgPermissionSubjects.HoneyTokens);
 
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
+
   return rules;
 };
 
@@ -538,7 +564,8 @@ const buildMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
+  can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
@@ -580,6 +607,8 @@ const buildMemberPermission = () => {
     OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
+
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
 
   return rules;
 };

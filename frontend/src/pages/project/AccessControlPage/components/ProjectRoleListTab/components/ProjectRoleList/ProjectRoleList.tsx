@@ -68,6 +68,7 @@ import {
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
@@ -88,8 +89,12 @@ export const ProjectRoleList = () => {
   ] as const);
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
-  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
+  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(
+    projectId,
+    currentProject?.type
+  );
 
   const { mutateAsync: deleteRole } = useDeleteProjectRole();
   const { subscription } = useSubscription();
@@ -98,6 +103,7 @@ export const ProjectRoleList = () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     await deleteRole({
       projectId,
+      projectType: currentProject?.type,
       id
     });
     createNotification({ type: "success", text: "Successfully removed the role" });
@@ -222,24 +228,33 @@ export const ProjectRoleList = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Project Roles
+            {isCertManager ? "Roles" : "Project Roles"}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
           </CardTitle>
-          <CardDescription>Create and manage project roles</CardDescription>
-          <CardAction>
-            <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
-              {(isAllowed) => (
-                <Button
-                  variant="project"
-                  onClick={() => handlePopUpOpen("role")}
-                  isDisabled={!isAllowed}
-                >
-                  <PlusIcon />
-                  Add Project Role
-                </Button>
-              )}
-            </ProjectPermissionCan>
-          </CardAction>
+          <CardDescription>
+            {isCertManager
+              ? "View built-in roles for Certificate Manager"
+              : "Create and manage project roles"}
+          </CardDescription>
+          {!isCertManager && (
+            <CardAction>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Create}
+                a={ProjectPermissionSub.Role}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="project"
+                    onClick={() => handlePopUpOpen("role")}
+                    isDisabled={!isAllowed}
+                  >
+                    <PlusIcon />
+                    Add Project Role
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -250,7 +265,7 @@ export const ProjectRoleList = () => {
               <InputGroupInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search project roles..."
+                placeholder={isCertManager ? "Search roles..." : "Search project roles..."}
               />
             </InputGroup>
           </div>
@@ -258,12 +273,22 @@ export const ProjectRoleList = () => {
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
+                  {/* eslint-disable-next-line no-nested-ternary */}
                   {roles?.length
-                    ? "No project roles match search"
-                    : "This project does not have any roles"}
+                    ? isCertManager
+                      ? "No roles match search"
+                      : "No project roles match search"
+                    : isCertManager
+                      ? "No roles available"
+                      : "This project does not have any roles"}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {roles?.length ? "Adjust your search criteria." : "Add a role to get started."}
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  {roles?.length
+                    ? "Adjust your search criteria."
+                    : isCertManager
+                      ? "Built-in roles will appear here."
+                      : "Add a role to get started."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -401,23 +426,25 @@ export const ProjectRoleList = () => {
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Create}
-                                a={ProjectPermissionSub.Role}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("duplicateRole", role);
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <CopyIcon />
-                                    Duplicate Role
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
+                              {!isCertManager && (
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Create}
+                                  a={ProjectPermissionSub.Role}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("duplicateRole", role);
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <CopyIcon />
+                                      Duplicate Role
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                              )}
                               {!isNonMutatable && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Delete}

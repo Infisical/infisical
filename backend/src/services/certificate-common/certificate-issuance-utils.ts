@@ -157,7 +157,7 @@ export const validateAlgorithmCompatibility = (
 
   if (compatibleAlgorithms.length === 0) {
     throw new BadRequestError({
-      message: `Template signature algorithms (${template.algorithms?.signature?.join(", ") || "none"}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
+      message: `Signature algorithms (${template.algorithms?.signature?.join(", ") || "none"}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
     });
   }
 };

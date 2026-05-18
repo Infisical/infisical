@@ -1,14 +1,15 @@
 import {
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   TCertificateProfileWithDetails,
@@ -20,20 +21,12 @@ import { ProfileRow } from "./ProfileRow";
 interface Props {
   onEditProfile: (profile: TCertificateProfileWithDetails) => void;
   onDeleteProfile: (profile: TCertificateProfileWithDetails) => void;
-  onRevealProfileAcmeEabSecret: (profile: TCertificateProfileWithDetails) => void;
-  onViewScepDetails: (profile: TCertificateProfileWithDetails) => void;
 }
 
-export const ProfileList = ({
-  onEditProfile,
-  onRevealProfileAcmeEabSecret,
-  onViewScepDetails,
-  onDeleteProfile
-}: Props) => {
+export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
   const { currentProject } = useProject();
 
   const { data, isLoading } = useListCertificateProfiles({
-    projectId: currentProject?.id || "",
     limit: 100,
     offset: 0,
     includeConfigs: true
@@ -43,65 +36,57 @@ export const ProfileList = ({
 
   if (!currentProject?.id) {
     return (
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Enrollment Method</Th>
-              <Th>Issuing CA</Th>
-              <Th>Certificate Policy</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            <Tr>
-              <Td colSpan={5}>
-                <EmptyState title="No Project Selected" />
-              </Td>
-            </Tr>
-          </TBody>
-        </Table>
-      </TableContainer>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Certificate Manager is not set up</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
+
+  if (!profiles || profiles.length === 0) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No existing certificate profiles</EmptyTitle>
+          <EmptyDescription>
+            Create your first profile to start issuing certificates on an Application.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Name</Th>
-            <Th>Enrollment Method</Th>
-            <Th>Issuing CA</Th>
-            <Th>Certificate Policy</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isLoading && <TableSkeleton columns={5} innerKey="certificate-profiles" />}
-          {!isLoading && (!profiles || profiles.length === 0) && (
-            <Tr>
-              <Td colSpan={5}>
-                <EmptyState title="No Certificate Profiles" />
-              </Td>
-            </Tr>
-          )}
-          {!isLoading &&
-            profiles &&
-            profiles.length > 0 &&
-            profiles.map((profile) => (
-              <ProfileRow
-                key={profile.id}
-                profile={profile}
-                onEditProfile={onEditProfile}
-                onRevealProfileAcmeEabSecret={onRevealProfileAcmeEabSecret}
-                onViewScepDetails={onViewScepDetails}
-                onDeleteProfile={onDeleteProfile}
-              />
-            ))}
-        </TBody>
-      </Table>
-    </TableContainer>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Issuing CA</TableHead>
+          <TableHead>Certificate Policy</TableHead>
+          <TableHead className="w-5" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {profiles.map((profile) => (
+          <ProfileRow
+            key={profile.id}
+            profile={profile}
+            onEditProfile={onEditProfile}
+            onDeleteProfile={onDeleteProfile}
+          />
+        ))}
+      </TableBody>
+    </Table>
   );
 };

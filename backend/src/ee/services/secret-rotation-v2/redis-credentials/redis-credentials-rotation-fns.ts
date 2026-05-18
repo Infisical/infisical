@@ -3,6 +3,7 @@ import Redis from "ioredis";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -71,6 +72,32 @@ export const redisCredentialsRotationFactory: TRotationFactory<
       if (conn) await conn.quit();
 
       throw err;
+    }
+  };
+
+  const $validateCredentials = async (credentials: TRedisCredentialsRotationGeneratedCredentials[number]) => {
+    const [hostIp] = await verifyHostInputValidity({ host: connection.credentials.host, isDynamicSecret: false });
+
+    let conn: Redis | null = null;
+    try {
+      conn = new Redis({
+        username: credentials.username,
+        host: hostIp,
+        port: connection.credentials.port,
+        password: credentials.password,
+        ...(connection.credentials.sslEnabled && {
+          tls: {
+            rejectUnauthorized: connection.credentials.sslRejectUnauthorized,
+            ca: connection.credentials.sslCertificate
+          }
+        })
+      });
+
+      await conn.ping();
+    } catch (err) {
+      throw new Error(redactPasswords(err, [credentials]));
+    } finally {
+      if (conn) await conn.quit();
     }
   };
 
@@ -185,10 +212,17 @@ export const redisCredentialsRotationFactory: TRotationFactory<
     { key: secretsMapping.password, value: password }
   ];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TRedisCredentialsRotationGeneratedCredentials
+  > = async (activeCredentials) => {
+    await $validateCredentials(activeCredentials);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

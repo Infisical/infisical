@@ -1,0 +1,204 @@
+---
+title: "API Enrollment"
+sidebarTitle: "API"
+description: "Issue certificates through the Infisical UI, Agent, or API with optional server-driven auto-renewal."
+---
+
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
+API enrollment is the default method for issuing certificates through the Infisical UI, the Infisical Agent, or direct API calls. It's the most flexible option — use it for manual one-off requests, automated pipelines, or server-driven auto-renewal where Infisical manages the certificate lifecycle.
+
+<Info>
+  API enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Product Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
+</Info>
+
+## When to Use API Enrollment
+
+<CardGroup cols={2}>
+  <Card title="Custom Integrations" icon="code">
+    Build certificate issuance into your own tooling and automation.
+  </Card>
+  <Card title="CI/CD Pipelines" icon="gears">
+    Issue certificates as part of deployment workflows.
+  </Card>
+  <Card title="Server-Driven Renewal" icon="arrows-spin">
+    Let Infisical automatically renew certificates before expiration.
+  </Card>
+  <Card title="One-Off Requests" icon="hand-pointer">
+    Issue certificates manually through the UI when needed.
+  </Card>
+</CardGroup>
+
+## Configure API Enrollment
+
+<Steps>
+  <Step title="Navigate to your Application">
+    Go to **Certificate Manager → Applications** and select your Application.
+  </Step>
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable API enrollment for.
+    
+    <Note>
+      Profiles are attached by Product Admins. If you don't see any profiles, ask your Product Admin to attach one.
+    </Note>
+  </Step>
+  <Step title="Add API enrollment">
+    In the modal, click **Add enrollment method** and select **API**.
+  </Step>
+  <Step title="Configure auto-renewal (optional)">
+    Enable **Auto-Renewal By Default** to have Infisical automatically renew certificates before expiration.
+    
+    | Setting | Description |
+    |---------|-------------|
+    | **Auto-Renewal** | When enabled, eligible certificates are renewed server-side |
+    | **Renew Before Days** | How many days before expiration to trigger renewal |
+    
+    <Info>
+      Auto-renewal only works for certificates with server-managed private keys. Certificates issued via CSR are not eligible.
+    </Info>
+  </Step>
+</Steps>
+
+## Issue a Certificate
+
+Once API enrollment is configured, you can issue certificates through the UI or API.
+
+<Info>
+  Certificates issued through API enrollment are tied to the Application + Profile pair. The profile determines certificate parameters (CA, policy, defaults), while the Application scopes the certificate to your service.
+</Info>
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Open certificate requests">
+        In your Application, go to the **Certificate Requests** tab and click **Request**.
+      </Step>
+      <Step title="Select profile and request method">
+        Choose your certificate profile and request method:
+        
+        | Method | Description |
+        |--------|-------------|
+        | **Managed** | Infisical generates and manages the private key |
+        | **CSR** | You provide your own Certificate Signing Request |
+      </Step>
+      <Step title="Fill in certificate details">
+        **For Managed requests:**
+        - Common Name and SANs
+        - Key algorithm and signature algorithm
+        - Validity period (TTL)
+        - Optional metadata tags
+        
+        **For CSR requests:**
+        - Paste your PEM-encoded CSR
+        - Specify validity period (TTL)
+        
+        <Note>
+          When using CSR, subject attributes and key algorithm are extracted from your CSR.
+        </Note>
+      </Step>
+      <Step title="Download the certificate">
+        After issuance, download the certificate body, chain, and private key (if managed).
+        
+        <Warning>
+          The private key is only shown once. Store it securely immediately after issuance.
+        </Warning>
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    ### Issue with managed key
+    
+    Let Infisical generate the private key:
+    
+    ```bash
+    curl -X POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
+      -H 'Authorization: Bearer <access-token>' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "profileId": "<certificate-profile-id>",
+        "attributes": {
+          "commonName": "api.example.com",
+          "ttl": "90d",
+          "keyAlgorithm": "RSA_2048",
+          "altNames": [
+            { "type": "DNS", "value": "api.example.com" },
+            { "type": "DNS", "value": "www.api.example.com" }
+          ]
+        },
+        "metadata": [
+          { "key": "env", "value": "production" },
+          { "key": "service", "value": "payments-api" }
+        ]
+      }'
+    ```
+    
+    **Response:**
+    
+    ```json
+    {
+      "certificate": {
+        "certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+        "certificateChain": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+        "privateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
+        "serialNumber": "123456789012345678",
+        "certificateId": "cert-abc123"
+      },
+      "certificateRequestId": "req-xyz789"
+    }
+    ```
+    
+    ### Issue with your own CSR
+    
+    Bring your own private key:
+    
+    ```bash
+    curl -X POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
+      -H 'Authorization: Bearer <access-token>' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "profileId": "<certificate-profile-id>",
+        "csr": "-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----",
+        "attributes": {
+          "ttl": "90d"
+        }
+      }'
+    ```
+    
+    <Note>
+      If the certificate requires approval, the response will include `certificateRequestId` but `certificate` will be `null`. Poll the [Get Certificate Request](/api-reference/endpoints/certificates/certificate-request) endpoint to check status.
+    </Note>
+    
+    See the [Issue Certificate API reference](/api-reference/endpoints/certificates/create-certificate) for full details.
+  </Tab>
+</Tabs>
+
+## Server-Driven Auto-Renewal
+
+When auto-renewal is enabled, Infisical automatically renews certificates before they expire:
+
+1. Infisical monitors certificate expiration dates
+2. When a certificate is within the "Renew Before Days" threshold, Infisical issues a new certificate
+3. The new certificate is pushed to any configured [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview)
+
+<Info>
+  Auto-renewal only works for certificates with server-managed keys. Certificates issued via CSR must be renewed by the client.
+</Info>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="ACME Enrollment" icon="robot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
+    Use Certbot, cert-manager, or other ACME clients.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to AWS ACM, Azure Key Vault, and more.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View, renew, and revoke certificates in your Application.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+</CardGroup>

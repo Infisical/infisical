@@ -4,18 +4,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { TerminalChannelType, TTerminalEvent } from "@app/hooks/api/pam";
+import { SessionChannelType, TSessionEvent } from "@app/hooks/api/pam";
 import { isBrokenChunkMarker, TBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
 
 import { aggregateTerminalEvents } from "./terminal-utils";
 
 const CHANNEL_LABEL_MAP: Record<string, string> = {
-  [TerminalChannelType.Exec]: "Exec",
-  [TerminalChannelType.Sftp]: "SFTP"
+  [SessionChannelType.Exec]: "Exec",
+  [SessionChannelType.Sftp]: "SFTP"
 };
 
 type Props = {
-  events: (TTerminalEvent | TBrokenChunkMarker)[];
+  events: (TSessionEvent | TBrokenChunkMarker)[];
 };
 
 export const TerminalEventView = ({ events }: Props) => {
@@ -24,7 +24,7 @@ export const TerminalEventView = ({ events }: Props) => {
   const markers = useMemo(() => events.filter(isBrokenChunkMarker), [events]);
 
   const realEvents = useMemo(
-    () => events.filter((e): e is TTerminalEvent => !isBrokenChunkMarker(e)),
+    () => events.filter((e): e is TSessionEvent => !isBrokenChunkMarker(e)),
     [events]
   );
 

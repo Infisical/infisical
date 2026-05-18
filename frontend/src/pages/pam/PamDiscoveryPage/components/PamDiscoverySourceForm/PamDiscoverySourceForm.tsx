@@ -29,7 +29,8 @@ const CreateForm = ({ discoveryType, closeSheet, projectId }: CreateFormProps) =
 
   const onSubmit = async (formData: {
     name: string;
-    gateway: { id: string; name: string } | null;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
     schedule: string;
     discoveryType: PamDiscoveryType;
     discoveryConfiguration: Record<string, unknown>;
@@ -39,7 +40,8 @@ const CreateForm = ({ discoveryType, closeSheet, projectId }: CreateFormProps) =
       projectId,
       name: formData.name,
       discoveryType: formData.discoveryType,
-      gatewayId: formData.gateway!.id,
+      gatewayId: formData.gatewayId ?? undefined,
+      gatewayPoolId: formData.gatewayPoolId ?? undefined,
       discoveryConfiguration: formData.discoveryConfiguration,
       discoveryCredentials: formData.discoveryCredentials,
       schedule: formData.schedule
@@ -65,7 +67,8 @@ const UpdateForm = ({ source, closeSheet }: UpdateFormProps) => {
 
   const onSubmit = async (formData: {
     name: string;
-    gateway: { id: string; name: string } | null;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
     schedule: string;
     discoveryType: PamDiscoveryType;
     discoveryConfiguration: Record<string, unknown>;
@@ -75,7 +78,8 @@ const UpdateForm = ({ source, closeSheet }: UpdateFormProps) => {
       discoverySourceId: source.id,
       discoveryType: formData.discoveryType,
       name: formData.name,
-      gatewayId: formData.gateway!.id,
+      gatewayId: formData.gatewayId ?? undefined,
+      gatewayPoolId: formData.gatewayPoolId ?? undefined,
       discoveryConfiguration: formData.discoveryConfiguration,
       discoveryCredentials: formData.discoveryCredentials,
       schedule: formData.schedule

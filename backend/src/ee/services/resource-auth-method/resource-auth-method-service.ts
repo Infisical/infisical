@@ -321,7 +321,7 @@ export const resourceAuthMethodServiceFactory = ({
       }
       await gatewayV2DAL.updateById(
         gateway.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
+        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
         tx
       );
       return { deletedTokenCount };
@@ -385,7 +385,7 @@ export const resourceAuthMethodServiceFactory = ({
     const refreshed = await gatewayV2DAL.updateById(gateway.id, {
       $incr: { tokenVersion: 1 },
       heartbeat: null,
-      lastHealthCheckStatus: null
+      heartbeatTTL: null
     });
 
     const accessToken = mintGatewayJwt({
@@ -433,7 +433,7 @@ export const resourceAuthMethodServiceFactory = ({
       if (!existing) throw new NotFoundError({ message: `Gateway ${linkedGatewayId} not found` });
       return gatewayV2DAL.updateById(
         existing.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
+        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
         tx
       );
     });

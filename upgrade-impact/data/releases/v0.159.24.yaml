@@ -1,0 +1,43 @@
+version: v0.159.24
+releasedAt: 2026-04-29T16:46:24-03:00
+sourceTag: v0.159.24
+previousTag: v0.159.23
+impactLevel: medium
+summary: Identity auth now always verifies TLS certificates for OIDC, JWT JWKS,
+  and Kubernetes auth endpoints. Existing setups using self-signed or mismatched
+  certificates may fail until CA trust and hostnames are corrected.
+requiresDbMigration: false
+breakingChanges:
+  - title: Identity auth TLS verification
+    description: TLS certificate verification is now enforced for OIDC, JWT JWKS, and Kubernetes auth endpoints. Previously, these authentication flows accepted untrusted certificates. If your endpoints use publicly signed certificates, they will continue to work using the system's default CA trust store.
+    action: If you use self-signed or internal CA certificates for any identity auth endpoint (OIDC issuer, JWT JWKS URL, or Kubernetes API), add the issuing CA certificate to the corresponding auth method configuration. Also verify that all configured hostnames match the certificate's Subject Alternative Name (SAN) or Common Name (CN).
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/services/identity-jwt-auth/identity-jwt-auth-service.ts
+        path: backend/src/services/identity-jwt-auth/identity-jwt-auth-service.ts
+        description: JWKS HTTPS agent rejects unauthorized certs
+      - type: file
+        ref: backend/src/services/identity-kubernetes-auth/identity-kubernetes-auth-service.ts
+        path: backend/src/services/identity-kubernetes-auth/identity-kubernetes-auth-service.ts
+        description: Kubernetes HTTPS agents set rejectUnauthorized and servername
+      - type: file
+        ref: backend/src/services/identity-kubernetes-auth/identity-kubernetes-auth-validators.ts
+        path: backend/src/services/identity-kubernetes-auth/identity-kubernetes-auth-validators.ts
+        description: Validation requests enforce TLS verification
+      - type: release
+        ref: v0.159.24
+        url: https://github.com/Infisical/infisical/releases/tag/v0.159.24
+        description: TLS verification fix noted
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-08T21:48:23.278Z
+  sourceRange:
+    from: v0.159.23
+    to: v0.159.24

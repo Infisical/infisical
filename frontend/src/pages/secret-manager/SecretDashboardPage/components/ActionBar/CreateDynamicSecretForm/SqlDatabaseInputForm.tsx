@@ -3,7 +3,6 @@ import { Controller, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import ms from "ms";
 import { z } from "zod";
 
@@ -26,11 +25,12 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
+import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { VaultDatabaseRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -76,7 +76,8 @@ const formSchema = z.object({
     sslEnabled: z.boolean().optional(),
     ca: z.string().optional(),
     sslRejectUnauthorized: z.boolean().default(true),
-    gatewayId: z.string().optional()
+    gatewayId: z.string().optional(),
+    gatewayPoolId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -209,8 +210,9 @@ export const SqlDatabaseInputForm = ({
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
-  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
   const selectedClient = watch("provider.client");
+  const providerGatewayId = watch("provider.gatewayId");
+  const providerGatewayPoolId = watch("provider.gatewayPoolId");
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -449,48 +451,30 @@ export const SqlDatabaseInputForm = ({
                 a={OrgPermissionSubjects.Gateway}
               >
                 {(isAllowed) => (
-                  <Controller
-                    control={control}
-                    name="provider.gatewayId"
-                    defaultValue=""
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Gateway"
-                      >
-                        <Tooltip
-                          isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
-                        >
-                          <div>
-                            <Select
-                              isDisabled={!isAllowed}
-                              value={value}
-                              onValueChange={onChange}
-                              className="w-full border border-mineshaft-500"
-                              dropdownContainerClassName="max-w-none"
-                              isLoading={isGatewaysLoading}
-                              placeholder="Default: Internet Gateway"
-                              position="popper"
-                            >
-                              <SelectItem
-                                value={null as unknown as string}
-                                onClick={() => onChange(undefined)}
-                              >
-                                Internet Gateway
-                              </SelectItem>
-                              {gateways?.map((el) => (
-                                <SelectItem value={el.id} key={el.id}>
-                                  {el.name}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </div>
-                        </Tooltip>
-                      </FormControl>
-                    )}
-                  />
+                  <FormControl label="Gateway">
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <GatewayPicker
+                          isDisabled={!isAllowed}
+                          value={{
+                            gatewayId: providerGatewayId ?? null,
+                            gatewayPoolId: providerGatewayPoolId ?? null
+                          }}
+                          onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                            setValue("provider.gatewayId", newGwId ?? undefined, {
+                              shouldDirty: true
+                            });
+                            setValue("provider.gatewayPoolId", newPoolId ?? undefined, {
+                              shouldDirty: true
+                            });
+                          }}
+                        />
+                      </div>
+                    </Tooltip>
+                  </FormControl>
                 )}
               </OrgPermissionCan>
             </div>

@@ -267,7 +267,22 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         })
       );
     } else {
-      if (event.organizationId) {
+      // Skip groupIdentify entirely when the event is marked anonymous.
+      //
+      // posthog-node implements `groupIdentify` as a regular capture of a
+      // `$groupidentify` event keyed by the supplied `distinctId`. For an
+      // anonymous-share viewer of an org-scoped share, that `distinctId`
+      // is the synthesised `anonymous-<shareId>` value, so calling
+      // groupIdentify here would create exactly the per-share person
+      // record we are trying to suppress — defeating the
+      // `$process_person_profile: false` flag we set on the explicit
+      // capture below. Org-level attribution on the captured event itself
+      // is still preserved via the `groups` field, so analytics that
+      // slice by organization continue to work; only the periodic refresh
+      // of the org's group properties is skipped on this code path.
+      // Authenticated events for the same org refresh those properties
+      // frequently anyway, so there is no analytical loss.
+      if (event.organizationId && !event.anonymous) {
         const orgId = event.organizationId;
         // Dedup groupIdentify: only fire once per org per hour to avoid redundant DB/API calls
         const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(orgId);
@@ -290,10 +305,18 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             logger.error(error, "Failed to identify PostHog organization");
           });
       }
+      // When `anonymous` is set, we still record the event but instruct
+      // PostHog not to create or update a person record for the synthesised
+      // distinctId. This prevents per-request distinctIds (e.g. the
+      // `anonymous-<shareId>` keys used by unauthenticated public secret
+      // shares) from inflating the person count while preserving event
+      // counts, funnels, and breakdowns.
+      const properties = event.anonymous ? { ...event.properties, $process_person_profile: false } : event.properties;
+
       postHog.capture({
         event: event.event,
         distinctId: event.distinctId,
-        properties: event.properties,
+        properties,
         ...(event.organizationId ? { groups: { organization: event.organizationId } } : {})
       });
     }

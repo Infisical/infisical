@@ -100,12 +100,14 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined,
+          gatewayId: resource.gatewayId ?? null,
+          gatewayPoolId: resource.gatewayPoolId ?? null,
           connectionDetails: resource.connectionDetails
         }
       : {
           resourceType: PamResourceType.MongoDB,
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             connectionString: "",
             database: "admin",

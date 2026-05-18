@@ -30,8 +30,18 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
+import {
+  collapseCertManagerProjects,
+  getProjectHomePage,
+  getProjectLottieIcon,
+  getProjectTitle
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -39,6 +49,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -54,6 +65,7 @@ type Props = {
   isAddingProjectsAllowed: boolean;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
+  showAllProjects?: boolean;
 };
 
 enum ProjectOrderBy {
@@ -70,7 +82,8 @@ export const MyProjectView = ({
   onUpgradePlan,
   isAddingProjectsAllowed,
   projectListView,
-  onProjectListViewChange
+  onProjectListViewChange,
+  showAllProjects
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -78,7 +91,12 @@ export const MyProjectView = ({
     {}
   );
 
-  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
+  const { data: rawWorkspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const workspaces = useMemo(
+    () => collapseCertManagerProjects(rawWorkspaces, certManagerInstance?.activeProjectId ?? null),
+    [rawWorkspaces, certManagerInstance?.activeProjectId]
+  );
   const {
     setPage,
     perPage,
@@ -363,10 +381,12 @@ export const MyProjectView = ({
   return (
     <div>
       <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        {showAllProjects && (
+          <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        )}
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
+          containerClassName={`w-full ${showAllProjects ? "ml-2" : ""}`}
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
@@ -465,7 +485,10 @@ export const MyProjectView = ({
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
           {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+            <OrgPermissionCan
+              I={OrgPermissionProjectActions.Create}
+              an={OrgPermissionSubjects.Project}
+            >
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed && !isOldProjectV1Allowed}

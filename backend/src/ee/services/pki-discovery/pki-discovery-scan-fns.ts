@@ -3,6 +3,7 @@ import net from "net";
 import pLimit from "p-limit";
 
 import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db/schemas";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
@@ -62,10 +63,18 @@ type TExecuteScanDeps = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
-  const { pkiDiscoveryConfigDAL, pkiDiscoveryScanHistoryDAL, projectDAL, kmsService, gatewayV2Service } = deps;
+  const {
+    pkiDiscoveryConfigDAL,
+    pkiDiscoveryScanHistoryDAL,
+    projectDAL,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
+  } = deps;
 
   const startedAt = new Date();
   let scanHistoryId: string | undefined;
@@ -118,14 +127,21 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
     });
     scanHistoryId = scanHistory.id;
 
+    const effectiveGatewayId = gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: discoveryConfig.gatewayId,
+          gatewayPoolId: discoveryConfig.gatewayPoolId
+        })
+      : (discoveryConfig.gatewayId ?? null);
+
     let gatewayName: string | undefined;
-    if (discoveryConfig.gatewayId && deps.gatewayV2DAL) {
-      const gw = await deps.gatewayV2DAL.findById(discoveryConfig.gatewayId);
+    if (effectiveGatewayId && deps.gatewayV2DAL) {
+      const gw = await deps.gatewayV2DAL.findById(effectiveGatewayId);
       gatewayName = gw?.name;
     }
 
     const targetConfig = discoveryConfig.targetConfig as TPkiDiscoveryTargetConfig;
-    const hasGateway = !!discoveryConfig.gatewayId;
+    const hasGateway = !!effectiveGatewayId;
     const targets = await resolveTargets(targetConfig, hasGateway);
 
     const uniqueHosts = new Set(targets.map((t) => t.host)).size;
@@ -147,8 +163,11 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
     const limit = pLimit(SCAN_CONCURRENCY);
     let results: TScanEndpointResult[];
 
-    if (discoveryConfig.gatewayId && gatewayV2Service) {
-      logger.info({ discoveryId, gatewayId: discoveryConfig.gatewayId }, "Scanning via gateway proxy");
+    if (effectiveGatewayId && gatewayV2Service) {
+      logger.info(
+        { discoveryId, gatewayId: effectiveGatewayId, gatewayPoolId: discoveryConfig.gatewayPoolId ?? undefined },
+        "Scanning via gateway proxy"
+      );
 
       results = [];
       let consecutiveGwFailures = 0;
@@ -160,7 +179,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
 
         try {
           const targetGatewayDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-            gatewayId: discoveryConfig.gatewayId,
+            gatewayId: effectiveGatewayId,
             targetHost: target.host,
             targetPort: target.port
           });
@@ -307,8 +326,9 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
           now,
           deps,
           kmsEncryptor,
-          discoveryConfig.gatewayId ?? undefined,
-          gatewayName
+          effectiveGatewayId ?? undefined,
+          gatewayName,
+          discoveryConfig.gatewayPoolId ?? effectiveGatewayId ?? undefined
         );
 
         if (processedCertIds.installationId) {
@@ -353,7 +373,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
         const domainFingerprint = computeLocationFingerprint(
           PkiInstallationLocationType.Network,
           domainLocationDetails,
-          discoveryConfig.gatewayId ?? undefined
+          discoveryConfig.gatewayPoolId ?? effectiveGatewayId ?? undefined
         );
 
         const domainInstallationId = await deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
@@ -523,7 +543,8 @@ const processEndpointResult = async (
   deps: TExecuteScanDeps,
   kmsEncryptor: TKmsEncryptor,
   gatewayId?: string,
-  gatewayName?: string
+  gatewayName?: string,
+  fingerprintGatewayKey?: string
 ): Promise<{ installationId?: string; certificateIds: string[]; sniHostname?: string }> => {
   const {
     pkiCertificateInstallationDAL,
@@ -561,7 +582,7 @@ const processEndpointResult = async (
   const locationFingerprint = computeLocationFingerprint(
     PkiInstallationLocationType.Network,
     locationDetails,
-    gatewayId
+    fingerprintGatewayKey ?? gatewayId
   );
 
   const displayName = ipAddress || result.host;

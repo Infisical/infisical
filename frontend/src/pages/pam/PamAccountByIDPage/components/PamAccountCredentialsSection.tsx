@@ -138,6 +138,7 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
+    case PamResourceType.OracleDB:
     case PamResourceType.MongoDB:
     case PamResourceType.Redis:
       return <SqlCredentialsContent credentials={account.credentials as TBaseSqlCredentials} />;
@@ -254,6 +255,7 @@ const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
+    case PamResourceType.OracleDB:
     case PamResourceType.MongoDB:
     case PamResourceType.Redis:
     case PamResourceType.Windows:

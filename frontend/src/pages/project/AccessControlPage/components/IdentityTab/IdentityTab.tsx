@@ -83,7 +83,7 @@ import {
   useListProjectIdentityMemberships
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
+import { ProjectIdentityOrderBy, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
@@ -101,6 +101,8 @@ export const IdentityTab = withProjectPermission(
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
+    const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+    const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
     const [addMachineIdentityType, setAddMachineIdentityType] = useState<AddIdentityType>(
       AddIdentityType.CreateNew
@@ -129,7 +131,7 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
-    const { data: projectRoles } = useGetProjectRoles(projectId);
+    const { data: projectRoles } = useGetProjectRoles(projectId, currentProject?.type);
 
     const [filterRoles, setFilterRoles] = useState<string[]>([]);
     const isTableFiltered = Boolean(filterRoles.length);
@@ -149,6 +151,7 @@ export const IdentityTab = withProjectPermission(
     const { data, isPending, isFetching } = useListProjectIdentityMemberships(
       {
         projectId,
+        projectType: currentProject?.type,
         offset,
         limit,
         orderDirection,
@@ -191,7 +194,8 @@ export const IdentityTab = withProjectPermission(
       } else {
         await deleteMembershipMutateAsync({
           identityId,
-          projectId
+          projectId,
+          projectType: currentProject?.type
         });
 
         createNotification({
@@ -225,10 +229,12 @@ export const IdentityTab = withProjectPermission(
         <Card>
           <CardHeader>
             <CardTitle>
-              Project Machine Identities
+              {isCertManager ? "Machine Identities" : `${productLabel} Machine Identities`}
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </CardTitle>
-            <CardDescription>Create and manage project machine identities</CardDescription>
+            <CardDescription>
+              {`Create and manage ${productLabel.toLowerCase()} machine identities`}
+            </CardDescription>
             <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Create}
@@ -241,7 +247,9 @@ export const IdentityTab = withProjectPermission(
                     isDisabled={!isAllowed}
                   >
                     <PlusIcon />
-                    Add Machine Identity to Project
+                    {isCertManager
+                      ? "Add Machine Identity"
+                      : `Add Machine Identity to ${productLabel}`}
                   </Button>
                 )}
               </ProjectPermissionCan>
@@ -257,7 +265,11 @@ export const IdentityTab = withProjectPermission(
                   <InputGroupInput
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search project machine identities by name..."
+                    placeholder={
+                      isCertManager
+                        ? "Search machine identities by name..."
+                        : "Search project machine identities by name..."
+                    }
                   />
                 </InputGroup>
                 <DropdownMenu>
@@ -267,7 +279,9 @@ export const IdentityTab = withProjectPermission(
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by Project Role</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+                    </DropdownMenuLabel>
                     {projectRoles?.map(({ id, slug, name }) => (
                       <DropdownMenuCheckboxItem
                         key={id}
@@ -287,9 +301,12 @@ export const IdentityTab = withProjectPermission(
                 <Empty className="border">
                   <EmptyHeader>
                     <EmptyTitle>
+                      {/* eslint-disable-next-line no-nested-ternary */}
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "No machine identities match search"
-                        : "No machine identities have been added to this project"}
+                        : isCertManager
+                          ? "No machine identities have been added"
+                          : "No machine identities have been added to this project"}
                     </EmptyTitle>
                     <EmptyDescription>
                       {debouncedSearch.trim().length > 0 || isTableFiltered
@@ -318,7 +335,9 @@ export const IdentityTab = withProjectPermission(
                             )}
                           />
                         </TableHead>
-                        <TableHead className="w-1/3">Project Role</TableHead>
+                        <TableHead className="w-1/3">
+                          {isCertManager ? "Role" : `${productLabel} Role`}
+                        </TableHead>
                         <TableHead>Managed by</TableHead>
                         <TableHead className="w-5">
                           {isFetching ? <Spinner size="xs" /> : null}
@@ -511,7 +530,7 @@ export const IdentityTab = withProjectPermission(
                                   {identityProjectId ? (
                                     <>
                                       <ProjectIcon />
-                                      Project
+                                      {productLabel}
                                     </>
                                   ) : isSubOrganization && currentOrg.id === identityOrgId ? (
                                     <>
@@ -559,9 +578,12 @@ export const IdentityTab = withProjectPermission(
                                           }}
                                         >
                                           {identityProjectId ? <TrashIcon /> : <XIcon />}
+                                          {/* eslint-disable-next-line no-nested-ternary */}
                                           {identityProjectId
                                             ? "Delete Machine Identity"
-                                            : "Remove From Project"}
+                                            : isCertManager
+                                              ? "Remove From Certificate Manager"
+                                              : "Remove From Project"}
                                         </DropdownMenuItem>
                                       )}
                                     </ProjectPermissionCan>
@@ -609,7 +631,7 @@ export const IdentityTab = withProjectPermission(
         >
           <ModalContent
             bodyClassName="overflow-visible"
-            title="Add Machine Identity to Project"
+            title={`Add Machine Identity to ${productLabel}`}
             subTitle="Create a new machine identity or assign an existing one"
           >
             <div className="mb-4 flex items-center justify-center gap-x-2">
@@ -651,12 +673,14 @@ export const IdentityTab = withProjectPermission(
                 </TooltipTrigger>
                 <TooltipContent side="right" align="start" className="max-w-sm">
                   <p className="mb-2 text-mineshaft-300">
-                    You can add machine identities to your project in one of two ways:
+                    You can add machine identities to your{" "}
+                    {isCertManager ? "Certificate Manager" : "project"} in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
                     <li className="text-mineshaft-200">
                       <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                      Create a dedicated machine identity managed at the project-level.
+                      Create a dedicated machine identity managed at the{" "}
+                      {isCertManager ? "Certificate Manager-level" : "project-level"}.
                       <p className="mt-2">
                         This method is recommended for autonomous teams that need to manage machine
                         identity authentication.
@@ -690,7 +714,7 @@ export const IdentityTab = withProjectPermission(
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${
             (popUp?.deleteIdentity?.data as { name: string })?.name || ""
-          } from the project?`}
+          } from the ${productLabel.toLowerCase()}?`}
           onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>

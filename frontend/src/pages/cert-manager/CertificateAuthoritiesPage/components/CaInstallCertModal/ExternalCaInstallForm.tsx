@@ -8,7 +8,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, TextArea, Tooltip } from "@app/components/v2";
-import { useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -26,7 +25,6 @@ type Props = {
 };
 
 export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
-  const { currentProject } = useProject();
   const [copyTextCaCsr, isCopyingCaCsr, setCopyTextCaCsr] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -41,18 +39,17 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   });
 
   const { data: csr } = useGetCaCsr(caId);
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentProject.id);
+  const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
     reset();
   }, []);
 
   const onFormSubmit = async ({ certificate, certificateChain }: FormData) => {
-    if (!csr || !caId || !currentProject?.slug) return;
+    if (!csr || !caId) return;
 
     await importCaCertificate({
       caId,
-      projectSlug: currentProject?.slug,
       certificate,
       certificateChain
     });

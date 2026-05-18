@@ -32,6 +32,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -51,11 +52,7 @@ import {
   THoneyTokenListInput,
   THoneyTokenUpdateInput
 } from "./honey-token-provider-types";
-import {
-  AwsHoneyTokenConfigSchema,
-  AwsHoneyTokenEventMetadataSchema,
-  THoneyTokenEventsInput
-} from "./honey-token-types";
+import { AwsHoneyTokenConfigSchema, THoneyTokenEventsInput, THoneyTokenWebhookPayload } from "./honey-token-types";
 
 const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
@@ -109,6 +106,7 @@ export type THoneyTokenServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 type TSendTriggerNotificationInput = {
@@ -125,7 +123,8 @@ type TSendTriggerNotificationInput = {
 type THandleTriggerInput = {
   type: HoneyTokenType;
   signature: string | undefined;
-  payload: unknown;
+  rawBody: string;
+  payload: THoneyTokenWebhookPayload;
 };
 
 export const honeyTokenServiceFactory = ({
@@ -150,7 +149,8 @@ export const honeyTokenServiceFactory = ({
   resourceMetadataDAL,
   snapshotService,
   secretQueueService,
-  telemetryService
+  telemetryService,
+  auditLogService
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     honeyTokenDAL,
@@ -174,7 +174,8 @@ export const honeyTokenServiceFactory = ({
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
-    telemetryService
+    telemetryService,
+    auditLogService
   });
 
   const create = async (
@@ -870,6 +871,10 @@ export const honeyTokenServiceFactory = ({
       ProjectPermissionSub.HoneyTokens
     );
 
+    if (honeyToken.status === HoneyTokenStatus.Revoked) {
+      throw new BadRequestError({ message: "Cannot retrieve credentials for a revoked honey token" });
+    }
+
     const type = assertSupportedHoneyTokenType(honeyToken.type);
     const providerHooks = honeyTokenProviderHooksByType[type];
     if (!providerHooks) throw new BadRequestError({ message: "Unsupported honey token type" });
@@ -926,8 +931,8 @@ export const honeyTokenServiceFactory = ({
     }
   };
 
-  const handleTrigger = async ({ type, signature, payload }: THandleTriggerInput) => {
-    logger.info({ payload, signature, type }, `Honey token trigger received [type=${type}]`);
+  const handleTrigger = async ({ type, signature, rawBody, payload }: THandleTriggerInput) => {
+    logger.info({ signature, type }, `Honey token trigger received [type=${type}]`);
 
     const providerType = assertSupportedHoneyTokenType(type);
     if (providerType !== HoneyTokenType.AWS) {
@@ -950,97 +955,102 @@ export const honeyTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Request timestamp is too old or invalid" });
     }
 
-    const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
-    const firstAccessKeyId = rawEvents
-      .map((rawEvent) => {
-        const wrapped = rawEvent as { event?: unknown };
-        const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
-        return parsed.success ? parsed.data.accessKeyId : null;
-      })
-      .find((accessKeyId): accessKeyId is string => Boolean(accessKeyId));
-    if (!firstAccessKeyId) {
-      throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
+    const eventMetadata = payload.event;
+    if (!eventMetadata) {
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
-    const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(firstAccessKeyId);
-    if (!honeyTokenWithOrg) {
-      throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
+    const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
+
+    let webhookSigningKey: string | null = null;
+    if (honeyTokenWithOrg) {
+      const config = await honeyTokenConfigDAL.findOne({
+        orgId: honeyTokenWithOrg.orgId,
+        type: HoneyTokenType.AWS,
+        status: HoneyTokenConfigStatus.Complete
+      });
+
+      if (config?.encryptedConfig) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: honeyTokenWithOrg.orgId
+        });
+        const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
+        const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
+        webhookSigningKey = storedConfig.webhookSigningKey;
+      }
     }
 
-    const config = await honeyTokenConfigDAL.findOne({
-      orgId: honeyTokenWithOrg.orgId,
-      type: HoneyTokenType.AWS,
-      status: HoneyTokenConfigStatus.Complete
-    });
-    if (!config?.encryptedConfig) {
-      throw new NotFoundError({ message: "No honey token configuration found for this organization" });
-    }
-
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: honeyTokenWithOrg.orgId
-    });
-    const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
-    const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
-
-    const bodyString = JSON.stringify(payload);
+    // Always compute HMAC to prevent timing side-channel that reveals token existence
+    const dummySigningKey = "0".repeat(64);
     const expectedSignature = crypto.nativeCrypto
-      .createHmac("sha256", storedConfig.webhookSigningKey)
-      .update(`${timestamp}.${bodyString}`)
+      .createHmac("sha256", webhookSigningKey ?? dummySigningKey)
+      .update(`${timestamp}.${rawBody}`)
       .digest("hex");
     const expectedBuf = Buffer.from(expectedSignature, "hex");
     const receivedBuf = Buffer.from(signatureHash, "hex");
+
     if (
+      !honeyTokenWithOrg ||
+      !webhookSigningKey ||
       expectedBuf.byteLength !== receivedBuf.byteLength ||
       !crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
     ) {
-      throw new UnauthorizedError({ message: "Invalid webhook signature" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
-    /* eslint-disable no-continue */
-    for await (const rawEvent of rawEvents) {
-      const wrapped = rawEvent as { event?: unknown };
-      const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
-      if (!parsed.success) {
-        logger.warn(
-          { orgId: honeyTokenWithOrg.orgId, event: rawEvent, error: parsed.error },
-          `Failed to parse honey token event [orgId=${honeyTokenWithOrg.orgId}]`
-        );
-        continue;
-      }
-      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
-        parsed.data.accessKeyId,
-        honeyTokenWithOrg.orgId
-      );
-      if (!honeyToken) continue;
-      if (honeyToken.status === HoneyTokenStatus.Revoked) continue;
+    const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
+      eventMetadata.accessKeyId,
+      honeyTokenWithOrg.orgId
+    );
+    if (!honeyToken || honeyToken.status === HoneyTokenStatus.Revoked) {
+      return { acknowledged: true };
+    }
 
-      await honeyTokenEventDAL.create({
-        honeyTokenId: honeyToken.id,
-        eventType: HoneyTokenEventType.AWS,
-        metadata: parsed.data
-      });
-      const updatedToken = await honeyTokenDAL.tryMarkTriggered(
-        parsed.data.accessKeyId,
-        TRIGGER_NOTIFICATION_COOLDOWN_MS
-      );
-      void telemetryService
-        .sendPostHogEvents({
-          event: PostHogEventTypes.HoneyTokenTriggered,
-          distinctId: `honey-token-${honeyToken.id}`,
-          organizationId: honeyTokenWithOrg.orgId,
-          properties: {
+    await honeyTokenEventDAL.create({
+      honeyTokenId: honeyToken.id,
+      eventType: HoneyTokenEventType.AWS,
+      metadata: eventMetadata
+    });
+    const updatedToken = await honeyTokenDAL.tryMarkTriggered(
+      eventMetadata.accessKeyId,
+      TRIGGER_NOTIFICATION_COOLDOWN_MS
+    );
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.HoneyTokenTriggered,
+        distinctId: "anonymous-honey-token-trigger",
+        anonymous: true,
+        properties: {
+          type: honeyToken.type
+        }
+      })
+      .catch(() => {});
+    if (updatedToken) {
+      void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata });
+
+      await auditLogService.createAuditLog({
+        actor: {
+          type: ActorType.UNKNOWN_USER,
+          metadata: {}
+        },
+        orgId: honeyTokenWithOrg.orgId,
+        projectId: honeyToken.projectId,
+        event: {
+          type: EventType.TRIGGER_HONEY_TOKEN,
+          metadata: {
             honeyTokenId: honeyToken.id,
-            type: honeyToken.type,
-            projectId: honeyToken.projectId
+            name: honeyToken.name,
+            type: honeyToken.type as HoneyTokenType,
+            projectId: honeyToken.projectId,
+            eventName: eventMetadata.eventName,
+            eventTime: eventMetadata.eventTime,
+            sourceIp: eventMetadata.sourceIp ?? "Unknown",
+            awsRegion: eventMetadata.awsRegion
           }
-        })
-        .catch(() => {});
-      if (updatedToken) {
-        void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
-      }
+        }
+      });
     }
-    /* eslint-enable no-continue */
 
     return { acknowledged: true };
   };

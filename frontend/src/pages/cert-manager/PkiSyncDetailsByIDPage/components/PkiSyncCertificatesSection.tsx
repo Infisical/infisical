@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { subject } from "@casl/ability";
 import {
   faCertificate,
   faClockRotateLeft,
@@ -10,7 +9,6 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
 import {
   CertificateDisplayName,
@@ -35,16 +33,18 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
   useClearDefaultCertificate,
   useListPkiSyncCertificates,
   useRemoveCertificatesFromPkiSync,
   useSetCertificateAsDefault
 } from "@app/hooks/api";
-import { CertificateSyncStatus, PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
+import {
+  CertificateSyncStatus,
+  PkiSync,
+  TPkiSync,
+  usePkiSyncPermissions
+} from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
@@ -100,12 +100,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
   // Check if this sync type supports per-certificate default setting
   const supportsDefaultCertificate = pkiSync.destination === PkiSync.AwsElasticLoadBalancer;
 
-  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
-
-  const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberName: destinationName,
-    name: pkiSync.name
-  });
+  const { canEdit } = usePkiSyncPermissions(pkiSync);
 
   const handleRemoveCertificate = async (certificateId: string) => {
     try {
@@ -186,19 +181,15 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="text-lg font-medium text-mineshaft-100">Certificates</h3>
-          <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
-            {(isAllowed) => (
-              <IconButton
-                variant="plain"
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-                ariaLabel="Edit certificates"
-                onClick={() => setIsManageModalOpen(true)}
-              >
-                <FontAwesomeIcon icon={faEdit} />
-              </IconButton>
-            )}
-          </ProjectPermissionCan>
+          <IconButton
+            variant="plain"
+            colorSchema="secondary"
+            isDisabled={!canEdit}
+            ariaLabel="Edit certificates"
+            onClick={() => setIsManageModalOpen(true)}
+          >
+            <FontAwesomeIcon icon={faEdit} />
+          </IconButton>
         </div>
 
         <div>
@@ -319,50 +310,41 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               </div>
                             </Tooltip>
                           )}
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPkiSyncActions.Edit}
-                            a={permissionSubject}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <IconButton
-                                    size="xs"
-                                    variant="plain"
-                                    colorSchema="secondary"
-                                    ariaLabel="Certificate actions"
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <FontAwesomeIcon icon={faEllipsisV} />
-                                  </IconButton>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {supportsDefaultCertificate && !isDefaultCertificate && (
-                                    <DropdownMenuItem
-                                      onClick={() => handleSetAsDefault(syncCert.certificateId)}
-                                    >
-                                      Set as Default
-                                    </DropdownMenuItem>
-                                  )}
-                                  {supportsDefaultCertificate && isDefaultCertificate && (
-                                    <DropdownMenuItem onClick={handleClearDefault}>
-                                      Unset Default
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleDeleteClick(syncCert.certificateId, originalDisplayName)
-                                    }
-                                    icon={
-                                      <FontAwesomeIcon icon={faTrash} className="text-red-500" />
-                                    }
-                                  >
-                                    <span className="text-red-500">Remove from Sync</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </ProjectPermissionCan>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                size="xs"
+                                variant="plain"
+                                colorSchema="secondary"
+                                ariaLabel="Certificate actions"
+                                isDisabled={!canEdit}
+                              >
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {supportsDefaultCertificate && !isDefaultCertificate && (
+                                <DropdownMenuItem
+                                  onClick={() => handleSetAsDefault(syncCert.certificateId)}
+                                >
+                                  Set as Default
+                                </DropdownMenuItem>
+                              )}
+                              {supportsDefaultCertificate && isDefaultCertificate && (
+                                <DropdownMenuItem onClick={handleClearDefault}>
+                                  Unset Default
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleDeleteClick(syncCert.certificateId, originalDisplayName)
+                                }
+                                icon={<FontAwesomeIcon icon={faTrash} className="text-red-500" />}
+                              >
+                                <span className="text-red-500">Remove from Sync</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </Td>
                       </Tr>
                     );

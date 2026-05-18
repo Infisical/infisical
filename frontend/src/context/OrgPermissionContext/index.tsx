@@ -8,6 +8,7 @@ export {
   OrgPermissionGroupActions,
   OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
+  OrgPermissionProjectActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "./types";

@@ -133,16 +133,17 @@ export type TUnifiedCertificateAuthority =
 
 export type TCreateCertificateAuthorityDTO = Omit<
   TUnifiedCertificateAuthority,
-  "id" | "enableDirectIssuance"
+  "id" | "enableDirectIssuance" | "projectId"
 >;
-export type TUpdateCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
+export type TUpdateCertificateAuthorityDTO = Partial<
+  Omit<TUnifiedCertificateAuthority, "projectId">
+> & {
   id: string;
   type: CaType;
 };
 
 export type TDeleteCertificateAuthorityDTO = {
   id: string;
-  projectId: string;
   type: CaType;
 };
 
@@ -171,14 +172,12 @@ export type TCertificateAuthority = {
 };
 
 export type TUpdateCaDTO = {
-  projectSlug: string;
   caId: string;
   status?: CaStatus;
   requireTemplateForIssuance?: boolean;
 };
 
 export type TDeleteCaDTO = {
-  projectSlug: string;
   caId: string;
 };
 
@@ -205,7 +204,6 @@ export type TAzureAdCsTemplate = {
 
 export type TImportCaCertificateDTO = {
   caId: string;
-  projectSlug: string;
   certificate: string;
   certificateChain: string;
 };
@@ -216,7 +214,6 @@ export type TImportCaCertificateResponse = {
 };
 
 export type TCreateCertificateDTO = {
-  projectSlug: string;
   caId?: string;
   certificateTemplateId?: string;
   pkiCollectionId?: string;
@@ -239,13 +236,12 @@ export type TCreateCertificateResponse = {
 };
 
 export type TCreateCertificateV3DTO = {
-  projectSlug: string;
   profileId: string;
   pkiCollectionId?: string;
   friendlyName?: string;
   commonName?: string;
   organization?: string;
-  organizationUnit?: string;
+  organizationalUnit?: string;
   locality?: string;
   state?: string;
   country?: string;
@@ -269,7 +265,6 @@ export type TCreateCertificateV3Response = TCreateCertificateResponse & {
 };
 
 export type TOrderCertificateDTO = {
-  projectSlug: string;
   profileId: string;
   subjectAlternativeNames: Array<{
     type: "dns" | "ip";
@@ -317,7 +312,6 @@ export type TOrderCertificateResponse = {
 };
 
 export type TRenewCaDTO = {
-  projectSlug: string;
   caId: string;
   type: CaRenewalType;
   notAfter: string;

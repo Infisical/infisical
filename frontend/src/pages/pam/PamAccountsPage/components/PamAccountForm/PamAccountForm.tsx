@@ -14,6 +14,7 @@ import { KubernetesAccountForm } from "./KubernetesAccountForm";
 import { MongoDBAccountForm } from "./MongoDBAccountForm";
 import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
+import { OracleDBAccountForm } from "./OracleDBAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { RedisAccountForm } from "./RedisAccountForm";
 import { SshAccountForm } from "./SshAccountForm";
@@ -92,6 +93,15 @@ const CreateForm = ({
     case PamResourceType.MsSQL:
       return (
         <MsSQLAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.OracleDB:
+      return (
+        <OracleDBAccountForm
           onSubmit={onSubmit}
           closeSheet={closeSheet}
           resourceId={resourceId}
@@ -197,6 +207,10 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     case PamResourceType.MsSQL:
       return (
         <MsSQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
+    case PamResourceType.OracleDB:
+      return (
+        <OracleDBAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
     case PamResourceType.MongoDB:
       return (

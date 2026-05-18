@@ -23,6 +23,7 @@ export type TRootAppConnection = {
     };
   };
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   projectId?: string | null;
   project?: {
     name: string;

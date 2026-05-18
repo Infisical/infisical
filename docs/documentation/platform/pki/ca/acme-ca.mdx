@@ -43,7 +43,7 @@ A typical workflow for using Infisical with an external ACME-compatible CA consi
 2. Creating an [App Connection](/integrations/app-connections/overview) in Infisical to store credentials for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge.
 3. Registering an [External CA](/documentation/platform/pki/ca/external-ca) in Infisical with the ACME type and inputting required configuration including the **ACME Directory URL** of the upstream ACME-compatible CA and the **App Connection** for your DNS provider.
 
-Once this is complete, you can create a [certificate profile](/documentation/platform/pki/certificates/profiles) linked to the External CA proceed to request a certificate against it.
+Once this is complete, you can create a [certificate profile](/documentation/platform/pki/settings/profiles) linked to the External CA and proceed to request a certificate against it.
 
 ## Guide to Connecting Infisical to an ACME-compatible CA
 
@@ -57,7 +57,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
         <Tabs>
             <Tab title="Route53">
-                1. Navigate to your Certificate Management Project > App Connections and create a new AWS connection.
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new AWS connection.
 
                 2. Ensure your AWS connection has the following minimum permissions for Route53 DNS validation:
 
@@ -109,7 +109,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                 For detailed instructions on setting up an AWS connection, see the [AWS Connection](/integrations/app-connections/aws) documentation.
             </Tab>
             <Tab title="Cloudflare">
-                1. Navigate to your Certificate Management Project > App Connections and create a new Cloudflare connection.
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new Cloudflare connection.
 
                 2. Ensure your Cloudflare token has the following minimum permissions for DNS validation:
 
@@ -121,14 +121,14 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                 For detailed instructions on setting up a Cloudflare connection, see the [Cloudflare Connection](/integrations/app-connections/cloudflare) documentation.
             </Tab>
             <Tab title="Azure DNS">
-                1. Navigate to your Certificate Management Project > App Connections and create a new Azure DNS connection.
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new Azure DNS connection.
 
                 2. Ensure your Azure Service Principal has the **DNS Zone Contributor** role assigned on the DNS Zone you want to use for validation.
 
                 For detailed instructions on setting up an Azure DNS connection, see the [Azure DNS Connection](/integrations/app-connections/azure-dns) documentation.
             </Tab>
             <Tab title="DNS Made Easy">
-                Navigate to your Certificate Management Project > App Connections and create a new DNS Made Easy connection.
+                In **Certificate Manager**, go to **Settings → App Connections** and create a new DNS Made Easy connection.
 
                 For detailed instructions on setting up a DNS Made Easy connection, see the [DNS Made Easy Connection](/integrations/app-connections/dns-made-easy) documentation.
             </Tab>
@@ -137,15 +137,9 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
     <Step title="Register an ACME-compatible CA">
         <Tabs>
           <Tab title="Infisical UI">
-              To register an ACME-compatible CA, head to your Certificate Management Project > Certificate Authorities > External Certificate Authorities and press **Create CA**.
+              To register an ACME-compatible CA, in **Certificate Manager** go to **Settings → Certificate Authorities**, scroll to External Certificate Authorities, and click **Create CA**.
 
-              ![pki register external ca](/images/platform/pki/ca/external-ca/create-external-ca-button.png)
-
-              Here, set the **CA Type** to **ACME** and fill out details for it.
-
-              ![pki register external ca details](/images/platform/pki/ca/external-ca/create-external-ca-form.png)
-
-              Here's some guidance for each field:
+              Set the **CA Type** to **ACME** and fill out the following fields:
 
               - Name: A slug-friendly name for the ACME-compatible CA such as `lets-encrypt-production`.
               - DNS App Connection: The App Connection from Step 1 used for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge in ACME.
@@ -156,8 +150,6 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
               - EAB HMAC Key: (Optional) The HMAC Key provided by your ACME CA for External Account Binding (EAB). This key is used in conjunction with the KID to prove ownership of the external account during ACME account registration.
 
               Finally, press **Create** to register the ACME-compatible CA with Infisical.
-
-              Great! You’ve successfully registered an external ACME-compatible CA with Infisical. Now check out the [Certificates](/documentation/platform/pki/certificates/overview) section to learn more about how to issue X.509 certificates using the ACME-compatible CA.
           </Tab>
           <Tab title="API">
             To register an ACME CA with Infisical using the API, make a request to the [Create External CA](https://infisical.com/docs/api-reference/endpoints/certificate-authorities/acme/create) endpoint:
@@ -169,7 +161,6 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
               -H 'Authorization: Bearer <your-access-token>' \
               -H 'Content-Type: application/json' \
               --data-raw '{
-                "projectId": "0fccb6ee-1381-4ff1-8d5f-0cb93c6cc4d6",
                 "name": "lets-encrypt-production",
                 "type": "acme",
                 "status": "active",
@@ -198,7 +189,6 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                 "name": "lets-encrypt-production",
                 "type": "acme",
                 "status": "active",
-                "projectId": "0fccb6ee-1381-4ff1-8d5f-0cb93c6cc4d6",
                 "enableDirectIssuance": true,
                 "configuration": {
                     "accountEmail": "admin@example.com",
@@ -221,44 +211,6 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
 </Steps>
 
-## DNS CNAME Delegation
-
-CNAME delegation is an industry-standard pattern that lets you redirect ACME DNS-01 challenge records to a separate DNS zone. Instead of granting Infisical write access to your main domain zone, you point `_acme-challenge` via a CNAME to a dedicated zone where Infisical creates the TXT records.
-
-### How It Works
-
-If you have a CNAME record pointing `_acme-challenge.example.com` to another domain (e.g., `_acme-challenge.ssl.example.com`), you configure Infisical to manage the target zone (e.g., `ssl.example.com`). Infisical creates the TXT record in that target zone. During validation, the ACME CA queries `_acme-challenge.example.com`, follows the CNAME, and finds the TXT record at the delegated location.
-
-To use CNAME delegation, you need to:
-
-1. **Create a CNAME record** in your domain's DNS that points `_acme-challenge.{your-domain}` to a target in the zone configured with Infisical. For subdomains, create additional CNAMEs as needed (e.g., `_acme-challenge.app.example.com` CNAME to `_acme-challenge.ssl.example.com`).
-
-2. **Register the ACME CA** in Infisical with the **hosted zone ID** of the target zone (e.g., `ssl.example.com` if your CNAME points to `_acme-challenge.ssl.example.com`).
-
-Infisical will automatically resolve the CNAME, create the TXT record at the target, wait for DNS propagation, and clean up after validation completes.
-
-### Example: Delegating Across DNS Providers
-
-Suppose your primary domain `example.com` is managed in Cloudflare, but you want Infisical to perform ACME challenges through a Route53 zone. This is useful when your main DNS provider isn't supported by Infisical, or when you want to keep your production DNS provider credentials separate from certificate automation.
-
-1. **Create a dedicated Route53 hosted zone** for `acme.example.com`, Infisical needs write permissions here.
-2. **Add a CNAME record in Cloudflare** pointing `_acme-challenge.example.com` to `_acme-challenge.acme.example.com`.
-3. **Create an AWS App Connection** in Infisical with Route53 permissions for the `acme.example.com` zone.
-4. **Register your ACME CA in Infisical** using the Route53 hosted zone ID for `acme.example.com`.
-
-When Infisical issues a certificate for `example.com`:
-- Infisical writes the TXT record to `_acme-challenge.acme.example.com` in Route53.
-- The ACME CA queries `_acme-challenge.example.com` in Cloudflare, follows the CNAME to Route53, and finds the TXT record.
-- After validation, Infisical cleans up the TXT record in Route53.
-
-This way, Infisical never needs access to your Cloudflare account, it only writes to the dedicated Route53 zone used for ACME challenges.
-
-### Common Use Cases
-
-- **Least-privilege access**: Grant Infisical write access only to a dedicated subdomain zone instead of your entire domain zone.
-- **Cross-provider setups**: Keep your domain DNS on one provider while using a different, Infisical-supported provider for ACME challenges.
-- **Centralized challenge management**: Point `_acme-challenge` CNAMEs from multiple domains to a single zone for simplified operations.
-
 ## FAQ
 
 <AccordionGroup>
@@ -271,7 +223,7 @@ This way, Infisical never needs access to your Cloudflare account, it only write
 
   </Accordion>
   <Accordion title="Can I use wildcard certificates with ACME CAs?">
-    Yes! ACME CAs like Let's Encrypt support wildcard certificates (e.g., `*.example.com`) when using DNS-01 validation. Simply specify the wildcard domain in your subscriber configuration.
+    Yes! ACME CAs like Let's Encrypt support wildcard certificates (e.g., `*.example.com`) when using DNS-01 validation. Simply specify the wildcard domain when requesting the certificate.
 
     Note that wildcard certificates still require DNS-01 validation - HTTP-01 validation cannot be used for wildcard certificates.
 
@@ -285,9 +237,53 @@ This way, Infisical never needs access to your Cloudflare account, it only write
 
   </Accordion>
   <Accordion title="Can I use multiple ACME providers?">
-    Yes. You can register multiple ACME CAs in the same project.
+    Yes. You can register multiple ACME CAs in Certificate Manager.
   </Accordion>
-  <Accordion title="Does Infisical support DNS CNAME delegation for ACME challenges?">
-    Yes. You can delegate `_acme-challenge` records to a different DNS zone by setting up a CNAME, then configuring Infisical to write TXT records in the target zone. See the [DNS CNAME Delegation](#dns-cname-delegation) section above for setup instructions.
+  <Accordion title="How do I use DNS CNAME delegation for ACME challenges?">
+    CNAME delegation lets you redirect ACME DNS-01 challenge records to a separate DNS zone. Instead of granting Infisical write access to your main domain zone, you point `_acme-challenge` via a CNAME to a dedicated zone where Infisical creates the TXT records.
+
+    **How it works:** If you have a CNAME record pointing `_acme-challenge.example.com` to another domain (e.g., `_acme-challenge.ssl.example.com`), configure Infisical to manage the target zone. During validation, the ACME CA queries `_acme-challenge.example.com`, follows the CNAME, and finds the TXT record at the delegated location.
+
+    **To set up CNAME delegation:**
+
+    1. **Create a CNAME record** in your domain's DNS that points `_acme-challenge.{your-domain}` to a target in the zone configured with Infisical.
+    2. **Register the ACME CA** in Infisical with the **hosted zone ID** of the target zone.
+
+    Infisical automatically resolves the CNAME, creates the TXT record at the target, waits for DNS propagation, and cleans up after validation.
+
+    **Example — delegating across DNS providers:**
+
+    If your primary domain `example.com` is in Cloudflare but you want Infisical to use Route53 for challenges:
+
+    1. Create a dedicated Route53 hosted zone for `acme.example.com`.
+    2. Add a CNAME in Cloudflare: `_acme-challenge.example.com` → `_acme-challenge.acme.example.com`.
+    3. Create an AWS App Connection in Infisical with Route53 permissions for the `acme.example.com` zone.
+    4. Register your ACME CA using the Route53 hosted zone ID.
+
+    This way, Infisical never needs access to your Cloudflare account — it only writes to the dedicated Route53 zone.
+
+    **Common use cases:**
+    - **Least-privilege access:** Grant write access only to a dedicated subdomain zone.
+    - **Cross-provider setups:** Keep domain DNS on one provider while using another for challenges.
+    - **Centralized management:** Point CNAMEs from multiple domains to a single zone.
   </Accordion>
 </AccordionGroup>
+
+## What's Next
+
+Now that your ACME-compatible CA is configured, set up the infrastructure to issue certificates:
+
+<CardGroup cols={2}>
+  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+    Create a profile that references your ACME CA.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Create an Application, attach a profile, and configure enrollment.
+  </Card>
+  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Choose how certificates are requested — API, ACME, EST, or SCEP.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">
+    Issue your first certificate end-to-end.
+  </Card>
+</CardGroup>
