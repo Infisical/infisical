@@ -301,12 +301,14 @@ const removeNetScalerCertificate = async (
 const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
 
 const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
-  const effectiveSchema = certificateNameSchema || "Infisical-{{certificateId}}";
+  if (!certificateNameSchema) {
+    return new RE2("^Infisical-[0-9a-f]{32}(-[a-zA-Z0-9]*)?$");
+  }
 
   const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
   const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
 
-  const tokenized = effectiveSchema
+  const tokenized = certificateNameSchema
     .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
     .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
 

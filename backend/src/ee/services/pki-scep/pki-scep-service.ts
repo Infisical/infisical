@@ -21,7 +21,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { getCaCertChain } from "@app/services/certificate-authority/certificate-authority-fns";
+import { assertCaInProfileProject, getCaCertChain } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import {
   extractAlgorithmsFromCSR,
@@ -149,6 +149,7 @@ export const pkiScepServiceFactory = ({
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+    assertCaInProfileProject(ca, profile);
     const caType: CaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
     const scepConfig = await scepEnrollmentConfigDAL.findById(resolvedScepConfigId);
