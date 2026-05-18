@@ -51,17 +51,10 @@ gateway:
 persistence:
   enabled: true
   storageClass: ""
-  size: 100Mi
+  size: 50Gi
   accessModes:
     - ReadWriteOnce
   existingClaim: ""
-  # Storage settings for PAM session recordings.
-  sessionRecording:
-    size: 50Gi
-    storageClass: ""
-    accessModes:
-      - ReadWriteOnce
-    existingClaim: ""
 
 resources:
   limits:
