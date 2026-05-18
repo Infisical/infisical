@@ -412,6 +412,72 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const applySearchIdentitiesFilters = (
+    query: Knex.QueryBuilder,
+    searchFilter: TSearchOrgIdentitiesByOrgIdDAL["searchFilter"],
+    orgId: string
+  ) => {
+    if (!searchFilter) return;
+
+    const { role: roleFilter, ...nonRoleFilter } = searchFilter;
+
+    if (Object.keys(nonRoleFilter).length) {
+      buildKnexFilterForSearchResource(query, nonRoleFilter, (attr) => {
+        switch (attr) {
+          case "name":
+            return `${TableName.Identity}.name`;
+          default:
+            throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+        }
+      });
+    }
+
+    if (roleFilter === undefined) return;
+
+    const roleFilterMembershipAlias = "rfMembership";
+    const roleFilterMembershipRoleAlias = "rfMembershipRole";
+    const roleFilterRoleAlias = "rfRole";
+
+    void query.whereExists((subQuery) => {
+      void subQuery
+        .select(db.raw("1"))
+        .from({ [roleFilterMembershipAlias]: TableName.Membership })
+        .join(
+          { [roleFilterMembershipRoleAlias]: TableName.MembershipRole },
+          `${roleFilterMembershipRoleAlias}.membershipId`,
+          `${roleFilterMembershipAlias}.id`
+        )
+        .leftJoin(
+          { [roleFilterRoleAlias]: TableName.Role },
+          `${roleFilterMembershipRoleAlias}.customRoleId`,
+          `${roleFilterRoleAlias}.id`
+        )
+        .whereRaw(`"${roleFilterMembershipAlias}"."actorIdentityId" = "${TableName.Identity}"."id"`)
+        .where(`${roleFilterMembershipAlias}.scopeOrgId`, orgId)
+        .where((scopeQb) => {
+          void scopeQb
+            .where((orgScopeQb) => {
+              void orgScopeQb
+                .where(`${roleFilterMembershipAlias}.scope`, AccessScope.Organization)
+                .whereNull(`${TableName.Identity}.projectId`);
+            })
+            .orWhere((projectScopeQb) => {
+              void projectScopeQb
+                .where(`${roleFilterMembershipAlias}.scope`, AccessScope.Project)
+                .whereNotNull(`${TableName.Identity}.projectId`)
+                .andWhereRaw(`"${roleFilterMembershipAlias}"."scopeProjectId" = "${TableName.Identity}"."projectId"`);
+            });
+        });
+
+      buildKnexFilterForSearchResource(subQuery, { role: roleFilter }, (attr) => {
+        if (attr === "role") {
+          return [`${roleFilterRoleAlias}.slug`, `${roleFilterMembershipRoleAlias}.role`];
+        }
+        throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+      });
+    });
+  };
+
   const searchIdentities = async (
     {
       limit,
@@ -458,18 +524,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         void searchQuery.whereNotNull(`${TableName.Identity}.projectId`);
       }
 
-      if (searchFilter) {
-        buildKnexFilterForSearchResource(searchQuery, searchFilter, (attr) => {
-          switch (attr) {
-            case "role":
-              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
-            case "name":
-              return `${TableName.Identity}.name`;
-            default:
-              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
-          }
-        });
-      }
+      applySearchIdentitiesFilters(searchQuery, searchFilter, orgId);
 
       if (limit) {
         void searchQuery.offset(offset).limit(limit);
@@ -748,22 +803,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
-        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`);
 
-      if (searchFilter) {
-        buildKnexFilterForSearchResource(baseQuery, searchFilter, (attr) => {
-          switch (attr) {
-            case "role":
-              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
-            case "name":
-              return `${TableName.Identity}.name`;
-            default:
-              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
-          }
-        });
-      }
+      applySearchIdentitiesFilters(baseQuery, searchFilter, orgId);
 
       const row = await baseQuery
         .select<{

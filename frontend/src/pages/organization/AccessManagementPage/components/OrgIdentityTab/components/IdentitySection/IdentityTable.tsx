@@ -459,7 +459,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
             <DropdownMenuLabel>
-              Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
+              {showAllScope
+                ? "Filter by Role"
+                : `Filter by ${isSubOrganization ? "Sub-" : ""}Organization Role`}
             </DropdownMenuLabel>
             {roles?.map(({ id, slug, name }) => (
               <DropdownMenuCheckboxItem
