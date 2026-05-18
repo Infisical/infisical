@@ -854,6 +854,7 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",
+  RELAY_UPDATE = "relay-update",
   RELAY_DELETE = "relay-delete",
   RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
@@ -6944,6 +6945,15 @@ interface RelayCreateEvent {
   };
 }
 
+interface RelayUpdateEvent {
+  type: EventType.RELAY_UPDATE;
+  metadata: {
+    relayId: string;
+    name: string;
+    host: string;
+  };
+}
+
 interface RelayDeleteEvent {
   type: EventType.RELAY_DELETE;
   metadata: {
@@ -7667,6 +7677,7 @@ export type Event =
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
   | RelayCreateEvent
+  | RelayUpdateEvent
   | RelayDeleteEvent
   | RelayEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent

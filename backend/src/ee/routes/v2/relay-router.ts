@@ -4,7 +4,7 @@ import { RelaysSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -212,8 +212,8 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
           event: {
-            type: EventType.RELAY_CREATE,
-            metadata: { relayId: req.params.relayId, name: relay.name }
+            type: EventType.RELAY_UPDATE,
+            metadata: { relayId: req.params.relayId, name: relay.name, host: req.body.host }
           }
         });
       } else {
@@ -425,6 +425,10 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
       }
 
       const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
+
+      if (result.resourceType !== "relay") {
+        throw new BadRequestError({ message: "Enrollment token does not belong to a relay" });
+      }
 
       await server.services.auditLog
         .createAuditLog({

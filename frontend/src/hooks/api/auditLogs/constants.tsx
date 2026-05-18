@@ -443,6 +443,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update resource auth method",
   [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke resource access",
   [EventType.RELAY_CREATE]: "Create relay",
+  [EventType.RELAY_UPDATE]: "Update relay",
   [EventType.RELAY_DELETE]: "Delete relay",
   [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token"
 };

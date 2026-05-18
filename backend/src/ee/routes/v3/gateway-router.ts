@@ -5,7 +5,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -432,6 +432,10 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
 
       const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
 
+      if (result.resourceType !== "gateway") {
+        throw new BadRequestError({ message: "Enrollment token does not belong to a gateway" });
+      }
+
       await server.services.auditLog
         .createAuditLog({
           orgId: result.orgId,
@@ -493,6 +497,10 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
+
+      if (result.resourceType !== "gateway") {
+        throw new BadRequestError({ message: "Enrollment token does not belong to a gateway" });
+      }
 
       await server.services.auditLog
         .createAuditLog({
