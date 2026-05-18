@@ -1029,28 +1029,27 @@ export const honeyTokenServiceFactory = ({
     if (updatedToken) {
       void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata });
 
-      await auditLogService
-        .createAuditLog({
-          actor: {
-            type: ActorType.UNKNOWN_USER,
-            metadata: {}
-          },
-          orgId: honeyTokenWithOrg.orgId,
-          projectId: honeyToken.projectId,
-          event: {
-            type: EventType.TRIGGER_HONEY_TOKEN,
-            metadata: {
-              honeyTokenId: honeyToken.id,
-              name: honeyToken.name,
-              type: honeyToken.type as HoneyTokenType,
-              projectId: honeyToken.projectId,
-              eventName: eventMetadata.eventName,
-              eventTime: eventMetadata.eventTime,
-              sourceIp: eventMetadata.sourceIp ?? "Unknown",
-              awsRegion: eventMetadata.awsRegion
-            }
+      await auditLogService.createAuditLog({
+        actor: {
+          type: ActorType.UNKNOWN_USER,
+          metadata: {}
+        },
+        orgId: honeyTokenWithOrg.orgId,
+        projectId: honeyToken.projectId,
+        event: {
+          type: EventType.TRIGGER_HONEY_TOKEN,
+          metadata: {
+            honeyTokenId: honeyToken.id,
+            name: honeyToken.name,
+            type: honeyToken.type as HoneyTokenType,
+            projectId: honeyToken.projectId,
+            eventName: eventMetadata.eventName,
+            eventTime: eventMetadata.eventTime,
+            sourceIp: eventMetadata.sourceIp ?? "Unknown",
+            awsRegion: eventMetadata.awsRegion
           }
-        })
+        }
+      });
     }
 
     return { acknowledged: true };
