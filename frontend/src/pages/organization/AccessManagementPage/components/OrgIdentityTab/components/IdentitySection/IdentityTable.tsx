@@ -221,8 +221,8 @@ const renderScopeIconBadge = (args: {
           </Badge>
         </span>
       </TooltipTrigger>
-      <TooltipContent className="[&>span:last-child]:hidden">
-        <Badge variant={variant}>
+      <TooltipContent>
+        <Badge variant={variant} className="relative z-[80]">
           {icon}
           {label}
         </Badge>
