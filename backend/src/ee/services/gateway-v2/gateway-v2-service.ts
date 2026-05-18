@@ -867,9 +867,17 @@ export const gatewayV2ServiceFactory = ({
 
             socket.on("data", (data: Buffer) => {
               chunks.push(data);
+              const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
+              if (totalLength > 1024) {
+                if (!isResolved) {
+                  isResolved = true;
+                  cleanup();
+                  reject(new Error("Probe response exceeded 1KB limit"));
+                }
+                return;
+              }
               const response = Buffer.concat(chunks).toString().trim();
-              // Resolve as soon as we have a complete response (PONG or a JSON object)
-              if ((response === "PONG" || response.startsWith("{")) && !isResolved) {
+              if ((response === "PONG" || response.includes("\n") || response.endsWith("}")) && !isResolved) {
                 isResolved = true;
                 cleanup();
                 resolve(response);
