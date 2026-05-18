@@ -1484,7 +1484,8 @@ export const registerRoutes = async (
     notificationService,
     smtpService,
     userDAL,
-    resourceAuthMethodService
+    resourceAuthMethodService,
+    gatewayV2DAL
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({

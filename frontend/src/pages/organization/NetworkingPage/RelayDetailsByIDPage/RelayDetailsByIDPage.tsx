@@ -14,6 +14,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { useGetRelayById } from "@app/hooks/api/relays";
 
+import { RelayConnectedGatewaysSection } from "./components/RelayConnectedGatewaysSection/RelayConnectedGatewaysSection";
 import { RelayDeploySection } from "./components/RelayDeploySection/RelayDeploySection";
 import { RelayDetailsCard } from "./components/RelayDetailsCard/RelayDetailsCard";
 import { RelayPageHeader } from "./components/RelayPageHeader/RelayPageHeader";
@@ -56,6 +57,7 @@ const Page = () => {
             authMethod={relay.authMethod}
             isFirstTimeSetup={!relay.heartbeat}
           />
+          <RelayConnectedGatewaysSection relayId={relayId} />
         </div>
       </div>
     </div>

@@ -154,6 +154,33 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     }
   });
 
+  // ─── GET /:relayId/gateways ─────────────────────────────────────────────
+  server.route({
+    method: "GET",
+    url: "/:relayId/gateways",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ relayId: z.string().uuid() }),
+      response: {
+        200: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            heartbeat: z.date().nullable().optional(),
+            lastHealthCheckStatus: z.string().nullable().optional()
+          })
+        )
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.relay.getConnectedGateways({
+        relayId: req.params.relayId,
+        orgPermission: req.permission
+      });
+    }
+  });
+
   // ─── PATCH /:relayId ──────────────────────────────────────────────────────
   server.route({
     method: "PATCH",

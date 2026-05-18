@@ -27,6 +27,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
@@ -52,7 +53,8 @@ export const relayServiceFactory = ({
   notificationService,
   smtpService,
   userDAL,
-  resourceAuthMethodService
+  resourceAuthMethodService,
+  gatewayV2DAL
 }: {
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
@@ -64,6 +66,7 @@ export const relayServiceFactory = ({
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "loadView">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
 }) => {
   const $getInstanceCAs = async () => {
     const instanceConfig = await instanceRelayConfigDAL.transaction(async (tx) => {
@@ -1397,12 +1400,45 @@ export const relayServiceFactory = ({
     return relay;
   };
 
+  const getConnectedGateways = async ({
+    relayId,
+    orgPermission
+  }: {
+    relayId: string;
+    orgPermission: { type: ActorType; id: string; orgId: string; authMethod: ActorAuthMethod };
+  }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId: orgPermission.orgId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: relay.orgId!,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+
+    const gateways = await gatewayV2DAL.find({ relayId });
+    return gateways.map((g) => ({
+      id: g.id,
+      name: g.name,
+      heartbeat: g.heartbeat,
+      lastHealthCheckStatus: g.lastHealthCheckStatus
+    }));
+  };
+
   return {
     registerRelay,
     getCredentialsForGateway,
     getCredentialsForClient,
     getRelays,
     getRelayById,
+    getConnectedGateways,
     createRelay,
     connectRelay,
     heartbeatRelay,

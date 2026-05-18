@@ -50,16 +50,20 @@ import { RelayDeployModal } from "./components/RelayDeployModal";
 
 const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const isHealthy = !heartbeatDate || heartbeatDate >= oneHourAgo;
-  const tooltipContent = heartbeatDate
-    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
-    : "No heartbeat data available";
+  if (!heartbeatDate) {
+    return (
+      <Tooltip content="No heartbeat data available">
+        <span className="cursor-default text-yellow-400">Unregistered</span>
+      </Tooltip>
+    );
+  }
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const isHealthy = heartbeatDate >= oneHourAgo;
 
   return (
-    <Tooltip content={tooltipContent}>
+    <Tooltip content={`Last heartbeat: ${heartbeatDate.toLocaleString()}`}>
       <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
         {isHealthy ? "Healthy" : "Unreachable"}
       </span>
@@ -127,7 +131,7 @@ export const RelayTab = withPermission(
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("deployRelay")}
             >
-              Deploy Relay
+              Create Relay
             </Button>
           </div>
         </div>
