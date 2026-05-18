@@ -1464,6 +1464,16 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
+    resourceAuthMethodDAL,
+    resourceAwsAuthDAL,
+    resourceTokenAuthDAL,
+    gatewayV2DAL,
+    relayDAL,
+    identityDAL,
+    permissionService
+  });
+
   const relayService = relayServiceFactory({
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
@@ -1473,16 +1483,8 @@ export const registerRoutes = async (
     orgDAL,
     notificationService,
     smtpService,
-    userDAL
-  });
-
-  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
-    resourceAuthMethodDAL,
-    resourceAwsAuthDAL,
-    resourceTokenAuthDAL,
-    gatewayV2DAL,
-    identityDAL,
-    permissionService
+    userDAL,
+    resourceAuthMethodService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({

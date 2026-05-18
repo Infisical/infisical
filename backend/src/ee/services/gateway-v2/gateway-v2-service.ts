@@ -1234,7 +1234,7 @@ export const gatewayV2ServiceFactory = ({
         throw err;
       }
 
-      await resourceAuthMethodService.initAtCreate({ gatewayId: created.id, authMethod }, tx);
+      await resourceAuthMethodService.initAtCreate({ resource: { type: "gateway", id: created.id }, authMethod }, tx);
 
       return created;
     });

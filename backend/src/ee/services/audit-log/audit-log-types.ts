@@ -92,7 +92,8 @@ export type TCreateAuditLogDTO = {
     | AcmeAccountActor
     | EstAccountActor
     | ScepAccountActor
-    | GatewayActor;
+    | GatewayActor
+    | RelayActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -812,6 +813,9 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+  RELAY_CREATE = "relay-create",
+  RELAY_DELETE = "relay-delete",
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -839,7 +843,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
-  [ActorType.GATEWAY]: "gatewayId"
+  [ActorType.GATEWAY]: "gatewayId",
+  [ActorType.RELAY]: "relayId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -907,6 +912,10 @@ interface GatewayActorMetadata {
   gatewayId: string;
 }
 
+interface RelayActorMetadata {
+  relayId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -966,6 +975,11 @@ export interface GatewayActor {
   metadata: GatewayActorMetadata;
 }
 
+export interface RelayActor {
+  type: ActorType.RELAY;
+  metadata: RelayActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -977,7 +991,8 @@ export type Actor =
   | AcmeAccountActor
   | EstAccountActor
   | ScepAccountActor
-  | GatewayActor;
+  | GatewayActor
+  | RelayActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -6448,11 +6463,12 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodResourceType = "gateway" | "relay";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
@@ -6465,7 +6481,7 @@ interface ResourceAuthMethodLoginEvent {
 interface ResourceAuthMethodLoginFailedEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     reasonCode: string;
@@ -6478,7 +6494,7 @@ interface ResourceAuthMethodLoginFailedEvent {
 interface ResourceAuthMethodUpdateEvent {
   type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
@@ -6491,11 +6507,35 @@ interface ResourceAuthMethodUpdateEvent {
 interface ResourceAuthMethodRevokeEvent {
   type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
-    gatewayName: string;
+    resourceName: string;
     deletedTokenCount: number;
+  };
+}
+
+interface RelayCreateEvent {
+  type: EventType.RELAY_CREATE;
+  metadata: {
+    relayId: string;
+    name: string;
+  };
+}
+
+interface RelayDeleteEvent {
+  type: EventType.RELAY_DELETE;
+  metadata: {
+    relayId: string;
+    name: string;
+  };
+}
+
+interface RelayEnrollmentTokenCreateEvent {
+  type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
   };
 }
 
@@ -7151,6 +7191,9 @@ export type Event =
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
+  | RelayCreateEvent
+  | RelayDeleteEvent
+  | RelayEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent

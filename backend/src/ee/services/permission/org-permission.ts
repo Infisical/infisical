@@ -87,7 +87,8 @@ export enum OrgPermissionRelayActions {
   CreateRelays = "create-relays",
   ListRelays = "list-relays",
   EditRelays = "edit-relays",
-  DeleteRelays = "delete-relays"
+  DeleteRelays = "delete-relays",
+  RevokeRelayAccess = "revoke-relay-access"
 }
 
 export enum OrgPermissionIdentityActions {
@@ -504,6 +505,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
+  can(OrgPermissionRelayActions.RevokeRelayAccess, OrgPermissionSubjects.Relay);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 

@@ -7,12 +7,26 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/erro
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionRelayActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
-import { assertGatewayResource, mintGatewayJwt, ResourceAuthMethodType } from "./resource-auth-method-fns";
+import {
+  assertGatewayResource,
+  assertRelayResource,
+  mintGatewayJwt,
+  mintRelayJwt,
+  RESOURCE_TYPE_GATEWAY,
+  RESOURCE_TYPE_RELAY,
+  ResourceAuthMethodType,
+  type ResourceRef
+} from "./resource-auth-method-fns";
 import {
   TAuthMethodView,
   TAwsAuthMethodConfig,
@@ -39,21 +53,40 @@ type TResourceAuthMethodServiceFactoryDep = {
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
+  relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMethodServiceFactory>;
 
+// Maps resource-type-agnostic permission intents to per-resource CASL actions.
+const GATEWAY_PERMISSION_MAP = {
+  list: OrgPermissionGatewayActions.ListGateways,
+  edit: OrgPermissionGatewayActions.EditGateways,
+  revoke: OrgPermissionGatewayActions.RevokeGatewayAccess
+} as const;
+
+const RELAY_PERMISSION_MAP = {
+  list: OrgPermissionRelayActions.ListRelays,
+  edit: OrgPermissionRelayActions.EditRelays,
+  revoke: OrgPermissionRelayActions.RevokeRelayAccess
+} as const;
+
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
   resourceTokenAuthDAL,
   gatewayV2DAL,
+  relayDAL,
   identityDAL,
   permissionService
 }: TResourceAuthMethodServiceFactoryDep) => {
-  const $checkPermission = async (actor: TSetAuthMethodDTO["actor"], action: OrgPermissionGatewayActions) => {
+  const $checkPermission = async (
+    actor: TSetAuthMethodDTO["actor"],
+    intent: "list" | "edit" | "revoke",
+    resourceType: ResourceRef["type"]
+  ) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
@@ -62,27 +95,49 @@ export const resourceAuthMethodServiceFactory = ({
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Gateway);
+    if (resourceType === RESOURCE_TYPE_GATEWAY) {
+      ForbiddenError.from(permission).throwUnlessCan(GATEWAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Gateway);
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(RELAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Relay);
+    }
   };
 
-  // Identity is checked first via gateways_v2.identityId — it's the authoritative
-  // legacy-state signal and overrides any registry row.
-  const $loadAuthMethodView = async (gatewayId: string): Promise<TAuthMethodView | null> => {
-    const gateway = await gatewayV2DAL.findById(gatewayId);
-    if (!gateway) return null;
+  const $loadAuthMethodView = async (resource: ResourceRef): Promise<TAuthMethodView | null> => {
+    // Identity is checked first — it's the authoritative legacy-state signal
+    // and overrides any registry row.
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(resource.id);
+      if (!gateway) return null;
 
-    if (gateway.identityId) {
-      const identity = await identityDAL.findById(gateway.identityId);
-      return {
-        method: ResourceAuthMethodType.Identity,
-        config: {
-          identityId: gateway.identityId,
-          identityName: identity?.name ?? null
-        }
-      };
+      if (gateway.identityId) {
+        const identity = await identityDAL.findById(gateway.identityId);
+        return {
+          method: ResourceAuthMethodType.Identity,
+          config: {
+            identityId: gateway.identityId,
+            identityName: identity?.name ?? null
+          }
+        };
+      }
+    } else {
+      const relay = await relayDAL.findById(resource.id);
+      if (!relay) return null;
+
+      if (relay.identityId) {
+        const identity = await identityDAL.findById(relay.identityId);
+        return {
+          method: ResourceAuthMethodType.Identity,
+          config: {
+            identityId: relay.identityId,
+            identityName: identity?.name ?? null
+          }
+        };
+      }
     }
 
-    const registry = await resourceAuthMethodDAL.findOne({ gatewayId });
+    const registryFilter =
+      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
+    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
     if (!registry) return null;
 
     if (registry.method === ResourceAuthMethodType.Aws) {
@@ -115,28 +170,49 @@ export const resourceAuthMethodServiceFactory = ({
 
   const getByGatewayId = async ({ resource, actor }: TGetAuthMethodDTO) => {
     assertGatewayResource(resource, "auth-method");
-    await $checkPermission(actor, OrgPermissionGatewayActions.ListGateways);
+    await $checkPermission(actor, "list", RESOURCE_TYPE_GATEWAY);
 
     const gateway = await gatewayV2DAL.findById(resource.id);
     if (!gateway || gateway.orgId !== actor.orgId) {
       throw new NotFoundError({ message: `Gateway ${resource.id} not found` });
     }
 
-    const view = await $loadAuthMethodView(resource.id);
+    const view = await $loadAuthMethodView(resource);
     if (!view) {
       throw new NotFoundError({ message: "Gateway has no auth method configured" });
     }
     return view;
   };
 
-  const loadView = async (gatewayId: string): Promise<TAuthMethodView | null> => $loadAuthMethodView(gatewayId);
+  const getByRelayId = async ({ resource, actor }: TGetAuthMethodDTO) => {
+    assertRelayResource(resource, "auth-method");
+    await $checkPermission(actor, "list", RESOURCE_TYPE_RELAY);
+
+    const relay = await relayDAL.findById(resource.id);
+    if (!relay || relay.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `Relay ${resource.id} not found` });
+    }
+
+    const view = await $loadAuthMethodView(resource);
+    if (!view) {
+      throw new NotFoundError({ message: "Relay has no auth method configured" });
+    }
+    return view;
+  };
+
+  const loadView = async (resource: ResourceRef): Promise<TAuthMethodView | null> => $loadAuthMethodView(resource);
 
   // Revoke is meaningful when there's something to invalidate: an active JWT
   // (tokenVersion > 0) or a pending unused enrollment-token row.
-  const canRevoke = async (gateway: { id: string; tokenVersion: number; identityId?: string | null }) => {
-    if (gateway.identityId) return false;
-    if (gateway.tokenVersion > 0) return true;
-    const registry = await resourceAuthMethodDAL.findOne({ gatewayId: gateway.id });
+  const canRevoke = async (
+    resourceInfo: { id: string; tokenVersion: number; identityId?: string | null },
+    resourceType: ResourceRef["type"] = RESOURCE_TYPE_GATEWAY
+  ) => {
+    if (resourceInfo.identityId) return false;
+    if (resourceInfo.tokenVersion > 0) return true;
+    const registryFilter =
+      resourceType === RESOURCE_TYPE_GATEWAY ? { gatewayId: resourceInfo.id } : { relayId: resourceInfo.id };
+    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
     if (!registry || registry.method !== ResourceAuthMethodType.Token) return false;
     const pending = await resourceTokenAuthDAL.findOne({ authMethodId: registry.id });
     return Boolean(pending);
@@ -144,17 +220,22 @@ export const resourceAuthMethodServiceFactory = ({
 
   const initAtCreate = async (
     {
-      gatewayId,
+      resource,
       authMethod
     }: {
-      gatewayId: string;
+      resource: ResourceRef;
       authMethod:
         | { method: typeof ResourceAuthMethodType.Aws; config: TAwsAuthMethodConfig }
         | { method: typeof ResourceAuthMethodType.Token };
     },
     tx: Knex
   ) => {
-    const registry = await resourceAuthMethodDAL.create({ gatewayId, method: authMethod.method }, tx);
+    const registryRow =
+      resource.type === RESOURCE_TYPE_GATEWAY
+        ? { gatewayId: resource.id, method: authMethod.method }
+        : { relayId: resource.id, method: authMethod.method };
+
+    const registry = await resourceAuthMethodDAL.create(registryRow, tx);
     if (authMethod.method === ResourceAuthMethodType.Aws) {
       await resourceAwsAuthDAL.create(
         {
@@ -168,25 +249,37 @@ export const resourceAuthMethodServiceFactory = ({
     }
   };
 
-  // tokenVersion is intentionally NOT bumped on method change — running gateways keep
+  // tokenVersion is intentionally NOT bumped on method change — running resources keep
   // their JWT until the next restart, avoiding forced downtime. Use revoke for that.
   const setMethod = async ({ resource, authMethod, actor }: TSetAuthMethodDTO): Promise<TAuthMethodView> => {
-    assertGatewayResource(resource, "auth-method");
-    await $checkPermission(actor, OrgPermissionGatewayActions.EditGateways);
+    await $checkPermission(actor, "edit", resource.type);
 
-    const gateway = await gatewayV2DAL.findById(resource.id);
-    if (!gateway || gateway.orgId !== actor.orgId) {
-      throw new NotFoundError({ message: `Gateway ${resource.id} not found` });
+    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
+    let identityId: string | null | undefined;
+
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(resource.id);
+      if (!gateway || gateway.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
+      }
+      identityId = gateway.identityId;
+    } else {
+      const relay = await relayDAL.findById(resource.id);
+      if (!relay || relay.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
+      }
+      identityId = relay.identityId;
     }
 
-    if (gateway.identityId) {
+    if (identityId) {
       throw new BadRequestError({
-        message:
-          "This gateway is using legacy machine identity auth. Create a new gateway with the desired auth method instead of migrating this one."
+        message: `This ${resourceLabel.toLowerCase()} is using legacy machine identity auth. Create a new ${resourceLabel.toLowerCase()} with the desired auth method instead of migrating this one.`
       });
     }
 
-    const current = await resourceAuthMethodDAL.findOne({ gatewayId: resource.id });
+    const registryFilter =
+      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
+    const current = await resourceAuthMethodDAL.findOne(registryFilter);
     const previousMethod = current?.method ?? null;
 
     await resourceAuthMethodDAL.transaction(async (tx) => {
@@ -195,7 +288,11 @@ export const resourceAuthMethodServiceFactory = ({
       if (current) {
         registryRow = await resourceAuthMethodDAL.updateById(current.id, { method: authMethod.method }, tx);
       } else {
-        registryRow = await resourceAuthMethodDAL.create({ gatewayId: resource.id, method: authMethod.method }, tx);
+        const createPayload =
+          resource.type === RESOURCE_TYPE_GATEWAY
+            ? { gatewayId: resource.id, method: authMethod.method }
+            : { relayId: resource.id, method: authMethod.method };
+        registryRow = await resourceAuthMethodDAL.create(createPayload, tx);
       }
 
       // 2. Drop the previous method's config artifacts.
@@ -241,7 +338,7 @@ export const resourceAuthMethodServiceFactory = ({
       }
     });
 
-    const view = await $loadAuthMethodView(resource.id);
+    const view = await $loadAuthMethodView(resource);
     if (!view) {
       throw new NotFoundError({ message: "Auth method not found after set" });
     }
@@ -249,20 +346,36 @@ export const resourceAuthMethodServiceFactory = ({
   };
 
   // Non-destructive: minting a new token does NOT bump tokenVersion or clear heartbeat,
-  // so a running gateway keeps working. The next login (with the new token) does the bump.
+  // so a running resource keeps working. The next login (with the new token) does the bump.
   const mintToken = async ({ resource, actor }: TMintTokenDTO) => {
-    assertGatewayResource(resource, "token");
-    await $checkPermission(actor, OrgPermissionGatewayActions.EditGateways);
+    await $checkPermission(actor, "edit", resource.type);
 
-    const gateway = await gatewayV2DAL.findById(resource.id);
-    if (!gateway || gateway.orgId !== actor.orgId) {
-      throw new NotFoundError({ message: `Gateway ${resource.id} not found` });
+    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
+    let resourceName: string;
+    let resourceOrgId: string;
+
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(resource.id);
+      if (!gateway || gateway.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
+      }
+      resourceName = gateway.name;
+      resourceOrgId = gateway.orgId;
+    } else {
+      const relay = await relayDAL.findById(resource.id);
+      if (!relay || relay.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
+      }
+      resourceName = relay.name;
+      resourceOrgId = relay.orgId!;
     }
 
-    const registry = await resourceAuthMethodDAL.findOne({ gatewayId: resource.id });
+    const registryFilter =
+      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
+    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
     if (!registry || registry.method !== ResourceAuthMethodType.Token) {
       throw new BadRequestError({
-        message: `Gateway is not configured for token authentication (current method: ${registry?.method ?? "none"})`
+        message: `${resourceLabel} is not configured for token authentication (current method: ${registry?.method ?? "none"})`
       });
     }
 
@@ -285,28 +398,46 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       ...record,
       token: generated.plainToken,
-      gatewayName: gateway.name,
-      orgId: gateway.orgId
+      resourceName,
+      orgId: resourceOrgId
     };
   };
 
   const revokeAccess = async ({ resource, actor }: TRevokeTokenDTO) => {
-    assertGatewayResource(resource, "auth-method");
-    await $checkPermission(actor, OrgPermissionGatewayActions.RevokeGatewayAccess);
+    await $checkPermission(actor, "revoke", resource.type);
 
-    const gateway = await gatewayV2DAL.findById(resource.id);
-    if (!gateway || gateway.orgId !== actor.orgId) {
-      throw new NotFoundError({ message: `Gateway ${resource.id} not found` });
+    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
+    let resourceName: string;
+    let resourceOrgId: string;
+    let identityId: string | null | undefined;
+
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(resource.id);
+      if (!gateway || gateway.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
+      }
+      resourceName = gateway.name;
+      resourceOrgId = gateway.orgId;
+      identityId = gateway.identityId;
+    } else {
+      const relay = await relayDAL.findById(resource.id);
+      if (!relay || relay.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
+      }
+      resourceName = relay.name;
+      resourceOrgId = relay.orgId!;
+      identityId = relay.identityId;
     }
 
-    const registry = await resourceAuthMethodDAL.findOne({ gatewayId: resource.id });
+    const registryFilter =
+      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
+    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
     if (!registry) {
-      throw new NotFoundError({ message: "Gateway has no auth method configured" });
+      throw new NotFoundError({ message: `${resourceLabel} has no auth method configured` });
     }
-    if (gateway.identityId) {
+    if (identityId) {
       throw new BadRequestError({
-        message:
-          "Identity-bound gateways cannot be revoked directly. Create a new gateway with AWS or Token auth instead."
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS or Token auth instead.`
       });
     }
 
@@ -319,17 +450,21 @@ export const resourceAuthMethodServiceFactory = ({
           await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
         }
       }
-      await gatewayV2DAL.updateById(
-        gateway.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
-        tx
-      );
+      if (resource.type === RESOURCE_TYPE_GATEWAY) {
+        await gatewayV2DAL.updateById(
+          resource.id,
+          { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
+          tx
+        );
+      } else {
+        await relayDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
+      }
       return { deletedTokenCount };
     });
 
     return {
-      gatewayName: gateway.name,
-      orgId: gateway.orgId,
+      resourceName,
+      orgId: resourceOrgId,
       method: registry.method as "aws" | "token",
       deletedTokenCount: result.deletedTokenCount
     };
@@ -341,30 +476,45 @@ export const resourceAuthMethodServiceFactory = ({
     iamRequestBody,
     iamRequestHeaders
   }: TLoginWithAwsDTO) => {
-    assertGatewayResource(resource, "AWS");
+    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
+    let resourceName: string;
+    let resourceOrgId: string;
 
-    const gateway = await gatewayV2DAL.findById(resource.id);
-    if (!gateway) {
-      throw new UnauthorizedError({ message: "Invalid gateway credentials" });
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(resource.id);
+      if (!gateway) {
+        throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+      }
+      resourceName = gateway.name;
+      resourceOrgId = gateway.orgId;
+    } else {
+      const relay = await relayDAL.findById(resource.id);
+      if (!relay || !relay.orgId) {
+        throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+      }
+      resourceName = relay.name;
+      resourceOrgId = relay.orgId;
     }
 
-    const registry = await resourceAuthMethodDAL.findOne({ gatewayId: gateway.id });
+    const registryFilter =
+      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
+    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
     if (!registry || registry.method !== ResourceAuthMethodType.Aws) {
       throw new UnauthorizedError({
-        message: "Gateway is not configured for AWS authentication",
-        detail: { reasonCode: "method_mismatch", gatewayId: gateway.id, orgId: gateway.orgId }
+        message: `${resourceLabel} is not configured for AWS authentication`,
+        detail: { reasonCode: "method_mismatch", resourceId: resource.id, orgId: resourceOrgId }
       });
     }
 
     const config = await resourceAwsAuthDAL.findOne({ authMethodId: registry.id });
     if (!config) {
       throw new UnauthorizedError({
-        message: "Gateway is not configured for AWS authentication",
-        detail: { reasonCode: "config_missing", gatewayId: gateway.id, orgId: gateway.orgId }
+        message: `${resourceLabel} is not configured for AWS authentication`,
+        detail: { reasonCode: "config_missing", resourceId: resource.id, orgId: resourceOrgId }
       });
     }
 
-    const errorContext = { gatewayId: gateway.id, orgId: gateway.orgId, gatewayName: gateway.name };
+    const errorContext = { resourceId: resource.id, orgId: resourceOrgId, resourceName };
 
     const { Account, Arn } = await verifyStsAndExtractCaller({
       iamHttpRequestMethod,
@@ -382,22 +532,42 @@ export const resourceAuthMethodServiceFactory = ({
       errorContext
     });
 
-    const refreshed = await gatewayV2DAL.updateById(gateway.id, {
-      $incr: { tokenVersion: 1 },
-      heartbeat: null,
-      lastHealthCheckStatus: null
-    });
+    let refreshedTokenVersion: number;
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const refreshed = await gatewayV2DAL.updateById(resource.id, {
+        $incr: { tokenVersion: 1 },
+        heartbeat: null,
+        lastHealthCheckStatus: null
+      });
+      refreshedTokenVersion = refreshed.tokenVersion;
+    } else {
+      const refreshed = await relayDAL.updateById(resource.id, {
+        $incr: { tokenVersion: 1 },
+        heartbeat: null
+      });
+      refreshedTokenVersion = refreshed.tokenVersion;
+    }
 
-    const accessToken = mintGatewayJwt({
-      gatewayId: gateway.id,
-      orgId: gateway.orgId,
-      tokenVersion: refreshed.tokenVersion,
-      accessTokenTTL: 0
-    });
+    const accessToken =
+      resource.type === RESOURCE_TYPE_GATEWAY
+        ? mintGatewayJwt({
+            gatewayId: resource.id,
+            orgId: resourceOrgId,
+            tokenVersion: refreshedTokenVersion,
+            accessTokenTTL: 0
+          })
+        : mintRelayJwt({
+            relayId: resource.id,
+            orgId: resourceOrgId,
+            tokenVersion: refreshedTokenVersion,
+            accessTokenTTL: 0
+          });
 
     return {
       accessToken,
-      gateway: refreshed,
+      resourceId: resource.id,
+      resourceName,
+      orgId: resourceOrgId,
       config,
       principalArn: Arn,
       accountId: Account
@@ -418,44 +588,81 @@ export const resourceAuthMethodServiceFactory = ({
     }
 
     const registry = await resourceAuthMethodDAL.findById(tokenRecord.authMethodId);
-    if (!registry || !registry.gatewayId) {
-      throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
+    if (!registry) {
+      throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
     }
-    const linkedGatewayId = registry.gatewayId;
 
-    const gateway = await resourceTokenAuthDAL.transaction(async (tx) => {
-      // Reject concurrent consumption: if delete returns 0, another caller won the race.
+    // Determine resource type from which FK is set on the registry row.
+    const isGateway = Boolean(registry.gatewayId);
+    const isRelay = Boolean(registry.relayId);
+    if (!isGateway && !isRelay) {
+      throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
+    }
+
+    const linkedResourceId = (isGateway ? registry.gatewayId : registry.relayId)!;
+
+    if (isGateway) {
+      const gateway = await resourceTokenAuthDAL.transaction(async (tx) => {
+        const deleted = await resourceTokenAuthDAL.delete({ id: tokenRecord.id }, tx);
+        if (deleted.length === 0) {
+          throw new BadRequestError({ message: "Enrollment token has already been used" });
+        }
+        const existing = await gatewayV2DAL.findById(linkedResourceId, tx);
+        if (!existing) throw new NotFoundError({ message: `Gateway ${linkedResourceId} not found` });
+        return gatewayV2DAL.updateById(
+          existing.id,
+          { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
+          tx
+        );
+      });
+
+      const accessToken = mintGatewayJwt({
+        gatewayId: gateway.id,
+        orgId: gateway.orgId,
+        tokenVersion: gateway.tokenVersion,
+        accessTokenTTL: 0
+      });
+
+      return {
+        accessToken,
+        resourceType: "gateway" as const,
+        resourceId: gateway.id,
+        resourceName: gateway.name,
+        orgId: gateway.orgId,
+        enrollmentTokenId: tokenRecord.id
+      };
+    }
+
+    const relay = await resourceTokenAuthDAL.transaction(async (tx) => {
       const deleted = await resourceTokenAuthDAL.delete({ id: tokenRecord.id }, tx);
       if (deleted.length === 0) {
         throw new BadRequestError({ message: "Enrollment token has already been used" });
       }
-      const existing = await gatewayV2DAL.findById(linkedGatewayId, tx);
-      if (!existing) throw new NotFoundError({ message: `Gateway ${linkedGatewayId} not found` });
-      return gatewayV2DAL.updateById(
-        existing.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
-        tx
-      );
+      const existing = await relayDAL.findById(linkedResourceId, tx);
+      if (!existing) throw new NotFoundError({ message: `Relay ${linkedResourceId} not found` });
+      return relayDAL.updateById(existing.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
     });
 
-    const accessToken = mintGatewayJwt({
-      gatewayId: gateway.id,
-      orgId: gateway.orgId,
-      tokenVersion: gateway.tokenVersion,
+    const accessToken = mintRelayJwt({
+      relayId: relay.id,
+      orgId: relay.orgId!,
+      tokenVersion: relay.tokenVersion,
       accessTokenTTL: 0
     });
 
     return {
       accessToken,
-      gatewayId: gateway.id,
-      gatewayName: gateway.name,
-      orgId: gateway.orgId,
+      resourceType: "relay" as const,
+      resourceId: relay.id,
+      resourceName: relay.name,
+      orgId: relay.orgId!,
       enrollmentTokenId: tokenRecord.id
     };
   };
 
   return {
     getByGatewayId,
+    getByRelayId,
     loadView,
     canRevoke,
     initAtCreate,

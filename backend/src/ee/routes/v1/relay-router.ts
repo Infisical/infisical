@@ -70,6 +70,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: true,
       operationId: "registerOrgRelay",
       body: z.object({
         host: z.string(),
@@ -212,6 +213,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: true,
       operationId: "heartbeatOrgRelay",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" })

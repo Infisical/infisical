@@ -408,10 +408,13 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GATEWAY_CREATE]: "Create gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
-  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Gateway login",
-  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Gateway login failed",
-  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update gateway auth method",
-  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke gateway access"
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Resource login",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Resource login failed",
+  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update resource auth method",
+  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke resource access",
+  [EventType.RELAY_CREATE]: "Create relay",
+  [EventType.RELAY_DELETE]: "Delete relay",
+  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const ResourceAuthMethodsSchema = z.object({
   id: z.string().uuid(),
   gatewayId: z.string().uuid().nullable().optional(),
+  relayId: z.string().uuid().nullable().optional(),
   method: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

@@ -6,7 +6,8 @@ import * as x509 from "@peculiar/x509";
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -28,6 +29,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
@@ -49,7 +51,8 @@ export const relayServiceFactory = ({
   orgDAL,
   notificationService,
   smtpService,
-  userDAL
+  userDAL,
+  resourceAuthMethodService
 }: {
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
@@ -60,6 +63,7 @@ export const relayServiceFactory = ({
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find">;
+  resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "loadView">;
 }) => {
   const $getInstanceCAs = async () => {
     const instanceConfig = await instanceRelayConfigDAL.transaction(async (tx) => {
@@ -1289,11 +1293,119 @@ export const relayServiceFactory = ({
     }
   };
 
+  const createRelay = async ({
+    name,
+    host,
+    authMethod,
+    actor
+  }: {
+    name: string;
+    host: string;
+    authMethod:
+      | { method: "aws"; config: { stsEndpoint: string; allowedPrincipalArns: string; allowedAccountIds: string } }
+      | { method: "token" };
+    actor: {
+      type: ActorType;
+      id: string;
+      orgId: string;
+      authMethod: ActorAuthMethod;
+    };
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
+
+    await verifyHostInputValidity({ host, isDynamicSecret: false });
+
+    let relay;
+    try {
+      relay = await relayDAL.transaction(async (tx) => {
+        const created = await relayDAL.create({ name, host, orgId: actor.orgId }, tx);
+        await resourceAuthMethodService.initAtCreate({ resource: { type: "relay", id: created.id }, authMethod }, tx);
+        return created;
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `A relay named "${name}" already exists` });
+      }
+      throw err;
+    }
+
+    return relay;
+  };
+
+  const connectRelay = async ({ relayId }: { relayId: string }) => {
+    const relay = await relayDAL.findById(relayId);
+    if (!relay || !relay.orgId) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const orgCAs = await $getOrgCAs(relay.orgId);
+    return $generateRelayServerCredentials({
+      host: relay.host,
+      orgId: relay.orgId,
+      relayPkiServerCaCertificate: orgCAs.relayPkiServerCaCertificate,
+      relayPkiServerCaPrivateKey: orgCAs.relayPkiServerCaPrivateKey,
+      relayPkiClientCaCertificate: orgCAs.relayPkiClientCaCertificate,
+      relayPkiClientCaCertificateChain: orgCAs.relayPkiClientCaCertificateChain,
+      relaySshServerCaPrivateKey: orgCAs.relaySshServerCaPrivateKey,
+      relaySshClientCaPublicKey: orgCAs.relaySshClientCaPublicKey
+    });
+  };
+
+  const heartbeatRelay = async ({ relayId }: { relayId: string }) => {
+    const relay = await relayDAL.findById(relayId);
+    if (!relay || !relay.orgId) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const relayClientCredentials = await getCredentialsForClient({
+      relayId: relay.id,
+      orgId: relay.orgId,
+      orgName: relay.orgId,
+      gatewayId: "00000000-0000-0000-0000-000000000000",
+      gatewayName: "heartbeat",
+      duration: 60 * 1000
+    });
+
+    try {
+      await createRelayConnection({
+        relayHost: relayClientCredentials.relayHost,
+        clientCertificate: relayClientCredentials.clientCertificate,
+        clientPrivateKey: relayClientCredentials.clientPrivateKey,
+        serverCertificateChain: relayClientCredentials.serverCertificateChain
+      });
+
+      await relayDAL.updateById(relay.id, { heartbeat: new Date() });
+    } catch (err) {
+      const error = err as Error;
+      throw new BadRequestError({ message: `Relay ${relay.name} is not reachable: ${error.message}` });
+    }
+  };
+
+  const getRelayById = async ({ relayId }: { relayId: string }) => {
+    const relay = await relayDAL.findById(relayId);
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay with ID ${relayId} not found` });
+    }
+    return relay;
+  };
+
   return {
     registerRelay,
     getCredentialsForGateway,
     getCredentialsForClient,
     getRelays,
+    getRelayById,
+    createRelay,
+    connectRelay,
+    heartbeatRelay,
     deleteRelay,
     heartbeat,
     healthcheckNotify

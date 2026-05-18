@@ -449,7 +449,8 @@ const organizationRoutes = route("/organizations/$orgId", [
   ]),
   route("/networking", [
     index("organization/NetworkingPage/route.tsx"),
-    route("/gateways/$gatewayId", "organization/NetworkingPage/GatewayDetailsByIDPage/route.tsx")
+    route("/gateways/$gatewayId", "organization/NetworkingPage/GatewayDetailsByIDPage/route.tsx"),
+    route("/relays/$relayId", "organization/NetworkingPage/RelayDetailsByIDPage/route.tsx")
   ])
 ]);
 

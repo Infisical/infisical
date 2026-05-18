@@ -37,6 +37,7 @@ import {
 } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -70,6 +71,8 @@ export const RelayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
+    const { currentOrg } = useOrganization();
+    const orgId = currentOrg?.id || "";
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deleteRelay",
@@ -166,7 +169,18 @@ export const RelayTab = withPermission(
                   <TableSkeleton innerKey="relay-table" columns={4} key="relay-table" />
                 )}
                 {filteredRelays?.map((el) => (
-                  <Tr key={el.id}>
+                  <Tr
+                    key={el.id}
+                    className={el.orgId ? "cursor-pointer hover:bg-mineshaft-700" : ""}
+                    onClick={() => {
+                      if (el.orgId) {
+                        navigate({
+                          to: "/organizations/$orgId/networking/relays/$relayId",
+                          params: { orgId, relayId: el.id }
+                        });
+                      }
+                    }}
+                  >
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
