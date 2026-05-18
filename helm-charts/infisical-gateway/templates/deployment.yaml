@@ -15,10 +15,10 @@ metadata:
 spec:
   {{- if .Values.gateway.enrollment.method }}
   replicas: 1
+  {{- end }}
   {{- if .Values.persistence.enabled }}
   strategy:
     type: Recreate
-  {{- end }}
   {{- end }}
   selector:
     matchLabels:
