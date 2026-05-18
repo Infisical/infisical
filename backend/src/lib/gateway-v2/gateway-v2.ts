@@ -84,13 +84,14 @@ export const createGatewayConnection = async (
 ): Promise<net.Socket> => {
   const appCfg = getConfig();
 
-  const protocolToAlpn = {
-    [GatewayProxyProtocol.Http]: "infisical-http-proxy",
-    [GatewayProxyProtocol.Tcp]: "infisical-tcp-proxy",
-    [GatewayProxyProtocol.Ping]: "infisical-ping",
-    [GatewayProxyProtocol.Pam]: "infisical-pam-proxy",
-    [GatewayProxyProtocol.PamRdpBrowser]: "infisical-pam-rdp-browser",
-    [GatewayProxyProtocol.PamSessionCancellation]: "infisical-pam-session-cancellation"
+  const protocolToAlpn: Record<string, string[]> = {
+    [GatewayProxyProtocol.Http]: ["infisical-http-proxy"],
+    [GatewayProxyProtocol.Tcp]: ["infisical-tcp-proxy"],
+    [GatewayProxyProtocol.Ping]: ["infisical-ping"],
+    [GatewayProxyProtocol.Health]: ["infisical-health", "infisical-ping"],
+    [GatewayProxyProtocol.Pam]: ["infisical-pam-proxy"],
+    [GatewayProxyProtocol.PamRdpBrowser]: ["infisical-pam-rdp-browser"],
+    [GatewayProxyProtocol.PamSessionCancellation]: ["infisical-pam-session-cancellation"]
   };
 
   const tlsOptions: tls.ConnectionOptions = {
@@ -101,7 +102,7 @@ export const createGatewayConnection = async (
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
     rejectUnauthorized: true,
-    ALPNProtocols: [protocolToAlpn[protocol]],
+    ALPNProtocols: protocolToAlpn[protocol],
     checkServerIdentity: appCfg.isDevelopmentMode ? () => undefined : tls.checkServerIdentity
   };
 

@@ -13,18 +13,17 @@ import {
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { relayQueryKeys } from "@app/hooks/api/relays/queries";
 import { TRelay } from "@app/hooks/api/relays/types";
 
-const ONE_HOUR_MS = 60 * 60 * 1000;
-const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const RELAY_HEARTBEAT_TIMEOUT_MS = 60 * 60 * 1000;
 const DISMISS_STORAGE_KEY = "network-health-banner-dismissed-at";
 
-const isHeartbeatStale = (heartbeat?: string | null): boolean => {
+const isRelayHeartbeatStale = (heartbeat?: string | null): boolean => {
   if (!heartbeat) return true;
-  const heartbeatDate = new Date(heartbeat);
-  return heartbeatDate.getTime() < Date.now() - ONE_HOUR_MS;
+  return new Date(heartbeat).getTime() < Date.now() - RELAY_HEARTBEAT_TIMEOUT_MS;
 };
 
 const wasDismissedWithinLastDay = (): boolean => {
@@ -64,27 +63,16 @@ export const NetworkHealthBanner = () => {
   const unreachableGateways = useMemo(
     () =>
       gateways?.filter((g) => {
-        if (
-          "lastHealthCheckStatus" in g &&
-          g.lastHealthCheckStatus === GatewayHealthCheckStatus.Failed
-        ) {
-          return true;
-        }
-        if (!("heartbeat" in g)) return false;
-        // Skip gateways that have never connected (both fields null)
-        if (
-          g.heartbeat === null &&
-          ("lastHealthCheckStatus" in g ? g.lastHealthCheckStatus : null) === null
-        )
-          return false;
-        return isHeartbeatStale(g.heartbeat);
+        if (g.isV1) return false;
+        return !isGatewayHealthy(g);
       }).length ?? 0,
     [gateways]
   );
 
   const unreachableRelays = useMemo(
     () =>
-      relays?.filter((r) => r.orgId && r.heartbeat && isHeartbeatStale(r.heartbeat)).length ?? 0,
+      relays?.filter((r) => r.orgId && r.heartbeat && isRelayHeartbeatStale(r.heartbeat)).length ??
+      0,
     [relays]
   );
 

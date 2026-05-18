@@ -1,4 +1,3 @@
-import { blockCertManagerProjectAccess } from "@app/server/plugins/block-cert-manager-project-access";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
@@ -146,7 +145,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(blockCertManagerProjectAccess);
       await projectRouter.register(registerDeprecatedProjectRouter);
       await projectRouter.register(registerDeprecatedProjectEnvRouter);
       // depreciated completed in use
@@ -159,7 +157,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(blockCertManagerProjectAccess);
       await projectRouter.register(registerProjectRouter);
       await projectRouter.register(registerProjectMembershipRouter);
       await projectRouter.register(registerProjectIdentityRouter);
@@ -174,7 +171,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (membershipsRouter) => {
-      await membershipsRouter.register(blockCertManagerProjectAccess);
       await membershipsRouter.register(registerIdentityProjectMembershipRouter);
       await membershipsRouter.register(registerProjectGroupMembershipsRouter);
     },

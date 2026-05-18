@@ -8,6 +8,7 @@ export enum GatewayProxyProtocol {
   Http = "http",
   Tcp = "tcp",
   Ping = "ping",
+  Health = "health",
   Pam = "pam",
   PamRdpBrowser = "pam-rdp-browser",
   PamSessionCancellation = "pam-session-cancellation"

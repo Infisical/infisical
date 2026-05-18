@@ -44,7 +44,8 @@ const makeFactory = (deps?: Partial<FakeDeps>) => {
       enqueueIntervalMs: 100,
       processIntervalMs: 100,
       slotTtlMs: 200,
-      leaseDurationMs: 1000
+      leaseDurationMs: 1000,
+      handlerTimeoutMs: 1000
     }),
     redis,
     redlock
@@ -84,6 +85,134 @@ describe("register", () => {
     start();
     expect(redis.eval).not.toHaveBeenCalled();
     await stop();
+  });
+
+  test("throws when per-entry handlerTimeoutMs exceeds factory leaseDurationMs", () => {
+    const { register } = makeFactory(); // factory leaseDurationMs=1000
+    expect(() =>
+      register({
+        name: "x",
+        pattern: "0 0 * * *",
+        handler: vi.fn(),
+        runHashTtlS: 3600,
+        handlerTimeoutMs: 5_000
+      })
+    ).toThrow(/handlerTimeoutMs.*must be <=.*leaseDurationMs/);
+  });
+
+  test("accepts per-entry handlerTimeoutMs when matched by per-entry leaseDurationMs", () => {
+    const { register } = makeFactory();
+    expect(() =>
+      register({
+        name: "x",
+        pattern: "0 0 * * *",
+        handler: vi.fn(),
+        runHashTtlS: 3600,
+        handlerTimeoutMs: 30 * 60_000,
+        leaseDurationMs: 30 * 60_000
+      })
+    ).not.toThrow();
+  });
+
+  test("throws when factory handlerTimeoutMs default exceeds factory leaseDurationMs", () => {
+    const redis = makeRedis();
+    const redlock = makeRedlock();
+    const { register } = cronJobFactory({
+      redis: redis as never,
+      redlock: redlock as never,
+      slotRefreshMs: 50,
+      enqueueIntervalMs: 100,
+      processIntervalMs: 100,
+      slotTtlMs: 200,
+      // No per-knob overrides — handlerTimeoutMs (default 5min) > leaseDurationMs (1s).
+      leaseDurationMs: 1000
+    });
+    expect(() => register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 3600 })).toThrow(
+      /handlerTimeoutMs.*must be <=.*leaseDurationMs/
+    );
+  });
+});
+
+describe("per-entry lease duration", () => {
+  test("redlock.using receives per-entry leaseDurationMs when set", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const enqueuedAt = Date.parse("2024-01-01T00:00:00Z");
+
+    const redis = makeRedis();
+    redis.set.mockResolvedValue("OK");
+    redis.eval.mockResolvedValue(1);
+    redis.zrangebyscore.mockResolvedValue([`x:${enqueuedAt}`]);
+    redis.hgetall.mockResolvedValue({
+      name: "x",
+      status: "pending",
+      attempts: "0",
+      enqueued_at_ms: "0"
+    });
+
+    const redlock = makeRedlock();
+    const f = cronJobFactory({
+      redis: redis as never,
+      redlock: redlock as never,
+      slotRefreshMs: 50,
+      enqueueIntervalMs: 100,
+      processIntervalMs: 100,
+      slotTtlMs: 200,
+      leaseDurationMs: 1000,
+      handlerTimeoutMs: 1000
+    });
+    f.register({
+      name: "x",
+      pattern: "* * * * *",
+      handler: vi.fn(),
+      runHashTtlS: 3600,
+      handlerTimeoutMs: 30 * 60_000,
+      leaseDurationMs: 30 * 60_000
+    });
+    f.start();
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(redlock.using).toHaveBeenCalled();
+    const [, durationArg] = redlock.using.mock.calls[0] as [unknown, number, unknown];
+    expect(durationArg).toBe(30 * 60_000);
+
+    await f.stop();
+  });
+
+  test("redlock.using falls back to factory leaseDurationMs when entry omits it", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const enqueuedAt = Date.parse("2024-01-01T00:00:00Z");
+
+    const redis = makeRedis();
+    redis.set.mockResolvedValue("OK");
+    redis.eval.mockResolvedValue(1);
+    redis.zrangebyscore.mockResolvedValue([`x:${enqueuedAt}`]);
+    redis.hgetall.mockResolvedValue({
+      name: "x",
+      status: "pending",
+      attempts: "0",
+      enqueued_at_ms: "0"
+    });
+
+    const redlock = makeRedlock();
+    const f = cronJobFactory({
+      redis: redis as never,
+      redlock: redlock as never,
+      slotRefreshMs: 50,
+      enqueueIntervalMs: 100,
+      processIntervalMs: 100,
+      slotTtlMs: 200,
+      leaseDurationMs: 1234,
+      handlerTimeoutMs: 1000
+    });
+    f.register({ name: "x", pattern: "* * * * *", handler: vi.fn(), runHashTtlS: 3600 });
+    f.start();
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(redlock.using).toHaveBeenCalled();
+    const [, durationArg] = redlock.using.mock.calls[0] as [unknown, number, unknown];
+    expect(durationArg).toBe(1234);
+
+    await f.stop();
   });
 });
 
@@ -379,6 +508,7 @@ describe("min-age gate", () => {
       processIntervalMs: 100,
       slotTtlMs: 200,
       leaseDurationMs: 1000,
+      handlerTimeoutMs: 1000,
       minProcessAgeMs: 500
     });
     f.register({ name: "x", pattern: "* * * * *", handler: vi.fn(), runHashTtlS: 3600 });
@@ -458,7 +588,9 @@ describe("stop", () => {
       enqueueIntervalMs: 100,
       processIntervalMs: 100,
       slotTtlMs: 200,
-      leaseDurationMs: 1000,
+      // Lease must cover handlerTimeoutMs; raised together so the
+      // registration-time invariant accepts the entry.
+      leaseDurationMs: 60_000,
       handlerTimeoutMs: 60_000,
       drainTimeoutMs: 5_000
     });
@@ -509,7 +641,7 @@ describe("stop", () => {
       enqueueIntervalMs: 100,
       processIntervalMs: 100,
       slotTtlMs: 200,
-      leaseDurationMs: 1000,
+      leaseDurationMs: 60_000,
       // Long enough that handlerTimeoutMs doesn't naturally drain inFlight.
       handlerTimeoutMs: 60_000,
       drainTimeoutMs: 200

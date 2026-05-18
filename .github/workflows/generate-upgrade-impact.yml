@@ -7,9 +7,12 @@ on:
         description: "Stable release tag to analyze, for example v0.159.23"
         required: true
         type: string
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_call:
+    inputs:
+      tag:
+        description: "Stable release tag to analyze, for example v0.159.23"
+        required: true
+        type: string
 
 permissions:
   contents: write
