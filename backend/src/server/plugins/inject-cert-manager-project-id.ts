@@ -1,15 +1,16 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-import { BadRequestError } from "@app/lib/errors";
-
 const CERT_MANAGER_PREFIXES = ["/api/v1/cert-manager/", "/api/v1/pki/", "/api/v2/pki/"];
 
-const readProjectIdFromRequest = (req: { query?: unknown; body?: unknown }): string | null => {
+const readProjectIdFromRequest = (req: { query?: unknown; body?: unknown; params?: unknown }): string | null => {
   const fromQuery = (req.query as { projectId?: unknown } | undefined)?.projectId;
   if (typeof fromQuery === "string" && fromQuery.length > 0) return fromQuery;
   const fromBody = (req.body as { projectId?: unknown } | undefined)?.projectId;
   if (typeof fromBody === "string" && fromBody.length > 0) return fromBody;
+  const params = req.params as { projectId?: unknown; workspaceId?: unknown } | undefined;
+  const fromParams = params?.projectId ?? params?.workspaceId;
+  if (typeof fromParams === "string" && fromParams.length > 0) return fromParams;
   return null;
 };
 
@@ -28,19 +29,16 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
 
     const explicit = readProjectIdFromRequest(req);
     if (explicit) {
-      const isCertManager = await server.services.certManagerProjectResolver.isCertManagerProject(
-        explicit,
-        req.permission.orgId
-      );
-      if (!isCertManager) {
-        throw new BadRequestError({
-          message: "The supplied projectId does not reference a Certificate Manager project."
-        });
-      }
       req.internalCertManagerProjectId = explicit;
       return;
     }
 
-    req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.permission.orgId);
+    try {
+      req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.permission.orgId);
+    } catch {
+      // Leave internalCertManagerProjectId empty — endpoints that genuinely need it will surface their own
+      // error at the service layer, and endpoints that infer the project from another entity (profileId,
+      // certId, alertId, etc.) continue to work.
+    }
   });
 });
