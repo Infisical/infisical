@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDownIcon,
   EditIcon,
   FilterIcon,
   InfoIcon,
+  LockIcon,
   MoreHorizontalIcon,
   SearchIcon,
   TrashIcon
@@ -32,6 +34,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  ProjectIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -45,6 +48,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -69,6 +75,7 @@ import {
   useUpdateOrgIdentity
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -88,10 +95,20 @@ type Filter = {
   roles: string[];
 };
 
+type ScopeTab = "all" | "organization" | "project";
+
+const TAB_TO_SCOPE: Record<ScopeTab, SearchIdentitiesScope[]> = {
+  all: [SearchIdentitiesScope.Organization, SearchIdentitiesScope.Project],
+  organization: [SearchIdentitiesScope.Organization],
+  project: [SearchIdentitiesScope.Project]
+};
+
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+
+  const [scopeTab, setScopeTab] = useState<ScopeTab>("all");
 
   const {
     offset,
@@ -124,16 +141,51 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
 
+  const searchPayload = {
+    name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
+    role: filter.roles?.length ? { $in: filter.roles } : undefined
+  };
+
   const { data, isPending } = useSearchOrgIdentityMemberships({
     offset,
     limit,
     orderDirection,
     orderBy,
-    search: {
-      name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
-      role: filter.roles?.length ? { $in: filter.roles } : undefined
-    }
+    scope: TAB_TO_SCOPE[scopeTab],
+    search: searchPayload
   });
+
+  // Lightweight per-scope queries powering the tab counts. Each query is keyed
+  // independently by scope so React Query caches them per tab. limit=1 keeps the
+  // result payload tiny while the totalCount window function gives us the chip total.
+  const allScopeQuery = useSearchOrgIdentityMemberships({
+    offset: 0,
+    limit: 1,
+    orderDirection,
+    orderBy,
+    scope: TAB_TO_SCOPE.all,
+    search: searchPayload
+  });
+  const orgScopeQuery = useSearchOrgIdentityMemberships({
+    offset: 0,
+    limit: 1,
+    orderDirection,
+    orderBy,
+    scope: TAB_TO_SCOPE.organization,
+    search: searchPayload
+  });
+  const projectScopeQuery = useSearchOrgIdentityMemberships({
+    offset: 0,
+    limit: 1,
+    orderDirection,
+    orderBy,
+    scope: TAB_TO_SCOPE.project,
+    search: searchPayload
+  });
+
+  const allScopeCount = allScopeQuery.data?.totalCount;
+  const orgScopeCount = orgScopeQuery.data?.totalCount;
+  const projectScopeCount = projectScopeQuery.data?.totalCount;
 
   const { totalCount = 0 } = data ?? {};
   useResetPageHelper({
@@ -191,51 +243,74 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   );
 
   const isTableFiltered = Boolean(filter.roles.length);
-
   const isFiltered = debouncedSearch.trim().length > 0 || isTableFiltered;
+
+  const renderTabCount = (count: number | undefined) =>
+    count === undefined ? null : (
+      <Badge variant="neutral" className="ml-1.5 px-1.5 font-mono text-[10px]">
+        {count}
+      </Badge>
+    );
 
   return (
     <>
-      <div className="mb-4 flex gap-2">
-        <InputGroup className="flex-1">
-          <InputGroupAddon>
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`Search ${isSubOrganization ? "sub-organization" : "organization"} machine identities by name...`}
-          />
-        </InputGroup>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              variant={
-                // eslint-disable-next-line no-nested-ternary
-                isTableFiltered ? (isSubOrganization ? "sub-org" : "org") : "outline"
-              }
-            >
-              <FilterIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
-            <DropdownMenuLabel>
-              Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
-            </DropdownMenuLabel>
-            {roles?.map(({ id, slug, name }) => (
-              <DropdownMenuCheckboxItem
-                key={id}
-                checked={filter.roles.includes(slug)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleRoleToggle(slug);
-                }}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={scopeTab} onValueChange={(value) => setScopeTab(value as ScopeTab)}>
+          <TabsList variant="filled">
+            <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
+            <TabsTrigger value="organization">
+              <span className="size-1.5 rounded-full bg-org" aria-hidden />
+              Organization
+              {renderTabCount(orgScopeCount)}
+            </TabsTrigger>
+            <TabsTrigger value="project">
+              <span className="size-1.5 rounded-full bg-project" aria-hidden />
+              Project
+              {renderTabCount(projectScopeCount)}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex flex-1 justify-end gap-2">
+          <InputGroup className="max-w-sm flex-1">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${isSubOrganization ? "sub-organization " : ""}machine identities by name...`}
+            />
+          </InputGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant={
+                  // eslint-disable-next-line no-nested-ternary
+                  isTableFiltered ? (isSubOrganization ? "sub-org" : "org") : "outline"
+                }
               >
-                {name}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <FilterIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+              <DropdownMenuLabel>
+                Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
+              </DropdownMenuLabel>
+              {roles?.map(({ id, slug, name }) => (
+                <DropdownMenuCheckboxItem
+                  key={id}
+                  checked={filter.roles.includes(slug)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleRoleToggle(slug);
+                  }}
+                >
+                  {name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       {!isPending && !data?.identities?.length ? (
         <Empty className="border">
@@ -258,7 +333,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TableHeader>
               <TableRow>
                 <TableHead
-                  className="w-1/2 cursor-pointer"
+                  className="cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                 >
                   Name
@@ -272,11 +347,12 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
+                <TableHead>Scope</TableHead>
                 <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
-                  {isSubOrganization ? "Sub-" : ""}Organization Role
+                  Role
                   <ChevronDownIcon
                     className={twMerge(
                       "transition-transform",
@@ -287,6 +363,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
+                <TableHead>Last Used</TableHead>
                 {isSubOrganization && <TableHead>Managed By</TableHead>}
                 <TableHead className="w-5" />
               </TableRow>
@@ -299,7 +376,13 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                     <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
                     </TableCell>
                     {isSubOrganization && (
                       <TableCell>
@@ -314,19 +397,41 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               {!isPending &&
                 data?.identities?.map(
                   ({
+                    id: membershipId,
+                    scope,
+                    project,
                     identity: { id, name, orgId },
                     roles: membershipRoles,
                     lastLoginAuthMethod,
                     lastLoginTime
                   }) => {
                     const isSubOrgIdentity = currentOrg.id === orgId;
+                    const isProjectScoped = scope === SearchIdentitiesScope.Project;
                     const primaryRole = membershipRoles?.[0];
                     const role = primaryRole?.role ?? "";
                     const customRoleSlug = primaryRole?.customRoleSlug ?? null;
+                    const lastLoginAt = lastLoginTime ? new Date(lastLoginTime) : null;
+                    const lastLoginLabel = lastLoginAt
+                      ? formatDistanceToNow(lastLoginAt, { addSuffix: false })
+                          .replace(" minutes", "m")
+                          .replace(" minute", "m")
+                          .replace(" hours", "h")
+                          .replace(" hour", "h")
+                          .replace(" days", "d")
+                          .replace(" day", "d")
+                          .replace(" months", "mo")
+                          .replace(" month", "mo")
+                          .replace(" years", "y")
+                          .replace(" year", "y")
+                          .replace("about ", "")
+                          .replace("less than a ", "<1")
+                      : null;
+                    const isRecent =
+                      lastLoginAt && Date.now() - lastLoginAt.getTime() < 7 * 24 * 60 * 60 * 1000;
 
                     return (
                       <TableRow
-                        key={`identity-${id}`}
+                        key={`identity-${membershipId}`}
                         className="cursor-pointer"
                         onClick={() =>
                           navigate({
@@ -355,38 +460,101 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <OrgPermissionCan
-                            I={OrgPermissionIdentityActions.Edit}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <Select
-                                value={role === "custom" ? (customRoleSlug as string) : role}
-                                disabled={!isAllowed}
-                                onValueChange={(selectedRole) =>
-                                  handleChangeRole({
-                                    identityId: id,
-                                    role: selectedRole
-                                  })
-                                }
-                              >
-                                <SelectTrigger
-                                  className="w-full max-w-32 lg:max-w-64"
-                                  size="sm"
-                                  onClick={(e) => e.stopPropagation()}
+                          {isProjectScoped ? (
+                            <Badge variant="project">
+                              <ProjectIcon />
+                              {project?.name ?? "Project"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="org">
+                              <OrgIcon />
+                              Organization
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isProjectScoped ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1.5 text-sm text-foreground/80">
+                                  {primaryRole?.customRoleName ?? role ?? "—"}
+                                  <LockIcon className="size-3 text-mineshaft-400" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Project-scoped role. Manage from the project&apos;s access control
+                                page.
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <OrgPermissionCan
+                              I={OrgPermissionIdentityActions.Edit}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <Select
+                                  value={role === "custom" ? (customRoleSlug as string) : role}
+                                  disabled={!isAllowed}
+                                  onValueChange={(selectedRole) =>
+                                    handleChangeRole({
+                                      identityId: id,
+                                      role: selectedRole
+                                    })
+                                  }
                                 >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="max-w-32 lg:max-w-64">
-                                  {(roles || []).map(({ slug, name: roleName }) => (
-                                    <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                      {roleName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </OrgPermissionCan>
+                                  <SelectTrigger
+                                    className="w-full max-w-32 lg:max-w-64"
+                                    size="sm"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-w-32 lg:max-w-64">
+                                    {(roles || []).map(({ slug, name: roleName }) => (
+                                      <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                        {roleName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </OrgPermissionCan>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {lastLoginAt && lastLoginLabel && lastLoginTime ? (
+                            (() => {
+                              const lastUsedPill = (
+                                <span className="inline-flex cursor-default items-center gap-2 text-sm text-foreground/80">
+                                  <span
+                                    className={twMerge(
+                                      "size-1.5 rounded-full",
+                                      isRecent ? "bg-success" : "bg-mineshaft-400"
+                                    )}
+                                    aria-hidden
+                                  />
+                                  {lastLoginLabel} ago
+                                </span>
+                              );
+                              return lastLoginAuthMethod ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>{lastUsedPill}</TooltipTrigger>
+                                  <TooltipContent className="max-w-96 min-w-52">
+                                    <LastLoginSection
+                                      lastLoginAuthMethod={
+                                        identityAuthToNameMap[lastLoginAuthMethod]
+                                      }
+                                      lastLoginTime={lastLoginTime}
+                                    />
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                lastUsedPill
+                              );
+                            })()
+                          ) : (
+                            <span className="text-sm text-mineshaft-400">—</span>
+                          )}
                         </TableCell>
                         {isSubOrganization && (
                           <TableCell>
