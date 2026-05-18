@@ -1130,89 +1130,85 @@ export const secretSyncQueueFactory = ({
     );
   };
 
-  queueService.start(
-    QueueName.AppConnectionSecretSync,
-    async (job) => {
-      if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
-        await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
-        return;
-      }
+  queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
+    if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
+      await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
+      return;
+    }
 
-      if (job.name === QueueJobs.DailySecretSyncRetry) {
-        await $handleDailySecretSyncRetry();
-        return;
-      }
+    if (job.name === QueueJobs.DailySecretSyncRetry) {
+      await $handleDailySecretSyncRetry();
+      return;
+    }
 
-      const { syncId } = job.data as
-        | TQueueSecretSyncSyncSecretsByIdDTO
-        | TQueueSecretSyncImportSecretsByIdDTO
-        | TQueueSecretSyncRemoveSecretsByIdDTO;
+    const { syncId } = job.data as
+      | TQueueSecretSyncSyncSecretsByIdDTO
+      | TQueueSecretSyncImportSecretsByIdDTO
+      | TQueueSecretSyncRemoveSecretsByIdDTO;
 
-      const secretSync = await secretSyncDAL.findById(syncId);
+    const secretSync = await secretSyncDAL.findById(syncId);
 
-      if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
-      const { connectionId } = secretSync;
+    const { connectionId } = secretSync;
 
-      let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
-      try {
-        lock = await keyStore.acquireLock(
-          [KeyStorePrefixes.SecretSyncLock(syncId)],
-          // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
-          // but should always release below...
-          5 * 60 * 1000
-        );
-      } catch (e) {
-        logger.info(`SecretSync Failed to acquire lock [syncId=${syncId}] [job=${job.name}]`);
+    try {
+      lock = await keyStore.acquireLock(
+        [KeyStorePrefixes.SecretSyncLock(syncId)],
+        // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
+        // but should always release below...
+        5 * 60 * 1000
+      );
+    } catch (e) {
+      logger.info(`SecretSync Failed to acquire lock [syncId=${syncId}] [job=${job.name}]`);
 
-        await $handleAcquireLockFailure(job as SecretSyncActionJob);
+      await $handleAcquireLockFailure(job as SecretSyncActionJob);
 
-        return;
-      }
+      return;
+    }
 
-      let admittedConnectionSlot = false;
+    let admittedConnectionSlot = false;
 
-      try {
-        if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-          admittedConnectionSlot = await $tryAdmitConnectionConcurrency(connectionId);
+    try {
+      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
+        admittedConnectionSlot = await $tryAdmitConnectionConcurrency(connectionId);
 
-          if (!admittedConnectionSlot) {
-            logger.info(
-              `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
-            );
+        if (!admittedConnectionSlot) {
+          logger.info(
+            `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
+          );
 
-            await $handleAcquireLockFailure(job as SecretSyncActionJob);
+          await $handleAcquireLockFailure(job as SecretSyncActionJob);
 
-            return;
-          }
+          return;
         }
-
-        switch (job.name) {
-          case QueueJobs.SecretSyncSyncSecrets: {
-            await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
-            break;
-          }
-          case QueueJobs.SecretSyncImportSecrets:
-            await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO, secretSync);
-            break;
-          case QueueJobs.SecretSyncRemoveSecrets:
-            await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO, secretSync);
-            break;
-          default:
-            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            throw new Error(`Unhandled Secret Sync Job ${job.name}`);
-        }
-      } finally {
-        if (admittedConnectionSlot) {
-          await $releaseConnectionConcurrency(connectionId);
-        }
-
-        await lock.release();
       }
-    },
-    { concurrency: 15 }
-  );
+
+      switch (job.name) {
+        case QueueJobs.SecretSyncSyncSecrets: {
+          await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
+          break;
+        }
+        case QueueJobs.SecretSyncImportSecrets:
+          await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO, secretSync);
+          break;
+        case QueueJobs.SecretSyncRemoveSecrets:
+          await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO, secretSync);
+          break;
+        default:
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+          throw new Error(`Unhandled Secret Sync Job ${job.name}`);
+      }
+    } finally {
+      if (admittedConnectionSlot) {
+        await $releaseConnectionConcurrency(connectionId);
+      }
+
+      await lock.release();
+    }
+  });
 
   const startDailySecretSyncRetryJob = () => {
     cronJob.register({
