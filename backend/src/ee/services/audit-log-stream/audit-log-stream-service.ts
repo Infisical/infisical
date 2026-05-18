@@ -29,9 +29,9 @@ import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } f
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
 
 const FAILURE_THRESHOLD = 10; // 10 errors threshold
-const FAILURE_WINDOW_MINUTES = 5; // sliding window width in 1 minute buckets
+const FAILURE_WINDOW_MINUTES = 5; // counter expires after this much idle time since the last error
+const FAILURE_WINDOW_SECONDS = FAILURE_WINDOW_MINUTES * 60;
 const FAILURE_ALERT_COOLDOWN_SECONDS = 12 * 60 * 60; // 12 hours alert cooldown
-const BUCKET_TTL_SECONDS = (FAILURE_WINDOW_MINUTES + 2) * 60; // 7 minutes bucket TTL
 
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
@@ -40,7 +40,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementByWithExpiry" | "getItem" | "getItems" | "setItemWithExpiryNX" | "deleteItem" | "deleteItemsByKeyIn"
+    "incrementByWithExpiry" | "getItem" | "setItemWithExpiryNX" | "deleteItem" | "deleteItemsByKeyIn"
   >;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -104,13 +104,10 @@ export const auditLogStreamServiceFactory = ({
   };
 
   const resetFailureTracking = async (streamId: string) => {
-    const liveBucketMinutes = Math.ceil(BUCKET_TTL_SECONDS / 60);
-    const nowMinuteBucket = Math.floor(Date.now() / 60000);
-    const bucketKeys = Array.from({ length: liveBucketMinutes }, (_, i) =>
-      KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket - i)
-    );
-
-    await keyStore.deleteItemsByKeyIn([KeyStorePrefixes.AuditLogStreamAlertSent(streamId), ...bucketKeys]);
+    await keyStore.deleteItemsByKeyIn([
+      KeyStorePrefixes.AuditLogStreamAlertSent(streamId),
+      KeyStorePrefixes.AuditLogStreamFailureCount(streamId)
+    ]);
   };
 
   const updateById = async (
@@ -278,7 +275,7 @@ export const auditLogStreamServiceFactory = ({
         orgId,
         type: NotificationType.AUDIT_LOG_STREAM_FAILED,
         title: "Audit Log Stream Failure",
-        body: `Your **${provider}** audit log stream has failed ${failureCount} times in the last ${FAILURE_WINDOW_MINUTES} minutes. Audit logs may not be reaching their destination.`,
+        body: `Your **${provider}** audit log stream has failed ${failureCount} times in a row, with no more than ${FAILURE_WINDOW_MINUTES} minutes between failures. Audit logs may not be reaching their destination.`,
         link: streamPath
       }))
     );
@@ -304,34 +301,26 @@ export const auditLogStreamServiceFactory = ({
       );
   };
 
-  const evaluateErrorBucketSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
+  const evaluateErrorSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
     try {
       const alertKey = KeyStorePrefixes.AuditLogStreamAlertSent(streamId);
 
-      // Skip bucket tracking while the stream is in alert cooldown — counts won't be acted on until cooldown expires.
+      // Skip tracking while the stream is in alert cooldown — counts won't be acted on until cooldown expires.
       const inCooldown = await keyStore.getItem(alertKey);
       if (inCooldown) return;
 
-      const nowMinuteBucket = Math.floor(Date.now() / 60000);
+      // Increment a single counter and roll its TTL forward on every error. The window is anchored on
+      // the latest activity — if no new error arrives within FAILURE_WINDOW_SECONDS, the counter expires.
+      const counterKey = KeyStorePrefixes.AuditLogStreamFailureCount(streamId);
+      const failureCount = await keyStore.incrementByWithExpiry(counterKey, 1, FAILURE_WINDOW_SECONDS);
 
-      // Atomically increment the current minute's bucket and anchor its TTL on first write.
-      const currentBucketKey = KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket);
-      await keyStore.incrementByWithExpiry(currentBucketKey, 1, BUCKET_TTL_SECONDS);
-
-      // Sum all buckets in the window with a single MGET round-trip.
-      const bucketKeys = Array.from({ length: FAILURE_WINDOW_MINUTES }, (_, i) =>
-        KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket - i)
-      );
-      const bucketValues = await keyStore.getItems(bucketKeys);
-      const windowFailureCount = bucketValues.reduce((sum, val) => sum + (parseInt(val ?? "0", 10) || 0), 0);
-
-      if (windowFailureCount < FAILURE_THRESHOLD) return;
+      if (failureCount < FAILURE_THRESHOLD) return;
 
       // NX lock ensures only one worker fires the alert within the cooldown window.
       const acquired = await keyStore.setItemWithExpiryNX(alertKey, FAILURE_ALERT_COOLDOWN_SECONDS, "1");
       if (!acquired) return;
 
-      await notifyStreamFailure(orgId, streamId, provider, windowFailureCount).catch(async (notifyErr) => {
+      await notifyStreamFailure(orgId, streamId, provider, failureCount).catch(async (notifyErr) => {
         logger.error(
           notifyErr,
           `Failed to send audit log stream failure notification [streamId=${streamId}] [orgId=${orgId}]`
@@ -374,7 +363,7 @@ export const auditLogStreamServiceFactory = ({
             );
           }
 
-          await evaluateErrorBucketSlidingWindow(orgId, id, provider);
+          await evaluateErrorSlidingWindow(orgId, id, provider);
         }
       })
     );

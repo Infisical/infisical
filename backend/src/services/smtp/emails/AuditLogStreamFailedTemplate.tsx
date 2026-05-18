@@ -30,12 +30,13 @@ export const AuditLogStreamFailedTemplate = ({
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong>Provider</strong>
         <Text className="text-[14px] mt-[4px]">{provider}</Text>
-        <strong>Failures in last {windowMinutes} min</strong>
+        <strong>Consecutive failures</strong>
         <Text className="text-[14px] text-red-600 mt-[4px]">{windowFailureCount}</Text>
       </Section>
       <Text className="text-[14px]">
-        Audit logs may not be reaching their destination. This is likely caused by a configuration issue or connectivity
-        problem with your audit log stream endpoint. Please review your stream settings.
+        Your stream has logged {windowFailureCount} failures in a row, with no more than {windowMinutes} minutes between
+        them. Audit logs may not be reaching their destination. This is likely caused by a configuration issue or
+        connectivity problem with your audit log stream endpoint. Please review your stream settings.
       </Text>
       <Section className="text-center">
         <BaseButton href={streamUrl}>View Audit Log Streams</BaseButton>

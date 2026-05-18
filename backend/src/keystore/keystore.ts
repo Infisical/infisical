@@ -132,8 +132,7 @@ export const KeyStorePrefixes = {
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
   TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
 
-  AuditLogStreamFailureBucket: (streamId: string, minuteBucket: number) =>
-    `audit-log-stream:${streamId}:failures:${minuteBucket}` as const,
+  AuditLogStreamFailureCount: (streamId: string) => `audit-log-stream:${streamId}:failures` as const,
   AuditLogStreamAlertSent: (streamId: string) => `audit-log-stream:${streamId}:alert-sent` as const
 };
 
@@ -380,13 +379,11 @@ export const keyStoreFactory = (
     return Number(result);
   }
 
-  // Atomically increment key and set TTL on first write (Lua ensures INCRBY + EXPIRE are one operation).
+  // Atomically increment key and (re)set TTL on every call so the expiry rolls forward with each write.
   const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
     const result = await primaryRedis.eval(
       `local v = redis.call('INCRBY', KEYS[1], ARGV[1])
-      if redis.call('TTL', KEYS[1]) == -1 then
-        redis.call('EXPIRE', KEYS[1], ARGV[2])
-      end
+      redis.call('EXPIRE', KEYS[1], ARGV[2])
       return v`,
       1,
       key,
