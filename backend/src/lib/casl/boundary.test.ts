@@ -813,6 +813,66 @@ describe("Validate Permission Boundary: glob-subset of glob (positive parent)", 
     ]);
     expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
   });
+
+  // Symmetric counterpart to the deny-region extglob test below: in the positive-grant path the
+  // boundary check used `isGlobSubsetOfGlob`, whose picomatch fallback compared the child glob as
+  // a literal string. So a parent `/@(public|shared)/*` wrongly appeared to contain `/public/**`
+  // (the literal chars `**` match the parent's `*`), letting a single-segment grant be widened to
+  // recursive scope. Extglob, brace expansion, character classes and `?` all hit the same flaw.
+  test.each([
+    ["/@(public|shared)/*", "/public/**"],
+    ["/+(foo|bar)/*", "/foo/**"],
+    ["/!(public)/*", "/admin/**"],
+    ["/?(opt)/*", "/opt/**"],
+    ["/{a,b}/*", "/a/**"],
+    ["/[ab]/*", "/a/**"],
+    ["/h?llo/*", "/hello/**"]
+  ])(
+    "Child $glob broader than parent $glob with unsupported metacharacters is rejected (parent=%s, child=%s)",
+    (parentGlob, childGlob) => {
+      const parentPermission = createMongoAbility([
+        {
+          action: ["read"],
+          subject: "secrets",
+          conditions: {
+            secretPath: { [PermissionConditionOperators.$GLOB]: parentGlob }
+          }
+        }
+      ]);
+      const childPermission = createMongoAbility([
+        {
+          action: ["read"],
+          subject: "secrets",
+          conditions: {
+            secretPath: { [PermissionConditionOperators.$GLOB]: childGlob }
+          }
+        }
+      ]);
+      expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
+    }
+  );
+
+  test("Identical extglob $glob on parent and child is accepted (reference equality)", () => {
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/@(public|shared)/*" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          secretPath: { [PermissionConditionOperators.$GLOB]: "/@(public|shared)/*" }
+        }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
+  });
 });
 
 describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {

@@ -1,13 +1,10 @@
-import picomatch from "picomatch";
-
 /**
  * Glob set-containment for permission boundary checks: answers "is every string matched by
  * `subsetGlob` also matched by `parentGlob`?".
  *
- * `picomatch.isMatch(subsetGlob, parentGlob)` treats the subset as a literal
- * value, so `/apps/**` appears to be a subset of `/apps/*` (the two chars `**` match `*`). This
- * module instead compares segment sequences (literal, `*`, `**`) with proper containment semantics.
- * Patterns with intra-segment wildcards (`foo*`, `?`, `[…]`, `{…}`) fall back to picomatch.
+ * This module compares segment sequences (literal, `*`, `**`) with proper containment semantics,
+ * and returns `false` whenever either glob contains any other metacharacter (`?`, `[…]`, `{…}`,
+ * extglob `@( )` / `+( )` / `!( )` / `?( )` / `*( )`, or intra-segment `*`).
  */
 
 type Segment = { type: "literal"; value: string } | { type: "star" } | { type: "globstar" };
@@ -81,19 +78,15 @@ const segmentMatch = (parent: Segment[], subset: Segment[], pi: number, si: numb
 /**
  * Returns true if every string matched by `subsetGlob` is also matched by `parentGlob`.
  *
- * Analyzes globs whose segments are literals, `*`, or `**`. For globs with other features
- * (intra-segment wildcards, character classes, brace expansion), falls back to
- * `picomatch.isMatch(subsetGlob, parentGlob)` — preserving the previous
- * behavior so this change does not affect rules that rely on those patterns.
+ * Only reasons about globs whose segments are literals, `*`, or `**`. For any other feature
+ * (intra-segment wildcards, `?`, character classes, brace expansion, extglob), returns `false`.
  */
 export const isGlobSubsetOfGlob = (parentGlob: string, subsetGlob: string): boolean => {
   if (parentGlob === subsetGlob) return true;
   const parentSegs = parseSegments(parentGlob);
   const subsetSegs = parseSegments(subsetGlob);
-  if (parentSegs && subsetSegs) {
-    return segmentMatch(parentSegs, subsetSegs, 0, 0);
-  }
-  return picomatch.isMatch(subsetGlob, parentGlob, { strictSlashes: false });
+  if (!parentSegs || !subsetSegs) return false;
+  return segmentMatch(parentSegs, subsetSegs, 0, 0);
 };
 
 /**
