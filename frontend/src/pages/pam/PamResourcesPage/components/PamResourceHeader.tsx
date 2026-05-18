@@ -34,7 +34,7 @@ export const PamResourceHeader = ({ resourceType, onBack }: Props) => {
           {details.name}
           {docsPath && (
             <DocumentationLinkBadge
-              href={`https://infisical.com/docs/documentation/platform/pam/getting-started/resources/${docsPath}`}
+              href={`https://infisical.com/docs/documentation/platform/pam/resources/${docsPath}`}
             />
           )}
         </Label>

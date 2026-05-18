@@ -50,19 +50,7 @@ sequenceDiagram
 
 ### Session Tracking
 
-Infisical tracks:
-
-- When the session was created
-- Who accessed which Redis instance
-- Session duration
-- All Redis commands executed during the session
-- When the session ended
-
-<Info>
-  **Session Logs**: After ending a session (by stopping the proxy), you can view
-  detailed session logs in the Sessions page, including all commands executed
-  during the session.
-</Info>
+All sessions are tracked with full metadata, including all Redis commands executed. For details on what is captured and how to review recordings, see [Session Recording](/documentation/platform/pam/product-reference/session-recording).
 
 ## Prerequisites
 

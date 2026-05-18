@@ -26,7 +26,7 @@ To successfully implement Infisical PAM, it is essential to understand the relat
     A lightweight service deployed in your network that acts as a secure bridge to your private infrastructure.
   </Card>
   <Card title="Resource" icon="database" href="/documentation/platform/pam/getting-started/resources">
-    The specific target you are protecting (e.g., a PostgreSQL database or an Ubuntu server).
+    The specific target you are protecting (e.g., a PostgreSQL database or a Linux server).
   </Card>
   <Card title="Account" icon="user-lock" href="/documentation/platform/pam/getting-started/accounts">
     The specific identity on the Resource that the user is trying to access. One Resource can have multiple Accounts.
@@ -72,25 +72,46 @@ Ready to set up Infisical PAM? Follow our step-by-step guide to deploy a gateway
 
 Infisical PAM supports a variety of resource types:
 
-<CardGroup cols={2}>
-  <Card title="SSH Servers" icon="terminal" href="/documentation/platform/pam/getting-started/resources/ssh">
+<CardGroup cols={3}>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/resources/postgresql">
+    Secure access to PostgreSQL databases with session recording.
+  </Card>
+  <Card title="MySQL" icon="database" href="/documentation/platform/pam/resources/mysql">
+    Secure access to MySQL databases.
+  </Card>
+  <Card title="Microsoft SQL Server" icon="database" href="/documentation/platform/pam/resources/mssql">
+    Secure access to MSSQL databases.
+  </Card>
+  <Card title="MongoDB" icon="database" href="/documentation/platform/pam/resources/mongodb">
+    Secure access to MongoDB databases.
+  </Card>
+  <Card title="Oracle" icon="database" href="/documentation/platform/pam/resources/oracle">
+    Secure access to Oracle databases.
+  </Card>
+  <Card title="Redis" icon="database" href="/documentation/platform/pam/resources/redis">
+    Secure access to Redis instances.
+  </Card>
+  <Card title="SSH Servers" icon="terminal" href="/documentation/platform/pam/resources/ssh">
     Secure access to Linux servers via SSH with session recording.
   </Card>
-  <Card title="Kubernetes" icon="dharmachakra" href="/documentation/platform/pam/getting-started/resources/kubernetes">
+  <Card title="Kubernetes" icon="dharmachakra" href="/documentation/platform/pam/resources/kubernetes">
     Manage access to Kubernetes clusters.
   </Card>
-  <Card title="AWS IAM" icon="aws" href="/documentation/platform/pam/getting-started/resources/aws-iam">
+  <Card title="AWS IAM" icon="aws" href="/documentation/platform/pam/resources/aws-iam">
     Broker access to AWS resources via IAM credentials.
   </Card>
-  <Card title="Redis" icon="database" href="/documentation/platform/pam/getting-started/resources/redis">
-    Secure access to Redis databases.
+  <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/resources/active-directory">
+    Manage Active Directory domain controllers and domain accounts.
+  </Card>
+  <Card title="Windows Server" icon="desktop" href="/documentation/platform/pam/resources/windows-server">
+    Secure access to Windows servers via RDP.
   </Card>
 </CardGroup>
 
 ## Core Capabilities
 
 - **[Discovery](/documentation/platform/pam/discovery/overview)**: Automatically discover resources, accounts, and service dependencies across your infrastructure.
-- **[Access Policies](/documentation/platform/pam/product-reference/access-policies)**: Configure approval policies for PAM account access using resource and account name matching.
+- **[Approval Policies](/documentation/platform/pam/product-reference/approval-policies)**: Configure approval workflows for PAM account access using resource and account name matching.
 - **[Auditing](/documentation/platform/pam/product-reference/auditing)**: Track and review a comprehensive log of all user actions and system events.
 - **[Session Recording](/documentation/platform/pam/product-reference/session-recording)**: Record and playback user sessions for security reviews, compliance, and troubleshooting.
 - **[Automated Credential Rotation](/documentation/platform/pam/product-reference/credential-rotation)**: Automatically rotate credentials for supported resources to minimize the risk of compromised credentials.
