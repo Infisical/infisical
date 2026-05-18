@@ -16,7 +16,7 @@ spec:
       storage: {{ .Values.persistence.size | quote }}
 {{- end }}
 ---
-{{- if and .Values.sessionRecordingPersistence.enabled (not .Values.sessionRecordingPersistence.existingClaim) }}
+{{- if and .Values.persistence.enabled (not .Values.persistence.sessionRecording.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -25,11 +25,11 @@ metadata:
     {{- include "infisical-gateway.labels" . | nindent 4 }}
 spec:
   accessModes:
-    {{- toYaml .Values.sessionRecordingPersistence.accessModes | nindent 4 }}
-  {{- if .Values.sessionRecordingPersistence.storageClass }}
-  storageClassName: {{ .Values.sessionRecordingPersistence.storageClass | quote }}
+    {{- toYaml .Values.persistence.sessionRecording.accessModes | nindent 4 }}
+  {{- if .Values.persistence.sessionRecording.storageClass }}
+  storageClassName: {{ .Values.persistence.sessionRecording.storageClass | quote }}
   {{- end }}
   resources:
     requests:
-      storage: {{ .Values.sessionRecordingPersistence.size | quote }}
+      storage: {{ .Values.persistence.sessionRecording.size | quote }}
 {{- end }}
