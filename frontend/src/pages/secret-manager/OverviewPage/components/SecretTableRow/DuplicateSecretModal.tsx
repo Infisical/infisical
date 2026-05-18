@@ -378,7 +378,6 @@ const DuplicateSecretContent = ({
       </div>
 
       <SheetFooter className="border-t">
-
         <Button
           type="submit"
           variant="project"
