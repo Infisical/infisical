@@ -36,11 +36,11 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
 import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
 import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
+import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceConnectionDetails } from "../pam-resource/pam-resource-fns";
@@ -83,7 +83,10 @@ type TPamWebAccessServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession">;
+  pamSessionDAL: Pick<
+    TPamSessionDALFactory,
+    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession"
+  >;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
