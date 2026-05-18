@@ -26,14 +26,14 @@ import {
   ItemTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 import { TRelayConnectedGateway, useGetRelayConnectedGateways } from "@app/hooks/api/relays/queries";
 
 type StatusGroup = "healthy" | "unreachable" | "unregistered";
 
 const classifyGateway = (g: TRelayConnectedGateway): StatusGroup => {
-  if (!g.heartbeat && !g.lastHealthCheckStatus) return "unregistered";
-  if (g.lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy) return "healthy";
+  if (!g.heartbeat) return "unregistered";
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  if (new Date(g.heartbeat) > oneHourAgo) return "healthy";
   return "unreachable";
 };
 

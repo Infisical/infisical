@@ -9,7 +9,6 @@ export type TRelayConnectedGateway = {
   name: string;
   createdAt: string;
   heartbeat: string | null;
-  lastHealthCheckStatus: string | null;
 };
 
 export const relayQueryKeys = {
