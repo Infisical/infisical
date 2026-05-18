@@ -395,7 +395,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    bodyLimit: 64 * 1024 * 1024,
     schema: {
       description: "Upload a PAM session event batch",
       params: z.object({
