@@ -30,6 +30,22 @@ import {
   TUpdateRoleDTO
 } from "./role-types";
 
+const stripExpiredTemporaryRoles = <
+  M extends {
+    roles: Array<{
+      role: string;
+      isTemporary?: boolean;
+      temporaryAccessEndTime?: Date | null;
+    }>;
+  }
+>(
+  memberships: M[]
+): M[] =>
+  memberships.map((m) => ({
+    ...m,
+    roles: m.roles.filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && new Date() < r.temporaryAccessEndTime))
+  }));
+
 type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -259,7 +275,11 @@ export const roleServiceFactory = ({
         actorAuthMethod: dto.permission.authMethod,
         scope: OrganizationActionScope.Any
       });
-      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails: undefined };
+      return {
+        permissions: packRules(permission.rules),
+        memberships: stripExpiredTemporaryRoles(memberships),
+        assumedPrivilegeDetails: undefined
+      };
     }
 
     if (dto.scopeData.scope === AccessScope.Project) {
@@ -301,7 +321,11 @@ export const roleServiceFactory = ({
         assumedPrivilegeDetails.actorEmail = userDetails?.email || "";
       }
 
-      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails };
+      return {
+        permissions: packRules(permission.rules),
+        memberships: stripExpiredTemporaryRoles(memberships),
+        assumedPrivilegeDetails
+      };
     }
 
     throw new BadRequestError({ message: "Invalid scope defined" });

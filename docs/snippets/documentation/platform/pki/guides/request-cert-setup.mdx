@@ -1,4 +1,8 @@
 <Step title="Configure a Certificate Authority">
+    <Note>
+      **Platform Admin** — This step sets up organizational PKI infrastructure.
+    </Note>
+    
     Before you can issue any certificate, you must first configure a [Certificate Authority (CA)](/documentation/platform/pki/ca/overview).
     
     The CA you configure will be used to issue the certificate back to your client; it can be either Internal or External:
@@ -10,13 +14,17 @@
     - [External CA](/documentation/platform/pki/ca/external-ca): If you have existing PKI infrastructure or wish to connect to a public CA (e.g. [Let's Encrypt](/documentation/platform/pki/ca/lets-encrypt), [DigiCert](/documentation/platform/pki/ca/digicert), etc.) to issue TLS certificates,
     you should follow the documentation [here](/documentation/platform/pki/ca/external-ca) to configure an External CA.
 
-    <Note>
-        Note that if you're looking to issue self-signed certificates, you can skip this step and proceed to Step 3.
-    </Note>
+    <Tip>
+        If you're looking to issue self-signed certificates, you can skip this step and proceed to Step 3.
+    </Tip>
 
 </Step>
 <Step title="Create a certificate policy">
-    Next, follow the guide [here](/documentation/platform/pki/certificates/policies#guide-to-creating-a-certificate-policy) to create a [certificate policy](/documentation/platform/pki/certificates/policies).
+    <Note>
+      **Platform Admin** — Policies define rules for certificate content.
+    </Note>
+    
+    Next, follow the guide [here](/documentation/platform/pki/settings/policies) to create a [certificate policy](/documentation/platform/pki/settings/policies).
 
     The certificate policy will constrain what attributes may or may not be allowed in the request to issue a certificate.
     For example, you can specify that the requested common name must adhere to a specific format like `*.acme.com` and

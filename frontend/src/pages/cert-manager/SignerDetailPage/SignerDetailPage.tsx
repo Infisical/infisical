@@ -5,7 +5,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { EmptyState, PageHeader } from "@app/components/v2";
-import { Badge, PageLoader } from "@app/components/v3";
+import { Badge, DocumentationLinkBadge, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -15,6 +15,7 @@ import {
   useGetSigner
 } from "@app/hooks/api/signers";
 
+import { PkiDocsUrls } from "../pki-docs-urls";
 import { EditSignerModal } from "./components/EditSignerModal";
 import { SignerOverviewSection } from "./components/SignerOverviewSection";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
@@ -62,6 +63,7 @@ export const SignerDetailPage = () => {
               <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
                 {signerStatusLabels[signer.status] ?? signer.status}
               </Badge>
+              <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
             </span>
           }
           description={signer.description ?? undefined}

@@ -41,8 +41,7 @@ const Page = () => {
     select: (el) => el.subscriberName
   });
   const { data } = useGetPkiSubscriber({
-    subscriberName,
-    projectId
+    subscriberName
   });
 
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
@@ -55,7 +54,7 @@ const Page = () => {
   const onRemoveSubscriberSubmit = async (subscriberNameToDelete: string) => {
     if (!projectId) return;
 
-    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
+    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete });
 
     createNotification({
       text: "Successfully deleted subscriber",

@@ -51,7 +51,11 @@ type TMembershipUserServiceFactoryDep = {
   userDAL: TUserDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission" | "getOrgPermissionByRoles"
+    | "getProjectPermission"
+    | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getOrgPermissionByRoles"
+    | "getResourcePermission"
   >;
   licenseService: TLicenseServiceFactory;
   projectKeyDAL: TProjectKeyDALFactory;

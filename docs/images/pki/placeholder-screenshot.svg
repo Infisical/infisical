@@ -1,0 +1,20 @@
+<svg width="800" height="450" viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="450" fill="#F8FAFC"/>
+  <rect x="1" y="1" width="798" height="448" rx="7" stroke="#E2E8F0" stroke-width="2" stroke-dasharray="8 4"/>
+  
+  <!-- Camera icon -->
+  <g transform="translate(350, 150)">
+    <rect x="10" y="25" width="80" height="55" rx="8" stroke="#94A3B8" stroke-width="3" fill="none"/>
+    <circle cx="50" cy="52" r="18" stroke="#94A3B8" stroke-width="3" fill="none"/>
+    <rect x="30" y="15" width="40" height="15" rx="4" stroke="#94A3B8" stroke-width="3" fill="none"/>
+    <circle cx="50" cy="52" r="8" fill="#94A3B8"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="400" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#64748B" text-anchor="middle">
+    Screenshot Coming Soon
+  </text>
+  <text x="400" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#94A3B8" text-anchor="middle">
+    This placeholder will be replaced with an actual screenshot
+  </text>
+</svg>

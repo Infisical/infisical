@@ -16,9 +16,9 @@ export const useUpdateCertificateCleanupConfig = () => {
       );
       return data.config;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: certificateCleanupKeys.getConfig(variables.projectId)
+        queryKey: certificateCleanupKeys.getConfig()
       });
     }
   });

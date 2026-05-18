@@ -24,9 +24,9 @@ export const useCreatePkiCollection = () => {
       );
       return pkiCollection;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (pkiCollection) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectPkiCollections(projectId)
+        queryKey: projectKeys.getProjectPkiCollections(pkiCollection.projectId)
       });
     }
   });
@@ -42,9 +42,9 @@ export const useUpdatePkiCollection = () => {
       );
       return pkiCollection;
     },
-    onSuccess: (_, { projectId, collectionId }) => {
+    onSuccess: (pkiCollection, { collectionId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectPkiCollections(projectId)
+        queryKey: projectKeys.getProjectPkiCollections(pkiCollection.projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiCollectionKeys.getPkiCollectionById(collectionId)
@@ -62,9 +62,9 @@ export const useDeletePkiCollection = () => {
       );
       return pkiCollection;
     },
-    onSuccess: (_, { projectId, collectionId }) => {
+    onSuccess: (pkiCollection, { collectionId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectPkiCollections(projectId)
+        queryKey: projectKeys.getProjectPkiCollections(pkiCollection.projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiCollectionKeys.getPkiCollectionById(collectionId)

@@ -38,11 +38,16 @@ type Props = {
     };
   };
   handlePopUpToggle: (popUpName: "managePkiSyncs", state?: boolean) => void;
+  applicationName?: string;
 };
 
 const PER_PAGE = 10;
 
-export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const CertificateManagePkiSyncsModal = ({
+  popUp,
+  handlePopUpToggle,
+  applicationName
+}: Props) => {
   const [selectedSyncIds, setSelectedSyncIds] = useState<Set<string>>(new Set());
   const [initialSyncIds, setInitialSyncIds] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,16 +95,28 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
   const handleNavigateToPkiSyncs = () => {
     if (!currentProject?.id) return;
 
-    navigate({
-      to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
-      params: {
-        orgId: currentOrg.id,
-        projectId: currentProject.id
-      },
-      search: {
-        selectedTab: IntegrationsListPageTabs.PkiSyncs
-      }
-    });
+    if (applicationName) {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        params: {
+          orgId: currentOrg.id,
+          projectId: currentProject.id,
+          applicationName
+        },
+        search: { selectedTab: "syncs" }
+      });
+    } else {
+      navigate({
+        to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
+        params: {
+          orgId: currentOrg.id,
+          projectId: currentProject.id
+        },
+        search: {
+          selectedTab: IntegrationsListPageTabs.PkiSyncs
+        }
+      });
+    }
     handleClose();
   };
 

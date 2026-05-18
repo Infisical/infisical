@@ -70,7 +70,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { mutateAsync: addProjectToGroupMutateAsync, isPending: isAdding } = useAddProjectToGroup();
 
-  const handleAddProject = async (projectId: string, projectName: string) => {
+  const handleAddProject = async (projectId: string, projectName: string, projectType?: string) => {
     if (!popUpData?.groupId) {
       createNotification({
         text: "Some data is missing, please refresh the page and try again",
@@ -82,6 +82,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
     await addProjectToGroupMutateAsync({
       groupId: popUpData.groupId,
       projectId,
+      projectType,
       role: "no-access"
     });
 
@@ -143,7 +144,9 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
                                 colorSchema="primary"
                                 variant="outline_bg"
                                 type="submit"
-                                onClick={() => handleAddProject(project.id, project.name)}
+                                onClick={() =>
+                                  handleAddProject(project.id, project.name, project.type)
+                                }
                               >
                                 Assign
                               </Button>

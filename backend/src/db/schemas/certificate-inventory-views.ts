@@ -16,7 +16,8 @@ export const CertificateInventoryViewsSchema = z.object({
   createdByUserId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isShared: z.boolean().default(false)
+  isShared: z.boolean().default(false),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificateInventoryViews = z.infer<typeof CertificateInventoryViewsSchema>;

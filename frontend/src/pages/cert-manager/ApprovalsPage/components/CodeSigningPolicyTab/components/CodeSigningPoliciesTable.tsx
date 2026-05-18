@@ -1,34 +1,30 @@
 import { useMemo } from "react";
-import {
-  faEdit,
-  faEllipsisV,
-  faFileCircleQuestion,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
@@ -48,7 +44,8 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 
@@ -59,73 +56,77 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
   }, [policies]);
 
   return (
-    <TableContainer>
+    <>
       <Table>
-        <THead>
-          <Tr>
-            <Th>Policy Name</Th>
-            <Th>Approval Steps</Th>
-            <Th>Created</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isPoliciesLoading && <TableSkeleton columns={4} innerKey="cs-approval-policies" />}
+        <TableHeader>
+          <TableRow>
+            <TableHead>Policy Name</TableHead>
+            <TableHead>Approval Steps</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="w-5" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isPoliciesLoading &&
+            Array.from({ length: 3 }).map((_, i) => (
+              <TableRow key={`cs-policy-skeleton-${i + 1}`}>
+                {Array.from({ length: 4 }).map((__, j) => (
+                  <TableCell key={`cs-policy-skeleton-cell-${j + 1}`}>
+                    <Skeleton className="h-4 w-full" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
           {!isPoliciesLoading &&
             sortedPolicies.map((policy) => (
-              <Tr key={policy.id} className="group">
-                <Td>
-                  <div className="text-sm font-medium text-mineshaft-100">{policy.name}</div>
-                </Td>
-                <Td>
-                  <span className="text-sm text-mineshaft-200">
-                    {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
-                  </span>
-                </Td>
-                <Td>
-                  <span className="text-sm text-mineshaft-400">
-                    {format(new Date(policy.createdAt), "MMM d, yyyy")}
-                  </span>
-                </Td>
-                <Td>
+              <TableRow key={policy.id} className="group">
+                <TableCell isTruncatable>
+                  <span className="font-medium text-foreground">{policy.name}</span>
+                </TableCell>
+                <TableCell className="text-accent">
+                  {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-accent">
+                  {format(new Date(policy.createdAt), "MMM d, yyyy")}
+                </TableCell>
+                <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="rounded-lg">
-                      <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                        <Tooltip content="More options">
-                          <IconButton
-                            ariaLabel="More options"
-                            variant="plain"
-                            className="w-4 p-0"
-                            size="md"
-                          >
-                            <FontAwesomeIcon icon={faEllipsisV} />
-                          </IconButton>
-                        </Tooltip>
-                      </div>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+                        <MoreHorizontalIcon />
+                      </IconButton>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
+                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
                       <DropdownMenuItem
                         onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-                        icon={<FontAwesomeIcon icon={faEdit} />}
                       >
+                        <PencilIcon />
                         Edit Policy
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        variant="danger"
                         onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
-                        icon={<FontAwesomeIcon icon={faTrash} />}
                       >
+                        <Trash2Icon />
                         Delete Policy
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </Td>
-              </Tr>
+                </TableCell>
+              </TableRow>
             ))}
-        </TBody>
+        </TableBody>
       </Table>
       {!isPoliciesLoading && !sortedPolicies.length && (
-        <EmptyState title="No signing policies found" icon={faFileCircleQuestion} />
+        <Empty className="border border-solid">
+          <EmptyHeader>
+            <EmptyTitle>No signing policies yet</EmptyTitle>
+            <EmptyDescription>
+              Create a policy to require approval before signing operations.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
-    </TableContainer>
+    </>
   );
 };

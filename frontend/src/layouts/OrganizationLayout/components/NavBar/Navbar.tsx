@@ -85,7 +85,11 @@ import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
-import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
+import {
+  ApplicationSelect,
+  ProjectSelect
+} from "@app/layouts/ProjectLayout/components/ProjectSelect";
+import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
@@ -222,7 +226,7 @@ export const Navbar = () => {
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
 
-    await navigateUserToOrg({ navigate, organizationId, navigateTo });
+    await navigateUserToOrg({ navigate, organizationId, navigateTo, userId: user?.id });
     queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
     if (onSuccess) {
@@ -543,8 +547,9 @@ export const Navbar = () => {
             </div>
             {isProjectScope && (
               <>
-                {/* <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" /> */}
+                <TypeSelect />
                 <ProjectSelect />
+                <ApplicationSelect />
               </>
             )}
           </>

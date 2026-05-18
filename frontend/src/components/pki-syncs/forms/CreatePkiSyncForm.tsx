@@ -24,6 +24,7 @@ type Props = {
   destination: PkiSync;
   onCancel: () => void;
   initialData?: any;
+  applicationId?: string;
 };
 
 const getFormTabs = (
@@ -59,7 +60,13 @@ const getFormTabs = (
   return baseTabs;
 };
 
-export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialData }: Props) => {
+export const CreatePkiSyncForm = ({
+  destination,
+  onComplete,
+  onCancel,
+  initialData,
+  applicationId
+}: Props) => {
   const createPkiSync = useCreatePkiSync();
   const { currentProject } = useProject();
   const { name: destinationName } = PKI_SYNC_MAP[destination];
@@ -111,6 +118,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
         ...formData,
         connectionId: connection.id,
         projectId: currentProject.id,
+        applicationId,
         destinationConfig,
         certificateIds: certificateIds || []
       });
@@ -272,7 +280,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
               <PkiSyncDetailsFields />
             </Tab.Panel>
             <Tab.Panel className="max-h-full overflow-y-auto">
-              <PkiSyncCertificatesFields />
+              <PkiSyncCertificatesFields applicationId={applicationId} />
             </Tab.Panel>
             <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncReviewFields />

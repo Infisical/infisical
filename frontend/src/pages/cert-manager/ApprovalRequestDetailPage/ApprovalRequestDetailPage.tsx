@@ -10,7 +10,7 @@ import { Button, ConfirmActionModal, ContentLoader, EmptyState } from "@app/comp
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
@@ -18,6 +18,7 @@ import {
   CodeSigningRequestData,
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
+import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
 
 import {
   ApprovalStepsSection,
@@ -95,7 +96,7 @@ const CodeSigningDetailsSection = ({
 
 const PageContent = () => {
   const { approvalRequestId } = useParams({ from: ROUTE_ID });
-  const { policyType } = useSearch({ from: ROUTE_ID });
+  const { policyType, applicationName, from } = useSearch({ from: ROUTE_ID });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { user: currentUser } = useUser();
@@ -113,6 +114,10 @@ const PageContent = () => {
     })
   );
 
+  const requestApplicationId =
+    request?.scopeType === ApprovalPolicyScope.PkiApplication ? (request.scopeId ?? "") : "";
+  const { data: requestApplication } = useGetPkiApplicationById(requestApplicationId);
+
   const handleRequestCancel = async () => {
     if (cancelApprovalRequest.isPending || !request) return;
 
@@ -127,6 +132,25 @@ const PageContent = () => {
             text: "Successfully cancelled request",
             type: "success"
           });
+          if (applicationName) {
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+              params: {
+                orgId: currentProject.orgId,
+                projectId: currentProject.id,
+                applicationName
+              },
+              search: { selectedTab: "requests" }
+            });
+            return;
+          }
+          if (from === "root-requests") {
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
+              params: { orgId: currentProject.orgId, projectId: currentProject.id }
+            });
+            return;
+          }
           navigate({
             to: isCodeSigning
               ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
@@ -221,6 +245,23 @@ const PageContent = () => {
             {reqData.certificateRequest?.commonName || reqData.profileName}
           </span>{" "}
           by {request.requesterName || "Unknown"}
+          {requestApplication && (
+            <>
+              {" "}
+              on application{" "}
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId: currentProject.id,
+                  applicationName: requestApplication.name
+                }}
+                className="font-medium text-mineshaft-200 underline hover:text-mineshaft-100"
+              >
+                {requestApplication.name}
+              </Link>
+            </>
+          )}
         </p>
       </>
     );
@@ -240,22 +281,62 @@ const PageContent = () => {
     return <CertificateDetailsSection request={request} />;
   };
 
+  const renderBackLink = () => {
+    const linkClass =
+      "mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400 hover:text-mineshaft-200";
+
+    if (applicationName) {
+      return (
+        <Link
+          to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+          params={{
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            applicationName
+          }}
+          search={{ selectedTab: "requests" }}
+          className={linkClass}
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          Go back to Application
+        </Link>
+      );
+    }
+
+    if (from === "root-requests") {
+      return (
+        <Link
+          to="/organizations/$orgId/projects/cert-manager/$projectId/requests"
+          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+          className={linkClass}
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          Requests
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        to={
+          isCodeSigning
+            ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
+            : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+        }
+        params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+        search={isCodeSigning ? { tab: "approvals" } : { section: "certificates" }}
+        className={linkClass}
+      >
+        <FontAwesomeIcon icon={faChevronLeft} />
+        {isCodeSigning ? "Signing Requests" : "Approvals List"}
+      </Link>
+    );
+  };
+
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Link
-          to={
-            isCodeSigning
-              ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-              : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
-          }
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-          search={isCodeSigning ? { tab: "approvals" } : { section: "certificates" }}
-          className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400 hover:text-mineshaft-200"
-        >
-          <FontAwesomeIcon icon={faChevronLeft} />
-          {isCodeSigning ? "Signing Requests" : "Approvals List"}
-        </Link>
+        {renderBackLink()}
 
         <div className="mb-6 flex items-start justify-between">
           <div>{renderTitle()}</div>

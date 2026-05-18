@@ -1,0 +1,139 @@
+---
+title: "Approval Policies"
+sidebarTitle: "Approvals"
+description: "Add human review workflows before certificates are issued."
+---
+
+Approval workflows add a human review step before certificates are issued. Use them to enforce separation of duties, ensure oversight of sensitive certificates, or meet compliance requirements.
+
+## When to Use Approvals
+
+<CardGroup cols={2}>
+  <Card title="Separation of duties" icon="users">
+    Different people must request and approve certificate issuance.
+  </Card>
+  <Card title="Sensitive certificates" icon="shield-check">
+    Production or customer-facing certificates need additional review.
+  </Card>
+  <Card title="Compliance requirements" icon="clipboard-check">
+    Regulatory frameworks require documented approval before issuance.
+  </Card>
+  <Card title="Prevent unauthorized issuance" icon="lock">
+    Ensure certificates are only issued after proper validation.
+  </Card>
+</CardGroup>
+
+<Note>
+  For fully automated workloads (e.g., using [Infisical Agent](/integrations/platforms/certificate-agent)), enable the **machine identity bypass** option so automated systems can issue certificates without waiting for approval.
+</Note>
+
+## How Approval Policies Work
+
+An approval policy defines the workflow that must be completed before certificates are issued. Policies are configured per Application and can be scoped to specific profiles attached to that Application. When a certificate request is made through an enrollment method:
+
+1. Request enters **pending** state
+2. Approvers are notified (if configured)
+3. Each approval step must be completed in sequence
+4. Once all steps are approved, the certificate is issued
+
+## Create an Approval Policy
+
+In your Application, go to the **Settings** tab and find the **Approval Policies** section. Click **Create Policy**.
+
+<Steps>
+  <Step title="Configure basic settings">
+    | Field | Description |
+    |-------|-------------|
+    | **Policy Name** | A descriptive name like `production-cert-approval` |
+    | **Max. Request TTL** | How long a request can remain pending before expiring |
+    | **Certificate Profiles** | Which profiles require approval |
+    | **Bypass for machine identities** | Allow automated systems to skip approval |
+  </Step>
+  <Step title="Configure approval steps">
+    Each step defines who can approve and how many approvals are required:
+    
+    | Field | Description |
+    |-------|-------------|
+    | **Step Name** | Optional name like `Security Team Review` |
+    | **Approvers** | Users or groups eligible to approve |
+    | **Required Approvals** | How many must approve (e.g., 2 of 5) |
+    | **Notify Approvers** | Send notification when approval is needed |
+    
+    **Example multi-step workflow:**
+    1. **Team Lead Review** — Requires 1 approval from team leads
+    2. **Security Review** — Requires 2 approvals from security team
+  </Step>
+  <Step title="Review and create">
+    Review your configuration and click **Create**.
+  </Step>
+</Steps>
+
+## Managing Approval Requests
+
+### View Requests
+
+In the Certificate Manager sidebar, go to **Approval Requests** to see all pending and completed requests:
+
+| Status | Meaning |
+|--------|---------|
+| **Open** | Pending approval |
+| **Approved** | All steps completed, certificate issued |
+| **Rejected** | An approver rejected the request |
+| **Cancelled** | Requester cancelled the request |
+| **Expired** | Request exceeded max TTL |
+
+### Approve a Request
+
+<Steps>
+  <Step title="Open the request">
+    Click on a pending request to view details.
+  </Step>
+  <Step title="Review certificate details">
+    Verify the request information:
+    - Requester name and email
+    - Certificate profile
+    - Common name and SANs
+    - Key usages and validity period
+  </Step>
+  <Step title="Approve">
+    If you're an eligible approver for the current step, click **Approve**.
+  </Step>
+</Steps>
+
+Once all required approvals are obtained, the certificate is automatically issued.
+
+### Reject a Request
+
+<Steps>
+  <Step title="Open the request">
+    Click on a pending request.
+  </Step>
+  <Step title="Reject with reason">
+    Click **Reject** and optionally add a comment explaining why.
+  </Step>
+</Steps>
+
+When a request is rejected, the workflow ends and no certificate is issued.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="I approved a request but the certificate wasn't issued">
+    If the policy has multiple steps, your approval may have completed only one step. The certificate is issued only after **all** approval steps are completed. Check the request details to see which step is currently pending.
+  </Accordion>
+  <Accordion title="I don't see the Approve button">
+    The Approve button only appears if:
+    - You're listed as an approver for the **current** step
+    - The request is still pending (not expired or rejected)
+    - Previous steps have been completed
+  </Accordion>
+  <Accordion title="Can I use approvals with ACME or EST?">
+    Yes, approval policies work with any enrollment method. However, automated clients like Certbot typically can't wait for human approval. Consider using the machine identity bypass for automated workloads.
+  </Accordion>
+  <Accordion title="What happens when a request expires?">
+    The request moves to **Expired** status and no certificate is issued. The requester must submit a new request.
+  </Accordion>
+  <Accordion title="Can requesters approve their own requests?">
+    By default, yes — if they're listed as an eligible approver. For separation of duties, configure approver groups that exclude potential requesters.
+  </Accordion>
+</AccordionGroup>

@@ -126,6 +126,7 @@ export type DeleteEnvironmentDTO = { projectId: string; id: string };
 export type TUpdateWorkspaceUserRoleDTO = {
   membershipId: string;
   projectId: string;
+  projectType?: string;
   roles: (
     | {
         role: string;
@@ -144,6 +145,7 @@ export type TUpdateWorkspaceUserRoleDTO = {
 export type TUpdateWorkspaceGroupRoleDTO = {
   groupId: string;
   projectId: string;
+  projectType?: string;
   roles: (
     | {
         role: string;
@@ -161,6 +163,7 @@ export type TUpdateWorkspaceGroupRoleDTO = {
 
 export type TListProjectIdentitiesDTO = {
   projectId: string;
+  projectType?: string;
   offset?: number;
   limit?: number;
   orderBy?: ProjectIdentityOrderBy;

@@ -152,6 +152,7 @@ export type TWorkspaceUser = {
 
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
+  projectType?: string;
   usernames: string[];
   roleSlugs?: string[];
   orgId: string;

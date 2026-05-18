@@ -54,7 +54,6 @@ export const PkiCollectionPage = () => {
     if (!projectId) return;
 
     await deletePkiCollection({
-      projectId,
       collectionId: collectionIdToDelete
     });
 

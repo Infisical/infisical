@@ -131,6 +131,9 @@ describe("CertificatePolicyService", () => {
   const mockPermissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: mockPermission
+    }),
+    getResourcePermission: vi.fn().mockResolvedValue({
+      permission: mockPermission
     })
   };
 

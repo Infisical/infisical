@@ -1,14 +1,9 @@
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({
   label,
@@ -31,36 +26,27 @@ type Props = {
 };
 
 export const PkiSyncFieldMappingsSection = ({ pkiSync, onEditMappings }: Props) => {
+  const fieldMappings = pkiSync.syncOptions?.fieldMappings;
+  const { canEdit } = usePkiSyncPermissions(pkiSync);
+
   if (pkiSync.destination !== PkiSync.Chef && pkiSync.destination !== PkiSync.AwsSecretsManager) {
     return null;
   }
-
-  const fieldMappings = pkiSync.syncOptions?.fieldMappings;
-  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
-
-  const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberName: destinationName,
-    name: pkiSync.name
-  });
 
   return (
     <div>
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="text-lg font-medium text-mineshaft-100">Field Mappings</h3>
-          <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
-            {(isAllowed) => (
-              <IconButton
-                variant="plain"
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-                ariaLabel="Edit field mappings"
-                onClick={onEditMappings}
-              >
-                <FontAwesomeIcon icon={faEdit} />
-              </IconButton>
-            )}
-          </ProjectPermissionCan>
+          <IconButton
+            variant="plain"
+            colorSchema="secondary"
+            isDisabled={!canEdit}
+            ariaLabel="Edit field mappings"
+            onClick={onEditMappings}
+          >
+            <FontAwesomeIcon icon={faEdit} />
+          </IconButton>
         </div>
         <div className="pt-1">
           <div className="space-y-3">

@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
-import { Button, Spinner } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DocumentationLinkBadge, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
-import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { useOrganization, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { PkiSyncsTable } from "./PkiSyncTable";
 
 export const PkiSyncsTab = () => {
@@ -91,12 +87,7 @@ export const PkiSyncsTab = () => {
     }
   );
 
-  if (isPkiSyncsPending)
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
-        <Spinner />
-      </div>
-    );
+  if (isPkiSyncsPending) return <PageLoader />;
 
   return (
     <>
@@ -106,29 +97,13 @@ export const PkiSyncsTab = () => {
             <div className="flex items-start gap-1">
               <div className="flex items-center gap-x-2">
                 <p className="text-xl font-medium text-mineshaft-100">Certificate Syncs</p>
-                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificate-syncs/overview" />
+                <DocumentationLinkBadge href={PkiDocsUrls.applications.syncs.overview} />
               </div>
             </div>
             <p className="text-sm text-bunker-300">
-              Use App Connections to sync certificates to third-party services.
+              Existing project-level syncs remain editable. Create new syncs inside an Application.
             </p>
           </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionPkiSyncActions.Create}
-            a={ProjectPermissionSub.PkiSyncs}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
-                type="button"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("addSync")}
-                isDisabled={!isAllowed}
-              >
-                Add Sync
-              </Button>
-            )}
-          </ProjectPermissionCan>
         </div>
         <PkiSyncsTable pkiSyncs={pkiSyncs} />
       </div>
