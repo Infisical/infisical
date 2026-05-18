@@ -48,7 +48,7 @@ jobs:
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
             - name: 📦 Build backend and export to Docker
-              uses: depot/build-push-action@f78af826a1c272c4b60c485e934974b515094928 # Main / v1, Mar 10, 2026
+              uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
                   token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -115,7 +115,7 @@ jobs:
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
             - name: 📦 Build backend and export to Docker
-              uses: depot/build-push-action@f78af826a1c272c4b60c485e934974b515094928 # Main / v1, Mar 10, 2026
+              uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
                   token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
