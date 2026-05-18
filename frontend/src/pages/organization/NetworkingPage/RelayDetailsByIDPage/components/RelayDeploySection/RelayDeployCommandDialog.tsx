@@ -21,14 +21,18 @@ import { Badge } from "@app/components/v3/generic/Badge";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  relayId: string;
   relayName: string;
-  enrollmentToken: string;
+  authMethod: "token" | "aws";
+  enrollmentToken: string | null;
 };
 
-export const RelayEnrollmentTokenDialog = ({
+export const RelayDeployCommandDialog = ({
   isOpen,
   onOpenChange,
+  relayId,
   relayName,
+  authMethod,
   enrollmentToken
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -36,12 +40,18 @@ export const RelayEnrollmentTokenDialog = ({
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
   const cliCommand = useMemo(() => {
+    if (authMethod === "aws") {
+      return `infisical relay start --name=${relayName} --enroll-method=aws --relay-id=${relayId} --domain=${siteURL}`;
+    }
     return `infisical relay start --name=${relayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
-  }, [relayName, enrollmentToken, siteURL]);
+  }, [relayName, relayId, enrollmentToken, authMethod, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
+    if (authMethod === "aws") {
+      return `sudo infisical relay systemd install --name=${relayName} --enroll-method=aws --relay-id=${relayId} --domain=${siteURL}`;
+    }
     return `sudo infisical relay systemd install --name=${relayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
-  }, [relayName, enrollmentToken, siteURL]);
+  }, [relayName, relayId, enrollmentToken, authMethod, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-relay";
 
@@ -49,6 +59,12 @@ export const RelayEnrollmentTokenDialog = ({
     navigator.clipboard.writeText(text);
     createNotification({ type: "info", text: `${label} copied to clipboard` });
   };
+
+  const badgeLabel = authMethod === "aws" ? "AWS Auth" : "Token Auth";
+  const helperText =
+    authMethod === "aws"
+      ? "The host must have AWS credentials whose principal matches your allowlist."
+      : "The enrollment token expires in 1 hour and can only be used once.";
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -61,12 +77,9 @@ export const RelayEnrollmentTokenDialog = ({
         <div className="mb-4">
           <div className="mb-0.5 flex items-center gap-2">
             <FormLabel label="Auth Method" className="mb-0 text-foreground" />
-            <Badge variant="info">Token Auth</Badge>
+            <Badge variant="info">{badgeLabel}</Badge>
           </div>
-          <p className="mt-1 text-xs text-mineshaft-400">
-            The enrollment token expires in 1 hour and can only be used once. To use a different
-            auth method, update it in the relay settings.
-          </p>
+          <p className="mt-1 text-xs text-mineshaft-400">{helperText}</p>
         </div>
 
         <Tabs defaultValue="cli" className="mt-2">

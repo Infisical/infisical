@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { RelaysSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -143,13 +144,24 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.relay.deleteRelay({
+      const relay = await server.services.relay.deleteRelay({
         id: req.params.id,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RELAY_DELETE,
+          metadata: { relayId: relay.id, name: relay.name }
+        }
+      });
+
+      return relay;
     }
   });
 

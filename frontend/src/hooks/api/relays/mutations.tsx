@@ -44,11 +44,15 @@ export const useUpdateRelay = () => {
       if (host !== undefined) body.host = host;
       if (authMethod !== undefined) body.authMethod = authMethod;
 
-      const { data } = await apiRequest.patch<TRelayWithAuthMethod>(`/api/v2/relays/${relayId}`, body);
+      const { data } = await apiRequest.patch<TRelayWithAuthMethod>(
+        `/api/v2/relays/${relayId}`,
+        body
+      );
       return data;
     },
     onSuccess: (_, { relayId }) => {
       queryClient.invalidateQueries({ queryKey: relayQueryKeys.byId(relayId) });
+      queryClient.invalidateQueries({ queryKey: relayQueryKeys.list() });
     }
   });
 };
