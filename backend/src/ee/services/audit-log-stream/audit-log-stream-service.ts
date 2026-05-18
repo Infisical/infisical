@@ -30,7 +30,7 @@ import { TCustomProviderCredentials } from "./custom/custom-provider-types";
 
 const FAILURE_THRESHOLD = 10; // 10 errors threshold
 const FAILURE_WINDOW_MINUTES = 5; // sliding window width in 1 minute buckets
-const FAILURE_ALERT_COOLDOWN_SECONDS = 24 * 60 * 60; // 24 hours alert cooldown
+const FAILURE_ALERT_COOLDOWN_SECONDS = 12 * 60 * 60; // 12 hours alert cooldown
 const BUCKET_TTL_SECONDS = (FAILURE_WINDOW_MINUTES + 2) * 60; // 7 minutes bucket TTL
 
 export type TAuditLogStreamServiceFactoryDep = {
@@ -38,7 +38,15 @@ export type TAuditLogStreamServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "incrementByWithExpiry" | "getItems" | "setItemWithExpiryNX" | "deleteItem">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    | "incrementByWithExpiry"
+    | "getItem"
+    | "getItems"
+    | "setItemWithExpiryNX"
+    | "deleteItem"
+    | "deleteItemsByKeyIn"
+  >;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
@@ -174,6 +182,9 @@ export const auditLogStreamServiceFactory = ({
       encryptedCredentials
     });
 
+    // Reset the cooldown lock AND any live failure buckets so a reconfigured stream starts from a clean state.
+    await resetFailureTracking(logStreamId);
+
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
@@ -288,8 +299,24 @@ export const auditLogStreamServiceFactory = ({
       );
   };
 
+  const resetFailureTracking = async (streamId: string) => {
+    const liveBucketMinutes = Math.ceil(BUCKET_TTL_SECONDS / 60);
+    const nowMinuteBucket = Math.floor(Date.now() / 60000);
+    const bucketKeys = Array.from({ length: liveBucketMinutes }, (_, i) =>
+      KeyStorePrefixes.AuditLogStreamFailureBucket(streamId, nowMinuteBucket - i)
+    );
+
+    await keyStore.deleteItemsByKeyIn([KeyStorePrefixes.AuditLogStreamAlertSent(streamId), ...bucketKeys]);
+  };
+
   const evaluateErrorBucketSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
     try {
+      const alertKey = KeyStorePrefixes.AuditLogStreamAlertSent(streamId);
+
+      // Skip bucket tracking while the stream is in alert cooldown — counts won't be acted on until cooldown expires.
+      const inCooldown = await keyStore.getItem(alertKey);
+      if (inCooldown) return;
+
       const nowMinuteBucket = Math.floor(Date.now() / 60000);
 
       // Atomically increment the current minute's bucket and anchor its TTL on first write.
@@ -306,7 +333,6 @@ export const auditLogStreamServiceFactory = ({
       if (windowFailureCount < FAILURE_THRESHOLD) return;
 
       // NX lock ensures only one worker fires the alert within the cooldown window.
-      const alertKey = KeyStorePrefixes.AuditLogStreamAlertSent(streamId);
       const acquired = await keyStore.setItemWithExpiryNX(alertKey, FAILURE_ALERT_COOLDOWN_SECONDS, "1");
       if (!acquired) return;
 
