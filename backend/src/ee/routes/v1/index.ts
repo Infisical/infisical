@@ -1,5 +1,4 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
-import { blockCertManagerProjectAccess } from "@app/server/plugins/block-cert-manager-project-access";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
@@ -93,7 +92,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(blockCertManagerProjectAccess);
       await projectRouter.register(registerProjectRoleRouter);
       await projectRouter.register(registerTrustedIpRouter);
       await projectRouter.register(registerAssumePrivilegeRouter);
