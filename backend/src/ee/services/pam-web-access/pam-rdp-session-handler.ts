@@ -62,6 +62,9 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
 
       tcpSocket.on("data", (chunk: Buffer) => {
         if (cleanedUp || socket.readyState !== socket.OPEN) return;
+        if (socket.bufferedAmount > WS_HIGH_WATER_MARK) {
+          tcpSocket.pause();
+        }
         socket.send(chunk, { binary: true }, (err) => {
           if (err) {
             logger.error(err, "rdp session: ws send failed");
@@ -69,16 +72,10 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
             teardown();
             return;
           }
-          if (socket.bufferedAmount > WS_HIGH_WATER_MARK) {
-            tcpSocket.pause();
+          if (tcpSocket.isPaused() && socket.bufferedAmount <= WS_HIGH_WATER_MARK) {
+            tcpSocket.resume();
           }
         });
-      });
-
-      socket.on("drain", () => {
-        if (!cleanedUp && !tcpSocket.destroyed) {
-          tcpSocket.resume();
-        }
       });
 
       tcpSocket.on("close", () => {
