@@ -10,7 +10,11 @@ import {
 } from "@app/db/schemas";
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -62,7 +66,7 @@ type TIdentityServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findUserProjects" | "findIdentityProjects">;
+  projectDAL: Pick<TProjectDALFactory, "findUserProjects" | "findIdentityProjects" | "find">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -510,8 +514,8 @@ export const identityServiceFactory = ({
     scope,
     searchFilter = {}
   }: TSearchIdentitiesV2DTO) => {
-    const uniqueScope = Array.from(new Set(scope));
-    const { permission } = await permissionService.getOrgPermission({
+    const uniqueScope = new Set(scope);
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
       actorId,
@@ -519,47 +523,58 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    const canReadOrgIdentities = permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    const wantsOrgScope = uniqueScope.includes(SearchIdentitiesScope.Organization);
-    if (wantsOrgScope && !canReadOrgIdentities) {
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    const canReadOrgIdentities = orgPermission.can(
+      OrgPermissionIdentityActions.Read,
+      OrgPermissionSubjects.Identity
+    );
+    if (uniqueScope.has(SearchIdentitiesScope.Organization) && !canReadOrgIdentities) {
+      uniqueScope.delete(SearchIdentitiesScope.Organization);
     }
 
     let accessibleProjectIds: string[] = [];
-    const wantsProjectScope = uniqueScope.includes(SearchIdentitiesScope.Project);
-    if (wantsProjectScope) {
-      const actorProjects =
-        actor === ActorType.USER
-          ? await projectDAL.findUserProjects(actorId, actorOrgId)
-          : await projectDAL.findIdentityProjects(actorId, actorOrgId);
-
-      const uniqueProjectIds = Array.from(new Set(actorProjects.map((p) => p.id)));
-      const projectAccessChecks = await Promise.all(
-        uniqueProjectIds.map(async (projectId) => {
-          try {
-            const { permission: projectPermission } = await permissionService.getProjectPermission({
-              actor,
-              actorId,
-              actionProjectType: ActionProjectType.Any,
-              actorAuthMethod,
-              projectId,
-              actorOrgId
-            });
-            return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
-              ? projectId
-              : null;
-          } catch {
-            return null;
-          }
-        })
+    if (uniqueScope.has(SearchIdentitiesScope.Project)) {
+      const canAccessAllProjects = orgPermission.can(
+        OrgPermissionAdminConsoleAction.AccessAllProjects,
+        OrgPermissionSubjects.AdminConsole
       );
+      if (canAccessAllProjects) {
+        const orgProjects = await projectDAL.find({ orgId: actorOrgId });
+        accessibleProjectIds = orgProjects.map((p) => p.id);
+      } else {
+        const actorProjects =
+          actor === ActorType.USER
+            ? await projectDAL.findUserProjects(actorId, actorOrgId)
+            : await projectDAL.findIdentityProjects(actorId, actorOrgId);
 
-      accessibleProjectIds = projectAccessChecks.filter((id): id is string => Boolean(id));
+        const uniqueProjectIds = Array.from(new Set(actorProjects.map((p) => p.id)));
+        const projectAccessChecks = await Promise.all(
+          uniqueProjectIds.map(async (projectId) => {
+            try {
+              const { permission: projectPermission } = await permissionService.getProjectPermission({
+                actor,
+                actorId,
+                actionProjectType: ActionProjectType.Any,
+                actorAuthMethod,
+                projectId,
+                actorOrgId
+              });
+              return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
+                ? projectId
+                : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        accessibleProjectIds = projectAccessChecks.filter((id): id is string => Boolean(id));
+      }
+      if (accessibleProjectIds.length === 0) {
+        uniqueScope.delete(SearchIdentitiesScope.Project);
+      }
     }
 
-    const effectiveScope = uniqueScope.filter((s) => s !== SearchIdentitiesScope.Organization || canReadOrgIdentities);
-
-    if (!effectiveScope.length) {
+    if (!uniqueScope.size) {
       return { identityMemberships: [], totalCount: 0 };
     }
 
@@ -570,7 +585,7 @@ export const identityServiceFactory = ({
       orderBy,
       orderDirection,
       searchFilter,
-      scope: effectiveScope,
+      scope:Array.from(uniqueScope),
       accessibleProjectIds
     });
 

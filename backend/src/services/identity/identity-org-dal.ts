@@ -745,8 +745,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orgScopeBranch(qb);
         } else if (includeProjectScope) {
           projectScopeBranch(qb);
-        } else {
-          void qb.whereRaw("1 = 0");
         }
       };
 
