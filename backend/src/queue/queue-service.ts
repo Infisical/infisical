@@ -1,4 +1,13 @@
-import { Job, JobSchedulerJson, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
+import {
+  Job,
+  JobSchedulerJson,
+  Queue,
+  QueueOptions,
+  RepeatOptions,
+  Worker,
+  WorkerListener,
+  WorkerOptions
+} from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -514,7 +523,7 @@ export type TQueueServiceFactory = {
   start: <T extends QueueName>(
     name: T,
     jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection">
+    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency">
   ) => void;
   listen: <
     T extends QueueName,

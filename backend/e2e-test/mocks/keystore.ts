@@ -64,6 +64,12 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     incrementBy: async () => {
       return 1;
     },
+    incrementByAndRefreshExpiryIfUnderLimit: async () => {
+      return 1;
+    },
+    decrementByOrDelete: async () => {
+      return 0;
+    },
     pgGetIntItem: async (key) => {
       const value = store[key];
       if (typeof value === "number") {
