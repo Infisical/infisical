@@ -6,6 +6,7 @@ import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/reso
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -76,7 +77,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       description: "Create a new relay with an initial auth method.",
       body: z.object({
-        name: z.string().trim().min(1).max(64),
+        name: slugSchema({ min: 1, max: 32, field: "name" }),
         host: z.string().trim().min(1),
         authMethod: SettableAuthMethodInputSchema
       }),
@@ -166,6 +167,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           z.object({
             id: z.string(),
             name: z.string(),
+            createdAt: z.date(),
             heartbeat: z.date().nullable().optional(),
             lastHealthCheckStatus: z.string().nullable().optional()
           })
@@ -189,6 +191,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ relayId: z.string().uuid() }),
       body: z.object({
+        host: z.string().trim().min(1).optional(),
         authMethod: SettableAuthMethodInputSchema.optional()
       }),
       response: {
@@ -197,7 +200,26 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const relay = await server.services.relay.getRelayById({ relayId: req.params.relayId });
+      let relay;
+
+      if (req.body.host) {
+        relay = await server.services.relay.updateRelay({
+          relayId: req.params.relayId,
+          host: req.body.host,
+          actor: req.permission
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.RELAY_CREATE,
+            metadata: { relayId: req.params.relayId, name: relay.name }
+          }
+        });
+      } else {
+        relay = await server.services.relay.getRelayById({ relayId: req.params.relayId });
+      }
 
       if (req.body.authMethod) {
         const authMethodInput = req.body.authMethod;

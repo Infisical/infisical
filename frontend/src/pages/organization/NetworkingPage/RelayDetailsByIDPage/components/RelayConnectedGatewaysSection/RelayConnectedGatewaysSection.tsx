@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
+import { formatDistanceToNow } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
@@ -20,6 +21,7 @@ import {
   EmptyTitle,
   Item,
   ItemContent,
+  ItemDescription,
   ItemGroup,
   ItemTitle
 } from "@app/components/v3";
@@ -42,6 +44,15 @@ const STATUS_CONFIG: Record<StatusGroup, { label: string; variant: "success" | "
 };
 
 const STATUS_ORDER: StatusGroup[] = ["healthy", "unreachable", "unregistered"];
+
+const gatewaySubtitle = (g: TRelayConnectedGateway) => {
+  const parts: string[] = [];
+  parts.push(`Created ${formatDistanceToNow(new Date(g.createdAt), { addSuffix: true })}`);
+  if (g.heartbeat) {
+    parts.push(`Last seen ${formatDistanceToNow(new Date(g.heartbeat), { addSuffix: true })}`);
+  }
+  return parts.join(" · ");
+};
 
 export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) => {
   const { currentOrg } = useOrganization();
@@ -104,6 +115,9 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
                           >
                             <ItemContent>
                               <ItemTitle>{g.name}</ItemTitle>
+                              <ItemDescription className="text-mineshaft-400">
+                                {gatewaySubtitle(g)}
+                              </ItemDescription>
                             </ItemContent>
                             <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                           </Link>

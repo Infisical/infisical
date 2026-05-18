@@ -7,6 +7,7 @@ import { TRelay, TRelayWithAuthMethod } from "./types";
 export type TRelayConnectedGateway = {
   id: string;
   name: string;
+  createdAt: string;
   heartbeat: string | null;
   lastHealthCheckStatus: string | null;
 };

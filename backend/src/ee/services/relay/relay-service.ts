@@ -1392,6 +1392,40 @@ export const relayServiceFactory = ({
     }
   };
 
+  const updateRelay = async ({
+    relayId,
+    host,
+    actor
+  }: {
+    relayId: string;
+    host: string;
+    actor: {
+      type: ActorType;
+      id: string;
+      orgId: string;
+      authMethod: ActorAuthMethod;
+    };
+  }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId: actor.orgId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
+
+    await verifyHostInputValidity({ host, isDynamicSecret: false });
+
+    return relayDAL.updateById(relayId, { host });
+  };
+
   const getRelayById = async ({ relayId }: { relayId: string }) => {
     const relay = await relayDAL.findById(relayId);
     if (!relay) {
@@ -1427,6 +1461,7 @@ export const relayServiceFactory = ({
     return gateways.map((g) => ({
       id: g.id,
       name: g.name,
+      createdAt: g.createdAt,
       heartbeat: g.heartbeat,
       lastHealthCheckStatus: g.lastHealthCheckStatus
     }));
@@ -1440,6 +1475,7 @@ export const relayServiceFactory = ({
     getRelayById,
     getConnectedGateways,
     createRelay,
+    updateRelay,
     connectRelay,
     heartbeatRelay,
     deleteRelay,

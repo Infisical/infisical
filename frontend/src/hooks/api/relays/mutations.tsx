@@ -8,7 +8,7 @@ import {
   TGenerateRelayEnrollmentTokenDTO,
   TRelayWithAuthMethod,
   TRevokeRelayAccessDTO,
-  TUpdateRelayAuthMethodDTO
+  TUpdateRelayDTO
 } from "./types";
 
 export const useDeleteRelayById = () => {
@@ -36,13 +36,15 @@ export const useCreateRelay = () => {
   });
 };
 
-export const useUpdateRelayAuthMethod = () => {
+export const useUpdateRelay = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ relayId, authMethod }: TUpdateRelayAuthMethodDTO) => {
-      const { data } = await apiRequest.patch<TRelayWithAuthMethod>(`/api/v2/relays/${relayId}`, {
-        authMethod
-      });
+    mutationFn: async ({ relayId, host, authMethod }: TUpdateRelayDTO) => {
+      const body: Record<string, unknown> = {};
+      if (host !== undefined) body.host = host;
+      if (authMethod !== undefined) body.authMethod = authMethod;
+
+      const { data } = await apiRequest.patch<TRelayWithAuthMethod>(`/api/v2/relays/${relayId}`, body);
       return data;
     },
     onSuccess: (_, { relayId }) => {

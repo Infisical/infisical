@@ -52,9 +52,10 @@ export type TCreateRelayDTO = {
     | { method: "token" };
 };
 
-export type TUpdateRelayAuthMethodDTO = {
+export type TUpdateRelayDTO = {
   relayId: string;
-  authMethod:
+  host?: string;
+  authMethod?:
     | {
         method: "aws";
         stsEndpoint: string;

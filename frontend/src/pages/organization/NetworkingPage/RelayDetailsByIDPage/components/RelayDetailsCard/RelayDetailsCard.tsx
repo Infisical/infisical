@@ -3,12 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { CheckIcon, ClipboardListIcon, PencilIcon, TriangleAlertIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Badge,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -18,7 +20,17 @@ import {
   DetailGroupHeader,
   DetailLabel,
   DetailValue,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldLabel,
   IconButton,
+  Input,
   Separator
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -27,6 +39,7 @@ import {
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
+import { useUpdateRelay } from "@app/hooks/api/relays";
 import { TRelayAuthMethodView, TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
 
 import { RelayAuthMethodModal } from "../RelayAuthMethod/RelayAuthMethodModal";
@@ -49,11 +62,79 @@ const AuthMethodBadge = ({ method }: { method: TRelayAuthMethodView["method"] })
   return <Badge variant="warning">Machine Identity</Badge>;
 };
 
+const EditGeneralModal = ({
+  isOpen,
+  onOpenChange,
+  relayId,
+  currentHost
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  relayId: string;
+  currentHost: string;
+}) => {
+  const [host, setHost] = useState(currentHost);
+  const { mutateAsync: updateRelay, isPending } = useUpdateRelay();
+  const { isSubOrganization } = useOrganization();
+
+  const onSubmit = async () => {
+    if (!host.trim()) return;
+    try {
+      await updateRelay({ relayId, host: host.trim() });
+      createNotification({ type: "success", text: "Relay updated" });
+      onOpenChange(false);
+    } catch {
+      createNotification({ type: "error", text: "Failed to update relay" });
+    }
+  };
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) setHost(currentHost);
+        onOpenChange(open);
+      }}
+    >
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Relay</DialogTitle>
+          <DialogDescription>Update the relay host address.</DialogDescription>
+        </DialogHeader>
+        <Field>
+          <FieldLabel>Host</FieldLabel>
+          <FieldContent>
+            <Input
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              placeholder="10.0.0.5 or relay.example.com"
+            />
+          </FieldContent>
+        </Field>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant={isSubOrganization ? "sub-org" : "org"}
+            isPending={isPending}
+            isDisabled={isPending || !host.trim() || host.trim() === currentHost}
+            onClick={onSubmit}
+          >
+            Update
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => {
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [generalModalOpen, setGeneralModalOpen] = useState(false);
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -68,7 +149,25 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
         </CardHeader>
         <CardContent>
           <DetailGroup>
-            <DetailGroupHeader>General</DetailGroupHeader>
+            <DetailGroupHeader className="flex items-center justify-between">
+              General
+              <OrgPermissionCan
+                I={OrgRelayPermissionActions.EditRelays}
+                a={OrgPermissionSubjects.Relay}
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    size="xs"
+                    variant="ghost-muted"
+                    aria-label="edit general"
+                    isDisabled={!isAllowed}
+                    onClick={() => setGeneralModalOpen(true)}
+                  >
+                    <PencilIcon />
+                  </IconButton>
+                )}
+              </OrgPermissionCan>
+            </DetailGroupHeader>
             <Detail>
               <DetailLabel>ID</DetailLabel>
               <DetailValue className="flex items-center gap-x-1">
@@ -194,6 +293,13 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
           </DetailGroup>
         </CardContent>
       </Card>
+
+      <EditGeneralModal
+        isOpen={generalModalOpen}
+        onOpenChange={setGeneralModalOpen}
+        relayId={relay.id}
+        currentHost={relay.host}
+      />
 
       {!isIdentityRelay && (
         <RelayAuthMethodModal

@@ -403,6 +403,10 @@ export const injectIdentity = fp(
             throw new UnauthorizedError({ message: "Relay token has been revoked" });
           }
 
+          if (relay.orgId !== token.orgId) {
+            throw new UnauthorizedError({ message: "Relay token org mismatch" });
+          }
+
           requestContext.set(RequestContextKey.OrgId, token.orgId);
 
           req.auth = {

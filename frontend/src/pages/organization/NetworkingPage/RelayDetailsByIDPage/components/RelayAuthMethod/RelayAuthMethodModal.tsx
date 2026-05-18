@@ -20,7 +20,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useUpdateRelayAuthMethod } from "@app/hooks/api/relays";
+import { useUpdateRelay } from "@app/hooks/api/relays";
 import { TRelayAuthMethodView } from "@app/hooks/api/relays/types";
 
 type SettableMethod = "aws" | "token";
@@ -67,7 +67,7 @@ type Props = {
 };
 
 export const RelayAuthMethodModal = ({ isOpen, onOpenChange, relayId, currentMethod }: Props) => {
-  const { mutateAsync: updateRelay, isPending } = useUpdateRelayAuthMethod();
+  const { mutateAsync: updateRelay, isPending } = useUpdateRelay();
   const { isSubOrganization } = useOrganization();
 
   const initialMethod: SettableMethod = currentMethod.method === "aws" ? "aws" : "token";
