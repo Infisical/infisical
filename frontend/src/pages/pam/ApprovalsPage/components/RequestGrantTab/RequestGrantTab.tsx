@@ -325,12 +325,17 @@ export const RequestGrantTab = () => {
                             {isActive ? "Active" : grant.status}
                           </Badge>
                           {grant.isBreakGlass && (
-                            <span
-                              className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300"
-                              title={grant.bypassReason ?? "Bypass approved"}
+                            <Tooltip
+                              content={
+                                <span className="block max-w-xs text-xs break-words">
+                                  Reason: {grant.bypassReason || "No reason provided"}
+                                </span>
+                              }
                             >
-                              Bypassed
-                            </span>
+                              <span className="cursor-default rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300">
+                                Bypassed
+                              </span>
+                            </Tooltip>
                           )}
                         </div>
                       </Td>
