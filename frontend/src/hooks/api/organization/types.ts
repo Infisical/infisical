@@ -171,7 +171,8 @@ export type TOrgIdentitiesList = {
 
 export enum OrgIdentityOrderBy {
   Name = "name",
-  Role = "role"
+  Role = "role",
+  LastUsed = "lastLoginTime"
 }
 
 export enum OrgMembershipStatus {

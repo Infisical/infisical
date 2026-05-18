@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDownIcon,
   EditIcon,
@@ -13,6 +13,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -33,6 +34,9 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ProjectIcon,
   Select,
   SelectContent,
@@ -136,20 +140,31 @@ const RoleBadges = ({ roles, allRoles }: RoleBadgesProps) => {
         </Badge>
       ))}
       {overflow.length > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span>
-              <Badge variant="neutral">+{overflow.length}</Badge>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-72">
-            <div className="flex flex-col gap-1">
-              {overflow.map((entry) => (
-                <span key={entry.id}>{formatRoleLabel(entry, rolesIndex)}</span>
-              ))}
-            </div>
-          </TooltipContent>
-        </Tooltip>
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger className="flex h-4 items-center">
+              <PopoverTrigger asChild>
+                <Badge variant="neutral" asChild>
+                  <button type="button" onClick={(e) => e.stopPropagation()}>
+                    +{overflow.length}
+                  </button>
+                </Badge>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Click to view additional roles</TooltipContent>
+          </Tooltip>
+          <PopoverContent
+            side="right"
+            className="flex w-auto max-w-sm flex-wrap gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {overflow.map((entry) => (
+              <Badge key={entry.id} variant="neutral">
+                {formatRoleLabel(entry, rolesIndex)}
+              </Badge>
+            ))}
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   );
@@ -164,7 +179,7 @@ const formatLastUsed = (lastLoginTime?: string) => {
   return `${formatDistanceToNow(date)} ago`;
 };
 
-const renderManagedByBadge = ({
+const getScopeBadge = ({
   project,
   isProjectIdentity,
   isSubOrganization,
@@ -174,39 +189,45 @@ const renderManagedByBadge = ({
   isProjectIdentity: boolean;
   isSubOrganization: boolean;
   isSubOrgIdentity: boolean;
-}) => {
+}): { variant: "project" | "sub-org" | "org"; icon: JSX.Element; label: string } => {
   if (isProjectIdentity && project) {
-    return (
-      <Badge variant="project">
-        <ProjectIcon />
-        {project.name}
-      </Badge>
-    );
+    return { variant: "project", icon: <ProjectIcon />, label: project.name };
   }
 
   if (isSubOrganization && isSubOrgIdentity) {
-    return (
-      <Badge variant="sub-org">
-        <SubOrgIcon />
-        Sub-Organization
-      </Badge>
-    );
+    return { variant: "sub-org", icon: <SubOrgIcon />, label: "Sub-Organization" };
   }
 
   if (isSubOrganization) {
-    return (
-      <Badge variant="org">
-        <OrgIcon />
-        Root Organization
-      </Badge>
-    );
+    return { variant: "org", icon: <OrgIcon />, label: "Root Organization" };
   }
 
+  return { variant: "org", icon: <OrgIcon />, label: "Organization" };
+};
+
+const renderScopeIconBadge = (args: {
+  project: { id: string; name: string; type: string } | null | undefined;
+  isProjectIdentity: boolean;
+  isSubOrganization: boolean;
+  isSubOrgIdentity: boolean;
+}) => {
+  const { variant, icon, label } = getScopeBadge(args);
   return (
-    <Badge variant="org">
-      <OrgIcon />
-      Organization
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">
+          <Badge variant={variant} isSquare>
+            {icon}
+          </Badge>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="[&>span:last-child]:hidden">
+        <Badge variant={variant}>
+          {icon}
+          {label}
+        </Badge>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -267,7 +288,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const { totalCount = 0, orgCount, projectCount } = data ?? {};
   const hasScopeCounts = orgCount !== undefined && projectCount !== undefined;
-  const showManagedByColumn = showAllScope || isSubOrganization;
+  const showScopeColumn = showAllScope || isSubOrganization;
   useResetPageHelper({
     totalCount,
     offset,
@@ -471,6 +492,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
+                {showScopeColumn && <TableHead className="w-5" />}
                 <TableHead
                   className="w-1/2 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
@@ -490,7 +512,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   className="cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
-                  {isSubOrganization ? "Sub-" : ""}Organization Role
+                  {showAllScope ? "Roles" : `${isSubOrganization ? "Sub-" : ""}Organization Role`}
                   <ChevronDownIcon
                     className={twMerge(
                       "transition-transform",
@@ -501,12 +523,22 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                {showManagedByColumn && <TableHead>Managed by</TableHead>}
                 {showAllScope && (
-                  <>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead>Last Auth Method</TableHead>
-                  </>
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => handleSort(OrgIdentityOrderBy.LastUsed)}
+                  >
+                    Last Used
+                    <ChevronDownIcon
+                      className={twMerge(
+                        "transition-transform",
+                        orderBy === OrgIdentityOrderBy.LastUsed &&
+                          orderDirection === OrderByDirection.DESC &&
+                          "rotate-180",
+                        orderBy !== OrgIdentityOrderBy.LastUsed && "opacity-30"
+                      )}
+                    />
+                  </TableHead>
                 )}
                 <TableHead className="w-5" />
               </TableRow>
@@ -515,26 +547,21 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               {isPending &&
                 Array.from({ length: perPage }).map((_, i) => (
                   <TableRow key={`skeleton-${i + 1}`}>
+                    {showScopeColumn && (
+                      <TableCell>
+                        <Skeleton className="size-4.5" />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
-                    {showManagedByColumn && (
+                    {showAllScope && (
                       <TableCell>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
-                    )}
-                    {showAllScope && (
-                      <>
-                        <TableCell>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                      </>
                     )}
                     <TableCell>
                       <Skeleton className="h-4 w-4" />
@@ -583,6 +610,16 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           });
                         }}
                       >
+                        {showScopeColumn && (
+                          <TableCell>
+                            {renderScopeIconBadge({
+                              project,
+                              isProjectIdentity,
+                              isSubOrganization,
+                              isSubOrgIdentity
+                            })}
+                          </TableCell>
+                        )}
                         <TableCell isTruncatable>{name}</TableCell>
                         <TableCell>
                           {showAllScope ? (
@@ -622,40 +659,28 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             </OrgPermissionCan>
                           )}
                         </TableCell>
-                        {showManagedByColumn && (
-                          <TableCell>
-                            {renderManagedByBadge({
-                              project,
-                              isProjectIdentity,
-                              isSubOrganization,
-                              isSubOrgIdentity
-                            })}
-                          </TableCell>
-                        )}
                         {showAllScope && (
-                          <>
-                            <TableCell className="whitespace-nowrap text-mineshaft-300">
-                              {lastLoginTime ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span>{formatLastUsed(lastLoginTime)}</span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {format(new Date(lastLoginTime), "PPpp")}
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <span className="text-mineshaft-500">Never</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-mineshaft-300">
-                              {lastLoginAuthMethod ? (
-                                identityAuthToNameMap[lastLoginAuthMethod]
-                              ) : (
-                                <span className="text-mineshaft-500">—</span>
-                              )}
-                            </TableCell>
-                          </>
+                          <TableCell className="whitespace-nowrap text-mineshaft-300">
+                            {lastLoginTime ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span>{formatLastUsed(lastLoginTime)}</span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-96 min-w-52 px-3">
+                                  <LastLoginSection
+                                    lastLoginAuthMethod={
+                                      lastLoginAuthMethod
+                                        ? identityAuthToNameMap[lastLoginAuthMethod]
+                                        : "—"
+                                    }
+                                    lastLoginTime={lastLoginTime}
+                                  />
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-mineshaft-500">Never</span>
+                            )}
+                          </TableCell>
                         )}
                         <TableCell>
                           <DropdownMenu>

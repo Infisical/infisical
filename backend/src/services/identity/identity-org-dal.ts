@@ -169,7 +169,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .whereNull(`${TableName.Identity}.projectId`)
-        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
+        .orderBy(
+          orderBy === OrgIdentityOrderBy.LastUsed
+            ? `${TableName.Membership}.${orderBy}`
+            : `${TableName.Identity}.${orderBy}`,
+          orderDirection
+        )
         .select(
           selectAllTableCols(TableName.Membership),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
@@ -306,6 +311,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         );
       if (orderBy === OrgIdentityOrderBy.Name) {
         void query.orderBy("identityName", orderDirection);
+      } else if (orderBy === OrgIdentityOrderBy.LastUsed) {
+        void query.orderByRaw(`?? ${orderDirection === OrderByDirection.ASC ? "ASC NULLS LAST" : "DESC NULLS LAST"}`, [
+          `${TableName.Membership}.lastLoginTime`
+        ]);
       }
 
       const docs = await query;
@@ -427,9 +436,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .orderBy(
+          // eslint-disable-next-line no-nested-ternary
           orderBy === OrgIdentityOrderBy.Role
             ? `${TableName.MembershipRole}.${orderBy}`
-            : `${TableName.Identity}.${orderBy}`,
+            : orderBy === OrgIdentityOrderBy.LastUsed
+              ? `${TableName.Membership}.${orderBy}`
+              : `${TableName.Identity}.${orderBy}`,
           orderDirection
         )
         .select(`${TableName.Membership}.id`)
@@ -592,6 +604,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `,
           [TableName.MembershipRole, "custom", TableName.Role, TableName.MembershipRole, db.raw(orderDirection)]
         );
+      } else if (orderBy === OrgIdentityOrderBy.LastUsed) {
+        void query.orderByRaw(`?? ${orderDirection === OrderByDirection.ASC ? "ASC NULLS LAST" : "DESC NULLS LAST"}`, [
+          `${TableName.Membership}.lastLoginTime`
+        ]);
       }
 
       const docs = await query;
