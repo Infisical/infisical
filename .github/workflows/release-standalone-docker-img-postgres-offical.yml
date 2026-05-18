@@ -151,13 +151,24 @@ jobs:
               echo "Creating tag in Infisical/infisical-omnibus: $TAG_NAME"
               LATEST_SHA=$(gh api repos/Infisical/infisical-omnibus/git/refs/heads/main --jq '.object.sha')
               echo "Latest SHA: $LATEST_SHA"
-              
+
               gh api repos/Infisical/infisical-omnibus/git/refs \
                 --method POST \
                 --field ref="refs/tags/$TAG_NAME" \
                 --field sha="$LATEST_SHA"
-              
+
               echo "Successfully created tag $TAG_NAME"
             fi
           env:
             GH_TOKEN: ${{ secrets.OMNIBUS_RELEASE_TOKEN }}
+
+    generate-upgrade-impact:
+        name: Generate upgrade impact PR
+        needs: [infisical-standalone, infisical-fips-standalone, trigger-binary-release]
+        permissions:
+            contents: write
+            pull-requests: write
+        uses: ./.github/workflows/generate-upgrade-impact.yml
+        with:
+            tag: ${{ github.ref_name }}
+        secrets: inherit
