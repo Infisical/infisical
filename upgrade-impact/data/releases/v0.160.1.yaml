@@ -1,0 +1,71 @@
+version: v0.160.1
+releasedAt: 2026-05-19T22:41:11+04:00
+sourceTag: v0.160.1
+previousTag: v0.160.0
+impactLevel: low
+summary: Adds two startup database migrations and updates gateway health
+  tracking. Gateway Helm chart now supports persistent session recordings for
+  enrolled gateways.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM approvals schema migration
+    description: Startup adds approval policy enforcement and bypass fields, plus a
+      new approval policy bypassers table for PAM access workflows.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260430120000_pam-access-break-glass.ts
+        path: backend/src/db/migrations/20260430120000_pam-access-break-glass.ts
+        description: Adds enforcementLevel and bypass tables/columns
+  - title: Gateway heartbeat TTL migration
+    description: Startup adds gateway heartbeatTTL, backfills existing heartbeat
+      rows to 1800, and removes lastHealthCheckStatus from the gateway table.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260515233927_add-gateway-heartbeat-ttl.ts
+        path: backend/src/db/migrations/20260515233927_add-gateway-heartbeat-ttl.ts
+        description: Adds heartbeatTTL and drops lastHealthCheckStatus
+      - type: pr
+        ref: "#6432"
+        url: https://github.com/Infisical/infisical/pull/6432
+        description: Gateway staleness timeout reduced to 5 minutes
+configChanges: []
+deploymentNotes:
+  - title: Gateway Helm session recording storage
+    description: The gateway Helm chart mounts session recordings on persistent
+      storage when enrollment mode uses persistence. Token enrollment still
+      requires persistence to survive pod restarts.
+    action: If you use the infisical-gateway chart and need PAM session recordings
+      kept across pod restarts, set persistence storage as needed before
+      upgrading.
+    confidence: high
+    evidence:
+      - type: file
+        ref: helm-charts/infisical-gateway/templates/deployment.yaml
+        path: helm-charts/infisical-gateway/templates/deployment.yaml
+        description: Mounts session recordings from PVC or emptyDir
+      - type: file
+        ref: helm-charts/infisical-gateway/templates/pvc.yaml
+        path: helm-charts/infisical-gateway/templates/pvc.yaml
+        description: Creates PVC for enrolled gateway data
+      - type: file
+        ref: helm-charts/infisical-gateway/values.yaml
+        path: helm-charts/infisical-gateway/values.yaml
+        description: Persistence defaults enabled with session recordings directory
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-19T19:39:10.464Z
+  sourceRange:
+    from: v0.160.0
+    to: v0.160.1
