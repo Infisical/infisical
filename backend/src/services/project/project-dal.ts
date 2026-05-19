@@ -152,6 +152,57 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Lightweight variant of findUserProjects/findIdentityProjects that returns only the
+  // project IDs the actor has direct or group-based project membership on. Skips the
+  // Project/Environment joins + sqlNestRelationships hydration used by the full variants,
+  // for hot paths that need permission scoping but don't need the project rows themselves.
+  const findActorAccessibleProjectIds = async (
+    actorId: string,
+    actorType: ActorType,
+    orgId: string,
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      if (actorType !== ActorType.USER && actorType !== ActorType.IDENTITY) {
+        return [];
+      }
+      const isUser = actorType === ActorType.USER;
+      const groupMembershipTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupMembershipActorColumn = isUser ? "userId" : "identityId";
+      const actorColumn = isUser ? "actorUserId" : "actorIdentityId";
+
+      const groupSubquery = (tx || db.replicaNode())(TableName.Groups)
+        .leftJoin(groupMembershipTable, `${groupMembershipTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+      const rows = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.scopeProjectId`)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.${actorColumn}`, actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, groupSubquery);
+        })
+        .distinct<{ scopeProjectId: string }[]>(`${TableName.Membership}.scopeProjectId`);
+
+      return rows.map((r) => r.scopeProjectId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find actor accessible project ids" });
+    }
+  };
+
+  // Lightweight all-projects-in-org lookup that returns only the IDs.
+  const findOrgProjectIds = async (orgId: string, tx?: Knex): Promise<string[]> => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Project).where({ orgId }).select("id");
+      return rows.map((r) => r.id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org project ids" });
+    }
+  };
+
   const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
       const ghostUser = await (tx || db.replicaNode())(TableName.Membership)
@@ -458,6 +509,8 @@ export const projectDALFactory = (db: TDbClient) => {
     ...projectOrm,
     findUserProjects,
     findIdentityProjects,
+    findActorAccessibleProjectIds,
+    findOrgProjectIds,
     setProjectUpgradeStatus,
     findProjectGhostUser,
     findProjectById,

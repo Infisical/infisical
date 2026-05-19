@@ -67,7 +67,7 @@ type TIdentityServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findUserProjects" | "findIdentityProjects" | "find">;
+  projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -537,17 +537,11 @@ export const identityServiceFactory = ({
         OrgPermissionSubjects.AdminConsole
       );
       if (canAccessAllProjects) {
-        const orgProjects = await projectDAL.find({ orgId: actorOrgId });
-        accessibleProjectIds = orgProjects.map((p) => p.id);
+        accessibleProjectIds = await projectDAL.findOrgProjectIds(actorOrgId);
       } else {
-        const actorProjects =
-          actor === ActorType.USER
-            ? await projectDAL.findUserProjects(actorId, actorOrgId)
-            : await projectDAL.findIdentityProjects(actorId, actorOrgId);
-
-        const uniqueProjectIds = Array.from(new Set(actorProjects.map((p) => p.id)));
+        const actorProjectIds = await projectDAL.findActorAccessibleProjectIds(actorId, actor, actorOrgId);
         const projectAccessChecks = await Promise.all(
-          uniqueProjectIds.map(async (projectId) => {
+          actorProjectIds.map(async (projectId) => {
             try {
               const { permission: projectPermission } = await permissionService.getProjectPermission({
                 actor,

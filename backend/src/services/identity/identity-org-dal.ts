@@ -735,14 +735,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         };
 
         const projectScopeBranch = (sub: Knex.QueryBuilder) => {
-          if (accessibleProjectIds.length === 0) {
-            void sub.whereRaw("1 = 0");
-          } else {
-            void sub
-              .where(`${TableName.Membership}.scope`, AccessScope.Project)
-              .where(`${TableName.Membership}.scopeOrgId`, orgId)
-              .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
-          }
+          void sub
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .where(`${TableName.Membership}.scopeOrgId`, orgId)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
         };
 
         if (includeOrgScope && includeProjectScope) {
@@ -811,9 +807,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.Project, `${TableName.Project}.id`, `${TableName.Membership}.scopeProjectId`)
-        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-          void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
-        })
         .leftJoin(
           TableName.IdentityUniversalAuth,
           `${TableName.Membership}.actorIdentityId`,
@@ -926,12 +919,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("name").as("crName").withSchema(TableName.Role))
         .select(db.ref("slug").as("crSlug").withSchema(TableName.Role))
         .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
-        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role))
-        .select(
-          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
-          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
-        );
+        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role));
 
       if (orderBy === OrgIdentityOrderBy.Role) {
         void query.orderBy("searchedMemberships.roleSort", orderDirection);
@@ -1060,15 +1048,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
                   }
                 : undefined
             })
-          },
-          {
-            key: "metadataId",
-            label: "metadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
-              id: metadataId,
-              key: metadataKey,
-              value: metadataValue
-            })
           }
         ]
       });
@@ -1108,14 +1087,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       };
 
       const projectScopeBranch = (sub: Knex.QueryBuilder) => {
-        if (accessibleProjectIds.length === 0) {
-          void sub.whereRaw("1 = 0");
-        } else {
-          void sub
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .where(`${TableName.Membership}.scopeOrgId`, orgId)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
-        }
+        void sub
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeOrgId`, orgId)
+          .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
       };
 
       if (includeOrgScope && includeProjectScope) {
