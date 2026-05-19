@@ -2,6 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  # Named -credentials for backwards compatibility with chart <=1.1.0. Also stores session recordings via subPath.
   name: {{ include "infisical-gateway.fullname" . }}-credentials
   labels:
     {{- include "infisical-gateway.labels" . | nindent 4 }}
