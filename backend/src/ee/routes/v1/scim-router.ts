@@ -461,7 +461,10 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         startIndex: req.query.startIndex,
         filter: req.query.filter,
         limit: req.query.count,
-        isMembersExcluded: req.query.excludedAttributes === "members"
+        isMembersExcluded: req.query.excludedAttributes
+          ?.split(",")
+          .map((s) => s.trim())
+          .includes("members")
       });
 
       return groups;

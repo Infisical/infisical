@@ -1162,8 +1162,7 @@ export const scimServiceFactory = ({
         orgId,
         eventType: ScimEvent.GET_GROUP,
         event: {
-          groupName: group.name,
-          numberOfMembers: 0
+          groupName: group.name
         }
       });
 
