@@ -9,7 +9,6 @@ import type WebSocket from "ws";
 
 import { PostgresClientMessageType, PostgresServerMessageType } from "./pam-postgres-ws-types";
 import {
-  SessionEndReason,
   TerminalServerMessageType,
   type TSessionContext,
   type TWebSocketServerMessage
