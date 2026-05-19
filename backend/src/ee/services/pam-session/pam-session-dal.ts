@@ -84,6 +84,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     const updatedCount = await (tx || db)(TableName.PamSession)
       .where("userId", userId)
       .where("projectId", projectId)
+      .where("accessMethod", "web")
       .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
       .where("expiresAt", "<", now)
       .update({ status: PamSessionStatus.Ended, endedAt: now });
