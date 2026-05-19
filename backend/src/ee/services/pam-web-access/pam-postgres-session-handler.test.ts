@@ -157,20 +157,18 @@ describe("handlePostgresSession", () => {
     expect(pg.Client).toHaveBeenCalledTimes(1);
   });
 
-  test("tears down the WS when reachability check fails", async () => {
+  test("throws when reachability check fails so the service catch block handles cleanup", async () => {
     clientScripts.push({
       connect: async () => {
         throw new Error("connection refused");
       }
     });
     const ctx = createMockContext();
-    const result = await handlePostgresSession(ctx, mockParams);
 
-    expect(ctx.sendSessionEnd).toHaveBeenCalledWith(SessionEndReason.SetupFailed);
+    await expect(handlePostgresSession(ctx, mockParams)).rejects.toThrow("connection refused");
     expect(ctx.sendMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: TerminalServerMessageType.Ready })
     );
-    expect(result.cleanup).toBeDefined();
   });
 
   test("open-connection creates a controller and returns connectionId + backendPid", async () => {

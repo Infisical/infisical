@@ -52,23 +52,10 @@ export const handlePostgresSession = async (
     database: connectionDetails.database
   };
 
-  // Early reachability check — fail fast before sending ready, preserving the
-  // early "Connection error" UX the FE relies on.
-  try {
-    await verifyReachabilityOneShot(oneShotOpts);
-  } catch (err) {
-    logger.error(err, `Postgres reachability check failed [sessionId=${sessionId}]`);
-    sendSessionEnd(SessionEndReason.SetupFailed);
-    onCleanup();
-    try {
-      socket.close();
-    } catch {
-      // ignore
-    }
-    return {
-      cleanup: async () => {}
-    };
-  }
+  // Reachability check — throws on failure so the service's catch block can
+  // handle cleanup. Matches the SSH and Redis handlers which also let
+  // connection errors propagate.
+  await verifyReachabilityOneShot(oneShotOpts);
 
   sendMessage({
     type: TerminalServerMessageType.Ready,
