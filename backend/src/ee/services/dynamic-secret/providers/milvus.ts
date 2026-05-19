@@ -46,21 +46,13 @@ const generatePassword = () => {
   return customAlphabet(charset, 32)();
 };
 
-// it is possible to connect to Milvus without defining a CA, because they have their on demand cluster on zilliz cloud
-export const resolveMilvusUseTls = (host: string, ca?: string) => {
-  if (/^https:\/\//i.test(host)) return true;
-  if (/^http:\/\//i.test(host)) return false;
-  return Boolean(ca);
-};
-
-export const parseMilvusHost = (host: string, port: number, useTls: boolean) => {
+export const parseMilvusHost = (providerInputs: TMilvusProviderInputs, host: string, port: number) => {
   const hostWithoutScheme = host.replace(/^https?:\/\//i, "");
-  const scheme = useTls ? "https" : "http";
-  const urlString = hostWithoutScheme.includes("://") ? hostWithoutScheme : `${scheme}://${hostWithoutScheme}`;
+  const scheme = providerInputs.ca ? "https" : "http";
 
   let url: URL;
   try {
-    url = new URL(urlString);
+    url = new URL(`${scheme}://${hostWithoutScheme}`);
   } catch (err) {
     logger.error(err, `Invalid Milvus host URL: ${host}`);
     throw new BadRequestError({ message: "Invalid Milvus host URL" });
@@ -71,8 +63,7 @@ export const parseMilvusHost = (host: string, port: number, useTls: boolean) => 
 };
 
 const buildBaseUrl = (providerInputs: TMilvusProviderInputs, host: string, port: number) => {
-  const useTls = resolveMilvusUseTls(providerInputs.host, providerInputs.ca);
-  const { origin } = parseMilvusHost(host, port, useTls);
+  const { origin } = parseMilvusHost(providerInputs, host, port);
   return origin;
 };
 
@@ -92,8 +83,7 @@ export const MilvusProvider = ({
 }: TMilvusProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: object) => {
     const providerInputs = await DynamicSecretMilvusSchema.parseAsync(inputs);
-    const useTls = resolveMilvusUseTls(providerInputs.host, providerInputs.ca);
-    const { hostname, origin } = parseMilvusHost(providerInputs.host, providerInputs.port, useTls);
+    const { hostname, origin } = parseMilvusHost(providerInputs, providerInputs.host, providerInputs.port);
     const isGateway = Boolean(providerInputs.gatewayId || providerInputs.gatewayPoolId);
 
     await blockLocalAndPrivateIpAddresses(origin, isGateway);
@@ -315,7 +305,7 @@ export const MilvusProvider = ({
 
       try {
         const role = await describeRole(providerInputs, host, port, roleName);
-        if (role.code === 0) {
+        if (role.code === 0 && role.data.length > 0) {
           await request.post("/v2/vectordb/roles/drop", { roleName }, requestConfig);
         }
 
