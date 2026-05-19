@@ -784,9 +784,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       if (orderBy === OrgIdentityOrderBy.Role) {
         void searchedMemberships.orderBy("roleSort", orderDirection);
       } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
-        // Rely on Postgres default null ordering: DESC surfaces never-used identities first,
-        // ASC pushes them to the bottom.
-        void searchedMemberships.orderBy("lastLoginSort", orderDirection);
+        // Never-used identities (lastLoginTime IS NULL) are always pushed to the bottom
+        // regardless of sort direction so the visible page is dominated by real activity.
+        void searchedMemberships.orderBy("lastLoginSort", orderDirection, "last");
       } else {
         void searchedMemberships.orderBy("identityName", orderDirection);
       }
@@ -924,7 +924,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       if (orderBy === OrgIdentityOrderBy.Role) {
         void query.orderBy("searchedMemberships.roleSort", orderDirection);
       } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
-        void query.orderBy("searchedMemberships.lastLoginSort", orderDirection);
+        void query.orderBy("searchedMemberships.lastLoginSort", orderDirection, "last");
       } else {
         void query.orderBy("searchedMemberships.identityName", orderDirection);
       }
