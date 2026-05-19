@@ -113,7 +113,6 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
       await updateCa({
         id: ca.id,
         type: CaType.INTERNAL,
-        projectId: ca.projectId,
         configuration: {
           crlDistributionPointUrls: crlDistributionPointUrls.map(({ value }) => value)
         } as TInternalCertificateAuthority["configuration"]

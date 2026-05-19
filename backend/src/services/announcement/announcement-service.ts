@@ -68,13 +68,15 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
         // the bake-time link allowlist was added) can't carry an unsafe href.
         const sanitized = parsed.map((a) => ({ ...a, link: sanitizeLink(a.link) }));
         logger.info(
-          `Loaded ${sanitized.length} bundled announcement(s) from ${BUNDLED_JSON_PATH} — Contentful fetches disabled`
+          `announcements: Loaded ${sanitized.length} bundled announcement(s) from ${BUNDLED_JSON_PATH} — Contentful fetches disabled`
         );
         return sanitized;
       } catch (err) {
         const { code } = err as NodeJS.ErrnoException;
-        if (code !== "ENOENT") {
-          logger.warn({ err }, `Failed to read bundled announcements at ${BUNDLED_JSON_PATH}`);
+        if (code === "ENOENT") {
+          logger.info(`announcements: No bundled file at [path=${BUNDLED_JSON_PATH}] — falling back to Contentful`);
+        } else {
+          logger.warn({ err }, `announcements: Failed to read bundled announcements at [path=${BUNDLED_JSON_PATH}]`);
         }
         return null;
       }
@@ -85,13 +87,31 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
   const fetchRecent = async (): Promise<TAnnouncement[]> => {
     const appCfg = getConfig();
 
-    if (!appCfg.ANNOUNCEMENTS_ENABLED || !appCfg.CONTENTFUL_SPACE_ID || !appCfg.CONTENTFUL_DELIVERY_TOKEN) {
+    if (!appCfg.ANNOUNCEMENTS_ENABLED) {
+      logger.info("announcements: ANNOUNCEMENTS_ENABLED is false — returning [] (fetchRecent)");
+      return [];
+    }
+
+    if (!appCfg.CONTENTFUL_SPACE_ID || !appCfg.CONTENTFUL_DELIVERY_TOKEN) {
+      logger.info(
+        {
+          hasSpaceId: !!appCfg.CONTENTFUL_SPACE_ID,
+          hasDeliveryToken: !!appCfg.CONTENTFUL_DELIVERY_TOKEN,
+          environment: appCfg.CONTENTFUL_ENVIRONMENT
+        },
+        `announcements: Contentful creds missing — returning [] [hasSpaceId=${!!appCfg.CONTENTFUL_SPACE_ID}] [hasDeliveryToken=${!!appCfg.CONTENTFUL_DELIVERY_TOKEN}]`
+      );
       return [];
     }
 
     const url = `https://cdn.contentful.com/spaces/${appCfg.CONTENTFUL_SPACE_ID}/environments/${appCfg.CONTENTFUL_ENVIRONMENT}/entries`;
 
     try {
+      logger.info(
+        { spaceId: appCfg.CONTENTFUL_SPACE_ID, environment: appCfg.CONTENTFUL_ENVIRONMENT, limit: RECENT_LIMIT },
+        `announcements: Fetching from Contentful [spaceId=${appCfg.CONTENTFUL_SPACE_ID}] [environment=${appCfg.CONTENTFUL_ENVIRONMENT}] [limit=${RECENT_LIMIT}]`
+      );
+
       const { data } = await request.get<TContentfulEntriesResponse>(url, {
         params: {
           content_type: CONTENT_TYPE,
@@ -115,8 +135,24 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
         }
       }
 
-      return data.items.flatMap<TAnnouncement>((entry) => {
-        if (!entry?.fields?.title || !entry.fields.body || !entry.fields.published) return [];
+      const rawItemCount = data.items?.length ?? 0;
+      logger.info(
+        { rawItemCount, assetCount: assetById.size },
+        `announcements: Contentful response received [rawItemCount=${rawItemCount}] [assetCount=${assetById.size}]`
+      );
+
+      const result = data.items.flatMap<TAnnouncement>((entry) => {
+        if (!entry?.fields?.title || !entry.fields.body || !entry.fields.published) {
+          const entryId = entry?.sys?.id ?? "unknown";
+          const hasTitle = !!entry?.fields?.title;
+          const hasBody = !!entry?.fields?.body;
+          const hasPublished = !!entry?.fields?.published;
+          logger.info(
+            { entryId, hasTitle, hasBody, hasPublished },
+            `announcements: Skipping entry — missing required fields [entryId=${entryId}] [hasTitle=${hasTitle}] [hasBody=${hasBody}] [hasPublished=${hasPublished}]`
+          );
+          return [];
+        }
 
         const imageAssetId = entry.fields.image?.sys?.id;
         const imageUrl = imageAssetId ? (assetById.get(imageAssetId) ?? null) : null;
@@ -133,6 +169,10 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
           }
         ];
       });
+
+      logger.info({ count: result.length }, `announcements: Mapped Contentful response [count=${result.length}]`);
+
+      return result;
     } catch (err) {
       // Returning [] (instead of throwing) lets withCache write a negative entry,
       // so a Contentful outage doesn't trigger a fresh 4-attempt axios-retry burst
@@ -140,7 +180,7 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
       if (!hasLoggedFetchError) {
         logger.warn(
           { err },
-          "Failed to fetch announcements — returning empty list (will retry after negative-cache TTL)"
+          "announcements: Failed to fetch from Contentful — returning empty list (will retry after negative-cache TTL)"
         );
         hasLoggedFetchError = true;
       }
@@ -150,17 +190,30 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
 
   const getAnnouncements = async (): Promise<TAnnouncement[]> => {
     const appCfg = getConfig();
-    if (!appCfg.ANNOUNCEMENTS_ENABLED) return [];
+    if (!appCfg.ANNOUNCEMENTS_ENABLED) {
+      logger.info("announcements: ANNOUNCEMENTS_ENABLED is false — returning [] (getAnnouncements)");
+      return [];
+    }
 
     const fromBundle = await loadBundled();
-    if (fromBundle) return fromBundle.slice(0, RECENT_LIMIT);
+    if (fromBundle) {
+      const sliced = fromBundle.slice(0, RECENT_LIMIT);
+      logger.info({ count: sliced.length }, `announcements: Returning bundled announcements [count=${sliced.length}]`);
+      return sliced;
+    }
 
-    return withCache({
+    logger.info("announcements: Resolving via Contentful cache");
+    const result = await withCache({
       keyStore,
       key: KeyStorePrefixes.RecentAnnouncements,
-      ttlSeconds: (result) => (result.length === 0 ? NEGATIVE_CACHE_TTL_SECONDS : CACHE_TTL_SECONDS),
+      ttlSeconds: (cached) => (cached.length === 0 ? NEGATIVE_CACHE_TTL_SECONDS : CACHE_TTL_SECONDS),
       fetcher: fetchRecent
     });
+    logger.info(
+      { count: result.length },
+      `announcements: Returning cached/fetched announcements [count=${result.length}]`
+    );
+    return result;
   };
 
   const listRecentAnnouncements = async ({
@@ -168,14 +221,32 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
   }: {
     userId: string;
   }): Promise<{ announcements: TAnnouncement[]; lastSeenAnnouncementId: string | null }> => {
+    logger.info("announcements: listRecentAnnouncements called");
+
     const user = await userDAL.findById(userId);
     const lastSeenAnnouncementId = user?.lastSeenAnnouncementId ?? null;
 
-    if (user?.createdAt && Date.now() - new Date(user.createdAt).getTime() < NEW_USER_GRACE_PERIOD_MS) {
-      return { announcements: [], lastSeenAnnouncementId };
+    logger.info(
+      { hasUser: !!user, hasCreatedAt: !!user?.createdAt, lastSeenAnnouncementId },
+      `announcements: User lookup result [hasUser=${!!user}] [hasCreatedAt=${!!user?.createdAt}]`
+    );
+
+    if (user?.createdAt) {
+      const ageMs = Date.now() - new Date(user.createdAt).getTime();
+      if (ageMs < NEW_USER_GRACE_PERIOD_MS) {
+        logger.info(
+          { createdAt: user.createdAt, ageMs },
+          `announcements: User in 7-day grace period — returning [] [ageMs=${ageMs}]`
+        );
+        return { announcements: [], lastSeenAnnouncementId };
+      }
     }
 
     const announcements = await getAnnouncements();
+    logger.info(
+      { count: announcements.length, lastSeenAnnouncementId },
+      `announcements: Returning announcements [count=${announcements.length}] [lastSeenAnnouncementId=${lastSeenAnnouncementId ?? "null"}]`
+    );
     return { announcements, lastSeenAnnouncementId };
   };
 

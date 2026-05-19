@@ -19,6 +19,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       return "OK";
     },
     setExpiry: async () => 0,
+    ttl: async () => -1,
     setItemWithExpiry: async (key, value) => {
       store[key] = value;
       return "OK";
@@ -80,6 +81,12 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     incrementBy: async () => {
       return 1;
+    },
+    incrementByAndRefreshExpiryIfUnderLimit: async () => {
+      return 1;
+    },
+    decrementByOrDelete: async () => {
+      return 0;
     },
     acquireLock: () => {
       return Promise.resolve({

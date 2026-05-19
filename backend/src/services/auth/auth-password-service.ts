@@ -1,6 +1,7 @@
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -19,12 +20,42 @@ type TAuthPasswordServiceFactoryDep = {
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
-export const authPaswordServiceFactory = ({ userDAL, tokenService, smtpService }: TAuthPasswordServiceFactoryDep) => {
-  const resetPasswordV2 = async ({ userId, newPassword, oldPassword, type }: TResetPasswordV2DTO) => {
+export const authPaswordServiceFactory = ({
+  userDAL,
+  tokenService,
+  smtpService,
+  keyStore
+}: TAuthPasswordServiceFactoryDep) => {
+  const resetPasswordV2 = async ({
+    userId,
+    newPassword,
+    oldPassword,
+    type,
+    recoveryTokenJti,
+    recoveryTokenExpiresAt
+  }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
+
+    if (type === ResetPasswordV2Type.Recovery) {
+      if (!recoveryTokenJti || !recoveryTokenExpiresAt) {
+        throw new UnauthorizedError({ message: "Invalid recovery token" });
+      }
+      // Marker TTL tracks the token's own remaining lifetime so non-default JWT_SIGNUP_LIFETIME
+      // configs can't outlast the replay marker and reopen the reuse window.
+      const ttlSeconds = Math.max(1, recoveryTokenExpiresAt - Math.floor(Date.now() / 1000));
+      const claimed = await keyStore.setItemWithExpiryNX(
+        KeyStorePrefixes.UsedAccountRecoveryToken(userId, recoveryTokenJti),
+        ttlSeconds,
+        "1"
+      );
+      if (!claimed) {
+        throw new UnauthorizedError({ message: "Invalid recovery token" });
+      }
+    }
 
     const user = await userDAL.findById(userId);
     if (!user || !user.isAccepted || !user.isEmailVerified) {

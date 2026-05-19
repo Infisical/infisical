@@ -6,6 +6,7 @@ import handlebars from "handlebars";
 import {
   AccessScope,
   ActionProjectType,
+  ApplicationMembershipRole,
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
@@ -13,6 +14,10 @@ import {
   TProjects
 } from "@app/db/schemas";
 import {
+  applicationAdminPermissions,
+  applicationAuditorPermissions,
+  applicationOperatorPermissions,
+  applicationProjectAdminFallbackPermissions,
   cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
@@ -20,6 +25,7 @@ import {
   projectViewerPermission,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
+import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
@@ -111,6 +117,33 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   return rules;
 };
 
+const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO) => {
+  const rules = appUserRoles
+    .map(({ role }) => {
+      switch (role) {
+        case ApplicationMembershipRole.Admin:
+          return applicationAdminPermissions;
+        case ApplicationMembershipRole.Operator:
+          return applicationOperatorPermissions;
+        case ApplicationMembershipRole.Auditor:
+          return applicationAuditorPermissions;
+        case ApplicationMembershipRole.Custom:
+          throw new BadRequestError({
+            message: "Custom resource-level roles are not supported yet"
+          });
+        default:
+          throw new NotFoundError({
+            name: "ApplicationRoleInvalid",
+            message: `Application role '${role}' not found`
+          });
+      }
+    })
+    .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ResourcePermissionSet>>[])
+    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
+
+  return rules;
+};
+
 type MembershipWithRoles = {
   roles?: Array<{
     role: string;
@@ -125,28 +158,36 @@ type MembershipWithRoles = {
   }>;
 };
 
+const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(role: U): boolean =>
+  !role.isTemporary ||
+  Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
+
 const flattenActiveRolesFromMemberships = <T extends string>(
   memberships: MembershipWithRoles[],
   customRoleValue: T
 ): { role: string; permissions?: unknown }[] => {
-  const filterTemporary = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
-    items: U[]
-  ): U[] =>
-    items.filter(
-      ({ isTemporary, temporaryAccessEndTime }) =>
-        !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-    );
   return memberships.flatMap((membership) => {
-    const activeRoles = filterTemporary(membership?.roles ?? []).map(({ role, permissions }) => ({
-      role,
-      permissions
-    }));
-    const activeAdditionalPrivileges = filterTemporary(membership?.additionalPrivileges ?? []).map(
-      ({ permissions }) => ({ role: customRoleValue, permissions })
-    );
+    const activeRoles = (membership?.roles ?? [])
+      .filter(isActiveRole)
+      .map(({ role, permissions }) => ({ role, permissions }));
+    const activeAdditionalPrivileges = (membership?.additionalPrivileges ?? [])
+      .filter(isActiveRole)
+      .map(({ permissions }) => ({ role: customRoleValue, permissions }));
     return activeRoles.concat(activeAdditionalPrivileges);
   });
 };
+
+const membershipsHaveActiveRole = (
+  memberships: Array<{
+    roles: Array<{
+      role: string;
+      customRoleSlug?: string | null;
+      isTemporary?: boolean;
+      temporaryAccessEndTime?: Date | null;
+    }>;
+  }>,
+  role: string
+): boolean => memberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role) && isActiveRole(r)));
 
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
@@ -220,8 +261,7 @@ export const permissionServiceFactory = ({
 
       const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, OrgMembershipRole.Custom);
 
-      const hasRole = (role: string) =>
-        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+      const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 
       const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
         conditionsMatcher
@@ -366,7 +406,7 @@ export const permissionServiceFactory = ({
 
     let username = "";
     if (actor === ActorType.USER) {
-      const userDetails = await userDAL.findById(actorId);
+      const userDetails = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
       username = userDetails?.username ?? "";
     } else {
       const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
@@ -503,8 +543,7 @@ export const permissionServiceFactory = ({
 
       const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
 
-      const hasRole = (role: string) =>
-        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+      const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 
       // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
       if (actor === ActorType.USER) {
@@ -572,6 +611,95 @@ export const permissionServiceFactory = ({
     requestContext.set(RequestContextKey.ProjectDetails, payload.projectDetailsCtx);
     requestContext.set(RequestContextKey.IdentityPermissionMetadata, payload.identityPermissionMetadataCtx);
     return payload.result;
+  };
+
+  const getResourcePermission: TPermissionServiceFactory["getResourcePermission"] = async ({
+    actor,
+    actorId,
+    projectId,
+    resourceType,
+    resourceId,
+    actorAuthMethod,
+    actorOrgId
+  }) => {
+    if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) {
+      throw new BadRequestError({
+        message: "Invalid actor provided",
+        name: "Get resource permission"
+      });
+    }
+
+    const memoKey = requestMemoKeys.resourcePermission({
+      projectId,
+      resourceType,
+      resourceId,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    return requestMemoize(memoKey, async () => {
+      const resourceMemberships = await permissionDAL.getResourceMembership({
+        projectId,
+        resourceType,
+        resourceId,
+        actorId,
+        actorType: actor
+      });
+
+      let isProjectAdmin = false;
+      try {
+        const projectPerm = await getProjectPermission({
+          actor,
+          actorId,
+          projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actionProjectType: ActionProjectType.CertificateManager
+        });
+        isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
+      } catch {
+        isProjectAdmin = false;
+      }
+
+      if (resourceMemberships?.length) {
+        const permissionFromRoles = flattenActiveRolesFromMemberships(
+          resourceMemberships,
+          ApplicationMembershipRole.Custom
+        );
+        const resourceRules = buildResourcePermissionRules(permissionFromRoles);
+        const mergedRules = isProjectAdmin
+          ? [...resourceRules, ...applicationProjectAdminFallbackPermissions]
+          : resourceRules;
+        const permission = createMongoAbility<ResourcePermissionSet>(mergedRules, { conditionsMatcher });
+
+        const hasRole = (role: string) => membershipsHaveActiveRole(resourceMemberships, role);
+
+        return {
+          permission,
+          memberships: resourceMemberships,
+          hasRole,
+          isImplicitAdmin: false
+        };
+      }
+
+      if (isProjectAdmin) {
+        const permission = createMongoAbility<ResourcePermissionSet>(applicationProjectAdminFallbackPermissions, {
+          conditionsMatcher
+        });
+        return {
+          permission,
+          memberships: [],
+          hasRole: () => false,
+          isImplicitAdmin: true
+        };
+      }
+
+      throw new ForbiddenRequestError({
+        message: `You are not a member of this ${resourceType}.`
+      });
+    });
   };
 
   const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId, orgId) => {
@@ -821,6 +949,7 @@ export const permissionServiceFactory = ({
   return {
     getOrgPermission,
     getProjectPermission,
+    getResourcePermission,
     getProjectPermissions,
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,

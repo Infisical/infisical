@@ -1,5 +1,4 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import {
@@ -7,7 +6,6 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -15,31 +13,27 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { gatewaysQueryKeys } from "@app/hooks/api";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 
-export const gatewayOptionSchema = z.object({
-  id: z.string().min(1, "Gateway is required"),
-  name: z.string()
-});
-
+// No .refine() — would turn into ZodEffects and break .extend() in per-type discovery forms.
 export const genericDiscoveryFieldsSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
-  gateway: gatewayOptionSchema.nullable().refine((val) => val !== null, {
-    message: "Gateway is required"
-  }),
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional(),
   schedule: z.string().default("manual")
 });
 
 type GenericFormValues = {
   name: string;
-  gateway: { id: string; name: string } | null;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   schedule: string;
 };
 
 export const GenericDiscoveryFields = () => {
-  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
-
-  const { control } = useFormContext<GenericFormValues>();
+  const { control, watch, setValue } = useFormContext<GenericFormValues>();
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
 
   return (
     <div className="flex flex-col gap-3">
@@ -66,31 +60,28 @@ export const GenericDiscoveryFields = () => {
 
       <Controller
         control={control}
-        name="gateway"
-        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
-          const selectedOption =
-            value && gateways ? (gateways.find((g) => g.id === value.id) ?? value) : value;
-
-          return (
-            <Field>
-              <FieldLabel>Gateway</FieldLabel>
-              <FieldContent>
-                <FilterableSelect
-                  value={selectedOption}
-                  onChange={onChange}
-                  onBlur={onBlur}
-                  options={gateways}
-                  isError={Boolean(error)}
-                  isLoading={isGatewaysLoading}
-                  placeholder="Select a Gateway..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                />
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          );
-        }}
+        name="gatewayId"
+        render={({ fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>Gateway</FieldLabel>
+            <FieldContent>
+              <GatewayPicker
+                isRequired
+                variant="v3"
+                placeholder="Select a Gateway..."
+                value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                  setValue("gatewayId", newGwId, { shouldDirty: true, shouldValidate: true });
+                  setValue("gatewayPoolId", newPoolId, {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  });
+                }}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
       />
 
       <Controller

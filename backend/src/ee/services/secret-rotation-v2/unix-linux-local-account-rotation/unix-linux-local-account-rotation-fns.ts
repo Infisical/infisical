@@ -2,6 +2,7 @@ import { Client, ClientChannel } from "ssh2";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -306,7 +307,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationWithConnection,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service) => {
+> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const {
     username,
@@ -316,17 +317,28 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   } = parameters;
   const shouldUseSudo = Boolean(useSudo);
 
-  // Helper to verify SSH credentials work
-  // Tries direct SSH first, then falls back to su via app connection
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
+
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
+    const conn = await getResolvedConnection();
     const verifyConfig: TSshConnectionConfig = {
       method: SshConnectionMethod.Password,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      app: conn.app,
+      orgId: conn.orgId,
+      gatewayId: conn.gatewayId,
       credentials: {
-        host: connection.credentials.host,
-        port: connection.credentials.port,
+        host: conn.credentials.host,
+        port: conn.credentials.port,
         username: targetUsername,
         password: targetPassword
       }
@@ -351,22 +363,27 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
 
     // Attempt 2: SSH with app connection, then su to target user
     const appConnConfig: TSshConnectionConfig = {
-      method: connection.method,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
-      credentials: connection.credentials
+      method: conn.method,
+      app: conn.app,
+      orgId: conn.orgId,
+      gatewayId: conn.gatewayId,
+      credentials: conn.credentials
     } as TSshConnectionConfig;
 
     try {
-      await executeWithPotentialGateway(appConnConfig, gatewayV2Service, async (targetHost, targetPort) => {
-        const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
-        try {
-          await verifySuLogin(client, targetUsername, targetPassword);
-        } finally {
-          client.destroy();
-        }
-      });
+      await executeWithPotentialGateway(
+        appConnConfig,
+        gatewayV2Service,
+        async (targetHost, targetPort) => {
+          const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
+          try {
+            await verifySuLogin(client, targetUsername, targetPassword);
+          } finally {
+            client.destroy();
+          }
+        },
+        gatewayPoolService
+      );
     } catch (suError) {
       throw new Error(
         `Failed to verify credentials. Direct SSH login failed: ${directSshError}. Fallback su verification also failed: ${(suError as Error).message}`
@@ -376,23 +393,22 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
 
   // Main password rotation logic
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
-    const { credentials } = connection;
+    const conn = await getResolvedConnection();
+    const { credentials } = conn;
     const newPassword = generatePassword(passwordRequirements);
 
     const isSelfRotation = rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
     if (username === credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    // Determine which credentials to use for the SSH connection
     let connectConfig: TSshConnectionConfig;
 
     if (isSelfRotation && currentPassword) {
-      // For self-rotation with current password, connect as the target user
       connectConfig = {
         method: SshConnectionMethod.Password,
-        app: connection.app,
-        orgId: connection.orgId,
-        gatewayId: connection.gatewayId,
+        app: conn.app,
+        orgId: conn.orgId,
+        gatewayId: conn.gatewayId,
         credentials: {
           host: credentials.host,
           port: credentials.port,
@@ -401,13 +417,12 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
         }
       };
     } else {
-      // For managed rotation, connect with the app connection credentials (admin)
       connectConfig = {
-        method: connection.method,
-        app: connection.app,
-        orgId: connection.orgId,
-        gatewayId: connection.gatewayId,
-        credentials: connection.credentials
+        method: conn.method,
+        app: conn.app,
+        orgId: conn.orgId,
+        gatewayId: conn.gatewayId,
+        credentials: conn.credentials
       } as TSshConnectionConfig;
     }
 
@@ -416,13 +431,11 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
 
       try {
         if (isSelfRotation && currentPassword) {
-          // Self rotation: user changes their own password using passwd command
           await changeSelfPassword(client, currentPassword, newPassword);
         } else {
-          // Managed rotation: admin changes user's password using passwd (with sudo if specified)
           const appConnectionPassword =
-            connection.method === SshConnectionMethod.Password
-              ? (connection.credentials as { password: string }).password
+            conn.method === SshConnectionMethod.Password
+              ? (conn.credentials as { password: string }).password
               : undefined;
           await changeManagedPassword(client, username, newPassword, shouldUseSudo, appConnectionPassword);
         }
@@ -475,10 +488,17 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     ];
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TUnixLinuxLocalAccountRotationGeneratedCredentials
+  > = async ({ username: activeUsername, password }) => {
+    await $verifyCredentials(activeUsername, password);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

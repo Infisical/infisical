@@ -18,7 +18,6 @@ import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
-  const projectId = currentProject.id;
 
   // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
   const canCreateLegacySubscribers = true;
@@ -32,7 +31,7 @@ export const PkiSubscriberSection = () => {
   ] as const);
 
   const onRemovePkiSubscriberSubmit = async (subscriberName: string) => {
-    const subscriber = await deletePkiSubscriber({ subscriberName, projectId });
+    const subscriber = await deletePkiSubscriber({ subscriberName });
 
     createNotification({
       text: `Successfully deleted PKI subscriber: ${subscriber.name}`,
@@ -51,7 +50,7 @@ export const PkiSubscriberSection = () => {
   }) => {
     if (!currentProject?.slug) return;
 
-    await updatePkiSubscriber({ subscriberName, projectId, status });
+    await updatePkiSubscriber({ subscriberName, status });
 
     createNotification({
       text: `Successfully ${status === PkiSubscriberStatus.ACTIVE ? "enabled" : "disabled"} subscriber`,

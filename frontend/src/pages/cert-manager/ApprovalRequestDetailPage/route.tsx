@@ -7,7 +7,9 @@ import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { ApprovalRequestDetailPage } from "./ApprovalRequestDetailPage";
 
 const ApprovalRequestSearchSchema = z.object({
-  policyType: z.nativeEnum(ApprovalPolicyType).optional()
+  policyType: z.nativeEnum(ApprovalPolicyType).optional(),
+  applicationName: z.string().optional(),
+  from: z.enum(["root-requests"]).optional()
 });
 
 export const Route = createFileRoute(

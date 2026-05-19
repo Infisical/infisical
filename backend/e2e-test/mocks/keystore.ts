@@ -18,6 +18,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       return "OK";
     },
     setExpiry: async () => 0,
+    ttl: async () => -1,
     setItemWithExpiry: async (key, value) => {
       store[key] = value;
       return "OK";
@@ -62,6 +63,12 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     },
     incrementBy: async () => {
       return 1;
+    },
+    incrementByAndRefreshExpiryIfUnderLimit: async () => {
+      return 1;
+    },
+    decrementByOrDelete: async () => {
+      return 0;
     },
     pgGetIntItem: async (key) => {
       const value = store[key];

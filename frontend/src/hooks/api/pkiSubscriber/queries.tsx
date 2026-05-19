@@ -7,62 +7,43 @@ import { TCertificate } from "../certificates/types";
 import { TPkiSubscriber } from "./types";
 
 export const pkiSubscriberKeys = {
-  getPkiSubscriber: ({
-    subscriberName,
-    projectId
-  }: {
-    subscriberName: string;
-    projectId: string;
-  }) => [{ subscriberName, projectId }, "pki-subscriber"] as const,
+  getPkiSubscriber: ({ subscriberName }: { subscriberName: string }) =>
+    [{ subscriberName }, "pki-subscriber"] as const,
   allPkiSubscriberCertificates: () => ["pki-subscriber-certificates"] as const,
-  forPkiSubscriberCertificates: ({
-    subscriberName,
-    projectId
-  }: {
-    subscriberName: string;
-    projectId: string;
-  }) => [...pkiSubscriberKeys.allPkiSubscriberCertificates(), subscriberName, projectId] as const,
+  forPkiSubscriberCertificates: ({ subscriberName }: { subscriberName: string }) =>
+    [...pkiSubscriberKeys.allPkiSubscriberCertificates(), subscriberName] as const,
   specificPkiSubscriberCertificates: ({
     subscriberName,
-    projectId,
     offset,
     limit
   }: {
     subscriberName: string;
-    projectId: string;
     offset: number;
     limit: number;
   }) =>
     [
-      ...pkiSubscriberKeys.forPkiSubscriberCertificates({ subscriberName, projectId }),
-      { offset, limit, projectId }
+      ...pkiSubscriberKeys.forPkiSubscriberCertificates({ subscriberName }),
+      { offset, limit }
     ] as const
 };
 
 export const useGetPkiSubscriber = (
   {
-    subscriberName,
-    projectId
+    subscriberName
   }: {
     subscriberName: string;
-    projectId: string;
   },
   options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
-    queryKey: pkiSubscriberKeys.getPkiSubscriber({ subscriberName, projectId }),
+    queryKey: pkiSubscriberKeys.getPkiSubscriber({ subscriberName }),
     queryFn: async () => {
       const { data: pkiSubscriber } = await apiRequest.get<TPkiSubscriber>(
-        `/api/v1/pki/subscribers/${subscriberName}`,
-        {
-          params: {
-            projectId
-          }
-        }
+        `/api/v1/pki/subscribers/${subscriberName}`
       );
       return pkiSubscriber;
     },
-    enabled: Boolean(subscriberName) && Boolean(projectId),
+    enabled: Boolean(subscriberName),
     ...options
   });
 };
@@ -70,12 +51,10 @@ export const useGetPkiSubscriber = (
 export const useGetPkiSubscriberCertificates = (
   {
     subscriberName,
-    projectId,
     offset,
     limit
   }: {
     subscriberName: string;
-    projectId: string;
     offset: number;
     limit: number;
   },
@@ -84,15 +63,13 @@ export const useGetPkiSubscriberCertificates = (
   return useQuery({
     queryKey: pkiSubscriberKeys.specificPkiSubscriberCertificates({
       subscriberName,
-      projectId,
       offset,
       limit
     }),
     queryFn: async () => {
       const params = new URLSearchParams({
         offset: String(offset),
-        limit: String(limit),
-        projectId
+        limit: String(limit)
       });
 
       const {
@@ -105,7 +82,7 @@ export const useGetPkiSubscriberCertificates = (
       );
       return { certificates, totalCount };
     },
-    enabled: Boolean(subscriberName) && Boolean(projectId),
+    enabled: Boolean(subscriberName),
     ...options
   });
 };

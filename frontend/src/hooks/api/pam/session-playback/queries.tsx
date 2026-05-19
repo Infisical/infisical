@@ -46,6 +46,7 @@ export type PlaybackDecryptState = {
   brokenChunks: TBrokenChunkMarker[];
   missingChunks: number[];
   totalChunks: number;
+  totalDurationMs: number;
 };
 
 const fallbackUrlBuilderFor = (sessionId: string) => (chunkIndex: number) =>
@@ -63,7 +64,8 @@ export const useDecryptedSessionLogs = (
     events: [],
     brokenChunks: [],
     missingChunks: [],
-    totalChunks: 0
+    totalChunks: 0,
+    totalDurationMs: 0
   });
 
   const fallbackUrlBuilder = useMemo(() => fallbackUrlBuilderFor(sessionId), [sessionId]);
@@ -83,7 +85,8 @@ export const useDecryptedSessionLogs = (
             events: [],
             brokenChunks: [],
             missingChunks: [],
-            totalChunks: 0
+            totalChunks: 0,
+            totalDurationMs: 0
           });
         }
         return;
@@ -116,6 +119,7 @@ export const useDecryptedSessionLogs = (
 
       const projectId = bundle.projectId ?? "";
       const sortedChunks = [...bundle.chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
+      const totalDurationMs = sortedChunks.reduce((max, c) => Math.max(max, c.endElapsedMs), 0);
 
       if (sortedChunks.length > PAM_PLAYBACK_MAX_CHUNKS) {
         if (!cancelled) {
@@ -136,6 +140,14 @@ export const useDecryptedSessionLogs = (
       let chunkIdx = 0;
 
       const maxIndex = sortedChunks.length ? sortedChunks[sortedChunks.length - 1].chunkIndex : 0;
+
+      // Publish total before any chunk decrypts.
+      setState((s) => ({
+        ...s,
+        totalChunks: sortedChunks.length,
+        totalDurationMs,
+        missingChunks
+      }));
 
       for (let i = 0; i <= maxIndex; i += 1) {
         if (cancelled) return;
@@ -188,7 +200,8 @@ export const useDecryptedSessionLogs = (
           events: [...events],
           brokenChunks: [...brokenChunks],
           missingChunks,
-          totalChunks: sortedChunks.length
+          totalChunks: sortedChunks.length,
+          totalDurationMs
         });
       }
 
@@ -200,7 +213,8 @@ export const useDecryptedSessionLogs = (
         events,
         brokenChunks,
         missingChunks,
-        totalChunks: sortedChunks.length
+        totalChunks: sortedChunks.length,
+        totalDurationMs
       });
     };
 

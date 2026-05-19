@@ -1,0 +1,155 @@
+name: Preview environment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number"
+        required: true
+        type: number
+      sha:
+        description: "Head commit SHA (full 40 chars). Must match an already-pushed infisical/preview_infisical tag."
+        required: true
+        type: string
+      action:
+        description: "Reconcile action"
+        required: true
+        type: choice
+        options:
+          - open
+          - sync
+          - close
+        default: sync
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build and push preview image
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Compute SHAs
+        id: sha
+        env:
+          FULL_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            echo "full=$FULL_SHA"
+            echo "short=${FULL_SHA:0:7}"
+          } >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Login to Docker Hub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push preview image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: Dockerfile.standalone-infisical
+          push: true
+          tags: infisical/preview_infisical:${{ steps.sha.outputs.short }}
+          platforms: linux/amd64
+          cache-from: type=gha,scope=preview-infisical
+          cache-to: type=gha,mode=max,scope=preview-infisical
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.sha.outputs.short }}
+            DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
+            DD_GIT_COMMIT_SHA=${{ steps.sha.outputs.full }}
+
+  reconcile:
+    name: Reconcile preview environment
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: >-
+      always() && (
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (github.event.action == 'closed' || needs.build-and-push.result == 'success')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    steps:
+      - name: Resolve PR / SHA / action
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          IN_PR: ${{ inputs.pr }}
+          IN_SHA: ${{ inputs.sha }}
+          IN_ACTION: ${{ inputs.action }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [[ ! "$IN_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Invalid sha input: expected 40 lowercase hex chars, got: $IN_SHA"
+              exit 1
+            fi
+            {
+              echo "pr=$IN_PR"
+              echo "sha=$IN_SHA"
+              echo "action=$IN_ACTION"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$EVENT_ACTION" in
+            opened|reopened) ACTION=open ;;
+            synchronize)     ACTION=sync ;;
+            closed)          ACTION=close ;;
+            *)
+              echo "unhandled event action: $EVENT_ACTION"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "pr=$PR_NUM"
+            echo "sha=$PR_SHA"
+            echo "action=$ACTION"
+          } >> "$GITHUB_OUTPUT"
+      - name: Mint orchestrator OIDC token
+        id: oidc
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const token = await core.getIDToken('preview-orchestrator');
+            core.setSecret(token);
+            core.setOutput('token', token);
+      - name: Trigger orchestrator reconcile
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+          ACTION: ${{ steps.resolve.outputs.action }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          PAYLOAD=$(jq -nc \
+            --argjson pr "$PR" \
+            --arg sha "$SHA" \
+            --arg action "$ACTION" \
+            '{pr: $pr, sha: $sha, action: $action, track: "full"}')
+
+          curl -fsS --max-time 30 --retry 3 --retry-all-errors \
+            -X POST https://preview-orchestrator.infisical.workers.dev/api/reconcile \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"

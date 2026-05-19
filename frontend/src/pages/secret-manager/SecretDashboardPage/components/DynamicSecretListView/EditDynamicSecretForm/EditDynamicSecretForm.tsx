@@ -6,6 +6,7 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { EditDynamicSecretAwsElastiCacheProviderForm } from "./EditDynamicSecretAwsElastiCacheProviderForm";
 import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
+import { EditDynamicSecretAwsMemoryDbProviderForm } from "./EditDynamicSecretAwsMemoryDbProviderForm";
 import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
 import { EditDynamicSecretAzureSqlDatabaseForm } from "./EditDynamicSecretAzureSqlDatabaseForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
@@ -138,6 +139,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretAwsElastiCacheProviderForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.AwsMemoryDb && (
+        <motion.div
+          key="aws-memorydb-provider-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretAwsMemoryDbProviderForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

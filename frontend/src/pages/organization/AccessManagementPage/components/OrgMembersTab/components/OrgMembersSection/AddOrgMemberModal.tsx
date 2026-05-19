@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,6 +23,7 @@ import {
   useGetProjectRoles,
   useGetUserProjects
 } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -37,6 +38,19 @@ const BUILT_IN_PROJECT_ROLES = [
   { slug: "no-access", name: "No Access", description: "No access to any resources in the project" }
 ];
 
+const CERT_MANAGER_ROLES = [
+  {
+    slug: "admin",
+    name: "Admin",
+    description: "Full administrative access over Certificate Manager"
+  },
+  {
+    slug: "member",
+    name: "Member",
+    description: "Access scoped to the Applications and Code Signers they've been added to"
+  }
+];
+
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 
 const addMemberFormSchema = z.object({
@@ -47,7 +61,8 @@ const addMemberFormSchema = z.object({
         name: z.string(),
         id: z.string(),
         slug: z.string(),
-        version: z.nativeEnum(ProjectVersion)
+        version: z.nativeEnum(ProjectVersion),
+        type: z.nativeEnum(ProjectType).optional()
       })
     )
     .default([]),
@@ -88,9 +103,23 @@ export const AddOrgMemberModal = ({
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
-  const { data: projects, isPending: isProjectsLoading } = useGetUserProjects({
+  const { data: rawProjects, isPending: isProjectsLoading } = useGetUserProjects({
     includeRoles: true
   });
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+
+  const projects = useMemo(() => {
+    if (!rawProjects) return rawProjects;
+    const activeId = certManagerInstance?.activeProjectId ?? null;
+    return rawProjects
+      .filter((p) => {
+        if (p.type !== ProjectType.CertificateManager) return true;
+        return activeId ? p.id === activeId : true;
+      })
+      .map((p) =>
+        p.type === ProjectType.CertificateManager ? { ...p, name: "Certificate Manager" } : p
+      );
+  }, [rawProjects, certManagerInstance?.activeProjectId]);
 
   const {
     control,
@@ -106,14 +135,22 @@ export const AddOrgMemberModal = ({
   const selectedProjects = watch("projects", []);
   const singleSelectedProjectId =
     selectedProjects.length === 1 ? selectedProjects[0].id : undefined;
+  const hasCertManagerSelection = selectedProjects.some(
+    (p) => p.type === ProjectType.CertificateManager
+  );
   const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
     singleSelectedProjectId ?? ""
   );
-  const projectRoles = fetchedProjectRoles?.length ? fetchedProjectRoles : BUILT_IN_PROJECT_ROLES;
+  // eslint-disable-next-line no-nested-ternary
+  const projectRoles = hasCertManagerSelection
+    ? CERT_MANAGER_ROLES
+    : fetchedProjectRoles?.length
+      ? fetchedProjectRoles
+      : BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
     setValue("projectRole", DEFAULT_PROJECT_ROLE);
-  }, [singleSelectedProjectId, setValue]);
+  }, [singleSelectedProjectId, hasCertManagerSelection, setValue]);
 
   // set initial form role based off org default role
   useEffect(() => {
@@ -180,6 +217,7 @@ export const AddOrgMemberModal = ({
         addUserToProject({
           orgId: currentOrg.id,
           projectId: el.id,
+          projectType: el.type,
           roleSlugs: [projectRole.slug],
           usernames
         })
@@ -219,7 +257,7 @@ export const AddOrgMemberModal = ({
       case ProjectType.SecretManager:
         return "Secrets";
       case ProjectType.CertificateManager:
-        return "PKI";
+        return "Certificate Manager";
       case ProjectType.KMS:
         return "KMS";
       case ProjectType.SSH:

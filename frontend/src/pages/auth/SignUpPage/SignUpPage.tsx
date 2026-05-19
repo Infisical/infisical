@@ -33,6 +33,7 @@ export interface SignUpPageProps {
 export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const isInvite = Boolean(invite);
   const [email, setEmail] = useState(invite?.email ?? "");
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
   const [section, setSection] = useState<SignupSection>(
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
@@ -51,7 +52,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     }
   }, [config.allowSignUp]);
 
-  const handleEmailComplete = () => {
+  const handleEmailComplete = (cooldownSeconds: number) => {
+    setResendCooldownSeconds(cooldownSeconds);
     if (serverDetails?.emailConfigured) {
       setSection(SignupSection.VerifyCode);
     } else {
@@ -95,7 +97,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           />
         );
       case SignupSection.VerifyCode:
-        return <CodeInputStep email={email} onComplete={handleCodeVerified} />;
+        return (
+          <CodeInputStep
+            email={email}
+            onComplete={handleCodeVerified}
+            initialCooldown={resendCooldownSeconds}
+          />
+        );
       case SignupSection.UserInfo:
         return (
           <UserInfoStep onComplete={handleUserInfoComplete} email={email} isInvite={isInvite} />

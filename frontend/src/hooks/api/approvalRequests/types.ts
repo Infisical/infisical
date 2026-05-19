@@ -1,4 +1,4 @@
-import { ApprovalPolicyType, ApproverType } from "../approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType } from "../approvalPolicies";
 
 export enum ApprovalRequestStatus {
   Pending = "pending",
@@ -96,6 +96,8 @@ export type TApprovalRequest = {
   id: string;
   projectId: string;
   policyId: string;
+  scopeType?: ApprovalPolicyScope | string | null;
+  scopeId?: string | null;
   type: ApprovalPolicyType;
   status: ApprovalRequestStatus;
   requesterId: string;
@@ -108,13 +110,17 @@ export type TApprovalRequest = {
     requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
+  canBreakGlass: boolean;
+  isBreakGlass: boolean;
+  bypassReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TCreateApprovalRequestDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   justification?: string | null;
   requestDuration?: string | null;
   requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
@@ -127,13 +133,15 @@ export type TGetApprovalRequestByIdDTO = {
 
 export type TListApprovalRequestsDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
 };
 
 export type TApproveApprovalRequestDTO = {
   policyType: ApprovalPolicyType;
   requestId: string;
   comment?: string;
+  bypassReason?: string;
 };
 
 export type TRejectApprovalRequestDTO = {

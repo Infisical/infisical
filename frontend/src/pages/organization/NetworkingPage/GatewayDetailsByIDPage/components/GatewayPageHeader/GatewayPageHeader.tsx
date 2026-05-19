@@ -59,7 +59,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
     }
   };
 
-  const isRegistered = Boolean(gateway.heartbeat || gateway.lastHealthCheckStatus);
+  const isRegistered = Boolean(gateway.heartbeat || gateway.heartbeatTTL);
   const { canRevoke } = gateway;
 
   return (

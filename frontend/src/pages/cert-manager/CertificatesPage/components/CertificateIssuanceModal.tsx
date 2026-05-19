@@ -34,6 +34,7 @@ import {
   CertKeyUsage
 } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
+import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import {
   CertSubjectAlternativeNameType,
@@ -133,9 +134,17 @@ type Props = {
     state?: boolean
   ) => void;
   profileId?: string;
+  applicationId?: string;
+  applicationName?: string;
 };
 
-export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }: Props) => {
+export const CertificateIssuanceModal = ({
+  popUp,
+  handlePopUpToggle,
+  profileId,
+  applicationId,
+  applicationName
+}: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
@@ -147,10 +156,21 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const { data: cert } = useGetCert(sanitizedSerialNumber);
 
   const { data: profilesData } = useListCertificateProfiles({
-    projectId: currentProject?.id || "",
-    enrollmentType: EnrollmentType.API,
-    includeConfigs: true
+    enrollmentType: applicationId ? undefined : EnrollmentType.API,
+    includeConfigs: true,
+    applicationId
   });
+
+  const { data: appProfiles } = useListPkiApplicationProfiles(applicationId ?? "");
+
+  const availableProfiles = useMemo(() => {
+    const allProfiles = profilesData?.certificateProfiles ?? [];
+    if (!applicationId) return allProfiles;
+    const apiEnabledProfileIds = new Set(
+      (appProfiles ?? []).filter((p) => Boolean(p.apiConfigId)).map((p) => p.profileId)
+    );
+    return allProfiles.filter((p) => apiEnabledProfileIds.has(p.id));
+  }, [profilesData?.certificateProfiles, appProfiles, applicationId]);
 
   const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
@@ -186,12 +206,13 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const actualSelectedProfileId = watch("profileId");
   const watchedIsCA = watch("basicConstraints.isCA") || false;
   const actualSelectedProfile = useMemo(
-    () => profilesData?.certificateProfiles?.find((p) => p.id === actualSelectedProfileId),
-    [profilesData?.certificateProfiles, actualSelectedProfileId]
+    () => availableProfiles.find((p) => p.id === actualSelectedProfileId),
+    [availableProfiles, actualSelectedProfileId]
   );
 
   const { data: policyData } = useGetCertificatePolicyById({
-    policyId: actualSelectedProfile?.certificatePolicyId || ""
+    policyId: actualSelectedProfile?.certificatePolicyId || "",
+    applicationId
   });
 
   const {
@@ -287,7 +308,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 orgId: currentOrg.id,
                 projectId: currentProject.id,
                 certificateId: response.certificate.certificateId
-              }
+              },
+              ...(applicationName && { search: { fromApplication: applicationName } })
             });
           }
         } else if (
@@ -313,8 +335,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           const metadataEntries = formData.metadata?.filter((m) => m.key);
           const response = await issueCertificate({
             profileId: formProfileId,
-            projectSlug: currentProject.slug,
-            projectId: currentProject.id,
+            ...(applicationId && { applicationId }),
             csr: formData.csr,
             attributes: { ttl },
             ...(metadataEntries?.length && { metadata: metadataEntries })
@@ -338,8 +359,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         const managedMetadataEntries = formMetadata?.filter((m) => m.key);
         const request: any = {
           profileId: formProfileId,
-          projectSlug: currentProject.slug,
-          projectId: currentProject.id,
+          ...(applicationId && { applicationId }),
           attributes: {
             ttl,
             signatureAlgorithm: signatureAlgorithm || "",
@@ -376,9 +396,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
               (attr) => attr.type === CertSubjectAttributeType.ORGANIZATIONAL_UNIT
             );
             if (ouAttr?.value) {
-              request.attributes.organizationUnit = ouAttr.value;
+              request.attributes.organizationalUnit = ouAttr.value;
             } else if (defaults?.organizationalUnit) {
-              request.attributes.organizationUnit = null;
+              request.attributes.organizationalUnit = null;
             }
 
             const countryAttr = subjectAttributes.find(
@@ -411,7 +431,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             // No subject attributes provided; send null overrides for profile defaults
             if (defaults.commonName) request.attributes.commonName = null;
             if (defaults.organization) request.attributes.organization = null;
-            if (defaults.organizationalUnit) request.attributes.organizationUnit = null;
+            if (defaults.organizationalUnit) request.attributes.organizationalUnit = null;
             if (defaults.country) request.attributes.country = null;
             if (defaults.state) request.attributes.state = null;
             if (defaults.locality) request.attributes.locality = null;
@@ -548,28 +568,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 name="profileId"
                 render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                   <FormControl
-                    label={
-                      <div>
-                        <FormLabel
-                          isRequired
-                          label="Certificate Profile"
-                          icon={
-                            <Tooltip
-                              className="text-center"
-                              content={
-                                <span>
-                                  Certificate profiles define the policies and enrollment methods
-                                  for certificate issuance. The selected profile will enforce
-                                  validation rules and determine the CA used for signing.
-                                </span>
-                              }
-                            >
-                              <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                            </Tooltip>
-                          }
-                        />
-                      </div>
-                    }
+                    label="Certificate Profile"
                     errorText={error?.message}
                     isError={Boolean(error)}
                     isRequired
@@ -581,12 +580,21 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                       className="w-full"
                       placeholder="Select a certificate profile"
                       position="popper"
+                      dropdownContainerClassName="max-w-none"
                     >
-                      {profilesData?.certificateProfiles?.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {profile.slug}
-                        </SelectItem>
-                      ))}
+                      {availableProfiles.length === 0 && applicationId ? (
+                        <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-mineshaft-300">
+                          Only profiles with API enrollment configured on this Application are
+                          listed here. Configure API enrollment under this Application&apos;s
+                          Settings tab.
+                        </div>
+                      ) : (
+                        availableProfiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.slug}
+                          </SelectItem>
+                        ))
+                      )}
                     </Select>
                   </FormControl>
                 )}

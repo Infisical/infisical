@@ -883,13 +883,25 @@ export type THoneyTokenResetEvent = {
 export type THoneyTokenTriggeredEvent = {
   event: PostHogEventTypes.HoneyTokenTriggered;
   properties: {
-    honeyTokenId: string;
     type: string;
-    projectId: string;
   };
 };
 
-export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
+export type TPostHogEvent = {
+  distinctId: string;
+  organizationId?: string;
+  organizationName?: string;
+  /**
+   * When true, the event is captured without creating or updating a PostHog
+   * person record (`$process_person_profile: false`). Use for events fired
+   * from unauthenticated, single-shot interactions where the distinctId is
+   * synthesised per-request (e.g. anonymous public secret shares) and there
+   * is no real user/identity to attribute the event to. The event itself is
+   * still recorded so funnels and breakdowns continue to work — only the
+   * person record is suppressed.
+   */
+  anonymous?: boolean;
+} & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent

@@ -133,7 +133,8 @@ export const PamAccessAccountModal = ({
   const showWebAccess =
     targetResource?.resourceType === PamResourceType.Postgres ||
     targetResource?.resourceType === PamResourceType.SSH ||
-    targetResource?.resourceType === PamResourceType.Redis;
+    targetResource?.resourceType === PamResourceType.Redis ||
+    targetResource?.resourceType === PamResourceType.Windows;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>

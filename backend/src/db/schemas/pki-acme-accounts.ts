@@ -15,7 +15,8 @@ export const PkiAcmeAccountsSchema = z.object({
   publicKeyThumbprint: z.string(),
   alg: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  applicationProfileId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiAcmeAccounts = z.infer<typeof PkiAcmeAccountsSchema>;

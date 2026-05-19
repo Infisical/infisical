@@ -202,9 +202,10 @@ export const verifySignupInvite = async (details: VerifySignupInviteDTO) => {
 export const useSendVerificationEmail = () => {
   return useMutation({
     mutationFn: async ({ email }: { email: string }) => {
-      const { data } = await apiRequest.post("/api/v3/signup/email/signup", {
-        email
-      });
+      const { data } = await apiRequest.post<{ message: string; cooldownSeconds: number }>(
+        "/api/v3/signup/email/signup",
+        { email }
+      );
 
       return data;
     }

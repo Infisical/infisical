@@ -126,6 +126,12 @@ export enum OrgPermissionEmailDomainActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionCertManagerActions {
+  Read = "read",
+  ManageInstance = "manage-instance",
+  ManageSettings = "manage-settings"
+}
+
 export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
 }
@@ -164,6 +170,7 @@ export enum OrgPermissionSubjects {
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
+  CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens"
 }
 
@@ -206,6 +213,7 @@ export type OrgPermissionSet =
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 const AppConnectionConditionSchema = z
@@ -369,6 +377,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.EmailDomains).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.CertManager).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionCertManagerActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -537,6 +551,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionEmailDomainActions.Delete, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionHoneyTokenActions.Setup, OrgPermissionSubjects.HoneyTokens);
 
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
+  can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
+
   return rules;
 };
 
@@ -589,6 +607,8 @@ const buildMemberPermission = () => {
     OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
+
+  can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
 
   return rules;
 };

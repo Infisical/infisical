@@ -55,6 +55,17 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
   });
 
+  server.addHook("onRequest", async (req, res) => {
+    const urlPath = req.url.split("?")[0];
+    const lastFragment = urlPath.split("/").pop() ?? "";
+    if (lastFragment === "simpleenroll" || lastFragment === "simplereenroll") {
+      const contentType = (req.headers["content-type"] ?? "").toString().toLowerCase().split(";")[0].trim();
+      if (contentType && contentType !== "application/pkcs10") {
+        await res.code(415).type("text/plain").send("Content-Type must be application/pkcs10");
+      }
+    }
+  });
+
   // Authenticate EST client using Passphrase
   // Using preHandler instead of onRequest ensures rate limiting (preValidation) runs first
   server.addHook("preHandler", async (req, res) => {
@@ -90,27 +101,43 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       return;
     }
 
-    const { identifier } = (req.params as { identifier?: string }) ?? {};
-    if (!identifier) {
-      throw new NotFoundError({ message: "Certificate template or profile not found" });
-    }
-
-    const identifierType = await getIdentifierType(identifier);
-    if (!identifierType) {
-      throw new NotFoundError({ message: "Certificate template or profile not found" });
-    }
+    const params =
+      (req.params as { identifier?: string; applicationId?: string; profileId?: string }) ?? {};
+    const isAppScoped = matchedRoute.startsWith("/applications/");
 
     let estConfig;
-    if (identifierType === "profile") {
+    if (isAppScoped) {
+      const { applicationId, profileId } = params;
+      if (!applicationId || !profileId) {
+        throw new NotFoundError({ message: "Certificate profile not found" });
+      }
       estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
-        profileId: identifier,
+        profileId,
+        applicationId,
         isInternal: true
       });
     } else {
-      estConfig = await server.services.certificateTemplate.getEstConfiguration({
-        isInternal: true,
-        certificateTemplateId: identifier
-      });
+      const { identifier } = params;
+      if (!identifier) {
+        throw new NotFoundError({ message: "Certificate template or profile not found" });
+      }
+
+      const identifierType = await getIdentifierType(identifier);
+      if (!identifierType) {
+        throw new NotFoundError({ message: "Certificate template or profile not found" });
+      }
+
+      if (identifierType === "profile") {
+        estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
+          profileId: identifier,
+          isInternal: true
+        });
+      } else {
+        estConfig = await server.services.certificateTemplate.getEstConfiguration({
+          isInternal: true,
+          certificateTemplateId: identifier
+        });
+      }
     }
 
     if (!estConfig.isEnabled) {
@@ -249,6 +276,77 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       }
       return server.services.certificateEst.getCaCerts({
         certificateTemplateId: identifier
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/applications/:applicationId/profiles/:profileId/simpleenroll",
+    config: { rateLimit: writeLimit },
+    schema: {
+      body: z.string().min(1),
+      params: z.object({
+        applicationId: z.string().uuid(),
+        profileId: z.string().uuid()
+      }),
+      response: { 200: z.string() }
+    },
+    handler: async (req, res) => {
+      void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
+      void res.header("Content-Transfer-Encoding", "base64");
+      const { applicationId, profileId } = req.params;
+      return server.services.certificateEstV3.simpleEnrollByProfile({
+        csr: req.body,
+        profileId,
+        applicationId,
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/applications/:applicationId/profiles/:profileId/simplereenroll",
+    config: { rateLimit: writeLimit },
+    schema: {
+      body: z.string().min(1),
+      params: z.object({
+        applicationId: z.string().uuid(),
+        profileId: z.string().uuid()
+      }),
+      response: { 200: z.string() }
+    },
+    handler: async (req, res) => {
+      void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
+      void res.header("Content-Transfer-Encoding", "base64");
+      const { applicationId, profileId } = req.params;
+      return server.services.certificateEstV3.simpleReenrollByProfile({
+        csr: req.body,
+        profileId,
+        applicationId,
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/applications/:applicationId/profiles/:profileId/cacerts",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({
+        applicationId: z.string().uuid(),
+        profileId: z.string().uuid()
+      }),
+      response: { 200: z.string() }
+    },
+    handler: async (req, res) => {
+      void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
+      void res.header("Content-Transfer-Encoding", "base64");
+      return server.services.certificateEstV3.getCaCertsByProfile({
+        profileId: req.params.profileId,
+        applicationId: req.params.applicationId
       });
     }
   });

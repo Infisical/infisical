@@ -127,6 +127,7 @@ export type TPamAccountCredentials =
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
   domainId?: string | null;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;

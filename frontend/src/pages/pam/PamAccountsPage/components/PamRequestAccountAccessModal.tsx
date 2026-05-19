@@ -18,7 +18,7 @@ import {
 } from "@app/components/v2";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
 
 type Props = {
@@ -113,7 +113,8 @@ const Content = ({
     try {
       await createApprovalRequest({
         policyType: ApprovalPolicyType.PamAccess,
-        projectId,
+        scope: ApprovalPolicyScope.Project,
+        scopeId: projectId,
         justification: formData.justification || null,
         requestData: {
           accessDuration: formData.accessDuration,

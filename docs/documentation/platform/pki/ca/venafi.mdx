@@ -51,25 +51,18 @@ sequenceDiagram
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Create an Intermediate CA">
-        If you haven't already, head to your Certificate Management Project > Certificate Authorities > Internal Certificate Authorities and press **Create CA**.
+        If you haven't already, in **Certificate Manager** go to **Settings → Certificate Authorities** and click **Create CA** in the Internal Certificate Authorities section.
 
         Set the **CA Type** to **Intermediate** and fill out the details for the intermediate CA (Common Name, Organization, Key Algorithm, etc.).
       </Step>
       <Step title="Open the Install Certificate Modal">
         Press the **Install Certificate** option on the intermediate CA you just created. Select **External CA (Automated)** and press **Continue**.
-
-        ![pki install select method](/images/platform/pki/ca/ca-install-venafi-select-method.png)
       </Step>
       <Step title="Select Venafi TLS Protect Cloud">
         Choose **Venafi TLS Protect Cloud** as the CA integration provider and press **Continue**.
-
-        ![pki install external select](/images/platform/pki/ca/ca-install-venafi-external-select.png)
       </Step>
       <Step title="Configure the Venafi Signing Details">
         Fill out the following fields:
-
-        ![pki install venafi form](/images/platform/pki/ca/ca-install-venafi.png)
-
         - **Venafi Connection**: Select the Venafi Connection to use for signing.
         - **Application**: Select the Venafi Application that contains the Issuing Template for CA certificate issuance.
         - **Issuing Template**: Select the Issuing Template within the Application that will be used to sign the intermediate CA certificate.
@@ -98,7 +91,6 @@ sequenceDiagram
           --header 'Authorization: Bearer <access-token>' \
           --header 'Content-Type: application/json' \
           --data-raw '{
-              "projectSlug": "<your-project-slug>",
               "type": "intermediate",
               "commonName": "My Intermediate CA"
           }'
@@ -202,11 +194,7 @@ Infisical supports automatic renewal of intermediate CA certificates signed by V
   <Tab title="Infisical UI">
     Navigate to the CA details page of your Venafi-signed intermediate CA. Click the **edit** (pencil) icon in the Details section to open the renewal settings.
 
-    ![pki venafi auto-renewal page](/images/platform/pki/ca/ca-venafi-auto-renewal-page.png)
-
     Toggle **Auto-Renewal** on and set the **Days Before Expiry** to configure when the renewal should be triggered.
-
-    ![pki venafi auto-renewal modal](/images/platform/pki/ca/ca-venafi-auto-renewal-modal.png)
   </Tab>
   <Tab title="API">
     ### Enable Auto-Renewal
@@ -249,11 +237,7 @@ You can also manually trigger a renewal for a Venafi-signed intermediate CA at a
   <Tab title="Infisical UI">
     Navigate to the CA details page and press the **Renew CA** button.
 
-    ![pki venafi renew page](/images/platform/pki/ca/ca-venafi-renew-page.png)
-
     The renewal modal will confirm that this CA is configured to use Venafi TLS Protect Cloud for signing. Press **Renew via Venafi** to submit a new CSR to Venafi and install the renewed certificate.
-
-    ![pki venafi renew modal](/images/platform/pki/ca/ca-venafi-renew-modal.png)
   </Tab>
   <Tab title="API">
     To manually renew a Venafi-signed CA, re-trigger the install flow via the API.

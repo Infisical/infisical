@@ -24,6 +24,7 @@ export enum DynamicSecretProviders {
   AwsIam = "aws-iam",
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
+  AwsMemoryDb = "aws-memorydb",
   MongoAtlas = "mongo-db-atlas",
   ElasticSearch = "elastic-search",
   MongoDB = "mongo-db",
@@ -60,6 +61,11 @@ export enum DynamicSecretAwsIamAuth {
   AssumeRole = "assume-role",
   AccessKey = "access-key",
   IRSA = "irsa"
+}
+
+// currently the only option, but we may want to extend this later to ACL-based auth
+export enum AwsMemoryDbAuthType {
+  IAM = "iam"
 }
 
 export enum DynamicSecretAwsIamCredentialType {
@@ -157,6 +163,20 @@ export type TDynamicSecretProvider =
         creationStatement: string;
         revocationStatement: string;
         ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.AwsMemoryDb;
+      inputs: {
+        clusterName: string;
+        region: string;
+        auth: {
+          type: AwsMemoryDbAuthType.IAM;
+          accessKeyId: string;
+          secretAccessKey: string;
+        };
+        creationStatement: string;
+        revocationStatement: string;
       };
     }
   | {

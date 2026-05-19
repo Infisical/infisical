@@ -24,7 +24,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-[60] min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
@@ -48,7 +48,7 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-[60] min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
