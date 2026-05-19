@@ -167,7 +167,7 @@ The secret template functions is what you will use to fetch resources such as st
 
     **Returns**: An object with keys corresponding to the dynamic secret lease credentials.
 
-    The `principals` argument is only used for SSH dynamic secrets, where it is **required**. It is ignored for all other providers. It accepts a comma-separated list of principals for the SSH certificate. The requested principals must be in the allowed list configured on the dynamic secret.
+    The `principals` argument is only applicable to SSH dynamic secrets, where it is **required**. It accepts a comma-separated list of principals for the SSH certificate. The requested principals must be in the allowed list configured on the dynamic secret.
 
     <Tip>
       Note that if you have multiple dynamic secret templates with identical configurations, only one lease will be created in Infisical for those templates, and the same lease will be written to your specified destination paths.
