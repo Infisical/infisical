@@ -1,0 +1,97 @@
+---
+title: "Stream to Palo Alto Networks XSIAM"
+description: "How to stream Infisical Audit Logs to Palo Alto Networks XSIAM"
+---
+
+<Info>
+    Audit log streams is a paid feature.
+
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact sales@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+[Palo Alto Networks XSIAM](https://www.paloaltonetworks.com/cortex/cortex-xsiam) (Extended Security Intelligence and Automation Management) is an AI-driven security operations platform that unifies SIEM, SOAR, and threat intelligence capabilities. This guide explains how to forward Infisical audit logs to XSIAM using its HTTP Log Collector.
+
+## Overview
+
+XSIAM accepts log data from external sources via its **Custom HTTP Log Collector**, which exposes a unique HTTPS endpoint secured by an API key. Infisical's **Custom** audit log stream provider sends JSON-formatted audit events to that endpoint, making the integration straightforward — no intermediary required.
+
+## Setup
+
+<Steps>
+    <Step title="Create an HTTP Log Collector in XSIAM">
+        Log in to your XSIAM tenant and navigate to:
+
+        **Settings** → **Configurations** → **Data Management** → **Integrations & Collectors**
+
+        Scroll to the **Custom - HTTP based Collection** section and click **+ New Instance**.
+
+        Configure the collector:
+
+        | Field | Value |
+        |-------|-------|
+        | **Name** | A descriptive name, e.g. `Infisical Audit Logs` |
+        | **Vendor** | `Infisical` |
+        | **Product** | `Audit Logs` |
+
+        Click **Save**. XSIAM will generate a **Collector URL** and an **API Key** for this instance. Copy both values — you'll need them in the next step.
+
+        <Note>
+            The API key is only shown once at creation time. Store it in a secure location before leaving the page.
+        </Note>
+    </Step>
+    <Step title="Create Audit Log Stream on Infisical">
+        In Infisical, navigate to **Organization Settings** → **Audit Log Streams** and click **Add Log Stream**.
+
+        Select **Custom** as the provider and fill in the following:
+
+        - **Endpoint URL**: The **Collector URL** copied from Step 1
+        - **Headers**: Add a single header with:
+            - Key: `Authorization`
+            - Value: The **API Key** copied from Step 1
+
+        Click **Create Log Stream**.
+
+        Infisical will immediately begin forwarding audit events to your XSIAM collector as JSON over HTTPS.
+    </Step>
+    <Step title="Verify Ingestion in XSIAM">
+        Perform an action in Infisical that generates an audit log (e.g., read or create a secret). Then, in XSIAM:
+
+        1. Navigate to **Investigation & Response** → **Query Builder** (or use XQL Search)
+        2. Run a query against your collector's dataset. XSIAM typically names the dataset using the vendor and product you configured, for example:
+
+        ```sql
+        dataset = infisical_audit_logs_raw
+        | limit 20
+        ```
+
+        Adjust the dataset name to match what XSIAM generated for your collector instance.
+
+        <Info>
+            It may take a few minutes for the first events to appear after stream creation.
+        </Info>
+    </Step>
+</Steps>
+
+## Parsing and Enrichment
+
+Infisical audit logs are sent as JSON objects. XSIAM's ingestion pipeline will parse the top-level fields automatically. Nested fields such as `actorMetadata` and `eventMetadata` are stored as JSON strings by default; use XQL's `json_extract_scalar` function to extract sub-fields as needed:
+
+```sql
+dataset = infisical_audit_logs_raw
+| alter
+    actor_email = json_extract_scalar(actorMetadata, "$.email"),
+    event_type  = eventType
+| filter event_type = "create-secret"
+| fields _time, actor_email, event_type, ipAddress, projectId
+```
+
+## Disabling PostgreSQL Audit Log Storage
+
+If XSIAM is your primary audit log destination and you no longer need logs stored in PostgreSQL, you can disable PostgreSQL storage by setting the following environment variable on your Infisical instance:
+
+```bash
+DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true
+```
+
+See the [Audit Log Streams](/documentation/platform/audit-log-streams/audit-log-streams) overview for all available configuration options.

@@ -297,6 +297,31 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
             </Step>
         </Steps>
     </Accordion>
+    <Accordion title="Palo Alto Networks XSIAM">
+        You can stream Infisical audit logs to [Palo Alto Networks XSIAM](https://www.paloaltonetworks.com/cortex/cortex-xsiam) using a **Custom** log stream. XSIAM's HTTP Log Collector accepts JSON payloads over HTTPS, making it straightforward to connect.
+
+        For a full walkthrough, see the dedicated [Stream to Palo Alto Networks XSIAM](/documentation/platform/audit-log-streams/audit-log-streams-with-xsiam) guide.
+
+        <Steps>
+            <Step title="Create an HTTP Log Collector in XSIAM">
+                In your XSIAM tenant, navigate to **Settings** → **Configurations** → **Data Management** → **Integrations & Collectors**.
+
+                Under **Custom - HTTP based Collection**, click **+ New Instance**.
+
+                Provide a name (e.g., `Infisical`), set **Vendor** to `Infisical`, and **Product** to `Audit Logs`. Click **Save**.
+
+                Once saved, copy the **Collector URL** and **API Key** shown on the collector details page.
+            </Step>
+            <Step title="Create Audit Log Stream on Infisical">
+                On Infisical, create a new audit log stream and select the **Custom** option.
+
+                1. Set the **Endpoint URL** to your XSIAM Collector URL
+                2. Add a header with key `Authorization` and value set to your XSIAM API key
+
+                Once you're finished, click **Create Log Stream**.
+            </Step>
+        </Steps>
+    </Accordion>
 </AccordionGroup>
 
 ### Example Log Entry
