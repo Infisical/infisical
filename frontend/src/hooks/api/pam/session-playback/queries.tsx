@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
-  DecryptedChunkResult,
   decryptOneChunk,
   detectChunkGaps,
   importSessionKeyFromBase64,
@@ -63,36 +62,6 @@ export type PlaybackDecryptState = {
 const fallbackUrlBuilderFor = (sessionId: string) => (chunkIndex: number) =>
   `/api/v1/pam/sessions/${sessionId}/chunks/${chunkIndex}/ciphertext`;
 
-const collectChunkResult = (
-  r: Awaited<DecryptedChunkResult>,
-  events: unknown[],
-  brokenChunks: TBrokenChunkMarker[],
-  inlineMarkers = false
-): boolean => {
-  if (r.ok) {
-    events.push(...r.events);
-    if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
-      brokenChunks.push({
-        __brokenChunk: true,
-        chunkIndex: r.chunkIndex,
-        reason: "limit",
-        message: `Total event count exceeds playback limit of ${PAM_PLAYBACK_MAX_TOTAL_EVENTS}; remaining chunks skipped`
-      });
-      return true;
-    }
-  } else {
-    const marker: TBrokenChunkMarker = {
-      __brokenChunk: true,
-      chunkIndex: r.chunkIndex,
-      reason: r.reason,
-      message: r.message
-    };
-    brokenChunks.push(marker);
-    if (inlineMarkers) events.push(marker);
-  }
-  return false;
-};
-
 export const useDecryptedSessionLogs = (
   sessionId: string,
   enabled = true,
@@ -115,14 +84,16 @@ export const useDecryptedSessionLogs = (
   // Refs for incremental decryption across poll cycles (active sessions only)
   const sessionKeyRef = useRef<CryptoKey | null>(null);
   const decryptedIndicesRef = useRef(new Set<number>());
-  const accEventsRef = useRef<unknown[]>([]);
+  const accChunkEventsRef = useRef(new Map<number, unknown[]>());
+  const accEventCountRef = useRef(0);
   const accBrokenRef = useRef<TBrokenChunkMarker[]>([]);
   const prevSessionIdRef = useRef(sessionId);
 
   if (prevSessionIdRef.current !== sessionId) {
     sessionKeyRef.current = null;
     decryptedIndicesRef.current = new Set();
-    accEventsRef.current = [];
+    accChunkEventsRef.current = new Map();
+    accEventCountRef.current = 0;
     accBrokenRef.current = [];
     prevSessionIdRef.current = sessionId;
   }
@@ -205,6 +176,7 @@ export const useDecryptedSessionLogs = (
           if (cancelled) return;
 
           const chunk = newChunks[ci];
+          decryptedIndicesRef.current.add(chunk.chunkIndex);
           // eslint-disable-next-line no-await-in-loop
           const r = await decryptOneChunk({
             chunk,
@@ -214,22 +186,63 @@ export const useDecryptedSessionLogs = (
             fallbackUrlBuilder
           });
 
-          decryptedIndicesRef.current.add(chunk.chunkIndex);
+          if (cancelled) return;
 
-          if (collectChunkResult(r, accEventsRef.current, accBrokenRef.current)) break;
+          if (r.ok) {
+            accChunkEventsRef.current.set(chunk.chunkIndex, r.events);
+            accEventCountRef.current += r.events.length;
+            if (accEventCountRef.current > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
+              accBrokenRef.current.push({
+                __brokenChunk: true,
+                chunkIndex: r.chunkIndex,
+                reason: "limit",
+                message: `Total event count exceeds playback limit of ${PAM_PLAYBACK_MAX_TOTAL_EVENTS}; remaining chunks skipped`
+              });
+              break;
+            }
+          } else {
+            const marker: TBrokenChunkMarker = {
+              __brokenChunk: true,
+              chunkIndex: r.chunkIndex,
+              reason: r.reason,
+              message: r.message
+            };
+            accBrokenRef.current.push(marker);
+            accChunkEventsRef.current.set(chunk.chunkIndex, [marker]);
+          }
         }
 
-        if (!cancelled) {
-          setState({
-            legacy: false,
-            loading: isActive && !bundle.sessionComplete,
-            events: [...accEventsRef.current],
-            brokenChunks: [...accBrokenRef.current],
-            missingChunks,
-            totalChunks: sortedChunks.length,
-            totalDurationMs
-          });
+        if (cancelled) return;
+
+        if (bundle.sessionComplete) {
+          for (let mi = 0; mi < missingChunks.length; mi += 1) {
+            const idx = missingChunks[mi];
+            if (!accChunkEventsRef.current.has(idx)) {
+              const marker: TBrokenChunkMarker = {
+                __brokenChunk: true,
+                chunkIndex: idx,
+                reason: "missing",
+                message: `Chunk ${idx} was not found in the recording`
+              };
+              accBrokenRef.current.push(marker);
+              accChunkEventsRef.current.set(idx, [marker]);
+            }
+          }
         }
+
+        const orderedEvents = [...accChunkEventsRef.current.keys()]
+          .sort((a, b) => a - b)
+          .flatMap((key) => accChunkEventsRef.current.get(key) ?? []);
+
+        setState({
+          legacy: false,
+          loading: isActive && !bundle.sessionComplete,
+          events: orderedEvents,
+          brokenChunks: [...accBrokenRef.current],
+          missingChunks,
+          totalChunks: sortedChunks.length,
+          totalDurationMs
+        });
       } else {
         // Full path: decrypt all chunks with gap markers (completed sessions)
         const missingSet = new Set(missingChunks);
@@ -268,7 +281,27 @@ export const useDecryptedSessionLogs = (
               fallbackUrlBuilder
             });
             chunkIdx += 1;
-            if (collectChunkResult(r, events, brokenChunks, true)) break;
+            if (r.ok) {
+              events.push(...r.events);
+              if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
+                brokenChunks.push({
+                  __brokenChunk: true,
+                  chunkIndex: r.chunkIndex,
+                  reason: "limit",
+                  message: `Total event count exceeds playback limit of ${PAM_PLAYBACK_MAX_TOTAL_EVENTS}; remaining chunks skipped`
+                });
+                break;
+              }
+            } else {
+              const marker: TBrokenChunkMarker = {
+                __brokenChunk: true,
+                chunkIndex: r.chunkIndex,
+                reason: r.reason,
+                message: r.message
+              };
+              events.push(marker);
+              brokenChunks.push(marker);
+            }
           }
 
           setState({

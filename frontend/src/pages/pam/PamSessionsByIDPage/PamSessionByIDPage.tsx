@@ -61,10 +61,9 @@ const Page = () => {
   const bundleQuery = useGetPamSessionPlaybackBundle(sessionId, !!session);
   const sessionComplete = bundleQuery.data?.sessionComplete ?? false;
 
-  const isActive =
-    (session?.status === PamSessionStatus.Active ||
-      session?.status === PamSessionStatus.Starting) &&
-    !sessionComplete;
+  const activeOrStarting =
+    session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
+  const isActive = activeOrStarting && !sessionComplete;
   const isGatewaySession = !!session?.gatewayIdentityId || !!session?.gatewayId;
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -122,7 +121,9 @@ const Page = () => {
             <div className="mr-4 flex h-fit w-96 shrink-0">
               <PamSessionDetailsSection
                 session={session}
-                statusOverride={sessionComplete ? PamSessionStatus.Ended : undefined}
+                statusOverride={
+                  activeOrStarting && sessionComplete ? PamSessionStatus.Ended : undefined
+                }
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-4">

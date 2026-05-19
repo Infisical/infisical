@@ -108,7 +108,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         >
           <RdpReplayView
             events={logs as TSessionEvent[]}
-            isStreaming={isLoading}
+            isStreaming={isLive}
             totalDurationMs={isLegacyOrNoChunks ? undefined : playback.totalDurationMs}
           />
         </Suspense>
