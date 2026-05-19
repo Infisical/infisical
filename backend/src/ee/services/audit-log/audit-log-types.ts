@@ -53,6 +53,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -166,6 +167,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  DUPLICATE_SECRET = "duplicate-secret",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
@@ -1145,6 +1147,22 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+interface DuplicateSecretEvent {
+  type: EventType.DUPLICATE_SECRET;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    sourceSecretId: string;
+    sourceSecretKey: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    destinationSecretId?: string;
+    approvalRequestId?: string;
+    shouldOverwrite: boolean;
+    attributesCopied: TDuplicateSecretAttributes;
   };
 }
 
@@ -7023,6 +7041,7 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | DuplicateSecretEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | RedactSecretVersionValueEvent

@@ -1,8 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-import { BadRequestError } from "@app/lib/errors";
-
 const CERT_MANAGER_PREFIXES = ["/api/v1/cert-manager/", "/api/v1/pki/", "/api/v2/pki/"];
 
 const readProjectIdFromRequest = (req: { query?: unknown; body?: unknown; params?: unknown }): string | null => {
