@@ -4,8 +4,10 @@ import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/s
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { ApplicationIdParamsSchema } from "../pki-application-schemas";
@@ -148,6 +150,17 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
               userName: m.details?.email ?? m.details?.username ?? m.details?.name ?? undefined,
               role: m.role
             }
+          }
+        });
+
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.PkiApplicationMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            applicationId: req.params.applicationId,
+            orgId: req.permission.orgId,
+            role: req.body.role
           }
         });
       }
