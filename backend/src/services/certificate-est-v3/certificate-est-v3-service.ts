@@ -8,7 +8,11 @@ import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  getCaCertChain,
+  getCaCertChains
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -394,6 +398,8 @@ export const certificateEstV3ServiceFactory = ({
         message: `Internal Certificate Authority with ID '${profile.caId}' not found`
       });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     const { caCert, caCertChain } = await getCaCertChain({
       caCertId: ca.internalCa.activeCaCertId as string,

@@ -121,6 +121,23 @@ const validateAcmEnrollmentType = async (
   }
 };
 
+const validateCaProjectMatch = async (
+  caId: string | null | undefined,
+  projectId: string,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">
+) => {
+  if (!caId) return;
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) {
+    throw new NotFoundError({ message: "Certificate Authority not found" });
+  }
+  if (ca.projectId !== projectId) {
+    throw new ForbiddenRequestError({
+      message: "Invalid Certificate Authority"
+    });
+  }
+};
+
 const validateExternalConfigs = async (
   externalConfigs: Record<string, unknown> | null | undefined,
   caId: string | null,
@@ -364,6 +381,8 @@ export const certificateProfileServiceFactory = ({
         });
       }
     }
+
+    await validateCaProjectMatch(data.caId, projectId, certificateAuthorityDAL);
 
     // Check for slug uniqueness within project
     const existingSlugProfile = await certificateProfileDAL.findBySlugAndProjectId(data.slug, projectId);
@@ -624,6 +643,10 @@ export const certificateProfileServiceFactory = ({
     const finalIssuerType = data.issuerType || existingProfile.issuerType;
     const finalEnrollmentType = data.enrollmentType || existingProfile.enrollmentType;
     const finalCaId = data.caId !== undefined ? data.caId : existingProfile.caId;
+
+    if (data.caId !== undefined) {
+      await validateCaProjectMatch(data.caId, existingProfile.projectId, certificateAuthorityDAL);
+    }
 
     validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
 

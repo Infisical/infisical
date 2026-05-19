@@ -46,7 +46,11 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { createDistinguishedName, extractDnParts } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  createDistinguishedName,
+  extractDnParts
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -1237,6 +1241,8 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
 
+    assertCaInProfileProject(ca, profile);
+
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1486,6 +1492,8 @@ export const certificateV3ServiceFactory = ({
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     validateCaSupport(ca, "CSR signing");
 
@@ -1930,6 +1938,9 @@ export const certificateV3ServiceFactory = ({
     // already approved a request that's guaranteed to fail downstream.
     if (profile.caId) {
       const preflightCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+      if (preflightCa) {
+        assertCaInProfileProject(preflightCa, profile);
+      }
       if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
         validateAcmIssuanceInputs({
           csr: certificateOrder.csr,
@@ -2085,6 +2096,8 @@ export const certificateV3ServiceFactory = ({
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
@@ -2313,6 +2326,8 @@ export const certificateV3ServiceFactory = ({
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
+
+        assertCaInProfileProject(ca, profile ?? originalCert);
 
         const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
         if (!eligibilityCheck.isEligible) {

@@ -401,6 +401,7 @@ export const permissionServiceFactory = ({
     });
     if (!permissionData?.length)
       throw new ForbiddenRequestError({
+        name: "ProjectMembershipNotFound",
         message: `You are not a member of this project with ID ${projectId}. Please assign this ${actor} to the project with the appropriate permissions, then try again.`
       });
 
@@ -629,6 +630,10 @@ export const permissionServiceFactory = ({
       });
     }
 
+    if (!actorOrgId) {
+      throw new BadRequestError({ message: "Organization context is required for resource permission checks" });
+    }
+
     const memoKey = requestMemoKeys.resourcePermission({
       projectId,
       resourceType,
@@ -640,15 +645,8 @@ export const permissionServiceFactory = ({
     });
 
     return requestMemoize(memoKey, async () => {
-      const resourceMemberships = await permissionDAL.getResourceMembership({
-        projectId,
-        resourceType,
-        resourceId,
-        actorId,
-        actorType: actor
-      });
-
       let isProjectAdmin = false;
+      let isProjectMember = false;
       try {
         const projectPerm = await getProjectPermission({
           actor,
@@ -659,9 +657,31 @@ export const permissionServiceFactory = ({
           actionProjectType: ActionProjectType.CertificateManager
         });
         isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
-      } catch {
-        isProjectAdmin = false;
+        isProjectMember = true;
+      } catch (err) {
+        if (!(err instanceof ForbiddenRequestError) || err.name !== "ProjectMembershipNotFound") {
+          throw err;
+        }
       }
+
+      if (!isProjectMember) {
+        await getOrgPermission({
+          actor,
+          actorId,
+          orgId: actorOrgId,
+          actorOrgId,
+          scope: OrganizationActionScope.Any,
+          actorAuthMethod
+        });
+      }
+
+      const resourceMemberships = await permissionDAL.getResourceMembership({
+        projectId,
+        resourceType,
+        resourceId,
+        actorId,
+        actorType: actor
+      });
 
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(
