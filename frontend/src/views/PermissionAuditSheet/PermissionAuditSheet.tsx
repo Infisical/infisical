@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BanIcon,
   BotIcon,
@@ -151,13 +151,14 @@ export const PermissionAuditSheet = ({
     [resources]
   );
 
-  if (sources && openSubjects === null) {
+  useEffect(() => {
+    if (!sources) return;
     setOpenSubjects(
       resources
         .filter((r) => r.allowedCount + r.conditionalCount > 0)
         .map((r) => r.subject as string)
     );
-  }
+  }, [sources, resources]);
 
   const handleExportCsv = () => {
     const csv = buildAuditCsv(resources);

@@ -23,7 +23,8 @@ const invalidateAuditForProject = (
     predicate: (query) => {
       const key = query.queryKey;
       if (!Array.isArray(key) || key.length < 2) return false;
-      if (key[1] !== "membership-permission-audit") return false;
+      if (key[1] !== "membership-permission-audit" && key[1] !== "identity-permission-audit")
+        return false;
       const params = key[0] as { projectId?: string } | undefined;
       return params?.projectId === projectId;
     }
