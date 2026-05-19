@@ -220,6 +220,7 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
+    await pamSessionDAL.expireOverdueSessions(actor.id, projectId);
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
     if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
       throw new BadRequestError({
