@@ -67,8 +67,8 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
 export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
 
 export enum SearchIdentitiesScope {
-  Organization = "organization",
-  Project = "project"
+  OrganizationScope = "organization",
+  ProjectScope = "project"
 }
 
 // Translate a raw `Membership.scope` value into a SearchIdentitiesScope. The two enums share
@@ -77,9 +77,9 @@ export enum SearchIdentitiesScope {
 export const accessScopeToSearchIdentitiesScope = (scope: string): SearchIdentitiesScope => {
   switch (scope) {
     case AccessScope.Organization:
-      return SearchIdentitiesScope.Organization;
+      return SearchIdentitiesScope.OrganizationScope;
     case AccessScope.Project:
-      return SearchIdentitiesScope.Project;
+      return SearchIdentitiesScope.ProjectScope;
     default:
       throw new Error(`Unexpected membership scope for identity search: ${scope}`);
   }

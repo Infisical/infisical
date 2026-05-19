@@ -97,9 +97,9 @@ type ScopeTab = "all" | "organization" | "project";
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 const TAB_TO_SCOPE: Record<ScopeTab, SearchIdentitiesScope[]> = {
-  all: [SearchIdentitiesScope.Organization, SearchIdentitiesScope.Project],
-  organization: [SearchIdentitiesScope.Organization],
-  project: [SearchIdentitiesScope.Project]
+  all: [SearchIdentitiesScope.OrganizationScope, SearchIdentitiesScope.ProjectScope],
+  organization: [SearchIdentitiesScope.OrganizationScope],
+  project: [SearchIdentitiesScope.ProjectScope]
 };
 
 const formatLastUsed = (lastLoginTime?: string | null) => {
@@ -215,7 +215,7 @@ const ManagedByCell = ({
   isSubOrganization,
   isSubOrgIdentity
 }: ManagedByCellProps) => {
-  if (scope === SearchIdentitiesScope.Project) {
+  if (scope === SearchIdentitiesScope.ProjectScope) {
     return (
       <Badge variant="project">
         <ProjectIcon />
@@ -380,7 +380,7 @@ const IdentityRow = ({ membership, onDelete }: IdentityRowProps) => {
   } = membership;
 
   const isSubOrgIdentity = currentOrg.id === orgId;
-  const isProjectScoped = scope === SearchIdentitiesScope.Project;
+  const isProjectScoped = scope === SearchIdentitiesScope.ProjectScope;
 
   const navigateToIdentity = () => {
     if (isProjectScoped && project) {
@@ -534,12 +534,21 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const orgWord = isSubOrganization ? "sub-organization" : "organization";
   const orgVariant = isSubOrganization ? "sub-org" : "org";
-  const emptyTitle = isFiltered
-    ? `No ${orgWord} machine identities match search filter`
-    : `No machine identities have been added to this ${orgWord}`;
-  const emptyDescription = isFiltered
-    ? "Adjust your search or filter criteria."
-    : "Add a machine identity to get started.";
+  const isProjectTab = scopeTab === "project";
+  const scopeLabel = isProjectTab ? "project" : orgWord;
+
+  let emptyTitle: string;
+  let emptyDescription: string;
+  if (isFiltered) {
+    emptyTitle = `No ${scopeLabel} machine identities match search filter`;
+    emptyDescription = "Adjust your search or filter criteria.";
+  } else if (isProjectTab) {
+    emptyTitle = "No project machine identities found";
+    emptyDescription = "Machine identities scoped to a project will appear here.";
+  } else {
+    emptyTitle = `No machine identities have been added to this ${orgWord}`;
+    emptyDescription = "Add a machine identity to get started.";
+  }
 
   return (
     <>

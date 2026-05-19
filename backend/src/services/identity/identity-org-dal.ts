@@ -716,8 +716,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const includeOrgScope = scope.includes(SearchIdentitiesScope.Organization);
-      const includeProjectScope = scope.includes(SearchIdentitiesScope.Project);
+      const includeOrgScope = scope.includes(SearchIdentitiesScope.OrganizationScope);
+      const includeProjectScope = scope.includes(SearchIdentitiesScope.ProjectScope);
 
       const applyScopeFilter = (qb: Knex.QueryBuilder) => {
         void qb.whereNotNull(`${TableName.Membership}.actorIdentityId`);
@@ -1052,8 +1052,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const includeOrgScope = scope.includes(SearchIdentitiesScope.Organization);
-      const includeProjectScope = scope.includes(SearchIdentitiesScope.Project);
+      const includeOrgScope = scope.includes(SearchIdentitiesScope.OrganizationScope);
+      const includeProjectScope = scope.includes(SearchIdentitiesScope.ProjectScope);
 
       const query = (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)

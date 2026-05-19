@@ -89,7 +89,7 @@ export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
         offset,
         orderBy,
         orderDirection,
-        scope: scope ?? [SearchIdentitiesScope.Organization],
+        scope: scope ?? [SearchIdentitiesScope.OrganizationScope],
         search
       });
       return data;

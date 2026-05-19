@@ -526,12 +526,12 @@ export const identityServiceFactory = ({
       actorOrgId
     });
     const canReadOrgIdentities = orgPermission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    if (uniqueScope.has(SearchIdentitiesScope.Organization) && !canReadOrgIdentities) {
-      uniqueScope.delete(SearchIdentitiesScope.Organization);
+    if (uniqueScope.has(SearchIdentitiesScope.OrganizationScope) && !canReadOrgIdentities) {
+      uniqueScope.delete(SearchIdentitiesScope.OrganizationScope);
     }
 
     let accessibleProjectIds: string[] = [];
-    if (uniqueScope.has(SearchIdentitiesScope.Project)) {
+    if (uniqueScope.has(SearchIdentitiesScope.ProjectScope)) {
       const canAccessAllProjects = orgPermission.can(
         OrgPermissionAdminConsoleAction.AccessAllProjects,
         OrgPermissionSubjects.AdminConsole
@@ -563,7 +563,7 @@ export const identityServiceFactory = ({
         accessibleProjectIds = projectAccessChecks.filter((id): id is string => Boolean(id));
       }
       if (accessibleProjectIds.length === 0) {
-        uniqueScope.delete(SearchIdentitiesScope.Project);
+        uniqueScope.delete(SearchIdentitiesScope.ProjectScope);
       }
     }
 
@@ -616,8 +616,8 @@ export const identityServiceFactory = ({
     scope,
     searchFilter = {}
   }: TCountIdentitiesV2DTO) => {
-    const requestedOrg = scope.includes(SearchIdentitiesScope.Organization);
-    const requestedProject = scope.includes(SearchIdentitiesScope.Project);
+    const requestedOrg = scope.includes(SearchIdentitiesScope.OrganizationScope);
+    const requestedProject = scope.includes(SearchIdentitiesScope.ProjectScope);
 
     const { uniqueScope, accessibleProjectIds } = await resolveIdentitySearchScope({
       actor,

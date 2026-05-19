@@ -81,7 +81,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         scope: z
           .array(z.nativeEnum(SearchIdentitiesScope))
           .min(1)
-          .default([SearchIdentitiesScope.Organization])
+          .default([SearchIdentitiesScope.OrganizationScope])
           .describe(IDENTITIES.SEARCH_V2.scope)
           .optional(),
         orderBy: z
@@ -145,7 +145,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId,
         searchFilter: req.body.search,
-        scope: req.body.scope ?? [SearchIdentitiesScope.Organization],
+        scope: req.body.scope ?? [SearchIdentitiesScope.OrganizationScope],
         limit: req.body.limit,
         offset: req.body.offset,
         orderBy: req.body.orderBy,
@@ -178,7 +178,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         scope: z
           .array(z.nativeEnum(SearchIdentitiesScope))
           .min(1)
-          .default([SearchIdentitiesScope.Organization, SearchIdentitiesScope.Project])
+          .default([SearchIdentitiesScope.OrganizationScope, SearchIdentitiesScope.ProjectScope])
           .describe(IDENTITIES.SEARCH_COUNT_V2.scope),
         search: buildSearchZodSchema(
           z

@@ -950,9 +950,8 @@ export type TProjectIdentityMembershipsListV2 = {
 };
 
 export enum SearchIdentitiesScope {
-  Organization = "organization",
-  // eslint-disable-next-line @typescript-eslint/no-shadow
-  Project = "project"
+  OrganizationScope = "organization",
+  ProjectScope = "project"
 }
 
 export type TSearchIdentitiesDTO = {
