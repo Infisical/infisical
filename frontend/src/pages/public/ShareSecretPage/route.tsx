@@ -8,7 +8,7 @@ import { ShareSecretPage } from "./ShareSecretPage";
 const ShareSecretRoute = () => {
   const { config } = useServerConfig();
 
-  if (config.isSecretSharingDisabled) {
+  if (config.isPublicSecretSharingDisabled) {
     return <NotFoundPage />;
   }
 
