@@ -41,6 +41,7 @@ import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-p
 import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
 import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
 import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
+import { decryptDomainConnectionDetails } from "../pam-domain/pam-domain-fns";
 import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceConnectionDetails } from "../pam-resource/pam-resource-fns";
@@ -220,7 +221,33 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
+    const isDomainAccount = !account.resourceId;
+    const domain = isDomainAccount && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
+    let accountIdentity = account.name;
+
+    if (isDomainAccount) {
+      if (resource.resourceType !== PamResource.Windows) {
+        throw new BadRequestError({ message: "Domain account web access is only supported for Windows resources" });
+      }
+
+      if (!account.domainId || resource.domainId !== account.domainId) {
+        throw new BadRequestError({ message: "Resource is not joined to this domain account's domain" });
+      }
+
+      if (!domain) {
+        throw new NotFoundError({ message: `Domain with ID '${account.domainId}' not found` });
+      }
+
+      const domainConnectionDetails = await decryptDomainConnectionDetails({
+        projectId,
+        encryptedConnectionDetails: domain.encryptedConnectionDetails,
+        kmsService
+      });
+      accountIdentity = `${domainConnectionDetails.domain}:${account.name}`;
+    }
+
     await pamSessionDAL.expireOverdueSessions(actor.id, projectId);
+
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
     if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
       throw new BadRequestError({
@@ -234,7 +261,7 @@ export const pamWebAccessServiceFactory = ({
     const policyInputs = {
       resourceId: resource.id,
       resourceName: resource.name,
-      accountName: account.name
+      accountName: accountIdentity
     };
 
     const hasApprovalGrant = await approvalPolicy.canAccess(
@@ -273,7 +300,6 @@ export const pamWebAccessServiceFactory = ({
       });
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
-      const domain = !account.resourceId && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
@@ -534,12 +560,22 @@ export const pamWebAccessServiceFactory = ({
       }
 
       const resource = await pamResourceDAL.findById(effectiveResourceId);
-      if (!resource) {
+      if (!resource || resource.projectId !== projectId) {
         throw new BadRequestError({ message: "Resource not found" });
       }
 
       if (!SUPPORTED_WEB_ACCESS_RESOURCES.includes(resource.resourceType as PamResource)) {
         throw new BadRequestError({ message: "Web access is not supported for this resource type" });
+      }
+
+      if (!account.resourceId) {
+        if (resource.resourceType !== PamResource.Windows) {
+          throw new BadRequestError({ message: "Domain account web access is only supported for Windows resources" });
+        }
+
+        if (!account.domainId || resource.domainId !== account.domainId) {
+          throw new BadRequestError({ message: "Resource is not joined to this domain account's domain" });
+        }
       }
 
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
