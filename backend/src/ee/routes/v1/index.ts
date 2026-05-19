@@ -1,4 +1,5 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
+import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
@@ -130,6 +131,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (pkiRouter) => {
+      await pkiRouter.register(injectCertManagerProjectId);
+
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
       await pkiRouter.register(registerPkiDiscoveryRouter, { prefix: "/discovery-jobs" });

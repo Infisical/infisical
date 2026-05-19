@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -36,7 +37,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
         caId: z.string().describe("Azure AD CS CA ID")
       }),
       querystring: z.object({
-        projectId: z.string().describe("Project ID")
+        projectId: z.string().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -52,9 +53,10 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
       const templates = await server.services.certificateAuthority.getAzureAdcsTemplates({
         caId: req.params.caId,
-        projectId: req.query.projectId,
+        projectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -63,7 +65,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.GET_AZURE_AD_TEMPLATES,
           metadata: {

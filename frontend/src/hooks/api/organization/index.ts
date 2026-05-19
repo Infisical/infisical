@@ -21,6 +21,7 @@ export {
   useGetOrgPlansTable,
   useGetOrgPlanTable,
   useGetOrgPmtMethods,
+  useGetOrgProductStats,
   useGetOrgTaxIds,
   useGetOrgTrialUrl,
   useSearchOrganizationGroups,
@@ -28,3 +29,4 @@ export {
   useUpdateOrgBillingDetails,
   useUpgradePrivilegeSystem
 } from "./queries";
+export type { TOrgProductStats } from "./types";

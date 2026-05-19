@@ -82,6 +82,12 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     incrementBy: async () => {
       return 1;
     },
+    incrementByAndRefreshExpiryIfUnderLimit: async () => {
+      return 1;
+    },
+    decrementByOrDelete: async () => {
+      return 0;
+    },
     acquireLock: () => {
       return Promise.resolve({
         release: () => {}

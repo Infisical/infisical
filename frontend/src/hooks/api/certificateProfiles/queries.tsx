@@ -16,21 +16,16 @@ import {
 
 export const certificateProfileKeys = {
   list: (params: {
-    projectId: string;
     limit?: number;
     offset?: number;
     search?: string;
     includeConfigs?: boolean;
     enrollmentType?: string;
     expiringDays?: number;
+    applicationId?: string;
   }) => ["certificate-profiles", "list", params],
   getById: (profileId: string) => ["certificate-profiles", "get-by-id", profileId],
-  getBySlug: (projectId: string, slug: string) => [
-    "certificate-profiles",
-    "get-by-slug",
-    projectId,
-    slug
-  ],
+  getBySlug: (slug: string) => ["certificate-profiles", "get-by-slug", slug],
   getCertificates: (profileId: string, params?: Omit<TGetProfileCertificatesDTO, "profileId">) => [
     "certificate-profiles",
     "certificates",
@@ -51,21 +46,21 @@ export const certificateProfileKeys = {
 };
 
 export const useListCertificateProfiles = ({
-  projectId,
   limit = 20,
   offset = 0,
   search,
   includeConfigs = false,
-  enrollmentType
+  enrollmentType,
+  applicationId
 }: TListCertificateProfilesDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.list({
-      projectId,
       limit,
       offset,
       search,
       includeConfigs,
-      enrollmentType
+      enrollmentType,
+      applicationId
     }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
@@ -73,17 +68,16 @@ export const useListCertificateProfiles = ({
         totalCount: number;
       }>("/api/v1/cert-manager/certificate-profiles", {
         params: {
-          projectId,
           limit,
           offset,
           search,
           includeConfigs,
-          enrollmentType
+          enrollmentType,
+          applicationId
         }
       });
       return data;
-    },
-    enabled: Boolean(projectId)
+    }
   });
 };
 
@@ -100,21 +94,16 @@ export const useGetCertificateProfileById = ({ profileId }: TGetCertificateProfi
   });
 };
 
-export const useGetCertificateProfileBySlug = ({
-  projectId,
-  slug
-}: TGetCertificateProfileBySlugDTO) => {
+export const useGetCertificateProfileBySlug = ({ slug }: TGetCertificateProfileBySlugDTO) => {
   return useQuery({
-    queryKey: certificateProfileKeys.getBySlug(projectId, slug),
+    queryKey: certificateProfileKeys.getBySlug(slug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateProfile: TCertificateProfile;
-      }>(`/api/v1/cert-manager/certificate-profiles/slug/${slug}`, {
-        params: { projectId }
-      });
+      }>(`/api/v1/cert-manager/certificate-profiles/slug/${slug}`);
       return data.certificateProfile;
     },
-    enabled: Boolean(projectId && slug)
+    enabled: Boolean(slug)
   });
 };
 

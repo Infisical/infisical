@@ -34,6 +34,7 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   pkiSync?: TPkiSync;
+  applicationId?: string;
   onCertificatesUpdated?: () => void;
   selectedCertificateIds?: string[];
   onCertificateSelectionChange?: (certificateIds: string[]) => void;
@@ -46,6 +47,7 @@ export const CertificateManagementModal = ({
   isOpen,
   onClose,
   pkiSync,
+  applicationId: applicationIdProp,
   onCertificatesUpdated,
   selectedCertificateIds,
   onCertificateSelectionChange,
@@ -60,6 +62,7 @@ export const CertificateManagementModal = ({
   const pageSize = 10;
 
   const isCreateMode = !pkiSync;
+  const scopedApplicationId = pkiSync?.applicationId ?? applicationIdProp;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -78,7 +81,8 @@ export const CertificateManagementModal = ({
     limit: pageSize,
     commonName: debouncedSearchTerm || undefined,
     friendlyName: debouncedSearchTerm || undefined,
-    forPkiSync: true
+    forPkiSync: true,
+    applicationId: scopedApplicationId
   });
 
   const allCertificates = data?.certificates || [];

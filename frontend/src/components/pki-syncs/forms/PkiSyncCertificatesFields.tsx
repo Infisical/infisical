@@ -23,7 +23,11 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { CertificateManagementModal } from "../CertificateManagementModal";
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
-export const PkiSyncCertificatesFields = () => {
+type Props = {
+  applicationId?: string;
+};
+
+export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
   const { control, watch, setValue } = useFormContext<TPkiSyncForm>();
   const { currentProject } = useProject();
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
@@ -34,7 +38,8 @@ export const PkiSyncCertificatesFields = () => {
     projectId: currentProject?.id || "",
     offset: 0,
     limit: 100,
-    forPkiSync: true
+    forPkiSync: true,
+    applicationId
   });
 
   const certificates = data?.certificates || [];
@@ -176,6 +181,7 @@ export const PkiSyncCertificatesFields = () => {
       <CertificateManagementModal
         isOpen={isSelectionModalOpen}
         onClose={() => setIsSelectionModalOpen(false)}
+        applicationId={applicationId}
         selectedCertificateIds={certificateIds}
         onCertificateSelectionChange={(newCertificateIds) => {
           setValue("certificateIds", newCertificateIds);

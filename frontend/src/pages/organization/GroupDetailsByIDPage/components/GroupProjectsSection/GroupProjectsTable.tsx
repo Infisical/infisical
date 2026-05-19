@@ -27,6 +27,7 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListGroupProjects } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupProjectRow } from "./GroupProjectRow";
@@ -85,7 +86,9 @@ export const GroupProjectsTable = ({
   });
 
   const totalCount = groupMemberships?.totalCount ?? 0;
-  const projects = groupMemberships?.projects ?? [];
+  const projects = (groupMemberships?.projects ?? []).filter(
+    (p) => p.type !== ProjectType.CertificateManager
+  );
 
   useResetPageHelper({
     totalCount,

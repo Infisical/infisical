@@ -34,7 +34,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
-import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
@@ -64,8 +64,11 @@ type Props = {
 };
 export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) => {
   const { subscription } = useSubscription();
-  const { projectId } = useProject();
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
+  const { projectId, currentProject } = useProject();
+  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
+    projectId,
+    currentProject?.type
+  );
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionMemberActions.Edit,
@@ -127,9 +130,11 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
       return;
     }
 
+    const isCertManager = currentProject.type === ProjectType.CertificateManager;
     await updateMembershipRole.mutateAsync({
       projectId,
-      membershipId: projectMember.id,
+      projectType: currentProject.type,
+      membershipId: isCertManager ? projectMember.user.id : projectMember.id,
       roles: sanitizedRoles
     });
     createNotification({ text: "Successfully updated roles", type: "success" });

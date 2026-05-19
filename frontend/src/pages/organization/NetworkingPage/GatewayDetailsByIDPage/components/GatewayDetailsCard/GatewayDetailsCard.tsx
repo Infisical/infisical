@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { CheckIcon, ClipboardListIcon, PencilIcon, TriangleAlertIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -20,7 +19,10 @@ import {
   DetailLabel,
   DetailValue,
   IconButton,
-  Separator
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -30,19 +32,19 @@ import {
 import { useTimedReset } from "@app/hooks";
 import {
   GatewayAuthMethodView,
-  GatewayHealthCheckStatus,
   TGatewayV2,
   TGatewayV2WithAuthMethod
 } from "@app/hooks/api/gateways-v2/types";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 import { GatewayAuthMethodModal } from "../GatewayAuthMethod/GatewayAuthMethodModal";
 import { ViewGatewayAuth } from "../GatewayAuthMethod/ViewGatewayAuth";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
-  if (!gateway.heartbeat && !gateway.lastHealthCheckStatus) {
+  if (!gateway.heartbeat && !gateway.heartbeatTTL) {
     return <Badge variant="warning">Unregistered</Badge>;
   }
-  if (gateway.lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy) {
+  if (isGatewayHealthy(gateway)) {
     return <Badge variant="success">Healthy</Badge>;
   }
   return <Badge variant="danger">Unreachable</Badge>;
@@ -78,18 +80,21 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
               <DetailLabel>ID</DetailLabel>
               <DetailValue className="flex items-center gap-x-1">
                 <span className="font-mono text-xs">{gateway.id}</span>
-                <Tooltip content="Copy gateway ID to clipboard">
-                  <IconButton
-                    aria-label="copy gateway id"
-                    onClick={() => {
-                      navigator.clipboard.writeText(gateway.id);
-                      setCopyTextId("Copied");
-                    }}
-                    variant="ghost"
-                    size="xs"
-                  >
-                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                  </IconButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="copy gateway id"
+                      onClick={() => {
+                        navigator.clipboard.writeText(gateway.id);
+                        setCopyTextId("Copied");
+                      }}
+                      variant="ghost"
+                      size="xs"
+                    >
+                      {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy gateway ID to clipboard</TooltipContent>
                 </Tooltip>
               </DetailValue>
             </Detail>
@@ -100,10 +105,17 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
               </DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>Last Heartbeat</DetailLabel>
+              <DetailLabel>Last Seen</DetailLabel>
               <DetailValue>
                 {gateway.heartbeat ? (
-                  format(new Date(gateway.heartbeat), "PPpp")
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-default">
+                        {format(new Date(gateway.heartbeat), "PPpp")}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{new Date(gateway.heartbeat).toUTCString()}</TooltipContent>
+                  </Tooltip>
                 ) : (
                   <span className="text-muted">—</span>
                 )}

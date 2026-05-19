@@ -1,11 +1,12 @@
 import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 
-import { ActionProjectType, OrganizationActionScope, TMemberships } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ResourceType, TMemberships } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
 import { ProjectPermissionSet } from "./project-permission";
+import { ResourcePermissionSet } from "./resource-permission";
 
 export type TBuildProjectPermissionDTO = {
   permissions?: unknown;
@@ -33,6 +34,16 @@ export type TGetProjectPermissionArg = {
   actionProjectType: ActionProjectType;
 };
 
+export type TGetResourcePermissionArg = {
+  actor: ActorType;
+  actorId: string;
+  projectId: string;
+  resourceType: ResourceType;
+  resourceId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId?: string;
+};
+
 export type TGetOrgPermissionArg = {
   actor: ActorType;
   actorId: string;
@@ -58,6 +69,12 @@ export type TPermissionServiceFactory = {
     memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
     hasRole: (role: string) => boolean;
     hasProjectEnforcement: (check: "enforceEncryptedSecretManagerSecretMetadata") => boolean;
+  }>;
+  getResourcePermission: (arg: TGetResourcePermissionArg) => Promise<{
+    permission: MongoAbility<ResourcePermissionSet, MongoQuery>;
+    memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
+    hasRole: (role: string) => boolean;
+    isImplicitAdmin: boolean;
   }>;
   getProjectPermissions: (
     projectId: string,

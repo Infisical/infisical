@@ -1,8 +1,3 @@
-export enum GatewayHealthCheckStatus {
-  Healthy = "healthy",
-  Failed = "failed"
-}
-
 export type TGatewayV2 = {
   id: string;
   identityId: string | null;
@@ -10,7 +5,7 @@ export type TGatewayV2 = {
   createdAt: string;
   updatedAt: string;
   heartbeat: string | null;
-  lastHealthCheckStatus: GatewayHealthCheckStatus | null;
+  heartbeatTTL: number | null;
   canRevoke: boolean;
   connectedResourcesCount: number;
   identity: {
