@@ -6,8 +6,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ApplicationIdParamsSchema } from "../pki-application-schemas";
 import { ApplicationMemberSchema, RemoveResponseSchema, RoleBodySchema } from "./schemas";
