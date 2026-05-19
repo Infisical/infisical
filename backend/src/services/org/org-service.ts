@@ -61,6 +61,8 @@ import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
+import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -121,6 +123,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -154,7 +157,8 @@ export const orgServiceFactory = ({
   membershipUserDAL,
   membershipDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  telemetryService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -695,6 +699,16 @@ export const orgServiceFactory = ({
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+
+    void telemetryService.sendPostHogEvents({
+      event: PostHogEventTypes.OrganizationCreated,
+      distinctId: userEmail ?? "",
+      organizationId: organization.id,
+      properties: {
+        name: orgName
+      }
+    });
+
     return organization;
   };
 
