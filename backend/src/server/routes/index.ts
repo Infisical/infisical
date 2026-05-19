@@ -495,6 +495,7 @@ import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
+import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
@@ -3578,6 +3579,11 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
+  if (envConfig.GOLANG_SIDECAR_URL) {
+    logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
+    await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
+  }
+
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {
     logger.info(`Infisical primary instance is configured: ${envConfig.INFISICAL_PRIMARY_INSTANCE_URL}`);
