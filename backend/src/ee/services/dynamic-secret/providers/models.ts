@@ -725,7 +725,7 @@ export const DynamicSecretMilvusSchema = z.object({
     .trim()
     .min(1)
     .describe(
-      "Milvus endpoint host. URL scheme is optional; defaults to https when a CA is provided, otherwise http (e.g. localhost or http://localhost)."
+      "Milvus endpoint host. URL scheme is optional; uses https when the host includes https:// or a CA is provided, http when the host includes http://, otherwise http (e.g. localhost)."
     ),
   port: z.number().int().min(1).max(65535),
   username: z.string().trim().min(1).describe("Admin username used to manage Milvus users and roles"),

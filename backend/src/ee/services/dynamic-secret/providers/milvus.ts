@@ -46,10 +46,34 @@ const generatePassword = () => {
   return customAlphabet(charset, 32)();
 };
 
+// it is possible to connect to Milvus without defining a CA, because they have their on demand cluster on zilliz cloud
+export const resolveMilvusUseTls = (host: string, ca?: string) => {
+  if (/^https:\/\//i.test(host)) return true;
+  if (/^http:\/\//i.test(host)) return false;
+  return Boolean(ca);
+};
+
+export const parseMilvusHost = (host: string, port: number, useTls: boolean) => {
+  const hostWithoutScheme = host.replace(/^https?:\/\//i, "");
+  const scheme = useTls ? "https" : "http";
+  const urlString = hostWithoutScheme.includes("://") ? hostWithoutScheme : `${scheme}://${hostWithoutScheme}`;
+
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch (err) {
+    logger.error(err, `Invalid Milvus host URL: ${host}`);
+    throw new BadRequestError({ message: "Invalid Milvus host URL" });
+  }
+
+  url.port = String(port);
+  return { hostname: url.hostname, origin: url.origin };
+};
+
 const buildBaseUrl = (providerInputs: TMilvusProviderInputs, host: string, port: number) => {
-  const sanitizedHost = host.replace(/^https?:\/\//i, "");
-  const scheme = providerInputs.ca ? "https" : "http";
-  return `${scheme}://${sanitizedHost}:${port}`;
+  const useTls = resolveMilvusUseTls(host, providerInputs.ca);
+  const { origin } = parseMilvusHost(host, port, useTls);
+  return origin;
 };
 
 export const MILVUS_MAX_USERNAME_LENGTH = 32;
@@ -67,13 +91,13 @@ export const MilvusProvider = ({
 }: TMilvusProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: object) => {
     const providerInputs = await DynamicSecretMilvusSchema.parseAsync(inputs);
-    const sanitizedHost = providerInputs.host.replace(/^https?:\/\//i, "");
+    const useTls = resolveMilvusUseTls(providerInputs.host, providerInputs.ca);
+    const { hostname, origin } = parseMilvusHost(providerInputs.host, providerInputs.port, useTls);
     const isGateway = Boolean(providerInputs.gatewayId || providerInputs.gatewayPoolId);
 
-    if (!isGateway) {
-      await blockLocalAndPrivateIpAddresses(sanitizedHost);
-    }
-    await verifyHostInputValidity({ host: sanitizedHost, isDynamicSecret: true, isGateway });
+    await blockLocalAndPrivateIpAddresses(origin, isGateway);
+
+    await verifyHostInputValidity({ host: hostname, isDynamicSecret: true, isGateway });
     return providerInputs;
   };
 
