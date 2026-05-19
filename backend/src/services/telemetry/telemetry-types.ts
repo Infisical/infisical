@@ -114,7 +114,9 @@ export enum PostHogEventTypes {
   HoneyTokenUpdated = "Honey Token Updated",
   HoneyTokenRevoked = "Honey Token Revoked",
   HoneyTokenReset = "Honey Token Reset",
-  HoneyTokenTriggered = "Honey Token Triggered"
+  HoneyTokenTriggered = "Honey Token Triggered",
+
+  CustomRoleCreated = "Custom Role Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -887,6 +889,16 @@ export type THoneyTokenTriggeredEvent = {
   };
 };
 
+export type TCustomRoleCreatedEvent = {
+  event: PostHogEventTypes.CustomRoleCreated;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -977,4 +989,5 @@ export type TPostHogEvent = {
   | THoneyTokenRevokedEvent
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
+  | TCustomRoleCreatedEvent
 );
