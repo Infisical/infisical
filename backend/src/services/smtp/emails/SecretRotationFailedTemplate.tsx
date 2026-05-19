@@ -46,7 +46,9 @@ export const SecretRotationFailedTemplate = ({
         <Text className="text-[14px] text-red-600 mt-[4px]">{content}</Text>
       </Section>
       <Section className="text-center">
-        <BaseButton href={`${rotationUrl}?search=${encodeURIComponent(rotationName)}&secretPath=${encodeURIComponent(secretPath)}&environments=${encodeURIComponent(environmentSlug)}&filterBy=rotation`}>
+        <BaseButton
+          href={`${rotationUrl}?search=${encodeURIComponent(rotationName)}&secretPath=${encodeURIComponent(secretPath)}&environments=${encodeURIComponent(environmentSlug)}&filterBy=rotation`}
+        >
           View in Infisical
         </BaseButton>
       </Section>

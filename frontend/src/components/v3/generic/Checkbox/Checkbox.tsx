@@ -9,7 +9,7 @@ import { cn } from "../../utils";
 const checkboxVariants = cva(
   cn(
     "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-    "outline-none group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2",
+    "outline-none group-data-[disabled=true]/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2",
     "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed",
     "disabled:opacity-50 cursor-pointer",
     "aria-invalid:border-danger aria-invalid:ring-danger/40",

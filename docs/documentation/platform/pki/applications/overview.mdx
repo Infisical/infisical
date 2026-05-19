@@ -1,0 +1,119 @@
+---
+title: "Applications"
+sidebarTitle: "Overview"
+description: "Issue certificates, configure enrollment, and manage lifecycle automation for your services."
+---
+
+Applications are where teams issue and manage certificates. Within an Application, you can:
+
+- **Issue certificates** via API, ACME, EST, or SCEP
+- **Automate renewal** so certificates never expire unexpectedly
+- **Configure alerting** for expiration, issuance, and lifecycle events
+- **Sync certificates** to AWS ACM, Azure Key Vault, Cloudflare, and other destinations
+- **Require approvals** before high-value certificates are issued
+
+Each Application represents a service or workload in your organization — a payments API, a mobile backend, an IoT device fleet, or an internal web app. Product admins create Applications and assign team members; teams then operate independently within their assigned Applications.
+
+## What's in an Application?
+
+<CardGroup cols={2}>
+  <Card title="Members" icon="users">
+    Team members with Admin, Operator, or Auditor roles.
+  </Card>
+  <Card title="Enrollment Methods" icon="plug">
+    How certificates are requested — API, ACME, EST, or SCEP.
+  </Card>
+  <Card title="Certificate Inventory" icon="list">
+    All certificates issued for this Application.
+  </Card>
+  <Card title="Alerting" icon="bell">
+    Notifications for expiration, issuance, renewal, and revocation.
+  </Card>
+  <Card title="Approval Policies" icon="check-double">
+    Optional review workflows before certificates are issued.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate">
+    Push certificates to AWS, Azure, Cloudflare, and more.
+  </Card>
+</CardGroup>
+
+## Application Roles
+
+Members are assigned to Applications with one of three roles:
+
+| Role | Capabilities |
+|------|--------------|
+| **Admin** | Full control — manage enrollment methods, members, alerting, syncs, and approval policies |
+| **Operator** | Issue and manage certificates within the Application |
+| **Auditor** | Read-only — view certificates and Application configuration |
+
+<Info>
+  Application roles are simple and direct — just add members and pick a role. Custom roles will be available in a future release.
+</Info>
+
+## Create an Application
+
+<Info>
+  **Product Admins** create Applications and assign team members to them. If you're a team member waiting for access, ask your product admin to create an Application and add you.
+</Info>
+
+<Steps>
+  <Step title="Navigate to Applications">
+    In Certificate Manager, go to **Applications** and click **Create Application**.
+  </Step>
+  <Step title="Configure basic settings">
+    - **Name**: A descriptive slug like `payments-api` or `device-fleet`
+    - **Description**: Optional context about this service
+  </Step>
+  <Step title="Attach a Certificate Profile">
+    Select a certificate profile that defines what certificates will look like — the issuing CA, validity period, allowed domains, and constraints.
+  </Step>
+  <Step title="Configure enrollment">
+    Choose how your service will request certificates:
+    
+    | Method | Best for |
+    |--------|----------|
+    | **API** | UI issuance, Infisical Agent, custom integrations |
+    | **ACME** | Certbot, cert-manager, standard tooling |
+    | **EST** | Enterprise device enrollment |
+    | **SCEP** | Network devices, MDM systems |
+    
+    See [Enrollment Methods](/documentation/platform/pki/applications/enrollment-methods/overview) for detailed configuration.
+  </Step>
+  <Step title="Assign team members">
+    Add team members and assign roles. Only people assigned to this Application can view or manage its certificates.
+  </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What's the difference between an Application and a Certificate Profile?">
+    A **Certificate Profile** defines what certificates look like — the CA, policy, and constraints. It's a reusable template created by product admins.
+    
+    An **Application** is where a team consumes that profile. One profile can be used by many Applications, each with their own members, enrollment methods, and alerting.
+  </Accordion>
+  <Accordion title="Can one service use multiple Certificate Profiles?">
+    Yes. An Application can have multiple profiles attached, allowing you to issue different types of certificates (e.g., short-lived mTLS certs and longer-lived TLS certs) from the same Application.
+  </Accordion>
+  <Accordion title="How do I give another team access to my Application?">
+    Go to your Application's **Members** tab and invite them with the appropriate role. They'll only have access to this specific Application, not other Applications in your organization.
+  </Accordion>
+</AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Enrollment Methods" icon="plug" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Configure how your service requests certificates.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to AWS ACM, Azure Key Vault, and other destinations.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates expire or lifecycle events occur.
+  </Card>
+  <Card title="Approval Policies" icon="check-double" href="/documentation/platform/pki/applications/approvals">
+    Add human review before certificates are issued.
+  </Card>
+</CardGroup>

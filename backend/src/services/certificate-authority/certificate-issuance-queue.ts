@@ -103,6 +103,7 @@ export type TIssueCertificateFromProfileJobData = {
   country?: string;
   state?: string;
   locality?: string;
+  applicationId?: string;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -127,7 +128,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     TCertificateRequestServiceFactory,
     "attachCertificateToRequest" | "updateCertificateRequestStatus"
   >;
-  certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById">;
+  certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -266,7 +267,8 @@ export const certificateIssuanceQueueFactory = ({
     organizationalUnit,
     country,
     state,
-    locality
+    locality,
+    applicationId
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -288,7 +290,8 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      applicationId
     };
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
@@ -774,11 +777,31 @@ export const certificateIssuanceQueueFactory = ({
         `Successfully processed certificate issuance job with [certificateId=${certificateId}] [caId=${caId}]`
       );
 
+      let scopedApplicationId: string | null = data.applicationId ?? null;
+      try {
+        if (!scopedApplicationId && isRenewal && originalCertificateId) {
+          const orig = await certificateDAL.findById(originalCertificateId);
+          scopedApplicationId = orig?.applicationId ?? null;
+        }
+        if (scopedApplicationId && certificateRequestId && certificateRequestDAL) {
+          const req = await certificateRequestDAL.findById(certificateRequestId);
+          if (req?.certificateId) {
+            await certificateDAL.updateById(req.certificateId, { applicationId: scopedApplicationId });
+          }
+        }
+      } catch (stampErr) {
+        logger.warn(
+          stampErr,
+          `Failed to stamp applicationId on async-issued certificate [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
       try {
         await pkiAlertV2Queue?.queueCertificateEvent({
           certificateId,
           projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE
+          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+          applicationId: scopedApplicationId
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");

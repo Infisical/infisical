@@ -102,7 +102,6 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
 };
 
 export type TCreateCertificateProfileDTO = {
-  projectId: string;
   caId?: string;
   certificatePolicyId: string;
   slug: string;
@@ -170,7 +169,6 @@ export type TDeleteCertificateProfileDTO = {
 };
 
 export type TListCertificateProfilesDTO = {
-  projectId: string;
   limit?: number;
   offset?: number;
   search?: string;
@@ -178,6 +176,7 @@ export type TListCertificateProfilesDTO = {
   enrollmentType?: EnrollmentType;
   issuerType?: IssuerType;
   caId?: string;
+  applicationId?: string;
 };
 
 export type TGetCertificateProfileByIdDTO = {
@@ -185,7 +184,6 @@ export type TGetCertificateProfileByIdDTO = {
 };
 
 export type TGetCertificateProfileBySlugDTO = {
-  projectId: string;
   slug: string;
 };
 

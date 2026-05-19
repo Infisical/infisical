@@ -10,6 +10,7 @@ import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { PkiAlertsV2Page } from "@app/views/PkiAlertsV2Page";
 
+import { PkiDocsUrls } from "../pki-docs-urls";
 import { PkiAlertsSection, PkiCollectionSection } from "./components";
 
 export const AlertingPage = () => {
@@ -35,7 +36,7 @@ export const AlertingPage = () => {
             <span className="inline-flex items-center gap-x-2">
               Alerting
               <span className="mt-0.5">
-                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/alerting" />
+                <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
               </span>
             </span>
           }

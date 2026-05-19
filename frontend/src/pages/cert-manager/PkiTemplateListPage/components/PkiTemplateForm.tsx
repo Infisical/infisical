@@ -74,7 +74,7 @@ type Props = {
 export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
 
-  const { data: cas, isPending: isCaLoading } = useListCasByProjectId(currentProject.id);
+  const { data: cas, isPending: isCaLoading } = useListCasByProjectId();
 
   const { mutateAsync: createCertTemplate } = useCreateCertTemplateV2();
   const { mutateAsync: updateCertTemplate } = useUpdateCertTemplateV2();
@@ -131,7 +131,6 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     if (certTemplate) {
       await updateCertTemplate({
         templateName: certTemplate.name,
-        projectId: currentProject.id,
         caName: ca.name,
         name,
         commonName,
@@ -155,7 +154,6 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
       });
     } else {
       await createCertTemplate({
-        projectId: currentProject.id,
         caName: ca.name,
         name,
         commonName,

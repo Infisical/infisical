@@ -176,9 +176,14 @@ export const addUsersToGroupByUserIds = async ({
   projectDAL,
   projectBotDAL,
   tx: outerTx,
-  membershipGroupDAL
+  membershipGroupDAL,
+  shouldFailOnMissingMembers = true
 }: TAddUsersToGroupByUserIds) => {
   const processAddition = async (tx: Knex) => {
+    if (userIds.length === 0) {
+      return [];
+    }
+
     const foundMembers = await userDAL.find(
       {
         $in: {
@@ -210,10 +215,26 @@ export const addUsersToGroupByUserIds = async ({
       { tx }
     );
 
+    const existingUserGroupMembershipsUserIdsSet = new Set(existingUserGroupMemberships.map((m) => m.userId));
+
+    // Track which userIds we're actually processing (may be filtered for idempotent operations)
+    let userIdsToProcess = userIds;
+
     if (existingUserGroupMemberships.length) {
-      throw new BadRequestError({
-        message: `User(s) are already part of the group ${group.slug}`
-      });
+      if (shouldFailOnMissingMembers) {
+        throw new BadRequestError({
+          message: `User(s) are already part of the group ${group.slug}`
+        });
+      }
+      // filter out users already in group for idempotent operation
+      const filteredFoundMembers = foundMembers.filter((m) => !existingUserGroupMembershipsUserIdsSet.has(m.id));
+      if (filteredFoundMembers.length === 0) {
+        return [];
+      }
+      // continue with filtered list
+      foundMembers.length = 0;
+      foundMembers.push(...filteredFoundMembers);
+      userIdsToProcess = filteredFoundMembers.map((m) => m.id);
     }
 
     // check if all user(s) are part of the organization
@@ -222,7 +243,7 @@ export const addUsersToGroupByUserIds = async ({
         [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: group.orgId,
         scope: AccessScope.Organization,
         $in: {
-          [`${TableName.Membership}.actorUserId` as "actorUserId"]: userIds
+          [`${TableName.Membership}.actorUserId` as "actorUserId"]: userIdsToProcess
         }
       },
       { tx }
@@ -232,7 +253,7 @@ export const addUsersToGroupByUserIds = async ({
       existingUserOrgMemberships.map((u) => u.actorUserId as string)
     );
 
-    userIds.forEach((userId) => {
+    userIdsToProcess.forEach((userId) => {
       if (!existingUserOrgMembershipsUserIdsSet.has(userId))
         throw new ForbiddenRequestError({
           message: `User with id ${userId} is not part of the organization`
@@ -366,9 +387,14 @@ export const removeUsersFromGroupByUserIds = async ({
   userGroupMembershipDAL,
   projectKeyDAL,
   tx: outerTx,
-  membershipGroupDAL
+  membershipGroupDAL,
+  shouldFailOnMissingMembers = true
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
+    if (userIds.length === 0) {
+      return [];
+    }
+
     const foundMembers = await userDAL.find(
       {
         $in: {
@@ -402,12 +428,23 @@ export const removeUsersFromGroupByUserIds = async ({
 
     const existingUserGroupMembershipsUserIdsSet = new Set(existingUserGroupMemberships.map((u) => u.userId));
 
-    userIds.forEach((userId) => {
-      if (!existingUserGroupMembershipsUserIdsSet.has(userId))
+    const usersNotInGroup = userIds.filter((userId) => !existingUserGroupMembershipsUserIdsSet.has(userId));
+
+    if (usersNotInGroup.length > 0) {
+      if (shouldFailOnMissingMembers) {
         throw new ForbiddenRequestError({
           message: `User(s) are not part of the group ${group.slug}`
         });
-    });
+      }
+      // filter out users not in group for idempotent operation
+      const filteredFoundMembers = foundMembers.filter((m) => existingUserGroupMembershipsUserIdsSet.has(m.id));
+      if (filteredFoundMembers.length === 0) {
+        return [];
+      }
+      // continue with filtered list
+      foundMembers.length = 0;
+      foundMembers.push(...filteredFoundMembers);
+    }
 
     const membersToRemoveFromGroupNonPending: TUsers[] = [];
     const membersToRemoveFromGroupPending: TUsers[] = [];

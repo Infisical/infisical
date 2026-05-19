@@ -41,7 +41,6 @@ export type TPkiSubscriber = {
 };
 
 export type TCreatePkiSubscriberDTO = {
-  projectId: string;
   caId: string;
   name: string;
   commonName: string;
@@ -56,7 +55,6 @@ export type TCreatePkiSubscriberDTO = {
 
 export type TUpdatePkiSubscriberDTO = {
   subscriberName: string;
-  projectId: string;
   caId?: string;
   name?: string;
   commonName?: string;
@@ -72,15 +70,12 @@ export type TUpdatePkiSubscriberDTO = {
 
 export type TDeletePkiSubscriberDTO = {
   subscriberName: string;
-  projectId: string;
 };
 
 export type TIssuePkiSubscriberCertDTO = {
   subscriberName: string;
-  projectId: string;
 };
 
 export type TOrderPkiSubscriberCertDTO = {
   subscriberName: string;
-  projectId: string;
 };

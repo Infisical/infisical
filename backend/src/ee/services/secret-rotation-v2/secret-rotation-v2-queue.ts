@@ -15,8 +15,9 @@ import {
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -25,6 +26,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findSecretRotationsToQueue" | "findById">;
   secretRotationV2Service: Pick<TSecretRotationV2ServiceFactory, "rotateGeneratedCredentials">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -35,6 +37,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
 
 export const secretRotationV2QueueServiceFactory = async ({
   queueService,
+  cronJob,
   secretRotationV2DAL,
   secretRotationV2Service,
   projectMembershipDAL,
@@ -180,10 +183,17 @@ export const secretRotationV2QueueServiceFactory = async ({
     }
   });
 
-  await queueService.upsertJobScheduler(
-    QueueName.SecretRotationV2,
-    `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron`,
-    { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *" },
-    { name: QueueJobs.SecretRotationV2QueueRotations }
-  );
+  cronJob.register({
+    name: CronJobName.SecretRotationV2QueueRotations,
+    pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
+    runHashTtlS: 3 * 24 * 60 * 60,
+    handler: async () => {
+      await queueService.queue(
+        QueueName.SecretRotationV2,
+        QueueJobs.SecretRotationV2QueueRotations,
+        undefined as never,
+        { jobId: CronJobName.SecretRotationV2QueueRotations }
+      );
+    }
+  });
 };

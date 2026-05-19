@@ -1,9 +1,10 @@
 /* eslint-disable no-continue, no-await-in-loop */
 import RE2 from "re2";
 
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
@@ -29,6 +30,7 @@ import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal
 
 type TCaAutoRenewalQueueFactoryDep = {
   queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "find" | "findOne" | "updateById">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "updateById">;
   internalCertificateAuthorityService: Pick<
@@ -47,6 +49,7 @@ const PEM_CERT_REGEX = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CE
 
 export const caAutoRenewalQueueFactory = ({
   queueService,
+  cronJob,
   internalCertificateAuthorityDAL,
   caSigningConfigDAL,
   internalCertificateAuthorityService,
@@ -432,13 +435,17 @@ export const caAutoRenewalQueueFactory = ({
     );
   });
 
-  const startDailyAutoRenewalJob = async () => {
-    await queueService.upsertJobScheduler(
-      QueueName.CaAutoRenewal,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CaDailyAutoRenewal}`,
-      { pattern: "0 0 * * *" },
-      { name: QueueJobs.CaDailyAutoRenewal }
-    );
+  const startDailyAutoRenewalJob = () => {
+    cronJob.register({
+      name: CronJobName.CaDailyAutoRenewal,
+      pattern: "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        await queueService.queue(QueueName.CaAutoRenewal, QueueJobs.CaDailyAutoRenewal, undefined as never, {
+          jobId: CronJobName.CaDailyAutoRenewal
+        });
+      }
+    });
   };
 
   const queueVenafiInstall = async (caId: string, maxPathLength?: number) => {

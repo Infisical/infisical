@@ -6,6 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -56,7 +57,7 @@ export const registerCertificateProfilesRouter = async (
       tags: [ApiDocsTags.PkiCertificateProfiles],
       body: z
         .object({
-          projectId: z.string().min(1),
+          projectId: z.string().min(1).optional().describe(openApiHidden()),
           caId: z.string().uuid().optional(),
           certificatePolicyId: z.string().uuid(),
           slug: z
@@ -121,39 +122,6 @@ export const registerCertificateProfilesRouter = async (
         })
         .refine(
           (data) => {
-            if (data.enrollmentType === EnrollmentType.EST) {
-              return !!data.estConfig;
-            }
-            return true;
-          },
-          {
-            message: "EST enrollment type requires EST configuration"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.API) {
-              return !!data.apiConfig;
-            }
-            return true;
-          },
-          {
-            message: "API enrollment type requires API configuration"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.ACME) {
-              return !!data.acmeConfig;
-            }
-            return true;
-          },
-          {
-            message: "ACME enrollment type requires ACME configuration"
-          }
-        )
-        .refine(
-          (data) => {
             if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
               return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
             }
@@ -198,8 +166,7 @@ export const registerCertificateProfilesRouter = async (
         )
         .refine(
           (data) => {
-            if (data.enrollmentType === EnrollmentType.SCEP) {
-              if (!data.scepConfig) return false;
+            if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
               // Static mode requires a challenge password with min 8 chars; dynamic mode does not
               if (data.scepConfig.challengeType === ScepChallengeType.DYNAMIC) return true;
               return !!data.scepConfig.challengePassword && data.scepConfig.challengePassword.length >= 8;
@@ -270,13 +237,13 @@ export const registerCertificateProfilesRouter = async (
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.body.projectId,
+        projectId: req.internalCertManagerProjectId,
         data: req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CREATE_CERTIFICATE_PROFILE,
           metadata: {
@@ -304,13 +271,14 @@ export const registerCertificateProfilesRouter = async (
       ...(enableOperationId ? { operationId: "listCertificateProfiles" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       querystring: z.object({
-        projectId: z.string().min(1),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
         issuerType: z.nativeEnum(IssuerType).optional(),
-        caId: z.string().uuid().optional()
+        caId: z.string().uuid().optional(),
+        applicationId: z.string().uuid().optional(),
+        projectId: z.string().uuid().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -385,16 +353,17 @@ export const registerCertificateProfilesRouter = async (
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.query
+        ...req.query,
+        projectId: req.internalCertManagerProjectId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.LIST_CERTIFICATE_PROFILES,
           metadata: {
-            projectId: req.query.projectId
+            projectId: req.internalCertManagerProjectId
           }
         }
       });
@@ -521,9 +490,6 @@ export const registerCertificateProfilesRouter = async (
       params: z.object({
         slug: z.string().min(1)
       }),
-      querystring: z.object({
-        projectId: z.string().min(1)
-      }),
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
@@ -540,7 +506,7 @@ export const registerCertificateProfilesRouter = async (
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.query.projectId,
+        projectId: req.internalCertManagerProjectId,
         slug: req.params.slug
       });
 

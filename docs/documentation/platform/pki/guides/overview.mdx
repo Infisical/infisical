@@ -1,0 +1,62 @@
+---
+title: "Guides"
+sidebarTitle: "Overview"
+description: "End-to-end guides for certificate issuance and code signing workflows."
+---
+
+Guides walk you through complete workflows, from start to finish.
+
+## Certificate Issuance Guides
+
+<CardGroup cols={2}>
+  <Card title="Automate Certificate Renewal" icon="robot" href="/documentation/platform/pki/guides/applications/infisical-agent">
+    Set up the Infisical Agent for automatic certificate management.
+  </Card>
+  <Card title="Issue Certificates in Kubernetes" icon="dharmachakra" href="/documentation/platform/pki/guides/applications/k8s-cert-manager">
+    Use cert-manager for Kubernetes workloads.
+  </Card>
+  <Card title="Set Up HTTPS for Nginx" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    ACME certificates with Certbot for Nginx.
+  </Card>
+  <Card title="Set Up HTTPS for Apache" icon="server" href="/documentation/platform/pki/guides/applications/apache-certbot">
+    ACME certificates with Certbot for Apache.
+  </Card>
+  <Card title="Set Up HTTPS for Tomcat" icon="server" href="/documentation/platform/pki/guides/applications/tomcat-certbot">
+    ACME certificates with Certbot for Tomcat.
+  </Card>
+  <Card title="Set Up HTTPS for JBoss" icon="server" href="/documentation/platform/pki/guides/applications/jboss-certbot">
+    ACME certificates with Certbot for JBoss/WildFly.
+  </Card>
+  <Card title="Set Up HTTPS for Windows" icon="windows" href="/documentation/platform/pki/guides/applications/windows-server-acme">
+    ACME certificates for Windows Server with win-acme.
+  </Card>
+  <Card title="Configure Gloo Mesh Certificates" icon="diagram-project" href="/documentation/platform/pki/guides/applications/gloo-mesh">
+    Provision Istio intermediate CA certificates for service mesh.
+  </Card>
+  <Card title="Enroll Devices with Jamf Pro" icon="mobile" href="/documentation/platform/pki/guides/applications/jamf-pro-scep">
+    Distribute certificates to managed devices via SCEP.
+  </Card>
+</CardGroup>
+
+## Code Signing Guides
+
+<CardGroup cols={2}>
+  <Card title="Sign Java JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    Use jarsigner with the PKCS#11 module.
+  </Card>
+  <Card title="Sign Android APKs" icon="android" href="/documentation/platform/pki/guides/code-signing/apksigner">
+    Use apksigner with the PKCS#11 module.
+  </Card>
+  <Card title="Sign Windows Executables" icon="windows" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
+    Use osslsigncode with the PKCS#11 module.
+  </Card>
+  <Card title="Sign Container Images" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
+    Use Cosign with the PKCS#11 module.
+  </Card>
+  <Card title="Sign Files with OpenSSL" icon="lock" href="/documentation/platform/pki/guides/code-signing/openssl">
+    Use OpenSSL with the PKCS#11 module.
+  </Card>
+  <Card title="Sign Git Commits with GPG" icon="key" href="/documentation/platform/pki/guides/code-signing/gpg">
+    Use GPG with the PKCS#11 module.
+  </Card>
+</CardGroup>

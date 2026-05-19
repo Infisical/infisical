@@ -85,6 +85,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     notAfterTo?: Date;
     notBeforeFrom?: Date;
     notBeforeTo?: Date;
+    applicationId?: string;
+    applicationIds?: string[];
   };
 
   const applyInventoryFilters = (
@@ -222,6 +224,14 @@ export const certificateDALFactory = (db: TDbClient) => {
       q = q.andWhere(`${TableName.Certificate}.notBefore`, "<=", filters.notBeforeTo);
     }
 
+    if (filters.applicationId) {
+      q = q.andWhere(`${TableName.Certificate}.applicationId`, filters.applicationId);
+    }
+
+    if (filters.applicationIds && filters.applicationIds.length > 0) {
+      q = q.whereIn(`${TableName.Certificate}.applicationId`, filters.applicationIds);
+    }
+
     return q;
   };
 
@@ -343,13 +353,18 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull("renewedByCertificateId");
 
       Object.entries(filter).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (key === "friendlyName" || key === "commonName") {
-            const sanitizedValue = sanitizeSqlLikeString(String(value));
-            query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
-          } else {
-            query = query.andWhere(`${TableName.Certificate}.${key}`, value);
+        if (value === undefined || value === null) return;
+        if (key === "applicationIds") {
+          if (Array.isArray(value) && value.length > 0) {
+            query = query.whereIn(`${TableName.Certificate}.applicationId`, value as string[]);
           }
+          return;
+        }
+        if (key === "friendlyName" || key === "commonName") {
+          const sanitizedValue = sanitizeSqlLikeString(String(value));
+          query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
+        } else {
+          query = query.andWhere(`${TableName.Certificate}.${key}`, value);
         }
       });
 
@@ -377,11 +392,15 @@ export const certificateDALFactory = (db: TDbClient) => {
   const countActiveCertificatesForSync = async ({
     projectId,
     friendlyName,
-    commonName
+    commonName,
+    applicationId,
+    applicationIds
   }: {
     projectId: string;
     friendlyName?: string;
     commonName?: string;
+    applicationId?: string;
+    applicationIds?: string[];
   }) => {
     try {
       interface CountResult {
@@ -405,6 +424,13 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (commonName) {
         const sanitizedValue = sanitizeSqlLikeString(commonName);
         query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
+      }
+
+      if (applicationId) {
+        query = query.andWhere(`${TableName.Certificate}.applicationId`, applicationId);
+      }
+      if (applicationIds && applicationIds.length > 0) {
+        query = query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
       }
 
       const count = await query.count("*").first();
@@ -464,6 +490,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
+    applicationName?: string | null;
   };
 
   const findWithPrivateKeyInfo = async (
@@ -485,11 +512,34 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.ref("enrollmentType").withSchema(TableName.PkiCertificateProfile).as("enrollmentType"));
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??
+            ) as ??`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType",
+              "enrollmentType"
+            ]
+          )
+        )
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
         friendlyName,
@@ -511,6 +561,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         notAfterTo,
         notBeforeFrom,
         notBeforeTo,
+        applicationIds,
         ...regularFilters
       } = filter;
 
@@ -541,7 +592,8 @@ export const certificateDALFactory = (db: TDbClient) => {
           notAfterFrom,
           notAfterTo,
           notBeforeFrom,
-          notBeforeTo
+          notBeforeTo,
+          applicationIds
         },
         true
       ) as typeof query;
@@ -575,6 +627,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithRequestDetails = TCertificates & {
     caName?: string | null;
     profileName?: string | null;
+    applicationName?: string | null;
     caType?: "internal" | "external" | null;
   };
 
@@ -601,9 +654,11 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`,
           `${TableName.InternalCertificateAuthority}.caId`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"));
 
       if (filter.id) {

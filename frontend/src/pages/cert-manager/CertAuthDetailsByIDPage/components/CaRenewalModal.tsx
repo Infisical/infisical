@@ -12,7 +12,6 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useProject } from "@app/context";
 import {
   CaRenewalType,
   CaSigningConfigType,
@@ -79,9 +78,6 @@ type Props = {
 };
 
 export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentProject } = useProject();
-  const projectSlug = currentProject?.slug || "";
-
   const popUpData = popUp?.renewCa?.data as {
     caId: string;
   };
@@ -97,10 +93,8 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { mutateAsync: renewCa } = useRenewCa();
   const { mutateAsync: installVenafiCert, isPending: isVenafiRenewing } =
-    useInstallCaCertificateVenafi(currentProject.id);
-  const { mutateAsync: installAdcsCert, isPending: isAdcsRenewing } = useInstallCaCertificateAdcs(
-    currentProject.id
-  );
+    useInstallCaCertificateVenafi();
+  const { mutateAsync: installAdcsCert, isPending: isAdcsRenewing } = useInstallCaCertificateAdcs();
 
   const {
     control,
@@ -116,11 +110,10 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const onFormSubmit = async ({ type, notAfter }: FormData) => {
-    if (!projectSlug || !popUpData.caId) return;
+    if (!popUpData.caId) return;
 
     try {
       await renewCa({
-        projectSlug,
         caId: popUpData.caId,
         notAfter,
         type

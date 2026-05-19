@@ -11,10 +11,11 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -81,10 +82,11 @@ const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
-  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "upsertJobScheduler">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
+  cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -133,8 +135,9 @@ type SecretSyncActionJob = Job<
 
 const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
-const REQUEUE_LIMIT = 30;
-const CONNECTION_CONCURRENCY_LIMIT = 3;
+const REQUEUE_LIMIT = 120;
+const CONNECTION_CONCURRENCY_LIMIT = 5;
+const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000 / 2;
 
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
@@ -144,6 +147,7 @@ const getRequeueDelay = (failureCount?: number) => {
 
 export const secretSyncQueueFactory = ({
   queueService,
+  cronJob,
   kmsService,
   appConnectionDAL,
   keyStore,
@@ -224,44 +228,25 @@ export const secretSyncQueueFactory = ({
     folderCommitService
   });
 
-  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    if (!concurrencyCount) return false;
-
-    const count = Number.parseInt(concurrencyCount, 10);
-
-    if (Number.isNaN(count)) return false;
-
-    return count >= CONNECTION_CONCURRENCY_LIMIT;
+  // INCR + cap check + EXPIRE happen atomically inside a Lua script. TTL is refreshed
+  // only when a slot is actually claimed; failed probes (over-limit) and releases
+  // never touch EXPIRE — so an orphaned counter from a worker that died mid-sync
+  // can't have its expiry indefinitely shoved forward by subsequent admit attempts,
+  // and ages out within CONNECTION_CONCURRENCY_TTL_SECONDS of the last successful
+  // admit.
+  const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+      key,
+      CONNECTION_CONCURRENCY_LIMIT,
+      CONNECTION_CONCURRENCY_TTL_SECONDS
+    );
+    return count !== -1;
   };
 
-  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
-    );
-  };
-
-  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
+  const $releaseConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    await keyStore.decrementByOrDelete(key);
   };
 
   const $getInfisicalSecrets = async (
@@ -1167,20 +1152,6 @@ export const secretSyncQueueFactory = ({
 
     const { connectionId } = secretSync;
 
-    if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
-
-      if (isConcurrentLimitReached) {
-        logger.info(
-          `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
-        );
-
-        await $handleAcquireLockFailure(job as SecretSyncActionJob);
-
-        return;
-      }
-    }
-
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
     try {
@@ -1198,10 +1169,25 @@ export const secretSyncQueueFactory = ({
       return;
     }
 
+    let admittedConnectionSlot = false;
+
     try {
+      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
+        admittedConnectionSlot = await $tryAdmitConnectionConcurrency(connectionId);
+
+        if (!admittedConnectionSlot) {
+          logger.info(
+            `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
+          );
+
+          await $handleAcquireLockFailure(job as SecretSyncActionJob);
+
+          return;
+        }
+      }
+
       switch (job.name) {
         case QueueJobs.SecretSyncSyncSecrets: {
-          await $incrementConnectionConcurrencyCount(connectionId);
           await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
           break;
         }
@@ -1216,21 +1202,28 @@ export const secretSyncQueueFactory = ({
           throw new Error(`Unhandled Secret Sync Job ${job.name}`);
       }
     } finally {
-      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-        await $decrementConnectionConcurrencyCount(connectionId);
+      if (admittedConnectionSlot) {
+        await $releaseConnectionConcurrency(connectionId);
       }
 
       await lock.release();
     }
   });
 
-  const startDailySecretSyncRetryJob = async () => {
-    await queueService.upsertJobScheduler(
-      QueueName.AppConnectionSecretSync,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailySecretSyncRetry}`,
-      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
-      { name: QueueJobs.DailySecretSyncRetry }
-    );
+  const startDailySecretSyncRetryJob = () => {
+    cronJob.register({
+      name: CronJobName.DailySecretSyncRetry,
+      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        await queueService.queue(
+          QueueName.AppConnectionSecretSync,
+          QueueJobs.DailySecretSyncRetry,
+          undefined as never,
+          { jobId: CronJobName.DailySecretSyncRetry }
+        );
+      }
+    });
   };
 
   return {

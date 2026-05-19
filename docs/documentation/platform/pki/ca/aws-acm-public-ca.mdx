@@ -75,8 +75,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
   </Step>
 
   <Step title="Navigate to External Certificate Authorities">
-    In your Infisical project, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
-    ![External CA Page](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-page.png)
+    In **Certificate Manager**, go to **Settings → Certificate Authorities** and scroll to the **External Certificate Authorities** section.
   </Step>
 
   <Step title="Create the CA">
@@ -87,13 +86,13 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
     - **Route 53 Connection**: the connection with Route 53 permissions (can be the same as above)
     - **Hosted Zone ID**: the Route 53 public hosted zone ID from the previous step
     - **Region**: the ACM region to issue from
-
-    ![External CA Form](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-form.png)
   </Step>
 
-  <Step title="Create a Certificate Profile and Issue">
-    Create a certificate profile linked to this CA, then submit a certificate request. Infisical requests the certificate from ACM, writes the required CNAME(s) to Route 53, waits for ACM to finish validation, and saves the certificate and private key.
-    ![Certificate Created](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-certificate-created.png)
+  <Step title="Create a Certificate Profile">
+    Go to **Certificate Manager → Certificate Profiles** and create a profile with your AWS ACM CA as the issuing CA.
+  </Step>
+  <Step title="Configure an Application and Issue a Certificate">
+    Create an [Application](/documentation/platform/pki/applications/overview), attach the profile, and configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview). Then submit a certificate request from within the Application. Infisical requests the certificate from ACM, writes the required CNAME(s) to Route 53, waits for ACM to finish validation, and saves the certificate and private key.
   </Step>
 </Steps>
 
@@ -124,7 +123,7 @@ When a certificate reaches the configured threshold, Infisical reconciles it wit
 In both cases the renewed certificate is stored as a new entry linked to the original and inherits the same auto-renewal settings — so the cycle continues automatically.
 
 <Note>
-  AWS generates a fresh private key on every renewal. Infisical pulls it in each time and stores it encrypted with your project's KMS key.
+  AWS generates a fresh private key on every renewal. Infisical pulls it in each time and stores it encrypted with your organization's KMS key.
 </Note>
 
 ## Troubleshooting

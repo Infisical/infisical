@@ -133,7 +133,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, currentProject.id)
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
     }
   }, [autoRenewal?.lastRenewalStatus, caId, currentProject.id, queryClient]);

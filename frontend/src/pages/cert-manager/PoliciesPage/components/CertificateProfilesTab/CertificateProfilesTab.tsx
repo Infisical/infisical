@@ -1,35 +1,38 @@
 import { useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
-  EnrollmentType,
   TCertificateProfileWithDetails,
   useDeleteCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { CreateProfileModal } from "./CreateProfileModal";
 import { ProfileList } from "./ProfileList";
-import { RevealAcmeEabSecretModal } from "./RevealAcmeEabSecretModal";
-import { ScepDetailsModal } from "./ScepDetailsModal";
 
 export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isRevealProfileAcmeEabSecretModalOpen, setIsRevealProfileAcmeEabSecretModalOpen] =
-    useState(false);
-  const [isScepDetailsModalOpen, setIsScepDetailsModalOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
@@ -37,23 +40,9 @@ export const CertificateProfilesTab = () => {
 
   const deleteProfile = useDeleteCertificateProfile();
 
-  const handleCreateProfile = () => {
-    setIsCreateModalOpen(true);
-  };
-
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
-  };
-
-  const handleRevealProfileAcmeEabSecret = (profile: TCertificateProfileWithDetails) => {
-    setSelectedProfile(profile);
-    setIsRevealProfileAcmeEabSecretModalOpen(true);
-  };
-
-  const handleViewScepDetails = (profile: TCertificateProfileWithDetails) => {
-    setSelectedProfile(profile);
-    setIsScepDetailsModalOpen(true);
   };
 
   const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
@@ -76,43 +65,37 @@ export const CertificateProfilesTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-x-2">
-            <h2 className="text-xl font-semibold text-mineshaft-100">Certificate Profiles</h2>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/profiles" />
-          </div>
-          <p className="text-sm text-bunker-300">
-            Unified certificate issuance configurations combining CA, certificate policy, and
-            enrollment method
-          </p>
-        </div>
-
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificateProfileActions.Create}
-          a={ProjectPermissionSub.CertificateProfiles}
-        >
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              colorSchema="primary"
-              type="button"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={handleCreateProfile}
-            >
-              Create Profile
-            </Button>
-          )}
-        </ProjectPermissionCan>
-      </div>
-
-      <ProfileList
-        onEditProfile={handleEditProfile}
-        onRevealProfileAcmeEabSecret={handleRevealProfileAcmeEabSecret}
-        onViewScepDetails={handleViewScepDetails}
-        onDeleteProfile={handleDeleteProfile}
-      />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Certificate Profiles
+          <DocumentationLinkBadge href={PkiDocsUrls.settings.profiles} />
+        </CardTitle>
+        <CardDescription>
+          Reusable presets for issuing certificates. Each profile combines a certificate authority
+          (who signs the certificate) with a policy (the rules and settings applied).
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateProfileActions.Create}
+            a={ProjectPermissionSub.CertificateProfiles}
+          >
+            {(isAllowed) => (
+              <Button
+                variant="project"
+                isDisabled={!isAllowed}
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                <PlusIcon />
+                Create Profile
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <ProfileList onEditProfile={handleEditProfile} onDeleteProfile={handleDeleteProfile} />
+      </CardContent>
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
       <UpgradePlanModal
@@ -134,28 +117,6 @@ export const CertificateProfilesTab = () => {
             mode="edit"
           />
 
-          {selectedProfile.enrollmentType === EnrollmentType.ACME && (
-            <RevealAcmeEabSecretModal
-              isOpen={isRevealProfileAcmeEabSecretModalOpen}
-              onClose={() => {
-                setIsRevealProfileAcmeEabSecretModalOpen(false);
-                setSelectedProfile(null);
-              }}
-              profile={selectedProfile}
-            />
-          )}
-
-          {selectedProfile.enrollmentType === EnrollmentType.SCEP && (
-            <ScepDetailsModal
-              isOpen={isScepDetailsModalOpen}
-              onClose={() => {
-                setIsScepDetailsModalOpen(false);
-                setSelectedProfile(null);
-              }}
-              profile={selectedProfile}
-            />
-          )}
-
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
             title={`Delete Certificate Profile ${selectedProfile.slug}?`}
@@ -170,6 +131,6 @@ export const CertificateProfilesTab = () => {
           />
         </>
       )}
-    </div>
+    </Card>
   );
 };
