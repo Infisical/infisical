@@ -48,7 +48,15 @@ const generatePassword = () => {
 
 export const parseMilvusHost = (providerInputs: TMilvusProviderInputs, host: string, port: number) => {
   const hostWithoutScheme = host.replace(/^https?:\/\//i, "");
-  const scheme = providerInputs.ca ? "https" : "http";
+
+  let scheme: "http" | "https";
+  if (/^https:\/\//i.test(providerInputs.host)) {
+    scheme = "https";
+  } else if (/^http:\/\//i.test(providerInputs.host)) {
+    scheme = "http";
+  } else {
+    scheme = providerInputs.ca ? "https" : "http";
+  }
 
   let url: URL;
   try {
