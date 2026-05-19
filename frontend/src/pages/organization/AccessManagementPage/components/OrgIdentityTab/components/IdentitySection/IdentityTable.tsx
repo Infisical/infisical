@@ -431,9 +431,9 @@ const IdentityRow = ({ membership, onDelete }: IdentityRowProps) => {
 
 const renderTabCount = (count: number | undefined) =>
   count === undefined ? null : (
-    <Badge variant="neutral" className="ml-1.5 px-1.5 font-mono text-[10px]">
+    <span className="ml-1.5 self-end pb-[3px] text-xs leading-none text-muted tabular-nums">
       {count}
-    </Badge>
+    </span>
   );
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
@@ -565,8 +565,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="flex flex-1 justify-end gap-2">
-          <InputGroup className="max-w-sm flex-1">
+        <div className="flex w-1/2 justify-end gap-2">
+          <InputGroup className="flex-1">
             <InputGroupAddon>
               <SearchIcon />
             </InputGroupAddon>
