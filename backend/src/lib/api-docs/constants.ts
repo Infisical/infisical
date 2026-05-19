@@ -3595,7 +3595,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   },
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the LDAP config for.",
@@ -3612,7 +3616,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   }
 };
 

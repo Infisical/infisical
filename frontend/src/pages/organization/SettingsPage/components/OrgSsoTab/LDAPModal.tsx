@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { CSSProperties, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
@@ -39,17 +39,28 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const LDAPFormSchema = z.object({
-  url: z.string().trim().min(1, "URL is required"),
-  bindDN: z.string().trim().min(1, "Bind DN is required"),
-  bindPass: z.string().min(1, "Bind Pass is required"),
-  searchBase: z.string().trim().min(1, "User Search Base is required"),
-  groupSearchBase: z.string().default(""),
-  searchFilter: z.string().default(""),
-  uniqueUserAttribute: z.string().default(""),
-  groupSearchFilter: z.string().default(""),
-  caCert: z.string().optional()
-});
+const LDAPFormSchema = z
+  .object({
+    url: z.string().trim().min(1, "URL is required"),
+    bindDN: z.string().trim().min(1, "Bind DN is required"),
+    bindPass: z.string().min(1, "Bind Pass is required"),
+    searchBase: z.string().trim().min(1, "User Search Base is required"),
+    groupSearchBase: z.string().default(""),
+    searchFilter: z.string().default(""),
+    uniqueUserAttribute: z.string().default(""),
+    groupSearchFilter: z.string().default(""),
+    caCert: z.string().optional(),
+    clientCertificate: z.string().optional(),
+    clientKeyCertificate: z.string().optional()
+  })
+  .refine(
+    (data) =>
+      Boolean(data.clientCertificate?.trim()) === Boolean(data.clientKeyCertificate?.trim()),
+    {
+      message: "Client Certificate and Client Private Key must be provided together for mTLS.",
+      path: ["clientKeyCertificate"]
+    }
+  );
 
 export type TLDAPFormData = z.infer<typeof LDAPFormSchema>;
 
@@ -90,7 +101,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       uniqueUserAttribute: "",
       groupSearchBase: "",
       groupSearchFilter: "",
-      caCert: ""
+      caCert: "",
+      clientCertificate: "",
+      clientKeyCertificate: ""
     });
 
     createNotification({
@@ -103,6 +116,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const watchBindDN = watch("bindDN");
   const watchBindPass = watch("bindPass");
   const watchCaCert = watch("caCert");
+  const watchClientCertificate = watch("clientCertificate");
+  const watchClientKeyCertificate = watch("clientKeyCertificate");
 
   useEffect(() => {
     if (data) {
@@ -115,6 +130,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         groupSearchBase: data?.groupSearchBase ?? "",
         groupSearchFilter: data?.groupSearchFilter ?? "",
         caCert: data?.caCert ?? "",
+        clientCertificate: data?.clientCertificate ?? "",
+        clientKeyCertificate: data?.clientKeyCertificate ?? "",
         uniqueUserAttribute: data?.uniqueUserAttribute ?? ""
       });
     }
@@ -129,7 +146,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
+    caCert,
+    clientCertificate,
+    clientKeyCertificate
   }: TLDAPFormData) => {
     if (!currentOrg) return;
 
@@ -145,7 +164,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         uniqueUserAttribute,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
     } else {
       await updateMutateAsync({
@@ -158,7 +179,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         uniqueUserAttribute,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
     }
 
@@ -171,30 +194,23 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
-    try {
-      const isConnected = await testLDAPConnection({
-        url: watchUrl,
-        bindDN: watchBindDN,
-        bindPass: watchBindPass,
-        caCert: watchCaCert ?? ""
-      });
+    const isConnected = await testLDAPConnection({
+      url: watchUrl,
+      bindDN: watchBindDN,
+      bindPass: watchBindPass,
+      caCert: watchCaCert ?? "",
+      clientCertificate: watchClientCertificate ?? "",
+      clientKeyCertificate: watchClientKeyCertificate ?? ""
+    });
 
-      if (isConnected) {
-        createNotification({
-          text: "Successfully tested the LDAP connection: Bind operation was successful",
-          type: "success"
-        });
-      } else {
-        createNotification({
-          text: "Failed to connect to the LDAP server. Verify the URL, bind DN/password, and CA certificate.",
-          type: "error"
-        });
-      }
-    } catch (err) {
+    if (isConnected) {
       createNotification({
-        text:
-          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          "Failed to test LDAP connection.",
+        text: "Successfully tested the LDAP connection: Bind operation was successful",
+        type: "success"
+      });
+    } else {
+      createNotification({
+        text: "Failed to connect to the LDAP server. Verify the URL, bind DN/password, and CA certificate.",
         type: "error"
       });
     }
@@ -377,7 +393,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                   name="caCert"
                   render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel htmlFor="ldap-ca-cert">CA Certificate</FieldLabel>
+                      <FieldLabel htmlFor="ldap-ca-cert">CA Certificate (Optional)</FieldLabel>
                       <TextArea
                         id="ldap-ca-cert"
                         placeholder="-----BEGIN CERTIFICATE----- ..."
@@ -385,6 +401,50 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                         {...field}
                       />
                       <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="clientCertificate"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-client-cert">
+                        Client Certificate (Optional)
+                      </FieldLabel>
+                      <TextArea
+                        id="ldap-client-cert"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                      <p className="mt-1 text-xs text-mineshaft-400">
+                        PEM-encoded client certificate used for mutual TLS (mTLS). Must be set
+                        together with the Client Private Key.
+                      </p>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="clientKeyCertificate"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="ldap-client-key">
+                        Client Private Key (Optional)
+                      </FieldLabel>
+                      <TextArea
+                        id="ldap-client-key"
+                        placeholder="-----BEGIN PRIVATE KEY----- ..."
+                        isError={Boolean(error)}
+                        style={{ WebkitTextSecurity: "disc" } as CSSProperties}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                      <p className="mt-1 text-xs text-mineshaft-400">
+                        PEM-encoded private key matching the Client Certificate.
+                      </p>
                     </Field>
                   )}
                 />

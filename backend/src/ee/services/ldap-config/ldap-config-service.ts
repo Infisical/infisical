@@ -56,7 +56,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { searchGroups, testLDAPConfig } from "./ldap-fns";
+import { buildLdapTlsOptions, searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -136,7 +136,9 @@ export const ldapConfigServiceFactory = ({
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
+    caCert,
+    clientCertificate,
+    clientKeyCertificate
   }: TCreateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -170,6 +172,12 @@ export const ldapConfigServiceFactory = ({
 
     await blockLocalAndPrivateIpAddresses(url);
 
+    if (Boolean(clientCertificate) !== Boolean(clientKeyCertificate)) {
+      throw new BadRequestError({
+        message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -179,6 +187,8 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       caCert,
+      clientCertificate,
+      clientKeyCertificate,
       url
     });
 
@@ -199,7 +209,13 @@ export const ldapConfigServiceFactory = ({
       groupSearchFilter,
       encryptedLdapCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
       encryptedLdapBindDN: encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob,
-      encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob
+      encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob,
+      encryptedLdapClientCertificate: clientCertificate
+        ? encryptor({ plainText: Buffer.from(clientCertificate) }).cipherTextBlob
+        : null,
+      encryptedLdapClientKeyCertificate: clientKeyCertificate
+        ? encryptor({ plainText: Buffer.from(clientKeyCertificate) }).cipherTextBlob
+        : null
     });
 
     return ldapConfig;
@@ -233,6 +249,16 @@ export const ldapConfigServiceFactory = ({
       caCert = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapCaCertificate }).toString();
     }
 
+    let clientCertificate = "";
+    if (ldapConfig.encryptedLdapClientCertificate) {
+      clientCertificate = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapClientCertificate }).toString();
+    }
+
+    let clientKeyCertificate = "";
+    if (ldapConfig.encryptedLdapClientKeyCertificate) {
+      clientKeyCertificate = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapClientKeyCertificate }).toString();
+    }
+
     return {
       id: ldapConfig.id,
       organization: ldapConfig.orgId,
@@ -245,7 +271,9 @@ export const ldapConfigServiceFactory = ({
       searchFilter: ldapConfig.searchFilter,
       groupSearchBase: ldapConfig.groupSearchBase,
       groupSearchFilter: ldapConfig.groupSearchFilter,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     };
   };
 
@@ -264,7 +292,9 @@ export const ldapConfigServiceFactory = ({
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
+    caCert,
+    clientCertificate,
+    clientKeyCertificate
   }: TUpdateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -327,9 +357,27 @@ export const ldapConfigServiceFactory = ({
       updateQuery.encryptedLdapCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
+    if (clientCertificate !== undefined) {
+      updateQuery.encryptedLdapClientCertificate = clientCertificate
+        ? encryptor({ plainText: Buffer.from(clientCertificate) }).cipherTextBlob
+        : null;
+    }
+
+    if (clientKeyCertificate !== undefined) {
+      updateQuery.encryptedLdapClientKeyCertificate = clientKeyCertificate
+        ? encryptor({ plainText: Buffer.from(clientKeyCertificate) }).cipherTextBlob
+        : null;
+    }
+
     const config = await ldapConfigDAL.transaction(async (tx) => {
       const [updatedLdapCfg] = await ldapConfigDAL.update({ orgId }, updateQuery, tx);
       const decryptedLdapCfg = await getLdapCfg({ orgId }, tx);
+
+      if (Boolean(decryptedLdapCfg.clientCertificate) !== Boolean(decryptedLdapCfg.clientKeyCertificate)) {
+        throw new BadRequestError({
+          message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
+        });
+      }
 
       const isSoftDeletion = !decryptedLdapCfg.url && !decryptedLdapCfg.bindDN && !decryptedLdapCfg.bindPass;
       if (!isSoftDeletion) {
@@ -378,6 +426,7 @@ export const ldapConfigServiceFactory = ({
       isActive: true
     });
 
+    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const opts = {
       server: {
         url: ldapConfig.url,
@@ -387,13 +436,7 @@ export const ldapConfigServiceFactory = ({
         searchBase: ldapConfig.searchBase,
         searchFilter: ldapConfig.searchFilter || "(uid={{username}})",
         // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
-        ...(ldapConfig.caCert !== ""
-          ? {
-              tlsOptions: {
-                ca: [ldapConfig.caCert]
-              }
-            }
-          : {})
+        ...(tlsOptions ? { tlsOptions } : {})
       },
       passReqToCallback: true
     };
@@ -822,6 +865,8 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     caCert,
+    clientCertificate,
+    clientKeyCertificate,
     url
   }: TTestLdapConnectionDTO) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -844,6 +889,8 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       caCert,
+      clientCertificate,
+      clientKeyCertificate,
       url
     });
   };

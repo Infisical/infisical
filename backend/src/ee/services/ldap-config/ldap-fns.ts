@@ -14,6 +14,30 @@ export const isValidLdapFilter = (filter: string) => {
   }
 };
 
+type TLdapTlsConfigInput = Pick<TLDAPConfig, "url" | "caCert" | "clientCertificate" | "clientKeyCertificate">;
+
+export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
+  const tlsOptions: { ca?: string[]; cert?: string; key?: string; servername?: string } = {};
+  if (cfg.caCert) tlsOptions.ca = [cfg.caCert];
+  if (cfg.clientCertificate) tlsOptions.cert = cfg.clientCertificate;
+  if (cfg.clientKeyCertificate) tlsOptions.key = cfg.clientKeyCertificate;
+
+  if (Object.keys(tlsOptions).length === 0) return undefined;
+
+  // SNI is required for mTLS against multi-tenant directories (e.g. Google Workspace Secure LDAP)
+  // because @infisical/ldapjs does not propagate it from the URL. Scoped to mTLS only to avoid
+  // changing TLS handshake behavior for existing non-mTLS configs.
+  if (cfg.clientCertificate || cfg.clientKeyCertificate) {
+    try {
+      tlsOptions.servername = new URL(cfg.url).hostname;
+    } catch {
+      // Malformed URL — connection itself will surface the error.
+    }
+  }
+
+  return tlsOptions;
+};
+
 /**
  * Test the LDAP configuration by attempting to bind to the LDAP server
  * @param ldapConfig - The LDAP configuration to test
@@ -21,17 +45,12 @@ export const isValidLdapFilter = (filter: string) => {
  */
 export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<boolean> => {
   return new Promise((resolve) => {
+    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
-      ...(ldapConfig.caCert !== ""
-        ? {
-            tlsOptions: {
-              ca: [ldapConfig.caCert]
-            }
-          }
-        : {})
+      ...(tlsOptions ? { tlsOptions } : {})
     });
 
     ldapClient.on("error", (err) => {
@@ -67,17 +86,12 @@ export const searchGroups = async (
   base: string
 ): Promise<{ dn: string; cn: string }[]> => {
   return new Promise((resolve, reject) => {
+    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
-      ...(ldapConfig.caCert !== ""
-        ? {
-            tlsOptions: {
-              ca: [ldapConfig.caCert]
-            }
-          }
-        : {})
+      ...(tlsOptions ? { tlsOptions } : {})
     });
 
     ldapClient.search(
