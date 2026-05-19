@@ -10,12 +10,12 @@ Our in-platform migration tooling lets you set up a connection to your Vault ins
 
 **What you can migrate:**
 - KV v1 and KV v2 secrets
-- Kubernetes auth method configurations (become [Machine Identities](/documentation/platform/identities/machine-identities) in Infisical)
-- Kubernetes secrets engine roles (become [Dynamic Secrets](/documentation/platform/dynamic-secrets/kubernetes) in Infisical)
+- Kubernetes auth method configurations (translated to [Machine Identities](/documentation/platform/identities/machine-identities) in Infisical)
+- Kubernetes secrets engine roles (translated to [Dynamic Secrets](/documentation/platform/dynamic-secrets/kubernetes) in Infisical)
 - Vault policies (translated to [Infisical project roles](/documentation/platform/access-controls/role-based-access-controls))
 
 <Warning>
-  Importing from Vault requires the **Connect** action on **App Connections** (project- or organization-scoped). Per-resource imports also require the relevant **Create** permission on the target subject — for example, **Create** on **Secrets** at the target environment and folder path for KV imports, or the equivalent permission for Machine Identities, Dynamic Secrets, and Roles.
+  Importing from Vault requires the `Connect` action on `App Connections` and the `Create` action on the relevant subjects — for example, the `Create` action on the `Secrets` subject at the target environment and folder path for KV imports, or the equivalent permission for Machine Identities, Dynamic Secrets, and Roles.
 </Warning>
 
 ## Set Up Your Vault Connection
@@ -107,7 +107,7 @@ Before importing anything, you need to establish a secure connection between Inf
     Follow the [HashiCorp Vault App Connection documentation](/integrations/app-connections/hashicorp-vault) for detailed setup instructions. When configuring authentication (Token or AppRole), make sure the credential uses the `infisical-in-platform-migration` policy you created in the previous step.
 
     <Note>
-      You can create more than one connection if you need to migrate from several Vault instances. The Vault **namespace** is not part of the connection — you pick it inline each time you import a resource.
+      You can create more than one connection if you need to migrate from several Vault instances. The Vault namespace is not part of the connection — you pick it inline each time you import a resource.
     </Note>
 
   </Step>
