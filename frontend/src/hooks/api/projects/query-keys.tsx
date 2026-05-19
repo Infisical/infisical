@@ -21,6 +21,8 @@ export const projectKeys = {
   ) => [{ projectId, includeGroupMembers, roles }, "project-users"] as const,
   getProjectUserDetails: (projectId: string, membershipId: string) =>
     [{ projectId, membershipId }, "project-user-details"] as const,
+  getMembershipPermissionAudit: (projectId: string, membershipId: string) =>
+    [{ projectId, membershipId }, "membership-permission-audit"] as const,
   getProjectIdentityMemberships: (projectId: string) =>
     [{ projectId }, "project-identity-memberships"] as const,
   getProjectIdentityMembershipDetails: (projectId: string, identityId: string) =>

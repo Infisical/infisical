@@ -736,7 +736,9 @@ export const registerRoutes = async (
     keyStore,
     roleDAL,
     userDAL,
-    identityDAL
+    identityDAL,
+    additionalPrivilegeDAL,
+    groupDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
