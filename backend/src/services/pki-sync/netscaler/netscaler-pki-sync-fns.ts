@@ -298,6 +298,27 @@ const removeNetScalerCertificate = async (
   await deleteCertKey(session, certKeyName, true);
 };
 
+const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
+
+const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
+  if (!certificateNameSchema) {
+    return new RE2("^Infisical-[0-9a-f]{32}(-[a-zA-Z0-9]*)?$");
+  }
+
+  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
+  const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
+
+  const tokenized = certificateNameSchema
+    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
+    .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
+
+  const pattern = escapeRegex(tokenized)
+    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(ENV_TOKEN, "g"), "global");
+
+  return new RE2(`^${pattern}$`);
+};
+
 export const netScalerPkiSyncFactory = ({
   certificateSyncDAL,
   certificateDAL,
@@ -567,13 +588,11 @@ export const netScalerPkiSyncFactory = ({
               }
             }
 
-            const namingPrefix = certificateNameSchema ? certificateNameSchema.split("{{")[0] : "Infisical-";
+            const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
 
-            if (namingPrefix) {
-              for (const certKeyName of existingCertKeyNames) {
-                if (certKeyName.startsWith(namingPrefix) && !activeExternalIdentifiers.has(certKeyName)) {
-                  certKeysToRemove.add(certKeyName);
-                }
+            for (const certKeyName of existingCertKeyNames) {
+              if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
+                certKeysToRemove.add(certKeyName);
               }
             }
 
