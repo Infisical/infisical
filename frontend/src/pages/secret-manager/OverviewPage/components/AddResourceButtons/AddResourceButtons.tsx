@@ -44,7 +44,6 @@ type Props = {
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
-  isOrgAdmin: boolean;
 };
 
 export function AddResourceButtons({
@@ -65,15 +64,8 @@ export function AddResourceButtons({
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
-  hasDopplerConnection,
-  isOrgAdmin
+  hasDopplerConnection
 }: Props) {
-  const getInPlatformImportTooltip = (platform: string) => {
-    if (!isOrgAdmin) return `Only organization admins can import secrets from ${platform}`;
-    if (!isSingleEnvSelected) return `Select a single environment to import from ${platform}`;
-    return "Access Restricted";
-  };
-
   return (
     <ButtonGroup>
       <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
@@ -210,30 +202,41 @@ export function AddResourceButtons({
               I={ProjectPermissionActions.Create}
               a={ProjectPermissionSub.Secrets}
             >
-              {(isAllowed) => (
-                <Tooltip
-                  open={!isAllowed || !isOrgAdmin || !isSingleEnvSelected ? undefined : false}
-                >
-                  <TooltipTrigger className="block w-full">
-                    <DropdownMenuItem
-                      onClick={onImportFromVault}
-                      isDisabled={!isAllowed || !isOrgAdmin || !isSingleEnvSelected}
-                    >
-                      <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
-                        <img
-                          src="/images/integrations/Vault.png"
-                          alt="HashiCorp Vault"
-                          className="mt-0.5 h-4 w-4"
-                        />
-                      </div>
-                      Add from HashiCorp Vault
-                    </DropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {getInPlatformImportTooltip("HashiCorp Vault")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {(isAllowed) => {
+                let vaultImportTooltip: string;
+                if (!hasVaultConnection) {
+                  vaultImportTooltip = "No HashiCorp Vault connection found";
+                } else if (!isSingleEnvSelected) {
+                  vaultImportTooltip = "Select a single environment to import from Vault";
+                } else {
+                  vaultImportTooltip = "Access Restricted";
+                }
+
+                return (
+                  <Tooltip
+                    open={
+                      !isAllowed || !isSingleEnvSelected || !hasVaultConnection ? undefined : false
+                    }
+                  >
+                    <TooltipTrigger className="block w-full">
+                      <DropdownMenuItem
+                        onClick={onImportFromVault}
+                        isDisabled={!isAllowed || !isSingleEnvSelected || !hasVaultConnection}
+                      >
+                        <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
+                          <img
+                            src="/images/integrations/Vault.png"
+                            alt="HashiCorp Vault"
+                            className="mt-0.5 h-4 w-4"
+                          />
+                        </div>
+                        Add from HashiCorp Vault
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">{vaultImportTooltip}</TooltipContent>
+                  </Tooltip>
+                );
+              }}
             </ProjectPermissionCan>
           )}
           {hasDopplerConnection && (
@@ -241,30 +244,43 @@ export function AddResourceButtons({
               I={ProjectPermissionActions.Create}
               a={ProjectPermissionSub.Secrets}
             >
-              {(isAllowed) => (
-                <Tooltip
-                  open={!isAllowed || !isOrgAdmin || !isSingleEnvSelected ? undefined : false}
-                >
-                  <TooltipTrigger className="block w-full">
-                    <DropdownMenuItem
-                      onClick={onImportFromDoppler}
-                      isDisabled={!isAllowed || !isOrgAdmin || !isSingleEnvSelected}
-                    >
-                      <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
-                        <img
-                          src="/images/integrations/Doppler.png"
-                          alt="Doppler"
-                          className="mt-0.5 h-4 w-4"
-                        />
-                      </div>
-                      Add from Doppler
-                    </DropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {getInPlatformImportTooltip("Doppler")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {(isAllowed) => {
+                let dopplerImportTooltip: string;
+                if (!hasDopplerConnection) {
+                  dopplerImportTooltip = "No Doppler connection found";
+                } else if (!isSingleEnvSelected) {
+                  dopplerImportTooltip = "Select a single environment to import from Doppler";
+                } else {
+                  dopplerImportTooltip = "Access Restricted";
+                }
+
+                return (
+                  <Tooltip
+                    open={
+                      !isAllowed || !isSingleEnvSelected || !hasDopplerConnection
+                        ? undefined
+                        : false
+                    }
+                  >
+                    <TooltipTrigger className="block w-full">
+                      <DropdownMenuItem
+                        onClick={onImportFromDoppler}
+                        isDisabled={!isAllowed || !isSingleEnvSelected || !hasDopplerConnection}
+                      >
+                        <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
+                          <img
+                            src="/images/integrations/Doppler.png"
+                            alt="Doppler"
+                            className="mt-0.5 h-4 w-4"
+                          />
+                        </div>
+                        Add from Doppler
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">{dopplerImportTooltip}</TooltipContent>
+                  </Tooltip>
+                );
+              }}
             </ProjectPermissionCan>
           )}
         </DropdownMenuContent>

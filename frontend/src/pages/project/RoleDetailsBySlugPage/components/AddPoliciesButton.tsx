@@ -12,11 +12,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub, useOrgPermission } from "@app/context";
-import { OrgMembershipRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
-import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
+import { ProjectPermissionSub } from "@app/context";
+import { useCanUseProjectAppConnectionImport, usePopUp } from "@app/hooks";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { PolicySelectionPopover } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
@@ -44,13 +43,16 @@ export const AddPoliciesButton = ({
     "importFromVault"
   ] as const);
 
-  const { hasOrgRole } = useOrgPermission();
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-  const isVaultImportDisabled = isDisabled || !isOrgAdmin;
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId ?? "",
+    { enabled: Boolean(projectId) && canUseAppConnectionImport }
+  );
+  const hasVaultConnection = vaultAppConnections.length > 0;
+  const isVaultImportDisabled = isDisabled;
 
   return (
     <div>
@@ -94,7 +96,7 @@ export const AddPoliciesButton = ({
               Add From Template
             </DropdownMenuItem>
             {hasVaultConnection && (
-              <Tooltip open={!isOrgAdmin ? undefined : false}>
+              <Tooltip open={!canUseAppConnectionImport ? undefined : false}>
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     onClick={() => {
@@ -108,7 +110,7 @@ export const AddPoliciesButton = ({
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  Only organization admins can import policies from HashiCorp Vault
+                  Only authorized users can import policies from HashiCorp Vault
                 </TooltipContent>
               </Tooltip>
             )}
@@ -123,6 +125,7 @@ export const AddPoliciesButton = ({
       <VaultPolicyImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
+        appConnections={vaultAppConnections}
       />
     </div>
   );
