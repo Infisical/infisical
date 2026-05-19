@@ -593,18 +593,18 @@ export const pkiSyncQueueFactory = ({
           lastSyncMessage: syncMessage,
           lastSyncedAt: isSynced ? ranAt : undefined
         });
-      }
 
-      await telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.PkiSyncExecuted,
-        distinctId: `platform/${pkiSync.projectId}`,
-        organizationId: pkiSync.connection.orgId,
-        properties: {
-          orgId: pkiSync.connection.orgId,
-          destination: pkiSync.destination,
-          success: isSynced
-        }
-      });
+        await telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.PkiSyncExecuted,
+          distinctId: `platform/${pkiSync.projectId}`,
+          organizationId: pkiSync.connection.orgId,
+          properties: {
+            orgId: pkiSync.connection.orgId,
+            destination: pkiSync.destination,
+            success: isSynced
+          }
+        });
+      }
     }
   };
 

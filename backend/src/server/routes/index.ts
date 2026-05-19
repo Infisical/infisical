@@ -2686,6 +2686,7 @@ export const registerRoutes = async (
     queueService,
     cronJob,
     pkiSubscriberDAL,
+    projectDAL,
     certificateAuthorityDAL,
     certificateAuthorityQueue,
     certificateDAL,

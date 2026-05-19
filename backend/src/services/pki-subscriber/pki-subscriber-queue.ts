@@ -9,6 +9,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
 import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TPkiSubscriberDALFactory } from "./pki-subscriber-dal";
@@ -18,6 +19,7 @@ type TPkiSubscriberQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
   pkiSubscriberDAL: TPkiSubscriberDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
@@ -30,6 +32,7 @@ export const pkiSubscriberQueueServiceFactory = ({
   queueService,
   cronJob,
   pkiSubscriberDAL,
+  projectDAL,
   certificateAuthorityDAL,
   certificateAuthorityQueue,
   internalCaFns,
@@ -154,11 +157,13 @@ export const pkiSubscriberQueueServiceFactory = ({
                 lastOperationAt: new Date()
               });
 
+              const project = await projectDAL.findById(subscriber.projectId);
               await telemetryService.sendPostHogEvents({
                 event: PostHogEventTypes.CertificateAutoRenewalFailed,
                 distinctId: `platform/${subscriber.projectId}`,
+                organizationId: project.orgId,
                 properties: {
-                  orgId: subscriber.projectId
+                  orgId: project.orgId
                 }
               });
             }
