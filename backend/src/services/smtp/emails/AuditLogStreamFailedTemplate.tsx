@@ -38,13 +38,13 @@ export const AuditLogStreamFailedTemplate = ({
         <Text className="text-[14px] text-red-600 mt-[4px]">{windowFailureCount}</Text>
         {lastErrorTimestamp && (
           <>
-            <strong>Last error at</strong>
+            <strong>Last Error At</strong>
             <Text className="text-[14px] mt-[4px]">{lastErrorTimestamp}</Text>
           </>
         )}
         {lastErrorMessage && (
           <>
-            <strong>Last error message</strong>
+            <strong>Last Error Message</strong>
             <Text className="text-[14px] text-red-600 mt-[4px] break-all">{lastErrorMessage}</Text>
           </>
         )}

@@ -32,6 +32,7 @@ const FAILURE_THRESHOLD = 10; // 10 errors threshold
 const FAILURE_WINDOW_MINUTES = 5; // counter expires after this much idle time since the last error
 const FAILURE_WINDOW_SECONDS = FAILURE_WINDOW_MINUTES * 60;
 const FAILURE_ALERT_COOLDOWN_SECONDS = 12 * 60 * 60; // 12 hours alert cooldown
+const LAST_ERROR_MESSAGE_MAX_LENGTH = 1000;
 
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
@@ -359,7 +360,11 @@ export const auditLogStreamServiceFactory = ({
 
       // Capture the last error message and timestamp inside the cooldown payload so list reads and
       // the failure email both surface the most recent root cause to admins.
-      const lastError = { message: errorMessage, timestamp: new Date().toISOString() };
+      const truncatedMessage =
+        errorMessage.length > LAST_ERROR_MESSAGE_MAX_LENGTH
+          ? `${errorMessage.slice(0, LAST_ERROR_MESSAGE_MAX_LENGTH)}...`
+          : errorMessage;
+      const lastError = { message: truncatedMessage, timestamp: new Date().toISOString() };
 
       // NX lock ensures only one worker fires the alert within the cooldown window.
       const acquired = await keyStore.setItemWithExpiryNX(
