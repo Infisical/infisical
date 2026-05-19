@@ -3,31 +3,6 @@ title: "infisical relay"
 description: "Relay-related commands for Infisical"
 ---
 
-<Tabs>
-  <Tab title="Start relay (Token Auth)">
-    ```bash
-    infisical relay start --name=<name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
-    ```
-  </Tab>
-  <Tab title="Start relay (AWS Auth)">
-    ```bash
-    infisical relay start --name=<name> --enroll-method=aws --relay-id=<relay-id> --domain=<domain>
-    ```
-  </Tab>
-  <Tab title="Systemd (Linux)">
-    ```bash
-    # Install systemd service
-    sudo infisical relay systemd install --name=<name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
-
-    # Start the service
-    sudo systemctl start infisical-relay
-
-    # Uninstall systemd service
-    sudo infisical relay systemd uninstall
-    ```
-  </Tab>
-</Tabs>
-
 ## Description
 
 Relay-related commands for Infisical. Relays are organization-deployed servers that route encrypted traffic between Infisical and your gateways.
@@ -44,28 +19,67 @@ Relays are created via the Infisical dashboard (Networking → Relays → Create
 
 Relays support two enrollment methods. The enrollment method is set when creating the relay in the dashboard.
 
-<Tabs>
-  <Tab title="Token Auth">
+<AccordionGroup>
+  <Accordion title="Token Auth">
     Token auth uses a one-time enrollment token (1 hour expiry) generated from the relay detail page. The token is exchanged for a long-lived access token on first start and stored on disk for subsequent restarts.
-
-    ```bash
-    infisical relay start --name=my-relay --enroll-method=token --token=<enrollment-token> --domain=<domain>
-    ```
 
     The `--host` flag is not required — the host is stored server-side when the relay is created.
 
+    <Tabs>
+      <Tab title="Foreground">
+        ```bash
+        infisical relay start \
+          --name=<name> \
+          --enroll-method=token \
+          --token=<enrollment-token> \
+          --domain=<your-infisical-domain>
+        ```
+      </Tab>
+      <Tab title="Linux (systemd)">
+        ```bash
+        sudo infisical relay systemd install \
+          --name=<name> \
+          --enroll-method=token \
+          --token=<enrollment-token> \
+          --domain=<your-infisical-domain>
+        sudo systemctl start infisical-relay
+        ```
+      </Tab>
+    </Tabs>
+
     On subsequent starts with the same enrollment token, the relay skips enrollment and uses the stored access token.
-  </Tab>
-  <Tab title="AWS Auth">
+
+    Token-method enrollment tokens are single-use and expire after 1 hour. If the token expires before deployment, click **Show deploy command** on the relay detail page to generate a new one.
+  </Accordion>
+
+  <Accordion title="AWS Auth">
     AWS auth uses the host's AWS credentials (instance role, env vars, or shared profile) to authenticate via STS GetCallerIdentity. A fresh token is minted on every start — no on-disk persistence needed.
 
-    ```bash
-    infisical relay start --name=my-relay --enroll-method=aws --relay-id=<relay-id> --domain=<domain>
-    ```
+    <Tabs>
+      <Tab title="Foreground">
+        ```bash
+        infisical relay start \
+          --name=<name> \
+          --enroll-method=aws \
+          --relay-id=<relay-id> \
+          --domain=<your-infisical-domain>
+        ```
+      </Tab>
+      <Tab title="Linux (systemd)">
+        ```bash
+        sudo infisical relay systemd install \
+          --name=<name> \
+          --enroll-method=aws \
+          --relay-id=<relay-id> \
+          --domain=<your-infisical-domain>
+        sudo systemctl start infisical-relay
+        ```
+      </Tab>
+    </Tabs>
 
     The `--relay-id` is the relay's UUID, visible on the relay detail page. The relay ID is persisted after first use so subsequent starts don't need `--relay-id` again.
-  </Tab>
-</Tabs>
+  </Accordion>
+</AccordionGroup>
 
 ### Flags
 
@@ -79,7 +93,7 @@ Relays support two enrollment methods. The enrollment method is set when creatin
   </Accordion>
 
   <Accordion title="--token">
-    The one-time enrollment token (required when `--enroll-method=token`). Generated from the relay detail page via "Show deploy command".
+    The one-time enrollment token (required when `--enroll-method=token`). Generated from the relay detail page via **Show deploy command**.
   </Accordion>
 
   <Accordion title="--relay-id">
@@ -108,7 +122,7 @@ All standard Infisical authentication methods (Universal Auth, Kubernetes, Azure
 </Accordion>
 
 <Accordion title="infisical relay systemd" defaultOpen="false">
-  Manage systemd service for the Infisical relay. This allows you to install and run the relay as a background service on Linux systems.
+  Manage systemd service for the Infisical relay on Linux systems.
 
   ### Requirements
   - **Operating System**: Linux only
@@ -119,44 +133,29 @@ All standard Infisical authentication methods (Universal Auth, Kubernetes, Azure
 
 <AccordionGroup>
 <Accordion title="install">
-  Install and enable systemd service for the relay.
+  Install and enable systemd service for the relay. See the authentication section above for install commands.
 
-<Tabs>
-  <Tab title="Token Auth">
-    ```bash
-    sudo infisical relay systemd install --name=my-relay --enroll-method=token --token=<enrollment-token> --domain=<domain>
-    ```
-  </Tab>
-  <Tab title="AWS Auth">
-    ```bash
-    sudo infisical relay systemd install --name=my-relay --enroll-method=aws --relay-id=<relay-id> --domain=<domain>
-    ```
-  </Tab>
-</Tabs>
+  After installation, start the service:
 
-After installation, start the service:
+  ```bash
+  sudo systemctl start infisical-relay
+  sudo systemctl enable infisical-relay
+  ```
 
-```bash
-sudo systemctl start infisical-relay
-sudo systemctl enable infisical-relay
-```
+  To check status and logs:
 
-To check status and logs:
-
-```bash
-sudo systemctl status infisical-relay
-sudo journalctl -u infisical-relay -f
-```
-
+  ```bash
+  sudo systemctl status infisical-relay
+  sudo journalctl -u infisical-relay -f
+  ```
 </Accordion>
 
 <Accordion title="uninstall">
   Uninstall and remove systemd service for the relay.
 
-```bash
-sudo infisical relay systemd uninstall
-```
-
+  ```bash
+  sudo infisical relay systemd uninstall
+  ```
 </Accordion>
 </AccordionGroup>
 
