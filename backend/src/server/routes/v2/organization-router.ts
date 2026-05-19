@@ -6,9 +6,11 @@ import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -400,6 +402,15 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         userId: req.permission.id,
         userEmail: req.auth.user.email,
         orgName: req.body.name
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: organization.id,
+        properties: {
+          name: req.body.name
+        }
       });
 
       return { organization };

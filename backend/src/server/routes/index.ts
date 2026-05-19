@@ -1161,8 +1161,7 @@ export const registerRoutes = async (
     membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL,
-    telemetryService
+    additionalPrivilegeDAL
   });
 
   const subOrgService = subOrgServiceFactory({
