@@ -3308,7 +3308,6 @@ export const registerRoutes = async (
     gatewayDAL,
     gatewayService,
     gatewayV2DAL,
-    kmsService,
     appConnectionService,
     secretService,
     auditLogService,
