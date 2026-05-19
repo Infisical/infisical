@@ -314,16 +314,31 @@ export const RequestGrantTab = () => {
                         <span className="text-sm text-mineshaft-200">{attrs.accessDuration}</span>
                       </Td>
                       <Td>
-                        <Badge
-                          variant={
-                            isActive
-                              ? getStatusBadgeColor(ApprovalGrantStatus.Active)
-                              : getStatusBadgeColor(grant.status)
-                          }
-                          className="capitalize"
-                        >
-                          {isActive ? "Active" : grant.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              isActive
+                                ? getStatusBadgeColor(ApprovalGrantStatus.Active)
+                                : getStatusBadgeColor(grant.status)
+                            }
+                            className="capitalize"
+                          >
+                            {isActive ? "Active" : grant.status}
+                          </Badge>
+                          {grant.isBreakGlass && (
+                            <Tooltip
+                              content={
+                                <span className="block max-w-xs text-xs break-words">
+                                  Reason: {grant.bypassReason || "No reason provided"}
+                                </span>
+                              }
+                            >
+                              <span className="cursor-default rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300">
+                                Bypassed
+                              </span>
+                            </Tooltip>
+                          )}
+                        </div>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-400">

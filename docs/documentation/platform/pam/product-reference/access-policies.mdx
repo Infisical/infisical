@@ -26,6 +26,7 @@ Key features of approval policies include:
 - **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
 - **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
 - **Access duration constraints**: Set maximum access durations for requests matching this policy.
+- **Bypass Approvals**: Optionally allow designated users to self-approve their own request in break-glass situations.
 
 ### Guide to Creating an Approval Policy
 
@@ -43,6 +44,7 @@ To create an approval policy, navigate to your PAM Project > Approvals > Policie
       - **Account name**: Glob pattern for matching account names (e.g. `admin`, `*readonly`).
       - At least one of resource name or account name must be specified. If both are provided, they are ANDed together.
     - **Access Duration**: Configure the maximum access duration allowed for requests matching this policy.
+    - **Bypass Approvals** (optional): Allow specific users or groups to self-approve their own request in break-glass situations. See *Bypass Approvals* below.
 
     ![pam approval policy configuration](/images/pam/product-reference/access-policies/approval-policy-configuration.png)
   </Step>
@@ -63,6 +65,20 @@ To create an approval policy, navigate to your PAM Project > Approvals > Policie
     Review your policy configuration and click **Create** to save the policy.
   </Step>
 </Steps>
+
+### Bypass Approvals (Break-Glass)
+
+The **Bypass Approvals** option enables emergency access in break-glass situations:
+
+- When enabled, designated users (bypassers) can self-approve their own pending request with a written reason, skipping the configured approver workflow.
+- When disabled, all requests must go through the full approval process.
+- You can specify which users or groups are allowed to bypass.
+
+The bypass is recorded as a `pam-access-policy-bypassed` audit event and notifies all approvers via in-app notification and email.
+
+<Warning>
+  If bypass approvals is enabled and no specific users or groups are selected, anyone in the project can bypass this policy.
+</Warning>
 
 ## Approval Requests
 
@@ -95,6 +111,8 @@ Navigate to your PAM Project > Approvals > Requests to view all approval request
   </Step>
   <Step title="Approve">
     If you are an eligible approver for the current step, click **Approve** to approve the request.
+
+    If the policy has Bypass Approvals enabled and you are a configured bypasser on your own request, you can also tick **Approve immediately without approver review (bypass policy)**, provide a reason, and approve in the same step.
   </Step>
 </Steps>
 

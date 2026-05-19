@@ -239,6 +239,7 @@ import {
   appConnectionCredentialRotationServiceFactory
 } from "@app/services/app-connection/credential-rotation";
 import {
+  approvalPolicyBypassersDALFactory,
   approvalPolicyDALFactory,
   approvalPolicyStepApproversDALFactory,
   approvalPolicyStepsDALFactory
@@ -2773,12 +2774,14 @@ export const registerRoutes = async (
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
     permissionService,
     projectMembershipDAL,
     membershipDAL,
@@ -2791,7 +2794,10 @@ export const registerRoutes = async (
     notificationService,
     approvalRequestGrantsDAL,
     certificateApprovalService,
-    certificateRequestDAL
+    certificateRequestDAL,
+    smtpService,
+    userDAL,
+    projectDAL
   });
 
   const certificateV3Service = certificateV3ServiceFactory({

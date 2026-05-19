@@ -110,6 +110,9 @@ export type TApprovalRequest = {
     requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
+  canBreakGlass: boolean;
+  isBreakGlass: boolean;
+  bypassReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -138,6 +141,7 @@ export type TApproveApprovalRequestDTO = {
   policyType: ApprovalPolicyType;
   requestId: string;
   comment?: string;
+  bypassReason?: string;
 };
 
 export type TRejectApprovalRequestDTO = {
