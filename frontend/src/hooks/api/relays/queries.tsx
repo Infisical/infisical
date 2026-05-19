@@ -45,7 +45,9 @@ export const useGetRelayById = (relayId: string) => {
 };
 
 const fetchRelayConnectedGateways = async (relayId: string): Promise<TRelayConnectedGateway[]> => {
-  const { data } = await apiRequest.get<TRelayConnectedGateway[]>(`/api/v2/relays/${relayId}/gateways`);
+  const { data } = await apiRequest.get<TRelayConnectedGateway[]>(
+    `/api/v2/relays/${relayId}/gateways`
+  );
   return data;
 };
 

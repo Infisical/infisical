@@ -79,11 +79,7 @@ export const RelayDeployModal = ({ isOpen, onOpenChange }: Props) => {
             </div>
           )}
           <FormControl label="Name" isRequired>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="my-relay"
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="my-relay" />
           </FormControl>
           <FormControl label="Host" isRequired>
             <Input
@@ -93,12 +89,7 @@ export const RelayDeployModal = ({ isOpen, onOpenChange }: Props) => {
             />
           </FormControl>
           <div className="mt-2 flex items-center gap-2">
-            <Button
-              onClick={handleCreate}
-              isLoading={isCreating}
-              isDisabled={isCreating}
-              size="sm"
-            >
+            <Button onClick={handleCreate} isLoading={isCreating} isDisabled={isCreating} size="sm">
               Create Relay
             </Button>
             <ModalClose asChild>
