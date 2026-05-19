@@ -95,10 +95,11 @@ export const useGetVaultNamespaces = (connectionId?: string) => {
       const { data } = await apiRequest.get<{
         namespaces: Array<{ id: string; name: string }>;
       }>("/api/v3/external-migration/vault/namespaces", {
-        params: connectionId ? { connectionId } : undefined
+        params: { connectionId }
       });
       return data.namespaces;
-    }
+    },
+    enabled: !!connectionId
   });
 };
 
@@ -111,13 +112,13 @@ export const useGetVaultPolicies = (enabled = true, namespace?: string, connecti
       }>("/api/v3/external-migration/vault/policies", {
         params: {
           namespace,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.policies;
     },
-    enabled
+    enabled: enabled && !!connectionId
   });
 };
 
@@ -130,13 +131,13 @@ export const useGetVaultMounts = (enabled = true, namespace?: string, connection
       }>("/api/v3/external-migration/vault/mounts", {
         params: {
           namespace,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.mounts;
     },
-    enabled
+    enabled: enabled && !!connectionId
   });
 };
 
@@ -159,13 +160,13 @@ export const useGetVaultSecretPaths = (
         params: {
           namespace,
           mountPath,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.secretPaths;
     },
-    enabled: enabled && !!namespace && !!mountPath
+    enabled: enabled && !!namespace && !!mountPath && !!connectionId
   });
 };
 
@@ -184,13 +185,13 @@ export const useGetVaultAuthMounts = (
         params: {
           namespace,
           ...(authType && { authType }),
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.mounts;
     },
-    enabled
+    enabled: enabled && !!connectionId
   });
 };
 
@@ -217,13 +218,13 @@ export const useGetVaultKubernetesAuthRoles = (
         params: {
           namespace,
           mountPath,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.roles;
     },
-    enabled: enabled && !!namespace && !!mountPath
+    enabled: enabled && !!namespace && !!mountPath && !!connectionId
   });
 };
 
@@ -246,13 +247,13 @@ export const useGetVaultKubernetesRoles = (
         params: {
           namespace,
           mountPath,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.roles;
     },
-    enabled: enabled && !!namespace && !!mountPath
+    enabled: enabled && !!namespace && !!mountPath && !!connectionId
   });
 };
 
@@ -275,13 +276,13 @@ export const useGetVaultDatabaseRoles = (
         params: {
           namespace,
           mountPath,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.roles;
     },
-    enabled: enabled && !!namespace && !!mountPath
+    enabled: enabled && !!namespace && !!mountPath && !!connectionId
   });
 };
 
@@ -304,13 +305,13 @@ export const useGetVaultLdapRoles = (
         params: {
           namespace,
           mountPath,
-          ...(connectionId ? { connectionId } : {})
+          connectionId
         }
       });
 
       return data.roles;
     },
-    enabled: enabled && !!namespace && !!mountPath
+    enabled: enabled && !!namespace && !!mountPath && !!connectionId
   });
 };
 

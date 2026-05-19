@@ -46,7 +46,7 @@ export type TImportVaultSecretsDTO = {
   secretPath: string;
   vaultNamespace: string;
   vaultSecretPaths: string[];
-  connectionId?: string;
+  connectionId: string;
 };
 
 export type VaultKubernetesAuthRole = {

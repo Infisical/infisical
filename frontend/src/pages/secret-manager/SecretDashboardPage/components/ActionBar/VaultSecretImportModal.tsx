@@ -24,7 +24,7 @@ type Props = {
   environment: string;
   secretPath: string;
   appConnections: TAvailableAppConnection[];
-  onImport: (vaultPaths: string[], namespace: string, connectionId?: string) => void;
+  onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
 type ContentProps = {
@@ -32,7 +32,7 @@ type ContentProps = {
   environment: string;
   secretPath: string;
   appConnections: TAvailableAppConnection[];
-  onImport: (vaultPaths: string[], namespace: string, connectionId?: string) => void;
+  onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
 const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
@@ -100,13 +100,13 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
       return;
     }
 
-    if (!selectedNamespace) {
-      createNotification({ type: "error", text: "Please select a namespace" });
+    if (!selectedConnectionId) {
+      createNotification({ type: "error", text: "Please select an app connection" });
       return;
     }
 
-    if (hasAppConnections && !selectedConnectionId) {
-      createNotification({ type: "error", text: "Please select an app connection" });
+    if (!selectedNamespace) {
+      createNotification({ type: "error", text: "Please select a namespace" });
       return;
     }
 
@@ -118,7 +118,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
       return;
     }
 
-    onImport(selectedPaths, selectedNamespace, activeConnectionId);
+    onImport(selectedPaths, selectedNamespace, selectedConnectionId);
     onClose();
   };
 

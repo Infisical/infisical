@@ -878,7 +878,7 @@ const OverviewPageContent = () => {
   const handleVaultImport = async (
     vaultPaths: string[],
     namespace: string,
-    connectionId?: string
+    connectionId: string
   ) => {
     const { status } = await importVaultSecrets({
       projectId,
