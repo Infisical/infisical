@@ -1138,7 +1138,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId }) => {
+  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId, isMembersExcluded }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1155,6 +1155,27 @@ export const scimServiceFactory = ({
         detail: "Group Not Found",
         status: 404
       });
+    }
+
+    if (isMembersExcluded) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.GET_GROUP,
+        event: {
+          groupName: group.name,
+          numberOfMembers: 0
+        }
+      });
+
+      const scimGroup = buildScimGroup({
+        groupId: group.id,
+        name: group.name,
+        members: [],
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt
+      });
+      const { members, ...scimGroupWithoutMembers } = scimGroup;
+      return scimGroupWithoutMembers as TScimGroup;
     }
 
     const users = await groupDAL
