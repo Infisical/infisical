@@ -219,3 +219,7 @@ export type TPermissionAuditSource = {
 export type TGetMembershipPermissionAuditResponse = {
   sources: TPermissionAuditSource[];
 };
+
+export type TGetIdentityPermissionAuditResponse = {
+  sources: TPermissionAuditSource[];
+};
