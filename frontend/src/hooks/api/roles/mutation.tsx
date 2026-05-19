@@ -15,6 +15,21 @@ import {
   TUpdateProjectRoleDTO
 } from "./types";
 
+const invalidateAuditForProject = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string
+) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      if (!Array.isArray(key) || key.length < 2) return false;
+      if (key[1] !== "membership-permission-audit") return false;
+      const params = key[0] as { projectId?: string } | undefined;
+      return params?.projectId === projectId;
+    }
+  });
+};
+
 export const useCreateProjectRole = () => {
   const queryClient = useQueryClient();
 
@@ -27,6 +42,7 @@ export const useCreateProjectRole = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -48,6 +64,7 @@ export const useUpdateProjectRole = () => {
           queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, slug)
         });
       }
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -63,6 +80,7 @@ export const useDeleteProjectRole = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };

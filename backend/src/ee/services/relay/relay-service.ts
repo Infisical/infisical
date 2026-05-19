@@ -1265,7 +1265,7 @@ export const relayServiceFactory = ({
               type: NotificationType.RELAY_HEALTH_ALERT,
               title: "Relay Health Alert",
               body,
-              link: "/organization/networking"
+              link: `/organizations/${orgId}/networking`
             }))
           );
 

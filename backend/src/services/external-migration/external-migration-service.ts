@@ -6,12 +6,14 @@ import {
   TAuditLogServiceFactory
 } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -72,6 +74,8 @@ type TExternalMigrationServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickRandomHealthyGateway"
@@ -86,6 +90,8 @@ export const externalMigrationServiceFactory = ({
   userDAL,
   gatewayService,
   gatewayV2Service,
+  gatewayDAL,
+  gatewayV2DAL,
   gatewayPoolService,
   secretService,
   auditLogService,
@@ -226,6 +232,18 @@ export const externalMigrationServiceFactory = ({
     }
 
     let effectiveGatewayId: string | null = gatewayId ?? null;
+    if (gatewayId) {
+      const [gateway, gatewayV2] = await Promise.all([
+        gatewayDAL.find({ id: gatewayId, orgId: actorOrgId }, { limit: 1 }),
+        gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId }, { limit: 1 })
+      ]);
+
+      // Ensure gatewayId is part of the actor's org
+      if (!gateway.length && !gatewayV2.length) {
+        throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
+      }
+    }
+
     if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,

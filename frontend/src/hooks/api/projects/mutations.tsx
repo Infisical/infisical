@@ -14,6 +14,21 @@ import {
   TUpdateWorkspaceGroupRoleDTO
 } from "./types";
 
+const invalidateAuditForProject = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string
+) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      if (!Array.isArray(key) || key.length < 2) return false;
+      if (key[1] !== "membership-permission-audit") return false;
+      const params = key[0] as { projectId?: string } | undefined;
+      return params?.projectId === projectId;
+    }
+  });
+};
+
 export const useAddGroupToWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -41,6 +56,7 @@ export const useAddGroupToWorkspace = () => {
         queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupProjects(groupId) });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -68,6 +84,7 @@ export const useUpdateGroupWorkspaceRole = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectGroupMembershipDetails(projectId, groupId)
       });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -102,6 +119,7 @@ export const useDeleteGroupFromWorkspace = () => {
       }
 
       queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };

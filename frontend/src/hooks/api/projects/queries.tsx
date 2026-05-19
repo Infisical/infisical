@@ -33,6 +33,7 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
   TProjectSshConfig,
   TSearchProjectsDTO,
@@ -403,6 +404,18 @@ export const useGetWorkspaceUserDetails = (
   });
 };
 
+export const useGetMembershipPermissionAudit = (projectId: string, membershipId: string) =>
+  useQuery({
+    queryKey: projectKeys.getMembershipPermissionAudit(projectId, membershipId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetMembershipPermissionAuditResponse>(
+        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`
+      );
+      return data;
+    },
+    enabled: Boolean(projectId && membershipId)
+  });
+
 export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 
@@ -457,6 +470,9 @@ export const useUpdateUserWorkspaceRole = () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectUserDetails(projectId, membershipId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getMembershipPermissionAudit(projectId, membershipId)
       });
     }
   });

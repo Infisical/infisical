@@ -33,6 +33,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
@@ -1134,6 +1135,8 @@ export const pkiAcmeServiceFactory = ({
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
+
+        assertCaInProfileProject(ca, profile);
 
         const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
         const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)

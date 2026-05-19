@@ -53,7 +53,8 @@ vi.mock("../certificate-authority/certificate-authority-fns", () => ({
   extractDnParts: vi.fn().mockReturnValue({
     commonName: "test.example.com"
   }),
-  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com")
+  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com"),
+  assertCaInProfileProject: vi.fn()
 }));
 
 describe("CertificateV3Service", () => {
