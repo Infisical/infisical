@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { PkiCertificateProfilesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
@@ -66,37 +65,7 @@ export const registerCertificateProfilesRouter = async (
             .max(255)
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
           description: z.string().max(1000).optional(),
-          enrollmentType: z.nativeEnum(EnrollmentType),
           issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
-          estConfig: z
-            .object({
-              disableBootstrapCaValidation: z.boolean().default(false),
-              passphrase: z.string().min(1),
-              caChain: z.string().optional()
-            })
-            .optional(),
-          apiConfig: z
-            .object({
-              autoRenew: z.boolean().default(false),
-              renewBeforeDays: z.number().min(1).max(30).optional()
-            })
-            .optional(),
-          acmeConfig: z
-            .object({
-              skipDnsOwnershipVerification: z.boolean().optional(),
-              skipEabBinding: z.boolean().optional()
-            })
-            .optional(),
-          scepConfig: z
-            .object({
-              challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
-              challengePassword: z.string().optional(),
-              includeCaCertInResponse: z.boolean().optional(),
-              allowCertBasedRenewal: z.boolean().optional(),
-              dynamicChallengeExpiryMinutes: z.number().int().min(1).max(1440).default(60),
-              dynamicChallengeMaxPending: z.number().int().min(1).max(1000).default(100)
-            })
-            .optional(),
           externalConfigs: ExternalConfigUnionSchema,
           defaults: z
             .object({
@@ -122,74 +91,6 @@ export const registerCertificateProfilesRouter = async (
         })
         .refine(
           (data) => {
-            if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-              return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
-            }
-            return true;
-          },
-          {
-            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.EST) {
-              return !data.apiConfig && !data.acmeConfig && !data.scepConfig;
-            }
-            return true;
-          },
-          {
-            message: "EST enrollment type cannot have API, ACME, or SCEP configuration"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.API) {
-              return !data.estConfig && !data.acmeConfig && !data.scepConfig;
-            }
-            return true;
-          },
-          {
-            message: "API enrollment type cannot have EST, ACME, or SCEP configuration"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.ACME) {
-              return !data.estConfig && !data.apiConfig && !data.scepConfig;
-            }
-            return true;
-          },
-          {
-            message: "ACME enrollment type cannot have EST, API, or SCEP configuration"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
-              // Static mode requires a challenge password with min 8 chars; dynamic mode does not
-              if (data.scepConfig.challengeType === ScepChallengeType.DYNAMIC) return true;
-              return !!data.scepConfig.challengePassword && data.scepConfig.challengePassword.length >= 8;
-            }
-            return true;
-          },
-          {
-            message: "SCEP static challenge requires a challenge password with at least 8 characters"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.SCEP) {
-              return !data.estConfig && !data.apiConfig && !data.acmeConfig;
-            }
-            return true;
-          },
-          {
-            message: "SCEP enrollment type cannot have EST, API, or ACME configuration"
-          }
-        )
-        .refine(
-          (data) => {
             if (data.issuerType === IssuerType.CA) {
               return !!data.caId;
             }
@@ -208,17 +109,6 @@ export const registerCertificateProfilesRouter = async (
           },
           {
             message: "Self-signed issuer type cannot have a CA ID"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.issuerType === IssuerType.SELF_SIGNED) {
-              return data.enrollmentType === EnrollmentType.API;
-            }
-            return true;
-          },
-          {
-            message: "Self-signed issuer type only supports API enrollment"
           }
         ),
       response: {
@@ -250,7 +140,6 @@ export const registerCertificateProfilesRouter = async (
             certificateProfileId: certificateProfile.id,
             name: certificateProfile.slug,
             projectId: certificateProfile.projectId,
-            enrollmentType: certificateProfile.enrollmentType,
             issuerType: certificateProfile.issuerType
           }
         }
@@ -527,110 +416,38 @@ export const registerCertificateProfilesRouter = async (
       params: z.object({
         id: z.string().uuid()
       }),
-      body: z
-        .object({
-          slug: z
-            .string()
-            .min(1)
-            .max(255)
-            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
-            .optional(),
-          description: z.string().max(1000).optional(),
-          enrollmentType: z.nativeEnum(EnrollmentType).optional(),
-          issuerType: z.nativeEnum(IssuerType).optional(),
-          estConfig: z
-            .object({
-              disableBootstrapCaValidation: z.boolean().default(false),
-              passphrase: z.string().min(1).optional(),
-              caChain: z.string().optional()
-            })
-            .optional(),
-          apiConfig: z
-            .object({
-              autoRenew: z.boolean().default(false),
-              renewBeforeDays: z.number().min(1).max(30).optional()
-            })
-            .optional(),
-          acmeConfig: z
-            .object({
-              skipDnsOwnershipVerification: z.boolean().optional(),
-              skipEabBinding: z.boolean().optional()
-            })
-            .optional(),
-          scepConfig: z
-            .object({
-              challengeType: z.nativeEnum(ScepChallengeType).optional(),
-              challengePassword: z.string().optional(),
-              includeCaCertInResponse: z.boolean().optional(),
-              allowCertBasedRenewal: z.boolean().optional(),
-              dynamicChallengeExpiryMinutes: z.number().int().min(1).max(1440).optional(),
-              dynamicChallengeMaxPending: z.number().int().min(1).max(1000).optional()
-            })
-            .optional(),
-          externalConfigs: ExternalConfigUnionSchema,
-          defaults: z
-            .object({
-              ttlDays: z.number().int().positive().optional(),
-              commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional(),
-              organization: z.string().optional(),
-              organizationalUnit: z.string().optional(),
-              country: z.string().optional(),
-              state: z.string().optional(),
-              locality: z.string().optional()
-            })
-            .nullish()
-        })
-        .refine(
-          (data) => {
-            if (data.enrollmentType === EnrollmentType.EST) {
-              if (data.apiConfig) {
-                return false;
-              }
-            }
-            if (data.enrollmentType === EnrollmentType.API) {
-              if (data.estConfig) {
-                return false;
-              }
-            }
-            return true;
-          },
-          {
-            message: "Cannot have EST config with API enrollment type or API config with EST enrollment type."
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.acmeConfig) {
-              return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
-            }
-            return true;
-          },
-          {
-            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.scepConfig?.challengePassword) {
-              if (data.scepConfig.challengeType === ScepChallengeType.DYNAMIC) return true;
-              return data.scepConfig.challengePassword.length >= 8;
-            }
-            return true;
-          },
-          {
-            message: "SCEP static challenge requires a challenge password with at least 8 characters"
-          }
-        ),
+      body: z.object({
+        slug: z
+          .string()
+          .min(1)
+          .max(255)
+          .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
+          .optional(),
+        description: z.string().max(1000).nullable().optional(),
+        issuerType: z.nativeEnum(IssuerType).optional(),
+        externalConfigs: ExternalConfigUnionSchema,
+        defaults: z
+          .object({
+            ttlDays: z.number().int().positive().optional(),
+            commonName: z.string().optional(),
+            keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+            signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+            keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+            extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+            basicConstraints: z
+              .object({
+                isCA: z.boolean(),
+                pathLength: z.number().int().min(0).optional()
+              })
+              .optional(),
+            organization: z.string().optional(),
+            organizationalUnit: z.string().optional(),
+            country: z.string().optional(),
+            state: z.string().optional(),
+            locality: z.string().optional()
+          })
+          .nullish()
+      }),
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({

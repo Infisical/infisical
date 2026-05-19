@@ -3691,7 +3691,6 @@ interface CreateCertificateProfile {
     certificateProfileId: string;
     name: string;
     projectId: string;
-    enrollmentType: string;
     issuerType: string;
   };
 }
