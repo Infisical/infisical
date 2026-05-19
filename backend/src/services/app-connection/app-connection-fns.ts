@@ -397,7 +397,7 @@ export const decryptAppConnectionCredentials = async ({
   encryptedCredentials: Buffer;
   kmsService: TAppConnectionServiceFactoryDep["kmsService"];
   projectId: string | null | undefined;
-}): Promise<TAppConnection["credentials"]> => {
+}) => {
   const { decryptor } = await kmsService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
@@ -411,7 +411,7 @@ export const decryptAppConnectionCredentials = async ({
     cipherTextBlob: encryptedCredentials
   });
 
-  return JSON.parse(decryptedPlainTextBlob.toString()) as unknown as TAppConnection["credentials"];
+  return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
 };
 
 export const validateAppConnectionCredentials = async (

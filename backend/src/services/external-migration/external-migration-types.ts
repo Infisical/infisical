@@ -132,8 +132,7 @@ export enum ExternalMigrationImportStatus {
 }
 
 export type TImportDopplerSecretsDTO = {
-  configId?: string;
-  connectionId?: string;
+  connectionId: string;
   dopplerProject: string;
   dopplerEnvironment: string;
   targetProjectId: string;
