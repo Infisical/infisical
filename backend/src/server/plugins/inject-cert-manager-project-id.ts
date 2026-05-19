@@ -1,7 +1,15 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import RE2 from "re2";
 
 const CERT_MANAGER_PREFIXES = ["/api/v1/cert-manager/", "/api/v1/pki/", "/api/v2/pki/"];
+
+const COOKIE_PREFIX = "infisical-cm-active-project-";
+
+const certManagerActiveProjectCookieName = (orgId: string) => `${COOKIE_PREFIX}${orgId}`;
+
+const UUID_REGEX = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "i");
+const isUuid = (value: string) => UUID_REGEX.test(value);
 
 const readProjectIdFromRequest = (req: { query?: unknown; body?: unknown; params?: unknown }): string | null => {
   const fromQuery = (req.query as { projectId?: unknown } | undefined)?.projectId;
@@ -12,6 +20,15 @@ const readProjectIdFromRequest = (req: { query?: unknown; body?: unknown; params
   const fromParams = params?.projectId ?? params?.workspaceId;
   if (typeof fromParams === "string" && fromParams.length > 0) return fromParams;
   return null;
+};
+
+const readProjectIdFromCookie = (
+  cookies: Record<string, string | undefined> | undefined,
+  orgId: string
+): string | null => {
+  const value = cookies?.[certManagerActiveProjectCookieName(orgId)];
+  if (!value || !isUuid(value)) return null;
+  return value;
 };
 
 export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) => {
@@ -27,9 +44,19 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
       return;
     }
 
+    if (routePath === "/api/v1/cert-manager/migrate") {
+      return;
+    }
+
     const explicit = readProjectIdFromRequest(req);
     if (explicit) {
       req.internalCertManagerProjectId = explicit;
+      return;
+    }
+
+    const fromCookie = readProjectIdFromCookie(req.cookies, req.permission.orgId);
+    if (fromCookie) {
+      req.internalCertManagerProjectId = fromCookie;
       return;
     }
 

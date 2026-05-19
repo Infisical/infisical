@@ -78,3 +78,35 @@ export const useSetCertManagerActiveProject = () => {
     onSuccess: () => qc.invalidateQueries()
   });
 };
+
+export type TMigrateCertManagerProjectResult = {
+  sourceProjectId: string;
+  destinationProjectId: string;
+  migratedCertificateAuthorities: number;
+  renamedCertificateAuthorities: { originalName: string; newName: string }[];
+  migratedCertificatePolicies: number;
+  renamedCertificatePolicies: { originalName: string; newName: string }[];
+  migratedCertificateProfiles: number;
+  skippedCertificateProfiles: number;
+  renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
+};
+
+export const useMigrateCertManagerProject = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      sourceProjectId,
+      destinationProjectId
+    }: {
+      sourceProjectId: string;
+      destinationProjectId: string;
+    }) => {
+      const { data } = await apiRequest.post<TMigrateCertManagerProjectResult>(
+        "/api/v1/cert-manager/migrate",
+        { sourceProjectId, destinationProjectId }
+      );
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries()
+  });
+};

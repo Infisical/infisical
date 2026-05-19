@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BoxIcon, MoreHorizontalIcon, StarIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import {
+  ArrowRightLeftIcon,
+  BoxIcon,
+  MoreHorizontalIcon,
+  StarIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
@@ -43,6 +50,8 @@ import {
 } from "@app/hooks/api/certManagerInstance";
 import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
+import { CertManagerMigrateProjectModal } from "./CertManagerMigrateProjectModal";
+
 export const OrgCertManagerTab = () => {
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
@@ -61,6 +70,7 @@ export const OrgCertManagerTab = () => {
 
   const [pendingActive, setPendingActive] = useState<TCertManagerLegacyInstance | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TCertManagerLegacyInstance | null>(null);
+  const [pendingMigrate, setPendingMigrate] = useState<TCertManagerLegacyInstance | null>(null);
 
   useEffect(() => {
     if (pendingDelete && !instances.find((i) => i.id === pendingDelete.id)) {
@@ -69,7 +79,10 @@ export const OrgCertManagerTab = () => {
     if (pendingActive && !instances.find((i) => i.id === pendingActive.id)) {
       setPendingActive(null);
     }
-  }, [instances, pendingDelete, pendingActive]);
+    if (pendingMigrate && !instances.find((i) => i.id === pendingMigrate.id)) {
+      setPendingMigrate(null);
+    }
+  }, [instances, pendingDelete, pendingActive, pendingMigrate]);
 
   if (isPending) {
     return (
@@ -155,22 +168,33 @@ export const OrgCertManagerTab = () => {
                 {instance.isActive ? <Badge variant="success">Active</Badge> : null}
               </TableCell>
               <TableCell>
-                {canManage && !instance.isActive ? (
+                {canManage ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <IconButton variant="ghost" size="xs" aria-label={`Manage ${instance.name}`}>
                         <MoreHorizontalIcon />
                       </IconButton>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                      <DropdownMenuItem onClick={() => setPendingActive(instance)}>
-                        <StarIcon />
-                        Set as active
+                    <DropdownMenuContent className="min-w-56" align="end" sideOffset={2}>
+                      <DropdownMenuItem onClick={() => setPendingMigrate(instance)}>
+                        <ArrowRightLeftIcon />
+                        Migrate entities
                       </DropdownMenuItem>
-                      <DropdownMenuItem variant="danger" onClick={() => setPendingDelete(instance)}>
-                        <Trash2Icon />
-                        Delete project
-                      </DropdownMenuItem>
+                      {!instance.isActive && (
+                        <DropdownMenuItem onClick={() => setPendingActive(instance)}>
+                          <StarIcon />
+                          Set as active
+                        </DropdownMenuItem>
+                      )}
+                      {!instance.isActive && (
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={() => setPendingDelete(instance)}
+                        >
+                          <Trash2Icon />
+                          Delete project
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : null}
@@ -226,6 +250,15 @@ export const OrgCertManagerTab = () => {
         deleteKey={pendingDelete?.slug ?? "delete"}
         onDeleteApproved={handleConfirmDelete}
         buttonText="Delete project"
+      />
+
+      <CertManagerMigrateProjectModal
+        isOpen={Boolean(pendingMigrate)}
+        onOpenChange={(open) => {
+          if (!open) setPendingMigrate(null);
+        }}
+        source={pendingMigrate}
+        candidates={instances}
       />
     </div>
   );

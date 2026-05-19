@@ -4,6 +4,7 @@ import { FileKeyIcon, LockIcon, ScanSearchIcon, UsersIcon, VaultIcon } from "luc
 
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
+import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import { Card, CardContent, CardDescription, CardHeader, Skeleton } from "@app/components/v3";
 import { useOrganization, useOrgPermission } from "@app/context";
@@ -11,6 +12,10 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import {
+  getCertManagerActiveProjectCookie,
+  setCertManagerActiveProjectCookie
+} from "@app/helpers/certManagerActiveProject";
 import { getProjectDescription, getProjectTitle, projectTypeToUrlSlug } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
@@ -99,21 +104,29 @@ export const ProjectCategoryOverview = () => {
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
+  const [isCertManagerPickerOpen, setIsCertManagerPickerOpen] = useState(false);
+  const [pendingCertManagerProjectId, setPendingCertManagerProjectId] = useState<string | null>(
+    null
+  );
 
-  const certManagerActiveProjectId = certManagerInstance?.activeProjectId ?? null;
+  const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
+  const cmInstances = useMemo(
+    () => certManagerInstance?.projects ?? [],
+    [certManagerInstance?.projects]
+  );
+
+  const certManagerActiveProjectId = useMemo(() => {
+    const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
+    if (cookieValue && cmInstances.some((p) => p.id === cookieValue)) return cookieValue;
+    return orgDefaultCertManagerProjectId;
+  }, [currentOrg?.id, cmInstances, orgDefaultCertManagerProjectId]);
+
   const certManagerActiveProject = useMemo(
     () =>
       certManagerActiveProjectId
-        ? certManagerInstance?.projects.find((p) => p.id === certManagerActiveProjectId)
+        ? cmInstances.find((p) => p.id === certManagerActiveProjectId)
         : undefined,
-    [certManagerInstance, certManagerActiveProjectId]
-  );
-  const isMemberOfCertManagerProject = useMemo(
-    () =>
-      certManagerActiveProjectId
-        ? projects.some((p) => p.id === certManagerActiveProjectId)
-        : false,
-    [projects, certManagerActiveProjectId]
+    [cmInstances, certManagerActiveProjectId]
   );
 
   const getStatsForType = (type: ProjectType): ProductStat[] => {
@@ -162,36 +175,53 @@ export const ProjectCategoryOverview = () => {
     });
   };
 
+  const enterCertManagerProject = async (projectId: string) => {
+    setPendingCertManagerProjectId(projectId);
+    const isMember = projects.some((p) => p.id === projectId);
+    if (isMember) {
+      navigateToCertManager(projectId);
+      return;
+    }
+    const isOrgAdmin = permission.can(
+      OrgPermissionAdminConsoleAction.AccessAllProjects,
+      OrgPermissionSubjects.AdminConsole
+    );
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId });
+        navigateToCertManager(projectId);
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text:
+            err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
+        });
+      }
+    } else {
+      setIsRequestAccessOpen(true);
+    }
+  };
+
+  const handleCertManagerInstanceSelect = async (projectId: string) => {
+    if (currentOrg?.id) setCertManagerActiveProjectCookie(currentOrg.id, projectId);
+    setIsCertManagerPickerOpen(false);
+    await enterCertManagerProject(projectId);
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
     if (type === ProjectType.CertificateManager) {
-      if (!certManagerActiveProjectId) {
+      if (cmInstances.length === 0) {
         setIsCertManagerSetupOpen(true);
         return;
       }
-      if (isMemberOfCertManagerProject) {
-        navigateToCertManager(certManagerActiveProjectId);
+      if (cmInstances.length > 1) {
+        setIsCertManagerPickerOpen(true);
         return;
       }
-      const isOrgAdmin = permission.can(
-        OrgPermissionAdminConsoleAction.AccessAllProjects,
-        OrgPermissionSubjects.AdminConsole
-      );
-      if (isOrgAdmin) {
-        try {
-          await orgAdminAccessProject.mutateAsync({ projectId: certManagerActiveProjectId });
-          navigateToCertManager(certManagerActiveProjectId);
-        } catch (err) {
-          createNotification({
-            type: "error",
-            text:
-              err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
-          });
-        }
-      } else {
-        setIsRequestAccessOpen(true);
-      }
+      const onlyId = cmInstances[0].id;
+      await enterCertManagerProject(onlyId);
       return;
     }
 
@@ -224,10 +254,14 @@ export const ProjectCategoryOverview = () => {
     );
   }
 
-  const requestAccessProject: Project | undefined = certManagerActiveProject
+  const requestAccessTarget =
+    (pendingCertManagerProjectId
+      ? cmInstances.find((p) => p.id === pendingCertManagerProjectId)
+      : undefined) ?? certManagerActiveProject;
+  const requestAccessProject: Project | undefined = requestAccessTarget
     ? ({
-        id: certManagerActiveProject.id,
-        name: certManagerActiveProject.name
+        id: requestAccessTarget.id,
+        name: requestAccessTarget.name
       } as Project)
     : undefined;
 
@@ -308,6 +342,14 @@ export const ProjectCategoryOverview = () => {
       <CertManagerNotConfiguredModal
         isOpen={isCertManagerSetupOpen}
         onOpenChange={setIsCertManagerSetupOpen}
+      />
+
+      <CertManagerSelectInstanceModal
+        isOpen={isCertManagerPickerOpen}
+        onOpenChange={setIsCertManagerPickerOpen}
+        instances={cmInstances}
+        orgDefaultProjectId={orgDefaultCertManagerProjectId}
+        onSelect={handleCertManagerInstanceSelect}
       />
     </>
   );

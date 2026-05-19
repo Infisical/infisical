@@ -86,6 +86,7 @@ import { ActorAuthMethod, ActorType, MfaMethod, TProviderAuthCallback } from "@a
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
+import { TCertManagerMigrationServiceFactory } from "@app/services/cert-manager-migration/cert-manager-migration-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
 import { TCaSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
@@ -337,6 +338,7 @@ declare module "fastify" {
       pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
       certManagerProjectResolver: TCertManagerProjectResolverFactory;
       certManagerInstance: TCertManagerInstanceServiceFactory;
+      certManagerMigration: TCertManagerMigrationServiceFactory;
       sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
       sshCertificateTemplate: TSshCertificateTemplateServiceFactory;
       sshHost: TSshHostServiceFactory;
