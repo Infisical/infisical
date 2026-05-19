@@ -8,11 +8,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import type WebSocket from "ws";
 
 import { PostgresClientMessageType, PostgresServerMessageType } from "./pam-postgres-ws-types";
-import {
-  TerminalServerMessageType,
-  type TSessionContext,
-  type TWebSocketServerMessage
-} from "./pam-web-access-types";
+import { TerminalServerMessageType, type TSessionContext, type TWebSocketServerMessage } from "./pam-web-access-types";
 
 vi.mock("@app/lib/logger", () => ({
   logger: {
