@@ -94,8 +94,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           .default(OrderByDirection.ASC)
           .describe(IDENTITIES.SEARCH_V2.orderDirection)
           .optional(),
-        limit: z.number().max(100).default(50).describe(IDENTITIES.SEARCH_V2.limit),
-        offset: z.number().default(0).describe(IDENTITIES.SEARCH_V2.offset),
+        limit: z.number().int().min(1).max(100).default(50).describe(IDENTITIES.SEARCH_V2.limit),
+        offset: z.number().int().min(0).default(0).describe(IDENTITIES.SEARCH_V2.offset),
         search: buildSearchZodSchema(
           z
             .object({

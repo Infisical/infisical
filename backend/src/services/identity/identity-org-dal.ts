@@ -782,7 +782,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       }
 
       if (orderBy === OrgIdentityOrderBy.Role) {
-        void searchedMemberships.orderBy("roleSort", orderDirection);
+        void searchedMemberships.orderBy("roleSort", orderDirection, "last");
       } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
         // Never-used identities (lastLoginTime IS NULL) are always pushed to the bottom
         // regardless of sort direction so the visible page is dominated by real activity.
@@ -915,14 +915,13 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
           db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         )
-        .select(db.ref("id").as("crId").withSchema(TableName.Role))
         .select(db.ref("name").as("crName").withSchema(TableName.Role))
         .select(db.ref("slug").as("crSlug").withSchema(TableName.Role))
         .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role));
 
       if (orderBy === OrgIdentityOrderBy.Role) {
-        void query.orderBy("searchedMemberships.roleSort", orderDirection);
+        void query.orderBy("searchedMemberships.roleSort", orderDirection, "last");
       } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
         void query.orderBy("searchedMemberships.lastLoginSort", orderDirection, "last");
       } else {
@@ -1015,7 +1014,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               membershipRoleId,
               role,
               roleId,
-              crId,
               crName,
               crSlug,
               crDescription,
@@ -1037,16 +1035,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               temporaryMode,
               temporaryRange,
               temporaryAccessStartTime,
-              temporaryAccessEndTime,
-              customRole: roleId
-                ? {
-                    id: crId,
-                    name: crName,
-                    slug: crSlug,
-                    permissions: crPermission,
-                    description: crDescription
-                  }
-                : undefined
+              temporaryAccessEndTime
             })
           }
         ]
