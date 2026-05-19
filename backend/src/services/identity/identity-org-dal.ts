@@ -26,6 +26,7 @@ import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
 import {
+  accessScopeToSearchIdentitiesScope,
   OrgIdentityOrderBy,
   SearchIdentitiesScope,
   TCountIdentitiesV2DAL,
@@ -782,6 +783,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       } else {
         void searchedMemberships.orderBy("identityName", orderDirection);
       }
+      // Secondary sort by membership id keeps pagination deterministic when the primary
+      // sort key ties (duplicate names, identical aggregated role).
+      void searchedMemberships.orderBy(`${TableName.Membership}.id`, "asc");
 
       if (limit) {
         void searchedMemberships.offset(offset).limit(limit);
@@ -923,6 +927,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       } else {
         void query.orderBy("searchedMemberships.identityName", orderDirection);
       }
+      void query.orderBy("searchedMemberships.id", "asc");
 
       const docs = await query;
 
@@ -963,7 +968,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         }) => ({
           id,
           identityId: identityId as string,
-          scope: membershipScope as SearchIdentitiesScope,
+          scope: accessScopeToSearchIdentitiesScope(membershipScope),
           orgId: membershipOrgId,
           projectId: scopeProjectId,
           total_count: total_count as string,

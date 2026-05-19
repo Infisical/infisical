@@ -1,3 +1,4 @@
+import { AccessScope } from "@app/db/schemas";
 import { IPType } from "@app/lib/ip";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, TOrgPermission } from "@app/lib/types";
@@ -68,6 +69,20 @@ export enum SearchIdentitiesScope {
   Organization = "organization",
   Project = "project"
 }
+
+// Translate a raw `Membership.scope` value into a SearchIdentitiesScope. The two enums share
+// string values today but live in separate files — go through this helper so a future drift
+// (extra AccessScope variant, renamed value) surfaces here instead of silently mistyping rows.
+export const accessScopeToSearchIdentitiesScope = (scope: string): SearchIdentitiesScope => {
+  switch (scope) {
+    case AccessScope.Organization:
+      return SearchIdentitiesScope.Organization;
+    case AccessScope.Project:
+      return SearchIdentitiesScope.Project;
+    default:
+      throw new Error(`Unexpected membership scope for identity search: ${scope}`);
+  }
+};
 
 export type TSearchIdentitiesV2DAL = {
   limit?: number;

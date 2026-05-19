@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, OrgRolesSchema } from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
@@ -53,14 +53,6 @@ const identityMembershipResponseSchema = z.object({
   lastLoginAuthMethod: z.string().nullable().optional(),
   lastLoginTime: z.date().nullable().optional(),
   roles: z.array(roleSchema),
-  /** @deprecated use `roles` */
-  customRole: OrgRolesSchema.pick({
-    id: true,
-    name: true,
-    slug: true,
-    permissions: true,
-    description: true
-  }).optional(),
   identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
     authMethods: z.array(z.string())
   })

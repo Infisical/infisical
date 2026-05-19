@@ -1012,8 +1012,6 @@ export type IdentityMembershipSearchResult = {
   lastLoginAuthMethod?: IdentityAuthMethod | null;
   lastLoginTime?: string | null;
   roles: IdentityMembershipSearchRole[];
-  /** @deprecated use `roles` */
-  customRole?: TOrgRole;
   identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
     authMethods: IdentityAuthMethod[];
   };
