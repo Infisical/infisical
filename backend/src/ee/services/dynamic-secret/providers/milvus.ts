@@ -71,13 +71,14 @@ export const parseMilvusHost = (host: string, port: number, useTls: boolean) => 
 };
 
 const buildBaseUrl = (providerInputs: TMilvusProviderInputs, host: string, port: number) => {
-  const useTls = resolveMilvusUseTls(host, providerInputs.ca);
+  const useTls = resolveMilvusUseTls(providerInputs.host, providerInputs.ca);
   const { origin } = parseMilvusHost(host, port, useTls);
   return origin;
 };
 
 export const MILVUS_MAX_USERNAME_LENGTH = 32;
-export const MILVUS_ROLE_PREFIX = "infisical_role_";
+export const MILVUS_ROLE_PREFIX = "role_";
+export const MILVUS_USER_PREFIX = "user_";
 
 export const sanitizeMilvusUsername = (username: string) => username.substring(0, MILVUS_MAX_USERNAME_LENGTH);
 
@@ -132,11 +133,11 @@ export const MilvusProvider = ({
     },
     gatewayCallback: (host: string, port: number) => Promise<T>
   ): Promise<T> => {
-    const sanitizedTargetHost = inputs.targetHost.replace(/^https?:\/\//i, "");
+    const bareHostname = new URL(inputs.targetHost).hostname;
 
     const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId: inputs.gatewayId,
-      targetHost: sanitizedTargetHost,
+      targetHost: bareHostname,
       targetPort: inputs.targetPort
     });
 
@@ -154,7 +155,7 @@ export const MilvusProvider = ({
     return withGatewayProxy(async (port) => gatewayCallback("localhost", port), {
       relayDetails,
       protocol: GatewayProxyProtocol.Tcp,
-      targetHost: sanitizedTargetHost,
+      targetHost: bareHostname,
       targetPort: inputs.targetPort,
       httpsAgent: inputs.httpsAgent
     });
@@ -232,7 +233,8 @@ export const MilvusProvider = ({
       {
         decryptedDynamicSecretInputs: inputs,
         dynamicSecret,
-        identity
+        identity,
+        usernamePrefix: MILVUS_USER_PREFIX
       },
       sanitizeMilvusUsername
     );
@@ -313,7 +315,7 @@ export const MilvusProvider = ({
 
       try {
         const role = await describeRole(providerInputs, host, port, roleName);
-        if (role.code === 0 && role.data.length > 0) {
+        if (role.code === 0) {
           await request.post("/v2/vectordb/roles/drop", { roleName }, requestConfig);
         }
 
