@@ -338,6 +338,16 @@ export type TTelemetryInstanceStatsEvent = {
     organizationNames: number;
     numberOfSecretOperationsMade: number;
     numberOfSecretProcessed: number;
+    environments: number;
+    secretSyncs: number;
+    integrations: number;
+    certificateAuthorities: number;
+    certificates: number;
+    dynamicSecrets: number;
+    identityAuthMethods: number;
+    groups: number;
+    secretApprovalPolicies: number;
+    activeGateways: number;
   };
 };
 
