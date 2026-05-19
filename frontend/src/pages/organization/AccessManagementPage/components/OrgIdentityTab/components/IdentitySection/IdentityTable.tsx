@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -38,11 +37,6 @@ import {
   PopoverContent,
   PopoverTrigger,
   ProjectIcon,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -58,14 +52,9 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useSubscription
-} from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { formatProjectRoleName, isCustomOrgRole } from "@app/helpers/roles";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -76,8 +65,7 @@ import {
   identityAuthToNameMap,
   useCountOrgIdentityMemberships,
   useGetOrgRoles,
-  useSearchOrgIdentityMemberships,
-  useUpdateOrgIdentity
+  useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { SearchIdentitiesScope } from "@app/hooks/api/identities";
@@ -121,7 +109,6 @@ const formatLastUsed = (lastLoginTime?: string | null) => {
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const { subscription } = useSubscription();
 
   const [scopeTab, setScopeTab] = useState<ScopeTab>("all");
 
@@ -153,8 +140,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   });
 
   const organizationId = currentOrg?.id || "";
-
-  const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
 
   const searchPayload = {
     name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
@@ -204,27 +189,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(
       column === OrgIdentityOrderBy.LastLogin ? OrderByDirection.DESC : OrderByDirection.ASC
     );
-  };
-
-  const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
-    if (isCustomOrgRole(role) && subscription && !subscription?.rbac) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
-      return;
-    }
-
-    await updateMutateAsync({
-      identityId,
-      role,
-      organizationId
-    });
-
-    createNotification({
-      text: "Successfully updated machine identity role",
-      type: "success"
-    });
   };
 
   const handleRoleToggle = useCallback(
@@ -419,9 +383,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   }) => {
                     const isSubOrgIdentity = currentOrg.id === orgId;
                     const isProjectScoped = scope === SearchIdentitiesScope.Project;
-                    const primaryRole = membershipRoles?.[0];
-                    const role = primaryRole?.role ?? "";
-                    const customRoleSlug = primaryRole?.customRoleSlug ?? null;
                     const lastUsedLabel = formatLastUsed(lastLoginTime);
                     const navigateToIdentity = () => {
                       if (isProjectScoped && project) {
@@ -465,151 +426,110 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {isProjectScoped ? (
-                            <div className="flex items-center gap-1.5">
-                              {(membershipRoles ?? [])
-                                .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                .map(
-                                  ({
-                                    role: roleSlug,
-                                    customRoleName,
-                                    id: roleId,
-                                    isTemporary,
-                                    temporaryAccessEndTime
-                                  }) => {
-                                    const isExpired =
-                                      isTemporary &&
-                                      !!temporaryAccessEndTime &&
-                                      new Date() > new Date(temporaryAccessEndTime);
-                                    return (
-                                      <Badge
-                                        key={roleId}
-                                        variant={isExpired ? "danger" : "neutral"}
-                                      >
-                                        <span className="capitalize">
-                                          {formatProjectRoleName(
-                                            roleSlug,
-                                            customRoleName ?? undefined
-                                          )}
-                                        </span>
-                                        {isTemporary && (
-                                          <Tooltip>
-                                            <TooltipTrigger tabIndex={-1}>
-                                              {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              {isExpired ? "Access expired" : "Temporary access"}
-                                            </TooltipContent>
-                                          </Tooltip>
+                          <div className="flex items-center gap-1.5">
+                            {(membershipRoles ?? [])
+                              .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                              .map(
+                                ({
+                                  role: roleSlug,
+                                  customRoleName,
+                                  id: roleId,
+                                  isTemporary,
+                                  temporaryAccessEndTime
+                                }) => {
+                                  const isExpired =
+                                    isTemporary &&
+                                    !!temporaryAccessEndTime &&
+                                    new Date() > new Date(temporaryAccessEndTime);
+                                  return (
+                                    <Badge key={roleId} variant={isExpired ? "danger" : "neutral"}>
+                                      <span className="capitalize">
+                                        {formatProjectRoleName(
+                                          roleSlug,
+                                          customRoleName ?? undefined
                                         )}
-                                      </Badge>
-                                    );
-                                  }
-                                )}
-                              {(membershipRoles?.length ?? 0) > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-                                <Popover>
-                                  <Tooltip>
-                                    <TooltipTrigger className="flex h-4 items-center">
-                                      <PopoverTrigger asChild>
-                                        <Badge variant="neutral" asChild>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            +
-                                            {(membershipRoles?.length ?? 0) -
-                                              MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
-                                          </button>
-                                        </Badge>
-                                      </PopoverTrigger>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Click to view additional roles</TooltipContent>
-                                  </Tooltip>
-                                  <PopoverContent
-                                    side="right"
-                                    className="flex w-auto max-w-sm flex-wrap gap-1.5"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {(membershipRoles ?? [])
-                                      .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                      .map(
-                                        ({
-                                          role: roleSlug,
-                                          customRoleName,
-                                          id: roleId,
-                                          isTemporary,
-                                          temporaryAccessEndTime
-                                        }) => {
-                                          const isExpired =
-                                            isTemporary &&
-                                            !!temporaryAccessEndTime &&
-                                            new Date() > new Date(temporaryAccessEndTime);
-                                          return (
-                                            <Badge
-                                              key={roleId}
-                                              className="z-10"
-                                              variant={isExpired ? "danger" : "neutral"}
-                                            >
-                                              <span className="capitalize">
-                                                {formatProjectRoleName(
-                                                  roleSlug,
-                                                  customRoleName ?? undefined
-                                                )}
-                                              </span>
-                                              {isTemporary && (
-                                                <Tooltip>
-                                                  <TooltipTrigger tabIndex={-1}>
-                                                    {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                                  </TooltipTrigger>
-                                                  <TooltipContent>
-                                                    {isExpired
-                                                      ? "Access expired"
-                                                      : "Temporary access"}
-                                                  </TooltipContent>
-                                                </Tooltip>
-                                              )}
-                                            </Badge>
-                                          );
-                                        }
+                                      </span>
+                                      {isTemporary && (
+                                        <Tooltip>
+                                          <TooltipTrigger tabIndex={-1}>
+                                            {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            {isExpired ? "Access expired" : "Temporary access"}
+                                          </TooltipContent>
+                                        </Tooltip>
                                       )}
-                                  </PopoverContent>
-                                </Popover>
+                                    </Badge>
+                                  );
+                                }
                               )}
-                            </div>
-                          ) : (
-                            <OrgPermissionCan
-                              I={OrgPermissionIdentityActions.Edit}
-                              a={OrgPermissionSubjects.Identity}
-                            >
-                              {(isAllowed) => (
-                                <Select
-                                  value={role === "custom" ? (customRoleSlug as string) : role}
-                                  disabled={!isAllowed}
-                                  onValueChange={(selectedRole) =>
-                                    handleChangeRole({
-                                      identityId: id,
-                                      role: selectedRole
-                                    })
-                                  }
+                            {(membershipRoles?.length ?? 0) > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
+                              <Popover>
+                                <Tooltip>
+                                  <TooltipTrigger className="flex h-4 items-center">
+                                    <PopoverTrigger asChild>
+                                      <Badge variant="neutral" asChild>
+                                        <button type="button" onClick={(e) => e.stopPropagation()}>
+                                          +
+                                          {(membershipRoles?.length ?? 0) -
+                                            MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                                        </button>
+                                      </Badge>
+                                    </PopoverTrigger>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Click to view additional roles</TooltipContent>
+                                </Tooltip>
+                                <PopoverContent
+                                  side="right"
+                                  className="flex w-auto max-w-sm flex-wrap gap-1.5"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <SelectTrigger
-                                    className="w-full max-w-32 lg:max-w-64"
-                                    size="sm"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-w-32 lg:max-w-64">
-                                    {(roles || []).map(({ slug, name: roleName }) => (
-                                      <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                        {roleName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </OrgPermissionCan>
-                          )}
+                                  {(membershipRoles ?? [])
+                                    .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                                    .map(
+                                      ({
+                                        role: roleSlug,
+                                        customRoleName,
+                                        id: roleId,
+                                        isTemporary,
+                                        temporaryAccessEndTime
+                                      }) => {
+                                        const isExpired =
+                                          isTemporary &&
+                                          !!temporaryAccessEndTime &&
+                                          new Date() > new Date(temporaryAccessEndTime);
+                                        return (
+                                          <Badge
+                                            key={roleId}
+                                            className="z-10"
+                                            variant={isExpired ? "danger" : "neutral"}
+                                          >
+                                            <span className="capitalize">
+                                              {formatProjectRoleName(
+                                                roleSlug,
+                                                customRoleName ?? undefined
+                                              )}
+                                            </span>
+                                            {isTemporary && (
+                                              <Tooltip>
+                                                <TooltipTrigger tabIndex={-1}>
+                                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                  {isExpired
+                                                    ? "Access expired"
+                                                    : "Temporary access"}
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            )}
+                                          </Badge>
+                                        );
+                                      }
+                                    )}
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {lastLoginAuthMethod && lastLoginTime ? (
@@ -672,7 +592,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                     isDisabled={!isAllowed}
                                   >
                                     <EditIcon />
-                                    Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
+                                    {isProjectScoped
+                                      ? "Open in Project"
+                                      : `Edit Machine Identity ${isSubOrgIdentity ? "" : "Membership"}`}
                                   </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>

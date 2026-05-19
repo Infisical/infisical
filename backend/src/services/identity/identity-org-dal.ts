@@ -722,10 +722,16 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       const applyScopeFilter = (qb: Knex.QueryBuilder) => {
         void qb.whereNotNull(`${TableName.Membership}.actorIdentityId`);
 
+        // Project-owned identities (Identity.projectId IS NOT NULL) always carry a NoAccess
+        // org-level Membership row as an implementation detail of their creation flow
+        // (see identity-v2/identity-service.ts createIdentity). Excluding them here keeps
+        // the org-scope listing limited to true org-level identities, matching V1 behavior
+        // and preventing duplicate rows in the combined org+project view.
         const orgScopeBranch = (sub: Knex.QueryBuilder) => {
           void sub
             .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-            .where(`${TableName.Membership}.scopeOrgId`, orgId);
+            .where(`${TableName.Membership}.scopeOrgId`, orgId)
+            .whereNull(`${TableName.Identity}.projectId`);
         };
 
         const projectScopeBranch = (sub: Knex.QueryBuilder) => {
@@ -1097,7 +1103,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       const orgScopeBranch = (sub: Knex.QueryBuilder) => {
         void sub
           .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-          .where(`${TableName.Membership}.scopeOrgId`, orgId);
+          .where(`${TableName.Membership}.scopeOrgId`, orgId)
+          .whereNull(`${TableName.Identity}.projectId`);
       };
 
       const projectScopeBranch = (sub: Knex.QueryBuilder) => {
