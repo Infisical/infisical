@@ -2,7 +2,7 @@ import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 
 import { OrderByDirection } from "../generic/types";
 import { OrgIdentityOrderBy } from "../organization/types";
-import { Project } from "../projects/types";
+import { Project, ProjectType } from "../projects/types";
 import { TOrgRole } from "../roles/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
@@ -992,7 +992,7 @@ export type IdentityMembershipSearchResult = {
     id: string;
     name: string;
     slug: string;
-    type: string;
+    type: ProjectType;
   } | null;
   createdAt: string;
   updatedAt: string;

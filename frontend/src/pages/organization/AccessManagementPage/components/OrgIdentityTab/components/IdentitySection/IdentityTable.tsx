@@ -3,10 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDownIcon,
+  ClockAlertIcon,
+  ClockIcon,
   EditIcon,
   FilterIcon,
-  InfoIcon,
-  LockIcon,
   MoreHorizontalIcon,
   SearchIcon,
   TrashIcon
@@ -34,6 +34,9 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ProjectIcon,
   Select,
   SelectContent,
@@ -61,7 +64,8 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { getProjectBaseURL } from "@app/helpers/project";
+import { formatProjectRoleName, isCustomOrgRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -97,10 +101,20 @@ type Filter = {
 
 type ScopeTab = "all" | "organization" | "project";
 
+const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
+
 const TAB_TO_SCOPE: Record<ScopeTab, SearchIdentitiesScope[]> = {
   all: [SearchIdentitiesScope.Organization, SearchIdentitiesScope.Project],
   organization: [SearchIdentitiesScope.Organization],
   project: [SearchIdentitiesScope.Project]
+};
+
+const formatLastUsed = (lastLoginTime?: string | null) => {
+  if (!lastLoginTime) return "Never";
+  const date = new Date(lastLoginTime);
+  if (Number.isNaN(date.getTime())) return "Never";
+  if (Date.now() - date.getTime() < 60_000) return "Just now";
+  return `${formatDistanceToNow(date)} ago`;
 };
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
@@ -333,7 +347,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TableHeader>
               <TableRow>
                 <TableHead
-                  className="cursor-pointer"
+                  className={twMerge(
+                    "cursor-pointer",
+                    isSubOrganization ? "w-1/5" : "w-1/4"
+                  )}
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                 >
                   Name
@@ -347,9 +364,12 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead>Scope</TableHead>
+                <TableHead className={isSubOrganization ? "w-1/5" : "w-1/4"}>Scope</TableHead>
                 <TableHead
-                  className="cursor-pointer"
+                  className={twMerge(
+                    "cursor-pointer",
+                    isSubOrganization ? "w-1/5" : "w-1/4"
+                  )}
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
                   Role
@@ -363,8 +383,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead>Last Used</TableHead>
-                {isSubOrganization && <TableHead>Managed By</TableHead>}
+                <TableHead className={isSubOrganization ? "w-1/5" : "w-1/4"}>Last Used</TableHead>
+                {isSubOrganization && <TableHead className="w-1/5">Managed By</TableHead>}
                 <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
@@ -410,55 +430,35 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     const primaryRole = membershipRoles?.[0];
                     const role = primaryRole?.role ?? "";
                     const customRoleSlug = primaryRole?.customRoleSlug ?? null;
-                    const lastLoginAt = lastLoginTime ? new Date(lastLoginTime) : null;
-                    const lastLoginLabel = lastLoginAt
-                      ? formatDistanceToNow(lastLoginAt, { addSuffix: false })
-                          .replace(" minutes", "m")
-                          .replace(" minute", "m")
-                          .replace(" hours", "h")
-                          .replace(" hour", "h")
-                          .replace(" days", "d")
-                          .replace(" day", "d")
-                          .replace(" months", "mo")
-                          .replace(" month", "mo")
-                          .replace(" years", "y")
-                          .replace(" year", "y")
-                          .replace("about ", "")
-                          .replace("less than a ", "<1")
-                      : null;
-                    const isRecent =
-                      lastLoginAt && Date.now() - lastLoginAt.getTime() < 7 * 24 * 60 * 60 * 1000;
+                    const lastUsedLabel = formatLastUsed(lastLoginTime);
+                    const navigateToIdentity = () => {
+                      if (isProjectScoped && project) {
+                        navigate({
+                          to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
+                          params: {
+                            orgId: currentOrg.id,
+                            projectId: project.id,
+                            identityId: id
+                          }
+                        });
+                        return;
+                      }
+                      navigate({
+                        to: "/organizations/$orgId/identities/$identityId",
+                        params: {
+                          identityId: id,
+                          orgId: currentOrg.id
+                        }
+                      });
+                    };
 
                     return (
                       <TableRow
                         key={`identity-${membershipId}`}
                         className="cursor-pointer"
-                        onClick={() =>
-                          navigate({
-                            to: "/organizations/$orgId/identities/$identityId",
-                            params: {
-                              identityId: id,
-                              orgId: currentOrg.id
-                            }
-                          })
-                        }
+                        onClick={navigateToIdentity}
                       >
-                        <TableCell isTruncatable className="group">
-                          {name}
-                          {lastLoginAuthMethod && lastLoginTime && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon className="ml-2 inline size-3.5 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-96 min-w-52">
-                                <LastLoginSection
-                                  lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
-                                  lastLoginTime={lastLoginTime}
-                                />
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </TableCell>
+                        <TableCell isTruncatable>{name}</TableCell>
                         <TableCell>
                           {isProjectScoped ? (
                             <Badge variant="project">
@@ -474,18 +474,116 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         </TableCell>
                         <TableCell>
                           {isProjectScoped ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center gap-1.5 text-sm text-foreground/80">
-                                  {primaryRole?.customRoleName ?? role ?? "—"}
-                                  <LockIcon className="size-3 text-mineshaft-400" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Project-scoped role. Manage from the project&apos;s access control
-                                page.
-                              </TooltipContent>
-                            </Tooltip>
+                            <div className="flex items-center gap-1.5">
+                              {(membershipRoles ?? [])
+                                .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                                .map(
+                                  ({
+                                    role: roleSlug,
+                                    customRoleName,
+                                    id: roleId,
+                                    isTemporary,
+                                    temporaryAccessEndTime
+                                  }) => {
+                                    const isExpired =
+                                      isTemporary &&
+                                      !!temporaryAccessEndTime &&
+                                      new Date() > new Date(temporaryAccessEndTime);
+                                    return (
+                                      <Badge
+                                        key={roleId}
+                                        variant={isExpired ? "danger" : "neutral"}
+                                      >
+                                        <span className="capitalize">
+                                          {formatProjectRoleName(
+                                            roleSlug,
+                                            customRoleName ?? undefined
+                                          )}
+                                        </span>
+                                        {isTemporary && (
+                                          <Tooltip>
+                                            <TooltipTrigger tabIndex={-1}>
+                                              {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              {isExpired ? "Access expired" : "Temporary access"}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
+                                      </Badge>
+                                    );
+                                  }
+                                )}
+                              {(membershipRoles?.length ?? 0) > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
+                                <Popover>
+                                  <Tooltip>
+                                    <TooltipTrigger className="flex h-4 items-center">
+                                      <PopoverTrigger asChild>
+                                        <Badge variant="neutral" asChild>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            +
+                                            {(membershipRoles?.length ?? 0) -
+                                              MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                                          </button>
+                                        </Badge>
+                                      </PopoverTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Click to view additional roles</TooltipContent>
+                                  </Tooltip>
+                                  <PopoverContent
+                                    side="right"
+                                    className="flex w-auto max-w-sm flex-wrap gap-1.5"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {(membershipRoles ?? [])
+                                      .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                                      .map(
+                                        ({
+                                          role: roleSlug,
+                                          customRoleName,
+                                          id: roleId,
+                                          isTemporary,
+                                          temporaryAccessEndTime
+                                        }) => {
+                                          const isExpired =
+                                            isTemporary &&
+                                            !!temporaryAccessEndTime &&
+                                            new Date() > new Date(temporaryAccessEndTime);
+                                          return (
+                                            <Badge
+                                              key={roleId}
+                                              className="z-10"
+                                              variant={isExpired ? "danger" : "neutral"}
+                                            >
+                                              <span className="capitalize">
+                                                {formatProjectRoleName(
+                                                  roleSlug,
+                                                  customRoleName ?? undefined
+                                                )}
+                                              </span>
+                                              {isTemporary && (
+                                                <Tooltip>
+                                                  <TooltipTrigger tabIndex={-1}>
+                                                    {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                                  </TooltipTrigger>
+                                                  <TooltipContent>
+                                                    {isExpired
+                                                      ? "Access expired"
+                                                      : "Temporary access"}
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              )}
+                                            </Badge>
+                                          );
+                                        }
+                                      )}
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
                           ) : (
                             <OrgPermissionCan
                               I={OrgPermissionIdentityActions.Edit}
@@ -522,38 +620,22 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {lastLoginAt && lastLoginLabel && lastLoginTime ? (
-                            (() => {
-                              const lastUsedPill = (
-                                <span className="inline-flex cursor-default items-center gap-2 text-sm text-foreground/80">
-                                  <span
-                                    className={twMerge(
-                                      "size-1.5 rounded-full",
-                                      isRecent ? "bg-success" : "bg-mineshaft-400"
-                                    )}
-                                    aria-hidden
-                                  />
-                                  {lastLoginLabel} ago
+                          {lastLoginAuthMethod && lastLoginTime ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default text-sm text-foreground/80">
+                                  {lastUsedLabel}
                                 </span>
-                              );
-                              return lastLoginAuthMethod ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>{lastUsedPill}</TooltipTrigger>
-                                  <TooltipContent className="max-w-96 min-w-52">
-                                    <LastLoginSection
-                                      lastLoginAuthMethod={
-                                        identityAuthToNameMap[lastLoginAuthMethod]
-                                      }
-                                      lastLoginTime={lastLoginTime}
-                                    />
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                lastUsedPill
-                              );
-                            })()
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-96 min-w-52">
+                                <LastLoginSection
+                                  lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
+                                  lastLoginTime={lastLoginTime}
+                                />
+                              </TooltipContent>
+                            </Tooltip>
                           ) : (
-                            <span className="text-sm text-mineshaft-400">—</span>
+                            <span className="text-sm text-mineshaft-400">{lastUsedLabel}</span>
                           )}
                         </TableCell>
                         {isSubOrganization && (
@@ -593,13 +675,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      navigate({
-                                        to: "/organizations/$orgId/identities/$identityId",
-                                        params: {
-                                          identityId: id,
-                                          orgId
-                                        }
-                                      });
+                                      navigateToIdentity();
                                     }}
                                     isDisabled={!isAllowed}
                                   >
