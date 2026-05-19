@@ -200,7 +200,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     }
 
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    // Last-used reads more naturally newest-first; other columns start ascending.
+    setOrderDirection(
+      column === OrgIdentityOrderBy.LastLogin ? OrderByDirection.DESC : OrderByDirection.ASC
+    );
   };
 
   const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
@@ -358,7 +361,21 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead className={isSubOrganization ? "w-1/5" : "w-1/4"}>Last Used</TableHead>
+                <TableHead
+                  className={twMerge("cursor-pointer", isSubOrganization ? "w-1/5" : "w-1/4")}
+                  onClick={() => handleSort(OrgIdentityOrderBy.LastLogin)}
+                >
+                  Last Used
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderBy === OrgIdentityOrderBy.LastLogin &&
+                        orderDirection === OrderByDirection.DESC &&
+                        "rotate-180",
+                      orderBy !== OrgIdentityOrderBy.LastLogin && "opacity-30"
+                    )}
+                  />
+                </TableHead>
                 {isSubOrganization && <TableHead className="w-1/5">Managed By</TableHead>}
                 <TableHead className="w-5" />
               </TableRow>
@@ -659,29 +676,31 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionIdentityActions.Delete}
-                                a={OrgPermissionSubjects.Identity}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    variant="danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteIdentity", {
-                                        identityId: id,
-                                        name
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <TrashIcon />
-                                    {isSubOrgIdentity
-                                      ? "Delete Machine Identity"
-                                      : "Remove From Sub-Organization"}
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
+                              {!isProjectScoped && (
+                                <OrgPermissionCan
+                                  I={OrgPermissionIdentityActions.Delete}
+                                  a={OrgPermissionSubjects.Identity}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteIdentity", {
+                                          identityId: id,
+                                          name
+                                        });
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <TrashIcon />
+                                      {isSubOrgIdentity
+                                        ? "Delete Machine Identity"
+                                        : "Remove From Sub-Organization"}
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

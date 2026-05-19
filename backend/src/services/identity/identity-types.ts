@@ -48,7 +48,8 @@ export type TListOrgIdentitiesByOrgIdDTO = {
 
 export enum OrgIdentityOrderBy {
   Name = "name",
-  Role = "role"
+  Role = "role",
+  LastLogin = "lastLogin"
 }
 
 export type TSearchOrgIdentitiesByOrgIdDAL = {

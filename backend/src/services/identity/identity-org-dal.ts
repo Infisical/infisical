@@ -755,9 +755,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .where(applyScopeFilter)
-        .groupBy(`${TableName.Membership}.id`, `${TableName.Identity}.name`)
+        .groupBy(`${TableName.Membership}.id`, `${TableName.Identity}.name`, `${TableName.Membership}.lastLoginTime`)
         .select(`${TableName.Membership}.id`)
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
+        .select(db.ref("lastLoginTime").withSchema(TableName.Membership).as("lastLoginSort"))
         .select<{ id: string; identityName: string; roleSort: string; total_count: string }>(
           db.raw(`MIN(COALESCE(??, ??)) as "roleSort"`, [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`])
         )
@@ -780,6 +781,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       if (orderBy === OrgIdentityOrderBy.Role) {
         void searchedMemberships.orderBy("roleSort", orderDirection);
+      } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
+        // Rely on Postgres default null ordering: DESC surfaces never-used identities first,
+        // ASC pushes them to the bottom.
+        void searchedMemberships.orderBy("lastLoginSort", orderDirection);
       } else {
         void searchedMemberships.orderBy("identityName", orderDirection);
       }
@@ -924,6 +929,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       if (orderBy === OrgIdentityOrderBy.Role) {
         void query.orderBy("searchedMemberships.roleSort", orderDirection);
+      } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
+        void query.orderBy("searchedMemberships.lastLoginSort", orderDirection);
       } else {
         void query.orderBy("searchedMemberships.identityName", orderDirection);
       }
