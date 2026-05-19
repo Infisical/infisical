@@ -9,6 +9,8 @@ interface AuditLogStreamFailedTemplateProps extends Omit<BaseEmailWrapperProps, 
   windowFailureCount: number;
   windowMinutes: number;
   streamUrl: string;
+  lastErrorMessage?: string;
+  lastErrorTimestamp?: string;
 }
 
 export const AuditLogStreamFailedTemplate = ({
@@ -16,7 +18,9 @@ export const AuditLogStreamFailedTemplate = ({
   windowFailureCount,
   windowMinutes,
   streamUrl,
-  siteUrl
+  siteUrl,
+  lastErrorMessage,
+  lastErrorTimestamp
 }: AuditLogStreamFailedTemplateProps) => {
   return (
     <BaseEmailWrapper
@@ -32,6 +36,18 @@ export const AuditLogStreamFailedTemplate = ({
         <Text className="text-[14px] mt-[4px]">{provider}</Text>
         <strong>Consecutive failures</strong>
         <Text className="text-[14px] text-red-600 mt-[4px]">{windowFailureCount}</Text>
+        {lastErrorTimestamp && (
+          <>
+            <strong>Last error at</strong>
+            <Text className="text-[14px] mt-[4px]">{lastErrorTimestamp}</Text>
+          </>
+        )}
+        {lastErrorMessage && (
+          <>
+            <strong>Last error message</strong>
+            <Text className="text-[14px] text-red-600 mt-[4px] break-all">{lastErrorMessage}</Text>
+          </>
+        )}
       </Section>
       <Text className="text-[14px]">
         Your stream has logged {windowFailureCount} failures in a row, with no more than {windowMinutes} minutes between
@@ -52,5 +68,7 @@ AuditLogStreamFailedTemplate.PreviewProps = {
   windowFailureCount: 12,
   windowMinutes: 5,
   streamUrl: "https://app.infisical.com/organizations/example-org/settings?selectedTab=tag-audit-log-streams",
-  siteUrl: "https://app.infisical.com"
+  siteUrl: "https://app.infisical.com",
+  lastErrorMessage: "Request failed with status code 401 — {\"errors\":[\"Invalid API key\"]}",
+  lastErrorTimestamp: "2026-05-19T14:32:11.000Z"
 } as AuditLogStreamFailedTemplateProps;

@@ -9,8 +9,9 @@ const STREAM_ID = "stream-1";
 const ORG_ID = "org-1";
 const PROVIDER = "datadog";
 
+const FAILURE_MESSAGE = "upstream failure";
 const failingProviderStreamLog = vi.fn(async () => {
-  throw new Error("upstream failure");
+  throw new Error(FAILURE_MESSAGE);
 });
 
 vi.mock("@app/lib/config/env", () => ({
@@ -88,7 +89,11 @@ const createService = () => {
   const notificationService = {
     createUserNotifications: vi.fn(async () => undefined)
   };
-  const smtpService = { sendMail: vi.fn(async () => undefined) };
+  const smtpService = {
+    sendMail: vi.fn<
+      (payload: { substitutions: { lastErrorMessage: string; lastErrorTimestamp: string } }) => Promise<void>
+    >(async () => undefined)
+  };
   const orgDAL = {
     findOrgMembersByRole: vi.fn(async () => [
       { status: "accepted", user: { id: "user-1", email: "admin@example.com" } }
@@ -192,5 +197,25 @@ describe("auditLogStreamServiceFactory failure tracking", () => {
     expect(keyStore.incrementByWithExpiry).not.toHaveBeenCalled();
     expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
     expect(notificationService.createUserNotifications).not.toHaveBeenCalled();
+  });
+
+  test("stores the last error message and timestamp in the cooldown payload", async () => {
+    const { service, store, smtpService } = createService();
+
+    await driveFailures(service, FAILURE_THRESHOLD);
+
+    const payload = store[KeyStorePrefixes.AuditLogStreamAlertSent(STREAM_ID)];
+    expect(payload).toBeDefined();
+    const parsed = JSON.parse(payload as string) as { message: string; timestamp: string };
+    expect(parsed.message).toContain(FAILURE_MESSAGE);
+    expect(typeof parsed.timestamp).toBe("string");
+    expect(Number.isNaN(new Date(parsed.timestamp).getTime())).toBe(false);
+
+    expect(smtpService.sendMail).toHaveBeenCalledTimes(1);
+    const mailCall = smtpService.sendMail.mock.calls[0]?.[0] as {
+      substitutions: { lastErrorMessage: string; lastErrorTimestamp: string };
+    };
+    expect(mailCall.substitutions.lastErrorMessage).toContain(FAILURE_MESSAGE);
+    expect(mailCall.substitutions.lastErrorTimestamp).toBe(parsed.timestamp);
   });
 });

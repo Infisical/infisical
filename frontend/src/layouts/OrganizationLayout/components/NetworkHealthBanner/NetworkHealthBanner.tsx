@@ -172,8 +172,8 @@ export const NetworkHealthBanner = () => {
       const ids = visibleStreamNotifications.map((n) => n.id);
       items.push({
         id: "audit-log-stream-failed",
-        message: "Error streaming audit logs.",
-        linkLabel: "View log stream",
+        message: "Unable to stream audit logs.",
+        linkLabel: "Click to view stream configuration.",
         linkTo: visibleStreamNotifications[0].link ?? undefined,
         onDismiss: () => {
           ids.forEach((id) => updateNotification({ notificationId: id, isRead: true }));

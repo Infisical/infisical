@@ -110,6 +110,24 @@ export const auditLogStreamServiceFactory = ({
     ]);
   };
 
+  const readLastErrorFromCooldown = async (streamId: string) => {
+    const raw = await keyStore.getItem(KeyStorePrefixes.AuditLogStreamAlertSent(streamId));
+    if (!raw) return { lastErrorMessage: null, lastErrorTimestamp: null };
+
+    try {
+      const parsed = JSON.parse(raw) as { message?: unknown; timestamp?: unknown };
+      const message = typeof parsed.message === "string" ? parsed.message : null;
+      const timestampStr = typeof parsed.timestamp === "string" ? parsed.timestamp : null;
+      const timestamp = timestampStr ? new Date(timestampStr) : null;
+      return {
+        lastErrorMessage: message,
+        lastErrorTimestamp: timestamp && !Number.isNaN(timestamp.getTime()) ? timestamp : null
+      };
+    } catch {
+      return { lastErrorMessage: null, lastErrorTimestamp: null };
+    }
+  };
+
   const updateById = async (
     { logStreamId, provider, credentials }: TUpdateAuditLogStreamDTO,
     actor: OrgServiceActor
@@ -239,7 +257,9 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    return decryptLogStream(logStream, kmsService);
+    const decrypted = await decryptLogStream(logStream, kmsService);
+    const lastError = await readLastErrorFromCooldown(logStream.id);
+    return { ...decrypted, ...lastError };
   };
 
   const list = async (actor: OrgServiceActor) => {
@@ -256,10 +276,22 @@ export const auditLogStreamServiceFactory = ({
 
     const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
 
-    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsService)));
+    return Promise.all(
+      logStreams.map(async (stream) => {
+        const decrypted = await decryptLogStream(stream, kmsService);
+        const lastError = await readLastErrorFromCooldown(stream.id);
+        return { ...decrypted, ...lastError };
+      })
+    );
   };
 
-  const notifyStreamFailure = async (orgId: string, streamId: string, provider: string, failureCount: number) => {
+  const notifyStreamFailure = async (
+    orgId: string,
+    streamId: string,
+    provider: string,
+    failureCount: number,
+    lastError: { message: string; timestamp: string }
+  ) => {
     const appCfg = getConfig();
     const orgAdmins = await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin);
     const activeAdmins = orgAdmins.filter((admin) => admin.status !== OrgMembershipStatus.Invited);
@@ -295,7 +327,9 @@ export const auditLogStreamServiceFactory = ({
           provider,
           windowFailureCount: failureCount,
           windowMinutes: FAILURE_WINDOW_MINUTES,
-          streamUrl
+          streamUrl,
+          lastErrorMessage: lastError.message,
+          lastErrorTimestamp: lastError.timestamp
         }
       })
       .catch((err) =>
@@ -303,7 +337,12 @@ export const auditLogStreamServiceFactory = ({
       );
   };
 
-  const evaluateErrorSlidingWindow = async (orgId: string, streamId: string, provider: string) => {
+  const evaluateErrorSlidingWindow = async (
+    orgId: string,
+    streamId: string,
+    provider: string,
+    errorMessage: string
+  ) => {
     try {
       const alertKey = KeyStorePrefixes.AuditLogStreamAlertSent(streamId);
 
@@ -318,11 +357,19 @@ export const auditLogStreamServiceFactory = ({
 
       if (failureCount < FAILURE_THRESHOLD) return;
 
+      // Capture the last error message and timestamp inside the cooldown payload so list reads and
+      // the failure email both surface the most recent root cause to admins.
+      const lastError = { message: errorMessage, timestamp: new Date().toISOString() };
+
       // NX lock ensures only one worker fires the alert within the cooldown window.
-      const acquired = await keyStore.setItemWithExpiryNX(alertKey, FAILURE_ALERT_COOLDOWN_SECONDS, "1");
+      const acquired = await keyStore.setItemWithExpiryNX(
+        alertKey,
+        FAILURE_ALERT_COOLDOWN_SECONDS,
+        JSON.stringify(lastError)
+      );
       if (!acquired) return;
 
-      await notifyStreamFailure(orgId, streamId, provider, failureCount).catch(async (notifyErr) => {
+      await notifyStreamFailure(orgId, streamId, provider, failureCount, lastError).catch(async (notifyErr) => {
         logger.error(
           notifyErr,
           `Failed to send audit log stream failure notification [streamId=${streamId}] [orgId=${orgId}]`
@@ -354,18 +401,21 @@ export const auditLogStreamServiceFactory = ({
         try {
           await factory.streamLog({ credentials, auditLog });
         } catch (error) {
+          let errorMessage: string;
           if (isAxiosError(error)) {
+            errorMessage = `${error?.message ?? "Request failed"} — ${JSON.stringify(error?.response?.data) ?? ""}`;
             logger.error(
               `audit-log-queue: Failed to stream audit log due to request error [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}] [message=${error?.message}] [response=${JSON.stringify(error?.response?.data)}]`
             );
           } else {
+            errorMessage = (error as Error)?.message ?? "Unknown error";
             logger.error(
               error,
               `audit-log-queue: Failed to stream audit log [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}]: ${(error as Error)?.message}`
             );
           }
 
-          await evaluateErrorSlidingWindow(orgId, id, provider);
+          await evaluateErrorSlidingWindow(orgId, id, provider, errorMessage);
         }
       })
     );

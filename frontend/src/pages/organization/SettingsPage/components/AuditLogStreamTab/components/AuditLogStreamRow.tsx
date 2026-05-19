@@ -1,5 +1,6 @@
 import { faAsterisk, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangleIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -13,10 +14,13 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Tooltip as TooltipV3, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import { TAuditLogStream } from "@app/hooks/api/types";
+
+import { LastErrorSection } from "./LastErrorSection";
 
 type Props = {
   logStream: TAuditLogStream;
@@ -25,10 +29,12 @@ type Props = {
 };
 
 export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Props) => {
-  const { id, provider } = logStream;
+  const { id, provider, lastErrorMessage, lastErrorTimestamp } = logStream;
 
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
   const url = getProviderUrl(logStream);
+
+  const hasLastError = Boolean(lastErrorMessage || lastErrorTimestamp);
 
   return (
     <Tr
@@ -57,8 +63,24 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         </div>
       </Td>
       <Td className="max-w-0 min-w-32!">
-        <div className="flex w-full items-center">
+        <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
+          {hasLastError && (
+            <TooltipV3>
+              <TooltipTrigger>
+                <AlertTriangleIcon
+                  className="size-4 shrink-0 text-yellow-500"
+                  aria-label="Stream is failing"
+                />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-96 min-w-52 px-3">
+                <LastErrorSection
+                  lastErrorMessage={lastErrorMessage ?? null}
+                  lastErrorTimestamp={lastErrorTimestamp ?? null}
+                />
+              </TooltipContent>
+            </TooltipV3>
+          )}
         </div>
       </Td>
       <Td>
