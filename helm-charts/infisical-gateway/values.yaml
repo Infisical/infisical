@@ -48,13 +48,21 @@ gateway:
 # Controls both credential storage (enrollment flow) and session recordings.
 # Required when enrollment.method=token so credentials survive pod restarts.
 # Optional when enrollment.method=aws since it re-authenticates via STS on every start.
+# For legacy machine-identity installs (no enrollment.method), persistence only takes effect
+# for session recordings when sessionRecording.existingClaim is provided.
 persistence:
   enabled: true
   storageClass: ""
-  size: 5Gi
+  size: 100Mi
   accessModes:
     - ReadWriteOnce
   existingClaim: ""
+  sessionRecording:
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    existingClaim: ""
 
 resources:
   limits:

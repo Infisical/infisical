@@ -1,5 +1,6 @@
-{{- $usePVC := and .Values.persistence.enabled (or .Values.gateway.enrollment.method .Values.persistence.existingClaim) }}
 {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+{{- $persistCredentials := and .Values.persistence.enabled .Values.gateway.enrollment.method }}
+{{- $persistSessionRecordings := and .Values.persistence.enabled (or .Values.gateway.enrollment.method .Values.persistence.sessionRecording.existingClaim) }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
@@ -18,7 +19,7 @@ spec:
   {{- if .Values.gateway.enrollment.method }}
   replicas: 1
   {{- end }}
-  {{- if $usePVC }}
+  {{- if or $persistCredentials $persistSessionRecordings }}
   strategy:
     type: Recreate
   {{- end }}
@@ -47,17 +48,22 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        {{- if $usePVC }}
-        - name: gateway-data
+        {{- if .Values.gateway.enrollment.method }}
+        - name: gateway-credentials
+          {{- if $persistCredentials }}
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim | default (printf "%s-credentials" (include "infisical-gateway.fullname" .)) }}
-        {{- else if .Values.gateway.enrollment.method }}
-        - name: gateway-credentials
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         {{- end }}
         - name: infisical-cache
           emptyDir: {}
-        {{- if and (not $usePVC) (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
+        {{- if $persistSessionRecordings }}
+        - name: session-recordings
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.sessionRecording.existingClaim | default (printf "%s-session-recordings" (include "infisical-gateway.fullname" .)) }}
+        {{- else if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
         - name: session-recordings
           emptyDir: {}
         {{- end }}
@@ -100,23 +106,13 @@ spec:
             {{- if .Values.gateway.relayName }}
             - --target-relay-name={{ .Values.gateway.relayName }}
             {{- end }}
-            - --pam-session-recording-path={{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+            - --pam-session-recording-path={{ $sessionPath }}
           volumeMounts:
-            {{- if $usePVC }}
-            - name: gateway-data
-              mountPath: /home/infisical
-              subPath: credentials
-            {{- else }}
             - name: gateway-credentials
               mountPath: /home/infisical
-            {{- end }}
             - name: infisical-cache
               mountPath: /var/lib/infisical
-            {{- if $usePVC }}
-            - name: gateway-data
-              mountPath: {{ $sessionPath }}
-              subPath: session-recordings
-            {{- else if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            {{- if or $persistSessionRecordings (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
             - name: session-recordings
               mountPath: {{ $sessionPath }}
             {{- end }}
@@ -124,7 +120,7 @@ spec:
           args:
             - gateway
             - start
-            - --pam-session-recording-path={{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+            - --pam-session-recording-path={{ $sessionPath }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}
@@ -135,11 +131,7 @@ spec:
           volumeMounts:
             - name: infisical-cache
               mountPath: /var/lib/infisical
-            {{- if $usePVC }}
-            - name: gateway-data
-              mountPath: {{ $sessionPath }}
-              subPath: session-recordings
-            {{- else if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            {{- if or $persistSessionRecordings (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
             - name: session-recordings
               mountPath: {{ $sessionPath }}
             {{- end }}
