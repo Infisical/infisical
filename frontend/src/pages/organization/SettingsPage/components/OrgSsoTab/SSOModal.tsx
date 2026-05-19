@@ -87,7 +87,7 @@ const schema = z
   .object({
     authProvider: z.string().min(1, "SSO Type is required"),
     entryPoint: z.string().trim().min(1, "URL required"),
-    issuer: z.string().default(""),
+    issuer: z.string().trim().min(1, "Issuer required"),
     cert: z.string().default("")
   })
   .required();
@@ -385,7 +385,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                             htmlFor="sso-issuer"
                             className="inline-flex flex-wrap items-baseline gap-1.5"
                           >
-                            {labels.issuer} (optional)
+                            {labels.issuer}
                           </FieldLabel>
                           <Input
                             id="sso-issuer"

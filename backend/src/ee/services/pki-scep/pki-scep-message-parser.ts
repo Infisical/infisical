@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { extractScepAttributes } from "./pki-scep-attributes";
 import { rsaPkcs1Decrypt, rsaVerify, symmetricDecrypt } from "./pki-scep-crypto";
-import { DIGEST_OID_TO_HASH, ScepMessageType, TParsedScepMessage } from "./pki-scep-types";
+import { CIPHER_OID_MAP, DIGEST_OID_TO_HASH, ScepMessageType, TParsedScepMessage } from "./pki-scep-types";
 
 export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): TParsedScepMessage => {
   // Parse the outer ContentInfo
@@ -314,10 +314,6 @@ const decryptEnvelopedDataRaw = (
     throw new BadRequestError({ message: "Failed to extract encrypted key from KeyTransRecipientInfo" });
   }
 
-  // Decrypt the content-encryption key using RSA PKCS1v1.5
-  const contentEncryptionKey = rsaPkcs1Decrypt(encryptedKey, raPrivateKeyDer);
-
-  // Extract encrypted content info
   const encContentInfo = (valueBlock[2] as asn1js.Sequence).valueBlock.value;
 
   if (encContentInfo.length < 3) {
@@ -333,6 +329,10 @@ const decryptEnvelopedDataRaw = (
   // Get cipher algorithm OID and IV from AlgorithmIdentifier
   const algoSeq = (encContentInfo[1] as asn1js.Sequence).valueBlock.value;
   const cipherOid = (algoSeq[0] as asn1js.ObjectIdentifier).getValue();
+  const cipherInfo = CIPHER_OID_MAP[cipherOid];
+  if (!cipherInfo) {
+    throw new BadRequestError({ message: `Unsupported cipher OID: ${cipherOid}` });
+  }
 
   // IV is the second element of the AlgorithmIdentifier
   const ivElement = algoSeq[1];
@@ -352,10 +352,23 @@ const decryptEnvelopedDataRaw = (
   }
 
   // Decrypt the content
-  return {
-    plainText: symmetricDecrypt(encryptedContent, contentEncryptionKey, iv, cipherOid),
-    cipherOid
-  };
+  let contentEncryptionKey: Buffer;
+  try {
+    const decrypted = rsaPkcs1Decrypt(encryptedKey, raPrivateKeyDer);
+    contentEncryptionKey =
+      decrypted.length === cipherInfo.keyLength ? decrypted : crypto.randomBytes(cipherInfo.keyLength);
+  } catch {
+    contentEncryptionKey = crypto.randomBytes(cipherInfo.keyLength);
+  }
+
+  let plainText: Buffer;
+  try {
+    plainText = symmetricDecrypt(encryptedContent, contentEncryptionKey, iv, cipherOid);
+  } catch {
+    throw new BadRequestError({ message: "Failed to decrypt SCEP enveloped data" });
+  }
+
+  return { plainText, cipherOid };
 };
 
 const extractEncryptedContent = (element: asn1js.BaseBlock): Buffer => {

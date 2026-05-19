@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { groupMembershipsBase } from "@app/hooks/api/certManagerAccess";
 
 import { groupKeys } from "../groups/queries";
 import { TGroupMembership } from "../groups/types";
+import { pkiApplicationKeys } from "../pkiApplications/queries";
 import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
 import {
@@ -12,21 +14,38 @@ import {
   TUpdateWorkspaceGroupRoleDTO
 } from "./types";
 
+const invalidateAuditForProject = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string
+) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      if (!Array.isArray(key) || key.length < 2) return false;
+      if (key[1] !== "membership-permission-audit") return false;
+      const params = key[0] as { projectId?: string } | undefined;
+      return params?.projectId === projectId;
+    }
+  });
+};
+
 export const useAddGroupToWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       groupId,
       projectId,
+      projectType,
       role
     }: {
       groupId: string;
       projectId: string;
+      projectType?: string;
       role?: string;
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.post(`/api/v1/projects/${projectId}/memberships/groups/${groupId}`, {
+      } = await apiRequest.post(`${groupMembershipsBase(projectType, projectId)}/${groupId}`, {
         role
       });
 
@@ -37,6 +56,7 @@ export const useAddGroupToWorkspace = () => {
         queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupProjects(groupId) });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -44,9 +64,14 @@ export const useAddGroupToWorkspace = () => {
 export const useUpdateGroupWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ groupId, projectId, roles }: TUpdateWorkspaceGroupRoleDTO) => {
+    mutationFn: async ({
+      groupId,
+      projectId,
+      projectType,
+      roles
+    }: TUpdateWorkspaceGroupRoleDTO) => {
       const { data } = await apiRequest.patch<{ roles: TGroupMembership["roles"] }>(
-        `/api/v1/projects/${projectId}/memberships/groups/${groupId}`,
+        `${groupMembershipsBase(projectType, projectId)}/${groupId}`,
         { roles }
       );
 
@@ -59,6 +84,7 @@ export const useUpdateGroupWorkspaceRole = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectGroupMembershipDetails(projectId, groupId)
       });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -68,15 +94,17 @@ export const useDeleteGroupFromWorkspace = () => {
   return useMutation({
     mutationFn: async ({
       groupId,
-      projectId
+      projectId,
+      projectType
     }: {
       groupId: string;
       projectId: string;
+      projectType?: string;
       username?: string;
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.delete(`/api/v1/projects/${projectId}/memberships/groups/${groupId}`);
+      } = await apiRequest.delete(`${groupMembershipsBase(projectType, projectId)}/${groupId}`);
       return groupMembership;
     },
     onSuccess: (_, { projectId, username, groupId }) => {
@@ -89,6 +117,9 @@ export const useDeleteGroupFromWorkspace = () => {
       if (username) {
         queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
       }
+
+      queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };

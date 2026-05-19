@@ -52,8 +52,10 @@ const CoreCreatePamResourceSchema = z.object({
   metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
+// No .superRefine — would turn into ZodEffects and break .extend() in per-type schemas.
 export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
-  gatewayId: z.string().uuid()
+  gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional()
 });
 
 export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
@@ -65,7 +67,8 @@ const CoreUpdatePamResourceSchema = z.object({
 });
 
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
-  gatewayId: z.string().uuid().optional()
+  gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional()
 });
 
 export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;

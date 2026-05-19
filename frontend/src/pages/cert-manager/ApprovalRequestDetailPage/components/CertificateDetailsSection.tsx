@@ -62,10 +62,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
   });
 
   // Fetch the actual certificate request record to get all fields (including subject info and basic constraints)
-  const { data: certRequestDetails } = useGetCertificateRequest(
-    requestData.certificateRequestId,
-    currentProject?.slug || ""
-  );
+  const { data: certRequestDetails } = useGetCertificateRequest(requestData.certificateRequestId);
 
   const isInternalCa = profile?.certificateAuthority && !profile.certificateAuthority.isExternal;
   const caId = profile?.certificateAuthority?.id;

@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -114,7 +115,8 @@ const sanToVenafiFormat = (san: {
 const getVenafiTppConnection = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -149,7 +151,12 @@ const getVenafiTppConnection = async (
     password: string;
   };
 
-  return { credentials, gatewayId: appConnection.gatewayId ?? null };
+  const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+    gatewayId: appConnection.gatewayId,
+    gatewayPoolId: appConnection.gatewayPoolId
+  });
+
+  return { credentials, gatewayId: effectiveGatewayId ?? null };
 };
 
 const submitCertificateToTpp = async ({
@@ -342,6 +349,7 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const VenafiTppCertificateAuthorityFns = ({
@@ -355,7 +363,8 @@ export const VenafiTppCertificateAuthorityFns = ({
   kmsService,
   projectDAL,
   certificateProfileDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TVenafiTppCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -605,7 +614,8 @@ export const VenafiTppCertificateAuthorityFns = ({
     const { credentials, gatewayId } = await getVenafiTppConnection(
       venafiCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsService,
+      gatewayPoolService
     );
 
     const baseUrl = normalizeTppUrl(credentials.tppUrl);

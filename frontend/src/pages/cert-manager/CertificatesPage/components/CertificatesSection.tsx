@@ -19,8 +19,14 @@ import {
   useProject
 } from "@app/context";
 import { useDeleteCert, useDownloadCertPkcs12 } from "@app/hooks/api";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportModal } from "./CertificateImportModal";
@@ -37,16 +43,27 @@ type CertificatesSectionProps = {
   };
   dashboardFilters?: FilterRule[];
   dashboardViewId?: string;
+  applicationId?: string;
+  applicationName?: string;
 };
 
 export const CertificatesSection = ({
   externalFilter,
   dashboardFilters,
-  dashboardViewId
+  dashboardViewId,
+  applicationId,
+  applicationName
 }: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canImportIntoApplication = Boolean(
+    appPermissionData?.permission?.can(
+      PkiApplicationResourceActions.Import,
+      PkiApplicationResourceSub.Certificates
+    )
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "issueCertificate",
@@ -64,8 +81,7 @@ export const CertificatesSection = ({
     if (!currentProject?.slug) return;
 
     await deleteCert({
-      id,
-      projectId: currentProject.id
+      id
     });
 
     createNotification({
@@ -103,7 +119,6 @@ export const CertificatesSection = ({
       try {
         await downloadCertPkcs12({
           certificateId,
-          projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias
         });
@@ -126,28 +141,40 @@ export const CertificatesSection = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-x-2">
           Certificates
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
+          {applicationId && <DocumentationLinkBadge href={PkiDocsUrls.applications.certificates} />}
         </CardTitle>
         <CardDescription>
-          View, filter, and manage all certificates across your project.
+          {applicationId
+            ? "Filter, view, and manage certificates across this application."
+            : "View, filter, and manage all certificates."}
         </CardDescription>
-        <CardAction>
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateActions.Import}
-            a={ProjectPermissionSub.Certificates}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline"
-                onClick={() => handlePopUpOpen("certificateImport")}
-                disabled={!isAllowed}
-              >
-                <ArrowRightIcon className="mr-1.5 size-4" />
-                Import
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </CardAction>
+        {applicationId && canImportIntoApplication && (
+          <CardAction>
+            <Button variant="outline" onClick={() => handlePopUpOpen("certificateImport")}>
+              <ArrowRightIcon className="mr-1.5 size-4" />
+              Import
+            </Button>
+          </CardAction>
+        )}
+        {!applicationId && (
+          <CardAction>
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateActions.Import}
+              a={ProjectPermissionSub.Certificates}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline"
+                  onClick={() => handlePopUpOpen("certificateImport")}
+                  disabled={!isAllowed}
+                >
+                  <ArrowRightIcon className="mr-1.5 size-4" />
+                  Import
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         <CertificatesTable
@@ -155,9 +182,19 @@ export const CertificatesSection = ({
           externalFilter={externalFilter}
           dashboardFilters={dashboardFilters}
           dashboardViewId={dashboardViewId}
+          applicationId={applicationId}
+          applicationName={applicationName}
         />
-        <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateImportModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          applicationId={applicationId}
+        />
+        <CertificateCertModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          applicationId={applicationId}
+        />
         <CertificateExportModal
           popUp={popUp}
           handlePopUpToggle={handlePopUpToggle}
@@ -169,12 +206,13 @@ export const CertificatesSection = ({
         <CertificateManagePkiSyncsModal
           popUp={popUp.managePkiSyncs}
           handlePopUpToggle={handlePopUpToggle}
+          applicationName={applicationName}
         />
         <DeleteActionModal
           isOpen={popUp.deleteCertificate.isOpen}
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-          } from the project?`}
+          }?`}
           onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() =>

@@ -123,6 +123,13 @@ A PAM Account represents a specific Windows user account on the server. You can 
   </Step>
 </Steps>
 
+## Access Windows Server
+
+You can connect to a Windows Server account using either the browser-based RDP client or the Infisical CLI.
+
+- **Web Access**: Connect directly from your browser with a full graphical desktop session. See [Windows RDP Web Access](/documentation/platform/pam/product-reference/web-access/windows-rdp) for details.
+- **CLI Access**: Run `infisical pam rdp access` to start a local RDP proxy that launches your native RDP client (mstsc, Microsoft Remote Desktop, or FreeRDP). Credentials are injected automatically.
+
 ## Domain Join
 
 Windows Server resources can be associated with an [Active Directory](/documentation/platform/pam/getting-started/resources/active-directory) resource to represent domain membership. This is useful for organizing your infrastructure and understanding which servers belong to which AD domain.

@@ -26,7 +26,13 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.PamResource, function joinResource() {
         this.on(sessionResourceOn);
       })
-      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
+        this.on(
+          `${TableName.GatewayV2}.id`,
+          "=",
+          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
+        );
+      })
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
@@ -94,7 +100,13 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.PamResource, function joinResource() {
         this.on(sessionResourceOn);
       })
-      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
+        this.on(
+          `${TableName.GatewayV2}.id`,
+          "=",
+          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
+        );
+      })
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
       .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
@@ -117,6 +129,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .where("id", sessionId)
       .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
       .update({ status: PamSessionStatus.Terminated, endedAt: new Date() })
+      .returning("*");
+    return updated;
+  };
+
+  const activateSession = async (sessionId: string, tx?: Knex) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .where("status", PamSessionStatus.Starting)
+      .update({ status: PamSessionStatus.Active, startedAt: new Date() })
       .returning("*");
     return updated;
   };
@@ -207,6 +228,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     findTopActorsByProjectId,
     endSessionById,
     terminateSessionById,
+    activateSession,
     startSession
   };
 };

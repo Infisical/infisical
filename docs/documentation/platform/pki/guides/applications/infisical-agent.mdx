@@ -1,0 +1,85 @@
+---
+title: "Automate Certificates with Infisical Agent"
+sidebarTitle: "Automate Certificate Renewal"
+description: "Set up automatic certificate management using the Infisical Agent."
+---
+
+Automatically request, persist, and renew certificates on a server using the Infisical Agent.
+
+## Prerequisites
+
+- An [Application](/documentation/platform/pki/applications/overview) with [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) configured
+- A [machine identity](/documentation/platform/identities/machine-identities) added to the Application as an Operator
+
+## Steps
+
+<Steps>
+  <Step title="Install Infisical CLI">
+    ```bash
+    # macOS
+    brew install infisical/get-cli/infisical
+
+    # Linux (Debian/Ubuntu)
+    curl -1sLf 'https://artifacts.infisical.com/setup.deb.sh' | sudo -E bash
+    sudo apt-get install infisical
+    ```
+  </Step>
+  <Step title="Create Agent Configuration">
+    Create `/etc/infisical/agent-config.yaml`:
+    
+    ```yaml
+    version: v1
+
+    infisical:
+      address: "https://app.infisical.com"
+
+    auth:
+      type: "universal-auth"
+      config:
+        client-id: "<your-client-id>"
+        client-secret: "<your-client-secret>"
+
+    certificates:
+      - application-name: "my-first-app"
+        profile-name: "web-servers"
+        attributes:
+          common-name: "api.example.com"
+          ttl: "90d"
+        lifecycle:
+          renew-before-expiry: "14d"
+        file-output:
+          private-key:
+            path: "/etc/ssl/private/api.key"
+            permission: "0600"
+          certificate:
+            path: "/etc/ssl/certs/api.crt"
+            permission: "0644"
+        post-hooks:
+          on-renewal:
+            command: "systemctl reload nginx"
+    ```
+    
+    | Field | Description |
+    |-------|-------------|
+    | `application-name` | The Application containing your certificate profile |
+    | `profile-name` | The certificate profile to use for issuance |
+  </Step>
+  <Step title="Start the Agent">
+    ```bash
+    infisical cert-manager agent --config /etc/infisical/agent-config.yaml
+    ```
+  </Step>
+</Steps>
+
+## Result
+
+The agent will:
+- Authenticate with Infisical using your machine identity
+- Request a certificate and save it to the configured paths
+- Automatically renew it before expiration
+- Execute post-hooks (like reloading NGINX) after renewal
+
+## Next Steps
+
+- See the [Infisical Agent Reference](/integrations/platforms/certificate-agent) for all configuration options
+- Set up [alerting](/documentation/platform/pki/applications/alerting/overview) for expiration notifications

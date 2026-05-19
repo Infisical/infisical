@@ -108,6 +108,8 @@ function createMockContext(): TSessionContext & { sentMessages: TWebSocketServer
     sendSessionEnd: vi.fn(),
     isNearSessionExpiry: vi.fn().mockReturnValue(false),
     onCleanup: vi.fn(),
+    earlyMessages: [],
+    releaseEarlyBuffer: vi.fn(),
     sentMessages
   };
 }

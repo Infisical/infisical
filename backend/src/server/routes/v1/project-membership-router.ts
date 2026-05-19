@@ -151,6 +151,70 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    method: "GET",
+    url: "/:projectId/memberships/:membershipId/permissions/audit",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      params: z.object({
+        projectId: z.string().min(1).trim(),
+        membershipId: z.string().min(1).trim()
+      }),
+      response: {
+        200: z.object({
+          sources: z
+            .object({
+              id: z.string(),
+              type: z.enum(["role", "group_role", "additional_privilege"]),
+              name: z.string(),
+              slug: z.string().optional(),
+              groupId: z.string().optional(),
+              groupName: z.string().optional(),
+              isTemporary: z.boolean(),
+              temporaryAccessStartTime: z.string().optional(),
+              temporaryAccessEndTime: z.string().optional(),
+              permissions: z.array(z.unknown())
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { sources } = await server.services.permission.getMembershipPermissionAudit({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        targetUserId: userId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.params.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
+          metadata: {
+            targetUserId: userId,
+            membershipId: req.params.membershipId
+          }
+        }
+      });
+
+      return { sources };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:projectId/memberships/details",
     config: {

@@ -197,7 +197,10 @@ const renderOutputForm = (
     );
   }
 
-  if (provider === DynamicSecretProviders.AwsElastiCache) {
+  if (
+    provider === DynamicSecretProviders.AwsElastiCache ||
+    provider === DynamicSecretProviders.AwsMemoryDb
+  ) {
     const { DB_USERNAME, DB_PASSWORD } = data as {
       DB_USERNAME: string;
       DB_PASSWORD: string;

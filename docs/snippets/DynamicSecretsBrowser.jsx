@@ -9,6 +9,7 @@ export const DynamicSecretsBrowser = () => {
   const dynamicSecrets = [
     {"name": "AWS IAM", "slug": "aws-iam", "path": "/documentation/platform/dynamic-secrets/aws-iam", "description": "Learn how to generate dynamic AWS IAM credentials on-demand.", "category": "Cloud Providers"},
     {"name": "AWS ElastiCache", "slug": "aws-elasticache", "path": "/documentation/platform/dynamic-secrets/aws-elasticache", "description": "Learn how to generate dynamic AWS ElastiCache credentials on-demand.", "category": "Caches"},
+    {"name": "AWS MemoryDB", "slug": "aws-memorydb", "path": "/documentation/platform/dynamic-secrets/aws-memorydb", "description": "Learn how to generate dynamic AWS MemoryDB (Valkey/Redis) credentials on-demand.", "category": "Caches"},
     {"name": "Azure Entra ID", "slug": "azure-entra-id", "path": "/documentation/platform/dynamic-secrets/azure-entra-id", "description": "Learn how to generate dynamic Azure Entra ID credentials on-demand.", "category": "Cloud Providers"},
     {"name": "Azure SQL Database", "slug": "azure-sql-database", "path": "/documentation/platform/dynamic-secrets/azure-sql-database", "description": "Learn how to generate dynamic Azure SQL Database credentials on-demand.", "category": "Databases"},
     {"name": "GCP IAM", "slug": "gcp-iam", "path": "/documentation/platform/dynamic-secrets/gcp-iam", "description": "Learn how to generate dynamic GCP IAM credentials on-demand.", "category": "Cloud Providers"},

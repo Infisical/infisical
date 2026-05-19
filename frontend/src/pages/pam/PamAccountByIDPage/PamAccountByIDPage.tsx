@@ -39,7 +39,7 @@ import {
 } from "@app/hooks/api/pam";
 import { useManualRotateAccount } from "@app/hooks/api/pam/mutations";
 import { pamKeys } from "@app/hooks/api/pam/queries";
-import { PAM_DOMAIN_TYPE_MAP, PamDomainType } from "@app/hooks/api/pamDomain";
+import { PAM_DOMAIN_TYPE_MAP, PamDomainType, useGetPamDomainById } from "@app/hooks/api/pamDomain";
 
 import { PamAccessAccountModal } from "../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAwsIamAccessReasonModal } from "../PamAccountsPage/components/PamAwsIamAccessReasonModal";
@@ -89,6 +89,12 @@ const PageContent = () => {
   const rotateAccount = useManualRotateAccount();
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
+
+  const { data: domain, isPending: isDomainPending } = useGetPamDomainById(
+    (account?.domain?.domainType as PamDomainType) ?? PamDomainType.ActiveDirectory,
+    account?.domainId || undefined,
+    { enabled: !!account?.domainId }
+  );
 
   if (isPending) {
     return <PageLoader />;
@@ -237,7 +243,11 @@ const PageContent = () => {
             I={ProjectPermissionPamAccountActions.Access}
             a={ProjectPermissionSub.PamAccounts}
           >
-            <Button variant="neutral" onClick={handleAccess}>
+            <Button
+              variant="neutral"
+              isDisabled={isDomainAccount && (isDomainPending || !domain?.connectionDetails.domain)}
+              onClick={handleAccess}
+            >
               <LogInIcon />
               Access
             </Button>
@@ -369,19 +379,23 @@ const PageContent = () => {
           domainType={account.domain.domainType}
           domainId={account.domain.id}
           onSelect={async (resource) => {
+            const accountIdentity = domain?.connectionDetails.domain
+              ? `${domain.connectionDetails.domain}:${account.name}`
+              : account.name;
+
             const { requiresApproval, constraints } = await checkPolicyMatch({
               policyType: ApprovalPolicyType.PamAccess,
               projectId: projectId!,
               inputs: {
                 resourceName: resource.name,
-                accountName: account.name
+                accountName: accountIdentity
               }
             });
 
             if (requiresApproval) {
               handlePopUpOpen("requestAccount", {
                 resourceName: resource.name,
-                accountName: account.name,
+                accountName: accountIdentity,
                 accountAccessed: true,
                 accessDurationMax: constraints?.accessDuration.max
               });

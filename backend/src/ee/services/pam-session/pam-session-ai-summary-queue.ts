@@ -17,7 +17,7 @@ import {
   generateSessionSummary,
   MAX_LOG_CHARS
 } from "./pam-session-summary-fns";
-import { TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
+import { TPamSessionCommandLog, TSessionEvent } from "./pam-session-types";
 
 type TSessionSummaryConfig = {
   aiInsightsEnabled: boolean;
@@ -211,7 +211,7 @@ export const pamSessionAiSummaryServiceFactory = ({
           const PAGE_SIZE = 20;
           let offset = 0;
           let contentChars = 0;
-          const accumulatedLogs: (TPamSessionCommandLog | TTerminalEvent)[] = [];
+          const accumulatedLogs: (TPamSessionCommandLog | TSessionEvent)[] = [];
           let hasMoreBatches = true;
 
           const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -228,14 +228,14 @@ export const pamSessionAiSummaryServiceFactory = ({
             if (page.length === 0) break;
             for (const batch of page) {
               const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
-              const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+              const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TSessionEvent)[];
               // For SSH, only input events are used by formatLogsForSummary — count only those bytes
               // to avoid premature truncation from output/resize/error events that are discarded.
               // For Postgres, every event is a command log so count all of them.
               const isSsh = resource.resourceType === PamResource.SSH;
               for (const event of batchEvents) {
                 if (isSsh) {
-                  const termEvent = event as TTerminalEvent;
+                  const termEvent = event as TSessionEvent;
                   if (termEvent.eventType === "input")
                     contentChars += termEvent.data ? Buffer.from(termEvent.data, "base64").length : 0;
                 } else {
@@ -270,7 +270,7 @@ export const pamSessionAiSummaryServiceFactory = ({
             const isSshLegacy = resource.resourceType === PamResource.SSH;
             const legacyChars = legacyLogs.reduce((sum, e) => {
               if (isSshLegacy) {
-                const termEvent = e as TTerminalEvent;
+                const termEvent = e as TSessionEvent;
                 if (termEvent.eventType !== "input") return sum;
                 return sum + (termEvent.data ? Buffer.from(termEvent.data, "base64").length : 0);
               }

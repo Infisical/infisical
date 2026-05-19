@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet";
-import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faChevronLeft, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -126,6 +126,19 @@ const PageContent = () => {
               )}
           </div>
         </PageHeader>
+        {request.isBreakGlass && (
+          <div className="mb-4 flex items-start gap-3 rounded border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+            <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5 text-red-400" />
+            <div>
+              <div className="font-semibold">Approval Policy Bypassed</div>
+              <div className="text-xs break-words text-red-200/80">
+                {request.bypassReason
+                  ? `Reason: "${request.bypassReason}"`
+                  : "This request was approved without obtaining the required approval."}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col justify-center gap-4 lg:flex-row">
           <div className="flex flex-col gap-4 lg:w-96">
             <RequestDetailsSection request={request} />

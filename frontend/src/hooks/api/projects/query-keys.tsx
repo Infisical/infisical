@@ -21,6 +21,8 @@ export const projectKeys = {
   ) => [{ projectId, includeGroupMembers, roles }, "project-users"] as const,
   getProjectUserDetails: (projectId: string, membershipId: string) =>
     [{ projectId, membershipId }, "project-user-details"] as const,
+  getMembershipPermissionAudit: (projectId: string, membershipId: string) =>
+    [{ projectId, membershipId }, "membership-permission-audit"] as const,
   getProjectIdentityMemberships: (projectId: string) =>
     [{ projectId }, "project-identity-memberships"] as const,
   getProjectIdentityMembershipDetails: (projectId: string, identityId: string) =>
@@ -65,6 +67,8 @@ export const projectKeys = {
     notAfterTo,
     notBeforeFrom,
     notBeforeTo,
+    applicationId,
+    applicationIds,
     sortBy,
     sortOrder
   }: {
@@ -91,6 +95,8 @@ export const projectKeys = {
     notAfterTo?: Date;
     notBeforeFrom?: Date;
     notBeforeTo?: Date;
+    applicationId?: string;
+    applicationIds?: string[];
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   }) =>
@@ -119,6 +125,8 @@ export const projectKeys = {
         notAfterTo,
         notBeforeFrom,
         notBeforeTo,
+        applicationId,
+        applicationIds,
         sortBy,
         sortOrder
       }

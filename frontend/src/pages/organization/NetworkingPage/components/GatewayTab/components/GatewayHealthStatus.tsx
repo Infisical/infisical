@@ -1,62 +1,34 @@
-import { faClock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
-import { Tooltip } from "@app/components/v2";
-import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 export const GatewayHealthStatus = ({
   heartbeat,
-  lastHealthCheckStatus,
-  isPending,
-  isExpired
+  heartbeatTTL
 }: {
   heartbeat?: string | null;
-  lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
-  isPending?: boolean;
-  isExpired?: boolean;
+  heartbeatTTL?: number | null;
 }) => {
-  if (isExpired) {
-    return (
-      <Tooltip content="Enrollment token has expired. Re-enroll to generate a new one.">
-        <span className="inline-flex cursor-default items-center gap-1.5 text-red-400">
-          Expired
-        </span>
-      </Tooltip>
-    );
-  }
-
-  if (isPending) {
-    return (
-      <Tooltip content="Waiting for gateway to enroll using the CLI command">
-        <span className="inline-flex cursor-default items-center gap-1.5 text-yellow-500">
-          <FontAwesomeIcon icon={faClock} className="size-3" />
-          Pending
-        </span>
-      </Tooltip>
-    );
-  }
-
-  if (!heartbeat && !lastHealthCheckStatus) {
-    return (
-      <Tooltip content="Gateway has not connected yet">
-        <span className="cursor-default text-yellow-500">Unregistered</span>
-      </Tooltip>
-    );
+  if (!heartbeat && !heartbeatTTL) {
+    return <span className="cursor-default text-yellow-500">Unregistered</span>;
   }
 
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-
-  const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
-
-  const tooltipContent = heartbeatDate
-    ? `Last health check: ${heartbeatDate.toLocaleString()}`
-    : "No health check data available";
+  const isHealthy = isGatewayHealthy({ heartbeat, heartbeatTTL });
 
   return (
-    <Tooltip content={tooltipContent}>
-      <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
-        {isHealthy ? "Healthy" : "Unreachable"}
-      </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+          {isHealthy ? "Healthy" : "Unreachable"}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        {heartbeatDate
+          ? `Last seen: ${format(heartbeatDate, "PPpp")} (${heartbeatDate.toUTCString()})`
+          : "No data available"}
+      </TooltipContent>
     </Tooltip>
   );
 };

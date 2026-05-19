@@ -19,7 +19,7 @@ Gateway Pools provide high availability for your gateway infrastructure. A pool 
 3. At request time, the platform picks a random healthy gateway from the pool and routes through it.
 4. If a gateway goes down, subsequent requests automatically route through the remaining healthy gateways.
 
-A gateway is considered healthy if it has sent a heartbeat within the last hour and its last health check did not fail.
+A gateway is considered healthy if it has sent a successful heartbeat within its TTL window.
 
 ## Creating a Gateway Pool
 

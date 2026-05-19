@@ -5,6 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Detail, DetailLabel, DetailValue, IconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+import { useListGatewayPools } from "@app/hooks/api/gateway-pools/queries";
 import { PamResourceType, TPamResource } from "@app/hooks/api/pam";
 
 type Props = {
@@ -203,8 +204,10 @@ export const PamResourceConnectionSection = ({
   onEdit
 }: Props & { onEdit: VoidFunction }) => {
   const { data: gateways } = useQuery(gatewaysQueryKeys.list());
+  const { data: pools } = useListGatewayPools();
 
   const gateway = gateways?.find((g) => g.id === resource.gatewayId);
+  const pool = pools?.find((p) => p.id === resource.gatewayPoolId);
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
@@ -226,6 +229,12 @@ export const PamResourceConnectionSection = ({
           <Detail>
             <DetailLabel>Gateway</DetailLabel>
             <DetailValue>{gateway?.name ?? "Unknown"}</DetailValue>
+          </Detail>
+        )}
+        {resource.gatewayPoolId && (
+          <Detail>
+            <DetailLabel>Gateway Pool</DetailLabel>
+            <DetailValue>{pool?.name ?? "Unknown"}</DetailValue>
           </Detail>
         )}
         <ConnectionDetailsContent resource={resource} />

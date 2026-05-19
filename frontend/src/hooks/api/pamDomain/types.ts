@@ -7,6 +7,7 @@ export type TBasePamDomain = {
   name: string;
   domainType: PamDomainType;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   createdAt: string;
   updatedAt: string;
   metadata?: Array<{ id: string; key: string; value: string }>;
@@ -34,7 +35,8 @@ export type TCreatePamDomainDTO = {
   domainType: PamDomainType;
   projectId: string;
   name: string;
-  gatewayId: string;
+  gatewayId?: string;
+  gatewayPoolId?: string;
   connectionDetails: TActiveDirectoryConnectionDetails;
   metadata?: Array<{ key: string; value?: string }>;
 };
@@ -44,6 +46,7 @@ export type TUpdatePamDomainDTO = {
   domainId: string;
   name?: string;
   gatewayId?: string;
+  gatewayPoolId?: string;
   connectionDetails?: TActiveDirectoryConnectionDetails;
   metadata?: Array<{ key: string; value?: string }>;
 };

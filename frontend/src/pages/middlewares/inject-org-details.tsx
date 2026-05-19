@@ -3,6 +3,7 @@ import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
+import { certManagerInstanceKeys } from "@app/hooks/api/certManagerInstance";
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
 import { projectKeys } from "@app/hooks/api/projects";
 import { fetchUserOrgPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
             context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
             context.queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
             context.queryClient.removeQueries({ queryKey: subOrganizationsQuery.allKey() });
+            context.queryClient.removeQueries({ queryKey: certManagerInstanceKeys.all });
 
             await context.queryClient.fetchQuery({
               queryKey: authKeys.getAuthToken,

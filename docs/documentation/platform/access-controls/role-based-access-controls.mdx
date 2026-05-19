@@ -3,42 +3,45 @@ title: "Role-based Access Controls"
 description: "Learn how to use RBAC to manage user permissions."
 ---
 
-Infisical's Role-based Access Controls (RBAC) enable the usage of predefined and custom roles that imply a set of permissions for user and machine identities. Such roles make it possible to restrict access to resources and the range of actions that can be performed.
+Infisical's Role-based Access Controls (RBAC) enable the usage of predefined and custom roles that define a set of permissions for user and machine identities. Roles make it possible to restrict access to resources and the range of actions that can be performed.
 
-In general, access controls can be split up across [projects](/documentation/platform/project) and [organizations](/documentation/platform/organization).
+In general, access controls can be split up across [organizations](/documentation/platform/organization) and [projects](/documentation/platform/project).
 
 ## Organization-level access controls
 
-By default, every user and machine identity in a organization is either an **admin** or a **member**. 
+Every user and machine identity in an organization is assigned one of the following built-in roles:
 
-**Admins** are able to perform every action with the organization, including adding and removing organization members, managing access controls, setting up security settings, and creating new projects. 
+- **Admin**: Full control over the organization, including adding and removing members, managing access controls, configuring security settings, setting up identity providers, managing billing, and creating new projects.
+- **Member**: Can access projects they are added to and perform day-to-day actions, but is restricted from removing organization members, modifying billing information, updating organization-level access controls, and performing other administrative actions. This is the default role assigned to new members.
+- **No Access**: No permissions at the organization level. This role is useful when you want to grant access exclusively through project-level roles or [Additional Privileges](/documentation/platform/access-controls/additional-privileges).
 
-**Members**, on the other hand, are restricted from removing organization members, modifying billing information, updating access controls, and performing a number of other actions. 
+Organization-level access controls are primarily administrative in nature. Access to projects, secrets, and other sensitive data is specified at the project level.
 
-Overall, organization-level access controls are significantly of administrative nature. Access to projects, secrets and other sensitive data is specified on the project level. 
-
-![Org member role](/images/platform/rbac/org-member-role.png)
+![Organization roles](/images/platform/access-controls/org-roles.png)
 
 ## Project-level access controls
 
-By default, every user in a project is either a **viewer**, **developer**, or an **admin**. Each of these roles comes with a varying access to different features and resources inside projects. 
+Every user and machine identity in a project is assigned one of the following built-in roles:
 
-As such: 
-- **Admin**: This role enables identities to have access to all environments, folders, secrets, and actions within the project. 
-- **Developers**: This role restricts identities from performing project control actions, updating Approval Workflow policies, managing roles, editing and removing project members, and more.
-- **Viewer**: The most limiting bulit-in role on the project level – it forbids user and machine identities to perform any action and rather shows them in the read-only mode. 
+- **Admin**: Full access to all environments, folders, secrets, and actions within the project. Admins can manage project members, configure roles, set up Approval Workflow policies, and perform all other project-level operations.
+- **Member**: Read and write access to secrets, folders, secret imports, integrations, webhooks, and other day-to-day resources across all environments. Members are restricted from performing administrative actions such as managing roles, updating Approval Workflow policies, and editing or removing other project members.
+- **Viewer**: Read-only access to all resources within the project. Viewers cannot create, edit, or delete any resources.
+- **No Access**: No permissions within the project. This role is useful when combined with [Additional Privileges](/documentation/platform/access-controls/additional-privileges) to grant scoped access to specific environments or secret paths.
 
-![Project member role](/images/platform/access-controls/rbac.png)
+![Project roles](/images/platform/access-controls/project-roles.png)
 
 ## Creating custom roles
 
-By creating custom roles, you are able to adjust permissions to the needs of your organization. This can be useful for: 
-- Creating superadmin roles, roles specific to SRE engineers, etc. 
-- Restricting access of users to specific secrets, folders, and environments. 
-- Embedding these specific roles into [Approval Workflow policies](/documentation/platform/pr-workflows).
+By creating custom roles, you can tailor permissions to the specific needs of your organization. This is useful for:
+
+- Creating specialized roles such as superadmin, SRE engineer, or billing manager roles.
+- Restricting access to specific secrets, folders, and environments.
+- Embedding these roles into [Approval Workflow policies](/documentation/platform/pr-workflows).
+
+To create a custom role, navigate to the **Access Controls** page for your organization or project and click **Add Organization Role** or **Add Project Role**.
+
+![Create custom role](/images/platform/access-controls/create-custom-role.png)
 
 <Note>
-It is worth noting that users are able to assume multiple built-in and custom roles. A user will gain access to all actions within the roles assigned to them, not just the actions those roles share in common. 
+Users and machine identities can be assigned multiple built-in and custom roles. An identity gains access to all actions across all of its assigned roles — permissions are additive, not intersected.
 </Note>
-
-![project member custom role](/images/platform/rbac/project-member-custom-role.png)

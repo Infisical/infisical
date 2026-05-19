@@ -1,0 +1,191 @@
+---
+title: "ACME Enrollment"
+sidebarTitle: "ACME"
+description: "Issue certificates using the ACME protocol with Certbot, cert-manager, and other ACME clients."
+---
+
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
+Use the ACME enrollment method to request and renew certificates automatically using standard ACME clients. Infisical acts as an ACME server, compatible with tools like Certbot, cert-manager, and any [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/)-compliant client.
+
+<Info>
+  ACME enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Product Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
+</Info>
+
+## When to Use ACME Enrollment
+
+<CardGroup cols={2}>
+  <Card title="Web Servers" icon="server">
+    Nginx, Apache, Tomcat, and other web servers with Certbot.
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra">
+    Use cert-manager to issue certificates for workloads.
+  </Card>
+  <Card title="Load Balancers" icon="scale-balanced">
+    Automate certificate provisioning for HAProxy, Traefik, and others.
+  </Card>
+  <Card title="Automated Renewal" icon="arrows-spin">
+    Let ACME clients handle renewal automatically before expiration.
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your server. The client handles domain validation challenges and certificate renewal.
+
+## Configure ACME Enrollment
+
+<Steps>
+  <Step title="Navigate to your Application">
+    Go to **Certificate Manager → Applications** and select your Application.
+  </Step>
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable ACME enrollment for.
+    
+    <Note>
+      Profiles are attached by Product Admins. If you don't see any profiles, ask your Product Admin to attach one.
+    </Note>
+  </Step>
+  <Step title="Add ACME enrollment">
+    In the modal, click **Add enrollment method** and select **ACME**.
+  </Step>
+  <Step title="Configure domain validation">
+    By default, Infisical verifies domain ownership using the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge).
+    
+    | Option | Description |
+    |--------|-------------|
+    | **HTTP-01 Challenge** | ACME client proves domain ownership by serving a file at `/.well-known/acme-challenge/` |
+    | **Skip Validation** | Disable domain ownership validation (use for internal domains) |
+    
+    <Warning>
+      Only skip validation for internal domains where you trust all certificate requesters. For public-facing services, always use domain validation.
+    </Warning>
+    
+    <Note>
+      Skipping validation here is different from [External ACME CA integrations](/documentation/platform/pki/ca/acme-ca). When using an external ACME CA (like Let's Encrypt), Infisical must always complete DNS-01 challenges with the upstream CA.
+    </Note>
+  </Step>
+  <Step title="Get ACME credentials">
+    After saving, click **Reveal ACME EAB** to get the credentials your ACME client needs:
+    
+    | Credential | Purpose |
+    |------------|---------|
+    | **ACME Directory URL** | The server URL your ACME client connects to |
+    | **EAB Key Identifier (KID)** | Identifies your ACME account |
+    | **EAB Secret** | Authenticates your ACME client |
+    
+    <Info>
+      The ACME Directory URL is unique to this Application + Profile pair. Certificates requested through this URL are associated with this Application and follow the selected profile's policy.
+    </Info>
+  </Step>
+</Steps>
+
+## Issue a Certificate
+
+Configure your ACME client with the credentials from the previous step.
+
+<Tabs>
+  <Tab title="Certbot">
+    Request a certificate using Certbot's standalone mode:
+    
+    ```bash
+    sudo certbot certonly \
+      --standalone \
+      --server "<ACME Directory URL>" \
+      --eab-kid "<EAB Key Identifier>" \
+      --eab-hmac-key "<EAB Secret>" \
+      -d api.example.com \
+      --email admin@example.com \
+      --agree-tos \
+      --non-interactive
+    ```
+    
+    Certbot stores certificates in `/etc/letsencrypt/live/api.example.com/`:
+    - `fullchain.pem` — Certificate + chain
+    - `privkey.pem` — Private key
+    - `cert.pem` — Certificate only
+    - `chain.pem` — CA chain only
+    
+    For web server integration, see the guides:
+    - [Nginx with Certbot](/documentation/platform/pki/guides/applications/nginx-certbot)
+    - [Apache with Certbot](/documentation/platform/pki/guides/applications/apache-certbot)
+    - [Tomcat with Certbot](/documentation/platform/pki/guides/applications/tomcat-certbot)
+  </Tab>
+  <Tab title="cert-manager (Kubernetes)">
+    Create an ACME ClusterIssuer for cert-manager:
+    
+    ```yaml
+    apiVersion: cert-manager.io/v1
+    kind: ClusterIssuer
+    metadata:
+      name: infisical-acme
+    spec:
+      acme:
+        server: "<ACME Directory URL>"
+        email: admin@example.com
+        privateKeySecretRef:
+          name: infisical-acme-account
+        externalAccountBinding:
+          keyID: "<EAB Key Identifier>"
+          keySecretRef:
+            name: infisical-eab-secret
+            key: secret
+          keyAlgorithm: HS256
+        solvers:
+          - http01:
+              ingress:
+                class: nginx
+    ```
+    
+    Create the EAB secret:
+    
+    ```bash
+    kubectl create secret generic infisical-eab-secret \
+      --from-literal=secret="<EAB Secret>"
+    ```
+    
+    For full setup, see [Kubernetes cert-manager guide](/documentation/platform/pki/guides/applications/k8s-cert-manager).
+  </Tab>
+  <Tab title="Other Clients">
+    Any [RFC 8555-compliant ACME client](https://letsencrypt.org/docs/client-options/) works with Infisical. Configure your client with:
+    
+    1. **Server/Directory URL**: Your ACME Directory URL
+    2. **External Account Binding (EAB)**: Use the KID and Secret
+    3. **Challenge Type**: HTTP-01 (or skip if configured)
+    
+    Refer to your client's documentation for specific configuration.
+  </Tab>
+</Tabs>
+
+## Automatic Renewal
+
+ACME clients handle renewal automatically. Most clients (like Certbot) install a cron job or systemd timer that checks for expiring certificates and renews them.
+
+```bash
+# Test renewal (dry run)
+sudo certbot renew --dry-run
+
+# Force renewal
+sudo certbot renew --force-renewal
+```
+
+For Kubernetes, cert-manager monitors Certificate resources and renews them automatically before expiration.
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Nginx Guide" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up HTTPS on Nginx with Certbot.
+  </Card>
+  <Card title="Kubernetes Guide" icon="dharmachakra" href="/documentation/platform/pki/guides/applications/k8s-cert-manager">
+    Issue certificates for Kubernetes workloads.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+</CardGroup>

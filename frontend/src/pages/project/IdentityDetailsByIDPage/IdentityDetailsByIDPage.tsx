@@ -50,6 +50,7 @@ import {
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -67,11 +68,12 @@ const Page = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetProjectIdentityMembershipV2(projectId, identityId);
+    useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   const {
     data: identity,
@@ -187,11 +189,15 @@ const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
-            Project Machine Identities
+            {isCertManager ? "Machine Identities" : "Project Machine Identities"}
           </Link>
           <PageHeader
             scope={currentProject.type}
-            description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
+            description={
+              isCertManager
+                ? `Configure and manage${isProjectIdentity ? " machine identity and " : " "}certificate manager access control`
+                : `Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`
+            }
             title={identityMembershipDetails.identity.name}
           >
             <DropdownMenu>
@@ -325,9 +331,11 @@ const Page = () => {
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
-              <IdentityProjectAdditionalPrivilegeSection
-                identityMembershipDetails={identityMembershipDetails}
-              />
+              {!isCertManager && (
+                <IdentityProjectAdditionalPrivilegeSection
+                  identityMembershipDetails={identityMembershipDetails}
+                />
+              )}
             </div>
           </div>
           <DeleteActionModal

@@ -4,6 +4,7 @@ import { registerAuth0ClientSecretRotationRouter } from "./auth0-client-secret-r
 import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-rotation-router";
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
+import { registerDatadogApplicationKeySecretRotationRouter } from "./datadog-application-key-secret-rotation-router";
 import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
 import { registerHpIloRotationRouter } from "./hp-ilo-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
@@ -42,5 +43,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter,
   [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter,
-  [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter
+  [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter,
+  [SecretRotation.DatadogApplicationKeySecret]: registerDatadogApplicationKeySecretRotationRouter
 };

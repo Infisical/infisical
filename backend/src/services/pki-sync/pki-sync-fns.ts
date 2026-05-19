@@ -1,6 +1,7 @@
 import handlebars from "handlebars";
 import { z, ZodSchema } from "zod";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -230,6 +231,7 @@ export const PkiSyncFns = {
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
     }
   ): Promise<{
     uploaded: number;
@@ -303,7 +305,8 @@ export const PkiSyncFns = {
         const netScalerPkiSync = netScalerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL,
-          gatewayV2Service: dependencies.gatewayV2Service
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         return netScalerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -322,6 +325,7 @@ export const PkiSyncFns = {
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
     }
   ): Promise<void> => {
     switch (pkiSync.destination) {
@@ -405,7 +409,8 @@ export const PkiSyncFns = {
         const netScalerPkiSync = netScalerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
           certificateSyncDAL: dependencies.certificateSyncDAL,
-          gatewayV2Service: dependencies.gatewayV2Service
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         await netScalerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,

@@ -3,7 +3,8 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Td, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import { TableCell } from "@app/components/v3";
 
 export type PkiSyncTableCellProps = {
   primaryText: string;
@@ -23,7 +24,7 @@ export const PkiSyncTableCell = ({
   secondaryClassName
 }: PkiSyncTableCellProps) => {
   return (
-    <Td className="max-w-0 min-w-32!">
+    <TableCell className="max-w-0 min-w-32!">
       <Tooltip
         side="left"
         className="max-w-2xl break-words"
@@ -66,6 +67,6 @@ export const PkiSyncTableCell = ({
           )}
         </div>
       </Tooltip>
-    </Td>
+    </TableCell>
   );
 };

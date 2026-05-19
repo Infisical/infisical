@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -13,6 +14,7 @@ import {
   useGetProjectRoles,
   useListWorkspaceGroups
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -36,9 +38,12 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: groups } = useGetOrganizationGroups(orgId);
-  const { data: groupMemberships } = useListWorkspaceGroups(currentProject?.id || "");
+  const { data: groupMemberships } = useListWorkspaceGroups(
+    currentProject?.id || "",
+    currentProject?.type
+  );
 
-  const { data: roles } = useGetProjectRoles(currentProject?.id || "");
+  const { data: roles } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 
@@ -64,6 +69,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ group, role }: FormData) => {
     await addGroupToWorkspaceMutateAsync({
       projectId: currentProject?.id || "",
+      projectType: currentProject?.type,
       groupId: group.id,
       role: role.slug || undefined
     });
@@ -112,6 +118,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
               getOptionLabel={(option) => option.name}
               options={roles}
               placeholder="Select role..."
+              components={{ Option: RoleOption }}
             />
           </FormControl>
         )}
@@ -138,22 +145,32 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   ) : (
     <div className="flex flex-col space-y-4">
       <div className="text-sm">
-        All groups in your organization have already been added to this project.
+        Every group in your organization is already added. To add another group, create one at the
+        organization level first.
       </div>
-      <Link to={"/organizations/$orgId/access-management" as const} params={{ orgId }}>
-        <Button variant="outline_bg">Create a new group</Button>
+      <Link
+        to={"/organizations/$orgId/access-management" as const}
+        params={{ orgId }}
+        search={{ selectedTab: "groups" }}
+        className="self-end"
+      >
+        <Button variant="outline_bg">Go to organization groups -&gt;</Button>
       </Link>
     </div>
   );
 };
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+
   return (
     <Modal
       isOpen={popUp?.group?.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("group", isOpen)}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Add Group to Project">
+      <ModalContent bodyClassName="overflow-visible" title={`Add Group to ${productLabel}`}>
         <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>

@@ -22,6 +22,10 @@ export const genericAppConnectionFieldsSchema = z.object({
     .string()
     .nullish()
     .transform((v) => (v === "" ? null : v)),
+  gatewayPoolId: z
+    .string()
+    .nullish()
+    .transform((v) => (v === "" ? null : v)),
   isAutoRotationEnabled: z.boolean().optional(),
   rotation: rotationSchema.optional()
 });
