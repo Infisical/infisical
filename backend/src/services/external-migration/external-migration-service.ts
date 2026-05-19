@@ -13,7 +13,7 @@ import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
 import { OrgServiceActor } from "@app/lib/types";
 
