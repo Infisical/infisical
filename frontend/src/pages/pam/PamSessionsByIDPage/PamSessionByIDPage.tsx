@@ -19,6 +19,7 @@ import { ProjectPermissionSub, useOrganization, useProject } from "@app/context"
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
+import { useGetPamSessionPlaybackBundle } from "@app/hooks/api/pam/session-playback";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamTerminateSessionModal } from "../components/PamTerminateSessionModal";
@@ -57,8 +58,13 @@ const Page = () => {
     requestAnimationFrame(() => setScrollToLogIndex(logIndex));
   };
 
+  const bundleQuery = useGetPamSessionPlaybackBundle(sessionId, !!session);
+  const sessionComplete = bundleQuery.data?.sessionComplete ?? false;
+
   const isActive =
-    session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
+    (session?.status === PamSessionStatus.Active ||
+      session?.status === PamSessionStatus.Starting) &&
+    !sessionComplete;
   const isGatewaySession = !!session?.gatewayIdentityId || !!session?.gatewayId;
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -114,7 +120,10 @@ const Page = () => {
           </PageHeader>
           <div className="flex">
             <div className="mr-4 flex h-fit w-96 shrink-0">
-              <PamSessionDetailsSection session={session} />
+              <PamSessionDetailsSection
+                session={session}
+                statusOverride={sessionComplete ? PamSessionStatus.Ended : undefined}
+              />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-4">
               <PamSessionAiInsightsSection session={session} onWarningClick={handleWarningClick} />

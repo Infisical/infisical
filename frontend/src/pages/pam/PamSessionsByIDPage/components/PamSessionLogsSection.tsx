@@ -31,16 +31,19 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
   const isActive =
     session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
 
-  const playback = useDecryptedSessionLogs(session.id, true);
+  const playback = useDecryptedSessionLogs(session.id, true, isActive);
+
+  const isLive = isActive && !playback.sessionComplete;
   const isLegacyOrNoChunks = playback.legacy || (!playback.loading && playback.totalChunks === 0);
 
-  const legacy = useGetPamSessionLogs(session.id, isActive, isLegacyOrNoChunks);
+  const legacy = useGetPamSessionLogs(session.id, isLive, isLegacyOrNoChunks);
 
-  const logs = isLegacyOrNoChunks ? legacy.logs : (playback.events as typeof legacy.logs);
-  const isLoading = isLegacyOrNoChunks ? legacy.isLoading : playback.loading;
-  const hasMore = isLegacyOrNoChunks ? legacy.hasMore : false;
-  const loadMore = isLegacyOrNoChunks ? legacy.loadMore : () => {};
-  const isLoadingMore = isLegacyOrNoChunks ? legacy.isLoadingMore : false;
+  const hasChunkEvents = !playback.legacy && playback.events.length > 0;
+  const logs = hasChunkEvents ? (playback.events as typeof legacy.logs) : legacy.logs;
+  const isLoading = hasChunkEvents ? false : legacy.isLoading || (isLive && logs.length === 0);
+  const hasMore = hasChunkEvents ? false : legacy.hasMore;
+  const loadMore = hasChunkEvents ? () => {} : legacy.loadMore;
+  const isLoadingMore = hasChunkEvents ? false : legacy.isLoadingMore;
 
   const isSSHSession = session.resourceType === PamResourceType.SSH;
   const isDatabaseSession =
@@ -72,7 +75,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         <h3 className="text-lg font-medium text-foreground">
           {isRdpSession ? "Session Recording" : "Session Logs"}
         </h3>
-        {isActive && (
+        {isLive && (
           <span className="flex animate-pulse items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
             <span className="size-1.5 animate-pulse rounded-full bg-success" />
             LIVE
@@ -149,7 +152,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         </div>
       )}
 
-      {!isActive && hasMore && !isAwsIamSession && (
+      {!isLive && hasMore && !isAwsIamSession && (
         <div className="flex justify-center pt-2">
           <Button variant="outline" size="xs" isPending={isLoadingMore} onClick={loadMore}>
             Load more
