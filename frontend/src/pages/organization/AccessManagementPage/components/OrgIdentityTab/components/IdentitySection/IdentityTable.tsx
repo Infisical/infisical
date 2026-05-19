@@ -221,8 +221,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <TabsList variant="filled">
             <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
             <TabsTrigger value="organization">
-              <span className="size-1.5 rounded-full bg-org" aria-hidden />
-              Organization
+              <span
+                className={twMerge(
+                  "size-1.5 rounded-full",
+                  isSubOrganization ? "bg-sub-org" : "bg-org"
+                )}
+                aria-hidden
+              />
+              {isSubOrganization ? "Sub-Organization" : "Organization"}
               {renderTabCount(orgScopeCount)}
             </TabsTrigger>
             <TabsTrigger value="project">
@@ -295,7 +301,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TableHeader>
               <TableRow>
                 <TableHead
-                  className={twMerge("cursor-pointer", isSubOrganization ? "w-1/5" : "w-1/4")}
+                  className="w-1/4 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                 >
                   Name
@@ -309,9 +315,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead className={isSubOrganization ? "w-1/5" : "w-1/4"}>Scope</TableHead>
+                <TableHead className="w-1/4">Scope</TableHead>
                 <TableHead
-                  className={twMerge("cursor-pointer", isSubOrganization ? "w-1/5" : "w-1/4")}
+                  className="w-1/4 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
                   Role
@@ -326,7 +332,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   />
                 </TableHead>
                 <TableHead
-                  className={twMerge("cursor-pointer", isSubOrganization ? "w-1/5" : "w-1/4")}
+                  className="w-1/4 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.LastLogin)}
                 >
                   Last Used
@@ -340,7 +346,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                {isSubOrganization && <TableHead className="w-1/5">Managed By</TableHead>}
                 <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
@@ -360,11 +365,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
-                    {isSubOrganization && (
-                      <TableCell>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    )}
                     <TableCell>
                       <Skeleton className="h-4 w-4" />
                     </TableCell>
@@ -413,10 +413,25 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       >
                         <TableCell isTruncatable>{name}</TableCell>
                         <TableCell>
+                          {/* eslint-disable-next-line no-nested-ternary */}
                           {isProjectScoped ? (
                             <Badge variant="project">
                               <ProjectIcon />
                               {project?.name ?? "Project"}
+                            </Badge>
+                          ) : isSubOrganization ? (
+                            <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                              {isSubOrgIdentity ? (
+                                <>
+                                  <SubOrgIcon />
+                                  Sub-Organization
+                                </>
+                              ) : (
+                                <>
+                                  <OrgIcon />
+                                  Root Organization
+                                </>
+                              )}
                             </Badge>
                           ) : (
                             <Badge variant="org">
@@ -550,23 +565,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             <span className="text-sm text-mineshaft-400">{lastUsedLabel}</span>
                           )}
                         </TableCell>
-                        {isSubOrganization && (
-                          <TableCell>
-                            <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
-                              {isSubOrgIdentity ? (
-                                <>
-                                  <SubOrgIcon />
-                                  Sub-Organization
-                                </>
-                              ) : (
-                                <>
-                                  <OrgIcon />
-                                  Root Organization
-                                </>
-                              )}
-                            </Badge>
-                          </TableCell>
-                        )}
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
