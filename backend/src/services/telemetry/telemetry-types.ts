@@ -335,7 +335,7 @@ export type TTelemetryInstanceStatsEvent = {
     projects: number;
     secrets: number;
     organizations: number;
-    organizationNames: number;
+    organizationNames: string[];
     numberOfSecretOperationsMade: number;
     numberOfSecretProcessed: number;
     environments: number;

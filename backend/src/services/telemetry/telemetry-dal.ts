@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { HEARTBEAT_BUFFER_SECONDS } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { DatabaseError } from "@app/lib/errors";
 
 export type TTelemetryDALFactory = ReturnType<typeof telemetryDALFactory>;
@@ -19,9 +20,6 @@ const IDENTITY_AUTH_TABLES: readonly string[] = [
   TableName.IdentityTlsCertAuth,
   TableName.IdentitySpiffeAuth
 ];
-
-// Gateways with a heartbeat within the last 60 seconds are considered active
-const GATEWAY_HEARTBEAT_THRESHOLD_SECONDS = 60;
 
 const countTable = async (db: TDbClient, table: TableName) => {
   const result = (await db(table).count().first())?.count as string;
@@ -70,13 +68,28 @@ export const telemetryDALFactory = (db: TDbClient) => {
         0
       );
 
-      const activeGatewaysResult = (
+      // Count active gateways from both legacy (Gateway) and V2 (GatewayV2) tables.
+      // Legacy gateways heartbeat every ~3 minutes; use a 5-minute window to avoid undercounting.
+      // V2 gateways report their own heartbeatTTL; use the same expression as gateway-v2-dal.ts.
+      const legacyActiveResult = (
         await db(TableName.Gateway)
-          .whereRaw(`"heartbeat" > NOW() - INTERVAL '${GATEWAY_HEARTBEAT_THRESHOLD_SECONDS} seconds'`)
+          .whereNotNull("heartbeat")
+          .whereRaw(`"heartbeat" > NOW() - INTERVAL '5 minutes'`)
           .count()
           .first()
       )?.count as string;
-      const activeGateways = parseInt(activeGatewaysResult || "0", 10);
+
+      const v2ActiveResult = (
+        await db(TableName.GatewayV2)
+          .whereNotNull("heartbeat")
+          .whereRaw(
+            `COALESCE("heartbeatTTL", 0) > 0 AND "heartbeat" + make_interval(secs => COALESCE("heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW()`
+          )
+          .count()
+          .first()
+      )?.count as string;
+
+      const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);
 
       const organizationNames = await db(TableName.Organization).select("name");
       const organizations = organizationNames.length;
