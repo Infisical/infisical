@@ -461,7 +461,10 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         startIndex: req.query.startIndex,
         filter: req.query.filter,
         limit: req.query.count,
-        isMembersExcluded: req.query.excludedAttributes === "members"
+        isMembersExcluded: req.query.excludedAttributes
+          ?.split(",")
+          .map((s) => s.trim())
+          .includes("members")
       });
 
       return groups;
@@ -475,6 +478,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         groupId: z.string().trim()
       }),
+      querystring: z.object({
+        excludedAttributes: z.string().trim().optional()
+      }),
       response: {
         200: ScimGroupSchema
       }
@@ -483,7 +489,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const group = await req.server.services.scim.getScimGroup({
         groupId: req.params.groupId,
-        orgId: req.permission.orgId
+        orgId: req.permission.orgId,
+        isMembersExcluded: req.query.excludedAttributes === "members"
       });
 
       return group;
