@@ -1,6 +1,5 @@
 import { faAsterisk, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AlertTriangleIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -14,13 +13,12 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { Tooltip as TooltipV3, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import { TAuditLogStream } from "@app/hooks/api/types";
 
-import { LastErrorSection } from "./LastErrorSection";
+import { LastErrorDialog } from "./LastErrorDialog";
 
 type Props = {
   logStream: TAuditLogStream;
@@ -66,20 +64,10 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
           {hasLastError && (
-            <TooltipV3>
-              <TooltipTrigger>
-                <AlertTriangleIcon
-                  className="size-4 shrink-0 text-yellow-500"
-                  aria-label="Stream is failing"
-                />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-96 min-w-52 px-3">
-                <LastErrorSection
-                  lastErrorMessage={lastErrorMessage ?? null}
-                  lastErrorTimestamp={lastErrorTimestamp ?? null}
-                />
-              </TooltipContent>
-            </TooltipV3>
+            <LastErrorDialog
+              lastErrorMessage={lastErrorMessage ?? null}
+              lastErrorTimestamp={lastErrorTimestamp ?? null}
+            />
           )}
         </div>
       </Td>
