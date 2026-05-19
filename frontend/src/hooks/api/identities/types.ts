@@ -967,6 +967,19 @@ export type TSearchIdentitiesDTO = {
   };
 };
 
+export type TCountIdentitiesDTO = {
+  scope: SearchIdentitiesScope[];
+  search: {
+    name?: { $contains: string };
+    role?: { $in: string[] };
+  };
+};
+
+export type TIdentityMembershipCounts = {
+  organization?: number;
+  project?: number;
+};
+
 export type IdentityMembershipSearchRole = {
   id: string;
   role: "admin" | "member" | "viewer" | "no-access" | "custom" | string;

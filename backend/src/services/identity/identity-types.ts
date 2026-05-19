@@ -94,3 +94,21 @@ export type TSearchIdentitiesV2DTO = {
     role: Omit<TSearchResourceOperator, "number">;
   }>;
 } & TOrgPermission;
+
+export type TCountIdentitiesV2DAL = {
+  orgId: string;
+  scope: SearchIdentitiesScope[];
+  accessibleProjectIds: string[];
+  searchFilter?: Partial<{
+    name: Omit<TSearchResourceOperator, "number">;
+    role: Omit<TSearchResourceOperator, "number">;
+  }>;
+};
+
+export type TCountIdentitiesV2DTO = {
+  scope: SearchIdentitiesScope[];
+  searchFilter?: Partial<{
+    name: Omit<TSearchResourceOperator, "number">;
+    role: Omit<TSearchResourceOperator, "number">;
+  }>;
+} & TOrgPermission;

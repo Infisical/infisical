@@ -28,6 +28,7 @@ import { OrderByDirection } from "@app/lib/types";
 import {
   OrgIdentityOrderBy,
   SearchIdentitiesScope,
+  TCountIdentitiesV2DAL,
   TListOrgIdentitiesByOrgIdDTO,
   TSearchIdentitiesV2DAL,
   TSearchOrgIdentitiesByOrgIdDAL
@@ -854,6 +855,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityLdapAuth}.identityId`
         )
         .leftJoin(
+          TableName.IdentityTlsCertAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityTlsCertAuth}.identityId`
+        )
+        .leftJoin(
           TableName.IdentitySpiffeAuth,
           `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentitySpiffeAuth}.identityId`
@@ -898,6 +904,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
           db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         )
         .select(db.ref("id").as("crId").withSchema(TableName.Role))
@@ -947,6 +954,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           azureId,
           tokenId,
           ldapId,
+          tlsCertId,
           spiffeId,
           createdAt,
           updatedAt,
@@ -988,6 +996,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               tokenId,
               jwtId,
               ldapId,
+              tlsCertId,
               spiffeId
             })
           }
@@ -1052,5 +1061,92 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { find, findOne, countAllOrgIdentities, searchIdentities, searchIdentitiesV2 };
+  const countIdentitiesV2 = async (
+    { orgId, scope, accessibleProjectIds, searchFilter }: TCountIdentitiesV2DAL,
+    tx?: Knex
+  ) => {
+    try {
+      const includeOrgScope = scope.includes(SearchIdentitiesScope.Organization);
+      const includeProjectScope = scope.includes(SearchIdentitiesScope.Project);
+
+      const query = (tx || db.replicaNode())(TableName.Membership)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`);
+
+      // Role filter requires joining MembershipRole + Role; the COUNT(DISTINCT) below
+      // collapses the multi-row fan-out back to one row per membership.
+      const hasRoleFilter = Boolean(searchFilter?.role);
+      if (hasRoleFilter) {
+        void query
+          .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+          .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
+      }
+
+      const orgScopeBranch = (sub: Knex.QueryBuilder) => {
+        void sub
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .where(`${TableName.Membership}.scopeOrgId`, orgId);
+      };
+
+      const projectScopeBranch = (sub: Knex.QueryBuilder) => {
+        if (accessibleProjectIds.length === 0) {
+          void sub.whereRaw("1 = 0");
+        } else {
+          void sub
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .where(`${TableName.Membership}.scopeOrgId`, orgId)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
+        }
+      };
+
+      if (includeOrgScope && includeProjectScope) {
+        void query.where((nested) => {
+          void nested.where((sub) => orgScopeBranch(sub)).orWhere((sub) => projectScopeBranch(sub));
+        });
+      } else if (includeOrgScope) {
+        void query.where((sub) => orgScopeBranch(sub));
+      } else if (includeProjectScope) {
+        void query.where((sub) => projectScopeBranch(sub));
+      } else {
+        return { organization: includeOrgScope ? 0 : undefined, project: includeProjectScope ? 0 : undefined };
+      }
+
+      if (searchFilter) {
+        buildKnexFilterForSearchResource(query, searchFilter, (attr) => {
+          switch (attr) {
+            case "role":
+              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+            case "name":
+              return `${TableName.Identity}.name`;
+            default:
+              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+          }
+        });
+      }
+
+      const rows = await query
+        .groupBy(`${TableName.Membership}.scope`)
+        .select(db.ref("scope").withSchema(TableName.Membership).as("scope"))
+        .select<{ scope: string; count: string }[]>(
+          db.raw(`COUNT(DISTINCT ??) as count`, [`${TableName.Membership}.id`])
+        );
+
+      const counts: { organization?: number; project?: number } = {};
+      if (includeOrgScope) counts.organization = 0;
+      if (includeProjectScope) counts.project = 0;
+      for (const row of rows) {
+        if (row.scope === AccessScope.Organization && includeOrgScope) {
+          counts.organization = Number(row.count);
+        } else if (row.scope === AccessScope.Project && includeProjectScope) {
+          counts.project = Number(row.count);
+        }
+      }
+
+      return counts;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountIdentitiesV2" });
+    }
+  };
+
+  return { find, findOne, countAllOrgIdentities, searchIdentities, searchIdentitiesV2, countIdentitiesV2 };
 };

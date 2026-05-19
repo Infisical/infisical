@@ -23,6 +23,8 @@ import {
   IdentityTokenAuth,
   IdentityUniversalAuth,
   SearchIdentitiesScope,
+  TCountIdentitiesDTO,
+  TIdentityMembershipCounts,
   TSearchIdentitiesDTO
 } from "./types";
 
@@ -31,6 +33,9 @@ export const identitiesKeys = {
   searchIdentitiesRoot: ["identity", "search"] as const,
   searchIdentities: (dto: TSearchIdentitiesDTO) =>
     [...identitiesKeys.searchIdentitiesRoot, dto] as const,
+  countIdentitiesRoot: ["identity", "search", "count"] as const,
+  countIdentities: (dto: TCountIdentitiesDTO) =>
+    [...identitiesKeys.countIdentitiesRoot, dto] as const,
   getIdentityUniversalAuth: (identityId: string) =>
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
@@ -88,6 +93,21 @@ export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
         search
       });
       return data;
+    },
+    placeholderData: (previousData) => previousData
+  });
+};
+
+export const useCountOrgIdentityMemberships = (dto: TCountIdentitiesDTO) => {
+  const { scope, search } = dto;
+  return useQuery({
+    queryKey: identitiesKeys.countIdentities(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ counts: TIdentityMembershipCounts }>(
+        "/api/v2/identities/search/count",
+        { scope, search }
+      );
+      return data.counts;
     },
     placeholderData: (previousData) => previousData
   });

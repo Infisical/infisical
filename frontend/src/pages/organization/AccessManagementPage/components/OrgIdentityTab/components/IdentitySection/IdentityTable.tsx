@@ -74,6 +74,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   identityAuthToNameMap,
+  useCountOrgIdentityMemberships,
   useGetOrgRoles,
   useSearchOrgIdentityMemberships,
   useUpdateOrgIdentity
@@ -169,37 +170,17 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     search: searchPayload
   });
 
-  // Lightweight per-scope queries powering the tab counts. Each query is keyed
-  // independently by scope so React Query caches them per tab. limit=1 keeps the
-  // result payload tiny while the totalCount window function gives us the chip total.
-  const allScopeQuery = useSearchOrgIdentityMemberships({
-    offset: 0,
-    limit: 1,
-    orderDirection,
-    orderBy,
+  const { data: scopeCounts } = useCountOrgIdentityMemberships({
     scope: TAB_TO_SCOPE.all,
     search: searchPayload
   });
-  const orgScopeQuery = useSearchOrgIdentityMemberships({
-    offset: 0,
-    limit: 1,
-    orderDirection,
-    orderBy,
-    scope: TAB_TO_SCOPE.organization,
-    search: searchPayload
-  });
-  const projectScopeQuery = useSearchOrgIdentityMemberships({
-    offset: 0,
-    limit: 1,
-    orderDirection,
-    orderBy,
-    scope: TAB_TO_SCOPE.project,
-    search: searchPayload
-  });
 
-  const allScopeCount = allScopeQuery.data?.totalCount;
-  const orgScopeCount = orgScopeQuery.data?.totalCount;
-  const projectScopeCount = projectScopeQuery.data?.totalCount;
+  const orgScopeCount = scopeCounts?.organization;
+  const projectScopeCount = scopeCounts?.project;
+  const allScopeCount =
+    orgScopeCount === undefined && projectScopeCount === undefined
+      ? undefined
+      : (orgScopeCount ?? 0) + (projectScopeCount ?? 0);
 
   const { totalCount = 0 } = data ?? {};
   useResetPageHelper({
@@ -347,10 +328,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TableHeader>
               <TableRow>
                 <TableHead
-                  className={twMerge(
-                    "cursor-pointer",
-                    isSubOrganization ? "w-1/5" : "w-1/4"
-                  )}
+                  className={twMerge("cursor-pointer", isSubOrganization ? "w-1/5" : "w-1/4")}
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                 >
                   Name
@@ -366,10 +344,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                 </TableHead>
                 <TableHead className={isSubOrganization ? "w-1/5" : "w-1/4"}>Scope</TableHead>
                 <TableHead
-                  className={twMerge(
-                    "cursor-pointer",
-                    isSubOrganization ? "w-1/5" : "w-1/4"
-                  )}
+                  className={twMerge("cursor-pointer", isSubOrganization ? "w-1/5" : "w-1/4")}
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
                   Role

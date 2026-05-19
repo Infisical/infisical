@@ -5,6 +5,8 @@ export * from "./queries";
 export type {
   IdentityMembershipSearchResult,
   IdentityMembershipSearchRole,
+  TCountIdentitiesDTO,
+  TIdentityMembershipCounts,
   TSearchIdentitiesDTO
 } from "./types";
 export { SearchIdentitiesScope } from "./types";

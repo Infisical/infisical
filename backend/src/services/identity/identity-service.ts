@@ -40,6 +40,7 @@ import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
   SearchIdentitiesScope,
+  TCountIdentitiesV2DTO,
   TCreateIdentityDTO,
   TDeleteIdentityDTO,
   TGetIdentityByIdDTO,
@@ -502,18 +503,19 @@ export const identityServiceFactory = ({
     return { identityMemberships: docs, totalCount };
   };
 
-  const searchOrgIdentitiesV2 = async ({
+  const resolveIdentitySearchScope = async ({
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
-    limit,
-    offset,
-    orderBy,
-    orderDirection,
-    scope,
-    searchFilter = {}
-  }: TSearchIdentitiesV2DTO) => {
+    scope
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: TSearchIdentitiesV2DTO["actorAuthMethod"];
+    actorOrgId: string;
+    scope: SearchIdentitiesScope[];
+  }): Promise<{ uniqueScope: Set<SearchIdentitiesScope>; accessibleProjectIds: string[] }> => {
     const uniqueScope = new Set(scope);
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -523,10 +525,7 @@ export const identityServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    const canReadOrgIdentities = orgPermission.can(
-      OrgPermissionIdentityActions.Read,
-      OrgPermissionSubjects.Identity
-    );
+    const canReadOrgIdentities = orgPermission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     if (uniqueScope.has(SearchIdentitiesScope.Organization) && !canReadOrgIdentities) {
       uniqueScope.delete(SearchIdentitiesScope.Organization);
     }
@@ -574,6 +573,29 @@ export const identityServiceFactory = ({
       }
     }
 
+    return { uniqueScope, accessibleProjectIds };
+  };
+
+  const searchOrgIdentitiesV2 = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    scope,
+    searchFilter = {}
+  }: TSearchIdentitiesV2DTO) => {
+    const { uniqueScope, accessibleProjectIds } = await resolveIdentitySearchScope({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      scope
+    });
+
     if (!uniqueScope.size) {
       return { identityMemberships: [], totalCount: 0 };
     }
@@ -585,11 +607,53 @@ export const identityServiceFactory = ({
       orderBy,
       orderDirection,
       searchFilter,
-      scope:Array.from(uniqueScope),
+      scope: Array.from(uniqueScope),
       accessibleProjectIds
     });
 
     return { identityMemberships: docs, totalCount };
+  };
+
+  const countOrgIdentitiesV2 = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    scope,
+    searchFilter = {}
+  }: TCountIdentitiesV2DTO) => {
+    const requestedOrg = scope.includes(SearchIdentitiesScope.Organization);
+    const requestedProject = scope.includes(SearchIdentitiesScope.Project);
+
+    const { uniqueScope, accessibleProjectIds } = await resolveIdentitySearchScope({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      scope
+    });
+
+    // Build the response shape from the *requested* scopes so callers always get a number
+    // for every scope they asked about (zero when permissions/projects filter the scope out).
+    const counts: { organization?: number; project?: number } = {};
+    if (requestedOrg) counts.organization = 0;
+    if (requestedProject) counts.project = 0;
+
+    if (!uniqueScope.size) {
+      return counts;
+    }
+
+    const dalCounts = await identityOrgMembershipDAL.countIdentitiesV2({
+      orgId: actorOrgId,
+      scope: Array.from(uniqueScope),
+      accessibleProjectIds,
+      searchFilter
+    });
+
+    if (requestedOrg && dalCounts.organization !== undefined) counts.organization = dalCounts.organization;
+    if (requestedProject && dalCounts.project !== undefined) counts.project = dalCounts.project;
+
+    return counts;
   };
 
   const listProjectIdentitiesByIdentityId = async ({
@@ -628,6 +692,7 @@ export const identityServiceFactory = ({
     getIdentityById,
     searchOrgIdentities,
     searchOrgIdentitiesV2,
+    countOrgIdentitiesV2,
     listProjectIdentitiesByIdentityId
   };
 };

@@ -163,4 +163,86 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       return { identities: identityMemberships, totalCount };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/search/count",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "countMachineIdentitiesV2",
+      tags: [ApiDocsTags.Identities],
+      description:
+        "Return per-scope counts of machine identities matching the given search filter. The response contains a count for every scope passed in the request body (zero when the caller has no access to that scope).",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        scope: z
+          .array(z.nativeEnum(SearchIdentitiesScope))
+          .min(1)
+          .default([SearchIdentitiesScope.Organization, SearchIdentitiesScope.Project])
+          .describe(IDENTITIES.SEARCH_COUNT_V2.scope),
+        search: buildSearchZodSchema(
+          z
+            .object({
+              name: z
+                .union([
+                  searchResourceZodValidate(z.string().max(255), "Name"),
+                  z
+                    .object({
+                      [SearchResourceOperators.$eq]: searchResourceZodValidate(z.string().max(255), "Name $eq"),
+                      [SearchResourceOperators.$contains]: searchResourceZodValidate(
+                        z.string().max(255),
+                        "Name $contains"
+                      ),
+                      [SearchResourceOperators.$in]: searchResourceZodValidate(z.string().max(255), "Name $in").array()
+                    })
+                    .partial()
+                ])
+                .describe(IDENTITIES.SEARCH_COUNT_V2.search.name),
+              role: z
+                .union([
+                  searchResourceZodValidate(z.string().max(255), "Role"),
+                  z
+                    .object({
+                      [SearchResourceOperators.$eq]: searchResourceZodValidate(z.string().max(255), "Role $eq"),
+                      [SearchResourceOperators.$in]: searchResourceZodValidate(z.string().max(255), "Role $in").array()
+                    })
+                    .partial()
+                ])
+                .describe(IDENTITIES.SEARCH_COUNT_V2.search.role)
+            })
+            .describe(IDENTITIES.SEARCH_COUNT_V2.search.desc)
+            .partial()
+        )
+      }),
+      response: {
+        200: z.object({
+          counts: z.object({
+            organization: z.number().optional(),
+            project: z.number().optional()
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const counts = await server.services.identityV1.countOrgIdentitiesV2({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId,
+        searchFilter: req.body.search,
+        scope: req.body.scope
+      });
+
+      return { counts };
+    }
+  });
 };

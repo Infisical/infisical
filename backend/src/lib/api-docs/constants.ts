@@ -221,6 +221,15 @@ export const IDENTITIES = {
     limit: "The number of identities to return.",
     orderBy: "The column to order identities by.",
     orderDirection: "The direction to order identities in."
+  },
+  SEARCH_COUNT_V2: {
+    scope:
+      "Array of scopes to count. Returns a count for each requested scope. Accepts 'organization' and/or 'project'.",
+    search: {
+      desc: "The filters to apply when counting.",
+      name: "The name of the identity to filter by.",
+      role: "The role of the identity to filter by."
+    }
   }
 } as const;
 
