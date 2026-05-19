@@ -234,6 +234,19 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: req.body.name,
+          slug: req.body.slug,
+          scope: "organization",
+          permissionsUpdated: !!req.body.permissions
+        }
+      });
+
       return { role: { ...role, orgId: role.orgId as string } };
     }
   });
@@ -281,6 +294,18 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.DELETE_ORG_ROLE,
           metadata: { roleId: role.id, slug: role.slug, name: role.name }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: role.name,
+          slug: role.slug,
+          scope: "organization"
         }
       });
 

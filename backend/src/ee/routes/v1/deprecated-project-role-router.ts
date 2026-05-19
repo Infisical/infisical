@@ -183,6 +183,19 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: req.body.name,
+          slug: req.body.slug,
+          scope: "project",
+          permissionsUpdated: !!req.body.permissions
+        }
+      });
+
       return { role: { ...role, projectId: role.projectId as string } };
     }
   });
@@ -240,6 +253,18 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
             slug: role.slug,
             name: role.name
           }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: role.name,
+          slug: role.slug,
+          scope: "project"
         }
       });
 

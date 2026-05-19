@@ -116,7 +116,11 @@ export enum PostHogEventTypes {
   HoneyTokenReset = "Honey Token Reset",
   HoneyTokenTriggered = "Honey Token Triggered",
 
-  CustomRoleCreated = "Custom Role Created"
+  CustomRoleCreated = "Custom Role Created",
+  CustomRoleUpdated = "Custom Role Updated",
+  CustomRoleDeleted = "Custom Role Deleted",
+  OrgMembershipRoleUpdated = "Org Membership Role Updated",
+  ProjectMembershipRoleUpdated = "Project Membership Role Updated"
 }
 
 export type TSecretModifiedEvent = {
@@ -899,6 +903,44 @@ export type TCustomRoleCreatedEvent = {
   };
 };
 
+export type TCustomRoleUpdatedEvent = {
+  event: PostHogEventTypes.CustomRoleUpdated;
+  properties: {
+    roleId: string;
+    name?: string;
+    slug?: string;
+    scope: string;
+    permissionsUpdated: boolean;
+  };
+};
+
+export type TCustomRoleDeletedEvent = {
+  event: PostHogEventTypes.CustomRoleDeleted;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TOrgMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.OrgMembershipRoleUpdated;
+  properties: {
+    membershipId: string;
+    newRole: string;
+  };
+};
+
+export type TProjectMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipRoleUpdated;
+  properties: {
+    projectId: string;
+    userId: string;
+    roles: string[];
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -990,4 +1032,8 @@ export type TPostHogEvent = {
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
   | TCustomRoleCreatedEvent
+  | TCustomRoleUpdatedEvent
+  | TCustomRoleDeletedEvent
+  | TOrgMembershipRoleUpdatedEvent
+  | TProjectMembershipRoleUpdatedEvent
 );
