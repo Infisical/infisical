@@ -1,3 +1,5 @@
+{{- $usePVC := and .Values.persistence.enabled (or .Values.gateway.enrollment.method .Values.persistence.existingClaim) }}
+{{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
@@ -16,7 +18,7 @@ spec:
   {{- if .Values.gateway.enrollment.method }}
   replicas: 1
   {{- end }}
-  {{- if .Values.persistence.enabled }}
+  {{- if $usePVC }}
   strategy:
     type: Recreate
   {{- end }}
@@ -45,18 +47,17 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        {{- if .Values.persistence.enabled }}
+        {{- if $usePVC }}
         - name: gateway-data
           persistentVolumeClaim:
-            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-data" (include "infisical-gateway.fullname" .)) }}
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-credentials" (include "infisical-gateway.fullname" .)) }}
         {{- else if .Values.gateway.enrollment.method }}
         - name: gateway-credentials
           emptyDir: {}
         {{- end }}
         - name: infisical-cache
           emptyDir: {}
-        {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-        {{- if and (not .Values.persistence.enabled) (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
+        {{- if and (not $usePVC) (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
         - name: session-recordings
           emptyDir: {}
         {{- end }}
@@ -101,7 +102,7 @@ spec:
             {{- end }}
             - --pam-session-recording-path={{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
           volumeMounts:
-            {{- if .Values.persistence.enabled }}
+            {{- if $usePVC }}
             - name: gateway-data
               mountPath: /home/infisical
               subPath: credentials
@@ -111,8 +112,7 @@ spec:
             {{- end }}
             - name: infisical-cache
               mountPath: /var/lib/infisical
-            {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-            {{- if .Values.persistence.enabled }}
+            {{- if $usePVC }}
             - name: gateway-data
               mountPath: {{ $sessionPath }}
               subPath: session-recordings
@@ -135,8 +135,7 @@ spec:
           volumeMounts:
             - name: infisical-cache
               mountPath: /var/lib/infisical
-            {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-            {{- if .Values.persistence.enabled }}
+            {{- if $usePVC }}
             - name: gateway-data
               mountPath: {{ $sessionPath }}
               subPath: session-recordings
