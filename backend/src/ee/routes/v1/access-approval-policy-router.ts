@@ -337,6 +337,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorAuthMethod: req.permission.authMethod,
         ...req.body
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.AccessApprovalPolicyUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { policyId: req.params.policyId }
+      });
     }
   });
 

@@ -3,8 +3,10 @@ import { z } from "zod";
 import { EmailDomainsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -44,6 +46,13 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
             domain: emailDomain.domain
           }
         }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.EmailDomainCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { emailDomainId: emailDomain.id, domain: emailDomain.domain }
       });
 
       return { emailDomain };

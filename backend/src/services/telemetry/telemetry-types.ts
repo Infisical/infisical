@@ -1,4 +1,4 @@
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -15,6 +15,7 @@ import {
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -82,6 +83,7 @@ export enum PostHogEventTypes {
   SecretShared = "Secret Shared",
   SharedSecretViewed = "Shared Secret Viewed",
   SecretRollbackPerformed = "Secret Rollback Performed",
+  SecretRevertPerformed = "Secret Revert Performed",
   WebhookCreated = "Webhook Created",
   SecretReminderCreated = "Secret Reminder Created",
   EnvironmentCreated = "Environment Created",
@@ -162,7 +164,66 @@ export enum PostHogEventTypes {
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
   ProjectMembershipDeleted = "Project Membership Deleted",
   OrganizationCreated = "Organization Created",
-  SubOrganizationCreated = "Sub Organization Created"
+  SubOrganizationCreated = "Sub Organization Created",
+
+  // CMEK
+  CmekCreated = "CMEK Created",
+  CmekEncrypt = "CMEK Encrypt",
+  CmekDecrypt = "CMEK Decrypt",
+
+  // Secret Scanning v2
+  SecretScanningDataSourceCreated = "Secret Scanning Data Source Created",
+  SecretScanningScanCompleted = "Secret Scanning Scan Completed",
+  SecretScanningFindingResolved = "Secret Scanning Finding Resolved",
+
+  // Groups
+  GroupCreated = "Group Created",
+  GroupMemberAdded = "Group Member Added",
+  GroupAddedToProject = "Group Added to Project",
+
+  // Secret Tags
+  SecretTagCreated = "Secret Tag Created",
+
+  // Project Templates
+  ProjectTemplateCreated = "Project Template Created",
+  ProjectTemplateApplied = "Project Template Applied",
+
+  // KMIP
+  KmipClientCreated = "KMIP Client Created",
+  KmipOperation = "KMIP Operation",
+
+  // Audit Log Streams
+  AuditLogStreamCreated = "Audit Log Stream Created",
+
+  // Email Domains
+  EmailDomainCreated = "Email Domain Created",
+
+  // External Migrations
+  ExternalMigrationCreated = "External Migration Created",
+
+  // GitHub Org Sync
+  GitHubOrgSyncConfigured = "GitHub Org Sync Configured",
+  GitHubOrgSyncExecuted = "GitHub Org Sync Executed",
+
+  // Secret Validation Rules
+  SecretValidationRuleCreated = "Secret Validation Rule Created",
+
+  // Lifecycle gaps
+  SecretSyncFailed = "Secret Sync Failed",
+  SecretFolderUpdated = "Secret Folder Updated",
+  SecretFolderDeleted = "Secret Folder Deleted",
+  SecretImportUpdated = "Secret Import Updated",
+  SecretImportDeleted = "Secret Import Deleted",
+  WebhookUpdated = "Webhook Updated",
+  WebhookDeleted = "Webhook Deleted",
+  EnvironmentUpdated = "Environment Updated",
+  EnvironmentDeleted = "Environment Deleted",
+  AppConnectionUpdated = "App Connection Updated",
+  DynamicSecretUpdated = "Dynamic Secret Updated",
+  DynamicSecretLeaseRevoked = "Dynamic Secret Lease Revoked",
+  SecretApprovalPolicyUpdated = "Secret Approval Policy Updated",
+  AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
+  SecretRotationV2Failed = "Secret Rotation V2 Failed"
 }
 
 export type TSecretModifiedEvent = {
@@ -252,6 +313,7 @@ export type TProjectCreateEvent = {
   properties: {
     name: string;
     orgId: string;
+    projectType?: ProjectType;
   };
 };
 
@@ -349,6 +411,8 @@ export type TIntegrationSyncedEvent = {
     environment: string;
     secretPath: string;
     isManualSync: boolean;
+    secretCount?: number;
+    durationMs?: number;
     url?: string;
     app?: string;
     appId?: string;
@@ -546,6 +610,15 @@ export type TSharedSecretViewedEvent = {
   };
 };
 
+export type TSecretRevertPerformedEvent = {
+  event: PostHogEventTypes.SecretRevertPerformed;
+  properties: {
+    projectId: string;
+    commitId: string;
+    changesReverted?: number;
+  };
+};
+
 export type TSecretRollbackPerformedEvent = {
   event: PostHogEventTypes.SecretRollbackPerformed;
   properties: {
@@ -564,6 +637,7 @@ export type TWebhookCreatedEvent = {
     environment: string;
     webhookId: string;
     type: WebhookType;
+    eventTypes?: string[];
   };
 };
 
@@ -642,6 +716,7 @@ export type TSecretApprovalRequestMergedEvent = {
     requestId: string;
     projectId: string;
     requestSlug: string;
+    timeToMergeSeconds?: number;
   };
 };
 
@@ -761,6 +836,7 @@ export type TSSOConfiguredEvent = {
   properties: {
     provider: string;
     action: "create" | "update";
+    orgId?: string;
   };
 };
 
@@ -811,6 +887,8 @@ export type TSecretRotationV2ExecutedEvent = {
     projectId: string;
     environment: string;
     secretPath: string;
+    success?: boolean;
+    durationMs?: number;
   };
 };
 
@@ -819,6 +897,7 @@ export type TGatewayCertExchangedEvent = {
   properties: {
     certificateSerialNumber: string;
     identityId: string;
+    orgId?: string;
   };
 };
 
@@ -867,6 +946,7 @@ export type TPamSessionEndedEvent = {
   properties: {
     resourceType: string;
     projectId: string;
+    durationMs?: number;
   };
 };
 
@@ -1313,6 +1393,314 @@ export type TProjectMembershipDeletedEvent = {
   };
 };
 
+// CMEK events
+export type TCmekCreatedEvent = {
+  event: PostHogEventTypes.CmekCreated;
+  properties: {
+    keyId: string;
+    projectId: string;
+    encryptionAlgorithm: string;
+    keyUsage: string;
+  };
+};
+
+export type TCmekEncryptEvent = {
+  event: PostHogEventTypes.CmekEncrypt;
+  properties: {
+    keyId: string;
+    projectId: string;
+  };
+};
+
+export type TCmekDecryptEvent = {
+  event: PostHogEventTypes.CmekDecrypt;
+  properties: {
+    keyId: string;
+    projectId: string;
+  };
+};
+
+// Secret Scanning v2 events
+export type TSecretScanningDataSourceCreatedEvent = {
+  event: PostHogEventTypes.SecretScanningDataSourceCreated;
+  properties: {
+    dataSourceId: string;
+    projectId: string;
+    type: SecretScanningDataSource;
+  };
+};
+
+export type TSecretScanningScanCompletedEvent = {
+  event: PostHogEventTypes.SecretScanningScanCompleted;
+  properties: {
+    dataSourceId: string;
+    projectId: string;
+    type: SecretScanningDataSource;
+    findingCount: number;
+  };
+};
+
+export type TSecretScanningFindingResolvedEvent = {
+  event: PostHogEventTypes.SecretScanningFindingResolved;
+  properties: {
+    findingId: string;
+    projectId: string;
+  };
+};
+
+// Group events
+export type TGroupCreatedEvent = {
+  event: PostHogEventTypes.GroupCreated;
+  properties: {
+    groupId: string;
+    name: string;
+  };
+};
+
+export type TGroupMemberAddedEvent = {
+  event: PostHogEventTypes.GroupMemberAdded;
+  properties: {
+    groupId: string;
+    memberType: "user" | "identity";
+  };
+};
+
+export type TGroupAddedToProjectEvent = {
+  event: PostHogEventTypes.GroupAddedToProject;
+  properties: {
+    groupId: string;
+    projectId: string;
+  };
+};
+
+// Secret Tag event
+export type TSecretTagCreatedEvent = {
+  event: PostHogEventTypes.SecretTagCreated;
+  properties: {
+    projectId: string;
+    tagId: string;
+  };
+};
+
+// Project Template events
+export type TProjectTemplateCreatedEvent = {
+  event: PostHogEventTypes.ProjectTemplateCreated;
+  properties: {
+    templateId: string;
+    name: string;
+  };
+};
+
+export type TProjectTemplateAppliedEvent = {
+  event: PostHogEventTypes.ProjectTemplateApplied;
+  properties: {
+    templateId: string;
+    projectId: string;
+  };
+};
+
+// KMIP events
+export type TKmipClientCreatedEvent = {
+  event: PostHogEventTypes.KmipClientCreated;
+  properties: {
+    clientId: string;
+    projectId: string;
+  };
+};
+
+export type TKmipOperationEvent = {
+  event: PostHogEventTypes.KmipOperation;
+  properties: {
+    operationType: string;
+    projectId: string;
+  };
+};
+
+// Audit Log Stream event
+export type TAuditLogStreamCreatedEvent = {
+  event: PostHogEventTypes.AuditLogStreamCreated;
+  properties: {
+    streamId: string;
+    destinationType: string;
+  };
+};
+
+// Email Domain event
+export type TEmailDomainCreatedEvent = {
+  event: PostHogEventTypes.EmailDomainCreated;
+  properties: {
+    emailDomainId: string;
+    domain: string;
+  };
+};
+
+// External Migration event
+export type TExternalMigrationCreatedEvent = {
+  event: PostHogEventTypes.ExternalMigrationCreated;
+  properties: {
+    sourcePlatform: string;
+  };
+};
+
+// GitHub Org Sync events
+export type TGitHubOrgSyncConfiguredEvent = {
+  event: PostHogEventTypes.GitHubOrgSyncConfigured;
+  properties: {
+    githubOrgName?: string;
+    isActive?: boolean;
+  };
+};
+
+export type TGitHubOrgSyncExecutedEvent = {
+  event: PostHogEventTypes.GitHubOrgSyncExecuted;
+  properties: {
+    totalUsers?: number;
+    createdTeams?: number;
+    updatedTeams?: number;
+    syncDuration?: number;
+  };
+};
+
+// Secret Validation Rule event
+export type TSecretValidationRuleCreatedEvent = {
+  event: PostHogEventTypes.SecretValidationRuleCreated;
+  properties: {
+    ruleId: string;
+    projectId: string;
+  };
+};
+
+// Lifecycle gap events
+export type TSecretSyncFailedEvent = {
+  event: PostHogEventTypes.SecretSyncFailed;
+  properties: {
+    syncId: string;
+    syncDestination: string;
+    projectId: string;
+  };
+};
+
+export type TSecretFolderUpdatedEvent = {
+  event: PostHogEventTypes.SecretFolderUpdated;
+  properties: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+  };
+};
+
+export type TSecretFolderDeletedEvent = {
+  event: PostHogEventTypes.SecretFolderDeleted;
+  properties: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+  };
+};
+
+export type TSecretImportUpdatedEvent = {
+  event: PostHogEventTypes.SecretImportUpdated;
+  properties: {
+    projectId: string;
+    importId: string;
+  };
+};
+
+export type TSecretImportDeletedEvent = {
+  event: PostHogEventTypes.SecretImportDeleted;
+  properties: {
+    projectId: string;
+    importId: string;
+  };
+};
+
+export type TWebhookUpdatedEvent = {
+  event: PostHogEventTypes.WebhookUpdated;
+  properties: {
+    projectId: string;
+    webhookId: string;
+  };
+};
+
+export type TWebhookDeletedEvent = {
+  event: PostHogEventTypes.WebhookDeleted;
+  properties: {
+    projectId: string;
+    webhookId: string;
+  };
+};
+
+export type TEnvironmentUpdatedEvent = {
+  event: PostHogEventTypes.EnvironmentUpdated;
+  properties: {
+    projectId: string;
+    environmentId: string;
+  };
+};
+
+export type TEnvironmentDeletedEvent = {
+  event: PostHogEventTypes.EnvironmentDeleted;
+  properties: {
+    projectId: string;
+    environmentId: string;
+  };
+};
+
+export type TAppConnectionUpdatedEvent = {
+  event: PostHogEventTypes.AppConnectionUpdated;
+  properties: {
+    appConnectionId: string;
+    app: AppConnection;
+  };
+};
+
+export type TDynamicSecretUpdatedEvent = {
+  event: PostHogEventTypes.DynamicSecretUpdated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TDynamicSecretLeaseRevokedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseRevoked;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+  };
+};
+
+export type TSecretApprovalPolicyUpdatedEvent = {
+  event: PostHogEventTypes.SecretApprovalPolicyUpdated;
+  properties: {
+    policyId: string;
+    projectId?: string;
+  };
+};
+
+export type TAccessApprovalPolicyUpdatedEvent = {
+  event: PostHogEventTypes.AccessApprovalPolicyUpdated;
+  properties: {
+    policyId: string;
+    projectId?: string;
+  };
+};
+
+export type TSecretRotationV2FailedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Failed;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    projectId: string;
+  };
+};
+
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -1377,6 +1765,7 @@ export type TPostHogEvent = {
   | TSecretSharedEvent
   | TSharedSecretViewedEvent
   | TSecretRollbackPerformedEvent
+  | TSecretRevertPerformedEvent
   | TWebhookCreatedEvent
   | TSecretReminderCreatedEvent
   | TEnvironmentCreatedEvent
@@ -1448,4 +1837,39 @@ export type TPostHogEvent = {
   | TProjectMembershipDeletedEvent
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
+  | TCmekCreatedEvent
+  | TCmekEncryptEvent
+  | TCmekDecryptEvent
+  | TSecretScanningDataSourceCreatedEvent
+  | TSecretScanningScanCompletedEvent
+  | TSecretScanningFindingResolvedEvent
+  | TGroupCreatedEvent
+  | TGroupMemberAddedEvent
+  | TGroupAddedToProjectEvent
+  | TSecretTagCreatedEvent
+  | TProjectTemplateCreatedEvent
+  | TProjectTemplateAppliedEvent
+  | TKmipClientCreatedEvent
+  | TKmipOperationEvent
+  | TAuditLogStreamCreatedEvent
+  | TEmailDomainCreatedEvent
+  | TExternalMigrationCreatedEvent
+  | TGitHubOrgSyncConfiguredEvent
+  | TGitHubOrgSyncExecutedEvent
+  | TSecretValidationRuleCreatedEvent
+  | TSecretSyncFailedEvent
+  | TSecretFolderUpdatedEvent
+  | TSecretFolderDeletedEvent
+  | TSecretImportUpdatedEvent
+  | TSecretImportDeletedEvent
+  | TWebhookUpdatedEvent
+  | TWebhookDeletedEvent
+  | TEnvironmentUpdatedEvent
+  | TEnvironmentDeletedEvent
+  | TAppConnectionUpdatedEvent
+  | TDynamicSecretUpdatedEvent
+  | TDynamicSecretLeaseRevokedEvent
+  | TSecretApprovalPolicyUpdatedEvent
+  | TAccessApprovalPolicyUpdatedEvent
+  | TSecretRotationV2FailedEvent
 );

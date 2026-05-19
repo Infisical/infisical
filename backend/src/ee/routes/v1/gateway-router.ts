@@ -90,7 +90,8 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             certificateSerialNumber: gatewayCertificates.serialNumber,
-            identityId: req.permission.id
+            identityId: req.permission.id,
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send GatewayCertExchanged telemetry event"));

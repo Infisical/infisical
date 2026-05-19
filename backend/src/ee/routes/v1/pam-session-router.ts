@@ -268,6 +268,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         });
       }
 
+      const durationMs = session.createdAt ? Date.now() - new Date(session.createdAt).getTime() : undefined;
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.PamSessionEnded,
@@ -275,7 +276,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             resourceType: session.resourceType,
-            projectId
+            projectId,
+            durationMs
           }
         })
         .catch(() => {});

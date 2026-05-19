@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
@@ -10,6 +11,7 @@ import {
   ExternalMigrationImportStatus,
   VaultMappingType
 } from "@app/services/external-migration/external-migration-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MB25_IN_BYTES = 26214400;
 
@@ -59,6 +61,13 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ExternalMigrationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { sourcePlatform: "env-key" }
+      });
     }
   });
 
@@ -87,6 +96,13 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ExternalMigrationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { sourcePlatform: "hashicorp-vault" }
       });
     }
   });

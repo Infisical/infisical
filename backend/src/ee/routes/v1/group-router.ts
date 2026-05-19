@@ -15,9 +15,11 @@ import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const GroupIdentityResponseSchema = IdentitiesSchema.pick({
   id: true,
@@ -70,6 +72,16 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
             slug: group.slug,
             role: req.body.role
           }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.GroupCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          groupId: group.id,
+          name: group.name
         }
       });
 
@@ -574,6 +586,13 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.GroupMemberAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { groupId: group.id, memberType: "user" }
+      });
+
       return user;
     }
   });
@@ -620,6 +639,13 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
             identityId: identity.id
           }
         }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.GroupMemberAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { groupId: group.id, memberType: "identity" }
       });
 
       return identity;

@@ -3,8 +3,10 @@ import { z } from "zod";
 import { GithubOrgSyncConfigsSchema } from "@app/db/schemas";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   isActive: true,
@@ -42,6 +44,13 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         githubOrgName: req.body.githubOrgName,
         githubOrgAccessToken: req.body.githubOrgAccessToken,
         isActive: req.body.isActive
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.GitHubOrgSyncConfigured,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { githubOrgName: req.body.githubOrgName, isActive: req.body.isActive }
       });
 
       return { githubOrgSyncConfig };
@@ -149,6 +158,18 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const result = await server.services.githubOrgSync.syncAllTeams({
         orgPermission: req.permission
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.GitHubOrgSyncExecuted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          totalUsers: result.totalUsers,
+          createdTeams: result.createdTeams.length,
+          updatedTeams: result.updatedTeams.length,
+          syncDuration: result.syncDuration
+        }
       });
 
       return {

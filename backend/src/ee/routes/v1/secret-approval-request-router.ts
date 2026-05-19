@@ -176,6 +176,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         });
       }
 
+      const timeToMergeSeconds = Math.round((Date.now() - new Date(approval.createdAt).getTime()) / 1000);
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalRequestMerged,
@@ -185,6 +186,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
             requestId: approval.id,
             projectId,
             requestSlug: approval.slug,
+            timeToMergeSeconds,
             ...req.auditLogInfo
           }
         })
