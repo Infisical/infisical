@@ -53,10 +53,17 @@ export const CertManagerSelectInstanceModal = ({
         <DialogHeader className="gap-4">
           <DialogTitle>Select a Certificate Manager instance</DialogTitle>
           <DialogDescription>
-            Support for multiple Certificate Manager projects per organization is being deprecated.
-            Migrate your certificate authorities, policies, and profiles into the
-            organization&apos;s default instance, secondary projects remain accessible during the
-            transition period.
+            You have multiple instances from legacy projects. Select your{" "}
+            <span className="font-medium">organization default</span> for ongoing work. This is
+            where new CAs, profiles, and Applications live. Legacy projects are still accessible.{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/pki/migration"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary-500 hover:underline"
+            >
+              Migration guide
+            </a>
           </DialogDescription>
         </DialogHeader>
 

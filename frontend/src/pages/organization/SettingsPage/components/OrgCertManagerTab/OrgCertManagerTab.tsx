@@ -142,7 +142,15 @@ export const OrgCertManagerTab = () => {
           </AlertTitle>
           <AlertDescription>
             Select the project you want to keep as your active instance. All members and
-            integrations will resolve to it going forward.
+            integrations will resolve to it going forward.{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/pki/migration"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-mineshaft-200"
+            >
+              Migration guide
+            </a>
           </AlertDescription>
         </Alert>
       )}

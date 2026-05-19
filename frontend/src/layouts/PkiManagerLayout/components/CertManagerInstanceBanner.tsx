@@ -17,22 +17,33 @@ export const CertManagerInstanceBanner = () => {
   const isViewingActive = activeProject?.id === projectId;
 
   const message = isViewingActive
-    ? "Support for multiple Certificate Manager projects per organization is being deprecated. This is the active instance, migrate certificate authorities, policies, and profiles from secondary projects here."
-    : `This Certificate Manager project is scheduled for retirement. The active instance is "${activeProject?.name ?? "not set"}", migrate your certificate authorities, policies, and profiles there to preserve them.`;
+    ? "This is your organization's active instance. Use this for all work going forward."
+    : `This project will be retired. Migrate your CAs, policies, and profiles to your active instance "${activeProject?.name ?? "not set"}", then update your clients and workflows to use it instead.`;
 
   return (
     <div className="flex w-full items-start gap-x-2 border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
       <FontAwesomeIcon icon={faWarning} className="mt-0.5 shrink-0 text-base text-yellow" />
       <p>
         {message}{" "}
-        <Link
-          to="/organizations/$orgId/settings"
-          params={{ orgId: currentOrg.id }}
-          search={{ selectedTab: "product-settings" }}
-          className="underline underline-offset-2 hover:text-yellow"
-        >
-          Manage instances.
-        </Link>
+        {isViewingActive ? (
+          <Link
+            to="/organizations/$orgId/settings"
+            params={{ orgId: currentOrg.id }}
+            search={{ selectedTab: "product-settings" }}
+            className="underline underline-offset-2 hover:text-yellow"
+          >
+            Manage instances
+          </Link>
+        ) : (
+          <a
+            href="https://infisical.com/docs/documentation/platform/pki/migration"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-yellow"
+          >
+            Migration guide
+          </a>
+        )}
       </p>
     </div>
   );
