@@ -52,7 +52,7 @@ import {
   OrgPermissionSubjects
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
+import { escapeHandlebarsMissingDict, expandLegacyForbidActions, validateOrgSSO } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
@@ -91,35 +91,36 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 };
 
 const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
-  const rules = projectUserRoles
-    .map(({ role, permissions }) => {
-      switch (role) {
-        case ProjectMembershipRole.Admin:
-          return projectAdminPermissions;
-        case ProjectMembershipRole.Member:
-          return projectMemberPermissions;
-        case ProjectMembershipRole.Viewer:
-          return projectViewerPermission;
-        case ProjectMembershipRole.NoAccess:
-          return projectNoAccessPermissions;
-        case ProjectMembershipRole.SshHostBootstrapper:
-          return sshHostBootstrapPermissions;
-        case ProjectMembershipRole.KmsCryptographicOperator:
-          return cryptographicOperatorPermissions;
-        case ProjectMembershipRole.Custom: {
-          return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
-            permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-          );
+  const rules = expandLegacyForbidActions(
+    projectUserRoles
+      .map(({ role, permissions }) => {
+        switch (role) {
+          case ProjectMembershipRole.Admin:
+            return projectAdminPermissions;
+          case ProjectMembershipRole.Member:
+            return projectMemberPermissions;
+          case ProjectMembershipRole.Viewer:
+            return projectViewerPermission;
+          case ProjectMembershipRole.NoAccess:
+            return projectNoAccessPermissions;
+          case ProjectMembershipRole.SshHostBootstrapper:
+            return sshHostBootstrapPermissions;
+          case ProjectMembershipRole.KmsCryptographicOperator:
+            return cryptographicOperatorPermissions;
+          case ProjectMembershipRole.Custom: {
+            return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
+              permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
+            );
+          }
+          default:
+            throw new NotFoundError({
+              name: "ProjectRoleInvalid",
+              message: `Project role '${role}' not found`
+            });
         }
-        default:
-          throw new NotFoundError({
-            name: "ProjectRoleInvalid",
-            message: `Project role '${role}' not found`
-          });
-      }
-    })
-    .reduce((prev, curr) => prev.concat(curr), [])
-    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
+      })
+      .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[])
+  ).sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
 };
