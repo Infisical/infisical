@@ -118,6 +118,91 @@ export const kmipOperationCounter = infisicalMeter.createCounter("infisical.kmip
   unit: "{operation}"
 });
 
+// Queue-level metrics (framework view via BullMQ events): authoritative timing,
+// catches framework-level failures (stalled jobs, lock loss, retries exhausted).
+export const queueJobDurationHistogram = infisicalMeter.createHistogram("infisical.queue.job.duration", {
+  description: "Total job processing duration as observed by the queue framework",
+  unit: "ms"
+});
+
+export const queueJobWaitDurationHistogram = infisicalMeter.createHistogram("infisical.queue.job.wait.duration", {
+  description: "Time a job spent waiting in the queue before being picked up",
+  unit: "ms"
+});
+
+export const queueJobFailureCounter = infisicalMeter.createCounter("infisical.queue.job.failure.count", {
+  description: "Job failures observed by the queue framework (includes stalled jobs and lock loss)",
+  unit: "{failure}"
+});
+
+export const recordQueueJobMetric = (params: {
+  queueName: string;
+  jobName: string;
+  durationMs: number;
+  waitMs?: number;
+  status: "success" | "failure";
+  error?: unknown;
+}) => {
+  const appCfg = getConfig();
+  if (!appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+
+  const attributes: Record<string, string> = {
+    "infisical.queue.name": params.queueName,
+    "infisical.queue.job.name": params.jobName,
+    "infisical.queue.job.status": params.status
+  };
+
+  queueJobDurationHistogram.record(params.durationMs, attributes);
+
+  if (typeof params.waitMs === "number") {
+    queueJobWaitDurationHistogram.record(params.waitMs, {
+      "infisical.queue.name": params.queueName,
+      "infisical.queue.job.name": params.jobName
+    });
+  }
+
+  if (params.status === "failure") {
+    const errorType = params.error instanceof Error ? params.error.constructor.name : "Unknown";
+    queueJobFailureCounter.add(1, { ...attributes, "error.type": errorType });
+  }
+};
+
+// Handler-level metrics (application view via jobFn wrapper): handler body timing
+// and exceptions raised by application code only.
+export const queueHandlerDurationHistogram = infisicalMeter.createHistogram("infisical.queue.handler.duration", {
+  description: "Duration of the queue handler application code",
+  unit: "ms"
+});
+
+export const queueHandlerFailureCounter = infisicalMeter.createCounter("infisical.queue.handler.failure.count", {
+  description: "Exceptions raised by queue handler application code",
+  unit: "{failure}"
+});
+
+export const recordQueueHandlerMetric = (params: {
+  queueName: string;
+  jobName: string;
+  durationMs: number;
+  status: "success" | "failure";
+  error?: unknown;
+}) => {
+  const appCfg = getConfig();
+  if (!appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+
+  const attributes: Record<string, string> = {
+    "infisical.queue.name": params.queueName,
+    "infisical.queue.job.name": params.jobName,
+    "infisical.queue.handler.status": params.status
+  };
+
+  queueHandlerDurationHistogram.record(params.durationMs, attributes);
+
+  if (params.status === "failure") {
+    const errorType = params.error instanceof Error ? params.error.constructor.name : "Unknown";
+    queueHandlerFailureCounter.add(1, { ...attributes, "error.type": errorType });
+  }
+};
+
 export const recordKmipOperationMetric = (params: {
   operationType: KmipOperationType;
   orgId: string;

@@ -29,6 +29,7 @@ import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
+import { recordQueueHandlerMetric, recordQueueJobMetric } from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
@@ -691,12 +692,65 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       return;
     }
 
-    workerContainer[name] = new Worker(name, jobFn, {
+    // Handler-level metrics: wraps jobFn so we time just the application code and
+    // count exceptions raised by it. A thrown error here also surfaces to the queue
+    // layer via the "failed" event below.
+    const handlerWrappedJobFn: typeof jobFn = async (job, token) => {
+      const startTime = performance.now();
+      try {
+        await jobFn(job, token);
+        recordQueueHandlerMetric({
+          queueName: name,
+          jobName: job.name,
+          durationMs: performance.now() - startTime,
+          status: "success"
+        });
+      } catch (err) {
+        recordQueueHandlerMetric({
+          queueName: name,
+          jobName: job.name,
+          durationMs: performance.now() - startTime,
+          status: "failure",
+          error: err
+        });
+        throw err;
+      }
+    };
+
+    const worker = new Worker(name, handlerWrappedJobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...fipsSettings,
       ...queueSettings,
       connection
     });
+
+    // Queue-level metrics: BullMQ's authoritative timing + wait time, and failures
+    // that may originate outside handler code (stalled jobs, lock loss).
+    worker.on("completed", (job) => {
+      if (!job.processedOn || !job.finishedOn) return;
+      recordQueueJobMetric({
+        queueName: name,
+        jobName: job.name,
+        durationMs: job.finishedOn - job.processedOn,
+        waitMs: job.timestamp ? job.processedOn - job.timestamp : undefined,
+        status: "success"
+      });
+    });
+
+    worker.on("failed", (job, err) => {
+      // job may be undefined for framework-level failures (e.g. lock loss before job hydration)
+      const processedOn = job?.processedOn;
+      recordQueueJobMetric({
+        queueName: name,
+        jobName: job?.name ?? "unknown",
+        durationMs: processedOn ? Date.now() - processedOn : 0,
+        waitMs: job?.timestamp && processedOn ? processedOn - job.timestamp : undefined,
+        status: "failure",
+        error: err
+      });
+    });
+
+    workerContainer[name] = worker;
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
