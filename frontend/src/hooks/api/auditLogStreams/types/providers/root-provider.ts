@@ -3,4 +3,6 @@ export type TRootProviderLogStream = {
   orgId: string;
   createdAt: string;
   updatedAt: string;
+  lastErrorMessage?: string | null;
+  lastErrorTimestamp?: string | null;
 };

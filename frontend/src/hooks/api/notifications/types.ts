@@ -21,7 +21,8 @@ export enum NotificationType {
   RELAY_HEALTH_ALERT = "relay-health-alert",
   APPROVAL_REQUIRED = "approval-required",
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
-  CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed"
+  CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
+  AUDIT_LOG_STREAM_FAILED = "audit-log-stream-failed"
 }
 
 export interface TUserNotification {
@@ -37,7 +38,8 @@ export interface TUserNotification {
 
 export const CRITICAL_NOTIFICATION_TYPES: NotificationType[] = [
   NotificationType.GATEWAY_HEALTH_ALERT,
-  NotificationType.RELAY_HEALTH_ALERT
+  NotificationType.RELAY_HEALTH_ALERT,
+  NotificationType.AUDIT_LOG_STREAM_FAILED
 ];
 
 export const isCriticalNotification = (type: NotificationType): boolean =>
