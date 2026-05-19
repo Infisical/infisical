@@ -5,8 +5,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { registerPkiApplicationAlertRoutes } from "./pki-application-alert-router";
 import { registerPkiApplicationEnrollmentRoutes } from "./pki-application-enrollment-routers";
@@ -66,6 +68,15 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
             name: application.name,
             profileIds: req.body.profileIds
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
         }
       });
 
@@ -312,6 +323,15 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         event: {
           type: EventType.DELETE_PKI_APPLICATION,
           metadata: { applicationId: application.id, name: application.name }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
         }
       });
 

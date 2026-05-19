@@ -7,6 +7,7 @@ import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -18,6 +19,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const CertificateProfileDefaultsResponseSchema = z
   .object({
@@ -253,6 +255,16 @@ export const registerCertificateProfilesRouter = async (
             enrollmentType: certificateProfile.enrollmentType,
             issuerType: certificateProfile.issuerType
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateProfileCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          issuerType: certificateProfile.issuerType
         }
       });
 
@@ -708,6 +720,15 @@ export const registerCertificateProfilesRouter = async (
             certificateProfileId: certificateProfile.id,
             name: certificateProfile.slug
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateProfileDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
         }
       });
 

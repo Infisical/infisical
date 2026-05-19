@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -11,6 +12,7 @@ import {
   TCertificateAuthority,
   TCertificateAuthorityInput
 } from "@app/services/certificate-authority/certificate-authority-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerCertificateAuthorityEndpoints = <
   T extends TCertificateAuthority,
@@ -158,6 +160,16 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CaCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          caType,
+          orgId: req.permission.orgId
+        }
+      });
+
       return certificateAuthority;
     }
   });
@@ -245,6 +257,16 @@ export const registerCertificateAuthorityEndpoints = <
             name: certificateAuthority.name,
             caId: certificateAuthority.id
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CaDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          caType,
+          orgId: req.permission.orgId
         }
       });
 

@@ -9,6 +9,8 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
+import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TPkiSubscriberDALFactory } from "./pki-subscriber-dal";
 import { PkiSubscriberStatus, SubscriberOperationStatus } from "./pki-subscriber-types";
 
@@ -21,6 +23,7 @@ type TPkiSubscriberQueueServiceFactoryDep = {
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
   certificateDAL: TCertificateDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const pkiSubscriberQueueServiceFactory = ({
@@ -31,7 +34,8 @@ export const pkiSubscriberQueueServiceFactory = ({
   certificateAuthorityQueue,
   internalCaFns,
   certificateDAL,
-  auditLogService
+  auditLogService,
+  telemetryService
 }: TPkiSubscriberQueueServiceFactoryDep) => {
   queueService.start(QueueName.PkiSubscriber, async (job) => {
     if (job.name === QueueJobs.PkiSubscriberDailyAutoRenewal) {
@@ -148,6 +152,14 @@ export const pkiSubscriberQueueServiceFactory = ({
                 lastOperationStatus: SubscriberOperationStatus.FAILED,
                 lastOperationMessage: error instanceof Error ? error.message : "Unknown error",
                 lastOperationAt: new Date()
+              });
+
+              await telemetryService.sendPostHogEvents({
+                event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                distinctId: `platform/${subscriber.projectId}`,
+                properties: {
+                  orgId: subscriber.projectId
+                }
               });
             }
           })
