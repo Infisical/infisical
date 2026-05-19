@@ -298,25 +298,35 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
         </Steps>
     </Accordion>
     <Accordion title="Palo Alto Networks XSIAM">
-        You can stream Infisical audit logs to [Palo Alto Networks XSIAM](https://www.paloaltonetworks.com/cortex/cortex-xsiam) using a **Custom** log stream. XSIAM's HTTP Log Collector accepts JSON payloads over HTTPS, making it straightforward to connect.
-
-        For a full walkthrough, see the dedicated [Stream to Palo Alto Networks XSIAM](/documentation/platform/audit-log-streams/audit-log-streams-with-xsiam) guide.
+        [XSIAM](https://www.paloaltonetworks.com/cortex/cortex-xsiam) accepts log data from external sources via it's **Custom HTTP Log Collector**, which exposes a unique HTTPS endpoint secured by an API key. 
+        
+        Infisical's **Custom** audit log stream provider sends JSON-formatted audit events to that endpoint, making the integration straightforward.
 
         <Steps>
             <Step title="Create an HTTP Log Collector in XSIAM">
-                In your XSIAM tenant, navigate to **Settings** → **Configurations** → **Data Management** → **Integrations & Collectors**.
+                In your XSIAM tenant, follow Palo Alto's guide to [Set up an HTTP Log Collector to Receive Logs](https://docs-cortex.paloaltonetworks.com/r/Cortex-XSIAM/Cortex-XSIAM-Documentation/Set-up-an-HTTP-Log-Collector-to-Receive-Logs).
 
-                Under **Custom - HTTP based Collection**, click **+ New Instance**.
+                Configure the collector:
 
-                Provide a name (e.g., `Infisical`), set **Vendor** to `Infisical`, and **Product** to `Audit Logs`. Click **Save**.
+                | Field | Value |
+                |-------|-------|
+                | **Name** | A descriptive name, e.g. `Infisical Audit Logs` |
+                | **Vendor** | `Infisical` |
+                | **Product** | `Audit Logs` |
 
-                Once saved, copy the **Collector URL** and **API Key** shown on the collector details page.
+                Click **Save**. XSIAM will generate a **Collector URL** and an **API Key** for this instance. Copy both values — you'll need them in the next step.
+
+                <Note>
+                    The API key is only shown once at creation time. Store it in a secure location before leaving the page.
+                </Note>            
             </Step>
             <Step title="Create Audit Log Stream on Infisical">
                 On Infisical, create a new audit log stream and select the **Custom** option.
 
                 1. Set the **Endpoint URL** to your XSIAM Collector URL
                 2. Add a header with key `Authorization` and value set to your XSIAM API key
+
+                ![custom provider](/images/platform/audit-log-streams/custom-provider.png)
 
                 Once you're finished, click **Create Log Stream**.
             </Step>
