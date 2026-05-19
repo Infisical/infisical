@@ -168,12 +168,14 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretImportUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { importId: secretImport.id, projectId: req.body.projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretImportUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { importId: secretImport.id, projectId: req.body.projectId }
+        })
+        .catch(() => {});
 
       return { message: "Successfully updated secret import", secretImport };
     }
@@ -242,12 +244,14 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretImportDeleted,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { importId: secretImport.id, projectId: req.body.projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretImportDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { importId: secretImport.id, projectId: req.body.projectId }
+        })
+        .catch(() => {});
 
       return { message: "Successfully deleted secret import", secretImport };
     }

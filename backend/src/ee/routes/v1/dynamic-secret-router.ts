@@ -235,12 +235,14 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.DynamicSecretUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { provider: dynamicSecret.type, projectId, environment, secretPath }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { provider: dynamicSecret.type, projectId, environment, secretPath }
+        })
+        .catch(() => {});
 
       return { dynamicSecret };
     }

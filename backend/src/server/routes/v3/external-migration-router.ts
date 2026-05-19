@@ -62,12 +62,14 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.ExternalMigrationCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { sourcePlatform: "env-key" }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ExternalMigrationCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { sourcePlatform: "env-key" }
+        })
+        .catch(() => {});
     }
   });
 
@@ -98,12 +100,14 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         ...req.body
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.ExternalMigrationCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { sourcePlatform: "hashicorp-vault" }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ExternalMigrationCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { sourcePlatform: "hashicorp-vault" }
+        })
+        .catch(() => {});
     }
   });
 
@@ -663,6 +667,16 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actor: req.permission,
         auditLogInfo: req.auditLogInfo
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ExternalMigrationCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { sourcePlatform: "doppler" }
+        })
+        .catch(() => {});
+
       return result;
     }
   });

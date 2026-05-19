@@ -77,12 +77,14 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         req.permission
       );
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.AuditLogStreamCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { streamId: auditLogStream.id, destinationType: provider }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
 
       return { auditLogStream };
     }

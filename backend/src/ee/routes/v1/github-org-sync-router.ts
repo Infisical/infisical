@@ -46,12 +46,14 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         isActive: req.body.isActive
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.GitHubOrgSyncConfigured,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { githubOrgName: req.body.githubOrgName, isActive: req.body.isActive }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { githubOrgName: req.body.githubOrgName, isActive: req.body.isActive }
+        })
+        .catch(() => {});
 
       return { githubOrgSyncConfig };
     }
@@ -160,17 +162,19 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         orgPermission: req.permission
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.GitHubOrgSyncExecuted,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          totalUsers: result.totalUsers,
-          createdTeams: result.createdTeams.length,
-          updatedTeams: result.updatedTeams.length,
-          syncDuration: result.syncDuration
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncExecuted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            totalUsers: result.totalUsers,
+            createdTeams: result.createdTeams.length,
+            updatedTeams: result.updatedTeams.length,
+            syncDuration: result.syncDuration
+          }
+        })
+        .catch(() => {});
 
       return {
         totalUsers: result.totalUsers,

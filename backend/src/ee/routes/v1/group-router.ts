@@ -75,15 +75,17 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.GroupCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          groupId: group.id,
-          name: group.name
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            name: group.name
+          }
+        })
+        .catch(() => {});
 
       return group;
     }
@@ -586,12 +588,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.GroupMemberAdded,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { groupId: group.id, memberType: "user" }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId: group.id, memberType: "user" }
+        })
+        .catch(() => {});
 
       return user;
     }
@@ -641,12 +645,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.GroupMemberAdded,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { groupId: group.id, memberType: "identity" }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId: group.id, memberType: "identity" }
+        })
+        .catch(() => {});
 
       return identity;
     }

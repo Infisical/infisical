@@ -551,7 +551,6 @@ export const registerSecretRotationEndpoints = <
             projectId: secretRotation.projectId,
             environment: secretRotation.environment.slug,
             secretPath: secretRotation.folder.path,
-            success: true,
             durationMs: Date.now() - rotationStartTime
           }
         })

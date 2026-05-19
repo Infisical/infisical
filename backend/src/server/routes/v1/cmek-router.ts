@@ -131,17 +131,19 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CmekCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: permission.orgId,
-        properties: {
-          keyId: cmek.id,
-          projectId,
-          encryptionAlgorithm,
-          keyUsage
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: {
+            keyId: cmek.id,
+            projectId,
+            encryptionAlgorithm,
+            keyUsage
+          }
+        })
+        .catch(() => {});
 
       return { key: cmek };
     }
@@ -436,12 +438,14 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CmekEncrypt,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: permission.orgId,
-        properties: { keyId, projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekEncrypt,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
 
       return { ciphertext };
     }
@@ -891,12 +895,14 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CmekDecrypt,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: permission.orgId,
-        properties: { keyId, projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekDecrypt,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
 
       return { plaintext };
     }

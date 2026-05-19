@@ -994,7 +994,6 @@ export const secretQueueFactory = ({
           }
 
           // akhilmhdh: this try catch is for catching integration error and saving it in db
-          const syncStartTime = Date.now();
           try {
             // akhilmhdh: this needs to changed later to be more easier to use
             // at present this is not at all extendable like to add a new parameter for just one integration need to modify multiple places
@@ -1046,8 +1045,6 @@ export const secretQueueFactory = ({
               }
             }
 
-            const syncedSecrets = Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets;
-
             await telemetryService.sendPostHogEvents({
               event: PostHogEventTypes.IntegrationSynced,
               distinctId: telemetryDistinctId,
@@ -1067,9 +1064,7 @@ export const secretQueueFactory = ({
                 targetServiceId: integration.targetServiceId ?? undefined,
                 path: integration.path ?? undefined,
                 region: integration.region ?? undefined,
-                isManualSync: isManual ?? false,
-                secretCount: Object.keys(syncedSecrets).length,
-                durationMs: Date.now() - syncStartTime
+                isManualSync: isManual ?? false
               }
             });
 
@@ -1136,19 +1131,6 @@ export const secretQueueFactory = ({
               syncMessage: errorLog,
               isSynced: false
             });
-
-            void telemetryService
-              .sendPostHogEvents({
-                event: PostHogEventTypes.IntegrationFailed,
-                distinctId: `platform/${projectId}`,
-                organizationId: project.orgId,
-                properties: {
-                  projectId,
-                  integrationId: integration.id,
-                  integration: integration.integration
-                }
-              })
-              .catch(() => {});
 
             integrationsFailedToSync.push({
               integrationId: integration.id,

@@ -155,12 +155,14 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         secretPolicyId: req.params.sapId
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretApprovalPolicyUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { policyId: req.params.sapId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretApprovalPolicyUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { policyId: req.params.sapId }
+        })
+        .catch(() => {});
 
       return { approval };
     }

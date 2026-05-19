@@ -236,16 +236,18 @@ export const registerSecretScanningEndpoints = <
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretScanningDataSourceCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          dataSourceId: dataSource.id,
-          projectId: dataSource.projectId,
-          type
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretScanningDataSourceCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            dataSourceId: dataSource.id,
+            projectId: dataSource.projectId,
+            type
+          }
+        })
+        .catch(() => {});
 
       return { dataSource };
     }

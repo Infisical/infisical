@@ -196,12 +196,14 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       });
 
       if (body.status === SecretScanningFindingStatus.Resolved) {
-        void server.services.telemetry.sendPostHogEvents({
-          event: PostHogEventTypes.SecretScanningFindingResolved,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: permission.orgId,
-          properties: { findingId, projectId }
-        });
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.SecretScanningFindingResolved,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: permission.orgId,
+            properties: { findingId, projectId }
+          })
+          .catch(() => {});
       }
 
       return { finding };

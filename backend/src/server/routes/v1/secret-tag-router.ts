@@ -145,12 +145,14 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretTagCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { projectId: req.params.projectId, tagId: tag.id }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretTagCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { projectId: req.params.projectId, tagId: tag.id }
+        })
+        .catch(() => {});
 
       return { tag };
     }

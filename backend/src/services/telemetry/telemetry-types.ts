@@ -411,8 +411,6 @@ export type TIntegrationSyncedEvent = {
     environment: string;
     secretPath: string;
     isManualSync: boolean;
-    secretCount?: number;
-    durationMs?: number;
     url?: string;
     app?: string;
     appId?: string;
@@ -887,7 +885,6 @@ export type TSecretRotationV2ExecutedEvent = {
     projectId: string;
     environment: string;
     secretPath: string;
-    success?: boolean;
     durationMs?: number;
   };
 };

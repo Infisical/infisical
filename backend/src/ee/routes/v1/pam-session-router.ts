@@ -266,21 +266,24 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
-      }
 
-      const durationMs = session.createdAt ? Date.now() - new Date(session.createdAt).getTime() : undefined;
-      await server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.PamSessionEnded,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            resourceType: session.resourceType,
-            projectId,
-            durationMs
-          }
-        })
-        .catch(() => {});
+        const durationMs =
+          session.startedAt && session.endedAt
+            ? new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()
+            : undefined;
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamSessionEnded,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              resourceType: session.resourceType,
+              projectId,
+              durationMs
+            }
+          })
+          .catch(() => {});
+      }
 
       return { session };
     }

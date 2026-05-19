@@ -170,16 +170,18 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretFolderUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          projectId: req.body.projectId,
-          environment: req.body.environment,
-          folderId: folder.id
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretFolderUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            folderId: folder.id
+          }
+        })
+        .catch(() => {});
 
       return { folder };
     }
@@ -328,16 +330,18 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretFolderDeleted,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          projectId: req.body.projectId,
-          environment: req.body.environment,
-          folderId: folder.id
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretFolderDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            folderId: folder.id
+          }
+        })
+        .catch(() => {});
 
       return { folder };
     }

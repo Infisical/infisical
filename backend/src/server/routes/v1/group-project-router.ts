@@ -122,12 +122,14 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.GroupAddedToProject,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { groupId, projectId: req.params.projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupAddedToProject,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId, projectId: req.params.projectId }
+        })
+        .catch(() => {});
 
       return {
         groupMembership: {

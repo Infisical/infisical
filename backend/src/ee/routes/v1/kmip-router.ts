@@ -64,12 +64,14 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.KmipClientCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { clientId: kmipClient.id, projectId: kmipClient.projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.KmipClientCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { clientId: kmipClient.id, projectId: kmipClient.projectId }
+        })
+        .catch(() => {});
 
       return kmipClient;
     }

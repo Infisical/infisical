@@ -97,12 +97,14 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretValidationRuleCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { ruleId: rule.id, projectId: req.params.projectId }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretValidationRuleCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { ruleId: rule.id, projectId: req.params.projectId }
+        })
+        .catch(() => {});
 
       return { rule };
     }

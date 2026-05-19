@@ -48,12 +48,14 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.EmailDomainCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: { emailDomainId: emailDomain.id, domain: emailDomain.domain }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.EmailDomainCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { emailDomainId: emailDomain.id, domain: emailDomain.domain }
+        })
+        .catch(() => {});
 
       return { emailDomain };
     }
