@@ -463,18 +463,11 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      // Mark session as ended AFTER resources are freed so the session slot
-      // doesn't reopen while pg connections / relay tunnel are still alive.
-      // endSessionById is a no-op if the session is already ended.
       if (session) {
         const sessionId = session.id;
         try {
           const updated = await pamSessionDAL.endSessionById(sessionId);
           if (updated) {
-            // AI summary is NOT queued here — the gateway uploads logs and
-            // then calls POST /:sessionId/end, which queues the summary after
-            // the logs are available. Queuing from cleanup would race ahead
-            // of the log upload and produce an empty summary.
             await auditLogService.createAuditLog({
               ...auditLogInfo,
               orgId,
@@ -556,11 +549,7 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Gateway not configured for this resource" });
       }
 
-      // Expire any of this user's sessions that have outlived their expiresAt
-      // but are still marked active (e.g. process crash, lost BullMQ job).
-      // Done right before the cap check so stale sessions don't lock the user out.
-      // AI summary is not queued here — these are crash-recovery sessions whose
-      // logs were likely never uploaded by the gateway.
+      // Expire overdue sessions before the cap check so stale rows don't lock the user out.
       await pamSessionDAL.expireOverdueSessions(userId, projectId);
 
       // Check web session limit

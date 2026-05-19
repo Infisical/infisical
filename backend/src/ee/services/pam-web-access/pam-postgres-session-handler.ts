@@ -52,9 +52,6 @@ export const handlePostgresSession = async (
     database: connectionDetails.database
   };
 
-  // Reachability check — throws on failure so the service's catch block can
-  // handle cleanup. Matches the SSH and Redis handlers which also let
-  // connection errors propagate.
   await verifyReachabilityOneShot(oneShotOpts);
 
   sendMessage({
@@ -74,9 +71,8 @@ export const handlePostgresSession = async (
     }
   };
 
-  // Values are null while the open is in flight (slot reserved but pg.Client
-  // not yet connected). Cleanup clears the map; when the in-flight open
-  // resolves, it checks .has() and self-disposes if the slot was wiped.
+  // Null = slot reserved for an in-flight open; cleanup clears the map so
+  // the open's post-await .has() check fails and it self-disposes.
   const controllers = new Map<string, TPostgresConnectionController | null>();
 
   // Metadata requests (get-schemas / get-tables) are processed outside any
@@ -96,8 +92,6 @@ export const handlePostgresSession = async (
     }
 
     const connectionId = crypto.randomUUID();
-    // Reserve a slot before the first await so concurrent opens can't bypass
-    // the cap, and cleanup can wipe the slot to signal "session is gone."
     controllers.set(connectionId, null);
     try {
       const controller = await createPostgresConnectionController({
@@ -118,8 +112,6 @@ export const handlePostgresSession = async (
         }
       });
       if (!controllers.has(connectionId)) {
-        // Session was cleaned up (or close-connection arrived) while we were
-        // connecting. Dispose immediately — don't register, don't respond.
         controller.dispose();
         return;
       }
@@ -259,9 +251,6 @@ export const handlePostgresSession = async (
 
   return {
     cleanup: async () => {
-      // dispose() is synchronous and fire-and-forget — no await needed.
-      // Null entries are in-flight opens; clearing the map causes their
-      // post-await .has() check to fail, so they self-dispose.
       const snapshot = Array.from(controllers.values());
       controllers.clear();
       for (const controller of snapshot) {

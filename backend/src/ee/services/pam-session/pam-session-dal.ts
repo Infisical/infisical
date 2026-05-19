@@ -79,10 +79,6 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updatedCount;
   };
 
-  // Lazy cleanup: catches sessions that outlived their expiresAt but were
-  // never marked ended (e.g. process crash, Redis flush losing the BullMQ job).
-  // Scoped to a specific user+project so the query runs at the point of
-  // contention (cap check) rather than as a global background sweep.
   const expireOverdueSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
     const now = new Date();
     const updatedCount = await (tx || db)(TableName.PamSession)

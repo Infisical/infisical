@@ -253,10 +253,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
     }
 
-    // Always queue AI summary — the gateway calling this endpoint means it has
-    // finished uploading logs. Even if cleanup already marked the session "ended"
-    // in the DB, the logs are only available now. The BullMQ jobId deduplicates
-    // across repeated calls.
+    // Always queue — the gateway calling end means logs are uploaded.
     void (async () => {
       try {
         await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
