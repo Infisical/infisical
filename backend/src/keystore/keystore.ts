@@ -379,7 +379,7 @@ export const keyStoreFactory = (
     return Number(result);
   };
 
-  const INCREMENT_WITH_EXPYRE = `
+  const INCREMENT_WITH_EXPIRY = `
     local v = redis.call('INCRBY', KEYS[1], ARGV[1])
     redis.call('EXPIRE', KEYS[1], ARGV[2])
     return v
@@ -387,7 +387,7 @@ export const keyStoreFactory = (
 
   // Atomically increment key and (re)set TTL on every call so the expiry rolls forward with each write.
   const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
-    const result = await primaryRedis.eval(INCREMENT_WITH_EXPYRE, 1, key, String(value), String(expiryInSeconds));
+    const result = await primaryRedis.eval(INCREMENT_WITH_EXPIRY, 1, key, String(value), String(expiryInSeconds));
     return result as number;
   };
 
