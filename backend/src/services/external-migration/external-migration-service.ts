@@ -11,12 +11,11 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection/app-connection-enums";
-import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TDopplerConnection } from "../app-connection/doppler";
 import {
@@ -37,12 +36,9 @@ import {
   TGatewayDetails,
   THCVaultConnection
 } from "../app-connection/hc-vault";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
-import { TExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
 import {
   decryptEnvKeyDataFn,
   getDopplerSecrets,
@@ -54,7 +50,7 @@ import {
   vaultMigrationTransformMappings
 } from "./external-migration-fns";
 import { TExternalMigrationQueueFactory } from "./external-migration-queue";
-import { ExternalMigrationConfigVaultConfigSchema, ExternalMigrationProviders } from "./external-migration-schemas";
+import { ExternalMigrationProviders } from "./external-migration-schemas";
 import {
   ExternalMigrationImportStatus,
   ExternalPlatforms,
@@ -73,7 +69,6 @@ type TExternalMigrationServiceFactoryDep = {
     TAppConnectionServiceFactory,
     "connectAppConnectionById" | "validateAppConnectionUsageById"
   >;
-  externalMigrationConfigDAL: Pick<TExternalMigrationConfigDALFactory, "find" | "findWithConnection" | "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -81,7 +76,6 @@ type TExternalMigrationServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickRandomHealthyGateway"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -95,9 +89,7 @@ export const externalMigrationServiceFactory = ({
   gatewayPoolService,
   secretService,
   auditLogService,
-  appConnectionService,
-  externalMigrationConfigDAL,
-  kmsService
+  appConnectionService
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
@@ -151,80 +143,6 @@ export const externalMigrationServiceFactory = ({
     }
 
     return gatewayDetails;
-  };
-
-  const getVaultConnectionForImport = async (connectionId: string, projectId: string, actor: OrgServiceActor) =>
-    (await appConnectionService.validateAppConnectionUsageById(
-      AppConnection.HCVault,
-      { connectionId, projectId },
-      actor
-    )) as THCVaultConnection;
-
-  // Org-admin only; resolves via the org-level external migration config matched by namespace.
-  const getVaultConnectionForNamespace = async (actor: OrgServiceActor, namespace: string, action: string) => {
-    const { hasRole } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-
-    if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: `Only admins can ${action}` });
-    }
-
-    const existingConfig = await externalMigrationConfigDAL.findWithConnection({
-      orgId: actor.orgId,
-      provider: ExternalMigrationProviders.Vault
-    });
-
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: actor.orgId
-    });
-
-    const migrationConfig = existingConfig
-      .map((config) => {
-        const decryptedConfig = decryptor({ cipherTextBlob: config.encryptedConfig });
-
-        return {
-          ...config,
-          config: ExternalMigrationConfigVaultConfigSchema.parse(JSON.parse(decryptedConfig.toString()))
-        };
-      })
-      .find((config) => config.config.namespace === namespace);
-
-    if (!migrationConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
-    }
-
-    if (!migrationConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
-    }
-
-    const credentials = await decryptAppConnectionCredentials({
-      orgId: migrationConfig.orgId,
-      encryptedCredentials: migrationConfig.connection?.encryptedCredentials,
-      kmsService,
-      projectId: null
-    });
-
-    const connectionGatewayId = migrationConfig.connection.gatewayId as string | null | undefined;
-    const connectionGatewayPoolId = migrationConfig.connection.gatewayPoolId as string | null | undefined;
-
-    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: connectionGatewayId,
-      gatewayPoolId: connectionGatewayPoolId
-    });
-
-    return {
-      ...migrationConfig.connection,
-      credentials,
-      gatewayId: effectiveGatewayId,
-      gatewayPoolId: null
-    } as THCVaultConnection;
   };
 
   const importEnvKeyData = async ({
@@ -470,12 +388,14 @@ export const externalMigrationServiceFactory = ({
     secretPath: string;
     vaultNamespace: string;
     vaultSecretPaths: string[];
-    connectionId?: string;
+    connectionId: string;
     auditLogInfo: AuditLogInfo;
   }) => {
-    const connection = connectionId
-      ? await getVaultConnectionForImport(connectionId, projectId, actor)
-      : await getVaultConnectionForNamespace(actor, vaultNamespace, "import vault secrets");
+    const connection = (await appConnectionService.validateAppConnectionUsageById(
+      AppConnection.HCVault,
+      { connectionId, projectId },
+      actor
+    )) as THCVaultConnection;
 
     if (!vaultSecretPaths.length) {
       throw new BadRequestError({ message: "At least one Vault secret path is required" });
