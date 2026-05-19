@@ -1,3 +1,5 @@
+{{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+{{- $usePVC := and .Values.persistence.enabled (or .Values.gateway.enrollment.method .Values.persistence.existingClaim) }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
@@ -15,10 +17,10 @@ metadata:
 spec:
   {{- if .Values.gateway.enrollment.method }}
   replicas: 1
-  {{- if .Values.persistence.enabled }}
+  {{- end }}
+  {{- if $usePVC }}
   strategy:
     type: Recreate
-  {{- end }}
   {{- end }}
   selector:
     matchLabels:
@@ -45,25 +47,18 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        {{- if .Values.gateway.enrollment.method }}
-        - name: gateway-credentials
-          {{- if .Values.persistence.enabled }}
+        {{- if $usePVC }}
+        - name: gateway-data
           persistentVolumeClaim:
-            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-credentials" (include "infisical-gateway.fullname" .)) }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: infisical-cache
-          emptyDir: {}
-        {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-        {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
-        - name: session-recordings
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-data" (include "infisical-gateway.fullname" .)) }}
+        {{- else if .Values.gateway.enrollment.method }}
+        - name: gateway-credentials
           emptyDir: {}
         {{- end }}
-        {{- else }}
-        - name: infisical-gateway-session-recordings-data
+        - name: infisical-cache
           emptyDir: {}
-        - name: infisical-gateway-cached-relay-data
+        {{- if and (not $usePVC) (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
+        - name: session-recordings
           emptyDir: {}
         {{- end }}
       containers:
@@ -105,14 +100,23 @@ spec:
             {{- if .Values.gateway.relayName }}
             - --target-relay-name={{ .Values.gateway.relayName }}
             {{- end }}
-            - --pam-session-recording-path={{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+            - --pam-session-recording-path={{ $sessionPath }}
           volumeMounts:
+            {{- if $usePVC }}
+            - name: gateway-data
+              mountPath: /home/infisical
+              subPath: credentials
+            {{- else }}
             - name: gateway-credentials
               mountPath: /home/infisical
+            {{- end }}
             - name: infisical-cache
               mountPath: /var/lib/infisical
-            {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-            {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            {{- if $usePVC }}
+            - name: gateway-data
+              mountPath: {{ $sessionPath }}
+              subPath: session-recordings
+            {{- else if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
             - name: session-recordings
               mountPath: {{ $sessionPath }}
             {{- end }}
@@ -120,7 +124,7 @@ spec:
           args:
             - gateway
             - start
-            - --pam-session-recording-path={{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+            - --pam-session-recording-path={{ $sessionPath }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}
@@ -129,11 +133,14 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           volumeMounts:
-            - name: infisical-gateway-cached-relay-data
+            - name: infisical-cache
               mountPath: /var/lib/infisical
-            {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
-            {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
-            - name: infisical-gateway-session-recordings-data
+            {{- if $usePVC }}
+            - name: gateway-data
+              mountPath: {{ $sessionPath }}
+              subPath: session-recordings
+            {{- else if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            - name: session-recordings
               mountPath: {{ $sessionPath }}
             {{- end }}
           {{- end }}
