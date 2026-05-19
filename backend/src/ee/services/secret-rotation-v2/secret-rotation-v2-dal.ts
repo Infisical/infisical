@@ -54,6 +54,7 @@ const baseSecretRotationV2Query = ({
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("connectionGatewayId"),
+      db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("connectionGatewayPoolId"),
       db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
@@ -109,6 +110,7 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
     connectionUpdatedAt,
     connectionVersion,
     connectionGatewayId,
+    connectionGatewayPoolId,
     connectionProjectId,
     connectionIsPlatformManagedCredentials,
     connectionIsAutoRotationEnabled,
@@ -131,6 +133,7 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
       updatedAt: connectionUpdatedAt,
       version: connectionVersion,
       gatewayId: connectionGatewayId,
+      gatewayPoolId: connectionGatewayPoolId,
       projectId: connectionProjectId,
       isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
       isAutoRotationEnabled: connectionIsAutoRotationEnabled

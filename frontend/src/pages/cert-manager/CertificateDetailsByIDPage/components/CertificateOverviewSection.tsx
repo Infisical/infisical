@@ -167,6 +167,25 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailValue>{certificate.discoveryMetadata.issuerOrganization}</DetailValue>
               </Detail>
             )}
+            {certificate.applicationId && certificate.applicationName && (
+              <Detail>
+                <DetailLabel>Application</DetailLabel>
+                <DetailValue>
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                    params={{
+                      orgId,
+                      projectId,
+                      applicationName: certificate.applicationName
+                    }}
+                    className="inline-flex items-center gap-1 underline"
+                  >
+                    {certificate.applicationName}
+                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                  </Link>
+                </DetailValue>
+              </Detail>
+            )}
             <Detail>
               <DetailLabel>Profile</DetailLabel>
               <DetailValue>

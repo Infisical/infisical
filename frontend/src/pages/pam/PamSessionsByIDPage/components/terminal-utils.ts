@@ -1,4 +1,4 @@
-import { TerminalChannelType, TTerminalEvent } from "@app/hooks/api/pam";
+import { SessionChannelType, TSessionEvent } from "@app/hooks/api/pam";
 
 // Strip ANSI escape codes from terminal output
 export const stripAnsiCodes = (text: string): string => {
@@ -20,7 +20,7 @@ const isPrintableText = (text: string): boolean => {
 };
 
 // Decode a single event's base64 data, returning empty string on failure or binary data
-const decodeEventData = (event: TTerminalEvent): string => {
+const decodeEventData = (event: TSessionEvent): string => {
   try {
     const decoded = stripAnsiCodes(atob(event.data));
     if (!isPrintableText(decoded)) {
@@ -43,12 +43,12 @@ export type AggregatedTerminalEvent = {
 
 // Aggregate consecutive output events using prompt-based segmentation
 const aggregateOutputEvents = (
-  outputEvents: TTerminalEvent[],
+  outputEvents: TSessionEvent[],
   channelType?: string
 ): AggregatedTerminalEvent[] => {
   if (outputEvents.length === 0) return [];
 
-  const decodedEvents: { text: string; event: TTerminalEvent }[] = outputEvents
+  const decodedEvents: { text: string; event: TSessionEvent }[] = outputEvents
     .map((e) => ({ text: decodeEventData(e), event: e }))
     .filter((e) => e.text.length > 0);
 
@@ -113,7 +113,7 @@ const aggregateOutputEvents = (
 
 // Convert input events to aggregated format
 const convertInputEvents = (
-  inputEvents: TTerminalEvent[],
+  inputEvents: TSessionEvent[],
   channelType?: string
 ): AggregatedTerminalEvent[] => {
   const results: AggregatedTerminalEvent[] = [];
@@ -136,27 +136,27 @@ const convertInputEvents = (
 };
 
 // Process events that have channelType (new format)
-const processEventsWithChannelType = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+const processEventsWithChannelType = (events: TSessionEvent[]): AggregatedTerminalEvent[] => {
   const results: AggregatedTerminalEvent[] = [];
 
   // Group events by channelType
-  const terminalEvents = events.filter((e) => e.channelType === TerminalChannelType.Terminal);
-  const execEvents = events.filter((e) => e.channelType === TerminalChannelType.Exec);
-  const sftpEvents = events.filter((e) => e.channelType === TerminalChannelType.Sftp);
+  const terminalEvents = events.filter((e) => e.channelType === SessionChannelType.Terminal);
+  const execEvents = events.filter((e) => e.channelType === SessionChannelType.Exec);
+  const sftpEvents = events.filter((e) => e.channelType === SessionChannelType.Sftp);
 
   // Terminal: only show output (input is echoed)
   const terminalOutputs = terminalEvents.filter((e) => e.eventType === "output");
-  results.push(...aggregateOutputEvents(terminalOutputs, TerminalChannelType.Terminal));
+  results.push(...aggregateOutputEvents(terminalOutputs, SessionChannelType.Terminal));
 
   // Exec: show both input (command) and output (result)
   const execInputs = execEvents.filter((e) => e.eventType === "input");
   const execOutputs = execEvents.filter((e) => e.eventType === "output");
-  results.push(...convertInputEvents(execInputs, TerminalChannelType.Exec));
-  results.push(...aggregateOutputEvents(execOutputs, TerminalChannelType.Exec));
+  results.push(...convertInputEvents(execInputs, SessionChannelType.Exec));
+  results.push(...aggregateOutputEvents(execOutputs, SessionChannelType.Exec));
 
   // SFTP: show only input messages (no meaningful output)
   const sftpInputs = sftpEvents.filter((e) => e.eventType === "input");
-  results.push(...convertInputEvents(sftpInputs, TerminalChannelType.Sftp));
+  results.push(...convertInputEvents(sftpInputs, SessionChannelType.Sftp));
 
   // Sort by timestamp to maintain chronological order
   results.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -166,7 +166,7 @@ const processEventsWithChannelType = (events: TTerminalEvent[]): AggregatedTermi
 
 // Backwards compatibility: process legacy events without channelType
 // Uses heuristic - only show output events (assumes interactive terminal)
-const processLegacyEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+const processLegacyEvents = (events: TSessionEvent[]): AggregatedTerminalEvent[] => {
   const outputEvents = events.filter((e) => e.eventType === "output");
 
   // If there are output events, aggregate them (interactive terminal behavior)
@@ -180,7 +180,7 @@ const processLegacyEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[
 };
 
 // Main aggregation function
-export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+export const aggregateTerminalEvents = (events: TSessionEvent[]): AggregatedTerminalEvent[] => {
   if (events.length === 0) return [];
 
   // Check if any events have channelType (new format)

@@ -19,7 +19,7 @@ export type TValidateSmbConnectionCredentialsSchema = typeof ValidateSmbConnecti
 
 export type TSmbConnectionConfig = DiscriminativePick<
   TSmbConnectionInput,
-  "method" | "app" | "credentials" | "gatewayId"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

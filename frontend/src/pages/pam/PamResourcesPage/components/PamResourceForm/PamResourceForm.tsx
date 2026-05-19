@@ -42,15 +42,15 @@ const CreateForm = ({ resourceType, closeSheet, projectId }: CreateFormProps) =>
       TPamResource,
       "name" | "resourceType" | "connectionDetails" | "domainId"
     > & {
-      gateway?: { id: string; name: string } | null;
-      gatewayId?: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
       metadata?: { key: string; value: string }[];
     }
   ) => {
-    const { gateway, ...rest } = formData;
     const resource = await createPamResource.mutateAsync({
-      ...rest,
-      gatewayId: gateway?.id ?? rest.gatewayId,
+      ...formData,
+      gatewayId: formData.gatewayId ?? undefined,
+      gatewayPoolId: formData.gatewayPoolId ?? undefined,
       projectId
     });
     createNotification({
@@ -95,16 +95,16 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
       TPamResource,
       "name" | "resourceType" | "connectionDetails" | "domainId"
     > & {
-      gateway?: { id: string; name: string } | null;
-      gatewayId?: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
       metadata?: { key: string; value: string }[];
     }
   ) => {
-    const { gateway, ...rest } = formData;
     const updatedResource = await updatePamResource.mutateAsync({
       resourceId: resource.id,
-      ...rest,
-      gatewayId: gateway?.id ?? rest.gatewayId
+      ...formData,
+      gatewayId: formData.gatewayId ?? undefined,
+      gatewayPoolId: formData.gatewayPoolId ?? undefined
     });
     createNotification({
       text: `Successfully updated ${resourceName} resource`,

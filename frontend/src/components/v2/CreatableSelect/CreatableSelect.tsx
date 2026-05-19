@@ -42,7 +42,7 @@ export const CreatableSelect = <T,>({
           ),
         placeholder: () => "text-mineshaft-400 text-sm pl-1 py-0.5",
         input: () => "pl-1 py-0.5",
-        valueContainer: () => `p-1 max-h-56 ${isMulti ? "overflow-y-scroll!" : ""} gap-1`,
+        valueContainer: () => `p-1 max-h-56 ${isMulti ? "overflow-y-auto!" : ""} gap-1`,
         singleValue: () => "leading-7 ml-1",
         multiValue: () => "bg-mineshaft-600 rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",

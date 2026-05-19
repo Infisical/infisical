@@ -11,7 +11,8 @@ const IntegrationsListPageQuerySchema = z.object({
   selectedTab: z.nativeEnum(IntegrationsListPageTabs).optional(),
   addSync: z.nativeEnum(PkiSync).optional(),
   connectionId: z.string().optional(),
-  connectionName: z.string().optional()
+  connectionName: z.string().optional(),
+  legacy: z.enum(["true"]).optional()
 });
 
 export const Route = createFileRoute(

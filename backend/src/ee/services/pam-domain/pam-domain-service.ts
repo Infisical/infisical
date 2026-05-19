@@ -46,6 +46,7 @@ export const pamDomainServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayPoolService,
   resourceMetadataDAL
 }: TPamDomainServiceFactoryDep) => {
   const getById = async (id: string, domainType: PamDomainType, actor: OrgServiceActor) => {
@@ -86,9 +87,16 @@ export const pamDomainServiceFactory = ({
   };
 
   const create = async (
-    { domainType, connectionDetails, gatewayId, name, projectId, metadata }: TCreateDomainDTO,
+    { domainType, connectionDetails, gatewayId, gatewayPoolId, name, projectId, metadata }: TCreateDomainDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+    if (!gatewayId && !gatewayPoolId) {
+      throw new BadRequestError({ message: "A gateway or gateway pool is required" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -107,6 +115,14 @@ export const pamDomainServiceFactory = ({
       })
     );
 
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actor.orgId,
+        actor
+      });
+    }
+
     const existingDomain = await pamDomainDAL.findOne({ name, projectId });
     if (existingDomain) {
       throw new BadRequestError({
@@ -114,10 +130,12 @@ export const pamDomainServiceFactory = ({
       });
     }
 
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
+
     const factory = PAM_DOMAIN_FACTORY_MAP[domainType](
       domainType,
       connectionDetails,
-      gatewayId,
+      effectiveGatewayId,
       gatewayV2Service,
       projectId
     );
@@ -135,7 +153,8 @@ export const pamDomainServiceFactory = ({
           {
             domainType,
             encryptedConnectionDetails,
-            gatewayId,
+            gatewayId: gatewayPoolId ? null : gatewayId,
+            gatewayPoolId: gatewayPoolId ?? null,
             name,
             projectId
           },
@@ -171,9 +190,13 @@ export const pamDomainServiceFactory = ({
   };
 
   const updateById = async (
-    { domainId, connectionDetails, name, gatewayId, metadata }: TUpdateDomainDTO,
+    { domainId, connectionDetails, name, gatewayId, gatewayPoolId, metadata }: TUpdateDomainDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const domain = await pamDomainDAL.findById(domainId);
     if (!domain) throw new NotFoundError({ message: `Domain with ID '${domainId}' not found` });
 
@@ -209,11 +232,32 @@ export const pamDomainServiceFactory = ({
       );
     }
 
-    const updateDoc: Partial<TPamDomains> = {};
-    const effectiveGatewayId = gatewayId !== undefined ? gatewayId : domain.gatewayId;
+    if (gatewayPoolId && gatewayPoolId !== domain.gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actor.orgId,
+        actor
+      });
+    }
 
-    if (gatewayId !== undefined) {
-      updateDoc.gatewayId = gatewayId;
+    const updateDoc: Partial<TPamDomains> = {};
+    // Mutual exclusion: setting one clears the other.
+    let effectiveGatewayId: string | null | undefined = domain.gatewayId;
+    let effectiveGatewayPoolId: string | null | undefined = domain.gatewayPoolId;
+    if (gatewayId !== undefined && gatewayPoolId !== undefined) {
+      effectiveGatewayId = gatewayId;
+      effectiveGatewayPoolId = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      effectiveGatewayId = gatewayId;
+      effectiveGatewayPoolId = gatewayId !== null ? null : undefined;
+    } else if (gatewayPoolId !== undefined) {
+      effectiveGatewayPoolId = gatewayPoolId;
+      effectiveGatewayId = gatewayPoolId !== null ? null : undefined;
+    }
+
+    if (gatewayId !== undefined || gatewayPoolId !== undefined) {
+      updateDoc.gatewayId = effectiveGatewayId;
+      updateDoc.gatewayPoolId = effectiveGatewayPoolId;
     }
 
     if (name !== undefined) {
@@ -221,10 +265,14 @@ export const pamDomainServiceFactory = ({
     }
 
     if (connectionDetails !== undefined) {
+      const validationGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: effectiveGatewayId,
+        gatewayPoolId: effectiveGatewayPoolId
+      });
       const factory = PAM_DOMAIN_FACTORY_MAP[domain.domainType as PamDomainType](
         domain.domainType as PamDomainType,
         connectionDetails,
-        effectiveGatewayId,
+        validationGatewayId,
         gatewayV2Service,
         domain.projectId
       );

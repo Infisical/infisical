@@ -16,6 +16,7 @@ import {
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
+import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { salesforceOauthCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials/salesforce-oauth-credentials-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
@@ -36,6 +37,7 @@ import {
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import {
+  TCheckSecretRotationV2Credentials,
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
   TFindSecretRotationV2ByIdDTO,
@@ -89,6 +91,7 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-token-rotation-fns";
@@ -157,6 +160,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -189,7 +193,9 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SalesforceOauthCredentials]:
-    salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation
+    salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.DatadogApplicationKeySecret]:
+    datadogApplicationKeySecretRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -213,7 +219,8 @@ export const secretRotationV2ServiceFactory = ({
   folderCommitService,
   appConnectionDAL,
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -558,7 +565,8 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      gatewayPoolService
     );
 
     // Perform ALL validation checks BEFORE rotating credentials on the external system.
@@ -927,7 +935,8 @@ export const secretRotationV2ServiceFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1244,7 +1253,8 @@ export const secretRotationV2ServiceFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(
@@ -1478,6 +1488,113 @@ export const secretRotationV2ServiceFactory = ({
         message: (err as Error).message ?? "Failed to rotate secrets: check Rotation status for details."
       });
     }
+  };
+
+  const checkSecretRotationCredentials = async (
+    { rotationId, type, auditLogInfo }: TCheckSecretRotationV2Credentials,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretRotation)
+      throw new BadRequestError({
+        message:
+          "Failed to check secret rotation credentials due to plan restriction. Upgrade plan to check secret rotation credentials."
+      });
+
+    const secretRotation = await secretRotationV2DAL.findById(rotationId);
+
+    if (!secretRotation)
+      throw new NotFoundError({
+        message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
+      });
+
+    const { projectId, connection, encryptedGeneratedCredentials, activeIndex, folderId } = secretRotation;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      getSecretRotationSubject(secretRotation)
+    );
+
+    if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
+      throw new BadRequestError({
+        message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
+      });
+
+    const isRotationOccurring = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretRotationLock(secretRotation.id)));
+
+    if (isRotationOccurring)
+      throw new BadRequestError({ message: `A rotation is in progress. Please try again shortly.` });
+
+    const appConnection = await decryptAppConnection(connection, kmsService);
+
+    const generatedCredentials = await decryptSecretRotationCredentials({
+      projectId,
+      encryptedGeneratedCredentials,
+      kmsService
+    });
+
+    const activeCredentials = generatedCredentials?.[activeIndex];
+
+    if (!activeCredentials)
+      throw new BadRequestError({ message: "No active credentials are available to check for this rotation." });
+
+    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type as SecretRotation](
+      {
+        ...secretRotation,
+        connection: appConnection
+      } as TSecretRotationV2WithConnection,
+      appConnectionDAL,
+      kmsService,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    );
+
+    if (!rotationFactory.checkActiveCredentials)
+      throw new BadRequestError({
+        message: `Credential check is not yet supported for ${SECRET_ROTATION_NAME_MAP[type]} Rotations.`
+      });
+
+    let success = true;
+    let errorMessage: string | undefined;
+
+    try {
+      await rotationFactory.checkActiveCredentials(activeCredentials);
+    } catch (err) {
+      success = false;
+      errorMessage = (err as Error).message;
+    }
+
+    await auditLogService.createAuditLog({
+      ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
+      projectId,
+      event: {
+        type: EventType.SECRET_ROTATION_CHECK_CREDENTIALS,
+        metadata: {
+          type,
+          rotationId,
+          connectionId: connection.id,
+          folderId,
+          success,
+          errorMessage
+        }
+      }
+    });
+
+    if (!success)
+      throw new BadRequestError({
+        message: errorMessage ?? "Active credentials are no longer valid."
+      });
   };
 
   const getDashboardSecretRotationCount = async (
@@ -1816,7 +1933,8 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      gatewayPoolService
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)
@@ -1915,6 +2033,7 @@ export const secretRotationV2ServiceFactory = ({
     getDashboardSecretRotationCount,
     getDashboardSecretRotations,
     getQuickSearchSecretRotations,
-    reconcileLocalAccountRotation
+    reconcileLocalAccountRotation,
+    checkSecretRotationCredentials
   };
 };

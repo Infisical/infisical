@@ -181,11 +181,19 @@ describe("CertificateProfileService", () => {
   const mockPermissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
+        can: vi.fn().mockReturnValue(true),
+        throwUnlessCan: vi.fn(),
+        rules: []
+      }
+    }),
+    getResourcePermission: vi.fn().mockResolvedValue({
+      permission: {
+        can: vi.fn().mockReturnValue(true),
         throwUnlessCan: vi.fn(),
         rules: []
       }
     })
-  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission">;
+  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 
   const mockKmsService = {
     encryptWithKmsKey: vi
@@ -382,24 +390,24 @@ describe("CertificateProfileService", () => {
       ).rejects.toThrow(ForbiddenRequestError);
     });
 
-    it("should throw ForbiddenRequestError for EST enrollment without EST config", async () => {
-      const invalidData = {
+    it("should create profile with EST enrollment type but no EST config (config attached to Application junction)", async () => {
+      const data = {
         ...validProfileData,
         enrollmentType: EnrollmentType.EST,
         estConfigId: null
       };
 
-      await expect(
-        service.createProfile({
-          ...mockActor,
-          projectId: "project-123",
-          data: invalidData
-        })
-      ).rejects.toThrow(ForbiddenRequestError);
+      const result = await service.createProfile({
+        ...mockActor,
+        projectId: "project-123",
+        data
+      });
+
+      expect(result).toBeDefined();
     });
 
-    it("should throw ForbiddenRequestError for API enrollment without API config", async () => {
-      const invalidData = {
+    it("should create profile with API enrollment type but no API config (config attached to Application junction)", async () => {
+      const data = {
         slug: "invalid-profile",
         description: "Invalid test profile",
         enrollmentType: EnrollmentType.API,
@@ -408,13 +416,13 @@ describe("CertificateProfileService", () => {
         certificatePolicyId: "policy-123"
       };
 
-      await expect(
-        service.createProfile({
-          ...mockActor,
-          projectId: "project-123",
-          data: invalidData
-        })
-      ).rejects.toThrow(ForbiddenRequestError);
+      const result = await service.createProfile({
+        ...mockActor,
+        projectId: "project-123",
+        data
+      });
+
+      expect(result).toBeDefined();
     });
 
     it("should create profile with API enrollment", async () => {

@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "SaaS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
 
   const rotations = [
     {
@@ -167,6 +167,15 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Salesforce OAuth credentials.",
       category: "SaaS",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Datadog Application Key",
+      slug: "datadog-application-key",
+      path: "/documentation/platform/secret-rotation/datadog-application-key-secret",
+      description:
+        "Learn how to automatically rotate Datadog application keys.",
+      category: "Monitoring",
       rotationType: "Dual-Phase",
     }
   ].sort(function (a, b) {

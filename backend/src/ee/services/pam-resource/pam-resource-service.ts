@@ -21,6 +21,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountView } from "../pam-account/pam-account-enums";
@@ -58,6 +59,10 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   pamProjectRecordingConfigDAL: {
@@ -75,6 +80,7 @@ export const pamResourceServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayPoolService,
   resourceMetadataDAL,
   appConnectionDAL,
   pamProjectRecordingConfigDAL
@@ -165,6 +171,7 @@ export const pamResourceServiceFactory = ({
       resourceType,
       connectionDetails,
       gatewayId,
+      gatewayPoolId,
       name,
       projectId,
       rotationAccountCredentials,
@@ -173,6 +180,13 @@ export const pamResourceServiceFactory = ({
     }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+    if (resourceType !== PamResource.AwsIam && !gatewayId && !gatewayPoolId) {
+      throw new BadRequestError({ message: "A gateway or gateway pool is required for this resource type" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -191,6 +205,14 @@ export const pamResourceServiceFactory = ({
       })
     );
 
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actor.orgId,
+        actor
+      });
+    }
+
     if (domainId) {
       await assertDomainInProject(domainId, projectId);
     }
@@ -206,10 +228,12 @@ export const pamResourceServiceFactory = ({
       }
     }
 
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
+
     const factory = PAM_RESOURCE_FACTORY_MAP[resourceType](
       resourceType,
       connectionDetails,
-      gatewayId,
+      effectiveGatewayId,
       gatewayV2Service,
       projectId
     );
@@ -239,7 +263,8 @@ export const pamResourceServiceFactory = ({
           {
             resourceType,
             encryptedConnectionDetails,
-            gatewayId,
+            gatewayId: gatewayPoolId ? null : gatewayId,
+            gatewayPoolId: gatewayPoolId ?? null,
             name,
             projectId,
             encryptedRotationAccountCredentials,
@@ -283,12 +308,17 @@ export const pamResourceServiceFactory = ({
       name,
       rotationAccountCredentials,
       gatewayId,
+      gatewayPoolId,
       domainId,
       metadata,
       sessionSummaryConfig
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
+    if (gatewayId && gatewayPoolId) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     const resource = await pamResourceDAL.findById(resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
@@ -327,12 +357,33 @@ export const pamResourceServiceFactory = ({
       );
     }
 
+    if (gatewayPoolId && gatewayPoolId !== resource.gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: actor.orgId,
+        actor
+      });
+    }
+
     const updateDoc: Partial<TPamResources> = {};
 
-    const effectiveGatewayId = gatewayId !== undefined ? gatewayId : resource.gatewayId;
+    // Mutual exclusion: setting one clears the other.
+    let effectiveGatewayIdAttr: string | null | undefined = resource.gatewayId;
+    let effectiveGatewayPoolIdAttr: string | null | undefined = resource.gatewayPoolId ?? null;
+    if (gatewayId !== undefined && gatewayPoolId !== undefined) {
+      effectiveGatewayIdAttr = gatewayId;
+      effectiveGatewayPoolIdAttr = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      effectiveGatewayIdAttr = gatewayId;
+      effectiveGatewayPoolIdAttr = gatewayId !== null ? null : undefined;
+    } else if (gatewayPoolId !== undefined) {
+      effectiveGatewayPoolIdAttr = gatewayPoolId;
+      effectiveGatewayIdAttr = gatewayPoolId !== null ? null : undefined;
+    }
 
-    if (gatewayId !== undefined) {
-      updateDoc.gatewayId = gatewayId;
+    if (gatewayId !== undefined || gatewayPoolId !== undefined) {
+      updateDoc.gatewayId = effectiveGatewayIdAttr;
+      updateDoc.gatewayPoolId = effectiveGatewayPoolIdAttr;
     }
 
     if (name !== undefined) {
@@ -344,6 +395,14 @@ export const pamResourceServiceFactory = ({
         await assertDomainInProject(domainId, resource.projectId);
       }
       updateDoc.domainId = domainId;
+    }
+
+    let effectiveGatewayId: string | null | undefined;
+    if (connectionDetails !== undefined || rotationAccountCredentials !== undefined) {
+      effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: effectiveGatewayIdAttr,
+        gatewayPoolId: effectiveGatewayPoolIdAttr
+      });
     }
 
     if (connectionDetails !== undefined) {

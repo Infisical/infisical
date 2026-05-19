@@ -183,6 +183,7 @@ export const main = async ({
       db,
       auditLogDb,
       keyStore,
+      redis,
       clickhouse,
       hsmService,
       envConfig,

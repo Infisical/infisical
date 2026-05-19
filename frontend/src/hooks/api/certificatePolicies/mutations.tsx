@@ -19,9 +19,9 @@ export const useCreateCertificatePolicy = () => {
       }>("/api/v1/cert-manager/certificate-policies", data);
       return response.certificatePolicy;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: certificatePolicyKeys.listPolicies({ projectId })
+        queryKey: ["list-certificate-policies"]
       });
     }
   });
@@ -36,9 +36,9 @@ export const useUpdateCertificatePolicy = () => {
       }>(`/api/v1/cert-manager/certificate-policies/${policyId}`, data);
       return response.certificatePolicy;
     },
-    onSuccess: (policy, { policyId }) => {
+    onSuccess: (_, { policyId }) => {
       queryClient.invalidateQueries({
-        queryKey: certificatePolicyKeys.listPolicies({ projectId: policy.projectId })
+        queryKey: ["list-certificate-policies"]
       });
       queryClient.invalidateQueries({
         queryKey: certificatePolicyKeys.getPolicyById(policyId)
@@ -56,9 +56,9 @@ export const useDeleteCertificatePolicy = () => {
       }>(`/api/v1/cert-manager/certificate-policies/${policyId}`);
       return response.certificatePolicy;
     },
-    onSuccess: (policy, { policyId }) => {
+    onSuccess: (_, { policyId }) => {
       queryClient.invalidateQueries({
-        queryKey: certificatePolicyKeys.listPolicies({ projectId: policy.projectId })
+        queryKey: ["list-certificate-policies"]
       });
       queryClient.removeQueries({
         queryKey: certificatePolicyKeys.getPolicyById(policyId)

@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link, useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -583,6 +584,10 @@ interface Props {
 export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { orgId, projectId } = useParams({ strict: false }) as {
+    orgId?: string;
+    projectId?: string;
+  };
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
   const queryClient = useQueryClient();
 
@@ -593,9 +598,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     ProjectPermissionSub.CertificatePolicies
   );
 
-  const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
+  const { data: allCaData } = useListCasByProjectId();
   const { data: policyData } = useListCertificatePolicies({
-    projectId: currentProject?.id || "",
     limit: 100,
     offset: 0
   });
@@ -713,14 +717,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         }
   });
 
-  const watchedEnrollmentType = watch("enrollmentType");
   const watchedIssuerType = watch("issuerType");
   const watchedCertificateAuthorityId = watch("certificateAuthorityId");
-  const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
-  const watchedAutoRenew = watch("apiConfig.autoRenew");
-  const watchedSkipDnsOwnershipVerification = watch("acmeConfig.skipDnsOwnershipVerification");
-  const watchedSkipEabBinding = watch("acmeConfig.skipEabBinding");
-  const watchedChallengeType = watch("scepConfig.challengeType");
   const watchedPolicyId = watch("certificatePolicyId");
   const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
 
@@ -824,7 +822,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   // Fetch Azure ADCS templates if needed
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
     caId: watchedCertificateAuthorityId || "",
-    projectId: currentProject?.id || "",
     isAzureAdcsCa
   });
 
@@ -947,16 +944,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         issuerType: data.issuerType
       };
 
-      if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
-        updateData.estConfig = data.estConfig;
-      } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
-        updateData.apiConfig = data.apiConfig;
-      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        updateData.acmeConfig = data.acmeConfig;
-      } else if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
-        updateData.scepConfig = data.scepConfig;
-      }
-
       if (data.externalConfigs) {
         updateData.externalConfigs = data.externalConfigs;
       }
@@ -971,7 +958,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       }
 
       const createData: TCreateCertificateProfileDTO = {
-        projectId: currentProject.id,
         slug: data.slug,
         description: data.description,
         enrollmentType: data.enrollmentType,
@@ -982,20 +968,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             : data.certificateAuthorityId || undefined,
         certificatePolicyId: data.certificatePolicyId
       };
-
-      if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
-        createData.estConfig = {
-          passphrase: data.estConfig.passphrase,
-          caChain: data.estConfig.caChain || undefined,
-          disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
-        };
-      } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
-        createData.apiConfig = data.apiConfig;
-      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        createData.acmeConfig = data.acmeConfig;
-      } else if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
-        createData.scepConfig = data.scepConfig;
-      }
 
       if (data.externalConfigs) {
         createData.externalConfigs = data.externalConfigs;
@@ -1069,7 +1041,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         subTitle={
           isEdit
             ? `Update configuration for ${profile?.slug}`
-            : "Configure a new certificate profile for unified certificate issuance"
+            : "Define the CA and policy used to issue certificates from this profile"
         }
       >
         <form>
@@ -1133,6 +1105,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                     <FormControl
                       label="Issuer Type"
+                      tooltipText="Choose how certificates are signed. Certificate Authority issues from an existing CA in your organization, which is the standard path for production use. Self-Signed produces standalone certificates with no CA chain, suitable for testing or one-off identities only"
                       isRequired
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -1165,39 +1138,57 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   <Controller
                     control={control}
                     name="certificateAuthorityId"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Issuing CA"
-                        isRequired
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <FilterableSelect
-                          value={certificateAuthorities.find((ca) => ca.id === value) || null}
-                          onChange={(selectedCaValue) => {
-                            if (Array.isArray(selectedCaValue)) {
-                              onChange(selectedCaValue[0]?.id || "");
-                            } else if (
-                              selectedCaValue &&
-                              typeof selectedCaValue === "object" &&
-                              "id" in selectedCaValue
-                            ) {
-                              onChange(selectedCaValue.id || "");
-                            } else {
-                              onChange("");
-                            }
-                          }}
-                          getOptionLabel={(ca) => ca.name}
-                          getOptionValue={(ca) => ca.id}
-                          options={certificateAuthorities}
-                          groupBy="groupType"
-                          getGroupHeaderLabel={getGroupHeaderLabel}
-                          placeholder="Select a certificate authority"
-                          isDisabled={Boolean(isEdit)}
-                          className="w-full"
-                        />
-                      </FormControl>
-                    )}
+                    render={({ field: { onChange, value }, fieldState: { error } }) => {
+                      const hasCas = certificateAuthorities.length > 0;
+                      return (
+                        <div>
+                          <FormControl
+                            label="Certificate Authority"
+                            isRequired
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                          >
+                            <FilterableSelect
+                              value={certificateAuthorities.find((ca) => ca.id === value) || null}
+                              onChange={(selectedCaValue) => {
+                                if (Array.isArray(selectedCaValue)) {
+                                  onChange(selectedCaValue[0]?.id || "");
+                                } else if (
+                                  selectedCaValue &&
+                                  typeof selectedCaValue === "object" &&
+                                  "id" in selectedCaValue
+                                ) {
+                                  onChange(selectedCaValue.id || "");
+                                } else {
+                                  onChange("");
+                                }
+                              }}
+                              getOptionLabel={(ca) => ca.name}
+                              getOptionValue={(ca) => ca.id}
+                              options={certificateAuthorities}
+                              groupBy={hasCas ? "groupType" : undefined}
+                              getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
+                              placeholder="Select a certificate authority"
+                              isDisabled={Boolean(isEdit)}
+                              className="w-full"
+                            />
+                          </FormControl>
+                          {!hasCas && (
+                            <p className="-mt-2 mb-4 text-xs text-yellow-500">
+                              No certificate authorities available.{" "}
+                              <Link
+                                to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                                search={{ selectedTab: "certificate-authorities" }}
+                                className="underline hover:text-yellow-400"
+                              >
+                                Create one in Certificate Authorities
+                              </Link>
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }}
                   />
                 )}
 
@@ -1249,6 +1240,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <FormControl
                       label="Certificate Policy"
+                      tooltipText="The rules that govern certificates issued from this profile — allowed key/signature algorithms, key usages, TTL bounds, and subject constraints. Pick an existing policy or create a new one to enforce your organization's standards."
                       isRequired
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -1280,465 +1272,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     </FormControl>
                   )}
                 />
-
-                <Controller
-                  control={control}
-                  name="enrollmentType"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Enrollment Method"
-                      isRequired
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Select
-                        {...field}
-                        onValueChange={(value) => {
-                          if (value === EnrollmentType.EST) {
-                            setValue("estConfig", {
-                              disableBootstrapCaValidation: false,
-                              passphrase: ""
-                            });
-                          } else if (value === EnrollmentType.API) {
-                            setValue("apiConfig", {
-                              autoRenew: false,
-                              renewBeforeDays: 30
-                            });
-                          } else if (value === EnrollmentType.ACME) {
-                            setValue("acmeConfig", {
-                              skipDnsOwnershipVerification: false,
-                              skipEabBinding: false
-                            });
-                          } else if (value === EnrollmentType.SCEP) {
-                            setValue("scepConfig", {
-                              challengeType: ScepChallengeType.STATIC,
-                              challengePassword: "",
-                              includeCaCertInResponse: true,
-                              allowCertBasedRenewal: true,
-                              dynamicChallengeExpiryMinutes: 60,
-                              dynamicChallengeMaxPending: 100
-                            });
-                          }
-                          onChange(value);
-                        }}
-                        className="w-full"
-                        position="popper"
-                        isDisabled={Boolean(isEdit)}
-                      >
-                        <SelectItem value={EnrollmentType.API}>API</SelectItem>
-                        {watchedIssuerType !== IssuerType.SELF_SIGNED && (
-                          <SelectItem value={EnrollmentType.EST}>EST</SelectItem>
-                        )}
-                        {watchedIssuerType !== IssuerType.SELF_SIGNED && (
-                          <SelectItem value={EnrollmentType.ACME}>ACME</SelectItem>
-                        )}
-                        {watchedIssuerType !== IssuerType.SELF_SIGNED && (
-                          <SelectItem value={EnrollmentType.SCEP}>SCEP</SelectItem>
-                        )}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-
-                {/* EST Configuration */}
-                {watchedEnrollmentType === EnrollmentType.EST && (
-                  <div className="mb-4 space-y-4">
-                    <div className="space-y-4">
-                      <Controller
-                        control={control}
-                        name="estConfig.disableBootstrapCaValidation"
-                        render={({ field: { value, onChange }, fieldState: { error } }) => (
-                          <FormControl isError={Boolean(error)} errorText={error?.message}>
-                            <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
-                              <Checkbox
-                                id="disableBootstrapCaValidation"
-                                isChecked={value}
-                                onCheckedChange={onChange}
-                              />
-                              <div className="space-y-1">
-                                <span className="text-sm font-medium text-mineshaft-100">
-                                  Disable Bootstrap CA Validation
-                                </span>
-                                <p className="text-xs text-bunker-300">
-                                  Skip CA certificate validation during EST bootstrap phase
-                                </p>
-                              </div>
-                            </div>
-                          </FormControl>
-                        )}
-                      />
-
-                      <Controller
-                        control={control}
-                        name="estConfig.passphrase"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="EST Passphrase"
-                            isRequired={!isEdit}
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input
-                              {...field}
-                              type="password"
-                              placeholder="Enter secure passphrase for EST authentication"
-                              className="w-full"
-                            />
-                          </FormControl>
-                        )}
-                      />
-
-                      {!watchedDisableBootstrapValidation && (
-                        <Controller
-                          control={control}
-                          name="estConfig.caChain"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="CA Chain Certificate"
-                              isRequired={!isEdit}
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                            >
-                              <div className="space-y-2">
-                                <TextArea
-                                  {...field}
-                                  placeholder="-----BEGIN CERTIFICATE-----&#10;MIIDXTCCAkWgAwIBAgIJAKoK/heBjcOuMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV&#10;BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX&#10;...&#10;-----END CERTIFICATE-----"
-                                  rows={6}
-                                  className="w-full font-mono text-xs"
-                                />
-                                <p className="text-xs text-bunker-400">
-                                  Paste the complete CA certificate chain in PEM format
-                                </p>
-                              </div>
-                            </FormControl>
-                          )}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* API Configuration */}
-                {watchedEnrollmentType === EnrollmentType.API && (
-                  <div className="mb-4 space-y-4">
-                    <Controller
-                      control={control}
-                      name="apiConfig.autoRenew"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl isError={Boolean(error)} errorText={error?.message}>
-                          <div className="flex items-center gap-2">
-                            <Checkbox id="autoRenew" isChecked={value} onCheckedChange={onChange}>
-                              Enable Auto-Renewal By Default
-                            </Checkbox>
-                            <Tooltip content="If enabled, certificates issued against this profile will auto-renew at specified days before expiration.">
-                              <FontAwesomeIcon
-                                icon={faQuestionCircle}
-                                className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
-                                size="sm"
-                              />
-                            </Tooltip>
-                          </div>
-                        </FormControl>
-                      )}
-                    />
-                    {watchedAutoRenew && (
-                      <Controller
-                        control={control}
-                        name="apiConfig.renewBeforeDays"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Auto-Renewal Days Before Expiration"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input
-                              {...field}
-                              type="number"
-                              placeholder="30"
-                              min="1"
-                              max="365"
-                              className="w-full"
-                              onChange={(e) => {
-                                const { value } = e.target;
-                                if (value === "") {
-                                  field.onChange("");
-                                } else {
-                                  const parsed = parseInt(value, 10);
-                                  if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 365) {
-                                    field.onChange(parsed);
-                                  } else {
-                                    field.onChange(field.value || "");
-                                  }
-                                }
-                              }}
-                            />
-                          </FormControl>
-                        )}
-                      />
-                    )}
-                  </div>
-                )}
-
-                {/* ACME Configuration */}
-                {watchedEnrollmentType === EnrollmentType.ACME && (
-                  <div className="mb-4 space-y-4">
-                    <Controller
-                      control={control}
-                      name="acmeConfig.skipEabBinding"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl isError={Boolean(error)} errorText={error?.message}>
-                          <div
-                            className={`flex items-center gap-3 rounded-md border bg-mineshaft-900 p-4 ${
-                              watchedSkipDnsOwnershipVerification
-                                ? "border-mineshaft-700 opacity-50"
-                                : "border-mineshaft-600"
-                            }`}
-                          >
-                            <Checkbox
-                              id="skipEabBinding"
-                              isChecked={value || false}
-                              onCheckedChange={onChange}
-                              isDisabled={watchedSkipDnsOwnershipVerification}
-                            />
-                            <div className="space-y-1">
-                              <span className="text-sm font-medium text-mineshaft-100">
-                                Skip External Account Binding (EAB)
-                              </span>
-                              <p className="text-xs text-bunker-300">
-                                Skip EAB authentication when clients create ACME accounts.
-                              </p>
-                              {watchedSkipDnsOwnershipVerification && (
-                                <p className="text-xs text-yellow-500">
-                                  Cannot be enabled while DNS ownership validation is skipped.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </FormControl>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="acmeConfig.skipDnsOwnershipVerification"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl isError={Boolean(error)} errorText={error?.message}>
-                          <div
-                            className={`flex items-center gap-3 rounded-md border bg-mineshaft-900 p-4 ${
-                              watchedSkipEabBinding
-                                ? "border-mineshaft-700 opacity-50"
-                                : "border-mineshaft-600"
-                            }`}
-                          >
-                            <Checkbox
-                              id="skipDnsOwnershipVerification"
-                              isChecked={value || false}
-                              onCheckedChange={onChange}
-                              isDisabled={watchedSkipEabBinding}
-                            />
-                            <div className="space-y-1">
-                              <span className="text-sm font-medium text-mineshaft-100">
-                                Skip DNS Ownership Validation
-                              </span>
-                              <p className="text-xs text-bunker-300">
-                                Skip DNS ownership verification during ACME certificate issuance.
-                              </p>
-                              {watchedSkipEabBinding && (
-                                <p className="text-xs text-yellow-500">
-                                  Cannot be enabled while EAB is skipped.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </FormControl>
-                      )}
-                    />
-                  </div>
-                )}
-
-                {/* SCEP Configuration */}
-                {watchedEnrollmentType === EnrollmentType.SCEP && (
-                  <div className="mb-4 space-y-4">
-                    <Controller
-                      control={control}
-                      name="scepConfig.challengeType"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          label="Challenge Type"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          helperText={
-                            value === ScepChallengeType.DYNAMIC
-                              ? "Challenges are generated on-demand via an authenticated API endpoint. Ideal for MDM tools like JAMF."
-                              : "A single shared challenge password is used for all enrollment requests."
-                          }
-                        >
-                          <Select
-                            value={value ?? ScepChallengeType.STATIC}
-                            onValueChange={(val) => {
-                              onChange(val);
-                              if (val === ScepChallengeType.DYNAMIC) {
-                                setValue("scepConfig.challengePassword", "");
-                              }
-                            }}
-                            className="w-full"
-                          >
-                            <SelectItem
-                              value={ScepChallengeType.STATIC}
-                              key={ScepChallengeType.STATIC}
-                            >
-                              Static Challenge
-                            </SelectItem>
-                            <SelectItem
-                              value={ScepChallengeType.DYNAMIC}
-                              key={ScepChallengeType.DYNAMIC}
-                            >
-                              Dynamic Challenge
-                            </SelectItem>
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-
-                    {watchedChallengeType !== ScepChallengeType.DYNAMIC && (
-                      <Controller
-                        control={control}
-                        name="scepConfig.challengePassword"
-                        render={({ field, fieldState: { error } }) => {
-                          const hadStaticPassword =
-                            isEdit &&
-                            profile?.scepConfig?.challengeType === ScepChallengeType.STATIC;
-
-                          return (
-                            <FormControl
-                              label="Challenge Password"
-                              isRequired={!hadStaticPassword}
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                              helperText="The challenge password cannot be viewed after saving. Make sure to save it somewhere safe."
-                            >
-                              <Input
-                                {...field}
-                                type="password"
-                                placeholder={
-                                  hadStaticPassword
-                                    ? "Leave empty to keep current password"
-                                    : "Enter SCEP challenge password"
-                                }
-                                className="w-full"
-                              />
-                            </FormControl>
-                          );
-                        }}
-                      />
-                    )}
-
-                    {watchedChallengeType === ScepChallengeType.DYNAMIC && (
-                      <>
-                        <Controller
-                          control={control}
-                          name="scepConfig.dynamicChallengeExpiryMinutes"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Challenge Expiry (minutes)"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                              helperText="How long each generated challenge remains valid before expiring."
-                            >
-                              <Input
-                                {...field}
-                                type="number"
-                                placeholder="60"
-                                min="1"
-                                max="1440"
-                                className="w-full"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  field.onChange(val === "" ? undefined : Number(val));
-                                }}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                          )}
-                        />
-                        <Controller
-                          control={control}
-                          name="scepConfig.dynamicChallengeMaxPending"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Max Pending Challenges"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                              helperText="Maximum number of unused challenges that can exist at once."
-                            >
-                              <Input
-                                {...field}
-                                type="number"
-                                placeholder="100"
-                                min="1"
-                                max="1000"
-                                className="w-full"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  field.onChange(val === "" ? undefined : Number(val));
-                                }}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </>
-                    )}
-
-                    <Controller
-                      control={control}
-                      name="scepConfig.includeCaCertInResponse"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl isError={Boolean(error)} errorText={error?.message}>
-                          <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
-                            <Checkbox
-                              id="includeCaCertInResponse"
-                              isChecked={value ?? true}
-                              onCheckedChange={onChange}
-                            />
-                            <div className="space-y-1">
-                              <span className="text-sm font-medium text-mineshaft-100">
-                                Include CA Certificate in Response
-                              </span>
-                              <p className="text-xs text-bunker-300">
-                                Include the CA certificate chain in SCEP responses
-                              </p>
-                            </div>
-                          </div>
-                        </FormControl>
-                      )}
-                    />
-
-                    <Controller
-                      control={control}
-                      name="scepConfig.allowCertBasedRenewal"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl isError={Boolean(error)} errorText={error?.message}>
-                          <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
-                            <Checkbox
-                              id="allowCertBasedRenewal"
-                              isChecked={value ?? true}
-                              onCheckedChange={onChange}
-                            />
-                            <div className="space-y-1">
-                              <span className="text-sm font-medium text-mineshaft-100">
-                                Allow Certificate-Based Renewal
-                              </span>
-                              <p className="text-xs text-bunker-300">
-                                Allow clients to renew certificates using an existing valid
-                                certificate instead of the challenge password
-                              </p>
-                            </div>
-                          </div>
-                        </FormControl>
-                      )}
-                    />
-                  </div>
-                )}
               </Tab.Panel>
 
               {/* Tab 2: Certificate Defaults */}

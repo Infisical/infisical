@@ -924,6 +924,22 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   };
 }
 
+interface PamAccessPolicyBypassedEvent {
+  type: EventType.PAM_ACCESS_POLICY_BYPASSED;
+  metadata: {
+    policyType: string;
+    policyId: string | null;
+    requestId: string;
+    grantId: string;
+    granteeUserId: string;
+    resourceName?: string;
+    accountName?: string;
+    accessDuration: string;
+    bypassReason: string;
+    approverCount: number;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1010,7 +1026,8 @@ export type Event =
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
-  | ClearIdentityLdapAuthLockoutsEvent;
+  | ClearIdentityLdapAuthLockoutsEvent
+  | PamAccessPolicyBypassedEvent;
 
 export type AuditLog = {
   id: string;

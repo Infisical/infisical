@@ -63,5 +63,6 @@ export enum AppConnection {
   DigiCert = "digicert",
   TravisCI = "travis-ci",
   Salesforce = "salesforce",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Datadog = "datadog"
 }

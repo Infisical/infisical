@@ -6,6 +6,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
+import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
   TAuth0ClientSecretRotation,
@@ -35,6 +36,13 @@ import {
   TDatabricksServicePrincipalSecretRotationListItem,
   TDatabricksServicePrincipalSecretRotationWithConnection
 } from "./databricks-service-principal-secret";
+import {
+  TDatadogApplicationKeySecretRotation,
+  TDatadogApplicationKeySecretRotationGeneratedCredentials,
+  TDatadogApplicationKeySecretRotationInput,
+  TDatadogApplicationKeySecretRotationListItem,
+  TDatadogApplicationKeySecretRotationWithConnection
+} from "./datadog-application-key-secret";
 import {
   TDbtServiceTokenRotation,
   TDbtServiceTokenRotationGeneratedCredentials,
@@ -157,7 +165,8 @@ export type TSecretRotationV2 =
   | TOpenRouterApiKeyRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
-  | TSalesforceOauthCredentialsRotation;
+  | TSalesforceOauthCredentialsRotation
+  | TDatadogApplicationKeySecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -178,7 +187,8 @@ export type TSecretRotationV2WithConnection =
   | TOpenRouterApiKeyRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
-  | TSalesforceOauthCredentialsRotationWithConnection;
+  | TSalesforceOauthCredentialsRotationWithConnection
+  | TDatadogApplicationKeySecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -195,7 +205,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TOpenRouterApiKeyRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
-  | TSalesforceOauthCredentialsRotationGeneratedCredentials;
+  | TSalesforceOauthCredentialsRotationGeneratedCredentials
+  | TDatadogApplicationKeySecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -216,7 +227,8 @@ export type TSecretRotationV2Input =
   | TOpenRouterApiKeyRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
-  | TSalesforceOauthCredentialsRotationInput;
+  | TSalesforceOauthCredentialsRotationInput
+  | TDatadogApplicationKeySecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -237,7 +249,8 @@ export type TSecretRotationV2ListItem =
   | TOpenRouterApiKeyRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
-  | TSalesforceOauthCredentialsRotationListItem;
+  | TSalesforceOauthCredentialsRotationListItem
+  | TDatadogApplicationKeySecretRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
@@ -259,6 +272,8 @@ export type TFindSecretRotationV2ByIdDTO = {
 };
 
 export type TRotateSecretRotationV2 = TFindSecretRotationV2ByIdDTO & { auditLogInfo: AuditLogInfo };
+
+export type TCheckSecretRotationV2Credentials = TFindSecretRotationV2ByIdDTO & { auditLogInfo: AuditLogInfo };
 
 export type TRotateAtUtc = { hours: number; minutes: number };
 
@@ -391,6 +406,10 @@ export type TRotationFactoryGetSecretsPayload<T extends TSecretRotationV2Generat
   generatedCredentials: T[number]
 ) => { key: string; value: string }[];
 
+export type TRotationFactoryCheckActiveCredentials<T extends TSecretRotationV2GeneratedCredentials> = (
+  activeCredentials: T[number]
+) => Promise<void>;
+
 export type TRotationFactory<
   T extends TSecretRotationV2WithConnection,
   C extends TSecretRotationV2GeneratedCredentials,
@@ -400,10 +419,12 @@ export type TRotationFactory<
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;
   rotateCredentials: TRotationFactoryRotateCredentials<C>;
   getSecretsPayload: TRotationFactoryGetSecretsPayload<C>;
+  checkActiveCredentials?: TRotationFactoryCheckActiveCredentials<C>;
 };

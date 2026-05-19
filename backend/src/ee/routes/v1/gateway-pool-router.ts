@@ -19,7 +19,7 @@ const SanitizedPoolMemberSchema = GatewaysV2Schema.pick({
   id: true,
   name: true,
   heartbeat: true,
-  lastHealthCheckStatus: true
+  heartbeatTTL: true
 });
 
 export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
@@ -297,6 +297,60 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
               id: z.string(),
               identityId: z.string(),
               identityName: z.string().nullable()
+            })
+          ),
+          pkiDiscoveryConfigs: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              projectName: z.string().nullable()
+            })
+          ),
+          pamDomains: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              projectName: z.string().nullable()
+            })
+          ),
+          pamResources: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              resourceType: z.string(),
+              projectName: z.string().nullable()
+            })
+          ),
+          pamDiscoverySources: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              discoveryType: z.string(),
+              projectName: z.string().nullable()
+            })
+          ),
+          appConnections: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              app: z.string(),
+              projectId: z.string().nullish(),
+              projectName: z.string().nullable()
+            })
+          ),
+          dynamicSecrets: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string(),
+              folderId: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              environmentSlug: z.string()
             })
           )
         })

@@ -14,13 +14,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
-      # - name: Setup Node 22
-      #   uses: actions/setup-node@v3
-      #   with:
-      #     node-version: "22"
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
       # uncomment this when testing locally using nektos/act
-      - uses: KengoTODA/actions-setup-docker-compose@v1
+      - uses: KengoTODA/actions-setup-docker-compose@17da3fa4493b7303eff3e8f4f84a07ed6ed2e7a7 # v1, Feb 6, 2026
         if: ${{ env.ACT }}
         name: Install `docker compose` for local simulations
         with:
@@ -55,7 +51,7 @@ jobs:
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           JWT_AUTH_SECRET: something-random
           ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: "1.21.5"
       - name: Wait for container to be stable and check logs

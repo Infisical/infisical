@@ -6,14 +6,17 @@ import { isValidIp } from "@app/lib/ip";
 
 import { AcmeAccountDoesNotExistError } from "./pki-acme-errors";
 
-export const buildUrl = (profileId: string, path: string): string => {
+export const buildUrl = (profileId: string, path: string, applicationId?: string): string => {
   const appCfg = getConfig();
   const baseUrl = appCfg.SITE_URL ?? "";
+  if (applicationId) {
+    return `${baseUrl}/api/v1/cert-manager/acme/applications/${applicationId}/profiles/${profileId}${path}`;
+  }
   return `${baseUrl}/api/v1/cert-manager/acme/profiles/${profileId}${path}`;
 };
 
-export const extractAccountIdFromKid = (kid: string, profileId: string): string => {
-  const kidPrefix = buildUrl(profileId, "/accounts/");
+export const extractAccountIdFromKid = (kid: string, profileId: string, applicationId?: string): string => {
+  const kidPrefix = buildUrl(profileId, "/accounts/", applicationId);
   if (!kid.startsWith(kidPrefix)) {
     throw new AcmeAccountDoesNotExistError({ message: "KID must start with the profile account URL" });
   }

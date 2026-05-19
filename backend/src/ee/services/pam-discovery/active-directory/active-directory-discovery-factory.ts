@@ -461,7 +461,8 @@ const upsertDomain = async (
   gatewayId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   pamDomainDAL: Pick<TPamDomainDALFactory, "create" | "find">,
-  tx: Knex
+  tx: Knex,
+  gatewayPoolId?: string | null
 ) => {
   const fingerprint = configuration.domainFQDN.toLowerCase();
 
@@ -499,7 +500,8 @@ const upsertDomain = async (
       projectId,
       name: domainResourceName,
       domainType: PamDomainType.ActiveDirectory,
-      gatewayId,
+      gatewayId: gatewayPoolId ? null : gatewayId,
+      gatewayPoolId: gatewayPoolId ?? null,
       encryptedConnectionDetails,
       discoveryFingerprint: fingerprint
     },
@@ -515,6 +517,7 @@ const upsertWindowsServerResource = async (
   domainId: string,
   domainFQDN: string,
   gatewayId: string,
+  gatewayPoolId: string | null | undefined,
   winrmConfig: {
     winrmPort: number;
     useWinrmHttps: boolean;
@@ -576,7 +579,8 @@ const upsertWindowsServerResource = async (
       projectId,
       name: resourceName,
       resourceType: PamResource.Windows,
-      gatewayId,
+      gatewayId: gatewayPoolId ? null : gatewayId,
+      gatewayPoolId: gatewayPoolId ?? null,
       encryptedConnectionDetails,
       encryptedResourceMetadata,
       domainId,
@@ -882,7 +886,7 @@ const upsertDiscoveredDependency = async (
 export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
   TAdDiscoveryConfiguration,
   TAdDiscoveryCredentials
-> = (_discoveryType, configuration, credentials, gatewayId, projectId, gatewayV2Service) => {
+> = (_discoveryType, configuration, credentials, gatewayId, projectId, gatewayV2Service, gatewayPoolId) => {
   const validateConnection = async () => {
     try {
       const ldapProtocol = configuration.useLdaps ? "ldaps" : "ldap";
@@ -1000,7 +1004,15 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 
       // Auto-import AD domain
       const { domain } = await pamDomainDAL.transaction(async (tx) => {
-        const result = await upsertDomain(projectId, configuration, gatewayId, kmsService, pamDomainDAL, tx);
+        const result = await upsertDomain(
+          projectId,
+          configuration,
+          gatewayId,
+          kmsService,
+          pamDomainDAL,
+          tx,
+          gatewayPoolId
+        );
         return result;
       });
 
@@ -1016,6 +1028,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               domain.id,
               configuration.domainFQDN,
               gatewayId,
+              gatewayPoolId,
               {
                 winrmPort: configuration.winrmPort,
                 useWinrmHttps: configuration.useWinrmHttps,

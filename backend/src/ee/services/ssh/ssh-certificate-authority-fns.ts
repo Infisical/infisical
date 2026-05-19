@@ -11,6 +11,8 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ActorType } from "@app/services/auth/auth-type";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -600,7 +602,7 @@ export const convertActorToPrincipals = async ({ userDAL, actor, actorId }: TCon
     });
   }
 
-  const user = await userDAL.findById(actorId);
+  const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
   return [user.username];
 };

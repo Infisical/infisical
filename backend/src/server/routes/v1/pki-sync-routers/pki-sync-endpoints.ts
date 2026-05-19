@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
@@ -21,7 +22,8 @@ export const registerSyncPkiEndpoints = ({
   server: FastifyZodProvider;
   createSchema: z.ZodType<{
     name: string;
-    projectId: string;
+    projectId?: string;
+    applicationId?: string;
     connectionId: string;
     destinationConfig: Record<string, unknown>;
     syncOptions?: Record<string, unknown>;
@@ -63,7 +65,7 @@ export const registerSyncPkiEndpoints = ({
       tags: [ApiDocsTags.PkiSyncs],
       description: `List the ${destinationName} PKI Syncs for the specified project.`,
       querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required")
+        projectId: z.string().trim().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({ pkiSyncs: responseSchema.array() })
@@ -71,9 +73,7 @@ export const registerSyncPkiEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        query: { projectId }
-      } = req;
+      const projectId = req.internalCertManagerProjectId;
 
       const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId }, req.permission);
 
@@ -123,7 +123,8 @@ export const registerSyncPkiEndpoints = ({
           type: EventType.GET_PKI_SYNC,
           metadata: {
             syncId: pkiSyncId,
-            destination
+            destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -150,7 +151,10 @@ export const registerSyncPkiEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const pkiSync = await server.services.pkiSync.createPkiSync({ ...req.body, destination }, req.permission);
+      const pkiSync = await server.services.pkiSync.createPkiSync(
+        { ...req.body, projectId: req.body.projectId ?? req.internalCertManagerProjectId, destination },
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -160,7 +164,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             pkiSyncId: pkiSync.id,
             name: pkiSync.name,
-            destination
+            destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -201,7 +206,8 @@ export const registerSyncPkiEndpoints = ({
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSync.name
+            name: pkiSync.name,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });
@@ -242,7 +248,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             pkiSyncId,
             name: pkiSync.name,
-            destination: pkiSync.destination
+            destination: pkiSync.destination,
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
       });

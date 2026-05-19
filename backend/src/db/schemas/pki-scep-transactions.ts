@@ -19,7 +19,8 @@ export const PkiScepTransactionsSchema = z.object({
   clientCipherOid: z.string().nullable().optional(),
   expiresAt: z.date(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiScepTransactions = z.infer<typeof PkiScepTransactionsSchema>;

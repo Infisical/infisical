@@ -18,6 +18,7 @@ import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDatadogConnection } from "./datadog-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
@@ -83,6 +84,7 @@ export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
+export * from "./datadog-connection";
 export * from "./dbt-connection";
 export * from "./devin-connection";
 export * from "./digicert-connection";
@@ -195,7 +197,8 @@ export type TAppConnection =
   | TDigiCertConnection
   | TTravisCIConnection
   | TSalesforceConnection
-  | TSnowflakeConnection;
+  | TSnowflakeConnection
+  | TDatadogConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
@@ -215,13 +218,19 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
+  | "gatewayPoolId"
   | "projectId"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
     TAppConnection,
-    "name" | "credentials" | "description" | "isPlatformManagedCredentials" | "gatewayId"
+    | "name"
+    | "credentials"
+    | "description"
+    | "isPlatformManagedCredentials"
+    | "gatewayId"
+    | "gatewayPoolId"
   >
 > & {
   connectionId: string;

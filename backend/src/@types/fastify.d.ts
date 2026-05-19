@@ -84,6 +84,8 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorAuthMethod, ActorType, MfaMethod, TProviderAuthCallback } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TCertManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
+import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
 import { TCaSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
@@ -133,8 +135,12 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
+import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
+import { TPkiApplicationEnrollmentServiceFactory } from "@app/services/pki-application/pki-application-enrollment-service";
+import { TPkiApplicationMembershipServiceFactory } from "@app/services/pki-application/pki-application-membership-service";
+import { TPkiApplicationServiceFactory } from "@app/services/pki-application/pki-application-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
@@ -253,6 +259,7 @@ declare module "fastify" {
       name: string;
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
+    internalCertManagerProjectId: string;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -325,6 +332,11 @@ declare module "fastify" {
       certificateTemplate: TCertificateTemplateServiceFactory;
       certificatePolicy: TCertificatePolicyServiceFactory;
       certificateProfile: TCertificateProfileServiceFactory;
+      pkiApplication: TPkiApplicationServiceFactory;
+      pkiApplicationMembership: TPkiApplicationMembershipServiceFactory;
+      pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
+      certManagerProjectResolver: TCertManagerProjectResolverFactory;
+      certManagerInstance: TCertManagerInstanceServiceFactory;
       sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
       sshCertificateTemplate: TSshCertificateTemplateServiceFactory;
       sshHost: TSshHostServiceFactory;
@@ -393,6 +405,7 @@ declare module "fastify" {
       notification: TNotificationServiceFactory;
       announcement: TAnnouncementServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
+      orgProductStats: TOrgProductStatsServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;
       pamDomain: TPamDomainServiceFactory;

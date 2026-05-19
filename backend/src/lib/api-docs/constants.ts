@@ -67,6 +67,8 @@ export enum ApiDocsTags {
   PkiCertificatePolicies = "PKI Certificate Policies",
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateProfiles = "PKI Certificate Profiles",
+  PkiApplications = "PKI Applications",
+  CertManagerInstance = "Certificate Manager Instance",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
   PkiDiscovery = "PKI Discovery",
@@ -1343,6 +1345,19 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located.",
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
+  },
+  DUPLICATE_SECRET: {
+    projectId: "The ID of the project containing the secret.",
+    sourceEnvironment: "The slug of the source environment.",
+    sourceSecretPath: "The folder path of the source secret.",
+    destinationEnvironment: "The slug of the destination environment.",
+    destinationSecretPath: "The folder path where the secret will be duplicated to.",
+    secretIds:
+      "Array of source secret IDs to duplicate. All secrets must belong to the source environment and path. Rotation and honey-token secrets cannot be duplicated. Maximum 50 secrets per request.",
+    shouldOverwrite:
+      "When true, overwrite an existing secret with the same key at the destination. When false (default), the request fails if the destination already has a secret with that key.",
+    attributesToCopy:
+      "Object specifying which attributes of the source secret to copy to the destination. Each key is optional and defaults to false. Available keys: value, comment, tags, metadata, skipMultilineEncoding."
   }
 } as const;
 
@@ -2799,6 +2814,11 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    DATADOG: {
+      url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
+      apiKey: "The Datadog API key used to authenticate.",
+      applicationKey: "The Datadog Application key used to authenticate."
+    },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
       port: "The port number of the SSH server (default: 22).",
@@ -3221,6 +3241,9 @@ export const SecretRotations = {
   RECONCILE: {
     rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
   },
+  CHECK_CREDENTIALS: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to check active credentials for.`
+  }),
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:
@@ -3322,6 +3345,9 @@ export const SecretRotations = {
     SALESFORCE_OAUTH_CREDENTIALS: {
       appId: "The identifier of the Salesforce External Client App to rotate the consumer secret for.",
       appName: "The developer name of the Salesforce External Client App to rotate the consumer secret for."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3389,6 +3415,10 @@ export const SecretRotations = {
     SALESFORCE_OAUTH_CREDENTIALS: {
       consumerKey: "The name of the secret that the rotated Salesforce consumer key will be mapped to.",
       consumerSecret: "The name of the secret that the rotated Salesforce consumer secret will be mapped to."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
+      applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
     }
   }
 };

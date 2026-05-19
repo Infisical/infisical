@@ -36,7 +36,12 @@ import {
   OrgPermissionSubjects,
   useOrganization
 } from "@app/context";
-import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
+import {
+  collapseCertManagerProjects,
+  getProjectHomePage,
+  getProjectLottieIcon,
+  getProjectTitle
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -44,6 +49,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -85,7 +91,12 @@ export const MyProjectView = ({
     {}
   );
 
-  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
+  const { data: rawWorkspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const workspaces = useMemo(
+    () => collapseCertManagerProjects(rawWorkspaces, certManagerInstance?.activeProjectId ?? null),
+    [rawWorkspaces, certManagerInstance?.activeProjectId]
+  );
   const {
     setPage,
     perPage,

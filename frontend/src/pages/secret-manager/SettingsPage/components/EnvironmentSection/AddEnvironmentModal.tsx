@@ -4,7 +4,20 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useCreateWsEnvironment } from "@app/hooks/api";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
@@ -25,11 +38,7 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
-type ContentProps = {
-  onComplete: (environment: ProjectEnv) => void;
-};
-
-const Content = ({ onComplete }: ContentProps) => {
+export const AddEnvironmentModal = ({ isOpen, onOpenChange, onComplete }: Props) => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useCreateWsEnvironment();
   const {
@@ -37,9 +46,14 @@ const Content = ({ onComplete }: ContentProps) => {
     handleSubmit,
     setValue,
     getValues,
+    reset,
     formState: { dirtyFields }
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
+    defaultValues: {
+      environmentName: "",
+      environmentSlug: ""
+    }
   });
 
   const onFormSubmit = async ({ environmentName, environmentSlug }: FormData) => {
@@ -56,7 +70,9 @@ const Content = ({ onComplete }: ContentProps) => {
       type: "success"
     });
 
-    onComplete(env);
+    if (onComplete) onComplete(env);
+    onOpenChange(false);
+    reset();
   };
 
   const handleEnvironmentNameChange = () => {
@@ -67,69 +83,63 @@ const Content = ({ onComplete }: ContentProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        defaultValue=""
-        name="environmentName"
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Environment Name" isError={Boolean(error)} errorText={error?.message}>
-            <Input
-              {...field}
-              onChange={(e) => {
-                onChange(e);
-                handleEnvironmentNameChange();
-              }}
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="environmentSlug"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Environment Slug"
-            helperText="Slugs are shorthands used in cli to access environment"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} />
-          </FormControl>
-        )}
-      />
-      <div className="mt-8 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isPending}
-          isDisabled={isPending}
-        >
-          Create
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
-    </form>
-  );
-};
-
-export const AddEnvironmentModal = ({ onComplete, ...props }: Props) => {
-  return (
-    <Modal {...props}>
-      <ModalContent title="Create a new environment">
-        <Content
-          onComplete={(env) => {
-            if (onComplete) onComplete(env);
-            props.onOpenChange(false);
-          }}
-        />
-      </ModalContent>
-    </Modal>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        onOpenChange(open);
+        if (!open) reset();
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create a new environment</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
+          <Controller
+            control={control}
+            name="environmentName"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="environmentName">Environment Name</FieldLabel>
+                <Input
+                  id="environmentName"
+                  isError={Boolean(error)}
+                  {...field}
+                  onChange={(e) => {
+                    onChange(e);
+                    handleEnvironmentNameChange();
+                  }}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="environmentSlug"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="environmentSlug">Environment Slug</FieldLabel>
+                <Input id="environmentSlug" isError={Boolean(error)} {...field} />
+                <FieldError>{error?.message}</FieldError>
+                <FieldDescription>
+                  Slugs are shorthand identifiers used to reference this environment.
+                </FieldDescription>
+              </Field>
+            )}
+          />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" variant="project" isPending={isPending} isDisabled={isPending}>
+              Create
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

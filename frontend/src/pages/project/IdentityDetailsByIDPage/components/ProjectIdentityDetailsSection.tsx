@@ -22,10 +22,11 @@ import {
   ProjectIcon,
   SubOrgIcon
 } from "@app/components/v3";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
 type Props = {
@@ -41,6 +42,9 @@ export const ProjectIdentityDetailsSection = ({
   isSubOrgIdentity,
   membership
 }: Props) => {
+  const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
@@ -114,7 +118,7 @@ export const ProjectIdentityDetailsSection = ({
                 ) : (
                   <Badge variant="project">
                     <ProjectIcon />
-                    Project
+                    {isCertManager ? "Certificate Manager" : "Project"}
                   </Badge>
                 )}
               </DetailValue>
@@ -139,7 +143,14 @@ export const ProjectIdentityDetailsSection = ({
               </DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>{isOrgIdentity ? "Joined project" : "Created"}</DetailLabel>
+              <DetailLabel>
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {isOrgIdentity
+                  ? isCertManager
+                    ? "Joined certificate manager"
+                    : "Joined project"
+                  : "Created"}
+              </DetailLabel>
               <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
             </Detail>
             {!isOrgIdentity && (

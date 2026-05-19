@@ -27,6 +27,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrgMembershipProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { UserProjectRow } from "./UserProjectRow";
@@ -77,9 +78,16 @@ export const UserProjectsTable = ({
     membershipId
   );
 
+  const visibleProjectMemberships = useMemo(
+    () =>
+      projectMemberships?.filter(
+        (membership) => membership.project.type !== ProjectType.CertificateManager
+      ),
+    [projectMemberships]
+  );
   const filteredProjectMemberships = useMemo(
     () =>
-      projectMemberships
+      visibleProjectMemberships
         ?.filter((membership) =>
           membership.project.name.toLowerCase().includes(search.trim().toLowerCase())
         )
@@ -91,7 +99,7 @@ export const UserProjectsTable = ({
             .toLowerCase()
             .localeCompare(membershipTwo.project.name.toLowerCase());
         }),
-    [projectMemberships, orderDirection, search]
+    [visibleProjectMemberships, orderDirection, search]
   );
 
   useResetPageHelper({
@@ -149,16 +157,16 @@ export const UserProjectsTable = ({
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {projectMemberships.length
+              {visibleProjectMemberships.length
                 ? "No projects match this search"
                 : "This user is not a member of any projects"}
             </EmptyTitle>
             <EmptyDescription>
-              {projectMemberships.length
+              {visibleProjectMemberships.length
                 ? "Adjust search filters to view project memberships."
                 : "Assign this user to a project."}
             </EmptyDescription>
-            {!projectMemberships.length && canAddToProject && (
+            {!visibleProjectMemberships.length && canAddToProject && (
               <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}

@@ -10,6 +10,7 @@ import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotati
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
 import { AzureClientSecretRotationReviewFields } from "./AzureClientSecretRotationReviewFields";
 import { DatabricksServicePrincipalSecretRotationReviewFields } from "./DatabricksServicePrincipalSecretRotationReviewFields";
+import { DatadogApplicationKeySecretRotationReviewFields } from "./DatadogApplicationKeySecretRotationReviewFields";
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
@@ -42,7 +43,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
-  [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields
+  [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields,
+  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

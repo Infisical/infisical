@@ -23,6 +23,7 @@ import {
 
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
+import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./ViewDatadogApplicationKeySecretRotationGeneratedCredentials";
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
@@ -176,6 +177,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.SalesforceOauthCredentials:
       Component = (
         <ViewSalesforceOauthCredentialsRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.DatadogApplicationKeySecret:
+      Component = (
+        <ViewDatadogApplicationKeySecretRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

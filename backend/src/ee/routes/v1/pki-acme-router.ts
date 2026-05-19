@@ -25,11 +25,6 @@ const SharedParamsSchema = z.object({
   profileId: z.string().uuid()
 });
 
-export interface MyRequestInterface {
-  Params: { profileId: string; accountId?: string };
-  Body: TRawJwsPayload;
-}
-
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   const validateExistingAccount = async <
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -479,6 +474,58 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
           accountId,
           authzId: req.params.authzId,
           challengeId: req.params.challengeId,
+          auditLogInfo: req.auditLogInfo
+        })
+      );
+    }
+  });
+
+  const AppScopedParams = z.object({
+    applicationId: z.string().uuid(),
+    profileId: z.string().uuid()
+  });
+
+  server.route({
+    method: "GET",
+    url: "/applications/:applicationId/profiles/:profileId/directory",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAcme],
+      description: "ACME Directory - provides URLs for the client to make API calls to",
+      params: AppScopedParams,
+      response: { 200: GetAcmeDirectoryResponseSchema }
+    },
+    handler: async (req) => server.services.pkiAcme.getAcmeDirectory(req.params.profileId, req.params.applicationId)
+  });
+
+  server.route({
+    method: "POST",
+    url: "/applications/:applicationId/profiles/:profileId/new-account",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAcme],
+      description: "ACME New Account - register a new account or find existing one",
+      params: AppScopedParams,
+      body: RawJwsPayloadSchema,
+      response: { 201: CreateAcmeAccountResponseSchema }
+    },
+    handler: async (req, res) => {
+      const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload({
+        url: new URL(req.url, `${req.protocol}://${req.hostname}`),
+        rawJwsPayload: req.body
+      });
+      const { alg, jwk } = protectedHeader;
+      return sendAcmeResponse(
+        res,
+        req.params.profileId,
+        await server.services.pkiAcme.createAcmeAccount({
+          profileId: req.params.profileId,
+          applicationId: req.params.applicationId,
+          alg,
+          jwk: jwk!,
+          payload,
           auditLogInfo: req.auditLogInfo
         })
       );

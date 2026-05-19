@@ -14,7 +14,7 @@ const baseFormSchema = z.object({
   description: z
     .string()
     .trim()
-    .max(256, "Description too long, max length is 256 characters")
+    .max(1024, "Description too long, max length is 1024 characters")
     .optional()
 });
 

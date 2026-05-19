@@ -10,6 +10,7 @@ import {
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
+  ResourceType,
   TableName,
   TProjectEnvironments,
   TProjects
@@ -34,6 +35,10 @@ import {
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
@@ -344,13 +349,18 @@ export const projectServiceFactory = ({
           tx
         );
       } catch (err) {
-        if (
-          err instanceof DatabaseError &&
-          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
-        ) {
-          throw new BadRequestError({
-            message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
-          });
+        if (err instanceof DatabaseError) {
+          const code = (err.error as { code?: string })?.code;
+          if (code === DatabaseErrorCode.UniqueViolation) {
+            throw new BadRequestError({
+              message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
+            });
+          }
+          if (code === DatabaseErrorCode.StringDataRightTruncation) {
+            throw new BadRequestError({
+              message: "One or more fields exceed the allowed length. Please shorten and try again."
+            });
+          }
         }
         throw err;
       }
@@ -756,6 +766,26 @@ export const projectServiceFactory = ({
       });
     }
 
+    if (project.type === ProjectType.CertificateManager) {
+      const certManagerProjects = await projectDAL.find({
+        orgId: project.orgId,
+        type: ProjectType.CertificateManager
+      });
+      if (certManagerProjects.length <= 1) {
+        throw new BadRequestError({
+          message:
+            "Cannot delete the last Certificate Manager project in this organization. Create another Certificate Manager project first."
+        });
+      }
+      const org = await orgDAL.findOne({ id: project.orgId });
+      if (org?.defaultCertManagerProjectId === project.id) {
+        throw new BadRequestError({
+          message:
+            "Cannot delete the active Certificate Manager project. Set another project as active in Organization Settings → Certificate Manager first."
+        });
+      }
+    }
+
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {
       lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {
@@ -892,6 +922,12 @@ export const projectServiceFactory = ({
       });
     }
 
+    if (project.type === ProjectType.CertificateManager && !hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only admins can update Certificate Manager project settings"
+      });
+    }
+
     try {
       const updatedProject = await projectDAL.updateById(project.id, {
         name: update.name,
@@ -910,10 +946,18 @@ export const projectServiceFactory = ({
 
       return updatedProject;
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({
-          message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
-        });
+      if (err instanceof DatabaseError) {
+        const code = (err.error as { code?: string })?.code;
+        if (code === DatabaseErrorCode.UniqueViolation) {
+          throw new BadRequestError({
+            message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
+          });
+        }
+        if (code === DatabaseErrorCode.StringDataRightTruncation) {
+          throw new BadRequestError({
+            message: "One or more fields exceed the allowed length. Please shorten and try again."
+          });
+        }
       }
       throw err;
     }
@@ -1238,6 +1282,8 @@ export const projectServiceFactory = ({
     notAfterTo,
     notBeforeFrom,
     notBeforeTo,
+    applicationId,
+    applicationIds,
     sortBy,
     sortOrder,
     actorId,
@@ -1249,19 +1295,41 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    const scopedToSingleApplication = Boolean(applicationId);
+    let allowedByResource = false;
+    let projectPermission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"] | null =
+      null;
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    if (scopedToSingleApplication) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId!,
+        actorAuthMethod,
+        actorOrgId
+      });
+      if (resourcePermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)) {
+        allowedByResource = true;
+      }
+    }
+
+    if (!allowedByResource) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      projectPermission = permission;
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Read,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     const regularFilters = {
       projectId,
@@ -1285,13 +1353,18 @@ export const projectServiceFactory = ({
       ...(notAfterFrom && { notAfterFrom }),
       ...(notAfterTo && { notAfterTo }),
       ...(notBeforeFrom && { notBeforeFrom }),
-      ...(notBeforeTo && { notBeforeTo })
+      ...(notBeforeTo && { notBeforeTo }),
+      ...(applicationId && { applicationId }),
+      ...(applicationIds && applicationIds.length > 0 && { applicationIds })
     };
-    const permissionFilters = getProcessedPermissionRules(
-      permission,
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    const permissionFilters =
+      allowedByResource || !projectPermission
+        ? undefined
+        : getProcessedPermissionRules(
+            projectPermission,
+            ProjectPermissionCertificateActions.Read,
+            ProjectPermissionSub.Certificates
+          );
 
     const ALLOWED_SORT_COLUMNS = new Set([
       "notAfter",
@@ -1337,7 +1410,9 @@ export const projectServiceFactory = ({
       ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
       ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
       ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
-      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo })
+      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo }),
+      ...(regularFilters.applicationId && { applicationId: regularFilters.applicationId }),
+      ...(regularFilters.applicationIds && { applicationIds: regularFilters.applicationIds })
     };
 
     const count = forPkiSync
@@ -2408,7 +2483,9 @@ export const projectServiceFactory = ({
     }
 
     const org = await orgDAL.findOne({ id: permission.orgId });
-    const userDetails = await userDAL.findById(permission.id);
+    const userDetails = await requestMemoize(requestMemoKeys.userFindById(permission.id), () =>
+      userDAL.findById(permission.id)
+    );
     const appCfg = getConfig();
 
     let projectTypeUrl = project.type;
@@ -2420,6 +2497,12 @@ export const projectServiceFactory = ({
 
     const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
 
+    const productLabel = project.type === ProjectType.CertificateManager ? "Certificate Manager" : null;
+    const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";
+    const notificationBody = productLabel
+      ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
+      : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
+
     await notificationService.createUserNotifications(
       projectMembers
         .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
@@ -2427,8 +2510,8 @@ export const projectServiceFactory = ({
           userId: member.userId,
           orgId: project.orgId,
           type: NotificationType.PROJECT_ACCESS_REQUEST,
-          title: "Project Access Request",
-          body: `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`,
+          title: notificationTitle,
+          body: notificationBody,
           link: callbackPath
         }))
     );
@@ -2436,14 +2519,15 @@ export const projectServiceFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.ProjectAccessRequest,
       recipients: filteredProjectMembers,
-      subjectLine: "Project Access Request",
+      subjectLine: notificationTitle,
       substitutions: {
         requesterName: `${userDetails.firstName} ${userDetails.lastName}`,
         requesterEmail: userDetails.email,
         projectName: project?.name,
         orgName: org?.name,
         note: comment,
-        callback_url: `${appCfg.SITE_URL}${callbackPath}`
+        callback_url: `${appCfg.SITE_URL}${callbackPath}`,
+        ...(productLabel ? { productLabel } : {})
       }
     });
   };

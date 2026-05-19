@@ -99,6 +99,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Salesforce OAuth Credentials",
     image: "Salesforce.png",
     size: 50
+  },
+  [SecretRotation.DatadogApplicationKeySecret]: {
+    name: "Datadog Application Key",
+    image: "DatadogWhite.png",
+    size: 50
   }
 };
 
@@ -121,7 +126,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
-  [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce
+  [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
+  [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -144,7 +150,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.OpenRouterApiKey]: true,
   [SecretRotation.HpIloLocalAccount]: false,
   [SecretRotation.SupabaseApiKey]: true,
-  [SecretRotation.SalesforceOauthCredentials]: true
+  [SecretRotation.SalesforceOauthCredentials]: true,
+  [SecretRotation.DatadogApplicationKeySecret]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

@@ -42,6 +42,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListWorkspaceGroups } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupRoles } from "./GroupRoles";
@@ -64,6 +65,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const {
     search,
@@ -86,7 +89,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const { data: groupMemberships = [], isPending } = useListWorkspaceGroups(
-    currentProject?.id || ""
+    currentProject?.id || "",
+    currentProject?.type
   );
 
   const filteredGroupMemberships = useMemo(() => {
@@ -123,7 +127,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search project groups..."
+            placeholder={isCertManager ? "Search groups..." : "Search project groups..."}
           />
         </InputGroup>
       </div>
@@ -131,7 +135,14 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {search ? "No project groups match search" : "No project groups found"}
+              {/* eslint-disable-next-line no-nested-ternary */}
+              {search
+                ? isCertManager
+                  ? "No groups match search"
+                  : "No project groups match search"
+                : isCertManager
+                  ? "No groups found"
+                  : "No project groups found"}
             </EmptyTitle>
             <EmptyDescription>
               {search ? "Adjust your search criteria." : "Add a group to get started."}
@@ -152,7 +163,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                <TableHead>Project Role</TableHead>
+                <TableHead>{`${productLabel} Role`}</TableHead>
                 <TableHead>Added on</TableHead>
                 <TableHead className="w-5" />
               </TableRow>
@@ -256,7 +267,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                                       }}
                                     >
                                       <UserRoundXIcon />
-                                      Remove Group From Project
+                                      {`Remove Group From ${productLabel}`}
                                     </DropdownMenuItem>
                                   )}
                                 </ProjectPermissionCan>

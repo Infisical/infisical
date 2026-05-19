@@ -1,5 +1,6 @@
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -25,24 +26,33 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
   TWindowsLocalAccountRotationWithConnection,
   TWindowsLocalAccountRotationGeneratedCredentials,
   TWindowsLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, _appConnectionDAL, _kmsService, _gatewayService, gatewayV2Service) => {
+> = (secretRotation, _appConnectionDAL, _kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
 
-  // Helper to verify Windows credentials work via SMB
-  // Note: We don't pass the domain when verifying the rotated account because it's a local account,
-  // not a domain account. The domain is only used for the app connection (admin) credentials.
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
+
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
-    const { credentials } = connection;
+    const conn = await getResolvedConnection();
 
     const verifyConfig: TSmbConnectionConfig = {
       method: SmbConnectionMethod.Credentials,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      app: conn.app,
+      orgId: conn.orgId,
+      gatewayId: conn.gatewayId,
       credentials: {
-        host: credentials.host,
-        port: credentials.port,
+        host: conn.credentials.host,
+        port: conn.credentials.port,
         domain: undefined,
         username: targetUsername,
         password: targetPassword
@@ -50,14 +60,13 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     };
 
     await executeSmbWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      // Verify without domain - local accounts don't belong to a domain
       await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
     });
   };
 
-  // Main password rotation logic
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
-    const { credentials } = connection;
+    const conn = await getResolvedConnection();
+    const { credentials } = conn;
     const credentialsDomain: string | undefined = credentials.domain;
     const credentialsPassword: string = credentials.password;
     const newPassword = generatePassword(passwordRequirements);
@@ -77,16 +86,14 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     if (isSelfRotation && currentPassword) {
       smbConfig.adminUser = username;
       smbConfig.adminPassword = currentPassword;
-      // Clear domain for self-rotation - local accounts don't belong to a domain
       smbConfig.domain = undefined;
     }
 
-    // Determine which credentials to use for the SMB connection
     const connectConfig: TSmbConnectionConfig = {
-      method: connection.method,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
+      method: conn.method,
+      app: conn.app,
+      orgId: conn.orgId,
+      gatewayId: conn.gatewayId,
       credentials: {
         host: credentials.host,
         port: credentials.port,
@@ -99,7 +106,6 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     if (isSelfRotation && currentPassword) {
       connectConfig.credentials.username = username;
       connectConfig.credentials.password = currentPassword;
-      // Clear domain for self-rotation - local accounts don't belong to a domain
       connectConfig.credentials.domain = undefined;
     }
 
@@ -159,10 +165,17 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     ];
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TWindowsLocalAccountRotationGeneratedCredentials
+  > = async ({ username: activeUsername, password }) => {
+    await $verifyCredentials(activeUsername, password);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

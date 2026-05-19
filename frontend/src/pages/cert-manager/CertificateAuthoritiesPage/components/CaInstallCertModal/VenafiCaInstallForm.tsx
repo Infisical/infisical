@@ -93,7 +93,7 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   const { data: existingSigningConfig } = useGetCaSigningConfig(caId, { enabled: !!caId });
   const { mutateAsync: createSigningConfig } = useCreateCaSigningConfig();
   const { mutateAsync: updateSigningConfig } = useUpdateCaSigningConfig();
-  const { mutateAsync: installVenafiCert } = useInstallCaCertificateVenafi(currentProject.id);
+  const { mutateAsync: installVenafiCert } = useInstallCaCertificateVenafi();
 
   const onFormSubmit = async ({
     appConnectionId,
