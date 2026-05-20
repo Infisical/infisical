@@ -44,7 +44,7 @@ export const CertManagerNotConfiguredModal = ({ isOpen, onOpenChange }: Props) =
         <DialogHeader className="gap-6">
           <DialogTitle>Select an active Certificate Manager project</DialogTitle>
           <DialogDescription>
-            Certificate Manager now supports one instance per organization. An organization admin
+            Certificate Manager now supports one project per organization. An organization admin
             needs to select the active project in the Product Settings before you can continue.
           </DialogDescription>
         </DialogHeader>

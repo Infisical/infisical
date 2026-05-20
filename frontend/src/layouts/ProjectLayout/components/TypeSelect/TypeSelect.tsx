@@ -172,7 +172,8 @@ export const TypeSelect = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: projects = [] } = useGetUserProjects();
-  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
+    useCertManagerInstanceState();
 
   if (params.type && !params.projectId) {
     const resolvedType = urlSlugToProjectType(params.type);
@@ -189,17 +190,14 @@ export const TypeSelect = () => {
       const hasApplicationSelect =
         project.type === ProjectType.CertificateManager && Boolean(applicationName);
       const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
-      const isActiveCertManagerProject =
+      const isLegacyCertManagerProject =
         project.type === ProjectType.CertificateManager &&
-        certManagerInstance?.activeProjectId === project.id;
+        !isCertManagerInstancePending &&
+        certManagerInstance?.activeProjectId !== project.id;
       return (
         <TypeSelectInner
           currentType={project.type}
-          currentProjectName={
-            project.type === ProjectType.CertificateManager && !isActiveCertManagerProject
-              ? project.name
-              : undefined
-          }
+          currentProjectName={isLegacyCertManagerProject ? project.name : undefined}
           showDivider={hasSiblingProjectSelect || hasApplicationSelect}
         />
       );
