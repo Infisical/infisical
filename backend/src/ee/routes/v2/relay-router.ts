@@ -424,11 +424,10 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         }
       }
 
-      const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
-
-      if (result.resourceType !== "relay") {
-        throw new BadRequestError({ message: "Enrollment token does not belong to a relay" });
-      }
+      const result = await server.services.resourceAuthMethod.loginWithToken({
+        token: req.body.token,
+        expectedResourceType: "relay"
+      });
 
       await server.services.auditLog
         .createAuditLog({

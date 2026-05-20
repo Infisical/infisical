@@ -1309,7 +1309,7 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const enrollGateway = async ({ token }: { token: string }) => {
-    return resourceAuthMethodService.loginWithToken({ token });
+    return resourceAuthMethodService.loginWithToken({ token, expectedResourceType: "gateway" });
   };
 
   return {

@@ -575,7 +575,7 @@ export const resourceAuthMethodServiceFactory = ({
   };
 
   // Single-use: row is deleted on consume, not flagged.
-  const loginWithToken = async ({ token }: TLoginWithTokenDTO) => {
+  const loginWithToken = async ({ token, expectedResourceType }: TLoginWithTokenDTO) => {
     const tokenHash = crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
 
     const tokenRecord = await resourceTokenAuthDAL.findOne({ tokenHash });
@@ -597,6 +597,13 @@ export const resourceAuthMethodServiceFactory = ({
     const isRelay = Boolean(registry.relayId);
     if (!isGateway && !isRelay) {
       throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
+    }
+
+    const actualResourceType = isGateway ? RESOURCE_TYPE_GATEWAY : RESOURCE_TYPE_RELAY;
+    if (actualResourceType !== expectedResourceType) {
+      throw new BadRequestError({
+        message: `Enrollment token belongs to a ${actualResourceType}, not a ${expectedResourceType}`
+      });
     }
 
     const linkedResourceId = (isGateway ? registry.gatewayId : registry.relayId)!;

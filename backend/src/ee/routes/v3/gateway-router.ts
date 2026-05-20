@@ -430,11 +430,10 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       }
 
-      const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
-
-      if (result.resourceType !== "gateway") {
-        throw new BadRequestError({ message: "Enrollment token does not belong to a gateway" });
-      }
+      const result = await server.services.resourceAuthMethod.loginWithToken({
+        token: req.body.token,
+        expectedResourceType: "gateway"
+      });
 
       await server.services.auditLog
         .createAuditLog({
@@ -496,11 +495,10 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
-
-      if (result.resourceType !== "gateway") {
-        throw new BadRequestError({ message: "Enrollment token does not belong to a gateway" });
-      }
+      const result = await server.services.resourceAuthMethod.loginWithToken({
+        token: req.body.token,
+        expectedResourceType: "gateway"
+      });
 
       await server.services.auditLog
         .createAuditLog({
