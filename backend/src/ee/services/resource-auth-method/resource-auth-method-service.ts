@@ -143,7 +143,7 @@ export const resourceAuthMethodServiceFactory = ({
     if (registry.method === ResourceAuthMethodType.Aws) {
       const config = await resourceAwsAuthDAL.findOne({ authMethodId: registry.id });
       if (!config) {
-        throw new NotFoundError({ message: "AWS auth config missing for gateway" });
+        throw new NotFoundError({ message: `AWS auth config missing for ${resource.type}` });
       }
       return {
         method: ResourceAuthMethodType.Aws,
