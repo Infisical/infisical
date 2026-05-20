@@ -247,9 +247,8 @@ export const pamSessionServiceFactory = ({
     }
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
-    const alreadyEnded = !updatedSession;
 
-    if (alreadyEnded && session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
+    if (!updatedSession && session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
       throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
     }
 
@@ -262,7 +261,7 @@ export const pamSessionServiceFactory = ({
       }
     })();
 
-    return { session: updatedSession ?? session, projectId: session.projectId, alreadyEnded };
+    return { session: updatedSession ?? session, projectId: session.projectId, alreadyEnded: !updatedSession };
   };
 
   const terminateSessionById = async (sessionId: string, actor: OrgServiceActor) => {
