@@ -108,12 +108,11 @@ jobs:
           PREVIOUS_TAG="$(awk '/^previousTag:/ { print $2; exit }' "upgrade-impact/data/releases/${TAG_NAME}.yaml")"
           if [ -n "$PREVIOUS_TAG" ]; then
             PREVIOUS_AUTHOR="$(gh release view "$PREVIOUS_TAG" --json author --jq .author.login 2>/dev/null || true)"
-            PR_CREATOR="$(gh api user --jq .login 2>/dev/null || true)"
-            if [ -n "$PREVIOUS_AUTHOR" ] && [ "$PREVIOUS_AUTHOR" != "$PR_CREATOR" ]; then
+            if [ -n "$PREVIOUS_AUTHOR" ]; then
               REVIEWER_FLAG=(--reviewer "$PREVIOUS_AUTHOR")
               echo "Requesting review from previous release author: $PREVIOUS_AUTHOR"
             else
-              echo "Skipping reviewer assignment (previous author missing or matches PR creator)."
+              echo "Skipping reviewer assignment (could not resolve previous release author)."
             fi
           fi
 
