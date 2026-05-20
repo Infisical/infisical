@@ -194,6 +194,14 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
+    if (Boolean(watchClientCertificate?.trim()) !== Boolean(watchClientKeyCertificate?.trim())) {
+      createNotification({
+        text: "Client Certificate and Client Private Key must be provided together for mTLS.",
+        type: "error"
+      });
+      return;
+    }
+
     const isConnected = await testLDAPConnection({
       url: watchUrl,
       bindDN: watchBindDN,
