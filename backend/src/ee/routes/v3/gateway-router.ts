@@ -5,7 +5,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
