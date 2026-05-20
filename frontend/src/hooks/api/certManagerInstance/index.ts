@@ -78,3 +78,29 @@ export const useSetCertManagerActiveProject = () => {
     onSuccess: () => qc.invalidateQueries()
   });
 };
+
+export type TExportCertManagerProjectResult = {
+  sourceProjectId: string;
+  destinationProjectId: string;
+  exportedCertificateAuthorities: number;
+  renamedCertificateAuthorities: { originalName: string; newName: string }[];
+  exportedCertificatePolicies: number;
+  renamedCertificatePolicies: { originalName: string; newName: string }[];
+  exportedCertificateProfiles: number;
+  skippedCertificateProfiles: number;
+  renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
+};
+
+export const useExportCertManagerProject = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sourceProjectId }: { sourceProjectId: string }) => {
+      const { data } = await apiRequest.post<TExportCertManagerProjectResult>(
+        "/api/v1/cert-manager/export",
+        { sourceProjectId }
+      );
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries()
+  });
+};

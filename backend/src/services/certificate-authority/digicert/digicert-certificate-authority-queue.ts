@@ -1,7 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs } from "@app/queue";
 
 import { CertificateRequestStatus } from "../../certificate-common/certificate-constants";
 import { TCertificateRequestDALFactory } from "../../certificate-request/certificate-request-dal";
@@ -19,7 +20,7 @@ type TDigiCertCertificateAuthorityQueueServiceFactoryDep = Omit<
   TProcessDigiCertRequestDeps,
   "certificateRequestDAL"
 > & {
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findPendingValidationByCaType">;
 };
 
@@ -28,18 +29,18 @@ export type TDigiCertCertificateAuthorityQueueServiceFactory = ReturnType<
 >;
 
 export const digicertCertificateAuthorityQueueServiceFactory = ({
-  queueService,
+  cronJob,
   ...processorDeps
 }: TDigiCertCertificateAuthorityQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
-
-    queueService.start(QueueName.DigiCertOrderPolling, async () => {
-      try {
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.DigiCertOrderPolling,
+      pattern: DIGICERT_POLL_CRON_SCHEDULE,
+      runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
         logger.info(`${QueueJobs.DigiCertOrderPolling}: queue task started`);
 
         const clientsByCaId = new Map<string, TDigiCertApiClient>();
@@ -75,21 +76,7 @@ export const digicertCertificateAuthorityQueueServiceFactory = ({
         logger.info(
           `${QueueJobs.DigiCertOrderPolling}: completed [processed=${processed}] [issued=${issued}] [failed=${failed}]`
         );
-      } catch (error) {
-        logger.error(error, `${QueueJobs.DigiCertOrderPolling}: polling task failed`);
-        throw error;
       }
-    });
-
-    await queueService.upsertJobScheduler(
-      QueueName.DigiCertOrderPolling,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DigiCertOrderPolling}`,
-      { pattern: DIGICERT_POLL_CRON_SCHEDULE },
-      { name: QueueJobs.DigiCertOrderPolling }
-    );
-
-    queueService.listen(QueueName.DigiCertOrderPolling, "failed", (_, err) => {
-      logger.error(err, `${QueueName.DigiCertOrderPolling}: failed`);
     });
   };
 

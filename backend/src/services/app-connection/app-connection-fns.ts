@@ -22,6 +22,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
+import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -336,7 +337,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.SecretManager:
           return (
             Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
-            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app])
+            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
+            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
           );
         case ProjectType.SecretScanning:
           return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);

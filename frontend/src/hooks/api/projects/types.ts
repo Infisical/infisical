@@ -200,3 +200,22 @@ export type TUpdateProjectSshConfigDTO = {
   defaultUserSshCaId?: string;
   defaultHostSshCaId?: string;
 };
+
+export type TPermissionAuditSourceType = "role" | "group_role" | "additional_privilege";
+
+export type TPermissionAuditSource = {
+  id: string;
+  type: TPermissionAuditSourceType;
+  name: string;
+  slug?: string;
+  groupId?: string;
+  groupName?: string;
+  isTemporary: boolean;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+  permissions: unknown[];
+};
+
+export type TGetMembershipPermissionAuditResponse = {
+  sources: TPermissionAuditSource[];
+};

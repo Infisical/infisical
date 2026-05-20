@@ -8,54 +8,27 @@ description: "Migrate from the legacy project-based model to the new Application
   This guide is for existing customers on the legacy project-based model. If you're new to Infisical Certificate Manager, start with [Getting Started](/documentation/platform/pki/getting-started).
 </Warning>
 
-## Backward Compatibility
-
-Your existing certificates, profiles, alerts, syncs, and approval policies continue to work. Certificates will keep renewing, alerts will keep firing, and syncs will keep running. Nothing breaks.
-
-**What you can still do at the product level:**
-- Create new [Certificate Authorities](/documentation/platform/pki/ca/overview), [Policies](/documentation/platform/pki/settings/policies), and [Profiles](/documentation/platform/pki/settings/profiles)
-- Manage existing resources
-
-**What must now be done inside [Applications](/documentation/platform/pki/applications/overview):**
-- Configure [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP)
-- Create [alerts](/documentation/platform/pki/applications/alerting/overview)
-- Create [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview)
-- Define [approval policies](/documentation/platform/pki/applications/approvals)
-
-Legacy profiles with enrollment methods configured will continue to issue certificates, but you cannot modify their enrollment configuration. New enrollment must be configured inside Applications.
-
-Legacy alerts, syncs, and approval policies remain functional and can be modified, but new ones cannot be created at the product level. New ones must be created inside Applications.
-
 ## What Changed
 
-The old project model put everything in one place (CAs, profiles, certificates, alerts, syncs) with project-level access control. The new model separates **shared infrastructure** from **team operations**.
+Certificate Manager now operates as a single project per organization.
 
-Certificate Authorities, policies, and profiles now live at the **product level**, shared across your organization and managed by Product Admins. They're the building blocks that define what certificates can look like.
+**Certificate Authorities, policies, and profiles** live at the product level — shared across your organization, managed by admins.
 
-**Applications** are where teams actually work. An Application represents a service or workload that needs certificates: a payments API, an internal web app, a mobile backend. Each Application has its own:
-
-- Members (with Admin, Operator, or Auditor roles)
-- Enrollment methods (configured per profile)
-- [Certificate inventory](/documentation/platform/pki/applications/certificates)
-- Alerts, syncs, and approval policies
+**[Applications](/documentation/platform/pki/applications/overview)** are where teams work. Each Application represents a service or workload (e.g., `payments-api`, `mobile-backend`) and has its own members, certificates, alerts, syncs, and approval policies.
 
 ```
 Organization
 └── Certificate Manager
-    ├── Certificate Authorities        ← shared, admin-managed
-    ├── Certificate Policies           ← shared, admin-managed
-    ├── Certificate Profiles           ← shared, admin-managed
+    ├── Certificate Authorities    ← shared, admin-managed
+    ├── Certificate Policies       ← shared, admin-managed
+    ├── Certificate Profiles       ← shared, admin-managed
     └── Applications
         ├── payments-api
-        │   ├── Members
-        │   ├── Enrollment Methods
-        │   ├── Certificates
-        │   ├── Alerts, Syncs, Approval Policies
+        │   ├── Members, Enrollment Methods
+        │   └── Certificates, Alerts, Syncs
         └── mobile-backend
             └── ...
 ```
-
-**What this changes:**
 
 | Before (Projects) | After (Applications) |
 |-------------------|----------------------|
@@ -65,99 +38,132 @@ Organization
 | Custom roles + conditions for scoping | Simple roles: Admin, Operator, Auditor |
 | Alerts/syncs at project level | Alerts/syncs scoped to each Application |
 
-## Access Control
+**What this gets you:**
 
-For details, see [Access Control](/documentation/platform/pki/concepts/access-control).
+- **Shared CAs** — Define Certificate Authorities once, use them across your entire organization
+- **Simpler access control** — No more custom roles or attribute conditions. Add members to an Application, pick a role, done.
+- **Team autonomy** — Each team manages their own Application
+- **Clear ownership** — When someone asks "who manages certificates for this service?" the answer is in the Application's member list
 
-**Product Level:**
+For details on the new access control model, see [Access Control](/documentation/platform/pki/concepts/access-control).
 
-| Role | What they see | What they can do |
-|------|---------------|------------------|
-| **Product Admin** | Everything | Full control of CAs, Policies, Profiles, Applications |
-| **Product Member** | Applications they're assigned to | Operate within assigned Applications only |
+## Before You Start
 
-**Application Level:**
+Your existing setup keeps working. Certificates will keep renewing, alerts will keep firing, syncs will keep running. You're not forced to migrate immediately.
 
-| Role | What they can do |
-|------|------------------|
-| **Admin** | Configure enrollment methods, syncs, alerts, approvals. Manage members. |
-| **Operator** | Issue, renew, revoke certificates |
-| **Auditor** | View certificates and configuration (read-only) |
+If your organization has multiple Certificate Manager projects, all of them remain accessible. The designated active project loads by default, and legacy projects can be opened directly to be wound down on your own timeline.
 
-No custom roles. No attribute-based conditions. Add someone to an Application, pick a role, done.
+**Plan your migration before starting:**
+
+1. **Inventory your current setup** — Document your CAs, profiles, alerts, syncs, and approval policies across all projects
+2. **Map services to Applications** — Decide how you'll organize your Applications (e.g., one per service, one per team)
+3. **Identify who owns what** — Figure out which team members should have access to each Application and what role they need
 
 ## Migration Steps
 
+<Note>
+  **Have only one project?** Skip to [Set up Applications](#set-up-applications) — you don't need to consolidate anything.
+</Note>
+
+### If you have multiple existing projects
+
+If you have CAs, policies, or profiles spread across multiple existing projects, consolidate them first:
+
 <Steps>
-  <Step title="Review your current setup">
-    Document your existing:
-    - Certificate profiles and their enrollment methods
-    - Alert configurations
-    - Certificate syncs
-    - Approval policies
-    - Team members and their access levels
+  <Step title="Designate the active project">
+    Navigate to **Organization Settings → Products → Certificate Manager**. In the projects table, mark the project you intend to consolidate into as **Active**. All members and integrations across the organization will subsequently resolve to this project.
   </Step>
-  <Step title="Create Applications">
-    Create an Application for each service or workload that needs certificates:
-    
+
+  <Step title="Export entities from legacy projects">
+    From the same projects table, locate a legacy project, open its actions menu, and select **Export to active project**.
+
+    The export copies the following resources into the active project:
+
+    - Internal and private Certificate Authorities, including the full chain and key material (re-encrypted under the active project's KMS key)
+    - Certificate Policies
+    - Certificate Profiles that reference a self-signed or internal CA
+
+    External CAs and any profiles dependent on them are excluded from the export. Alerts, certificate syncs, and approval policies are not exported and must be reconfigured inside Applications later.
+
+    <Note>
+      Resources are copied rather than moved, originals remain in the legacy project. When a CA, policy, or profile name collides with an existing resource in the active project, the exported copy is renamed automatically. Once the export completes, treat the legacy project as read-only and direct new work to the active project.
+    </Note>
+
+    Repeat for each remaining legacy project.
+  </Step>
+</Steps>
+
+### Set up Applications
+
+Once you've consolidated your projects (or if you only have one), go to your **active project** to set up Applications. All the steps below happen inside the active project.
+
+<Steps>
+  <Step title="Create your Applications">
+    Applications represent services or workloads that need certificates (e.g., `payments-api`, `mobile-backend`).
+
     1. Go to **Certificate Manager → Applications**
     2. Click **Create Application**
-    3. Name it after the service (e.g., `payments-api`, `mobile-backend`)
-    
-    Think about ownership: who is responsible for certificates for this service? That's who should be in this Application.
+    3. Name it after the service it represents
+
+    Create one Application for each service. Think about ownership: who is responsible for certificates for this service?
   </Step>
+
   <Step title="Configure enrollment methods">
-    For each Application:
-    
-    1. Go to the **Settings** tab and find the **Certificate Profiles** section
-    2. Attach profiles and configure enrollment methods (API, ACME, EST, SCEP)
-    
+    For each Application, attach profiles and configure how certificates will be requested:
+
+    1. Go to the Application's **Settings** tab
+    2. Find the **Certificate Profiles** section
+    3. Attach the profiles this Application needs
+    4. Configure [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each profile
+
+    One profile can serve multiple Applications with different enrollment methods.
+  </Step>
+
+  <Step title="Set up alerts, syncs, and approval policies">
+    For each Application, recreate your operational configuration:
+
+    **[Alerts](/documentation/platform/pki/applications/alerting/overview):** Go to **Settings → Alerting** and create alerts for expiration, issuance, renewal, or revocation.
+
+    **[Syncs](/documentation/platform/pki/applications/certificate-syncs/overview):** Go to the **Certificate Syncs** tab and configure where certificates should be pushed.
+
+    **[Approval policies](/documentation/platform/pki/applications/approvals):** Go to **Settings → Approval Policies** and configure approval requirements for each profile.
+
     <Note>
-      One profile can now serve multiple Applications with different enrollment methods. No more duplicating profiles.
+      Legacy alerts, syncs, and approval policies at the project level will keep working. You can modify or delete them, but new ones must be created inside Applications.
     </Note>
   </Step>
-  <Step title="Recreate alerts">
+
+  <Step title="Add team members">
     For each Application:
-    
-    1. Go to the **Settings** tab and find the **Alerting** section
-    2. Create alerts for expiration, issuance, renewal, and revocation
-    
-    <Note>
-      You can still modify or delete legacy alerts, but new alerts must be created inside Applications.
-    </Note>
+
+    1. Go to the **Members** tab
+    2. Add team members and assign roles:
+       - **Admin** — Configure enrollment, syncs, alerts, approvals. Manage members.
+       - **Operator** — Issue, renew, revoke certificates
+       - **Auditor** — View-only access
+
+    Members also need the **Product Member** role at the product level to access Applications they're assigned to.
   </Step>
-  <Step title="Recreate syncs">
-    For each Application:
-    
-    1. Go to the **Certificate Syncs** tab
-    2. Configure syncs to push certificates to your destinations
-    
-    <Note>
-      You can still modify or delete legacy syncs, but new syncs must be created inside Applications.
-    </Note>
+
+  <Step title="Update your issuance clients">
+    Enrollment URLs now include both Application and Profile. Update your:
+
+    - **ACME clients** (Certbot, [cert-manager](/documentation/platform/pki/guides/applications/k8s-cert-manager), etc.)
+    - **[Infisical Agent](/documentation/platform/pki/guides/applications/infisical-agent)** — Update to reference `application-name` and `profile-name`
+    - **EST/SCEP clients**
+    - **Terraform** — Update `infisical_pki_*` resources
+    - **API integrations**
+
+    Legacy enrollment endpoints continue to work, but new issuance should use the Application-based endpoints.
   </Step>
-  <Step title="Recreate approval policies">
-    For each Application:
-    
-    1. Go to the **Settings** tab and find the **Approval Policies** section
-    2. Configure approval requirements for each attached profile
-    
-    Pending approval requests appear in **Certificate Manager → Approval Requests**.
-  </Step>
-  <Step title="Assign team members">
-    1. Grant **Product Member** role to team members who need Application access
-    2. Assign them to specific Applications with **Admin**, **Operator**, or **Auditor** roles
-    
-    Go to the Application's **Members** tab to add members and assign roles.
-  </Step>
-  <Step title="Update issuance clients">
-    Enrollment URLs have changed from profile-based to Application + Profile based. Update your:
-    
-    - **ACME clients** (Certbot, [cert-manager](/documentation/platform/pki/guides/applications/k8s-cert-manager), etc.): Directory URLs now include both Application ID and Profile ID
-    - **[Infisical Agent](/documentation/platform/pki/guides/applications/infisical-agent)**: Update configuration to reference `application-name` and `profile-name`
-    - **EST/SCEP clients**: Endpoint URLs now include Application and Profile path segments
-    - **Terraform**: Update any `infisical_pki_*` resources to use the new Application-based configuration
-    - **API integrations**: Update endpoints to use the new Application context
+
+  <Step title="Transition your team">
+    Once Applications are set up:
+
+    1. Communicate the change to your team
+    2. Point them to their assigned Applications
+    3. Stop creating new resources in legacy projects
+    4. All new work happens in the active project, inside Applications
   </Step>
 </Steps>
 
@@ -165,19 +171,19 @@ No custom roles. No attribute-based conditions. Add someone to an Application, p
 
 <AccordionGroup>
   <Accordion title="Will my existing issuance flows keep working?">
-    Yes. Existing ACME clients, Infisical Agent configurations, API integrations, and other issuance flows continue to work. Legacy profiles with enrollment methods configured will keep issuing certificates as before.
+    Yes. Legacy profiles with enrollment methods configured will keep issuing certificates. You don't need to migrate everything at once.
   </Accordion>
-  <Accordion title="Can I still modify my existing alerts/syncs/approval policies?">
-    Yes. You can modify or delete legacy resources, but you cannot create new ones at the product level. New alerts, syncs, and approval policies must be created inside Applications.
+  <Accordion title="Can I still access my legacy projects?">
+    Yes. The project selector lets you access all your projects. You're not forced to migrate immediately.
   </Accordion>
   <Accordion title="Do I need to re-issue certificates?">
-    No. Existing certificates are unaffected. The migration is about how you organize and manage certificates going forward.
+    No. Existing certificates remain valid. The migration is about how you organize and manage certificates going forward.
+  </Accordion>
+  <Accordion title="What happens to my CA after using the export tool?">
+    The export operation produces an independent copy of the CA in the active project. Certificates issued and revocations performed after the export are not synchronized between the original and the copy. The active project should be treated as the system of record going forward.
   </Accordion>
   <Accordion title="What if I don't migrate?">
-    Your existing setup will continue working, but you won't be able to create new alerts, syncs, or approval policies at the product level. All new configuration must happen inside Applications.
-  </Accordion>
-  <Accordion title="Can I still use certificate profiles?">
-    Yes. Profiles still exist and define certificate attributes (CA, validity, constraints). The change is that enrollment methods are now configured per Application, not per profile.
+    Your existing setup keeps working, but new alerts, syncs, and approval policies must be created inside Applications. Legacy projects remain accessible but won't receive new features.
   </Accordion>
   <Accordion title="Why are profiles separate from Applications?">
     A profile defines what a certificate looks like: one CA, one policy, one set of constraints. A service often needs multiple certificate types. Keeping profiles at the product level lets admins define them once and let multiple Applications consume them, each with their own enrollment methods and access control.

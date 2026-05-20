@@ -169,6 +169,27 @@ services:
       - ./frontend/index.html:/app/index.html
     env_file: .env
 
+  backend-go:
+    container_name: infisical-dev-api-go
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.dev.fips
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    ports:
+      - 4040:4040
+    volumes:
+      - ./backend-go:/app
+    environment:
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    profiles: [go]
+
   pgadmin:
     image: dpage/pgadmin4
     restart: always
@@ -192,7 +213,8 @@ services:
       - 1025:1025 # SMTP server
       - 8025:8025 # Web UI
 
-  openldap: # note: more advanced configuration is available
+  openldap:
+    # note: more advanced configuration is available
     image: osixia/openldap:1.5.0
     restart: always
     environment:
@@ -207,7 +229,8 @@ services:
       - ldap_config:/etc/ldap/slapd.d
     profiles: [ldap]
 
-  phpldapadmin: # username: cn=admin,dc=acme,dc=com, pass is admin
+  phpldapadmin:
+    # username: cn=admin,dc=acme,dc=com, pass is admin
     image: osixia/phpldapadmin:latest
     restart: always
     environment:

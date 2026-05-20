@@ -271,6 +271,11 @@ describe("CertificateProfileService", () => {
       return await fn();
     });
 
+    (mockCertificateAuthorityDAL.findById as any).mockResolvedValue({
+      id: "ca-123",
+      projectId: "project-123"
+    });
+
     service = certificateProfileServiceFactory({
       certificateProfileDAL: mockCertificateProfileDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,

@@ -258,6 +258,7 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
 import { certManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
 import { certManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -306,7 +307,6 @@ import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/e
 import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
-import { externalMigrationConfigDALFactory } from "@app/services/external-migration/external-migration-config-dal";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
@@ -495,6 +495,7 @@ import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
+import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
@@ -720,8 +721,6 @@ export const registerRoutes = async (
 
   const appConnectionCredentialRotationDAL = appConnectionCredentialRotationDALFactory(db);
 
-  const externalMigrationConfigDAL = externalMigrationConfigDALFactory(db);
-
   // New event bus for inter-container communication
   const eventBusService = eventBusServiceFactory({ redis: server.redis });
 
@@ -735,7 +734,9 @@ export const registerRoutes = async (
     keyStore,
     roleDAL,
     userDAL,
-    identityDAL
+    identityDAL,
+    additionalPrivilegeDAL,
+    groupDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
@@ -847,11 +848,22 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const notificationQueue = notificationQueueServiceFactory({
+    userNotificationDAL,
+    queueService
+  });
+
+  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsService
+    kmsService,
+    keyStore,
+    notificationService,
+    smtpService,
+    orgDAL
   });
 
   const auditLogQueue = await auditLogQueueServiceFactory({
@@ -863,13 +875,6 @@ export const registerRoutes = async (
     clickhouseClient: clickhouse,
     keyStore
   });
-
-  const notificationQueue = notificationQueueServiceFactory({
-    userNotificationDAL,
-    queueService
-  });
-
-  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
   const announcementService = announcementServiceFactory({ userDAL, keyStore });
 
@@ -2597,6 +2602,7 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     queueService,
+    cronJob,
     pkiSubscriberDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -2677,6 +2683,20 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     licenseService
+  });
+
+  const certManagerExportService = certManagerExportServiceFactory({
+    certificateAuthorityDAL,
+    internalCertificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificatePolicyDAL,
+    certificateProfileDAL,
+    projectDAL,
+    orgDAL,
+    kmsService,
+    permissionService
   });
 
   const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
@@ -2835,7 +2855,7 @@ export const registerRoutes = async (
   });
 
   const digicertCaQueue = digicertCertificateAuthorityQueueServiceFactory({
-    queueService,
+    cronJob,
     certificateRequestDAL,
     certificateRequestService,
     certificateAuthorityDAL,
@@ -3301,10 +3321,10 @@ export const registerRoutes = async (
     externalMigrationQueue,
     userDAL,
     permissionService,
+    gatewayDAL,
     gatewayService,
-    kmsService,
+    gatewayV2DAL,
     appConnectionService,
-    externalMigrationConfigDAL,
     secretService,
     auditLogService,
     gatewayV2Service,
@@ -3358,12 +3378,12 @@ export const registerRoutes = async (
   dailyReminderQueueService.startDailyRemindersJob();
   secretSyncQueue.startDailySecretSyncRetryJob();
   dailyExpiringPkiItemAlert.startSendingAlerts();
-  await certificateAuthorityQueue.startCaCrlRebuildJob();
+  certificateAuthorityQueue.startCaCrlRebuildJob();
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
-  await digicertCaQueue.init();
+  digicertCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
   await eventBusService.init();
@@ -3451,6 +3471,7 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     certManagerInstance: certManagerInstanceService,
+    certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,
@@ -3578,6 +3599,11 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
+  if (envConfig.GOLANG_SIDECAR_URL) {
+    logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
+    await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
+  }
+
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {
     logger.info(`Infisical primary instance is configured: ${envConfig.INFISICAL_PRIMARY_INSTANCE_URL}`);

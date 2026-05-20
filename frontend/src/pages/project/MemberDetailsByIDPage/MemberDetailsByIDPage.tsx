@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { EllipsisIcon, InfoIcon } from "lucide-react";
+import { EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -43,6 +44,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { MemberPermissionAuditSheet } from "./components/MemberPermissionAuditSheet";
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
 import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
 import { ProjectMemberDetailsSection } from "./components/ProjectMemberDetailsSection";
@@ -70,6 +72,8 @@ export const Page = () => {
     "upgradePlan",
     "assumePrivileges"
   ] as const);
+
+  const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
 
   const handleAssumePrivileges = async () => {
     const { userId } = popUp?.assumePrivileges?.data as { userId: string };
@@ -163,85 +167,93 @@ export const Page = () => {
                 : "Configure and manage project access control"
             }
           >
-            {isOwnProjectMembershipDetails ? (
-              <Tooltip
-                side="right"
-                content={
-                  isCertManager
-                    ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
-                    : "You cannot modify your own membership. Ask a project admin to make changes to your membership."
-                }
-              >
-                <Badge variant="info" className="ml-2">
-                  <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
-                </Badge>
-              </Tooltip>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    Options
-                    <EllipsisIcon />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      navigator.clipboard.writeText(membershipDetails.user.id);
-                      createNotification({
-                        text: "User ID copied to clipboard",
-                        type: "info"
-                      });
-                    }}
-                  >
-                    Copy User ID
-                  </DropdownMenuItem>
-                  {!isCertManager && (
+            <div className="flex items-center gap-2">
+              {!isCertManager && (
+                <Button variant="outline" onClick={() => setIsPermissionAuditOpen(true)}>
+                  <ShieldIcon />
+                  Permission Audit
+                </Button>
+              )}
+              {isOwnProjectMembershipDetails ? (
+                <Tooltip
+                  side="right"
+                  content={
+                    isCertManager
+                      ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
+                      : "You cannot modify your own membership. Ask a project admin to make changes to your membership."
+                  }
+                >
+                  <Badge variant="info" className="ml-2">
+                    <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
+                  </Badge>
+                </Tooltip>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      Options
+                      <EllipsisIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        navigator.clipboard.writeText(membershipDetails.user.id);
+                        createNotification({
+                          text: "User ID copied to clipboard",
+                          type: "info"
+                        });
+                      }}
+                    >
+                      Copy User ID
+                    </DropdownMenuItem>
+                    {!isCertManager && (
+                      <ProjectPermissionCan
+                        I={ProjectPermissionMemberActions.AssumePrivileges}
+                        a={ProjectPermissionSub.Member}
+                      >
+                        {(isAllowed) => (
+                          <DropdownMenuItem
+                            isDisabled={!isAllowed}
+                            onClick={() =>
+                              handlePopUpOpen("assumePrivileges", {
+                                userId: membershipDetails.user.id
+                              })
+                            }
+                          >
+                            Assume Privileges
+                            <Tooltip
+                              side="bottom"
+                              content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                            >
+                              <div>
+                                <InfoIcon className="text-muted" />
+                              </div>
+                            </Tooltip>
+                          </DropdownMenuItem>
+                        )}
+                      </ProjectPermissionCan>
+                    )}
                     <ProjectPermissionCan
-                      I={ProjectPermissionMemberActions.AssumePrivileges}
+                      I={ProjectPermissionMemberActions.Delete}
                       a={ProjectPermissionSub.Member}
                     >
                       {(isAllowed) => (
                         <DropdownMenuItem
+                          variant="danger"
                           isDisabled={!isAllowed}
-                          onClick={() =>
-                            handlePopUpOpen("assumePrivileges", {
-                              userId: membershipDetails.user.id
-                            })
-                          }
+                          onClick={() => handlePopUpOpen("removeMember")}
                         >
-                          Assume Privileges
-                          <Tooltip
-                            side="bottom"
-                            content="Assume the privileges of this user, allowing you to replicate their access behavior."
-                          >
-                            <div>
-                              <InfoIcon className="text-muted" />
-                            </div>
-                          </Tooltip>
+                          {isCertManager
+                            ? "Remove User From Certificate Manager"
+                            : "Remove User From Project"}
                         </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
-                  )}
-                  <ProjectPermissionCan
-                    I={ProjectPermissionMemberActions.Delete}
-                    a={ProjectPermissionSub.Member}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        variant="danger"
-                        isDisabled={!isAllowed}
-                        onClick={() => handlePopUpOpen("removeMember")}
-                      >
-                        {isCertManager
-                          ? "Remove User From Certificate Manager"
-                          : "Remove User From Project"}
-                      </DropdownMenuItem>
-                    )}
-                  </ProjectPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectMemberDetailsSection membership={membershipDetails} />
@@ -282,6 +294,19 @@ export const Page = () => {
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text={popUp.upgradePlan?.data?.text}
             isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+          />
+          <MemberPermissionAuditSheet
+            open={isPermissionAuditOpen}
+            onOpenChange={setIsPermissionAuditOpen}
+            membershipId={membershipId}
+            targetName={
+              membershipDetails.user.firstName || membershipDetails.user.lastName
+                ? `${membershipDetails.user.firstName ?? ""} ${membershipDetails.user.lastName ?? ""}`.trim()
+                : membershipDetails.user.email ||
+                  membershipDetails.user.username ||
+                  membershipDetails.inviteEmail ||
+                  "Unnamed User"
+            }
           />
         </>
       ) : (

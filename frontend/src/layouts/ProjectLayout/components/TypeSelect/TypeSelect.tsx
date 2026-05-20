@@ -16,6 +16,7 @@ import {
   PopoverTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
   getProjectLottieIcon,
   getProjectTitle,
@@ -36,9 +37,11 @@ const PRODUCT_TYPES: ProjectType[] = [
 
 const TypeSelectInner = ({
   currentType,
+  currentProjectName,
   showDivider
 }: {
   currentType: ProjectType;
+  currentProjectName?: string;
   showDivider?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
@@ -46,7 +49,8 @@ const TypeSelectInner = ({
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
-  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
+    useCertManagerInstanceState();
 
   const projectCountsByType = useMemo(
     () =>
@@ -56,6 +60,26 @@ const TypeSelectInner = ({
     [projects]
   );
 
+  const certManagerTargetProjectId = useMemo(() => {
+    const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
+    if (cookieValue && projects.some((p) => p.id === cookieValue)) {
+      return cookieValue;
+    }
+    return certManagerInstance?.activeProjectId ?? null;
+  }, [currentOrg?.id, projects, certManagerInstance?.activeProjectId]);
+
+  const navigateToCertManager = () => {
+    if (isCertManagerInstancePending) return;
+    if (certManagerTargetProjectId) {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
+        params: { orgId: currentOrg?.id || "", projectId: certManagerTargetProjectId }
+      });
+    } else {
+      setIsCertManagerSetupOpen(true);
+    }
+  };
+
   const handleSelectType = (type: ProjectType) => {
     setOpen(false);
     const orgId = currentOrg?.id || "";
@@ -63,14 +87,7 @@ const TypeSelectInner = ({
     if (type === currentType) return;
 
     if (type === ProjectType.CertificateManager) {
-      if (certManagerInstance?.activeProjectId) {
-        navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-          params: { orgId, projectId: certManagerInstance.activeProjectId }
-        });
-      } else {
-        setIsCertManagerSetupOpen(true);
-      }
+      navigateToCertManager();
       return;
     }
 
@@ -81,6 +98,7 @@ const TypeSelectInner = ({
   };
 
   const typeTitle = getProjectTitle(currentType);
+  const pillLabel = currentProjectName ?? typeTitle;
 
   return (
     <div
@@ -92,17 +110,7 @@ const TypeSelectInner = ({
           type="button"
           onClick={() => {
             if (currentType === ProjectType.CertificateManager) {
-              if (certManagerInstance?.activeProjectId) {
-                navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-                  params: {
-                    orgId: currentOrg?.id || "",
-                    projectId: certManagerInstance.activeProjectId
-                  }
-                });
-              } else {
-                setIsCertManagerSetupOpen(true);
-              }
+              navigateToCertManager();
             } else {
               navigate({
                 to: "/organizations/$orgId/projects/$type",
@@ -113,7 +121,7 @@ const TypeSelectInner = ({
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
         >
           <Lottie className="h-[14px] w-[14px] shrink-0" icon={getProjectLottieIcon(currentType)} />
-          <span className="truncate">{typeTitle}</span>
+          <span className="truncate">{pillLabel}</span>
         </button>
         <PopoverTrigger asChild>
           <IconButton variant="ghost" size="xs" aria-label="switch-product-type">
@@ -164,6 +172,8 @@ export const TypeSelect = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: projects = [] } = useGetUserProjects();
+  const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
+    useCertManagerInstanceState();
 
   if (params.type && !params.projectId) {
     const resolvedType = urlSlugToProjectType(params.type);
@@ -180,9 +190,14 @@ export const TypeSelect = () => {
       const hasApplicationSelect =
         project.type === ProjectType.CertificateManager && Boolean(applicationName);
       const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
+      const isLegacyCertManagerProject =
+        project.type === ProjectType.CertificateManager &&
+        !isCertManagerInstancePending &&
+        certManagerInstance?.activeProjectId !== project.id;
       return (
         <TypeSelectInner
           currentType={project.type}
+          currentProjectName={isLegacyCertManagerProject ? project.name : undefined}
           showDivider={hasSiblingProjectSelect || hasApplicationSelect}
         />
       );
