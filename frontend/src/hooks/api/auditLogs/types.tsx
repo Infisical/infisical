@@ -427,6 +427,13 @@ interface GetProjectMemberPermissionAuditEvent {
   };
 }
 
+interface GetProjectIdentityPermissionAuditEvent {
+  type: EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT;
+  metadata: {
+    targetIdentityId: string;
+  };
+}
+
 interface CreateFolderEvent {
   type: EventType.CREATE_FOLDER;
   metadata: {
@@ -982,6 +989,7 @@ export type Event =
   | AddWorkspaceMemberEvent
   | RemoveWorkspaceMemberEvent
   | GetProjectMemberPermissionAuditEvent
+  | GetProjectIdentityPermissionAuditEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent

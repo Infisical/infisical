@@ -74,6 +74,9 @@ export const useUpdateProjectIdentityMembership = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectIdentityMembershipDetails(projectId, identityId)
       });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getIdentityPermissionAudit(projectId, identityId)
+      });
     }
   });
 };

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { BanIcon, CheckIcon, DownloadIcon, SearchIcon, SplitIcon, UserIcon } from "lucide-react";
+import {
+  BanIcon,
+  BotIcon,
+  CheckIcon,
+  DownloadIcon,
+  SearchIcon,
+  SplitIcon,
+  UserIcon
+} from "lucide-react";
 
 import {
   Accordion,
@@ -28,8 +36,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useGetMembershipPermissionAudit } from "@app/hooks/api/projects/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectType, TPermissionAuditSource } from "@app/hooks/api/projects/types";
 
 import { getAuditSubjects } from "./permission-audit.config";
 import { AuditState, ResourceAudit } from "./permission-audit.types";
@@ -37,11 +44,15 @@ import { evaluateAllResources, resolveSources } from "./permission-audit.utils";
 import { buildAuditCsv, buildAuditCsvFilename, downloadCsv } from "./permission-audit-export";
 import { PermissionAuditSection } from "./PermissionAuditSection";
 
+export type PermissionAuditTargetType = "user" | "identity";
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  membershipId: string;
   targetName: string;
+  targetType: PermissionAuditTargetType;
+  sources: TPermissionAuditSource[] | undefined;
+  isLoading: boolean;
 };
 
 type StateFilter = AuditState | "all";
@@ -52,6 +63,11 @@ const STATE_FILTERS: { id: StateFilter; label: string }[] = [
   { id: "conditional", label: "Conditional" },
   { id: "forbid", label: "Forbidden" }
 ];
+
+const TARGET_ICON: Record<PermissionAuditTargetType, typeof UserIcon> = {
+  user: UserIcon,
+  identity: BotIcon
+};
 
 const resourceMatchesSearch = (resource: ResourceAudit, term: string): boolean => {
   if (!term) return true;
@@ -89,31 +105,30 @@ const getCount = (
   return counts.forbid;
 };
 
-export const MemberPermissionAuditSheet = ({
+export const PermissionAuditSheet = ({
   open,
   onOpenChange,
-  membershipId,
-  targetName
+  targetName,
+  targetType,
+  sources,
+  isLoading
 }: Props) => {
   const { currentProject } = useProject();
-  const projectId = currentProject?.id ?? "";
   const projectName = currentProject?.name ?? "";
   const projectType = currentProject?.type ?? ProjectType.SecretManager;
 
-  const { data, isLoading } = useGetMembershipPermissionAudit(projectId, membershipId);
-
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState<StateFilter>("all");
-  const [openSubjects, setOpenSubjects] = useState<string[]>([]);
+  const [openSubjects, setOpenSubjects] = useState<string[] | null>(null);
 
   const resources = useMemo(() => {
     const descriptors = getAuditSubjects(projectType);
-    if (!data?.sources) {
+    if (!sources) {
       return evaluateAllResources(descriptors, []);
     }
-    const resolved = resolveSources(data.sources);
+    const resolved = resolveSources(sources);
     return evaluateAllResources(descriptors, resolved);
-  }, [data, projectType]);
+  }, [sources, projectType]);
 
   const filteredResources = useMemo(() => {
     return resources.filter((r) => {
@@ -137,18 +152,20 @@ export const MemberPermissionAuditSheet = ({
   );
 
   useEffect(() => {
-    if (!data?.sources) return;
+    if (!sources) return;
     setOpenSubjects(
       resources
         .filter((r) => r.allowedCount + r.conditionalCount > 0)
         .map((r) => r.subject as string)
     );
-  }, [data, resources]);
+  }, [sources, resources]);
 
   const handleExportCsv = () => {
     const csv = buildAuditCsv(resources);
     downloadCsv(buildAuditCsvFilename(targetName, projectName), csv);
   };
+
+  const TargetIcon = TARGET_ICON[targetType];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -159,7 +176,7 @@ export const MemberPermissionAuditSheet = ({
               Permission Audit
               <span className="text-muted">·</span>
               <span className="inline-flex items-center gap-1 text-sm font-normal text-mineshaft-200">
-                <UserIcon className="size-3.5" />
+                <TargetIcon className="size-3.5" />
                 {targetName}
               </span>
               <Badge variant="info">Effective Access</Badge>
@@ -238,10 +255,18 @@ export const MemberPermissionAuditSheet = ({
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {isLoading && (
-            <div className="flex flex-col gap-3">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
+            <div className="overflow-clip rounded-md border border-border bg-container">
+              {resources.map((resource, idx) => (
+                <div
+                  key={resource.subject}
+                  className={`flex min-h-12 items-center justify-between gap-4 px-4 py-3 ${
+                    idx > 0 ? "border-t border-border" : ""
+                  }`}
+                >
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-12" />
+                </div>
+              ))}
             </div>
           )}
           {!isLoading && filteredResources.length === 0 && (
@@ -252,7 +277,7 @@ export const MemberPermissionAuditSheet = ({
               </EmptyHeader>
             </Empty>
           )}
-          {!isLoading && filteredResources.length > 0 && (
+          {!isLoading && openSubjects !== null && filteredResources.length > 0 && (
             <Accordion
               type="multiple"
               value={openSubjects}

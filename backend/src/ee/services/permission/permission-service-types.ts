@@ -54,6 +54,15 @@ export type TGetMembershipPermissionAuditArg = {
   targetUserId: string;
 };
 
+export type TGetIdentityPermissionAuditArg = {
+  actor: ActorType;
+  actorId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
+  projectId: string;
+  targetIdentityId: string;
+};
+
 export type TPermissionAuditSource = {
   id: string;
   type: "role" | "group_role" | "additional_privilege";
@@ -166,6 +175,9 @@ export type TPermissionServiceFactory = {
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
   getMembershipPermissionAudit: (arg: TGetMembershipPermissionAuditArg) => Promise<{
+    sources: TPermissionAuditSource[];
+  }>;
+  getIdentityPermissionAudit: (arg: TGetIdentityPermissionAuditArg) => Promise<{
     sources: TPermissionAuditSource[];
   }>;
 };

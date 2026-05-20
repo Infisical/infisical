@@ -295,19 +295,21 @@ export const Page = () => {
             text={popUp.upgradePlan?.data?.text}
             isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
           />
-          <MemberPermissionAuditSheet
-            open={isPermissionAuditOpen}
-            onOpenChange={setIsPermissionAuditOpen}
-            membershipId={membershipId}
-            targetName={
-              membershipDetails.user.firstName || membershipDetails.user.lastName
-                ? `${membershipDetails.user.firstName ?? ""} ${membershipDetails.user.lastName ?? ""}`.trim()
-                : membershipDetails.user.email ||
-                  membershipDetails.user.username ||
-                  membershipDetails.inviteEmail ||
-                  "Unnamed User"
-            }
-          />
+          {isPermissionAuditOpen && (
+            <MemberPermissionAuditSheet
+              open={isPermissionAuditOpen}
+              onOpenChange={setIsPermissionAuditOpen}
+              membershipId={membershipId}
+              targetName={
+                membershipDetails.user.firstName || membershipDetails.user.lastName
+                  ? `${membershipDetails.user.firstName ?? ""} ${membershipDetails.user.lastName ?? ""}`.trim()
+                  : membershipDetails.user.email ||
+                    membershipDetails.user.username ||
+                    membershipDetails.inviteEmail ||
+                    "Unnamed User"
+              }
+            />
+          )}
         </>
       ) : (
         <EmptyState title="Error: Unable to find the user." className="py-12" />

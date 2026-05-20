@@ -11,7 +11,10 @@ const invalidateAllAudits = (queryClient: ReturnType<typeof useQueryClient>) => 
   queryClient.invalidateQueries({
     predicate: (query) => {
       const key = query.queryKey;
-      return Array.isArray(key) && key[1] === "membership-permission-audit";
+      return (
+        Array.isArray(key) &&
+        (key[1] === "membership-permission-audit" || key[1] === "identity-permission-audit")
+      );
     }
   });
 };
@@ -174,6 +177,7 @@ export const useAddIdentityToGroup = () => {
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentitiesMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      invalidateAllAudits(queryClient);
     }
   });
 };
@@ -198,6 +202,7 @@ export const useRemoveIdentityFromGroup = () => {
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentitiesMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      invalidateAllAudits(queryClient);
     }
   });
 };
