@@ -1,3 +1,4 @@
+import { BadRequestError } from "@app/lib/errors";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
@@ -14,6 +15,7 @@ import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCertManagerAccessRouter } from "./cert-manager-access-routers";
+import { registerCertManagerExportRouter } from "./cert-manager-export-router";
 import { registerCertManagerInstanceRouter } from "./cert-manager-instance-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
@@ -202,8 +204,30 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         { prefix: "/certificate-profiles" }
       );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
-      await pkiRouter.register(registerPkiApplicationRouter, { prefix: "/applications" });
+      await pkiRouter.register(
+        async (applicationsRouter) => {
+          applicationsRouter.addHook("preHandler", async (req) => {
+            if (!req.permission?.orgId) return;
+            const activeProjectId = await applicationsRouter.services.certManagerProjectResolver.getActiveProjectId(
+              req.permission.orgId
+            );
+            if (!activeProjectId) {
+              throw new BadRequestError({
+                message: "Set an organization active Certificate Manager project before using Applications."
+              });
+            }
+            if (req.internalCertManagerProjectId !== activeProjectId) {
+              throw new BadRequestError({
+                message: "Applications are only available on this organization's active Certificate Manager project."
+              });
+            }
+          });
+          await applicationsRouter.register(registerPkiApplicationRouter);
+        },
+        { prefix: "/applications" }
+      );
       await pkiRouter.register(registerCertManagerInstanceRouter);
+      await pkiRouter.register(registerCertManagerExportRouter);
       await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
       await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
       await pkiRouter.register(registerCertificateInventoryViewRouter, { prefix: "/certificate-inventory-views" });

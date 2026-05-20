@@ -4,7 +4,7 @@ import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
@@ -23,6 +23,14 @@ export const createSerialNumber = () => {
   const randomBytes = crypto.randomBytes(20); // 20 bytes = 160 bits
   randomBytes[0] &= 0x7f; // ensure the first bit is 0
   return randomBytes.toString("hex");
+};
+
+export const assertCaInProfileProject = (ca: { projectId: string }, profile: { projectId: string }) => {
+  if (ca.projectId !== profile.projectId) {
+    throw new ForbiddenRequestError({
+      message: "Certificate Authority must belong to the same project as the profile"
+    });
+  }
 };
 
 /**

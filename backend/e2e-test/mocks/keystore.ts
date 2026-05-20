@@ -61,14 +61,23 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       }
       return null;
     },
-    incrementBy: async () => {
-      return 1;
+    incrementBy: async (key, value) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current + value;
+      store[key] = String(next);
+      return next;
     },
     incrementByAndRefreshExpiryIfUnderLimit: async () => {
       return 1;
     },
     decrementByOrDelete: async () => {
       return 0;
+    },
+    incrementByWithExpiry: async (key, value) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current + value;
+      store[key] = String(next);
+      return next;
     },
     pgGetIntItem: async (key) => {
       const value = store[key];

@@ -8,9 +8,11 @@ import { ApiDocsTags, ORG_ROLE } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedOrgRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const INVALID_SUBORG_PERMISSIONS = [
   OrgPermissionSubjects.Sso,
@@ -99,6 +101,18 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
             description: req.body.description,
             permissions: JSON.stringify(req.body.permissions)
           }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: req.body.name,
+          slug: req.body.slug,
+          scope: "organization"
         }
       });
 
@@ -220,6 +234,19 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: req.body.name,
+          slug: req.body.slug,
+          scope: "organization",
+          permissionsUpdated: !!req.body.permissions
+        }
+      });
+
       return { role: { ...role, orgId: role.orgId as string } };
     }
   });
@@ -267,6 +294,18 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.DELETE_ORG_ROLE,
           metadata: { roleId: role.id, slug: role.slug, name: role.name }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: role.name,
+          slug: role.slug,
+          scope: "organization"
         }
       });
 

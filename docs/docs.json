@@ -187,7 +187,6 @@
                 "pages": [
                   "documentation/platform/external-migrations/overview",
                   "documentation/platform/external-migrations/doppler",
-                  "documentation/platform/external-migrations/envkey",
                   "documentation/platform/external-migrations/vault"
                 ]
               },
@@ -3407,10 +3406,6 @@
               {
                 "group": "Doppler",
                 "pages": [
-                  "api-reference/endpoints/external-migrations/doppler/get-configs",
-                  "api-reference/endpoints/external-migrations/doppler/create-config",
-                  "api-reference/endpoints/external-migrations/doppler/update-config",
-                  "api-reference/endpoints/external-migrations/doppler/delete-config",
                   "api-reference/endpoints/external-migrations/doppler/get-projects",
                   "api-reference/endpoints/external-migrations/doppler/get-environments",
                   "api-reference/endpoints/external-migrations/doppler/import-secrets"

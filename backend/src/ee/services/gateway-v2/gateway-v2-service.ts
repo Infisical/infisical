@@ -1117,7 +1117,7 @@ export const gatewayV2ServiceFactory = ({
             type: NotificationType.GATEWAY_HEALTH_ALERT,
             title: "Gateway Health Alert",
             body,
-            link: "/organization/networking"
+            link: `/organizations/${orgId}/networking`
           }))
         );
 

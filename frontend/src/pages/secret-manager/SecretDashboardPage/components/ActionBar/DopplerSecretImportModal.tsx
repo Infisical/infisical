@@ -20,12 +20,12 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
-import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
+import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetDopplerConfigs, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
-import { TDopplerConfig, TExternalMigrationConfig } from "@app/hooks/api/migration/types";
+import { TDopplerConfig } from "@app/hooks/api/migration/types";
 
 const schema = z.object({
-  configId: z.string().min(1, "Doppler configuration is required"),
+  connectionId: z.string().min(1, "Doppler connection is required"),
   dopplerProject: z.string().min(1, "Doppler project is required"),
   dopplerEnvironment: z.string().min(1, "Doppler config is required")
 });
@@ -35,10 +35,14 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  configs: TExternalMigrationConfig[];
+  connections: TAvailableAppConnection[];
   environment: string;
   secretPath: string;
-  onImport: (dopplerProject: string, dopplerEnvironment: string, configId: string) => Promise<void>;
+  onImport: (
+    dopplerProject: string,
+    dopplerEnvironment: string,
+    connectionId: string
+  ) => Promise<void>;
 };
 
 const DopplerConfigGroupHeading = (props: GroupHeadingProps<TDopplerConfig>) => (
@@ -75,7 +79,7 @@ const DopplerConfigOption = (props: OptionProps<TDopplerConfig>) => {
 export const DopplerSecretImportModal = ({
   isOpen,
   onOpenChange,
-  configs,
+  connections,
   environment,
   secretPath,
   onImport
@@ -89,35 +93,32 @@ export const DopplerSecretImportModal = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      configId: "",
+      connectionId: "",
       dopplerProject: "",
       dopplerEnvironment: ""
     }
   });
 
-  const selectedConfigId = watch("configId");
+  const connectionId = watch("connectionId");
   const selectedDopplerProject = watch("dopplerProject");
 
-  const hasMultipleConfigs = configs.length > 1;
-  const { data: appConnections = [] } = useListAppConnections(undefined, {
-    enabled: hasMultipleConfigs
-  });
+  const showConnectionSelector = connections.length > 1;
 
   useEffect(() => {
     if (isOpen) {
+      const onlyConnection = connections.length === 1 ? connections[0] : null;
       reset({
-        configId: configs.length === 1 ? configs[0].id : "",
+        connectionId: onlyConnection?.id ?? "",
         dopplerProject: "",
         dopplerEnvironment: ""
       });
     }
-  }, [isOpen, reset, configs]);
+  }, [isOpen, reset, connections]);
 
-  const { data: dopplerProjects = [], isPending: isLoadingProjects } = useGetDopplerProjects(
-    selectedConfigId || undefined
-  );
+  const { data: dopplerProjects = [], isPending: isLoadingProjects } =
+    useGetDopplerProjects(connectionId);
   const { data: dopplerConfigs = [], isPending: isLoadingConfigs } = useGetDopplerConfigs(
-    selectedConfigId || undefined,
+    connectionId,
     selectedDopplerProject || undefined
   );
 
@@ -135,22 +136,13 @@ export const DopplerSecretImportModal = ({
     });
   }, [dopplerConfigs]);
 
-  const configOptions = useMemo(
-    () =>
-      configs.map((c) => {
-        const conn = appConnections.find((a) => a.id === c.connectionId);
-        return { id: c.id, label: conn?.name ?? c.id };
-      }),
-    [configs, appConnections]
-  );
-
   const handleClose = () => {
     reset();
     onOpenChange(false);
   };
 
   const onFormSubmit = async (data: FormData) => {
-    await onImport(data.dopplerProject, data.dopplerEnvironment, data.configId);
+    await onImport(data.dopplerProject, data.dopplerEnvironment, data.connectionId);
     handleClose();
   };
 
@@ -183,29 +175,33 @@ export const DopplerSecretImportModal = ({
         </div>
 
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-          {hasMultipleConfigs && (
+          {showConnectionSelector && (
             <Controller
               control={control}
-              name="configId"
+              name="connectionId"
               render={({ field }) => {
-                const selectedItem = configOptions.find((o) => o.id === field.value);
+                const selectedItem = connections.find((c) => c.id === field.value);
                 return (
                   <Field>
-                    <FieldLabel>Doppler Configuration</FieldLabel>
+                    <FieldLabel>Doppler Connection</FieldLabel>
                     <FieldContent>
                       <FilterableSelect
                         value={selectedItem || null}
                         onChange={(newValue) => {
                           const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                          field.onChange(single && "id" in single ? single.id : "");
+                          if (single && "id" in single) {
+                            field.onChange(single.id);
+                          } else {
+                            field.onChange("");
+                          }
                         }}
-                        options={configOptions}
-                        placeholder="Select Doppler configuration..."
-                        getOptionLabel={(option) => option.label}
+                        options={connections}
+                        placeholder="Select Doppler connection..."
+                        getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
                       />
                     </FieldContent>
-                    <FieldError>{errors.configId?.message}</FieldError>
+                    <FieldError>{errors.connectionId?.message}</FieldError>
                   </Field>
                 );
               }}
@@ -232,8 +228,8 @@ export const DopplerSecretImportModal = ({
                           field.onChange("");
                         }
                       }}
-                      isLoading={isLoadingProjects && Boolean(selectedConfigId)}
-                      isDisabled={!selectedConfigId}
+                      isLoading={isLoadingProjects && Boolean(connectionId)}
+                      isDisabled={!connectionId}
                       options={dopplerProjects}
                       placeholder="Select source project..."
                       getOptionLabel={(option) => option.name}

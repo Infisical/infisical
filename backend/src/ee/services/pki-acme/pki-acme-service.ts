@@ -33,6 +33,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
@@ -196,6 +197,17 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
     return profile;
+  };
+
+  const resolveApplicationIdFromAccount = async (profileId: string, accountId: string): Promise<string | undefined> => {
+    const account = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId);
+    const accountApplicationProfileId = (account as { applicationProfileId?: string | null } | null)
+      ?.applicationProfileId;
+    if (!accountApplicationProfileId) {
+      return undefined;
+    }
+    const applicationId = await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId);
+    return applicationId ?? undefined;
   };
 
   const validateJwsPayload = async <
@@ -1135,6 +1147,8 @@ export const pkiAcmeServiceFactory = ({
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
 
+        assertCaInProfileProject(ca, profile);
+
         const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
         const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
           ?.applicationProfileId;
@@ -1407,7 +1421,8 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<string>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const accountApplicationId = await resolveApplicationIdFromAccount(profileId, accountId);
+    const profile = await validateAcmeProfile(profileId, accountApplicationId);
     const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -1545,7 +1560,8 @@ export const pkiAcmeServiceFactory = ({
     challengeId: string;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const accountApplicationId = await resolveApplicationIdFromAccount(profileId, accountId);
+    const profile = await validateAcmeProfile(profileId, accountApplicationId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });

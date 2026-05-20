@@ -75,7 +75,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   }
 
   const init = () => {
-    const dailyCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 30 * 60_000;
+    const dailyCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 45 * 60_000;
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",

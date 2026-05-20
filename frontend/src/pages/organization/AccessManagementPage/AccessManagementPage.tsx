@@ -74,7 +74,8 @@ export const AccessManagementPage = () => {
     }
   ];
 
-  const hasNoAccess = tabSections.every((tab) => tab.isHidden);
+  const selectedTabSection = tabSections.find((tab) => tab.key === selectedTab);
+  const isSelectedTabRestricted = !selectedTabSection || selectedTabSection.isHidden;
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -124,17 +125,20 @@ export const AccessManagementPage = () => {
           isOpen={isUpgradePrivilegeSystemModalOpen}
           onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
-        <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
-          {tabSections
-            .filter((el) => !el.isHidden)
-            .map(({ key, component: Component }) => (
-              <TabPanel value={key} key={`org-access-tab-panel-${key}`}>
-                <Component />
-              </TabPanel>
-            ))}
-        </Tabs>
+        {isSelectedTabRestricted ? (
+          <OrgPermissionGuardBanner />
+        ) : (
+          <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
+            {tabSections
+              .filter((el) => !el.isHidden)
+              .map(({ key, component: Component }) => (
+                <TabPanel value={key} key={`org-access-tab-panel-${key}`}>
+                  <Component />
+                </TabPanel>
+              ))}
+          </Tabs>
+        )}
       </div>
-      {hasNoAccess && <OrgPermissionGuardBanner />}
     </div>
   );
 };

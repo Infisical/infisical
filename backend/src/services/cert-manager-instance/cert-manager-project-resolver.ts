@@ -33,6 +33,17 @@ const resolveCertManagerProjectId = async (
 
 export type TCertManagerProjectResolverFactory = ReturnType<typeof certManagerProjectResolverFactory>;
 
+const getActiveCertManagerProjectId = async (
+  { orgDAL, projectDAL }: TResolverDeps,
+  actorOrgId: string
+): Promise<string | null> => {
+  const projects = await projectDAL.find({ orgId: actorOrgId, type: ProjectType.CertificateManager });
+  if (projects.length === 1) return projects[0].id;
+  if (projects.length === 0) return null;
+  const org = await orgDAL.findById(actorOrgId);
+  return org?.defaultCertManagerProjectId ?? null;
+};
+
 export const certManagerProjectResolverFactory = (deps: TResolverDeps) => ({
   resolve: (actorOrgId: string) => resolveCertManagerProjectId(deps, actorOrgId),
   isCertManagerProject: async (projectId: string, expectedOrgId: string): Promise<boolean> => {
@@ -40,5 +51,6 @@ export const certManagerProjectResolverFactory = (deps: TResolverDeps) => ({
     if (!project) return false;
     if (project.orgId !== expectedOrgId) return false;
     return project.type === ProjectType.CertificateManager;
-  }
+  },
+  getActiveProjectId: (actorOrgId: string) => getActiveCertManagerProjectId(deps, actorOrgId)
 });

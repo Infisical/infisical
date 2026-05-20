@@ -130,7 +130,10 @@ export const KeyStorePrefixes = {
 
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+
+  AuditLogStreamFailureCount: (streamId: string) => `audit-log-stream:${streamId}:failures` as const,
+  AuditLogStreamAlertSent: (streamId: string) => `audit-log-stream:${streamId}:alert-sent` as const
 };
 
 export const KeyStoreTtls = {
@@ -205,6 +208,7 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
   listPush: (key: string, value: string) => Promise<number>;
@@ -375,6 +379,18 @@ export const keyStoreFactory = (
     return Number(result);
   };
 
+  const INCREMENT_WITH_EXPIRY = `
+    local v = redis.call('INCRBY', KEYS[1], ARGV[1])
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+    return v
+  `;
+
+  // Atomically increment key and (re)set TTL on every call so the expiry rolls forward with each write.
+  const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
+    const result = await primaryRedis.eval(INCREMENT_WITH_EXPIRY, 1, key, String(value), String(expiryInSeconds));
+    return result as number;
+  };
+
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
 
   const ttl = async (key: string) => primaryRedis.ttl(key);
@@ -506,6 +522,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    incrementByWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },

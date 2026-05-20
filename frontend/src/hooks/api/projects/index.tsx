@@ -13,6 +13,7 @@ export {
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
+  useGetMembershipPermissionAudit,
   useGetProjectSshConfig,
   useGetUpgradeProjectStatus,
   useGetUserProjects,
