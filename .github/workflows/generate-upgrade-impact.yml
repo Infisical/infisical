@@ -56,12 +56,22 @@ jobs:
         run: npm ci
         working-directory: upgrade-impact
 
+      - name: Type check
+        if: steps.release.outputs.stable == 'true'
+        run: npm run type:check
+        working-directory: upgrade-impact
+
+      - name: Test upgrade impact tooling
+        if: steps.release.outputs.stable == 'true'
+        run: npm test
+        working-directory: upgrade-impact
+
       - name: Generate upgrade impact data
         if: steps.release.outputs.stable == 'true'
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
         working-directory: upgrade-impact
         env:
-          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.UPGRADE_TOOL_GITHUB_TOKEN }}
+          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Validate upgrade impact data
@@ -72,7 +82,7 @@ jobs:
       - name: Open upgrade impact PR
         if: steps.release.outputs.stable == 'true'
         env:
-          GH_TOKEN: ${{ secrets.UPGRADE_TOOL_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.release.outputs.tag }}
         run: |
           BRANCH_NAME="chore/upgrade-impact-${TAG_NAME}"
@@ -92,8 +102,8 @@ jobs:
           git commit -m "$PR_TITLE"
           git push --set-upstream origin "$BRANCH_NAME"
 
-          # Pick the previous release's GitHub author as reviewer so the PAT owner
-          # is not the only person notified about this PR.
+          # Request review from whoever cut the previous GitHub release so a real
+          # human gets pinged rather than only the github-actions bot.
           REVIEWER_FLAG=()
           PREVIOUS_TAG="$(awk '/^previousTag:/ { print $2; exit }' "upgrade-impact/data/releases/${TAG_NAME}.yaml")"
           if [ -n "$PREVIOUS_TAG" ]; then
@@ -103,7 +113,7 @@ jobs:
               REVIEWER_FLAG=(--reviewer "$PREVIOUS_AUTHOR")
               echo "Requesting review from previous release author: $PREVIOUS_AUTHOR"
             else
-              echo "Skipping reviewer assignment (previous author missing or matches PAT owner)."
+              echo "Skipping reviewer assignment (previous author missing or matches PR creator)."
             fi
           fi
 
