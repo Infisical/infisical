@@ -38,28 +38,7 @@ dbSchemaChanges:
         url: https://github.com/Infisical/infisical/pull/6432
         description: Gateway staleness timeout reduced to 5 minutes
 configChanges: []
-deploymentNotes:
-  - title: Gateway Helm session recording storage
-    description: The gateway Helm chart mounts session recordings on persistent
-      storage when enrollment mode uses persistence. Token enrollment still
-      requires persistence to survive pod restarts.
-    action: If you use the infisical-gateway chart and need PAM session recordings
-      kept across pod restarts, set persistence storage as needed before
-      upgrading.
-    confidence: high
-    evidence:
-      - type: file
-        ref: helm-charts/infisical-gateway/templates/deployment.yaml
-        path: helm-charts/infisical-gateway/templates/deployment.yaml
-        description: Mounts session recordings from PVC or emptyDir
-      - type: file
-        ref: helm-charts/infisical-gateway/templates/pvc.yaml
-        path: helm-charts/infisical-gateway/templates/pvc.yaml
-        description: Creates PVC for enrolled gateway data
-      - type: file
-        ref: helm-charts/infisical-gateway/values.yaml
-        path: helm-charts/infisical-gateway/values.yaml
-        description: Persistence defaults enabled with session recordings directory
+deploymentNotes: []
 knownIssues: []
 generatedBy:
   generator: "@infisical/upgrade-impact"
