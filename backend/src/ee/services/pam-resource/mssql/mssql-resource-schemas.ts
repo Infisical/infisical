@@ -31,9 +31,7 @@ const MsSQLNtlmCredentialsSchema = z.object({
   domain: z.string().trim().min(1, "Domain is required for NTLM authentication").max(255)
 });
 
-// z.union (not discriminatedUnion) so old accounts without authMethod match the
-// sql-login variant via its .default(). NTLM is listed first because it has more
-// required fields and won't accidentally match sql-login data.
+// z.union so old accounts without authMethod fall through to the sql-login .default()
 export const MsSQLAccountCredentialsSchema = z.union([MsSQLNtlmCredentialsSchema, MsSQLSqlLoginCredentialsSchema]);
 
 const BaseMsSQLResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.MsSQL) });
@@ -86,9 +84,7 @@ export const SanitizedMsSQLAccountWithResourceSchema = BasePamAccountSchemaWithR
   credentials: SanitizedMsSQLCredentialsSchema
 });
 
-// Session credentials use strict authMethod (no .default()) because the outer
-// SessionCredentialsSchema is a flat z.union across all resource types —
-// a .default() here would make Postgres/MySQL/Oracle data falsely match MSSQL.
+// Strict variant (no .default()) — prevents cross-resource false matches in SessionCredentialsSchema
 const MsSQLStrictSqlLoginCredentialsSchema = z.object({
   authMethod: z.literal(MsSqlAuthMethod.SqlLogin),
   username: z.string().trim().min(1).max(63),
