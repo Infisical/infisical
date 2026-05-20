@@ -1697,7 +1697,6 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
-
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
