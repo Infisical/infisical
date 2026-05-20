@@ -157,15 +157,21 @@ export const pkiSubscriberQueueServiceFactory = ({
                 lastOperationAt: new Date()
               });
 
-              const project = await projectDAL.findById(subscriber.projectId);
-              await telemetryService.sendPostHogEvents({
-                event: PostHogEventTypes.CertificateAutoRenewalFailed,
-                distinctId: `platform/${subscriber.projectId}`,
-                organizationId: project.orgId,
-                properties: {
-                  orgId: project.orgId
+              try {
+                const project = await projectDAL.findById(subscriber.projectId);
+                if (project) {
+                  await telemetryService.sendPostHogEvents({
+                    event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                    distinctId: `platform/${subscriber.projectId}`,
+                    organizationId: project.orgId,
+                    properties: {
+                      orgId: project.orgId
+                    }
+                  });
                 }
-              });
+              } catch {
+                logger.warn(`Failed to send telemetry for auto-renewal failure [subscriberId=${subscriber.id}]`);
+              }
             }
           })
         );
