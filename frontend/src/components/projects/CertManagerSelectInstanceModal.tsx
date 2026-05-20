@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import {
-  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -43,7 +42,7 @@ export const CertManagerSelectInstanceModal = ({
     if (isOpen) setSelectedId(orgDefaultProjectId);
   }, [isOpen, orgDefaultProjectId]);
 
-  const handleContinue = () => {
+  const handleOpenProject = () => {
     if (selectedId) onSelect(selectedId);
   };
 
@@ -51,49 +50,49 @@ export const CertManagerSelectInstanceModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader className="gap-4">
-          <DialogTitle>Select a Certificate Manager instance</DialogTitle>
+          <DialogTitle>Select a Certificate Manager project</DialogTitle>
           <DialogDescription>
-            You have multiple instances from legacy projects. Select your{" "}
-            <span className="font-medium">organization default</span> for ongoing work. This is
-            where new CAs, profiles, and Applications live. Legacy projects are still accessible.{" "}
+            Your organization has multiple Certificate Manager projects. Select one to continue.
+            Once you&apos;ve consolidated to a single project, this prompt won&apos;t appear again.{" "}
             <a
               href="https://infisical.com/docs/documentation/platform/pki/migration"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary-500 hover:underline"
             >
-              Deprecation guide
+              View the migration guide.
             </a>
           </DialogDescription>
         </DialogHeader>
 
-        <Select value={selectedId ?? undefined} onValueChange={setSelectedId}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a project" />
-          </SelectTrigger>
-          <SelectContent position="popper" className="max-h-72 w-(--radix-select-trigger-width)">
-            {instances.map((instance) => (
-              <SelectItem key={instance.id} value={instance.id}>
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="truncate font-medium">{instance.name}</span>
-                  <span className="truncate font-mono text-xs text-accent">{instance.slug}</span>
-                  {instance.id === orgDefaultProjectId && (
-                    <Badge variant="org" className="shrink-0">
-                      Organization default
-                    </Badge>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Certificate Manager project</span>
+          <Select value={selectedId ?? undefined} onValueChange={setSelectedId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a project" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="max-h-72 w-(--radix-select-trigger-width)">
+              {instances.map((instance) => (
+                <SelectItem
+                  key={instance.id}
+                  value={instance.id}
+                  description={
+                    instance.id === orgDefaultProjectId ? "Organization default" : undefined
+                  }
+                >
+                  {instance.slug}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button variant="project" isDisabled={!selectedId} onClick={handleContinue}>
-            Continue
+          <Button variant="project" isDisabled={!selectedId} onClick={handleOpenProject}>
+            Open
           </Button>
         </DialogFooter>
       </DialogContent>

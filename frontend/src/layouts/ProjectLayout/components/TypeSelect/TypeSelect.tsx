@@ -37,9 +37,11 @@ const PRODUCT_TYPES: ProjectType[] = [
 
 const TypeSelectInner = ({
   currentType,
+  currentProjectName,
   showDivider
 }: {
   currentType: ProjectType;
+  currentProjectName?: string;
   showDivider?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
@@ -96,6 +98,7 @@ const TypeSelectInner = ({
   };
 
   const typeTitle = getProjectTitle(currentType);
+  const pillLabel = currentProjectName ?? typeTitle;
 
   return (
     <div
@@ -118,7 +121,7 @@ const TypeSelectInner = ({
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
         >
           <Lottie className="h-[14px] w-[14px] shrink-0" icon={getProjectLottieIcon(currentType)} />
-          <span className="truncate">{typeTitle}</span>
+          <span className="truncate">{pillLabel}</span>
         </button>
         <PopoverTrigger asChild>
           <IconButton variant="ghost" size="xs" aria-label="switch-product-type">
@@ -169,6 +172,7 @@ export const TypeSelect = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: projects = [] } = useGetUserProjects();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
 
   if (params.type && !params.projectId) {
     const resolvedType = urlSlugToProjectType(params.type);
@@ -185,9 +189,17 @@ export const TypeSelect = () => {
       const hasApplicationSelect =
         project.type === ProjectType.CertificateManager && Boolean(applicationName);
       const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
+      const isActiveCertManagerProject =
+        project.type === ProjectType.CertificateManager &&
+        certManagerInstance?.activeProjectId === project.id;
       return (
         <TypeSelectInner
           currentType={project.type}
+          currentProjectName={
+            project.type === ProjectType.CertificateManager && !isActiveCertManagerProject
+              ? project.name
+              : undefined
+          }
           showDivider={hasSiblingProjectSelect || hasApplicationSelect}
         />
       );
