@@ -91,7 +91,7 @@ beforeEach(async () => {
   allFactories.length = 0;
   lockManager.clear();
   await waitForFreshMinute();
-});
+}, 20_000);
 
 afterEach(async () => {
   await Promise.allSettled(allFactories.map((f) => f.stop()));

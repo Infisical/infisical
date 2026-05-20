@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BoxIcon, MoreHorizontalIcon, StarIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import {
+  BoxIcon,
+  MoreHorizontalIcon,
+  StarIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+  UploadIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   Dialog,
@@ -43,6 +49,8 @@ import {
 } from "@app/hooks/api/certManagerInstance";
 import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
+import { CertManagerExportProjectModal } from "./CertManagerExportProjectModal";
+
 export const OrgCertManagerTab = () => {
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
@@ -61,6 +69,9 @@ export const OrgCertManagerTab = () => {
 
   const [pendingActive, setPendingActive] = useState<TCertManagerLegacyInstance | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TCertManagerLegacyInstance | null>(null);
+  const [pendingExport, setPendingExport] = useState<TCertManagerLegacyInstance | null>(null);
+
+  const activeInstance = instances.find((i) => i.isActive) ?? null;
 
   useEffect(() => {
     if (pendingDelete && !instances.find((i) => i.id === pendingDelete.id)) {
@@ -69,7 +80,10 @@ export const OrgCertManagerTab = () => {
     if (pendingActive && !instances.find((i) => i.id === pendingActive.id)) {
       setPendingActive(null);
     }
-  }, [instances, pendingDelete, pendingActive]);
+    if (pendingExport && !instances.find((i) => i.id === pendingExport.id)) {
+      setPendingExport(null);
+    }
+  }, [instances, pendingDelete, pendingActive, pendingExport]);
 
   if (isPending) {
     return (
@@ -91,11 +105,11 @@ export const OrgCertManagerTab = () => {
       await setActive.mutateAsync(pendingActive.id);
       createNotification({
         type: "success",
-        text: `${pendingActive.name} is now the active Certificate Manager instance for the organization.`
+        text: `${pendingActive.name} is now the active Certificate Manager project for the organization.`
       });
       setPendingActive(null);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : "Failed to switch active instance.";
+      const detail = err instanceof Error ? err.message : "Failed to switch active project.";
       createNotification({ type: "error", text: detail });
     }
   };
@@ -124,12 +138,20 @@ export const OrgCertManagerTab = () => {
       {isMultiInstance && (
         <Alert variant="warning" className="mb-4">
           <TriangleAlertIcon />
-          <AlertTitle>
-            Action required: Certificate Manager now supports one project per organization
-          </AlertTitle>
           <AlertDescription>
-            Select the project you want to keep as your active instance. All members and
-            integrations will resolve to it going forward.
+            <p>
+              Your organization has multiple Certificate Manager projects. Going forward, only one
+              project per organization is supported. Select your active project and remove the
+              others once migrated.{" "}
+              <a
+                href="https://infisical.com/docs/documentation/platform/pki/migration"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-mineshaft-200"
+              >
+                Learn more →
+              </a>
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -162,7 +184,11 @@ export const OrgCertManagerTab = () => {
                         <MoreHorizontalIcon />
                       </IconButton>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+                    <DropdownMenuContent className="min-w-56" align="end" sideOffset={2}>
+                      <DropdownMenuItem onClick={() => setPendingExport(instance)}>
+                        <UploadIcon />
+                        Export to active project
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setPendingActive(instance)}>
                         <StarIcon />
                         Set as active
@@ -200,7 +226,7 @@ export const OrgCertManagerTab = () => {
               <p>
                 <span className="font-semibold">{pendingActive?.name ?? ""}</span> will become the
                 default for your organization. All members and integrations will resolve to this
-                instance going forward.
+                project going forward.
               </p>
             </AlertDescription>
           </Alert>
@@ -226,6 +252,15 @@ export const OrgCertManagerTab = () => {
         deleteKey={pendingDelete?.slug ?? "delete"}
         onDeleteApproved={handleConfirmDelete}
         buttonText="Delete project"
+      />
+
+      <CertManagerExportProjectModal
+        isOpen={Boolean(pendingExport)}
+        onOpenChange={(open) => {
+          if (!open) setPendingExport(null);
+        }}
+        source={pendingExport}
+        activeInstance={activeInstance}
       />
     </div>
   );

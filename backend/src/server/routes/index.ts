@@ -258,6 +258,7 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
 import { certManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
 import { certManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -2601,6 +2602,7 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     queueService,
+    cronJob,
     pkiSubscriberDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -2681,6 +2683,20 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     licenseService
+  });
+
+  const certManagerExportService = certManagerExportServiceFactory({
+    certificateAuthorityDAL,
+    internalCertificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificatePolicyDAL,
+    certificateProfileDAL,
+    projectDAL,
+    orgDAL,
+    kmsService,
+    permissionService
   });
 
   const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
@@ -2839,7 +2855,7 @@ export const registerRoutes = async (
   });
 
   const digicertCaQueue = digicertCertificateAuthorityQueueServiceFactory({
-    queueService,
+    cronJob,
     certificateRequestDAL,
     certificateRequestService,
     certificateAuthorityDAL,
@@ -3362,12 +3378,12 @@ export const registerRoutes = async (
   dailyReminderQueueService.startDailyRemindersJob();
   secretSyncQueue.startDailySecretSyncRetryJob();
   dailyExpiringPkiItemAlert.startSendingAlerts();
-  await certificateAuthorityQueue.startCaCrlRebuildJob();
+  certificateAuthorityQueue.startCaCrlRebuildJob();
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
-  await digicertCaQueue.init();
+  digicertCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
   await eventBusService.init();
@@ -3455,6 +3471,7 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     certManagerInstance: certManagerInstanceService,
+    certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,

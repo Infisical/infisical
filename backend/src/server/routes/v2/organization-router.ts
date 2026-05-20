@@ -437,6 +437,15 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         orgName: req.body.name
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: organization.id,
+        properties: {
+          name: req.body.name
+        }
+      });
+
       return { organization };
     }
   });

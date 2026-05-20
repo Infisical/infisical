@@ -124,6 +124,8 @@ export enum PostHogEventTypes {
   ProjectMembershipCreated = "Project Membership Created",
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
   ProjectMembershipDeleted = "Project Membership Deleted"
+  OrganizationCreated = "Organization Created",
+  SubOrganizationCreated = "Sub Organization Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -175,6 +177,21 @@ export type TUserSignedUpEvent = {
     email: string;
     attributionSource?: string;
     signupMethod?: string;
+  };
+};
+
+export type TOrganizationCreatedEvent = {
+  event: PostHogEventTypes.OrganizationCreated;
+  properties: {
+    name: string;
+  };
+};
+
+export type TSubOrganizationCreatedEvent = {
+  event: PostHogEventTypes.SubOrganizationCreated;
+  properties: {
+    name: string;
+    parentOrgId: string;
   };
 };
 
@@ -1066,4 +1083,6 @@ export type TPostHogEvent = {
   | TProjectMembershipCreatedEvent
   | TProjectMembershipRoleUpdatedEvent
   | TProjectMembershipDeletedEvent
+  | TOrganizationCreatedEvent
+  | TSubOrganizationCreatedEvent
 );
