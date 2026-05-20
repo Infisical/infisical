@@ -33,9 +33,11 @@ export const telemetryDALFactory = (db: TDbClient) => {
         users,
         identities,
         projects,
-        secrets,
+        legacySecrets,
+        v2Secrets,
         environments,
         secretSyncs,
+        appConnections,
         integrations,
         certificateAuthorities,
         certificates,
@@ -50,8 +52,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.Identity),
         countTable(db, TableName.Project),
         countTable(db, TableName.Secret),
+        countTable(db, TableName.SecretV2),
         countTable(db, TableName.Environment),
         countTable(db, TableName.SecretSync),
+        countTable(db, TableName.AppConnection),
         countTable(db, TableName.Integration),
         countTable(db, TableName.CertificateAuthority),
         countTable(db, TableName.Certificate),
@@ -91,6 +95,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
 
       const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);
 
+      // Merge legacy `secrets` and `secrets_v2` counts. secrets_v2 is the active table;
+      // legacy `secrets` only retains rows for projects that haven't been migrated.
+      const secrets = legacySecrets + v2Secrets;
+
       const organizationNames = await db(TableName.Organization).select("name");
       const organizations = organizationNames.length;
 
@@ -103,6 +111,7 @@ export const telemetryDALFactory = (db: TDbClient) => {
         organizationNames: organizationNames.map(({ name }) => name),
         environments,
         secretSyncs,
+        appConnections,
         integrations,
         certificateAuthorities,
         certificates,

@@ -340,6 +340,7 @@ export type TTelemetryInstanceStatsEvent = {
     numberOfSecretProcessed: number;
     environments: number;
     secretSyncs: number;
+    appConnections: number;
     integrations: number;
     certificateAuthorities: number;
     certificates: number;
