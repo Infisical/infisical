@@ -246,6 +246,7 @@ export const pamWebAccessServiceFactory = ({
       accountIdentity = `${domainConnectionDetails.domain}:${account.name}`;
     }
 
+    // Expire overdue sessions before the cap check so stale rows don't lock the user out.
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
 
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
