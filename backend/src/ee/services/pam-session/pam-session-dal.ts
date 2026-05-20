@@ -79,7 +79,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updatedCount;
   };
 
-  const expireOverdueSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
+  const endExpiredWebSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
     const now = new Date();
     const updatedCount = await (tx || db)(TableName.PamSession)
       .where("userId", userId)
@@ -218,7 +218,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     findById,
     findByProjectId,
     expireSessionById,
-    expireOverdueSessions,
+    endExpiredWebSessions,
     countActiveWebSessions,
     countActiveByProjectId,
     countDailyByProjectId,

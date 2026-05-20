@@ -86,7 +86,7 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession" | "expireOverdueSessions"
+    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession" | "endExpiredWebSessions"
   >;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -246,7 +246,7 @@ export const pamWebAccessServiceFactory = ({
       accountIdentity = `${domainConnectionDetails.domain}:${account.name}`;
     }
 
-    await pamSessionDAL.expireOverdueSessions(actor.id, projectId);
+    await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
 
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
     if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
@@ -587,7 +587,7 @@ export const pamWebAccessServiceFactory = ({
       }
 
       // Expire overdue sessions before the cap check so stale rows don't lock the user out.
-      await pamSessionDAL.expireOverdueSessions(userId, projectId);
+      await pamSessionDAL.endExpiredWebSessions(userId, projectId);
 
       // Check web session limit
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
