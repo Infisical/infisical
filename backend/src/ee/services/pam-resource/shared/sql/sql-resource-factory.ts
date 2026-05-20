@@ -351,8 +351,8 @@ export const sqlResourceFactory: TPamResourceFactory<
           resourceType,
           username: credentials.username,
           password: credentials.password,
-          authMethod: "authMethod" in credentials ? (credentials.authMethod as string) : undefined,
-          domain: "domain" in credentials ? (credentials.domain as string) : undefined
+          authMethod: "authMethod" in credentials ? credentials.authMethod : undefined,
+          domain: "domain" in credentials ? credentials.domain : undefined
         },
         gatewayV2Service,
         async (client) => {
