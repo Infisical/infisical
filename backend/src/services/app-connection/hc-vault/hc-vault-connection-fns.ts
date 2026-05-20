@@ -1091,7 +1091,7 @@ export const getHCVaultKubernetesRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1178,7 +1178,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       connectionNames = connectionListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1226,7 +1226,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1332,7 +1332,7 @@ export const getHCVaultLdapRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
