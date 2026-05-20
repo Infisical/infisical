@@ -38,7 +38,7 @@ sequenceDiagram
 
 1. **Gateway**: An Infisical Gateway deployed in your network that can reach the MsSQL server. The Gateway handles secure communication between users and your MsSQL instance.
 
-2. **Authentication**: Credentials (username/password) are stored securely in Infisical and used by the Gateway to authenticate with MsSQL on behalf of the user.
+2. **Authentication**: Credentials are stored securely in Infisical and used by the Gateway to authenticate with MsSQL on behalf of the user. Both SQL Server Authentication (username/password) and Windows Authentication (NTLM) are supported.
 
 3. **Local Proxy**: The Infisical CLI starts a local proxy on your machine that intercepts MsSQL connections and routes them securely through the Gateway to your MsSQL instance.
 
@@ -63,7 +63,7 @@ Infisical tracks:
 Before configuring MsSQL access in Infisical PAM, you need:
 
 1. **Infisical Gateway** - A Gateway deployed in your network with access to the MsSQL server
-2. **MsSQL Credentials** - Username and password for the MsSQL instance
+2. **MsSQL Credentials** - SQL Server credentials (username/password) or Windows domain credentials (domain/username/password) for the MsSQL instance
 3. **Infisical CLI** - The Infisical CLI installed on user machines
 
 <Warning>
@@ -126,12 +126,22 @@ A PAM Account represents a specific set of credentials that users can request ac
       An optional description for this account.
     </ParamField>
 
+    <ParamField path="Authentication Method" type="string" required>
+      Choose how the account authenticates with SQL Server:
+      - **SQL Server Authentication** — standard username and password
+      - **Windows Authentication (NTLM)** — authenticates using Active Directory domain credentials
+    </ParamField>
+
+    <ParamField path="Domain" type="string">
+      The Active Directory domain name (e.g., `CORP`). Only required when using Windows Authentication (NTLM).
+    </ParamField>
+
     <ParamField path="Username" type="string" required>
-      The MsSQL username.
+      The MsSQL or domain username.
     </ParamField>
 
     <ParamField path="Password" type="string" required>
-      The MsSQL password.
+      The MsSQL or domain password.
     </ParamField>
 
     <ParamField path="Require MFA for Access" type="boolean">
