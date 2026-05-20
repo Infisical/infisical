@@ -81,7 +81,7 @@ Services live in `src/services/` (100+ modules). Each typically contains:
 - `*-dal.ts` — data access via `ormify()` + custom queries
 - `*-service.ts` — business logic factory
 - `*-types.ts` — DTOs and type definitions
-- `*-queue.ts` — BullMQ async job handlers (when needed)
+- `*-queue.ts` — BullMQ async job handlers and/or cron-manager registrations (when needed)
 - `*-fns.ts` — pure utility functions (when needed)
 
 ### Route Handler Pattern
@@ -174,9 +174,53 @@ const project = await requestMemoize(
 
 Queue infrastructure in `src/queue/queue-service.ts`. Defines 30+ named queues via `QueueName` enum (e.g., `SecretRotation`, `AuditLog`, `IntegrationSync`, `SecretReplication`, `SecretSync`, `DynamicSecretRevocation`). Each queue has typed payloads defined in `TQueueJobTypes`.
 
-Queue jobs support: delays, attempts with exponential/fixed backoff, cron-pattern repeats, and completion/failure cleanup.
+Queue jobs support: delays, attempts with exponential/fixed backoff, and completion/failure cleanup. **Use BullMQ only for event-driven, payload-carrying work** — jobs enqueued in response to a request or another job (audit log writes, integration syncs, secret replication, webhook fan-out, etc.).
+
+**Do NOT use BullMQ repeatable jobs or `JobScheduler` for recurring/cron-pattern work.** All scheduled/periodic tasks must use the cron manager (see below). The previous BullMQ-repeatable pattern has been migrated off, and `queueServiceFactory` actively cleans up stale repeatable queues and schedulers on boot (`src/queue/queue-service.ts:585-650`) — re-introducing a BullMQ repeatable will collide with that cleanup and cause double execution.
 
 Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the same DI pattern as services — they receive DALs and services as dependencies.
+
+### Scheduled Jobs (Cron Manager)
+
+Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
+
+**Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
+
+**Registering a cron job**:
+
+1. Add a new entry to the `CronJobName` registry at the top of `src/lib/cron/cron-job.ts`. All cron names must be defined there — don't pass raw strings.
+2. In the owning service/queue file, take `cronJob: TCronJobFactory` as a dependency and call `cronJob.register(...)` from an `init()` (or `start*()`) method:
+
+   ```ts
+   import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
+
+   export const myServiceFactory = ({ cronJob }: { cronJob: TCronJobFactory }) => {
+     const init = () => {
+       cronJob.register({
+         name: CronJobName.MyJob,
+         pattern: "*/5 * * * *",      // standard cron, UTC
+         runHashTtlS: 60 * 60,        // how long the run hash lives in Redis
+         enabled: !appCfg.isSecondaryInstance, // gate per-deploy if needed
+         maxAttempts: 3,              // optional, default 3
+         handler: async () => { /* work */ }
+       });
+     };
+     return { init };
+   };
+   ```
+
+**Handler contract**:
+- Each scheduled fire runs exactly once across the fleet: pods race for a per-run redlock, the winner executes the handler, and the others no-op. You don't need in-handler locking to guard against concurrent pods.
+- Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
+- Failures (non-timeout) retry with exponential backoff (base 30 s, max 5 min) up to `maxAttempts`, but only if the retry would still fit before the next scheduled fire. Otherwise the next fire is treated as the natural retry.
+- Long-running handlers should override `handlerTimeoutMs` / `leaseDurationMs` per-entry (must satisfy `handlerTimeoutMs <= leaseDurationMs`).
+
+**When to use cron vs. queue**:
+- Scheduled/recurring (every N minutes, daily at X, cron pattern) → `cronJob.register(...)`.
+- One-shot or event-triggered work (enqueued from a request handler or another job) → BullMQ queue + worker.
+- A cron handler that fans out per-tenant work typically *enqueues BullMQ jobs* for each unit of work rather than doing the work inline — keep the cron tick fast and let the queue worker handle parallelism and retries for the actual payload.
+
+See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `src/services/resource-cleanup/resource-cleanup-queue.ts` for a service with multiple registrations, and `src/ee/services/secret-rotation-v2/secret-rotation-v2-queue.ts` for a cron-tick that fans out into a BullMQ queue.
 
 ### Error Handling
 
