@@ -184,6 +184,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       response: {
         200: z.object({
           legacy: z.boolean(),
+          sessionComplete: z.boolean(),
           sessionKey: z.string().nullable(),
           projectId: z.string().optional(),
           storageBackend: z.string().optional(),
@@ -195,10 +196,11 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const result = await server.services.pamSessionChunk.getPlaybackBundle(req.params.sessionId, req.permission);
       if (result.legacy) {
-        return { legacy: true, sessionKey: null, chunks: [] };
+        return { legacy: true, sessionComplete: result.sessionComplete, sessionKey: null, chunks: [] };
       }
       return {
         legacy: false,
+        sessionComplete: result.sessionComplete,
         sessionKey: result.sessionKey,
         projectId: result.projectId,
         storageBackend: result.storageBackend,
