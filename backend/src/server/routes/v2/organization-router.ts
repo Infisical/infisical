@@ -337,7 +337,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.params.organizationId,
         properties: {
-          membershipIds: req.body.membershipIds
+          membershipIds: memberships.map((el) => el.id)
         }
       });
 
