@@ -248,7 +248,11 @@ export const pamSessionServiceFactory = ({
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
 
-    if (!updatedSession && session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
+    if (
+      !updatedSession &&
+      session.status !== PamSessionStatus.Ended &&
+      session.status !== PamSessionStatus.Terminated
+    ) {
       throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
     }
 
