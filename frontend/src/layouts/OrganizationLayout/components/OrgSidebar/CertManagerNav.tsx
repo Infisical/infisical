@@ -40,9 +40,11 @@ export const CertManagerNav = ({
   const isCertManagerAdmin = hasProjectRole("admin");
   const projectId = currentProject?.id ?? "";
   const { data: certManagerInstance } = useCertManagerInstanceState();
-  const isActiveCertManagerProject =
-    Boolean(certManagerInstance?.activeProjectId) &&
-    certManagerInstance?.activeProjectId === projectId;
+  // Hide only when the query has resolved AND the project is confirmed legacy. While the query
+  // is in flight (data === undefined), stay optimistic so users on the active project don't see
+  // the Applications group flicker in on first paint.
+  const isLegacyCertManagerProject =
+    certManagerInstance !== undefined && certManagerInstance.activeProjectId !== projectId;
 
   const { data: v2AlertsData } = useGetPkiAlertsV2(
     {},
@@ -161,11 +163,11 @@ export const CertManagerNav = ({
       <SidebarCollapsibleGroup label="General">
         <ProjectNavList items={generalItemsForRole} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
-      {isActiveCertManagerProject ? (
+      {isLegacyCertManagerProject ? null : (
         <SidebarCollapsibleGroup label="Applications">
           <ProjectNavList items={applicationItems} onSubmenuOpen={onSubmenuOpen} />
         </SidebarCollapsibleGroup>
-      ) : null}
+      )}
       <SidebarCollapsibleGroup label="Code Signing">
         <ProjectNavList items={codeSigningItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>

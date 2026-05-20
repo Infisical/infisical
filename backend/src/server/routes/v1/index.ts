@@ -213,7 +213,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
             );
             if (!activeProjectId) {
               throw new BadRequestError({
-                message: "Set an organization default Certificate Manager project before using Applications."
+                message: "Set an organization active Certificate Manager project before using Applications."
               });
             }
             if (req.internalCertManagerProjectId !== activeProjectId) {
