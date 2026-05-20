@@ -23,6 +23,7 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests";
 import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
 
@@ -38,6 +39,12 @@ export const CertManagerNav = ({
   const { currentProject } = useProject();
   const isCertManagerAdmin = hasProjectRole("admin");
   const projectId = currentProject?.id ?? "";
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+  // Hide only when the query has resolved AND the project is confirmed legacy. While the query
+  // is in flight (data === undefined), stay optimistic so users on the active project don't see
+  // the Applications group flicker in on first paint.
+  const isLegacyCertManagerProject =
+    certManagerInstance !== undefined && certManagerInstance.activeProjectId !== projectId;
 
   const { data: v2AlertsData } = useGetPkiAlertsV2(
     {},
@@ -156,9 +163,11 @@ export const CertManagerNav = ({
       <SidebarCollapsibleGroup label="General">
         <ProjectNavList items={generalItemsForRole} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
-      <SidebarCollapsibleGroup label="Applications">
-        <ProjectNavList items={applicationItems} onSubmenuOpen={onSubmenuOpen} />
-      </SidebarCollapsibleGroup>
+      {isLegacyCertManagerProject ? null : (
+        <SidebarCollapsibleGroup label="Applications">
+          <ProjectNavList items={applicationItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
       <SidebarCollapsibleGroup label="Code Signing">
         <ProjectNavList items={codeSigningItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
