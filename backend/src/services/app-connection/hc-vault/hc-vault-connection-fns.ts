@@ -65,6 +65,11 @@ const isVault404Error = (error: unknown): boolean => {
   return false;
 };
 
+// Helper to check if error is 404 from gateway
+const isGateway404Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
+};
+
 // Helper to extract error message from Vault API errors
 const getVaultErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof AxiosError) {
@@ -509,7 +514,7 @@ export const listHCVaultNamespaces = async (
 
       return data.data.keys || [];
     } catch (error: unknown) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         // No child namespaces at this path
         return null;
       }
@@ -674,7 +679,7 @@ export const listHCVaultSecretPaths = async (
 
       return data.data.keys;
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
       }
 
