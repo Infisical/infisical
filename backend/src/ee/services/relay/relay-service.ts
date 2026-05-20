@@ -1426,6 +1426,14 @@ export const relayServiceFactory = ({
     return relayDAL.updateById(relayId, { host });
   };
 
+  const getOrgRelay = async ({ relayId, orgId }: { relayId: string; orgId: string }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+    return relay;
+  };
+
   const getRelayById = async ({ relayId }: { relayId: string }) => {
     const relay = await relayDAL.findById(relayId);
     if (!relay) {
@@ -1471,6 +1479,7 @@ export const relayServiceFactory = ({
     getCredentialsForGateway,
     getCredentialsForClient,
     getRelays,
+    getOrgRelay,
     getRelayById,
     getConnectedGateways,
     createRelay,

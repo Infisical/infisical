@@ -142,7 +142,10 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const relay = await server.services.relay.getRelayById({ relayId: req.params.relayId });
+      const relay = await server.services.relay.getOrgRelay({
+        relayId: req.params.relayId,
+        orgId: req.permission.orgId
+      });
 
       const view = await server.services.resourceAuthMethod.getByRelayId({
         resource: { type: "relay", id: req.params.relayId },
@@ -217,7 +220,10 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           }
         });
       } else {
-        relay = await server.services.relay.getRelayById({ relayId: req.params.relayId });
+        relay = await server.services.relay.getOrgRelay({
+          relayId: req.params.relayId,
+          orgId: req.permission.orgId
+        });
       }
 
       if (req.body.authMethod) {
