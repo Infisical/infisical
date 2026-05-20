@@ -210,6 +210,19 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      if (req.body.role) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.OrgMembershipRoleUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            membershipId: req.params.membershipId,
+            newRole: req.body.role
+          }
+        });
+      }
+
       return {
         membership: {
           ...membership,
@@ -258,6 +271,16 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrgMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.params.organizationId,
+        properties: {
+          membershipIds: [req.params.membershipId]
+        }
+      });
+
       return {
         membership: {
           ...membership,
@@ -308,6 +331,16 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipIds: req.body.membershipIds,
         actorOrgId: req.permission.orgId
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrgMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.params.organizationId,
+        properties: {
+          membershipIds: memberships.map((el) => el.id)
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({
           ...el,

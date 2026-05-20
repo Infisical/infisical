@@ -116,6 +116,14 @@ export enum PostHogEventTypes {
   HoneyTokenReset = "Honey Token Reset",
   HoneyTokenTriggered = "Honey Token Triggered",
 
+  CustomRoleCreated = "Custom Role Created",
+  CustomRoleUpdated = "Custom Role Updated",
+  CustomRoleDeleted = "Custom Role Deleted",
+  OrgMembershipRoleUpdated = "Org Membership Role Updated",
+  OrgMembershipDeleted = "Org Membership Deleted",
+  ProjectMembershipCreated = "Project Membership Created",
+  ProjectMembershipRoleUpdated = "Project Membership Role Updated",
+  ProjectMembershipDeleted = "Project Membership Deleted",
   OrganizationCreated = "Organization Created",
   SubOrganizationCreated = "Sub Organization Created"
 }
@@ -916,6 +924,78 @@ export type THoneyTokenTriggeredEvent = {
   };
 };
 
+export type TCustomRoleCreatedEvent = {
+  event: PostHogEventTypes.CustomRoleCreated;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TCustomRoleUpdatedEvent = {
+  event: PostHogEventTypes.CustomRoleUpdated;
+  properties: {
+    roleId: string;
+    name?: string;
+    slug?: string;
+    scope: string;
+    permissionsUpdated: boolean;
+  };
+};
+
+export type TCustomRoleDeletedEvent = {
+  event: PostHogEventTypes.CustomRoleDeleted;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TOrgMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.OrgMembershipRoleUpdated;
+  properties: {
+    membershipId: string;
+    newRole: string;
+  };
+};
+
+export type TProjectMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipRoleUpdated;
+  properties: {
+    projectId: string;
+    userId: string;
+    roles: string[];
+  };
+};
+
+export type TOrgMembershipDeletedEvent = {
+  event: PostHogEventTypes.OrgMembershipDeleted;
+  properties: {
+    membershipIds: string[];
+  };
+};
+
+export type TProjectMembershipCreatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipCreated;
+  properties: {
+    projectId: string;
+    userIds: string[];
+    roles: string[];
+  };
+};
+
+export type TProjectMembershipDeletedEvent = {
+  event: PostHogEventTypes.ProjectMembershipDeleted;
+  properties: {
+    projectId: string;
+    userIds: string[];
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -1006,6 +1086,14 @@ export type TPostHogEvent = {
   | THoneyTokenRevokedEvent
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
+  | TCustomRoleCreatedEvent
+  | TCustomRoleUpdatedEvent
+  | TCustomRoleDeletedEvent
+  | TOrgMembershipRoleUpdatedEvent
+  | TOrgMembershipDeletedEvent
+  | TProjectMembershipCreatedEvent
+  | TProjectMembershipRoleUpdatedEvent
+  | TProjectMembershipDeletedEvent
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
 );
