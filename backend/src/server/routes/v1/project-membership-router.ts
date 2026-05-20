@@ -359,6 +359,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id)),
+          roles: req.body.roleSlugs || [ProjectMembershipRole.Member]
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({
           ...el,
@@ -520,6 +531,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           }
         });
       }
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id))
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({
           ...el,
@@ -586,6 +608,16 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: [userId]
+        }
+      });
+
       return {
         membership: {
           ...membership,
@@ -621,6 +653,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         projectId: req.params.projectId
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: [membership.actorUserId as string]
+        }
+      });
+
       return {
         membership: {
           ...membership,

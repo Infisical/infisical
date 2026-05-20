@@ -120,7 +120,10 @@ export enum PostHogEventTypes {
   CustomRoleUpdated = "Custom Role Updated",
   CustomRoleDeleted = "Custom Role Deleted",
   OrgMembershipRoleUpdated = "Org Membership Role Updated",
-  ProjectMembershipRoleUpdated = "Project Membership Role Updated"
+  OrgMembershipDeleted = "Org Membership Deleted",
+  ProjectMembershipCreated = "Project Membership Created",
+  ProjectMembershipRoleUpdated = "Project Membership Role Updated",
+  ProjectMembershipDeleted = "Project Membership Deleted"
 }
 
 export type TSecretModifiedEvent = {
@@ -941,6 +944,30 @@ export type TProjectMembershipRoleUpdatedEvent = {
   };
 };
 
+export type TOrgMembershipDeletedEvent = {
+  event: PostHogEventTypes.OrgMembershipDeleted;
+  properties: {
+    membershipIds: string[];
+  };
+};
+
+export type TProjectMembershipCreatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipCreated;
+  properties: {
+    projectId: string;
+    userIds: string[];
+    roles: string[];
+  };
+};
+
+export type TProjectMembershipDeletedEvent = {
+  event: PostHogEventTypes.ProjectMembershipDeleted;
+  properties: {
+    projectId: string;
+    userIds: string[];
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -1035,5 +1062,8 @@ export type TPostHogEvent = {
   | TCustomRoleUpdatedEvent
   | TCustomRoleDeletedEvent
   | TOrgMembershipRoleUpdatedEvent
+  | TOrgMembershipDeletedEvent
+  | TProjectMembershipCreatedEvent
   | TProjectMembershipRoleUpdatedEvent
+  | TProjectMembershipDeletedEvent
 );
