@@ -2602,6 +2602,7 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     queueService,
+    cronJob,
     pkiSubscriberDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -2854,7 +2855,7 @@ export const registerRoutes = async (
   });
 
   const digicertCaQueue = digicertCertificateAuthorityQueueServiceFactory({
-    queueService,
+    cronJob,
     certificateRequestDAL,
     certificateRequestService,
     certificateAuthorityDAL,
@@ -3377,12 +3378,12 @@ export const registerRoutes = async (
   dailyReminderQueueService.startDailyRemindersJob();
   secretSyncQueue.startDailySecretSyncRetryJob();
   dailyExpiringPkiItemAlert.startSendingAlerts();
-  await certificateAuthorityQueue.startCaCrlRebuildJob();
+  certificateAuthorityQueue.startCaCrlRebuildJob();
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
-  await digicertCaQueue.init();
+  digicertCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
   await eventBusService.init();

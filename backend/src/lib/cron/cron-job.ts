@@ -27,7 +27,9 @@ export const CronJobName = {
   SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
   TelemetryInstanceStats: "telemetry-instance-stats",
-  TelemetryAggregatedEvents: "telemetry-aggregated-events"
+  TelemetryAggregatedEvents: "telemetry-aggregated-events",
+  DigiCertOrderPolling: "digicert-order-polling",
+  CaCrlRotation: "ca-crl-rotation"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────
