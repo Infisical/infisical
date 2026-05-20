@@ -1478,6 +1478,15 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateExported,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       addNoCacheHeaders(reply);
 
       return {
