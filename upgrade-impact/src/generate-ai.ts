@@ -105,7 +105,9 @@ export const deterministicDraft = (bundle: ReleaseEvidenceBundle): GeneratedDraf
 
 const PROMPT_RULES = `You are generating Infisical self-hosted upgrade impact data.
 
-Only include changes that may affect self-hosted customers upgrading Infisical. Focus on breaking changes, database migrations, environment variables, Docker, Helm, Kubernetes, deployment behavior, startup/runtime requirements, manual actions, and known upgrade issues.
+Only include changes that may affect self-hosted customers upgrading Infisical. Focus on breaking changes, database migrations, environment variables, Docker, deployment behavior, startup/runtime requirements, manual actions, and known upgrade issues.
+
+Helm charts live in a separate release cadence and are intentionally excluded from this analysis — never recommend Helm-related actions, do not infer Helm impact from backend or frontend changes, and do not surface Helm chart updates even if they appear in release notes.
 
 Do not include ordinary product features unless they create a self-hosted upgrade action. Every entry must include evidence. If there is no meaningful self-hosted impact, return empty arrays and impactLevel "none".
 
@@ -114,7 +116,7 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - Lead with what changes for the operator, not how you discovered it.
 - Use active voice and simple verbs.
 - Do not say "the release", "this release", "code changes indicate", "evidence bundle", "identified", or "detected".
-- Do not mention that no Docker, Helm, Kubernetes, or database changes exist unless that absence changes the upgrade action.
+- Do not mention that no Docker or database changes exist unless that absence changes the upgrade action.
 - Do not duplicate the same risk across breakingChanges, configChanges, deploymentNotes, and knownIssues. Pick one category.
 - Do not include the same evidence item twice in one entry.
 - Do not repeat a release note or PR URL across multiple entries when a more specific file diff can support the claim.
@@ -124,13 +126,13 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - For additive database migrations, prefer "No manual action required; Infisical runs this migration during startup." Do not tell users to run migrations manually unless the diff proves they must.
 - If a migration failure is the only risk, say "If startup fails during migration, keep the previous version running and inspect migration logs before retrying."
 - Do not say "run migrations before serving traffic", "verify migration jobs complete", "account for", or "review X if you rely on Y".
-- Do not tell operators to change proxy, Helm, Docker, or environment configuration unless the diff introduces a required setting or changes a default that existing deployments must respond to.
+- Do not tell operators to change proxy, Docker, or environment configuration unless the diff introduces a required setting or changes a default that existing deployments must respond to.
 - Optional security-hardening settings such as TRUSTED_PROXY_CIDRS are not upgrade actions when unset preserves legacy behavior.
 - Do not tell API automation owners to update payloads when the service layer provides backwards-compatible defaults or auto-promotion.
 - For optional environment variables, nullable columns, or additive feature tables, include an entry only when existing deployments may need a decision; otherwise omit it or state that no manual action is required.
 - Before using breakingChanges, inspect whether existing records or configs are backfilled or compatibility-preserved. If compatibility exists, do not mark it breaking.
 - Use breakingChanges for changes that can make existing auth, API, startup, database, or integrations fail after upgrade.
-- Use deploymentNotes only when deployment files, self-hosting docs, Docker, Helm, Kubernetes manifests, startup/runtime, or rollout behavior changed.
+- Use deploymentNotes only when deployment files, self-hosting docs, Docker, Kubernetes manifests, startup/runtime, or rollout behavior changed.
 - Use configChanges only for environment variables, config files, defaults, or settings that operators must update.
 - Use knownIssues only for confirmed bugs or documented upgrade failures, not inferred risks.
 - Prefer one strong entry over several overlapping entries.
@@ -322,12 +324,12 @@ const buildAgenticPrompt = (bundle: ReleaseEvidenceBundle, index: BundleIndex) =
 Tool-use workflow:
 - Start from the release map, then inspect only changed files that may affect self-hosted upgrades.
 - Use list_changed_files to orient yourself.
-- Use get_file_diff before making claims about env vars, migrations, Docker, Helm, Kubernetes, startup/runtime behavior, auth, integrations, queues, workers, or database behavior.
+- Use get_file_diff before making claims about env vars, migrations, Docker, Kubernetes, startup/runtime behavior, auth, integrations, queues, workers, or database behavior.
 - When reading diffs, distinguish added/removed lines from unchanged context. Do not describe unchanged context as new behavior.
 - Use get_file_at_ref only when the diff is too narrow and the surrounding file context matters.
 - Before finalizing, inspect representative diffs from every non-empty high-signal bucket: migrationFiles, configFiles, deploymentFiles, and selfHostingDocs.
-- In deploymentFiles, prioritize Dockerfile*, .nvmrc, backend/package.json, Helm values, and Helm templates.
-- Include runtime/build notes for Node version, base image, package engine, Dockerfile, or Helm default changes when operators with custom images, charts, or manifests may need action.
+- In deploymentFiles, prioritize Dockerfile*, .nvmrc, and backend/package.json.
+- Include runtime/build notes for Node version, base image, package engine, or Dockerfile changes when operators with custom images or manifests may need action.
 - Do not inspect frontend-only files unless PR text or release notes connect them to deployment, auth, or self-hosted operation.
 - Stop inspecting once you have enough evidence for concise operator-facing entries.
 - Return final JSON only after tool use is complete.

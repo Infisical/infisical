@@ -92,10 +92,26 @@ jobs:
           git commit -m "$PR_TITLE"
           git push --set-upstream origin "$BRANCH_NAME"
 
+          # Pick the previous release's GitHub author as reviewer so the PAT owner
+          # is not the only person notified about this PR.
+          REVIEWER_FLAG=()
+          PREVIOUS_TAG="$(awk '/^previousTag:/ { print $2; exit }' "upgrade-impact/data/releases/${TAG_NAME}.yaml")"
+          if [ -n "$PREVIOUS_TAG" ]; then
+            PREVIOUS_AUTHOR="$(gh release view "$PREVIOUS_TAG" --json author --jq .author.login 2>/dev/null || true)"
+            PR_CREATOR="$(gh api user --jq .login 2>/dev/null || true)"
+            if [ -n "$PREVIOUS_AUTHOR" ] && [ "$PREVIOUS_AUTHOR" != "$PR_CREATOR" ]; then
+              REVIEWER_FLAG=(--reviewer "$PREVIOUS_AUTHOR")
+              echo "Requesting review from previous release author: $PREVIOUS_AUTHOR"
+            else
+              echo "Skipping reviewer assignment (previous author missing or matches PAT owner)."
+            fi
+          fi
+
           gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
             --title "$PR_TITLE" \
+            "${REVIEWER_FLAG[@]}" \
             --body "Generated self-hosted upgrade impact data for \`${TAG_NAME}\`.
 
           Review the generated YAML for self-hosted upgrade accuracy before merging."
