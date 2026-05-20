@@ -123,7 +123,7 @@ export enum PostHogEventTypes {
   OrgMembershipDeleted = "Org Membership Deleted",
   ProjectMembershipCreated = "Project Membership Created",
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
-  ProjectMembershipDeleted = "Project Membership Deleted"
+  ProjectMembershipDeleted = "Project Membership Deleted",
   OrganizationCreated = "Organization Created",
   SubOrganizationCreated = "Sub Organization Created"
 }
