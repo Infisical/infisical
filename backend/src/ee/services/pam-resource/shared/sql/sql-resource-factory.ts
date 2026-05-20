@@ -61,6 +61,8 @@ const makeSqlConnection = (
     resourceType: PamResource;
     username?: string;
     password?: string;
+    authMethod?: string; // MSSQL-only: "ntlm" triggers Windows auth via Tedious
+    domain?: string; // MSSQL-only: AD domain for NTLM authentication
   }
 ): SqlResourceConnection => {
   const { connectionDetails, resourceType, username, password } = config;
@@ -191,22 +193,35 @@ const makeSqlConnection = (
             encrypt: true,
             trustServerCertificate: !sslRejectUnauthorized,
             cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
-            // serverName tells tedious to use this hostname for TLS SNI and certificate validation
-            // instead of the server/host value used for the TCP connection
             serverName: host
           }
         : { encrypt: false };
+
+      const isNtlm = config.authMethod === "ntlm";
+
+      if (isNtlm && !config.domain) {
+        throw new BadRequestError({ message: "Domain is required for NTLM authentication" });
+      }
 
       const client = knex({
         client: "mssql",
         connection: {
           server: "localhost",
           port: proxyPort,
-          user: actualUsername,
-          password: actualPassword,
           database: connectionDetails.database,
           requestTimeout: EXTERNAL_REQUEST_TIMEOUT,
-          // mssqlOptions is passed to tedious driver
+          // Knex MSSQL dialect maps these flat fields into Tedious's authentication object
+          ...(isNtlm
+            ? {
+                type: "ntlm",
+                userName: actualUsername,
+                password: actualPassword,
+                domain: config.domain
+              }
+            : {
+                user: actualUsername,
+                password: actualPassword
+              }),
           // ref: https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
           options: mssqlOptions
         }
@@ -253,6 +268,8 @@ export const executeWithGateway = async <T>(
     gatewayId: string;
     username?: string;
     password?: string;
+    authMethod?: string; // MSSQL-only: "ntlm" triggers Windows auth via Tedious
+    domain?: string; // MSSQL-only: AD domain for NTLM authentication
   },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   operation: (connection: SqlResourceConnection) => Promise<T>
@@ -333,7 +350,9 @@ export const sqlResourceFactory: TPamResourceFactory<
           gatewayId,
           resourceType,
           username: credentials.username,
-          password: credentials.password
+          password: credentials.password,
+          authMethod: "authMethod" in credentials ? (credentials.authMethod as string) : undefined,
+          domain: "domain" in credentials ? (credentials.domain as string) : undefined
         },
         gatewayV2Service,
         async (client) => {

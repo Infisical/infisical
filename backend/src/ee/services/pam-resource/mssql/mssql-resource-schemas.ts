@@ -10,14 +10,31 @@ import {
   BaseUpdateGatewayPamResourceSchema,
   BaseUpdatePamAccountSchema
 } from "../pam-resource-schemas";
-import {
-  BaseSqlAccountCredentialsSchema,
-  BaseSqlResourceConnectionDetailsSchema
-} from "../shared/sql/sql-resource-schemas";
+import { BaseSqlResourceConnectionDetailsSchema } from "../shared/sql/sql-resource-schemas";
+import { MsSqlAuthMethod } from "./mssql-resource-enums";
+
+export { MsSqlAuthMethod };
 
 // Resources
 export const MsSQLResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
-export const MsSQLAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
+
+const MsSQLSqlLoginCredentialsSchema = z.object({
+  authMethod: z.literal(MsSqlAuthMethod.SqlLogin),
+  username: z.string().trim().min(1).max(63),
+  password: z.string().trim().min(1).max(256)
+});
+
+const MsSQLNtlmCredentialsSchema = z.object({
+  authMethod: z.literal(MsSqlAuthMethod.Ntlm),
+  username: z.string().trim().min(1).max(63),
+  password: z.string().trim().min(1).max(256),
+  domain: z.string().trim().min(1, "Domain is required for NTLM authentication").max(255)
+});
+
+export const MsSQLAccountCredentialsSchema = z.discriminatedUnion("authMethod", [
+  MsSQLSqlLoginCredentialsSchema,
+  MsSQLNtlmCredentialsSchema
+]);
 
 const BaseMsSQLResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.MsSQL) });
 
@@ -26,13 +43,14 @@ export const MsSQLResourceSchema = BaseMsSQLResourceSchema.extend({
   rotationAccountCredentials: MsSQLAccountCredentialsSchema.nullable().optional()
 });
 
+const SanitizedMsSQLCredentialsSchema = z.discriminatedUnion("authMethod", [
+  z.object({ authMethod: z.literal(MsSqlAuthMethod.SqlLogin), username: z.string() }),
+  z.object({ authMethod: z.literal(MsSqlAuthMethod.Ntlm), username: z.string(), domain: z.string() })
+]);
+
 export const SanitizedMsSQLResourceSchema = BaseMsSQLResourceSchema.extend({
   connectionDetails: MsSQLResourceConnectionDetailsSchema,
-  rotationAccountCredentials: MsSQLAccountCredentialsSchema.pick({
-    username: true
-  })
-    .nullable()
-    .optional()
+  rotationAccountCredentials: SanitizedMsSQLCredentialsSchema.nullable().optional()
 });
 
 export const MsSQLResourceListItemSchema = z.object({
@@ -65,10 +83,11 @@ export const UpdateMsSQLAccountSchema = BaseUpdatePamAccountSchema.extend({
 
 export const SanitizedMsSQLAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
   parentType: z.literal(PamResource.MsSQL),
-  credentials: MsSQLAccountCredentialsSchema.pick({
-    username: true
-  })
+  credentials: SanitizedMsSQLCredentialsSchema
 });
 
 // Sessions
-export const MsSQLSessionCredentialsSchema = MsSQLResourceConnectionDetailsSchema.and(MsSQLAccountCredentialsSchema);
+export const MsSQLSessionCredentialsSchema = z.union([
+  MsSQLResourceConnectionDetailsSchema.and(MsSQLSqlLoginCredentialsSchema),
+  MsSQLResourceConnectionDetailsSchema.and(MsSQLNtlmCredentialsSchema)
+]);
