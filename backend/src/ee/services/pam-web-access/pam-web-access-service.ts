@@ -246,7 +246,7 @@ export const pamWebAccessServiceFactory = ({
       accountIdentity = `${domainConnectionDetails.domain}:${account.name}`;
     }
 
-    // Sessions that outlived their expiresAt may still show as active — end them before counting active sessions.
+    // Sessions that outlived their expiresAt may still show as active — end them so that they don't count against the session limit.
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
 
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
@@ -587,7 +587,7 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Gateway not configured for this resource" });
       }
 
-      // Sessions that outlived their expiresAt may still show as active — end them before counting active sessions.
+      // Sessions that outlived their expiresAt may still show as active — end them so that they don't count against the session limit.
       await pamSessionDAL.endExpiredWebSessions(userId, projectId);
 
       // Check web session limit
