@@ -18,7 +18,7 @@ export const CertManagerInstanceBanner = () => {
 
   const message = isViewingActive
     ? "This is your organization's active instance. Use this for all work going forward."
-    : `This project will be retired. Migrate your CAs, policies, and profiles to your active instance "${activeProject?.name ?? "not set"}", then update your clients and workflows to use it instead.`;
+    : `This project will be retired. Export your CAs, policies, and profiles to your active instance "${activeProject?.name ?? "not set"}", then update your clients and workflows to use it instead.`;
 
   return (
     <div className="flex w-full items-start gap-x-2 border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
@@ -41,7 +41,7 @@ export const CertManagerInstanceBanner = () => {
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-yellow"
           >
-            Migration guide
+            Deprecation guide
           </a>
         )}
       </p>

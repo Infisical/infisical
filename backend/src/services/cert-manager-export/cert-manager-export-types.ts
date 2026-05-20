@@ -1,22 +1,21 @@
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
-export type TMigrateCertManagerProjectDTO = {
+export type TExportCertManagerProjectDTO = {
   sourceProjectId: string;
-  destinationProjectId: string;
   actor: ActorType;
   actorId: string;
   actorOrgId: string;
   actorAuthMethod: ActorAuthMethod;
 };
 
-export type TMigrateCertManagerProjectResult = {
+export type TExportCertManagerProjectResult = {
   sourceProjectId: string;
   destinationProjectId: string;
-  migratedCertificateAuthorities: number;
+  exportedCertificateAuthorities: number;
   renamedCertificateAuthorities: { originalName: string; newName: string }[];
-  migratedCertificatePolicies: number;
+  exportedCertificatePolicies: number;
   renamedCertificatePolicies: { originalName: string; newName: string }[];
-  migratedCertificateProfiles: number;
+  exportedCertificateProfiles: number;
   skippedCertificateProfiles: number;
   renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
 };

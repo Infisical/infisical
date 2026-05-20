@@ -6,24 +6,24 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const MigrationResultSchema = z.object({
+const ExportResultSchema = z.object({
   sourceProjectId: z.string(),
   destinationProjectId: z.string(),
-  migratedCertificateAuthorities: z.number().int().nonnegative(),
+  exportedCertificateAuthorities: z.number().int().nonnegative(),
   renamedCertificateAuthorities: z.array(
     z.object({
       originalName: z.string(),
       newName: z.string()
     })
   ),
-  migratedCertificatePolicies: z.number().int().nonnegative(),
+  exportedCertificatePolicies: z.number().int().nonnegative(),
   renamedCertificatePolicies: z.array(
     z.object({
       originalName: z.string(),
       newName: z.string()
     })
   ),
-  migratedCertificateProfiles: z.number().int().nonnegative(),
+  exportedCertificateProfiles: z.number().int().nonnegative(),
   skippedCertificateProfiles: z.number().int().nonnegative(),
   renamedCertificateProfiles: z.array(
     z.object({
@@ -33,30 +33,28 @@ const MigrationResultSchema = z.object({
   )
 });
 
-export const registerCertManagerMigrationRouter = async (server: FastifyZodProvider) => {
+export const registerCertManagerExportRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/migrate",
+    url: "/export",
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
-      operationId: "migrateCertManagerProject",
+      operationId: "exportCertManagerProject",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description:
-        "Duplicate internal certificate authorities, certificate policies, and certificate profiles from one project to another within the same organization. External CAs, certificates, and enrollment configs are not migrated.",
+        "Duplicate internal certificate authorities, certificate policies, and certificate profiles from the source project into the organization's active Certificate Manager instance. External CAs, certificates, and enrollment configs are not exported.",
       body: z.object({
-        sourceProjectId: z.string().trim().uuid(),
-        destinationProjectId: z.string().trim().uuid()
+        sourceProjectId: z.string().trim().uuid()
       }),
       response: {
-        200: MigrationResultSchema
+        200: ExportResultSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.certManagerMigration.migrateCertManagerProject({
+      const result = await server.services.certManagerExport.exportCertManagerProject({
         sourceProjectId: req.body.sourceProjectId,
-        destinationProjectId: req.body.destinationProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -68,15 +66,15 @@ export const registerCertManagerMigrationRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: result.destinationProjectId,
         event: {
-          type: EventType.MIGRATE_CERT_MANAGER_PROJECT,
+          type: EventType.EXPORT_CERT_MANAGER_PROJECT,
           metadata: {
             sourceProjectId: result.sourceProjectId,
             destinationProjectId: result.destinationProjectId,
-            migratedCertificateAuthorities: result.migratedCertificateAuthorities,
+            exportedCertificateAuthorities: result.exportedCertificateAuthorities,
             renamedCertificateAuthorities: result.renamedCertificateAuthorities,
-            migratedCertificatePolicies: result.migratedCertificatePolicies,
+            exportedCertificatePolicies: result.exportedCertificatePolicies,
             renamedCertificatePolicies: result.renamedCertificatePolicies,
-            migratedCertificateProfiles: result.migratedCertificateProfiles,
+            exportedCertificateProfiles: result.exportedCertificateProfiles,
             skippedCertificateProfiles: result.skippedCertificateProfiles,
             renamedCertificateProfiles: result.renamedCertificateProfiles
           }

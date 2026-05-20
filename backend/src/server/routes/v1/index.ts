@@ -14,8 +14,8 @@ import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCertManagerAccessRouter } from "./cert-manager-access-routers";
+import { registerCertManagerExportRouter } from "./cert-manager-export-router";
 import { registerCertManagerInstanceRouter } from "./cert-manager-instance-router";
-import { registerCertManagerMigrationRouter } from "./cert-manager-migration-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerGeneralCertificateAuthorityRouter } from "./certificate-authority-routers/general-certificate-authority-router";
@@ -205,7 +205,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiApplicationRouter, { prefix: "/applications" });
       await pkiRouter.register(registerCertManagerInstanceRouter);
-      await pkiRouter.register(registerCertManagerMigrationRouter);
+      await pkiRouter.register(registerCertManagerExportRouter);
       await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
       await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
       await pkiRouter.register(registerCertificateInventoryViewRouter, { prefix: "/certificate-inventory-views" });

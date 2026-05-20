@@ -16,6 +16,7 @@ import {
   PopoverTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
   getProjectLottieIcon,
   getProjectTitle,
@@ -46,7 +47,8 @@ const TypeSelectInner = ({
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
-  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
+    useCertManagerInstanceState();
 
   const projectCountsByType = useMemo(
     () =>
@@ -56,6 +58,26 @@ const TypeSelectInner = ({
     [projects]
   );
 
+  const certManagerTargetProjectId = useMemo(() => {
+    const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
+    if (cookieValue && projects.some((p) => p.id === cookieValue)) {
+      return cookieValue;
+    }
+    return certManagerInstance?.activeProjectId ?? null;
+  }, [currentOrg?.id, projects, certManagerInstance?.activeProjectId]);
+
+  const navigateToCertManager = () => {
+    if (isCertManagerInstancePending) return;
+    if (certManagerTargetProjectId) {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
+        params: { orgId: currentOrg?.id || "", projectId: certManagerTargetProjectId }
+      });
+    } else {
+      setIsCertManagerSetupOpen(true);
+    }
+  };
+
   const handleSelectType = (type: ProjectType) => {
     setOpen(false);
     const orgId = currentOrg?.id || "";
@@ -63,14 +85,7 @@ const TypeSelectInner = ({
     if (type === currentType) return;
 
     if (type === ProjectType.CertificateManager) {
-      if (certManagerInstance?.activeProjectId) {
-        navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-          params: { orgId, projectId: certManagerInstance.activeProjectId }
-        });
-      } else {
-        setIsCertManagerSetupOpen(true);
-      }
+      navigateToCertManager();
       return;
     }
 
@@ -92,17 +107,7 @@ const TypeSelectInner = ({
           type="button"
           onClick={() => {
             if (currentType === ProjectType.CertificateManager) {
-              if (certManagerInstance?.activeProjectId) {
-                navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-                  params: {
-                    orgId: currentOrg?.id || "",
-                    projectId: certManagerInstance.activeProjectId
-                  }
-                });
-              } else {
-                setIsCertManagerSetupOpen(true);
-              }
+              navigateToCertManager();
             } else {
               navigate({
                 to: "/organizations/$orgId/projects/$type",

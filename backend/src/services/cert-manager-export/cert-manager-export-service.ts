@@ -13,12 +13,13 @@ import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/c
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { TMigrateCertManagerProjectDTO, TMigrateCertManagerProjectResult } from "./cert-manager-migration-types";
+import { TExportCertManagerProjectDTO, TExportCertManagerProjectResult } from "./cert-manager-export-types";
 
-type TCertManagerMigrationServiceFactoryDep = {
+type TCertManagerExportServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
     "find" | "findWithAssociatedCa" | "create" | "transaction"
@@ -30,13 +31,14 @@ type TCertManagerMigrationServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "find">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
-export type TCertManagerMigrationServiceFactory = ReturnType<typeof certManagerMigrationServiceFactory>;
+export type TCertManagerExportServiceFactory = ReturnType<typeof certManagerExportServiceFactory>;
 
-export const certManagerMigrationServiceFactory = ({
+export const certManagerExportServiceFactory = ({
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
   certificateAuthorityCertDAL,
@@ -45,9 +47,10 @@ export const certManagerMigrationServiceFactory = ({
   certificatePolicyDAL,
   certificateProfileDAL,
   projectDAL,
+  orgDAL,
   kmsService,
   permissionService
-}: TCertManagerMigrationServiceFactoryDep) => {
+}: TCertManagerExportServiceFactoryDep) => {
   const allocateUniqueName = (desired: string, taken: Set<string>): string => {
     if (!taken.has(desired)) return desired;
     let candidate: string;
@@ -57,29 +60,21 @@ export const certManagerMigrationServiceFactory = ({
     return candidate;
   };
 
-  // knex auto-stringifies plain objects for jsonb columns, but treats JS arrays as Postgres
-  // arrays — which corrupts jsonb columns whose value happens to be an array (e.g. policy
-  // `subject` / `sans`). Pre-stringifying every jsonb-bound value sidesteps the heuristic.
   const toJsonbValue = (value: unknown): string | null => {
     if (value === null || value === undefined) return null;
     if (typeof value === "string") return value;
     return JSON.stringify(value);
   };
 
-  const migrateCertManagerProject = async ({
+  const exportCertManagerProject = async ({
     sourceProjectId,
-    destinationProjectId,
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod
-  }: TMigrateCertManagerProjectDTO): Promise<TMigrateCertManagerProjectResult> => {
+  }: TExportCertManagerProjectDTO): Promise<TExportCertManagerProjectResult> => {
     if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) {
-      throw new BadRequestError({ message: "Invalid actor for cert manager migration" });
-    }
-
-    if (sourceProjectId === destinationProjectId) {
-      throw new BadRequestError({ message: "Source and destination projects must be different" });
+      throw new BadRequestError({ message: "Invalid actor for cert manager export" });
     }
 
     const { hasRole } = await permissionService.getOrgPermission({
@@ -92,7 +87,23 @@ export const certManagerMigrationServiceFactory = ({
     });
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
-        message: "Only organization admins can migrate cert manager entities between projects"
+        message: "Only organization admins can export cert manager entities between projects"
+      });
+    }
+
+    const org = await orgDAL.findById(actorOrgId);
+    if (!org) {
+      throw new NotFoundError({ message: `Organization with ID '${actorOrgId}' not found` });
+    }
+    const destinationProjectId = org.defaultCertManagerProjectId;
+    if (!destinationProjectId) {
+      throw new BadRequestError({
+        message: "Set an active Certificate Manager instance for the organization before exporting"
+      });
+    }
+    if (sourceProjectId === destinationProjectId) {
+      throw new BadRequestError({
+        message: "Source project is already the active Certificate Manager instance"
       });
     }
 
@@ -211,7 +222,7 @@ export const certManagerMigrationServiceFactory = ({
           const newSecretId = caSecretIdMap.get(sourceCaCert.caSecretId);
           if (!newSecretId) {
             throw new InternalServerError({
-              message: `CA secret referenced by certificate authority cert '${sourceCaCert.id}' was not migrated`
+              message: `CA secret referenced by certificate authority cert '${sourceCaCert.id}' was not exported`
             });
           }
           const newCaCert = await certificateAuthorityCertDAL.create(
@@ -262,7 +273,7 @@ export const certManagerMigrationServiceFactory = ({
           const newCrlSecretId = caSecretIdMap.get(sourceCrl.caSecretId);
           if (!newCrlSecretId) {
             throw new InternalServerError({
-              message: `CA secret referenced by CRL '${sourceCrl.id}' was not migrated`
+              message: `CA secret referenced by CRL '${sourceCrl.id}' was not exported`
             });
           }
           await certificateAuthorityCrlDAL.create(
@@ -306,7 +317,7 @@ export const certManagerMigrationServiceFactory = ({
 
       const sourceProfiles = await certificateProfileDAL.find({ projectId: sourceProjectId }, { tx });
       const renamedCertificateProfiles: { originalSlug: string; newSlug: string }[] = [];
-      let migratedCertificateProfiles = 0;
+      let exportedCertificateProfiles = 0;
       let skippedCertificateProfiles = 0;
 
       for (const sourceProfile of sourceProfiles) {
@@ -349,22 +360,22 @@ export const certManagerMigrationServiceFactory = ({
           acmeConfigId: null,
           scepConfigId: null
         });
-        migratedCertificateProfiles += 1;
+        exportedCertificateProfiles += 1;
       }
 
       return {
         sourceProjectId,
         destinationProjectId,
-        migratedCertificateAuthorities: sortedCAs.length,
+        exportedCertificateAuthorities: sortedCAs.length,
         renamedCertificateAuthorities,
-        migratedCertificatePolicies: sourcePolicies.length,
+        exportedCertificatePolicies: sourcePolicies.length,
         renamedCertificatePolicies,
-        migratedCertificateProfiles,
+        exportedCertificateProfiles,
         skippedCertificateProfiles,
         renamedCertificateProfiles
       };
     });
   };
 
-  return { migrateCertManagerProject };
+  return { exportCertManagerProject };
 };

@@ -258,9 +258,9 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
 import { certManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
 import { certManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
-import { certManagerMigrationServiceFactory } from "@app/services/cert-manager-migration/cert-manager-migration-service";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -2680,7 +2680,7 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const certManagerMigrationService = certManagerMigrationServiceFactory({
+  const certManagerExportService = certManagerExportServiceFactory({
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -2689,6 +2689,7 @@ export const registerRoutes = async (
     certificatePolicyDAL,
     certificateProfileDAL,
     projectDAL,
+    orgDAL,
     kmsService,
     permissionService
   });
@@ -3465,7 +3466,7 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     certManagerInstance: certManagerInstanceService,
-    certManagerMigration: certManagerMigrationService,
+    certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,

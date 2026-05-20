@@ -62,7 +62,7 @@ export const CertManagerSelectInstanceModal = ({
               rel="noopener noreferrer"
               className="text-primary-500 hover:underline"
             >
-              Migration guide
+              Deprecation guide
             </a>
           </DialogDescription>
         </DialogHeader>
@@ -71,7 +71,7 @@ export const CertManagerSelectInstanceModal = ({
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a project" />
           </SelectTrigger>
-          <SelectContent className="max-h-[60vh]">
+          <SelectContent position="popper" className="max-h-72 w-(--radix-select-trigger-width)">
             {instances.map((instance) => (
               <SelectItem key={instance.id} value={instance.id}>
                 <div className="flex min-w-0 flex-1 items-center gap-2">

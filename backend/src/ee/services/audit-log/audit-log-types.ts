@@ -366,7 +366,7 @@ export enum EventType {
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
-  MIGRATE_CERT_MANAGER_PROJECT = "migrate-cert-manager-project",
+  EXPORT_CERT_MANAGER_PROJECT = "export-cert-manager-project",
   GET_CA_CSR = "get-certificate-authority-csr",
   GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
@@ -3031,16 +3031,16 @@ interface RenewCa {
   };
 }
 
-interface MigrateCertManagerProject {
-  type: EventType.MIGRATE_CERT_MANAGER_PROJECT;
+interface ExportCertManagerProject {
+  type: EventType.EXPORT_CERT_MANAGER_PROJECT;
   metadata: {
     sourceProjectId: string;
     destinationProjectId: string;
-    migratedCertificateAuthorities: number;
+    exportedCertificateAuthorities: number;
     renamedCertificateAuthorities: { originalName: string; newName: string }[];
-    migratedCertificatePolicies: number;
+    exportedCertificatePolicies: number;
     renamedCertificatePolicies: { originalName: string; newName: string }[];
-    migratedCertificateProfiles: number;
+    exportedCertificateProfiles: number;
     skippedCertificateProfiles: number;
     renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
   };
@@ -7240,7 +7240,7 @@ export type Event =
   | UpdateCa
   | DeleteCa
   | RenewCa
-  | MigrateCertManagerProject
+  | ExportCertManagerProject
   | GetCaCsr
   | GetCaCerts
   | GetCaCert

@@ -44,7 +44,7 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
       return;
     }
 
-    if (routePath === "/api/v1/cert-manager/migrate") {
+    if (routePath === "/api/v1/cert-manager/export") {
       return;
     }
 

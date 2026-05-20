@@ -79,31 +79,25 @@ export const useSetCertManagerActiveProject = () => {
   });
 };
 
-export type TMigrateCertManagerProjectResult = {
+export type TExportCertManagerProjectResult = {
   sourceProjectId: string;
   destinationProjectId: string;
-  migratedCertificateAuthorities: number;
+  exportedCertificateAuthorities: number;
   renamedCertificateAuthorities: { originalName: string; newName: string }[];
-  migratedCertificatePolicies: number;
+  exportedCertificatePolicies: number;
   renamedCertificatePolicies: { originalName: string; newName: string }[];
-  migratedCertificateProfiles: number;
+  exportedCertificateProfiles: number;
   skippedCertificateProfiles: number;
   renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
 };
 
-export const useMigrateCertManagerProject = () => {
+export const useExportCertManagerProject = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      sourceProjectId,
-      destinationProjectId
-    }: {
-      sourceProjectId: string;
-      destinationProjectId: string;
-    }) => {
-      const { data } = await apiRequest.post<TMigrateCertManagerProjectResult>(
-        "/api/v1/cert-manager/migrate",
-        { sourceProjectId, destinationProjectId }
+    mutationFn: async ({ sourceProjectId }: { sourceProjectId: string }) => {
+      const { data } = await apiRequest.post<TExportCertManagerProjectResult>(
+        "/api/v1/cert-manager/export",
+        { sourceProjectId }
       );
       return data;
     },

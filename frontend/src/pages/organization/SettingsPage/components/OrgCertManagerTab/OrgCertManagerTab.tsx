@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRightLeftIcon,
   BoxIcon,
   MoreHorizontalIcon,
   StarIcon,
   Trash2Icon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  UploadIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -50,7 +50,7 @@ import {
 } from "@app/hooks/api/certManagerInstance";
 import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
-import { CertManagerMigrateProjectModal } from "./CertManagerMigrateProjectModal";
+import { CertManagerExportProjectModal } from "./CertManagerExportProjectModal";
 
 export const OrgCertManagerTab = () => {
   const queryClient = useQueryClient();
@@ -70,7 +70,9 @@ export const OrgCertManagerTab = () => {
 
   const [pendingActive, setPendingActive] = useState<TCertManagerLegacyInstance | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TCertManagerLegacyInstance | null>(null);
-  const [pendingMigrate, setPendingMigrate] = useState<TCertManagerLegacyInstance | null>(null);
+  const [pendingExport, setPendingExport] = useState<TCertManagerLegacyInstance | null>(null);
+
+  const activeInstance = instances.find((i) => i.isActive) ?? null;
 
   useEffect(() => {
     if (pendingDelete && !instances.find((i) => i.id === pendingDelete.id)) {
@@ -79,10 +81,10 @@ export const OrgCertManagerTab = () => {
     if (pendingActive && !instances.find((i) => i.id === pendingActive.id)) {
       setPendingActive(null);
     }
-    if (pendingMigrate && !instances.find((i) => i.id === pendingMigrate.id)) {
-      setPendingMigrate(null);
+    if (pendingExport && !instances.find((i) => i.id === pendingExport.id)) {
+      setPendingExport(null);
     }
-  }, [instances, pendingDelete, pendingActive, pendingMigrate]);
+  }, [instances, pendingDelete, pendingActive, pendingExport]);
 
   if (isPending) {
     return (
@@ -149,7 +151,7 @@ export const OrgCertManagerTab = () => {
               rel="noopener noreferrer"
               className="underline hover:text-mineshaft-200"
             >
-              Migration guide
+              Deprecation guide
             </a>
           </AlertDescription>
         </Alert>
@@ -176,7 +178,7 @@ export const OrgCertManagerTab = () => {
                 {instance.isActive ? <Badge variant="success">Active</Badge> : null}
               </TableCell>
               <TableCell>
-                {canManage ? (
+                {canManage && !instance.isActive ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <IconButton variant="ghost" size="xs" aria-label={`Manage ${instance.name}`}>
@@ -184,25 +186,18 @@ export const OrgCertManagerTab = () => {
                       </IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="min-w-56" align="end" sideOffset={2}>
-                      <DropdownMenuItem onClick={() => setPendingMigrate(instance)}>
-                        <ArrowRightLeftIcon />
-                        Migrate entities
+                      <DropdownMenuItem onClick={() => setPendingExport(instance)}>
+                        <UploadIcon />
+                        Export to active instance
                       </DropdownMenuItem>
-                      {!instance.isActive && (
-                        <DropdownMenuItem onClick={() => setPendingActive(instance)}>
-                          <StarIcon />
-                          Set as active
-                        </DropdownMenuItem>
-                      )}
-                      {!instance.isActive && (
-                        <DropdownMenuItem
-                          variant="danger"
-                          onClick={() => setPendingDelete(instance)}
-                        >
-                          <Trash2Icon />
-                          Delete project
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem onClick={() => setPendingActive(instance)}>
+                        <StarIcon />
+                        Set as active
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="danger" onClick={() => setPendingDelete(instance)}>
+                        <Trash2Icon />
+                        Delete project
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : null}
@@ -260,13 +255,13 @@ export const OrgCertManagerTab = () => {
         buttonText="Delete project"
       />
 
-      <CertManagerMigrateProjectModal
-        isOpen={Boolean(pendingMigrate)}
+      <CertManagerExportProjectModal
+        isOpen={Boolean(pendingExport)}
         onOpenChange={(open) => {
-          if (!open) setPendingMigrate(null);
+          if (!open) setPendingExport(null);
         }}
-        source={pendingMigrate}
-        candidates={instances}
+        source={pendingExport}
+        activeInstance={activeInstance}
       />
     </div>
   );
