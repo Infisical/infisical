@@ -56,8 +56,14 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
 
     const fromCookie = readProjectIdFromCookie(req.cookies, req.permission.orgId);
     if (fromCookie) {
-      req.internalCertManagerProjectId = fromCookie;
-      return;
+      const isValidForOrg = await server.services.certManagerProjectResolver.isCertManagerProject(
+        fromCookie,
+        req.permission.orgId
+      );
+      if (isValidForOrg) {
+        req.internalCertManagerProjectId = fromCookie;
+        return;
+      }
     }
 
     req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.permission.orgId);
