@@ -1140,7 +1140,8 @@ export const relayServiceFactory = ({
         relayHost: relayClientCredentials.relayHost,
         clientCertificate: relayClientCredentials.clientCertificate,
         clientPrivateKey: relayClientCredentials.clientPrivateKey,
-        serverCertificateChain: relayClientCredentials.serverCertificateChain
+        serverCertificateChain: relayClientCredentials.serverCertificateChain,
+        timeoutMs: 15000
       });
 
       await relayDAL.updateById(relay.id, { heartbeat: new Date() });
@@ -1382,7 +1383,8 @@ export const relayServiceFactory = ({
         relayHost: relayClientCredentials.relayHost,
         clientCertificate: relayClientCredentials.clientCertificate,
         clientPrivateKey: relayClientCredentials.clientPrivateKey,
-        serverCertificateChain: relayClientCredentials.serverCertificateChain
+        serverCertificateChain: relayClientCredentials.serverCertificateChain,
+        timeoutMs: 15000
       });
 
       await relayDAL.updateById(relay.id, { heartbeat: new Date() });
