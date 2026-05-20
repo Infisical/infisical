@@ -13,14 +13,11 @@ import {
   Switch,
   Tooltip
 } from "@app/components/v2";
-import {
-  TGitLabGroup,
-  TGitLabProject,
-  useGitLabConnectionListGroups,
-  useGitLabConnectionListProjects
-} from "@app/hooks/api/appConnections/gitlab";
+import { TGitLabGroup, useGitLabConnectionListGroups } from "@app/hooks/api/appConnections/gitlab";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
+
+import { GitLabProjectNavigator } from "./GitLabProjectNavigator";
 
 import { TSecretSyncForm } from "../schemas";
 
@@ -69,17 +66,12 @@ export const GitLabSyncFields = () => {
   const connectionId = useWatch({ name: "connection.id", control });
   const scope = useWatch({ name: "destinationConfig.scope", control });
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
+  const projectId = useWatch({ name: "destinationConfig.projectId", control });
+  const projectName = useWatch({ name: "destinationConfig.projectName", control });
 
   const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(connectionId, {
     enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
   });
-
-  const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
-    connectionId,
-    {
-      enabled: Boolean(connectionId)
-    }
-  );
 
   return (
     <div className="h-full overflow-auto">
@@ -170,7 +162,7 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.projectId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
+          render={({ fieldState: { error } }) => (
             <FormControl
               isError={Boolean(error)}
               errorText={error?.message}
@@ -178,31 +170,24 @@ export const GitLabSyncFields = () => {
               helperText={
                 <Tooltip
                   className="max-w-md"
-                  content="Ensure the project exists in the connection's GitLab instance URL and the connection has access to it."
+                  content="Navigate through your GitLab groups to find and select a project."
                 >
                   <div>
-                    <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
+                    <span>Browse groups to find your project</span>{" "}
                     <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
                   </div>
                 </Tooltip>
               }
             >
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={isProjectsLoading && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={projects?.find((project) => project.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TGitLabProject>)?.id ?? "");
-                  setValue(
-                    "destinationConfig.projectName",
-                    (option as SingleValue<TGitLabProject>)?.name ?? ""
-                  );
+              <GitLabProjectNavigator
+                connectionId={connectionId}
+                value={projectId ?? ""}
+                projectName={projectName ?? ""}
+                onChange={(id, name) => {
+                  setValue("destinationConfig.projectId", id);
+                  setValue("destinationConfig.projectName", name);
                 }}
-                options={projects}
-                placeholder="Select a project..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id}
+                isDisabled={!connectionId}
               />
             </FormControl>
           )}

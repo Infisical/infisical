@@ -26,6 +26,12 @@ export type TGitLabProject = {
   id: string;
 };
 
+export type TGitLabGroupTreeItem = {
+  id: string;
+  name: string;
+  fullPath: string;
+};
+
 export type TGitLabAccessTokenCredentials = {
   accessToken: string;
   instanceUrl: string;
