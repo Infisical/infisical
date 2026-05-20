@@ -114,7 +114,10 @@ export enum PostHogEventTypes {
   HoneyTokenUpdated = "Honey Token Updated",
   HoneyTokenRevoked = "Honey Token Revoked",
   HoneyTokenReset = "Honey Token Reset",
-  HoneyTokenTriggered = "Honey Token Triggered"
+  HoneyTokenTriggered = "Honey Token Triggered",
+
+  OrganizationCreated = "Organization Created",
+  SubOrganizationCreated = "Sub Organization Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -166,6 +169,21 @@ export type TUserSignedUpEvent = {
     email: string;
     attributionSource?: string;
     signupMethod?: string;
+  };
+};
+
+export type TOrganizationCreatedEvent = {
+  event: PostHogEventTypes.OrganizationCreated;
+  properties: {
+    name: string;
+  };
+};
+
+export type TSubOrganizationCreatedEvent = {
+  event: PostHogEventTypes.SubOrganizationCreated;
+  properties: {
+    name: string;
+    parentOrgId: string;
   };
 };
 
@@ -977,4 +995,6 @@ export type TPostHogEvent = {
   | THoneyTokenRevokedEvent
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
+  | TOrganizationCreatedEvent
+  | TSubOrganizationCreatedEvent
 );
