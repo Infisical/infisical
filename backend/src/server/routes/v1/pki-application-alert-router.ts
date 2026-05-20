@@ -107,6 +107,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         organizationId: req.permission.orgId,
         properties: {
           applicationId: req.params.applicationId,
+          alertType: alert.eventType,
           orgId: req.permission.orgId
         }
       });

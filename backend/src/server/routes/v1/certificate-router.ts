@@ -1483,6 +1483,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
+          format: "pem-bundle",
           orgId: req.permission.orgId
         }
       });
@@ -1845,6 +1846,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
+          format: "pkcs12",
           orgId: req.permission.orgId
         }
       });

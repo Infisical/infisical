@@ -92,6 +92,19 @@ export const pkiSubscriberQueueServiceFactory = ({
                     lastOperationMessage: "No CA assigned to subscriber",
                     lastOperationAt: new Date()
                   });
+
+                  const project = await projectDAL.findById(subscriber.projectId);
+                  if (project) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await telemetryService.sendPostHogEvents({
+                      event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                      distinctId: `platform/${subscriber.projectId}`,
+                      organizationId: project.orgId,
+                      properties: {
+                        orgId: project.orgId
+                      }
+                    });
+                  }
                   return;
                 }
 
@@ -102,6 +115,19 @@ export const pkiSubscriberQueueServiceFactory = ({
                     lastOperationMessage: "CA not found",
                     lastOperationAt: new Date()
                   });
+
+                  const project = await projectDAL.findById(subscriber.projectId);
+                  if (project) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await telemetryService.sendPostHogEvents({
+                      event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                      distinctId: `platform/${subscriber.projectId}`,
+                      organizationId: project.orgId,
+                      properties: {
+                        orgId: project.orgId
+                      }
+                    });
+                  }
                   return;
                 }
 
@@ -112,6 +138,19 @@ export const pkiSubscriberQueueServiceFactory = ({
                     lastOperationMessage: "CA is not active",
                     lastOperationAt: new Date()
                   });
+
+                  const project = await projectDAL.findById(subscriber.projectId);
+                  if (project) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await telemetryService.sendPostHogEvents({
+                      event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                      distinctId: `platform/${subscriber.projectId}`,
+                      organizationId: project.orgId,
+                      properties: {
+                        orgId: project.orgId
+                      }
+                    });
+                  }
                   return;
                 }
                 // Order new certificate based on CA type
