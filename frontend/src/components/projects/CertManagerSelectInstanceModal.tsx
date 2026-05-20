@@ -65,10 +65,10 @@ export const CertManagerSelectInstanceModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Certificate Manager project</span>
           <Select value={selectedId ?? undefined} onValueChange={setSelectedId}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full min-w-0">
               <SelectValue placeholder="Select a project" />
             </SelectTrigger>
             <SelectContent position="popper" className="max-h-72 w-(--radix-select-trigger-width)">
@@ -80,7 +80,7 @@ export const CertManagerSelectInstanceModal = ({
                     instance.id === orgDefaultProjectId ? "Organization default" : undefined
                   }
                 >
-                  {instance.slug}
+                  <span className="truncate">{instance.slug}</span>
                 </SelectItem>
               ))}
             </SelectContent>
