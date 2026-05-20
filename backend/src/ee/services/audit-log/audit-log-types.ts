@@ -367,6 +367,7 @@ export enum EventType {
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
+  EXPORT_CERT_MANAGER_PROJECT = "export-cert-manager-project",
   GET_CA_CSR = "get-certificate-authority-csr",
   GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
@@ -3036,6 +3037,21 @@ interface RenewCa {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ExportCertManagerProject {
+  type: EventType.EXPORT_CERT_MANAGER_PROJECT;
+  metadata: {
+    sourceProjectId: string;
+    destinationProjectId: string;
+    exportedCertificateAuthorities: number;
+    renamedCertificateAuthorities: { originalName: string; newName: string }[];
+    exportedCertificatePolicies: number;
+    renamedCertificatePolicies: { originalName: string; newName: string }[];
+    exportedCertificateProfiles: number;
+    skippedCertificateProfiles: number;
+    renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
   };
 }
 
@@ -7234,6 +7250,7 @@ export type Event =
   | UpdateCa
   | DeleteCa
   | RenewCa
+  | ExportCertManagerProject
   | GetCaCsr
   | GetCaCerts
   | GetCaCert
