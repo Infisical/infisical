@@ -264,8 +264,9 @@ export const decryptCaChain = async (
 
 export type TCertificateProfileCreateData = Omit<
   TCertificateProfileInsert,
-  "estConfigId" | "apiConfigId" | "acmeConfigId" | "scepConfigId"
+  "enrollmentType" | "estConfigId" | "apiConfigId" | "acmeConfigId" | "scepConfigId"
 > & {
+  enrollmentType?: EnrollmentType;
   estConfig?: TEstConfigData;
   apiConfig?: TApiConfigData;
   acmeConfig?: TAcmeConfigData;
@@ -369,6 +370,8 @@ export const certificateProfileServiceFactory = ({
       })
     );
 
+    const enrollmentType = data.enrollmentType ?? EnrollmentType.API;
+
     // Validate that certificate policy exists and belongs to the same project
     if (data.certificatePolicyId) {
       const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
@@ -392,9 +395,9 @@ export const certificateProfileServiceFactory = ({
       });
     }
 
-    validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
+    validateIssuerTypeConstraints(data.issuerType, enrollmentType, data.caId ?? null);
 
-    await validateAcmEnrollmentType(data.caId, data.enrollmentType, externalCertificateAuthorityDAL);
+    await validateAcmEnrollmentType(data.caId, enrollmentType, externalCertificateAuthorityDAL);
 
     // Validate defaults against policy constraints
     if (data.defaults && data.certificatePolicyId) {
@@ -429,7 +432,7 @@ export const certificateProfileServiceFactory = ({
       externalCertificateAuthorityDAL
     );
 
-    if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+    if (enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
       if (data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification) {
         throw new ForbiddenRequestError({
           message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
@@ -452,7 +455,7 @@ export const certificateProfileServiceFactory = ({
         }
       | undefined;
 
-    if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
+    if (enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
       const raCert = await generateRaCertificate(data.slug);
 
       const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -497,7 +500,7 @@ export const certificateProfileServiceFactory = ({
       let acmeConfigId: string | null = null;
       let scepConfigId: string | null = null;
 
-      if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
+      if (enrollmentType === EnrollmentType.EST && data.estConfig) {
         const appCfg = getConfig();
         // Hash the passphrase
         const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
@@ -522,7 +525,7 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         estConfigId = estConfig.id;
-      } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
+      } else if (enrollmentType === EnrollmentType.API && data.apiConfig) {
         const apiConfig = await apiEnrollmentConfigDAL.create(
           {
             autoRenew: data.apiConfig.autoRenew,
@@ -531,7 +534,7 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         apiConfigId = apiConfig.id;
-      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
@@ -566,6 +569,7 @@ export const certificateProfileServiceFactory = ({
         {
           ...profileData,
           projectId,
+          enrollmentType,
           estConfigId,
           apiConfigId,
           acmeConfigId,

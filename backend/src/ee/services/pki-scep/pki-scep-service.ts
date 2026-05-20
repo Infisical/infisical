@@ -413,7 +413,8 @@ export const pkiScepServiceFactory = ({
             raPrivateKeyDer,
             raCertDer,
             parsed,
-            clientIp
+            clientIp,
+            applicationId
           });
         }
       }

@@ -199,6 +199,17 @@ export const pkiAcmeServiceFactory = ({
     return profile;
   };
 
+  const resolveApplicationIdFromAccount = async (profileId: string, accountId: string): Promise<string | undefined> => {
+    const account = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId);
+    const accountApplicationProfileId = (account as { applicationProfileId?: string | null } | null)
+      ?.applicationProfileId;
+    if (!accountApplicationProfileId) {
+      return undefined;
+    }
+    const applicationId = await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId);
+    return applicationId ?? undefined;
+  };
+
   const validateJwsPayload = async <
     TSchema extends z.ZodSchema<unknown> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
@@ -1410,7 +1421,8 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<string>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const accountApplicationId = await resolveApplicationIdFromAccount(profileId, accountId);
+    const profile = await validateAcmeProfile(profileId, accountApplicationId);
     const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -1548,7 +1560,8 @@ export const pkiAcmeServiceFactory = ({
     challengeId: string;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const accountApplicationId = await resolveApplicationIdFromAccount(profileId, accountId);
+    const profile = await validateAcmeProfile(profileId, accountApplicationId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
