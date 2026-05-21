@@ -217,7 +217,9 @@ export type TCreateAppConnectionDTO = Pick<
   | "gatewayId"
   | "gatewayPoolId"
   | "projectId"
->;
+> & {
+  configuration?: Record<string, unknown>;
+};
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
@@ -237,6 +239,7 @@ export type TUpdateAppConnectionDTO = Partial<
     rotationInterval?: number;
     rotateAtUtc?: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 export type TDeleteAppConnectionDTO = {
