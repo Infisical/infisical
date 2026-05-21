@@ -2773,6 +2773,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
     gatewayV2Service,
     gatewayPoolService
   });
