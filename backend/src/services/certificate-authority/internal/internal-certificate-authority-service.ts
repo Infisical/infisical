@@ -51,6 +51,7 @@ import {
   TAltNameMapping
 } from "../../certificate/certificate-types";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "../../certificate-common/certificate-constants";
+import { validatePqcLicense } from "../../certificate-common/certificate-utils";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
 import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
@@ -150,17 +151,8 @@ export const internalCertificateAuthorityServiceFactory = ({
   licenseService,
   caSigningConfigDAL
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
-  const validatePqcLicense = async (keyAlgorithm: string, projectId: string) => {
-    if (!isPqcAlgorithm(keyAlgorithm)) return;
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-    const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiPqc) {
-      throw new BadRequestError({
-        message: "Failed to use PQC algorithm due to plan restriction. Upgrade to the Enterprise plan."
-      });
-    }
-  };
+  const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
+    validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
   const ROOT_CA_KEY_USAGES = x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign;
@@ -327,7 +319,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
-    await validatePqcLicense(keyAlgorithm, projectId);
+    await $validatePqcLicense(keyAlgorithm, projectId);
 
     const dn = createDistinguishedName({
       commonName,
@@ -623,7 +615,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (ca.internalCa.type === InternalCaType.ROOT)
       throw new BadRequestError({ message: "Root CA cannot generate CSR" });
 
-    await validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const { caPrivateKey, caPublicKey } = await getCaCredentials({
       caId,
@@ -704,7 +696,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
-    await validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     // get latest CA certificate
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
@@ -1185,7 +1177,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
-    await validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
@@ -1511,8 +1503,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name: parentCa.name })
     );
 
-    await validatePqcLicense(intermediateCa.internalCa.keyAlgorithm, intermediateCa.projectId);
-    await validatePqcLicense(parentCa.internalCa.keyAlgorithm, parentCa.projectId);
+    await $validatePqcLicense(intermediateCa.internalCa.keyAlgorithm, intermediateCa.projectId);
+    await $validatePqcLicense(parentCa.internalCa.keyAlgorithm, parentCa.projectId);
 
     const caSecret = await certificateAuthoritySecretDAL.findOne(
       {
@@ -1796,8 +1788,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     const effectiveKeyAlgorithm =
       (keyAlgorithm as CertKeyAlgorithm) || (ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
-    await validatePqcLicense(effectiveKeyAlgorithm, ca.projectId);
-    await validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(effectiveKeyAlgorithm, ca.projectId);
+    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
     const leafCryptoEngine = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
@@ -2227,7 +2219,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    await validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     if (signatureAlgorithm && ca.internalCa.keyAlgorithm) {
       $checkSignature(ca.internalCa.keyAlgorithm, $getSignatureKeyFamily(signatureAlgorithm), signatureAlgorithm);
@@ -2606,7 +2598,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
-    await validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const notBeforeDate = new Date(notBefore);
     const notAfterDate = new Date(notAfter);

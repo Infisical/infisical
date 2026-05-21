@@ -16,7 +16,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
-import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -92,7 +91,8 @@ import {
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi,
-  removeRootCaFromChain
+  removeRootCaFromChain,
+  validatePqcLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
@@ -846,19 +846,21 @@ export const certificateV3ServiceFactory = ({
       EnrollmentType.API
     );
 
-    const hasPqcAlgorithm =
-      (certificateRequest.keyAlgorithm && isPqcAlgorithm(certificateRequest.keyAlgorithm)) ||
-      (certificateRequest.signatureAlgorithm && isPqcAlgorithm(certificateRequest.signatureAlgorithm));
-
-    if (hasPqcAlgorithm) {
-      const project = await projectDAL.findById(profile.projectId);
-      if (!project) throw new NotFoundError({ message: `Project with ID '${profile.projectId}' not found` });
-      const plan = await licenseService.getPlan(project.orgId);
-      if (!plan.pkiPqc) {
-        throw new BadRequestError({
-          message: "Failed to use PQC algorithm due to plan restriction. Upgrade to the Enterprise plan."
-        });
-      }
+    if (certificateRequest.keyAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.keyAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
+    if (certificateRequest.signatureAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.signatureAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
     }
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);

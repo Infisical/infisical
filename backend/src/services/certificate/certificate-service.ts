@@ -15,7 +15,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -41,6 +40,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
+import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   extractCertificateFields,
   generatePkcs12FromCertificate,
@@ -481,15 +481,13 @@ export const certificateServiceFactory = ({
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
-    if (ca.internalCa && isPqcAlgorithm(ca.internalCa.keyAlgorithm)) {
-      const project = await projectDAL.findById(ca.projectId);
-      if (!project) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
-      const plan = await licenseService.getPlan(project.orgId);
-      if (!plan.pkiPqc) {
-        throw new BadRequestError({
-          message: "Failed to use PQC algorithm due to plan restriction. Upgrade to the Enterprise plan."
-        });
-      }
+    if (ca.internalCa) {
+      await validatePqcLicense({
+        keyAlgorithm: ca.internalCa.keyAlgorithm,
+        projectId: ca.projectId,
+        projectDAL,
+        licenseService
+      });
     }
 
     // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
