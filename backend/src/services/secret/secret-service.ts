@@ -3756,6 +3756,7 @@ export const secretServiceFactory = ({
       secretPath: destinationFolder.path,
       projectId,
       orgId: project.orgId,
+      environmentName: destinationFolder.environment.name,
       environmentSlug: destinationFolder.environment.slug,
       events
     });
