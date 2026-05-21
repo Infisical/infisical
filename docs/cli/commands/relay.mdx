@@ -103,21 +103,7 @@ Relays support two enrollment methods. The enrollment method is set when creatin
   <Accordion title="--domain">
     Domain of your Infisical instance. Required for self-hosted deployments.
   </Accordion>
-
-  <Accordion title="--host">
-    The host address of the relay. Only required for legacy machine identity auth (without `--enroll-method`). Not needed for enrollment-based auth — host is stored server-side.
-  </Accordion>
 </AccordionGroup>
-
-### Legacy authentication (machine identity)
-
-Relays also support authentication via machine identity access tokens. This is the legacy method and is still supported for backward compatibility.
-
-```bash
-infisical relay start --host=<host> --name=<name> --token=<machine-identity-token>
-```
-
-All standard Infisical authentication methods (Universal Auth, Kubernetes, Azure, GCP, AWS IAM, OIDC, JWT) are supported via the `--auth-method` flag when using legacy authentication.
 
 </Accordion>
 
