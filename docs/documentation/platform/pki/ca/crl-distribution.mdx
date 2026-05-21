@@ -12,7 +12,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
 
 ## How It Works
 
-- The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA if you only want custom mirror URLs embedded in certificates.
+- The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA.
 - Up to **4 mirror URLs** can be configured per CA.
 - URLs must use `http://` or `https://`.
 - Changes apply only to certificates issued **after** the update — existing certificates are not affected.
@@ -38,7 +38,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
         Add one URL per row, in order of preference (clients try them in the listed order).
       </Step>
       <Step title="Disable managed CRL URL (optional)">
-        Toggle **Disable managed CRL URL** if you do not want the Infisical-managed CRL endpoint embedded in issued certificates. When enabled, only your custom mirror URLs will appear in the CDP extension. This is useful when the Infisical instance is not reachable by certificate consumers.
+        Toggle **Disable managed CRL URL** to exclude the Infisical-managed CRL endpoint from issued certificates. This is useful when the Infisical instance is not reachable by certificate consumers.
       </Step>
     </Steps>
   </Tab>
