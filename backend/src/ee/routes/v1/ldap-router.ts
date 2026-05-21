@@ -183,7 +183,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           searchFilter: z.string(),
           groupSearchBase: z.string(),
           groupSearchFilter: z.string(),
-          caCert: z.string()
+          caCert: z.string(),
+          clientCertificate: z.string(),
+          hasClientKeyCertificate: z.boolean()
         })
       }
     },
@@ -230,7 +232,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           .trim()
           .default("(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))")
           .describe(LdapSso.CREATE_CONFIG.groupSearchFilter),
-        caCert: z.string().trim().default("").describe(LdapSso.CREATE_CONFIG.caCert)
+        caCert: z.string().trim().default("").describe(LdapSso.CREATE_CONFIG.caCert),
+        clientCertificate: z.string().trim().default("").describe(LdapSso.CREATE_CONFIG.clientCertificate),
+        clientKeyCertificate: z.string().trim().default("").describe(LdapSso.CREATE_CONFIG.clientKeyCertificate)
       }),
       response: {
         200: SanitizedLdapConfigSchema
@@ -289,7 +293,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           searchFilter: z.string().trim().describe(LdapSso.UPDATE_CONFIG.searchFilter),
           groupSearchBase: z.string().trim().describe(LdapSso.UPDATE_CONFIG.groupSearchBase),
           groupSearchFilter: z.string().trim().describe(LdapSso.UPDATE_CONFIG.groupSearchFilter),
-          caCert: z.string().trim().describe(LdapSso.UPDATE_CONFIG.caCert)
+          caCert: z.string().trim().describe(LdapSso.UPDATE_CONFIG.caCert),
+          clientCertificate: z.string().trim().describe(LdapSso.UPDATE_CONFIG.clientCertificate),
+          clientKeyCertificate: z.string().trim().describe(LdapSso.UPDATE_CONFIG.clientKeyCertificate)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().trim().describe(LdapSso.UPDATE_CONFIG.organizationId) })),
@@ -437,7 +443,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         url: z.string().trim(),
         bindDN: z.string().trim(),
         bindPass: z.string().trim(),
-        caCert: z.string().trim()
+        caCert: z.string().trim(),
+        clientCertificate: z.string().trim().default(""),
+        clientKeyCertificate: z.string().trim().default("")
       }),
       response: {
         200: z.boolean()

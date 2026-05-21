@@ -266,6 +266,7 @@
                     "pages": [
                       "documentation/platform/ldap/overview",
                       "documentation/platform/ldap/jumpcloud",
+                      "documentation/platform/ldap/google-workspace",
                       "documentation/platform/ldap/general"
                     ]
                   },
