@@ -1,5 +1,8 @@
+import { createPrivateKey, X509Certificate } from "node:crypto";
+
 import ldapjs from "@infisical/ldapjs";
 
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
@@ -18,9 +21,39 @@ type TLdapTlsConfigInput = Pick<TLDAPConfig, "url" | "caCert" | "clientCertifica
 
 export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
   const tlsOptions: { ca?: string[]; cert?: string; key?: string; servername?: string } = {};
-  if (cfg.caCert) tlsOptions.ca = [cfg.caCert];
-  if (cfg.clientCertificate) tlsOptions.cert = cfg.clientCertificate;
-  if (cfg.clientKeyCertificate) tlsOptions.key = cfg.clientKeyCertificate;
+
+  if (cfg.caCert) {
+    try {
+      // eslint-disable-next-line no-new
+      new X509Certificate(cfg.caCert);
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid CA Certificate. Expected a PEM-encoded X.509 certificate."
+      });
+    }
+    tlsOptions.ca = [cfg.caCert];
+  }
+  if (cfg.clientCertificate) {
+    try {
+      // eslint-disable-next-line no-new
+      new X509Certificate(cfg.clientCertificate);
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid Client Certificate. Expected a PEM-encoded X.509 certificate."
+      });
+    }
+    tlsOptions.cert = cfg.clientCertificate;
+  }
+  if (cfg.clientKeyCertificate) {
+    try {
+      createPrivateKey(cfg.clientKeyCertificate);
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid Client Private Key. Expected a PEM-encoded private key."
+      });
+    }
+    tlsOptions.key = cfg.clientKeyCertificate;
+  }
 
   if (Object.keys(tlsOptions).length === 0) return undefined;
 

@@ -89,7 +89,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const { mutateAsync: testLDAPConnection } = useTestLDAPConnection();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, watch, setValue } = useForm<TLDAPFormData>({
+  const { control, handleSubmit, reset, watch } = useForm<TLDAPFormData>({
     resolver: zodResolver(LDAPFormSchema)
   });
 
@@ -227,7 +227,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     if (watchEnableMtls) {
       if (watchHasStoredClientKey && !watchClientKeyCertificate?.trim()) {
         createNotification({
-          text: "Paste the Client Private Key to test the connection — stored keys are not sent to the browser.",
+          text: "Paste the Client Private Key to test the connection. Stored keys are not sent to the browser.",
           type: "warning"
         });
         return;
@@ -466,13 +466,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                         id="ldap-enable-mtls"
                         variant="org"
                         checked={field.value}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked);
-                          if (!checked) {
-                            setValue("clientCertificate", "", { shouldValidate: true });
-                            setValue("clientKeyCertificate", "", { shouldValidate: true });
-                          }
-                        }}
+                        onCheckedChange={field.onChange}
                       />
                     </Field>
                   )}

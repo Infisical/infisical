@@ -60,8 +60,8 @@ Prerequisites:
             - Group Search Base / Group DN (optional): LDAP search base to use for group membership search (`dc=yourdomain,dc=com`).
             - Group Filter (optional): Template used when constructing the group membership query (`(&(objectClass=groupOfNames)(member=uid={{.Username}},ou=Users,dc=yourdomain,dc=com))`).
             - CA Certificate (optional): Leave empty, Google's LDAP server uses a publicly trusted certificate.
-            - Client Certificate: Paste the contents of the `.crt` file downloaded from Google.
-            - Client Private Key: Paste the contents of the `.key` file downloaded from Google.
+            - Client Certificate (optional) : Paste the contents of the `.crt` file downloaded from Google.
+            - Client Private Key (optional) : Paste the contents of the `.key` file downloaded from Google.
 
             <Tip>
                 The Client Certificate and Client Private Key must be provided together — providing only one will fail validation. These are the credentials presented during the TLS handshake; without them, the connection fails before LDAP-layer bind is attempted.
