@@ -1,0 +1,43 @@
+version: v0.160.4
+releasedAt: 2026-05-21T20:36:05+05:30
+sourceTag: v0.160.4
+previousTag: v0.160.3
+impactLevel: low
+summary: Two additive PKI database columns are added for ACME wildcard support
+  and managed CRL distribution point control. Startup runs the migrations
+  automatically.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PKI ACME wildcard column
+    description: Adds a non-null wildcard column to PKI ACME authorizations with a
+      default of false. Existing rows remain compatible.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260519144500_add-wildcard-to-pki-acme-auths.ts
+        path: backend/src/db/migrations/20260519144500_add-wildcard-to-pki-acme-auths.ts
+        description: Adds wildcard boolean with default false
+  - title: PKI managed CRL toggle
+    description: Adds a non-null disableManagedCrlDistributionPointUrl column to
+      internal certificate authorities with a default of false. Existing
+      certificate authorities keep current behavior until changed.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260521002616_add-disable-managed-crl-dp.ts
+        path: backend/src/db/migrations/20260521002616_add-disable-managed-crl-dp.ts
+        description: Adds CRL toggle boolean with default false
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-21T16:59:13.758Z
+  sourceRange:
+    from: v0.160.3
+    to: v0.160.4
