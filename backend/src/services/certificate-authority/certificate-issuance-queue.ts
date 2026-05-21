@@ -23,7 +23,6 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
-import { extractAlgorithmsFromCertificate } from "../certificate-common/certificate-csr-utils";
 import {
   calculateFinalRenewBeforeDays,
   resolveEffectiveApiConfig
@@ -124,7 +123,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     TKmsServiceFactory,
     "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
   >;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
@@ -804,36 +803,6 @@ export const certificateIssuanceQueueFactory = ({
         logger.warn(
           stampErr,
           `Failed to stamp applicationId on async-issued certificate [certificateRequestId=${certificateRequestId}]`
-        );
-      }
-
-      try {
-        if (certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId!);
-          if (req?.certificateId) {
-            const cert = await certificateDAL.findById(req.certificateId);
-            if (cert && !cert.keyAlgorithm) {
-              const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
-              if (certBody?.encryptedCertificate) {
-                const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-                  projectId: ca.projectId,
-                  projectDAL,
-                  kmsService
-                });
-                const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
-                const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
-                const extracted = extractAlgorithmsFromCertificate(decryptedCert);
-                if (extracted) {
-                  await certificateDAL.updateById(cert.id, { keyAlgorithm: extracted.keyAlgorithm });
-                }
-              }
-            }
-          }
-        }
-      } catch (algoErr) {
-        logger.warn(
-          algoErr,
-          `Failed to backfill keyAlgorithm on async-issued certificate [certificateRequestId=${certificateRequestId}]`
         );
       }
 
