@@ -520,6 +520,8 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
+        } else if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
         }
       });
     } else {
