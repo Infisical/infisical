@@ -1788,7 +1788,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const effectiveKeyAlgorithm =
       (keyAlgorithm as CertKeyAlgorithm) || (ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
-    await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    await $validatePqcLicense(effectiveKeyAlgorithm, ca.projectId);
 
     const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
     const leafCryptoEngine = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
