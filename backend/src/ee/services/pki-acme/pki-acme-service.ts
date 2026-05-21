@@ -366,6 +366,7 @@ export const pkiAcmeServiceFactory = ({
         id: string;
         identifierType: string;
         identifierValue: string;
+        wildcard?: boolean | null;
         expiresAt: Date;
       }[];
     };
@@ -378,7 +379,7 @@ export const pkiAcmeServiceFactory = ({
       notAfter: order.notAfter?.toISOString(),
       identifiers: order.authorizations.map((auth) => ({
         type: auth.identifierType,
-        value: auth.identifierValue
+        value: auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue
       })),
       authorizations: order.authorizations.map((auth) => buildUrl(profileId, `/authorizations/${auth.id}`)),
       finalize: buildUrl(profileId, `/orders/${order.id}/finalize`),
@@ -785,12 +786,16 @@ export const pkiAcmeServiceFactory = ({
           } else {
             throw new AcmeUnsupportedIdentifierError({ message: "Only DNS and IP identifiers are supported" });
           }
+          const isWildcard = identifier.type === AcmeIdentifierType.DNS && identifier.value.startsWith("*.");
+          const identifierValue = isWildcard ? identifier.value.slice(2) : identifier.value;
+
           const auth = await acmeAuthDAL.create(
             {
               accountId: account.id,
               status: skipDnsOwnershipVerification ? AcmeAuthStatus.Valid : AcmeAuthStatus.Pending,
               identifierType: identifier.type,
-              identifierValue: identifier.value,
+              identifierValue,
+              wildcard: isWildcard || undefined,
               // RFC 8555 suggests a token with at least 128 bits of entropy
               // We are using 256 bits of entropy here, should be enough for now
               // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
@@ -801,11 +806,14 @@ export const pkiAcmeServiceFactory = ({
             tx
           );
           if (!skipDnsOwnershipVerification) {
-            // IP identifiers only support HTTP-01 challenges (DNS-01 doesn't apply per RFC 8738)
-            const challengeTypes =
-              identifier.type === AcmeIdentifierType.IP
-                ? [AcmeChallengeType.HTTP_01]
-                : [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            let challengeTypes: AcmeChallengeType[];
+            if (identifier.type === AcmeIdentifierType.IP) {
+              challengeTypes = [AcmeChallengeType.HTTP_01];
+            } else if (isWildcard) {
+              challengeTypes = [AcmeChallengeType.DNS_01];
+            } else {
+              challengeTypes = [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            }
             for (const challengeType of challengeTypes) {
               // eslint-disable-next-line no-await-in-loop
               await acmeChallengeDAL.create(
@@ -845,7 +853,8 @@ export const pkiAcmeServiceFactory = ({
             orderId: createdOrder.id,
             identifiers: authorizations.map((auth) => ({
               type: auth.identifierType as AcmeIdentifierType,
-              value: auth.identifierValue
+              value: auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue,
+              ...(auth.wildcard ? { wildcard: true } : {})
             }))
           }
         }
@@ -1123,9 +1132,10 @@ export const pkiAcmeServiceFactory = ({
         }
         if (
           csrIdentifierPairs.size !== orderWithAuthorizations.authorizations.length ||
-          !orderWithAuthorizations.authorizations.every((auth) =>
-            csrIdentifierPairs.has(`${auth.identifierType}:${auth.identifierValue.toLowerCase()}`)
-          )
+          !orderWithAuthorizations.authorizations.every((auth) => {
+            const value = auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue;
+            return csrIdentifierPairs.has(`${auth.identifierType}:${value.toLowerCase()}`);
+          })
         ) {
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
@@ -1516,6 +1526,7 @@ export const pkiAcmeServiceFactory = ({
           type: auth.identifierType,
           value: auth.identifierValue
         },
+        ...(auth.wildcard ? { wildcard: true } : {}),
         challenges: auth.challenges.map((challenge) => {
           return {
             type: challenge.type,

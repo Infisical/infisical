@@ -67,6 +67,7 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.PkiAcmeAuth).as("authId"),
           db.ref("identifierType").withSchema(TableName.PkiAcmeAuth).as("identifierType"),
           db.ref("identifierValue").withSchema(TableName.PkiAcmeAuth).as("identifierValue"),
+          db.ref("wildcard").withSchema(TableName.PkiAcmeAuth).as("wildcard"),
           db.ref("expiresAt").withSchema(TableName.PkiAcmeAuth).as("authExpiresAt")
         )
         .where(`${TableName.PkiAcmeOrder}.id`, orderId)
@@ -84,10 +85,11 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
           {
             key: "authId",
             label: "authorizations" as const,
-            mapper: ({ authId, identifierType, identifierValue, authExpiresAt }) => ({
+            mapper: ({ authId, identifierType, identifierValue, wildcard, authExpiresAt }) => ({
               id: authId,
               identifierType,
               identifierValue,
+              wildcard: wildcard as boolean | null,
               expiresAt: authExpiresAt
             })
           }
