@@ -116,6 +116,7 @@ export type TInternalCertificateAuthority = {
     serialNumber?: string;
     activeCaCertId?: string;
     crlDistributionPointUrls?: string[];
+    disableManagedCrlDistributionPointUrl?: boolean;
   };
 };
 

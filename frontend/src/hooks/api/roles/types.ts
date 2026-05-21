@@ -36,7 +36,7 @@ export type TOrgRole = {
 
 export type TPermission = {
   conditions?: Record<string, any>;
-  action: string;
+  action: string | string[];
   subject: string;
 };
 

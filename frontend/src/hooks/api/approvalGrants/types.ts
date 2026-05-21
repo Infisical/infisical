@@ -35,6 +35,8 @@ export type TApprovalGrant = {
   status: ApprovalGrantStatus;
   type: ApprovalPolicyType;
   attributes: TApprovalGrantAttributes;
+  isBreakGlass: boolean;
+  bypassReason: string | null;
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;

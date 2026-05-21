@@ -16,6 +16,7 @@ import {
   Modal,
   ModalClose,
   ModalContent,
+  Switch,
   Tooltip
 } from "@app/components/v2";
 import {
@@ -75,7 +76,8 @@ const editSchema = z.object({
         }
         seen.add(normalized);
       });
-    })
+    }),
+  disableManagedCrlDistributionPointUrl: z.boolean().default(false)
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -98,7 +100,9 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
     values: {
       crlDistributionPointUrls: (ca?.configuration.crlDistributionPointUrls ?? []).map((value) => ({
         value
-      }))
+      })),
+      disableManagedCrlDistributionPointUrl:
+        ca?.configuration.disableManagedCrlDistributionPointUrl ?? false
     }
   });
 
@@ -108,13 +112,17 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
 
   const mirrorUrls = ca.configuration.crlDistributionPointUrls ?? [];
 
-  const onEditSubmit = async ({ crlDistributionPointUrls }: EditFormData) => {
+  const onEditSubmit = async ({
+    crlDistributionPointUrls,
+    disableManagedCrlDistributionPointUrl
+  }: EditFormData) => {
     try {
       await updateCa({
         id: ca.id,
         type: CaType.INTERNAL,
         configuration: {
-          crlDistributionPointUrls: crlDistributionPointUrls.map(({ value }) => value)
+          crlDistributionPointUrls: crlDistributionPointUrls.map(({ value }) => value),
+          disableManagedCrlDistributionPointUrl
         } as TInternalCertificateAuthority["configuration"]
       });
       createNotification({
@@ -157,6 +165,12 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
         <CardContent>
           <DetailGroup>
             <Detail>
+              <DetailLabel>Managed CRL URL</DetailLabel>
+              <DetailValue>
+                {ca.configuration.disableManagedCrlDistributionPointUrl ? "Disabled" : "Enabled"}
+              </DetailValue>
+            </Detail>
+            <Detail>
               <DetailLabel>Mirror URLs</DetailLabel>
               <DetailValue>
                 {mirrorUrls.length === 0 ? (
@@ -185,6 +199,23 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
       >
         <ModalContent title="Edit CRL Distribution Points">
           <form onSubmit={handleSubmit(onEditSubmit)}>
+            <Controller
+              control={control}
+              name="disableManagedCrlDistributionPointUrl"
+              render={({ field: { value, onChange } }) => (
+                <FormControl>
+                  <Switch
+                    id="disableManagedCrlDistributionPointUrl"
+                    className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                    thumbClassName="bg-mineshaft-800"
+                    isChecked={value}
+                    onCheckedChange={onChange}
+                  >
+                    Disable managed CRL URL
+                  </Switch>
+                </FormControl>
+              )}
+            />
             <FormControl
               label="Mirror URLs"
               helperText={`Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS} URLs.`}

@@ -17,6 +17,7 @@ import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/servi
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -350,6 +351,8 @@ export const certificateApprovalServiceFactory = (
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
 
+    assertCaInProfileProject(ca, profile);
+
     validateCaSupport(ca, "CSR signing");
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =
@@ -439,6 +442,8 @@ export const certificateApprovalServiceFactory = (
     if (!targetCa) {
       return null;
     }
+
+    assertCaInProfileProject(targetCa, profile);
 
     const caType = (targetCa.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
@@ -637,6 +642,8 @@ export const certificateApprovalServiceFactory = (
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, certPolicy);

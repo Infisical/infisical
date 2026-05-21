@@ -36,6 +36,7 @@ interface TPermissionDataReturn extends TMemberships {
     temporaryAccessStartTime?: Date | null | undefined;
     temporaryAccessEndTime?: Date | null | undefined;
     customRoleSlug?: string | null | undefined;
+    customRoleName?: string | null | undefined;
   }[];
   additionalPrivileges: {
     id: string;
@@ -271,6 +272,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("roleName"),
           db.ref("permissions").withSchema(TableName.Role).as("customRolePermission"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
@@ -356,6 +358,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "roles" as const,
             mapper: ({
               roleSlug,
+              roleName,
               customRolePermission,
               membershipRoleId,
               membershipRole,
@@ -371,6 +374,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               role: membershipRole,
               permissions: customRolePermission,
               customRoleSlug: roleSlug,
+              customRoleName: roleName,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,

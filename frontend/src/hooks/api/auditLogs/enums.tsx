@@ -66,6 +66,8 @@ export enum EventType {
   DELETE_ENVIRONMENT = "delete-environment",
   ADD_PROJECT_MEMBER = "add-project-member",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
+  GET_PROJECT_IDENTITY_PERMISSION_AUDIT = "get-project-identity-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -378,6 +380,7 @@ export enum EventType {
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+  PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
 
   // MCP Endpoints
   MCP_ENDPOINT_CREATE = "mcp-endpoint-create",

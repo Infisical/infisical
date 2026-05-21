@@ -189,8 +189,33 @@ export const certificateDALFactory = (db: TDbClient) => {
       q = q.whereIn(`${TableName.Certificate}.caId`, filters.caIds);
     }
 
-    if (filters.enrollmentTypes && hasProfileJoin) {
-      q = q.whereIn(`${TableName.PkiCertificateProfile}.enrollmentType`, filters.enrollmentTypes);
+    if (filters.enrollmentTypes && filters.enrollmentTypes.length > 0 && hasProfileJoin) {
+      // Mirror the COALESCE expression used in the SELECT: the actual enrollment recorded
+      // on the originating certificate_requests row takes precedence over the profile's
+      // enrollmentType. Under the application/junction flow every profile defaults to 'api',
+      // so filtering on the profile column alone would either match everything (API) or
+      // nothing (other methods).
+      const placeholders = filters.enrollmentTypes.map(() => "?").join(", ");
+      q = q.whereRaw(
+        `COALESCE(
+          (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+          ??.??
+        ) IN (${placeholders})`,
+        [
+          TableName.CertificateRequests,
+          "enrollmentType",
+          TableName.CertificateRequests,
+          TableName.CertificateRequests,
+          "certificateId",
+          TableName.Certificate,
+          "id",
+          TableName.CertificateRequests,
+          "createdAt",
+          TableName.PkiCertificateProfile,
+          "enrollmentType",
+          ...filters.enrollmentTypes
+        ]
+      );
     }
 
     if (filters.source) {

@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { initializeHsmModule, isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
@@ -8,6 +9,7 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
+import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
@@ -59,6 +61,8 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
+  const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
+  const groupDAL = groupDALFactory(db);
 
   // ----- Service dependencies -----
   const permissionService = permissionServiceFactory({
@@ -68,7 +72,9 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     keyStore,
     roleDAL,
     userDAL,
-    identityDAL
+    identityDAL,
+    additionalPrivilegeDAL,
+    groupDAL
   });
 
   const licenseService = licenseServiceFactory({

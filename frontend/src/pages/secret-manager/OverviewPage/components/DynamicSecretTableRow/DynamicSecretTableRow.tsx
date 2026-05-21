@@ -59,6 +59,7 @@ const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
   [DynamicSecretProviders.Github]: "GitHub",
   [DynamicSecretProviders.Clickhouse]: "ClickHouse",
   [DynamicSecretProviders.Couchbase]: "Couchbase",
+  [DynamicSecretProviders.Milvus]: "Milvus",
   [DynamicSecretProviders.Ssh]: "SSH"
 };
 

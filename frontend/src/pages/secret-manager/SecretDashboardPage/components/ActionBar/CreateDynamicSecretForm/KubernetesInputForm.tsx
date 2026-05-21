@@ -22,9 +22,13 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { useCanUseProjectAppConnectionImport } from "@app/hooks";
 import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   DynamicSecretProviders,
   KubernetesDynamicSecretCredentialType
@@ -176,6 +180,16 @@ export const KubernetesInputForm = ({
   isSingleEnvironmentMode
 }: Props) => {
   const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
+
+  const { projectId } = useProject();
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
+  );
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
 
   const {
     control,
@@ -753,6 +767,7 @@ export const KubernetesInputForm = ({
       <VaultKubernetesImportModal
         isOpen={isVaultImportModalOpen}
         onOpenChange={setIsVaultImportModalOpen}
+        appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
     </form>

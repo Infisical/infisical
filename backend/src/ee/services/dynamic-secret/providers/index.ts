@@ -16,6 +16,7 @@ import { GcpIamProvider } from "./gcp-iam";
 import { GithubProvider } from "./github";
 import { KubernetesProvider } from "./kubernetes";
 import { LdapProvider } from "./ldap";
+import { MilvusProvider } from "./milvus";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
@@ -66,5 +67,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
+  [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Ssh]: SshProvider()
 });

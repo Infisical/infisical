@@ -53,6 +53,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -166,6 +167,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  DUPLICATE_SECRET = "duplicate-secret",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
@@ -311,6 +313,8 @@ export enum EventType {
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
+  GET_PROJECT_IDENTITY_PERMISSION_AUDIT = "get-project-identity-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -364,6 +368,7 @@ export enum EventType {
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
+  EXPORT_CERT_MANAGER_PROJECT = "export-cert-manager-project",
   GET_CA_CSR = "get-certificate-authority-csr",
   GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
@@ -745,6 +750,7 @@ export enum EventType {
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+  PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
@@ -1145,6 +1151,22 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+interface DuplicateSecretEvent {
+  type: EventType.DUPLICATE_SECRET;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    sourceSecretId: string;
+    sourceSecretKey: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    destinationSecretId?: string;
+    approvalRequestId?: string;
+    shouldOverwrite: boolean;
+    attributesCopied: TDuplicateSecretAttributes;
   };
 }
 
@@ -2340,6 +2362,21 @@ interface RemoveProjectMemberEvent {
   };
 }
 
+interface GetProjectMemberPermissionAuditEvent {
+  type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT;
+  metadata: {
+    targetUserId: string;
+    membershipId: string;
+  };
+}
+
+interface GetProjectIdentityPermissionAuditEvent {
+  type: EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT;
+  metadata: {
+    targetIdentityId: string;
+  };
+}
+
 interface CreateFolderEvent {
   type: EventType.CREATE_FOLDER;
   metadata: {
@@ -3008,6 +3045,21 @@ interface RenewCa {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ExportCertManagerProject {
+  type: EventType.EXPORT_CERT_MANAGER_PROJECT;
+  metadata: {
+    sourceProjectId: string;
+    destinationProjectId: string;
+    exportedCertificateAuthorities: number;
+    renamedCertificateAuthorities: { originalName: string; newName: string }[];
+    exportedCertificatePolicies: number;
+    renamedCertificatePolicies: { originalName: string; newName: string }[];
+    exportedCertificateProfiles: number;
+    skippedCertificateProfiles: number;
+    renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
   };
 }
 
@@ -6264,6 +6316,22 @@ interface ApprovalRequestGrantRevokeEvent {
   };
 }
 
+interface PamAccessPolicyBypassedEvent {
+  type: EventType.PAM_ACCESS_POLICY_BYPASSED;
+  metadata: {
+    policyType: string;
+    policyId: string | null;
+    requestId: string;
+    grantId: string;
+    granteeUserId: string;
+    resourceName?: string;
+    accountName?: string;
+    accessDuration: string;
+    bypassReason: string;
+    approverCount: number;
+  };
+}
+
 interface AccessApprovalRequestCreateEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_CREATE;
   metadata: {
@@ -6328,6 +6396,7 @@ interface CreateAcmeOrderEvent {
     identifiers: Array<{
       type: AcmeIdentifierType;
       value: string;
+      wildcard?: boolean;
     }>;
   };
 }
@@ -7023,6 +7092,7 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | DuplicateSecretEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | RedactSecretVersionValueEvent
@@ -7144,6 +7214,8 @@ export type Event =
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent
+  | GetProjectMemberPermissionAuditEvent
+  | GetProjectIdentityPermissionAuditEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
@@ -7188,6 +7260,7 @@ export type Event =
   | UpdateCa
   | DeleteCa
   | RenewCa
+  | ExportCertManagerProject
   | GetCaCsr
   | GetCaCerts
   | GetCaCert
@@ -7561,6 +7634,7 @@ export type Event =
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
+  | PamAccessPolicyBypassedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent

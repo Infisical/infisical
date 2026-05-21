@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import {
@@ -11,6 +11,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApplicationActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -139,6 +140,13 @@ export const pkiApplicationServiceFactory = ({
         throw new BadRequestError({
           message: "One or more profileIds do not belong to this project."
         });
+      }
+
+      for (const profile of profilesInProject) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+          subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+        );
       }
     }
 
@@ -448,6 +456,19 @@ export const pkiApplicationServiceFactory = ({
       throw new BadRequestError({ message: "One or more profileIds do not belong to this project." });
     }
 
+    const { permission: projectPermission } = await $loadProjectPermission(projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    for (const profile of profilesInProject) {
+      ForbiddenError.from(projectPermission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+      );
+    }
+
     return pkiApplicationDAL.transaction(async (tx) => {
       const existing = await pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
       const existingProfileIds = new Set(existing.map((row) => row.profileId));
@@ -496,6 +517,22 @@ export const pkiApplicationServiceFactory = ({
         message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
       });
     }
+
+    const [profile] = await pkiApplicationProfileDAL.findProfilesInProject([profileId], projectId);
+    if (!profile) {
+      throw new NotFoundError({ message: `Profile '${profileId}' not found in project.` });
+    }
+
+    const { permission: projectPermission } = await $loadProjectPermission(projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(projectPermission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+    );
 
     await pkiApplicationProfileDAL.delete({ applicationId, profileId });
     return { applicationId, profileId };

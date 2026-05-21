@@ -34,6 +34,12 @@ reviewable: reviewable-ui reviewable-api
 up-dev-sso:
 	docker compose -f docker-compose.dev.yml --profile sso up --build
 
+
+# Golang commands
+go-generate:
+	cd backend-go && \
+	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
+
 validate-upgrade-impact:
 	cd upgrade-impact && \
 	npm run type:check && \

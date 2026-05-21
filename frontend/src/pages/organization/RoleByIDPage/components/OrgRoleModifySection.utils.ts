@@ -231,13 +231,15 @@ export const rolePermission2Form = (permissions: TPermission[] = []) => {
   // i would have to write a if loop with both conditions same
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
-    const { action } = permission;
+    const actions = Array.isArray(permission.action) ? permission.action : [permission.action];
     let { subject } = permission;
     if (subject === OrgPermissionSubjects.Workspace) {
       subject = OrgPermissionSubjects.Project;
     }
     if (!formVal?.[subject]) formVal[subject] = {};
-    formVal[subject][action] = true;
+    actions.forEach((action) => {
+      formVal[subject][action] = true;
+    });
   });
 
   return formVal;

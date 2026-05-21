@@ -464,7 +464,7 @@ export const caSigningConfigServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
+      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
@@ -519,7 +519,7 @@ export const caSigningConfigServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
+      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 

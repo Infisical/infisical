@@ -1345,6 +1345,19 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located.",
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
+  },
+  DUPLICATE_SECRET: {
+    projectId: "The ID of the project containing the secret.",
+    sourceEnvironment: "The slug of the source environment.",
+    sourceSecretPath: "The folder path of the source secret.",
+    destinationEnvironment: "The slug of the destination environment.",
+    destinationSecretPath: "The folder path where the secret will be duplicated to.",
+    secretIds:
+      "Array of source secret IDs to duplicate. All secrets must belong to the source environment and path. Rotation and honey-token secrets cannot be duplicated. Maximum 50 secrets per request.",
+    shouldOverwrite:
+      "When true, overwrite an existing secret with the same key at the destination. When false (default), the request fails if the destination already has a secret with that key.",
+    attributesToCopy:
+      "Object specifying which attributes of the source secret to copy to the destination. Each key is optional and defaults to false. Available keys: value, comment, tags, metadata, skipMultilineEncoding."
   }
 } as const;
 
@@ -2592,7 +2605,9 @@ export const CertificateAuthorities = {
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
       crlDistributionPointUrls:
-        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is always included as the primary."
+        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
+      disableManagedCrlDistributionPointUrl:
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
     }
   }
 };

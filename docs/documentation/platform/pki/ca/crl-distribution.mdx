@@ -12,7 +12,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
 
 ## How It Works
 
-- The **Infisical-managed URL** is always included as the primary CDP and cannot be removed.
+- The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA.
 - Up to **4 mirror URLs** can be configured per CA.
 - URLs must use `http://` or `https://`.
 - Changes apply only to certificates issued **after** the update — existing certificates are not affected.
@@ -37,10 +37,13 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
       <Step title="Add mirror URLs">
         Add one URL per row, in order of preference (clients try them in the listed order).
       </Step>
+      <Step title="Disable managed CRL URL (optional)">
+        Toggle **Disable managed CRL URL** to exclude the Infisical-managed CRL endpoint from issued certificates. This is useful when the Infisical instance is not reachable by certificate consumers.
+      </Step>
     </Steps>
   </Tab>
   <Tab title="API">
-    Pass the `crlDistributionPointUrls` array under `configuration` when creating or updating an internal CA.
+    Pass the `crlDistributionPointUrls` array and optionally `disableManagedCrlDistributionPointUrl` under `configuration` when creating or updating an internal CA.
 
     ### Create CA with CRL mirrors
 
@@ -57,7 +60,8 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
               "crlDistributionPointUrls": [
                   "https://crl.example.com/internal-ca.crl",
                   "https://backup-crl.example.com/internal-ca.crl"
-              ]
+              ],
+              "disableManagedCrlDistributionPointUrl": false
           }
       }'
     ```
@@ -72,10 +76,13 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
           "configuration": {
               "crlDistributionPointUrls": [
                   "https://crl.example.com/internal-ca.crl"
-              ]
+              ],
+              "disableManagedCrlDistributionPointUrl": true
           }
       }'
     ```
+
+    Setting `disableManagedCrlDistributionPointUrl` to `true` removes the Infisical-managed CRL endpoint from the CDP extension of newly issued certificates. The managed CRL endpoint itself remains available — this only controls whether its URL is advertised in certificates.
   </Tab>
 </Tabs>
 

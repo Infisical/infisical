@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -39,6 +40,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
+import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   extractCertificateFields,
   generatePkcs12FromCertificate,
@@ -98,6 +100,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -121,7 +124,8 @@ export const certificateServiceFactory = ({
   certificateAuthorityService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
-  pkiApplicationDAL
+  pkiApplicationDAL,
+  licenseService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -476,6 +480,15 @@ export const certificateServiceFactory = ({
     }
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
+
+    if (ca.internalCa) {
+      await validatePqcLicense({
+        keyAlgorithm: ca.internalCa.keyAlgorithm,
+        projectId: ca.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
 
     // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
     // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).

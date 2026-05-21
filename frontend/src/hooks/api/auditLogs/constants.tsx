@@ -51,6 +51,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
   [EventType.ADD_PROJECT_MEMBER]: "Add member",
   [EventType.REMOVE_PROJECT_MEMBER]: "Remove member",
+  [EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT]: "View member permission audit",
+  [EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT]: "View machine identity permission audit",
   [EventType.CREATE_FOLDER]: "Create folder",
   [EventType.UPDATE_FOLDER]: "Update folder",
   [EventType.DELETE_FOLDER]: "Delete folder",
@@ -388,6 +390,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.APPROVAL_REQUEST_GRANT_LIST]: "List Approval Request Grants",
   [EventType.APPROVAL_REQUEST_GRANT_GET]: "Get Approval Request Grant",
   [EventType.APPROVAL_REQUEST_GRANT_REVOKE]: "Revoke Approval Request Grant",
+  [EventType.PAM_ACCESS_POLICY_BYPASSED]: "PAM Access Policy Bypassed",
 
   // MCP Endpoints
   [EventType.MCP_ENDPOINT_CREATE]: "Create MCP Endpoint",
@@ -457,6 +460,8 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
 const sharedProjectEvents = [
   EventType.ADD_PROJECT_MEMBER,
   EventType.REMOVE_PROJECT_MEMBER,
+  EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
+  EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT,
   EventType.CREATE_PROJECT_ROLE,
   EventType.UPDATE_PROJECT_ROLE,
   EventType.DELETE_PROJECT_ROLE,
@@ -475,7 +480,8 @@ const sharedProjectEvents = [
   EventType.APPROVAL_REQUEST_CANCEL,
   EventType.APPROVAL_REQUEST_GRANT_LIST,
   EventType.APPROVAL_REQUEST_GRANT_GET,
-  EventType.APPROVAL_REQUEST_GRANT_REVOKE
+  EventType.APPROVAL_REQUEST_GRANT_REVOKE,
+  EventType.PAM_ACCESS_POLICY_BYPASSED
 ];
 
 export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
