@@ -115,8 +115,15 @@ export const resolveEffectiveApiConfig = async ({
   applicationId?: string;
   profileId: string;
   profileApiConfig?: { autoRenew?: boolean; renewBeforeDays?: number };
-  pkiApplicationProfileDAL?: { findOneByApplicationAndProfile: (appId: string, profId: string) => Promise<{ apiConfigId?: string | null } | undefined> };
-  apiEnrollmentConfigDAL?: { findById: (id: string) => Promise<{ autoRenew?: boolean | null; renewBeforeDays?: number | null } | undefined> };
+  pkiApplicationProfileDAL?: {
+    findOneByApplicationAndProfile: (
+      appId: string,
+      profId: string
+    ) => Promise<{ apiConfigId?: string | null } | undefined>;
+  };
+  apiEnrollmentConfigDAL?: {
+    findById: (id: string) => Promise<{ autoRenew?: boolean | null; renewBeforeDays?: number | null } | undefined>;
+  };
 }): Promise<{ autoRenew?: boolean; renewBeforeDays?: number } | undefined> => {
   if (applicationId && pkiApplicationProfileDAL && apiEnrollmentConfigDAL) {
     const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);

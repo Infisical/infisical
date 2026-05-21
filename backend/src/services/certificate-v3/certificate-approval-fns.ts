@@ -69,7 +69,10 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
-  apiEnrollmentConfigDAL: Pick<import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory, "findById">;
+  apiEnrollmentConfigDAL: Pick<
+    import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory,
+    "findById"
+  >;
 };
 
 export type TCertificateApprovalService = {

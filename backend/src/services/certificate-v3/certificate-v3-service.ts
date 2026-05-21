@@ -167,8 +167,14 @@ type TCertificateV3ServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findAllByProfileId" | "findOneByApplicationAndProfile">;
-  apiEnrollmentConfigDAL: Pick<import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory, "findById">;
+  pkiApplicationProfileDAL: Pick<
+    TPkiApplicationProfileDALFactory,
+    "findAllByProfileId" | "findOneByApplicationAndProfile"
+  >;
+  apiEnrollmentConfigDAL: Pick<
+    import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory,
+    "findById"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
