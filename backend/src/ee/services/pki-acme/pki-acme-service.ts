@@ -735,10 +735,13 @@ export const pkiAcmeServiceFactory = ({
     // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
     for (const identifier of payload.identifiers) {
       if (identifier.type === AcmeIdentifierType.DNS) {
+        if (!validateDnsIdentifier(identifier.value)) {
+          throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
+        }
+        const strippedValue = identifier.value.startsWith("*.") ? identifier.value.slice(2) : identifier.value;
         if (
-          !validateDnsIdentifier(identifier.value) ||
-          isPrivateIp(identifier.value) ||
-          (!getConfig().isDevelopmentMode && identifier.value.toLowerCase() === "localhost")
+          isPrivateIp(strippedValue) ||
+          (!getConfig().isDevelopmentMode && strippedValue.toLowerCase() === "localhost")
         ) {
           throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
         }
@@ -780,7 +783,8 @@ export const pkiAcmeServiceFactory = ({
               });
             }
           } else if (identifier.type === AcmeIdentifierType.DNS) {
-            if (isPrivateIp(identifier.value)) {
+            const stripped = identifier.value.startsWith("*.") ? identifier.value.slice(2) : identifier.value;
+            if (isPrivateIp(stripped)) {
               throw new AcmeUnsupportedIdentifierError({ message: "Private IP addresses are not allowed" });
             }
           } else {
