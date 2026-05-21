@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.PkiAcmeAuth, "wildcard"))) {
     await knex.schema.alterTable(TableName.PkiAcmeAuth, (t) => {
-      t.boolean("wildcard").nullable().defaultTo(false);
+      t.boolean("wildcard").notNullable().defaultTo(false);
     });
   }
 }

@@ -89,7 +89,7 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
               id: authId,
               identifierType,
               identifierValue,
-              wildcard: wildcard as boolean | null,
+              wildcard: wildcard as boolean,
               expiresAt: authExpiresAt
             })
           }

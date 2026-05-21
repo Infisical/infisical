@@ -366,7 +366,7 @@ export const pkiAcmeServiceFactory = ({
         id: string;
         identifierType: string;
         identifierValue: string;
-        wildcard?: boolean | null;
+        wildcard?: boolean;
         expiresAt: Date;
       }[];
     };
@@ -799,7 +799,7 @@ export const pkiAcmeServiceFactory = ({
               status: skipDnsOwnershipVerification ? AcmeAuthStatus.Valid : AcmeAuthStatus.Pending,
               identifierType: identifier.type,
               identifierValue,
-              wildcard: isWildcard || undefined,
+              wildcard: isWildcard,
               // RFC 8555 suggests a token with at least 128 bits of entropy
               // We are using 256 bits of entropy here, should be enough for now
               // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
