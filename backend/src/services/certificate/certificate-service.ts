@@ -764,28 +764,30 @@ export const certificateServiceFactory = ({
       });
     }
 
-    // Verify private key matches the certificate
-    let privateKey;
-    try {
-      privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
-    } catch (err) {
-      throw new BadRequestError({ message: "Invalid private key format" });
-    }
-
-    try {
-      const message = Buffer.from(Buffer.alloc(32));
-      const publicKey = crypto.nativeCrypto.createPublicKey(certificatePem);
-      const signature = crypto.nativeCrypto.sign(null, message, privateKey);
-      const isValid = crypto.nativeCrypto.verify(null, message, publicKey, signature);
-
-      if (!isValid) {
-        throw new BadRequestError({ message: "Private key does not match certificate" });
+    // Verify private key matches the certificate when one is provided
+    if (privateKeyPem) {
+      let privateKey;
+      try {
+        privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
+      } catch (err) {
+        throw new BadRequestError({ message: "Invalid private key format" });
       }
-    } catch (err) {
-      if (err instanceof BadRequestError) {
-        throw err;
+
+      try {
+        const message = Buffer.from(Buffer.alloc(32));
+        const publicKey = crypto.nativeCrypto.createPublicKey(certificatePem);
+        const signature = crypto.nativeCrypto.sign(null, message, privateKey);
+        const isValid = crypto.nativeCrypto.verify(null, message, publicKey, signature);
+
+        if (!isValid) {
+          throw new BadRequestError({ message: "Private key does not match certificate" });
+        }
+      } catch (err) {
+        if (err instanceof BadRequestError) {
+          throw err;
+        }
+        throw new BadRequestError({ message: "Error verifying private key against certificate" });
       }
-      throw new BadRequestError({ message: "Error verifying private key against certificate" });
     }
 
     // Get certificate attributes
@@ -814,9 +816,9 @@ export const certificateServiceFactory = ({
       plainText: Buffer.from(certificatePem)
     });
 
-    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-      plainText: Buffer.from(privateKeyPem)
-    });
+    const encryptedPrivateKey = privateKeyPem
+      ? (await kmsEncryptor({ plainText: Buffer.from(privateKeyPem) })).cipherTextBlob
+      : null;
 
     // Extract Key Usage
     const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
@@ -872,13 +874,15 @@ export const certificateServiceFactory = ({
           tx
         );
 
-        await certificateSecretDAL.create(
-          {
-            certId: txCert.id,
-            encryptedPrivateKey
-          },
-          tx
-        );
+        if (encryptedPrivateKey) {
+          await certificateSecretDAL.create(
+            {
+              certId: txCert.id,
+              encryptedPrivateKey
+            },
+            tx
+          );
+        }
 
         if (collectionId) {
           await pkiCollectionItemDAL.create(

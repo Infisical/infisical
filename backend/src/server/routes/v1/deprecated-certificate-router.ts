@@ -301,7 +301,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
 
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
-        privateKeyPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.privateKeyPem),
+        privateKeyPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
 
         friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
@@ -311,7 +311,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
           certificateChain: z.string().trim().describe(CERTIFICATES.IMPORT.certificateChain),
-          privateKey: z.string().trim().describe(CERTIFICATES.IMPORT.privateKey),
+          privateKey: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKey),
           serialNumber: z.string().trim().describe(CERTIFICATES.IMPORT.serialNumber)
         })
       }
