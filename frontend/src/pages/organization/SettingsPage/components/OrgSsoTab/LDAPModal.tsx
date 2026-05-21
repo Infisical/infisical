@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { Lottie } from "@app/components/v2/Lottie";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,7 +87,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateLDAPConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateLDAPConfig();
-  const { mutateAsync: testLDAPConnection } = useTestLDAPConnection();
+  const { mutateAsync: testLDAPConnection, isPending: testIsLoading } = useTestLDAPConnection();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
 
   const { control, handleSubmit, reset, watch } = useForm<TLDAPFormData>({
@@ -527,14 +528,23 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 size="lg"
                 className="my-4"
                 onClick={handleTestLDAPConnection}
-                isDisabled={!watchUrl || !watchBindDN || !watchBindPass}
+                isDisabled={!watchUrl || !watchBindDN || !watchBindPass || testIsLoading}
               >
-                Test Connection
+                {testIsLoading ? (
+                  <Lottie icon="infisical_loading" isAutoPlay className="mr-2 h-6 w-6" />
+                ) : (
+                  "Test Connection"
+                )}
               </Button>
             </div>
             <SheetFooter className="justify-between border-t">
               <div className="flex gap-2">
-                <Button type="submit" variant="org" isPending={isPending}>
+                <Button
+                  type="submit"
+                  variant="org"
+                  isPending={isPending}
+                  isDisabled={isPending || testIsLoading}
+                >
                   {isExistingConfig ? "Update" : "Configure LDAP"}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addLDAP")}>
