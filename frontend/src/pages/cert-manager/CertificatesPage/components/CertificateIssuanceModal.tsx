@@ -24,10 +24,11 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import {
   CertExtendedKeyUsage,
   CertificateRequestStatus,
@@ -147,6 +148,7 @@ export const CertificateIssuanceModal = ({
 }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
   const navigate = useNavigate();
 
   const inputSerialNumber =
@@ -681,8 +683,16 @@ export const CertificateIssuanceModal = ({
                   <>
                     <AlgorithmSelectors
                       control={control}
-                      availableSignatureAlgorithms={availableSignatureAlgorithms}
-                      availableKeyAlgorithms={availableKeyAlgorithms}
+                      availableSignatureAlgorithms={
+                        subscription?.pkiPqc
+                          ? availableSignatureAlgorithms
+                          : availableSignatureAlgorithms.filter((a) => !isPqcAlgorithm(a.value))
+                      }
+                      availableKeyAlgorithms={
+                        subscription?.pkiPqc
+                          ? availableKeyAlgorithms
+                          : availableKeyAlgorithms.filter((a) => !isPqcAlgorithm(a.value))
+                      }
                       signatureError={
                         (formState.errors as { signatureAlgorithm?: { message?: string } })
                           .signatureAlgorithm?.message

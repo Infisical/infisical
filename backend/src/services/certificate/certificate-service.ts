@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -14,6 +15,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -98,6 +100,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -121,7 +124,8 @@ export const certificateServiceFactory = ({
   certificateAuthorityService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
-  pkiApplicationDAL
+  pkiApplicationDAL,
+  licenseService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -476,6 +480,17 @@ export const certificateServiceFactory = ({
     }
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
+
+    if (ca.internalCa && isPqcAlgorithm(ca.internalCa.keyAlgorithm)) {
+      const project = await projectDAL.findById(ca.projectId);
+      if (!project) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
+      const plan = await licenseService.getPlan(project.orgId);
+      if (!plan.pkiPqc) {
+        throw new BadRequestError({
+          message: "Failed to use PQC algorithm due to plan restriction. Upgrade to the Enterprise plan."
+        });
+      }
+    }
 
     // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
     // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).

@@ -19,7 +19,8 @@ import {
   Tooltip
   // DatePicker
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { Badge } from "@app/components/v3";
+import { useProject, useSubscription } from "@app/context";
 import {
   CaStatus,
   CaType,
@@ -30,7 +31,7 @@ import {
   useGetCa,
   useUpdateCa
 } from "@app/hooks/api/ca";
-import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
+import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -115,6 +116,7 @@ const caTypes = [
 
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const { data: ca } = useGetCa({
     caId: (popUp?.ca?.data as { caId: string })?.caId || "",
     type: CaType.INTERNAL
@@ -373,8 +375,17 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isDisabled={Boolean(ca)}
                 >
                   {certKeyAlgorithms.map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
+                    <SelectItem
+                      value={String(value || "")}
+                      key={label}
+                      isDisabled={isPqcAlgorithm(value) && !subscription?.pkiPqc}
+                    >
+                      <div className="flex items-center gap-2">
+                        {label}
+                        {isPqcAlgorithm(value) && !subscription?.pkiPqc && (
+                          <Badge variant="info">Enterprise</Badge>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </Select>

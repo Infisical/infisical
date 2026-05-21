@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -15,6 +16,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -161,6 +163,7 @@ type TCertificateV3ServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findAllByProfileId">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -679,7 +682,8 @@ export const certificateV3ServiceFactory = ({
   approvalPolicyService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  licenseService
 }: TCertificateV3ServiceFactoryDep) => {
   const $resolveApplicationIdForProfile = async (
     profile: {
@@ -841,6 +845,21 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
+
+    const hasPqcAlgorithm =
+      (certificateRequest.keyAlgorithm && isPqcAlgorithm(certificateRequest.keyAlgorithm)) ||
+      (certificateRequest.signatureAlgorithm && isPqcAlgorithm(certificateRequest.signatureAlgorithm));
+
+    if (hasPqcAlgorithm) {
+      const project = await projectDAL.findById(profile.projectId);
+      if (!project) throw new NotFoundError({ message: `Project with ID '${profile.projectId}' not found` });
+      const plan = await licenseService.getPlan(project.orgId);
+      if (!plan.pkiPqc) {
+        throw new BadRequestError({
+          message: "Failed to use PQC algorithm due to plan restriction. Upgrade to the Enterprise plan."
+        });
+      }
+    }
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
