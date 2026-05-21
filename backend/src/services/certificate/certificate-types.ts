@@ -153,7 +153,7 @@ export type TImportCertDTO = {
 
   certificatePem: string;
   privateKeyPem?: string;
-  chainPem: string;
+  chainPem?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPrivateKeyDTO = {

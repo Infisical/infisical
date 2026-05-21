@@ -2199,12 +2199,13 @@ export const CERTIFICATES = {
     projectSlug: "Slug of the project to import the certificate into.",
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
-    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
 
     certificate: "The imported certificate.",
-    certificateChain: "The certificate chain associated with the imported certificate.",
+    certificateChain:
+      "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
     privateKey:
       "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
     serialNumber: "The serial number of the imported certificate."

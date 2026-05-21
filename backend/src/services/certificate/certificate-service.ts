@@ -730,38 +730,40 @@ export const certificateServiceFactory = ({
 
     const leafCert = new x509.X509Certificate(certificatePem);
 
-    // Verify the certificate chain
-    const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+    // Verify the certificate chain when one is provided
+    if (chainPem) {
+      const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
 
-    // Remove leaf cert from the chain if it's present
-    if (chainCerts[0].equal(leafCert)) {
-      chainCerts.splice(0, 1);
-    }
+      // Remove leaf cert from the chain if it's present
+      if (chainCerts[0]?.equal(leafCert)) {
+        chainCerts.splice(0, 1);
+      }
 
-    if (chainCerts.length === 0) {
-      throw new BadRequestError({
-        message: "Certificate chain must contain at least one issuer certificate"
+      if (chainCerts.length === 0) {
+        throw new BadRequestError({
+          message: "Certificate chain must contain at least one issuer certificate"
+        });
+      }
+
+      // Verify leaf certificate is signed by the first certificate in the chain
+      const isLeafVerified = await leafCert.verify({ publicKey: chainCerts[0].publicKey }).catch(() => false);
+      if (!isLeafVerified) {
+        throw new BadRequestError({ message: "Leaf certificate verification against chain failed" });
+      }
+
+      // Verify the entire chain of trust
+      const verificationPromises = chainCerts.slice(0, -1).map(async (currentCert, index) => {
+        const issuerCert = chainCerts[index + 1];
+        return currentCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false);
       });
-    }
 
-    // Verify leaf certificate is signed by the first certificate in the chain
-    const isLeafVerified = await leafCert.verify({ publicKey: chainCerts[0].publicKey }).catch(() => false);
-    if (!isLeafVerified) {
-      throw new BadRequestError({ message: "Leaf certificate verification against chain failed" });
-    }
+      const verificationResults = await Promise.all(verificationPromises);
 
-    // Verify the entire chain of trust
-    const verificationPromises = chainCerts.slice(0, -1).map(async (currentCert, index) => {
-      const issuerCert = chainCerts[index + 1];
-      return currentCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false);
-    });
-
-    const verificationResults = await Promise.all(verificationPromises);
-
-    if (verificationResults.some((result) => !result)) {
-      throw new BadRequestError({
-        message: "Certificate chain verification failed: broken trust chain"
-      });
+      if (verificationResults.some((result) => !result)) {
+        throw new BadRequestError({
+          message: "Certificate chain verification failed: broken trust chain"
+        });
+      }
     }
 
     // Verify private key matches the certificate when one is provided
@@ -838,9 +840,9 @@ export const certificateServiceFactory = ({
       extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
     }
 
-    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
-      plainText: Buffer.from(chainPem)
-    });
+    const encryptedCertificateChain = chainPem
+      ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
+      : null;
 
     const cert = await certificateDAL.transaction(async (tx) => {
       try {

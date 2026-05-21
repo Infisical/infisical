@@ -1466,7 +1466,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
-        chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
+        chainPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.chainPem),
 
         friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId),
@@ -1475,7 +1475,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
-          certificateChain: z.string().trim().describe(CERTIFICATES.IMPORT.certificateChain),
+          certificateChain: z.string().trim().optional().describe(CERTIFICATES.IMPORT.certificateChain),
           privateKey: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKey),
           serialNumber: z.string().trim().describe(CERTIFICATES.IMPORT.serialNumber)
         })

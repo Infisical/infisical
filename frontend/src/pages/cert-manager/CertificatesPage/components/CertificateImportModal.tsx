@@ -13,7 +13,7 @@ import { CertificateContent } from "./CertificateContent";
 const schema = z.object({
   certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
   privateKeyPem: z.string().trim().optional(),
-  chainPem: z.string().trim().min(1, "Certificate Chain PEM is required")
+  chainPem: z.string().trim().optional()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -30,7 +30,7 @@ type Props = {
 type TCertificateDetails = {
   serialNumber: string;
   certificate: string;
-  certificateChain: string;
+  certificateChain?: string;
   privateKey?: string;
 };
 
@@ -53,10 +53,11 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
 
   const onFormSubmit = async ({ certificatePem, privateKeyPem, chainPem }: FormData) => {
     const trimmedPrivateKey = privateKeyPem?.trim();
+    const trimmedChain = chainPem?.trim();
     const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
       certificatePem,
       ...(trimmedPrivateKey ? { privateKeyPem: trimmedPrivateKey } : {}),
-      chainPem,
+      ...(trimmedChain ? { chainPem: trimmedChain } : {}),
       applicationId
     });
 
@@ -108,10 +109,9 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
               name="chainPem"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Certificate Chain PEM"
+                  label="Certificate Chain PEM (optional)"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  isRequired
                 >
                   <TextArea {...field} isDisabled={Boolean(cert)} />
                 </FormControl>
