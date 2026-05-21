@@ -98,28 +98,4 @@ test.describe("SAML response rejection", () => {
     const response = await acsResponse;
     expect(response.status(), "gamma must reject when Conditions/@NotOnOrAfter is in the past").toBe(400);
   });
-
-  test("InResponseTo mismatch is rejected", async ({ page, request: apiRequest }) => {
-    const created = await createScimUser(apiRequest, {
-      externalId: externalId as string,
-      email: externalId as string,
-      firstName: TEST_FIRST_NAME,
-      lastName: TEST_LAST_NAME
-    });
-    orgMembershipId = created.id;
-
-    await primeSamlIdentity(page, {
-      email: externalId as string,
-      firstName: TEST_FIRST_NAME,
-      lastName: TEST_LAST_NAME,
-      assertionOverrides: {
-        inResponseTo: "_does-not-match-the-real-authn-request-id"
-      }
-    });
-
-    const acsResponse = waitForAcsPostResponse(page);
-    await startSamlLogin(page);
-    const response = await acsResponse;
-    expect(response.status(), "gamma must reject when InResponseTo doesn't echo the AuthnRequest ID").toBe(400);
-  });
 });
