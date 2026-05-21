@@ -321,13 +321,13 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     }
 
-    await validatePqcLicense(keyAlgorithm, projectId);
-
     if (keyAlgorithm.startsWith("SLH-DSA")) {
       throw new BadRequestError({
         message: "SLH-DSA algorithms are not currently supported for CA creation. Use ML-DSA instead."
       });
     }
+
+    await validatePqcLicense(keyAlgorithm, projectId);
 
     const dn = createDistinguishedName({
       commonName,
