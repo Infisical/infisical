@@ -142,6 +142,20 @@ describe("safe-request SSRF helpers", () => {
       await expect(validateAndPinUrl("https://internal-db.example")).rejects.toThrow(/internal infra/i);
     });
 
+    it("passes the pre-resolved IPs into verifyHostInputValidity so both checks use the same lookup", async () => {
+      setLookup([
+        { address: PUBLIC_IP_V4, family: 4 },
+        { address: PUBLIC_IP_V4_ALT, family: 4 }
+      ]);
+      await validateAndPinUrl("https://example.com");
+      expect(verifyHostInputValidityMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          host: "example.com",
+          preResolvedIps: [PUBLIC_IP_V4, PUBLIC_IP_V4_ALT]
+        })
+      );
+    });
+
     it("returns the resolved IPs on success so the caller can pin to them", async () => {
       setLookup([
         { address: PUBLIC_IP_V4, family: 4 },

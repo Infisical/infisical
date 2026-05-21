@@ -62,7 +62,12 @@ export const validateAndPinUrl = async (
   }
 
   // Block Infisical's own infrastructure (DB, Redis, etc.).
-  await verifyHostInputValidity({ host: validUrl.hostname, isGateway: false, isDynamicSecret: false });
+  await verifyHostInputValidity({
+    host: validUrl.hostname,
+    isGateway: false,
+    isDynamicSecret: false,
+    preResolvedIps: entries.map((e) => e.address)
+  });
 
   return { hostname: validUrl.hostname, entries };
 };
