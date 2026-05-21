@@ -6396,6 +6396,7 @@ interface CreateAcmeOrderEvent {
     identifiers: Array<{
       type: AcmeIdentifierType;
       value: string;
+      wildcard?: boolean;
     }>;
   };
 }
