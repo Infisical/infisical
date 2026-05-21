@@ -1,10 +1,27 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
+import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -25,6 +42,7 @@ export const EnvironmentSection = () => {
   const { permission } = useProjectPermission();
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const isMoreEnvironmentsAllowed =
     subscription?.environmentLimit && currentProject?.environments
@@ -38,12 +56,16 @@ export const EnvironmentSection = () => {
     "upgradePlan"
   ] as const);
 
-  const onEnvDeleteSubmit = async (id: string) => {
-    if (!currentProject?.id) return;
+  const deleteEnvData = popUp?.deleteEnv?.data as
+    | { name: string; slug: string; id: string }
+    | undefined;
+
+  const onEnvDeleteSubmit = async () => {
+    if (!currentProject?.id || !deleteEnvData?.id) return;
 
     await deleteWsEnvironment.mutateAsync({
       projectId: currentProject.id,
-      id
+      id: deleteEnvData.id
     });
 
     createNotification({
@@ -52,24 +74,26 @@ export const EnvironmentSection = () => {
     });
 
     handlePopUpClose("deleteEnv");
+    setDeleteConfirmation("");
   };
 
   return (
-    <div
-      id="environments"
-      className="mb-6 scroll-m-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
-      <div className="mb-8 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Environments</p>
-        <div>
+    <Card id="environments" className="mb-6 scroll-m-6">
+      <CardHeader>
+        <CardTitle>Environments</CardTitle>
+        <CardDescription>
+          Choose which environments will show up in your dashboard like development, staging,
+          production.
+        </CardDescription>
+        <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.Environments}
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                variant="project"
+                size="xs"
                 onClick={() => {
                   if (isMoreEnvironmentsAllowed) {
                     handlePopUpOpen("createEnv");
@@ -79,21 +103,20 @@ export const EnvironmentSection = () => {
                 }}
                 isDisabled={!isAllowed}
               >
-                Create environment
+                <PlusIcon className="size-4" />
+                Create Environment
               </Button>
             )}
           </ProjectPermissionCan>
-        </div>
-      </div>
-      <p className="mb-8 text-gray-400">
-        Choose which environments will show up in your dashboard like development, staging,
-        production
-      </p>
-      {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
-        <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
-      ) : (
-        <PermissionDeniedBanner />
-      )}
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
+          <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
+        ) : (
+          <PermissionDeniedBanner />
+        )}
+      </CardContent>
       <AddEnvironmentModal
         isOpen={popUp.createEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnv", isOpen)}
@@ -103,20 +126,49 @@ export const EnvironmentSection = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
-        isOpen={popUp.deleteEnv.isOpen}
-        title={`Are you sure you want to delete ${
-          (popUp?.deleteEnv?.data as { name: string })?.name || " "
-        }?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
-        deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ""}
-        onDeleteApproved={() => onEnvDeleteSubmit((popUp?.deleteEnv?.data as { id: string })?.id)}
-      />
+      <AlertDialog
+        open={popUp.deleteEnv.isOpen}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("deleteEnv", isOpen);
+          if (!isOpen) setDeleteConfirmation("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Environment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this environment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="w-full pb-4">
+            <p className="mb-2 text-sm text-muted">
+              Enter the environment slug{" "}
+              <span className="font-medium text-foreground">{deleteEnvData?.slug ?? ""}</span> to
+              confirm the deletion
+            </p>
+            <Input
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder={deleteEnvData?.slug ?? ""}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={onEnvDeleteSubmit}
+              disabled={!deleteEnvData?.slug || deleteConfirmation !== deleteEnvData.slug}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have reached the maximum number of environments allowed on the free plan. Upgrade to Infisical Pro plan to add more environments."
       />
-    </div>
+    </Card>
   );
 };

@@ -2,7 +2,15 @@ import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Checkbox } from "@app/components/v2";
+import {
+  Card,
+  CardContent,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
+  Switch
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
@@ -28,25 +36,30 @@ export const AutoCapitalizationSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-medium">{t("settings.project.enforce-capitalization")}</p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-        {(isAllowed) => (
-          <div>
-            <Checkbox
-              id="autoCapitalization"
-              isDisabled={!isAllowed}
-              isChecked={currentProject?.autoCapitalization ?? false}
-              onCheckedChange={(state) => {
-                handleToggleCapitalizationToggle(state as boolean);
-              }}
-              allowMultilineLabel
-            >
-              {t("settings.project.enforce-capitalization-description")}
-            </Checkbox>
-          </div>
-        )}
-      </ProjectPermissionCan>
-    </div>
+    <Card className="mb-6">
+      <CardContent>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+          {(isAllowed) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>{t("settings.project.enforce-capitalization")}</FieldTitle>
+                <FieldDescription>
+                  {t("settings.project.enforce-capitalization-description")}
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="autoCapitalization"
+                variant="project"
+                checked={currentProject?.autoCapitalization ?? false}
+                disabled={!isAllowed}
+                onCheckedChange={(state) => {
+                  handleToggleCapitalizationToggle(state);
+                }}
+              />
+            </Field>
+          )}
+        </ProjectPermissionCan>
+      </CardContent>
+    </Card>
   );
 };

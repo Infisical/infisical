@@ -1,6 +1,14 @@
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Checkbox } from "@app/components/v2";
+import {
+  Card,
+  CardContent,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
+  Switch
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
@@ -24,26 +32,31 @@ export const EnforceEncryptedMetadataSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-medium">Enforce Encrypted Metadata</p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-        {(isAllowed) => (
-          <div>
-            <Checkbox
-              id="enforceEncryptedMetadata"
-              isDisabled={!isAllowed}
-              isChecked={currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false}
-              onCheckedChange={(state) => {
-                handleToggle(state as boolean);
-              }}
-              allowMultilineLabel
-            >
-              When enabled, secrets in this project can only have encrypted metadata. Unencrypted
-              metadata fields will be rejected.
-            </Checkbox>
-          </div>
-        )}
-      </ProjectPermissionCan>
-    </div>
+    <Card className="mb-6">
+      <CardContent>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+          {(isAllowed) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Enforce Encrypted Metadata</FieldTitle>
+                <FieldDescription>
+                  When enabled, secrets in this project can only have encrypted metadata.
+                  Unencrypted metadata fields will be rejected.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="enforceEncryptedMetadata"
+                variant="project"
+                checked={currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false}
+                disabled={!isAllowed}
+                onCheckedChange={(state) => {
+                  handleToggle(state);
+                }}
+              />
+            </Field>
+          )}
+        </ProjectPermissionCan>
+      </CardContent>
+    </Card>
   );
 };

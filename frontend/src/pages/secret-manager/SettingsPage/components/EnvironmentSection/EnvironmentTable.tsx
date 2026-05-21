@@ -1,20 +1,23 @@
-import { faArrowDown, faArrowUp, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ArrowDownIcon, ArrowUpIcon, PencilIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -70,38 +73,50 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
       ? Math.max(0, currentProject.environments.length - subscription.environmentLimit)
       : 0;
 
+  if (!currentProject.environments?.length) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No environments found</EmptyTitle>
+          <EmptyDescription>
+            Create your first environment to organize secrets by stage.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Name</Th>
-            <Th>Slug</Th>
-            <Th aria-label="button" />
-          </Tr>
-        </THead>
-        <TBody>
-          {currentProject.environments.map(({ name, slug, id }, pos) => (
-            <Tr key={id}>
-              <Td>{name}</Td>
-              <Td>{slug}</Td>
-              <Td className="flex items-center justify-end">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Slug</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {currentProject.environments.map(({ name, slug, id }, pos) => (
+          <TableRow key={id}>
+            <TableCell>{name}</TableCell>
+            <TableCell>{slug}</TableCell>
+            <TableCell>
+              <div className="flex items-center justify-end gap-1">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={ProjectPermissionSub.Environments}
                 >
                   {(isAllowed) => (
                     <IconButton
-                      className="mr-3 py-2"
+                      aria-label="Move down"
+                      variant="ghost-muted"
+                      size="xs"
                       onClick={() =>
                         handleReorderEnv(id, Math.min(currentProject.environments.length, pos + 2))
                       }
-                      colorSchema="primary"
-                      variant="plain"
-                      ariaLabel="update"
                       isDisabled={pos === currentProject.environments.length - 1 || !isAllowed}
                     >
-                      <FontAwesomeIcon icon={faArrowDown} />
+                      <ArrowDownIcon className="size-4" />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
@@ -111,42 +126,45 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                 >
                   {(isAllowed) => (
                     <IconButton
-                      className="mr-3 py-2"
+                      aria-label="Move up"
+                      variant="ghost-muted"
+                      size="xs"
                       onClick={() => handleReorderEnv(id, Math.max(1, pos))}
-                      colorSchema="primary"
-                      variant="plain"
-                      ariaLabel="update"
                       isDisabled={pos === 0 || !isAllowed}
                     >
-                      <FontAwesomeIcon icon={faArrowUp} />
+                      <ArrowUpIcon className="size-4" />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
-
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={ProjectPermissionSub.Environments}
                 >
                   {(isAllowed) => (
-                    <Tooltip
-                      content={
-                        isMoreEnvironmentsAllowed
-                          ? ""
-                          : `You have exceeded the number of environments allowed by your plan. To edit an existing environment, either upgrade your plan or remove at least ${environmentsOverPlanLimit} environment${environmentsOverPlanLimit === 1 ? "" : "s"}.`
-                      }
-                    >
-                      <IconButton
-                        className="mr-3 py-2"
-                        onClick={() => {
-                          handlePopUpOpen("updateEnv", { name, slug, id });
-                        }}
-                        isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
-                        colorSchema="primary"
-                        variant="plain"
-                        ariaLabel="update"
-                      >
-                        <FontAwesomeIcon icon={faPencil} />
-                      </IconButton>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <IconButton
+                            aria-label="Edit environment"
+                            variant="ghost-muted"
+                            size="xs"
+                            onClick={() => {
+                              handlePopUpOpen("updateEnv", { name, slug, id });
+                            }}
+                            isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
+                          >
+                            <PencilIcon className="size-4" />
+                          </IconButton>
+                        </span>
+                      </TooltipTrigger>
+                      {!isMoreEnvironmentsAllowed && (
+                        <TooltipContent>
+                          You have exceeded the number of environments allowed by your plan. To edit
+                          an existing environment, either upgrade your plan or remove at least{" "}
+                          {environmentsOverPlanLimit} environment
+                          {environmentsOverPlanLimit === 1 ? "" : "s"}.
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   )}
                 </ProjectPermissionCan>
@@ -156,31 +174,23 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                 >
                   {(isAllowed) => (
                     <IconButton
+                      aria-label="Delete environment"
+                      variant="danger"
+                      size="xs"
                       onClick={() => {
                         handlePopUpOpen("deleteEnv", { name, slug, id });
                       }}
-                      size="lg"
-                      colorSchema="danger"
-                      variant="plain"
-                      ariaLabel="update"
                       isDisabled={!isAllowed}
                     >
-                      <FontAwesomeIcon icon={faXmark} />
+                      <XIcon className="size-4" />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
-              </Td>
-            </Tr>
-          ))}
-          {currentProject.environments?.length === 0 && (
-            <Tr>
-              <Td colSpan={3}>
-                <EmptyState title="No environments found" />
-              </Td>
-            </Tr>
-          )}
-        </TBody>
-      </Table>
-    </TableContainer>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
