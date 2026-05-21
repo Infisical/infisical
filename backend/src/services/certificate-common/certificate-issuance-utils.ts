@@ -101,6 +101,39 @@ export const calculateFinalRenewBeforeDays = (
 };
 
 /**
+ * Resolves the effective API enrollment config for auto-renew.
+ * When an applicationId is present, the application-profile junction's config takes
+ * precedence over the profile-level config.
+ */
+export const resolveEffectiveApiConfig = async ({
+  applicationId,
+  profileId,
+  profileApiConfig,
+  pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL
+}: {
+  applicationId?: string;
+  profileId: string;
+  profileApiConfig?: { autoRenew?: boolean; renewBeforeDays?: number };
+  pkiApplicationProfileDAL?: { findOneByApplicationAndProfile: (appId: string, profId: string) => Promise<{ apiConfigId?: string | null } | undefined> };
+  apiEnrollmentConfigDAL?: { findById: (id: string) => Promise<{ autoRenew?: boolean | null; renewBeforeDays?: number | null } | undefined> };
+}): Promise<{ autoRenew?: boolean; renewBeforeDays?: number } | undefined> => {
+  if (applicationId && pkiApplicationProfileDAL && apiEnrollmentConfigDAL) {
+    const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
+    if (junction?.apiConfigId) {
+      const appApiConfig = await apiEnrollmentConfigDAL.findById(junction.apiConfigId);
+      if (appApiConfig) {
+        return {
+          autoRenew: Boolean(appApiConfig.autoRenew),
+          renewBeforeDays: appApiConfig.renewBeforeDays ?? undefined
+        };
+      }
+    }
+  }
+  return profileApiConfig;
+};
+
+/**
  * Validates that the CA supports the requested operation (only internal CAs support direct operations)
  */
 export const validateCaSupport = (ca: TCertificateAuthorityWithAssociatedCa, operation: string): CaType => {

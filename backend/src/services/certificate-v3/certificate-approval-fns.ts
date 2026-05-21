@@ -24,6 +24,7 @@ import { TCertificatePolicyServiceFactory } from "@app/services/certificate-poli
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -35,6 +36,7 @@ import {
   extractCertificateFromBuffer,
   generateSelfSignedCertificate,
   getEffectiveAlgorithms,
+  resolveEffectiveApiConfig,
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
@@ -66,6 +68,8 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  apiEnrollmentConfigDAL: Pick<import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory, "findById">;
 };
 
 export type TCertificateApprovalService = {
@@ -89,7 +93,9 @@ export const certificateApprovalServiceFactory = (
     projectDAL,
     certificatePolicyService,
     certificateIssuanceQueue,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL
   } = deps;
 
   const $validateProfileAndPermissions = async ({
@@ -380,7 +386,18 @@ export const certificateApprovalServiceFactory = (
           throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
         }
 
-        const finalRenewBeforeDays = calculateFinalRenewBeforeDays(profile, ttl, new Date(signedCertRecord.notAfter));
+        const effectiveApiConfig = await resolveEffectiveApiConfig({
+          applicationId: certRequest.applicationId ?? undefined,
+          profileId,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        });
+        const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+          { apiConfig: effectiveApiConfig },
+          ttl,
+          new Date(signedCertRecord.notAfter)
+        );
 
         const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = { profileId };
         if (finalRenewBeforeDays !== undefined) {
@@ -566,8 +583,15 @@ export const certificateApprovalServiceFactory = (
         tx
       });
 
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId: applicationId ?? undefined,
+        profileId: profile.id,
+        profileApiConfig: profile.apiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-        profile,
+        { apiConfig: effectiveApiConfig },
         certificateRequestInput.validity.ttl,
         processResult.selfSignedResult.notAfter
       );
@@ -694,8 +718,15 @@ export const certificateApprovalServiceFactory = (
           throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
         }
 
+        const effectiveApiConfig = await resolveEffectiveApiConfig({
+          applicationId: applicationId ?? undefined,
+          profileId: profile.id,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          profile,
+          { apiConfig: effectiveApiConfig },
           certificateRequestInput.validity.ttl,
           new Date(certificateRecord.notAfter)
         );
