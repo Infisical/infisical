@@ -36,7 +36,7 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
     4. (Optional) Open the new relay's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the relay.
         - **AWS**: the relay authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
-    5. Click **Show deploy command** in the **Deployment** card and copy the generated CLI command.
+    5. Click **Show deploy command** and copy the generated CLI command.
    </Step>
 
    <Step title="Install the Infisical CLI">
