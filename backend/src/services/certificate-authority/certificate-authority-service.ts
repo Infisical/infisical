@@ -598,14 +598,17 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      const internalConfig = configuration as { crlDistributionPointUrls?: string[] } | undefined;
+      const internalConfig = configuration as
+        | { crlDistributionPointUrls?: string[]; disableManagedCrlDistributionPointUrl?: boolean }
+        | undefined;
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         isInternal: true,
         caId: certificateAuthority.id,
         status,
         name,
-        crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls
+        crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
+        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl
       });
 
       if (!updatedCa.internalCa) {

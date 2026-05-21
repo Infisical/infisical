@@ -2605,7 +2605,9 @@ export const CertificateAuthorities = {
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
       crlDistributionPointUrls:
-        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is always included as the primary."
+        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
+      disableManagedCrlDistributionPointUrl:
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
     }
   }
 };
