@@ -57,6 +57,7 @@ import { TCertificatePolicyServiceFactory } from "@app/services/certificate-poli
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -172,7 +173,7 @@ type TCertificateV3ServiceFactoryDep = {
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
   apiEnrollmentConfigDAL: Pick<
-    import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory,
+    TApiEnrollmentConfigDALFactory,
     "findById"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;

@@ -31,8 +31,10 @@ import { DigiCertExternalMetadataSchema } from "../certificate-common/external-m
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
+import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -135,14 +137,8 @@ type TCertificateIssuanceQueueFactoryDep = {
   certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  pkiApplicationProfileDAL?: Pick<
-    import("../pki-application/pki-application-profile-dal").TPkiApplicationProfileDALFactory,
-    "findOneByApplicationAndProfile"
-  >;
-  apiEnrollmentConfigDAL?: Pick<
-    import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory,
-    "findById"
-  >;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };

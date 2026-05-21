@@ -23,6 +23,7 @@ import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certi
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -69,10 +70,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
-  apiEnrollmentConfigDAL: Pick<
-    import("../enrollment-config/api-enrollment-config-dal").TApiEnrollmentConfigDALFactory,
-    "findById"
-  >;
+  apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
 };
 
 export type TCertificateApprovalService = {
