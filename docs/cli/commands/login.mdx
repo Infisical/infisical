@@ -628,6 +628,94 @@ The following examples demonstrate different ways to authenticate as a user with
   If you have SSO enabled, we recommend using the default browser login.
 </Tip>
 
+### Sub-commands
+
+<Accordion title="infisical login status" defaultOpen="true">
+  Reports whether the CLI is currently authenticated to Infisical and, when available, the organization the active session is scoped to. The command checks the user session stored in your vault, machine identity tokens exported as environment variables, and a token passed via the `--token` flag.
+
+  ```bash
+  infisical login status
+  ```
+
+  In addition to local checks (token presence, local expiration), `status` calls the Infisical backend to verify that each credential is still valid — so revoked or rejected tokens are surfaced even when they look fine locally.
+
+  #### Sources checked
+
+  - **User session**: the active login stored in your system keyring (or the configured [vault](./vault)).
+  - **Machine identity environment variables**: `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` and `INFISICAL_TOKEN`.
+  - **`--token` flag**: a specific machine identity access token passed explicitly.
+
+  #### Exit codes
+
+  - `0`: at least one session was reported and none are expired or rejected.
+  - `1`: no active session was found, or a reported session is expired or rejected by the backend.
+
+  #### Flags
+
+  <Accordion title="--json">
+    Output the login status as JSON instead of the default human-readable format. Useful for scripting and CI/CD pipelines.
+
+    ```bash
+    infisical login status --json
+    ```
+
+  </Accordion>
+
+  <Accordion title="--token">
+    Inspect the given machine identity access token instead of the active session or environment variables. When this flag is set, `--domain` (or the `INFISICAL_API_URL` environment variable) must also be provided so the status reflects the correct Infisical instance.
+
+    ```bash
+    infisical login status --token=<machine-identity-access-token> --domain=<domain-url>
+    ```
+
+  </Accordion>
+
+  #### Examples
+
+  <AccordionGroup>
+    <Accordion title="Check the active user session">
+      ```bash
+      infisical login status
+      ```
+
+      Example output:
+
+      ```bash
+      ✓ Authenticated as user@example.com
+        - Domain: https://app.infisical.com
+        - Auth method: login
+        - Token source: infisical login (keyring)
+        - Token expiration: 6h 12m
+        - Organization: org-id-123
+      ```
+
+    </Accordion>
+
+    <Accordion title="Check a machine identity token from the environment">
+      ```bash
+      export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --plain --silent)
+      infisical login status
+      ```
+
+    </Accordion>
+
+    <Accordion title="Inspect a specific token without changing the active session">
+      ```bash
+      infisical login status --token=<machine-identity-access-token> --domain=https://app.infisical.com
+      ```
+
+    </Accordion>
+
+    <Accordion title="JSON output for scripts">
+      ```bash
+      infisical login status --json
+      ```
+
+    </Accordion>
+  </AccordionGroup>
+
+</Accordion>
+
 ### Machine Identity Authentication Quick Start
 
 In this example we'll be using the `universal-auth` method to login to obtain an Infisical access token, which we will then use to fetch secrets with.
