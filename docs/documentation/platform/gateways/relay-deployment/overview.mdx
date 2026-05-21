@@ -25,90 +25,24 @@ If you are using Infisical Cloud and do not have specific requirements, you can 
 To successfully deploy an Infisical Relay for use, follow these steps in order.
 
 <Steps>
-   <Step title="Provision a Machine Identity">
-   Create a machine identity with the correct permissions to create and manage relays. This identity is used by the relay to authenticate with Infisical and should be provisioned in advance.
-   The relay supports several [machine identity auth methods](/documentation/platform/identities/machine-identities) for authentication, as listed below. Choose the one that best fits your environment and set the corresponding environment variables when deploying the relay.
-
-   <AccordionGroup>
-      <Accordion title="Universal Auth">
-        Simple and secure authentication using client ID and client secret.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=universal-auth`
-        - `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>`
-        - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>`
-      </Accordion>
-
-      <Accordion title="Token Auth">
-        Direct authentication using a machine identity access token.
-
-        **Environment Variables:**
-        - `INFISICAL_TOKEN=<token>`
-      </Accordion>
-
-      <Accordion title="Native Kubernetes">
-        Authentication using Kubernetes service account tokens.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=kubernetes`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-      </Accordion>
-
-      <Accordion title="Native AWS IAM">
-        Authentication using AWS IAM roles.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=aws-iam`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-      </Accordion>
-
-      <Accordion title="Native GCP ID Token">
-        Authentication using GCP identity tokens.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=gcp-id-token`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-      </Accordion>
-
-      <Accordion title="GCP IAM">
-        Authentication using GCP service account keys.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=gcp-iam`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-        - `INFISICAL_GCP_SERVICE_ACCOUNT_KEY_FILE_PATH=<path-to-key-file>`
-      </Accordion>
-
-      <Accordion title="Native Azure">
-        Authentication using Azure managed identity.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=azure`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-      </Accordion>
-
-      <Accordion title="OIDC Auth">
-        Authentication using OIDC identity tokens.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=oidc-auth`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-        - `INFISICAL_JWT=<oidc-jwt>`
-      </Accordion>
-
-      <Accordion title="JWT Auth">
-        Authentication using JWT tokens.
-
-        **Environment Variables:**
-        - `INFISICAL_AUTH_METHOD=jwt-auth`
-        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
-        - `INFISICAL_JWT=<jwt>`
-      </Accordion>
-    </AccordionGroup>
-   </Step>
-
    <Step title="Provision a Server">
     Provision a server or virtual machine where you plan to deploy the relay. This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
+   </Step>
+
+   <Step title="Create the Relay in the UI">
+    1. Navigate to **Organization Settings > Networking > Relays**.
+    2. Click **Create Relay**.
+    3. Enter a name and host address (the static IP or DNS name of the server from Step 1).
+    4. (Optional) Open the new relay's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
+        - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the relay.
+        - **AWS**: the relay authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
+    5. Click **Show deploy command** in the **Deployment** card and copy the generated CLI command.
+   </Step>
+
+   <Step title="Install the Infisical CLI">
+    Make sure the Infisical CLI is installed on the target machine. See the [CLI Installation Guide](/cli/overview) for instructions.
+
+    To view all available flags and equivalent environment variables for relay deployment, see the [Relay CLI Command Reference](/cli/commands/relay).
    </Step>
 
    <Step title="Configure Network & Firewall">
@@ -127,54 +61,81 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
 
   </Step>
 
-   <Step title="Select a Deployment Method">
-      You can deploy the Infisical Relay in various ways. This guide provides a manual setup example using the Infisical CLI. For an infrastructure-as-code approach, see our [Terraform guide](/documentation/platform/gateways/relay-deployment/terraform).
+   <Step title="Run the CLI Command">
+      Run the command you copied from the UI on the target machine. This single command enrolls the relay and starts it immediately.
 
-      The Infisical CLI is used to install and start the relay in your chosen environment. The CLI provides commands for both production and development scenarios, and supports a variety of options/flags to configure your deployment.
+    <AccordionGroup>
+      <Accordion title="Token Auth">
+        A one-time enrollment token (1h expiry) bootstraps the relay.
 
-      To view all available flags and equivalent environment variables for relay deployment, see the [Relay CLI Command Reference](/cli/commands/relay).
-    <Tabs>
-       <Tab title="Linux Server">
-          For production deployments on Linux servers, install the Relay as a systemd service. This installation method only supports [Token Auth](/documentation/platform/identities/token-auth) at the moment.
+        <Tabs>
+          <Tab title="Linux (Production)">
+            ```bash
+            sudo infisical relay systemd install \
+              --name=<relay-name> \
+              --enroll-method=token \
+              --token=<enrollment-token> \
+              --domain=<your-infisical-domain>
+            sudo systemctl start infisical-relay
+            ```
+          </Tab>
+          <Tab title="Foreground">
+            ```bash
+            infisical relay start \
+              --name=<relay-name> \
+              --enroll-method=token \
+              --token=<enrollment-token> \
+              --domain=<your-infisical-domain>
+            ```
+          </Tab>
+        </Tabs>
+      </Accordion>
+      <Accordion title="AWS Auth">
+        The host must have AWS credentials whose principal matches your allowlist. The relay re-authenticates via STS on every start.
 
-          Once you have a [Token Auth](/documentation/platform/identities/token-auth) token, set the following environment variables for relay authentication:
+        <Tabs>
+          <Tab title="Linux (Production)">
+            ```bash
+            sudo infisical relay systemd install \
+              --name=<relay-name> \
+              --enroll-method=aws \
+              --relay-id=<relay-id> \
+              --domain=<your-infisical-domain>
+            sudo systemctl start infisical-relay
+            ```
+          </Tab>
+          <Tab title="Foreground">
+            ```bash
+            infisical relay start \
+              --name=<relay-name> \
+              --enroll-method=aws \
+              --relay-id=<relay-id> \
+              --domain=<your-infisical-domain>
+            ```
+          </Tab>
+        </Tabs>
+      </Accordion>
+    </AccordionGroup>
 
-          ```bash
-          export INFISICAL_TOKEN=<your-machine-identity-token>
-          ```
+    <Warning>
+      The systemd install command requires Linux with root/sudo privileges.
+    </Warning>
 
-          <Warning>
-            The systemd install command requires a Linux operating system with root/sudo privileges.
-          </Warning>
+    <Info>
+      Token-method enrollment tokens are single-use and expire after 1 hour. If the token expires before deployment, click **Show deploy command** again on the relay detail page to generate a new one.
+    </Info>
 
-          ```bash
-          sudo infisical relay systemd install \
-             --token <your-machine-identity-token> \
-             --name <relay-name> \
-             --domain <your-infisical-domain> \
-             --host <static-ip-or-dns-of-the-server>
+    <Info>
+      You can safely re-run the same command to restart the relay. The CLI detects the token has already been used locally and skips enrollment automatically.
+    </Info>
 
-          # Start the relay service
-          sudo systemctl start infisical-relay
-          sudo systemctl enable infisical-relay
-          ```
-       </Tab>
+   </Step>
 
-       <Tab title="Other Environments">
-          For non-Linux systems or when you need more control over the relay process:
-
-          ```bash
-          infisical relay start \
-             --host=<host> \
-             --name=<name> \
-             --auth-method=<auth-method>
-          ```
-
-          This method supports all [machine identity auth methods](/documentation/platform/identities/machine-identities) and runs in the foreground. Suitable for production use on non-Linux systems or development environments.
-          Set the appropriate environment variables for your chosen auth method as described in Step 1 before running the relay start command.
-       </Tab>
-    </Tabs>
-
+   <Step title="Verify Your Relay Deployment">
+    After deployment, verify your relay is working:
+    1. **Check logs** for "Relay server started successfully" message.
+    2. **Verify registration** in the Infisical UI. Navigate to **Networking > Relays** and click on your relay to confirm it shows a "Healthy" status.
+    3. **Test connectivity** by deploying a gateway that routes through this relay.
    </Step>
 
 </Steps>
