@@ -28,10 +28,10 @@ import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
 
-const FAILURE_THRESHOLD = 10; // 10 errors threshold
+const FAILURE_THRESHOLD = 20; // 20 errors threshold
 const FAILURE_WINDOW_MINUTES = 5; // counter expires after this much idle time since the last error
 const FAILURE_WINDOW_SECONDS = FAILURE_WINDOW_MINUTES * 60;
-const FAILURE_ALERT_COOLDOWN_SECONDS = 12 * 60 * 60; // 12 hours alert cooldown
+const FAILURE_ALERT_COOLDOWN_SECONDS = 24 * 60 * 60; // 24 hours alert cooldown
 const LAST_ERROR_MESSAGE_MAX_LENGTH = 1000;
 
 export type TAuditLogStreamServiceFactoryDep = {
