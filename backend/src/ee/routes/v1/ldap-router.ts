@@ -185,7 +185,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           groupSearchFilter: z.string(),
           caCert: z.string(),
           clientCertificate: z.string(),
-          clientKeyCertificate: z.string()
+          hasClientKeyCertificate: z.boolean()
         })
       }
     },

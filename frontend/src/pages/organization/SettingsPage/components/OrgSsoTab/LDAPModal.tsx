@@ -21,12 +21,16 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
   Input,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Switch,
   TextArea
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -51,13 +55,19 @@ const LDAPFormSchema = z
     groupSearchFilter: z.string().default(""),
     caCert: z.string().optional(),
     clientCertificate: z.string().optional(),
-    clientKeyCertificate: z.string().optional()
+    clientKeyCertificate: z.string().optional(),
+    hasStoredClientKey: z.boolean().default(false),
+    enableMtls: z.boolean().default(false)
   })
   .refine(
-    (data) =>
-      Boolean(data.clientCertificate?.trim()) === Boolean(data.clientKeyCertificate?.trim()),
+    (data) => {
+      if (!data.enableMtls) return true;
+      const hasCert = Boolean(data.clientCertificate?.trim());
+      const hasKey = Boolean(data.clientKeyCertificate?.trim()) || data.hasStoredClientKey;
+      return hasCert && hasKey;
+    },
     {
-      message: "Client Certificate and Client Private Key must be provided together for mTLS.",
+      message: "Client Certificate and Client Private Key are required when mTLS is enabled.",
       path: ["clientKeyCertificate"]
     }
   );
@@ -79,7 +89,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const { mutateAsync: testLDAPConnection } = useTestLDAPConnection();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, watch } = useForm<TLDAPFormData>({
+  const { control, handleSubmit, reset, watch, setValue } = useForm<TLDAPFormData>({
     resolver: zodResolver(LDAPFormSchema)
   });
 
@@ -118,9 +128,12 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const watchCaCert = watch("caCert");
   const watchClientCertificate = watch("clientCertificate");
   const watchClientKeyCertificate = watch("clientKeyCertificate");
+  const watchHasStoredClientKey = watch("hasStoredClientKey");
+  const watchEnableMtls = watch("enableMtls");
 
   useEffect(() => {
     if (data) {
+      const hasMtls = Boolean(data?.hasClientKeyCertificate) || Boolean(data?.clientCertificate);
       reset({
         url: data?.url ?? "",
         bindDN: data?.bindDN ?? "",
@@ -131,7 +144,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         groupSearchFilter: data?.groupSearchFilter ?? "",
         caCert: data?.caCert ?? "",
         clientCertificate: data?.clientCertificate ?? "",
-        clientKeyCertificate: data?.clientKeyCertificate ?? "",
+        clientKeyCertificate: "",
+        hasStoredClientKey: Boolean(data?.hasClientKeyCertificate),
+        enableMtls: hasMtls,
         uniqueUserAttribute: data?.uniqueUserAttribute ?? ""
       });
     }
@@ -148,9 +163,24 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     groupSearchFilter,
     caCert,
     clientCertificate,
-    clientKeyCertificate
+    clientKeyCertificate,
+    hasStoredClientKey,
+    enableMtls
   }: TLDAPFormData) => {
     if (!currentOrg) return;
+
+    // When mTLS is disabled, send empty strings to clear both server-side values.
+    // When enabled: send the cert as-is; omit the key when the user didn't paste a new one
+    // and a key is already stored server-side (so the stored key is preserved).
+    const certForPayload = enableMtls ? clientCertificate : "";
+    let keyForPayload: string | undefined;
+    if (!enableMtls) {
+      keyForPayload = "";
+    } else if (hasStoredClientKey && !clientKeyCertificate?.trim()) {
+      keyForPayload = undefined;
+    } else {
+      keyForPayload = clientKeyCertificate;
+    }
 
     if (!data) {
       await createMutateAsync({
@@ -165,8 +195,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         groupSearchBase,
         groupSearchFilter,
         caCert,
-        clientCertificate,
-        clientKeyCertificate
+        clientCertificate: certForPayload,
+        clientKeyCertificate: keyForPayload
       });
     } else {
       await updateMutateAsync({
@@ -180,8 +210,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         groupSearchBase,
         groupSearchFilter,
         caCert,
-        clientCertificate,
-        clientKeyCertificate
+        clientCertificate: certForPayload,
+        clientKeyCertificate: keyForPayload
       });
     }
 
@@ -194,12 +224,21 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
-    if (Boolean(watchClientCertificate?.trim()) !== Boolean(watchClientKeyCertificate?.trim())) {
-      createNotification({
-        text: "Client Certificate and Client Private Key must be provided together for mTLS.",
-        type: "error"
-      });
-      return;
+    if (watchEnableMtls) {
+      if (watchHasStoredClientKey && !watchClientKeyCertificate?.trim()) {
+        createNotification({
+          text: "Paste the Client Private Key to test the connection — stored keys are not sent to the browser.",
+          type: "warning"
+        });
+        return;
+      }
+      if (!watchClientCertificate?.trim() || !watchClientKeyCertificate?.trim()) {
+        createNotification({
+          text: "Client Certificate and Client Private Key are required when mTLS is enabled.",
+          type: "error"
+        });
+        return;
+      }
     }
 
     const isConnected = await testLDAPConnection({
@@ -207,8 +246,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       bindDN: watchBindDN,
       bindPass: watchBindPass,
       caCert: watchCaCert ?? "",
-      clientCertificate: watchClientCertificate ?? "",
-      clientKeyCertificate: watchClientKeyCertificate ?? ""
+      clientCertificate: watchEnableMtls ? (watchClientCertificate ?? "") : "",
+      clientKeyCertificate: watchEnableMtls ? (watchClientKeyCertificate ?? "") : ""
     });
 
     if (isConnected) {
@@ -414,48 +453,78 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 />
                 <Controller
                   control={control}
-                  name="clientCertificate"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="ldap-client-cert">
-                        Client Certificate (Optional)
-                      </FieldLabel>
-                      <TextArea
-                        id="ldap-client-cert"
-                        placeholder="-----BEGIN CERTIFICATE----- ..."
-                        isError={Boolean(error)}
-                        {...field}
+                  name="enableMtls"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>Mutual TLS (mTLS)</FieldTitle>
+                        <FieldDescription>
+                          Enable to present a client certificate during the TLS handshake.
+                        </FieldDescription>
+                      </FieldContent>
+                      <Switch
+                        id="ldap-enable-mtls"
+                        variant="org"
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked);
+                          if (!checked) {
+                            setValue("clientCertificate", "", { shouldValidate: true });
+                            setValue("clientKeyCertificate", "", { shouldValidate: true });
+                          }
+                        }}
                       />
-                      <FieldError>{error?.message}</FieldError>
-                      <p className="mt-1 text-xs text-mineshaft-400">
-                        PEM-encoded client certificate used for mutual TLS (mTLS). Must be set
-                        together with the Client Private Key.
-                      </p>
                     </Field>
                   )}
                 />
-                <Controller
-                  control={control}
-                  name="clientKeyCertificate"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="ldap-client-key">
-                        Client Private Key (Optional)
-                      </FieldLabel>
-                      <TextArea
-                        id="ldap-client-key"
-                        placeholder="-----BEGIN PRIVATE KEY----- ..."
-                        isError={Boolean(error)}
-                        style={{ WebkitTextSecurity: "disc" } as CSSProperties}
-                        {...field}
-                      />
-                      <FieldError>{error?.message}</FieldError>
-                      <p className="mt-1 text-xs text-mineshaft-400">
-                        PEM-encoded private key matching the Client Certificate.
-                      </p>
-                    </Field>
-                  )}
-                />
+                {watchEnableMtls && (
+                  <>
+                    <Controller
+                      control={control}
+                      name="clientCertificate"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="ldap-client-cert">Client Certificate</FieldLabel>
+                          <TextArea
+                            id="ldap-client-cert"
+                            placeholder="-----BEGIN CERTIFICATE----- ..."
+                            isError={Boolean(error)}
+                            {...field}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                          <p className="mt-1 text-xs text-mineshaft-400">
+                            PEM-encoded client certificate used for mutual TLS (mTLS).
+                          </p>
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="clientKeyCertificate"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="ldap-client-key">Client Private Key</FieldLabel>
+                          <TextArea
+                            id="ldap-client-key"
+                            placeholder={
+                              watchHasStoredClientKey
+                                ? "Key is configured. Paste a new value to replace it."
+                                : "-----BEGIN PRIVATE KEY----- ..."
+                            }
+                            isError={Boolean(error)}
+                            style={{ WebkitTextSecurity: "disc" } as CSSProperties}
+                            {...field}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                          <p className="mt-1 text-xs text-mineshaft-400">
+                            PEM-encoded private key matching the Client Certificate. Stored
+                            encrypted server-side and never returned to the browser after save.
+                          </p>
+                        </Field>
+                      )}
+                    />
+                  </>
+                )}
               </FieldGroup>
               <Button
                 type="button"

@@ -412,9 +412,12 @@ export const ldapConfigServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
-    return getLdapCfg({
-      orgId
-    });
+    const ldap = await getLdapCfg({ orgId });
+    const { clientKeyCertificate, ...rest } = ldap;
+    return {
+      ...rest,
+      hasClientKeyCertificate: Boolean(clientKeyCertificate)
+    };
   };
 
   const bootLdap = async (organizationSlug: string) => {
