@@ -148,7 +148,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         notAfter: getDateTenYearsFromToday(),
         maxPathLength: "-1",
         keyAlgorithm: CertKeyAlgorithm.RSA_2048,
-        crlDistributionPointUrls: []
+        crlDistributionPointUrls: [],
+        disableManagedCrlDistributionPointUrl: false
       }
     }
   });
@@ -187,7 +188,9 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
             : CertKeyAlgorithm.RSA_2048,
           crlDistributionPointUrls: (ca.configuration.crlDistributionPointUrls ?? []).map(
             (value) => ({ value })
-          )
+          ),
+          disableManagedCrlDistributionPointUrl:
+            ca.configuration.disableManagedCrlDistributionPointUrl ?? false
         }
       });
     } else {
@@ -206,7 +209,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           notAfter: getDateTenYearsFromToday(),
           maxPathLength: "-1",
           keyAlgorithm: CertKeyAlgorithm.RSA_2048,
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       });
     }
