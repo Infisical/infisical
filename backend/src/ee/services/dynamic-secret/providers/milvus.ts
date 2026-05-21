@@ -317,8 +317,8 @@ export const MilvusProvider = ({
           if (role.code === 0 && role.data.length > 0) {
             await request.post("/v2/vectordb/roles/drop", { roleName }, requestConfig);
           }
-        } catch (err) {
-          logger.error(err, `Failed to describe Milvus role [roleName=${roleName}]`);
+        } catch (cleanupErr) {
+          logger.error(cleanupErr, `Failed to cleanup Milvus role [roleName=${roleName}]`);
         }
 
         await request.post("/v2/vectordb/users/drop", { userName: username }, requestConfig);
