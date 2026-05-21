@@ -567,10 +567,12 @@ export const normalizeUrlForComparison = (url: string) => {
 
 export const buildCrlDistributionPointUrls = (
   managedUrl: string,
-  customUrls: string[] | null | undefined
+  customUrls: string[] | null | undefined,
+  disableManagedUrl?: boolean
 ): string[] => {
   const seen = new Set<string>();
-  return [managedUrl, ...(customUrls ?? [])].reduce<string[]>((acc, rawUrl) => {
+  const sources = disableManagedUrl ? (customUrls ?? []) : [managedUrl, ...(customUrls ?? [])];
+  return sources.reduce<string[]>((acc, rawUrl) => {
     if (!rawUrl) return acc;
     const trimmed = rawUrl.trim();
     const normalized = normalizeUrlForComparison(trimmed);

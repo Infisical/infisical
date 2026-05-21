@@ -276,6 +276,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     keyAlgorithm,
     name,
     crlDistributionPointUrls,
+    disableManagedCrlDistributionPointUrl,
     ...dto
   }: TCreateCaDTO) => {
     let projectId: string;
@@ -363,6 +364,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           dn,
           keyAlgorithm,
           crlDistributionPointUrls: crlDistributionPointUrls ?? [],
+          disableManagedCrlDistributionPointUrl: disableManagedCrlDistributionPointUrl ?? false,
           ...(type === InternalCaType.ROOT && {
             maxPathLength,
             ...(notAfter && {
@@ -516,7 +518,14 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA and edit CRL distribution point URLs
    */
-  const updateCaById = async ({ caId, status, name, crlDistributionPointUrls, ...dto }: TUpdateCaDTO) => {
+  const updateCaById = async ({
+    caId,
+    status,
+    name,
+    crlDistributionPointUrls,
+    disableManagedCrlDistributionPointUrl,
+    ...dto
+  }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -541,8 +550,15 @@ export const internalCertificateAuthorityServiceFactory = ({
         await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
       }
 
-      if (crlDistributionPointUrls !== undefined) {
-        await internalCertificateAuthorityDAL.update({ caId: ca.id }, { crlDistributionPointUrls }, tx);
+      if (crlDistributionPointUrls !== undefined || disableManagedCrlDistributionPointUrl !== undefined) {
+        await internalCertificateAuthorityDAL.update(
+          { caId: ca.id },
+          {
+            ...(crlDistributionPointUrls !== undefined && { crlDistributionPointUrls }),
+            ...(disableManagedCrlDistributionPointUrl !== undefined && { disableManagedCrlDistributionPointUrl })
+          },
+          tx
+        );
       }
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -1232,7 +1248,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
-    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
+    const cdpUrls = buildCrlDistributionPointUrls(
+      managedCdpUrl,
+      ca.internalCa.crlDistributionPointUrls,
+      ca.internalCa.disableManagedCrlDistributionPointUrl
+    );
 
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
@@ -1251,7 +1271,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
-        new x509.CRLDistributionPointsExtension(cdpUrls),
+        ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
         new x509.AuthorityInfoAccessExtension({
           caIssuers: new x509.GeneralName("url", caIssuerUrl)
         })
@@ -1822,7 +1842,11 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
-    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
+    const cdpUrls = buildCrlDistributionPointUrls(
+      managedCdpUrl,
+      ca.internalCa.crlDistributionPointUrls,
+      ca.internalCa.disableManagedCrlDistributionPointUrl
+    );
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
       basicConstraints,
@@ -1832,7 +1856,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const extensions: x509.Extension[] = [
       basicConstraintsExtension,
-      new x509.CRLDistributionPointsExtension(cdpUrls),
+      ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       new x509.AuthorityInfoAccessExtension({
@@ -2225,7 +2249,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
-    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
+    const cdpUrls = buildCrlDistributionPointUrls(
+      managedCdpUrl,
+      ca.internalCa.crlDistributionPointUrls,
+      ca.internalCa.disableManagedCrlDistributionPointUrl
+    );
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
       basicConstraints,
@@ -2237,7 +2265,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       basicConstraintsExtension,
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
-      new x509.CRLDistributionPointsExtension(cdpUrls),
+      ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
       new x509.AuthorityInfoAccessExtension({
         caIssuers: new x509.GeneralName("url", caIssuerUrl)
       }),
