@@ -173,7 +173,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       return {
         privilege: {
           ...privilege,
-          identityId: privilegeDoc.actorIdentityId as string,
+          identityId: privilegeDoc.actorIdentityId,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
