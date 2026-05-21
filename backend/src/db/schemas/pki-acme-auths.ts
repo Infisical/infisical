@@ -14,11 +14,11 @@ export const PkiAcmeAuthsSchema = z.object({
   token: z.string().nullable().optional(),
   identifierType: z.string(),
   identifierValue: z.string(),
-  wildcard: z.boolean().nullable().optional(),
   expiresAt: z.date(),
   certificateId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  wildcard: z.boolean().default(false).nullable().optional()
 });
 
 export type TPkiAcmeAuths = z.infer<typeof PkiAcmeAuthsSchema>;
