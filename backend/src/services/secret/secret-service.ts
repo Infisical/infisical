@@ -329,7 +329,8 @@ export const secretServiceFactory = ({
         actor,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name
       });
     }
     return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
@@ -474,7 +475,8 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         projectId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name
       });
     }
 
@@ -589,7 +591,8 @@ export const secretServiceFactory = ({
         actor,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name
       });
     }
 
@@ -916,7 +919,8 @@ export const secretServiceFactory = ({
       secretPath: path,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name
     });
 
     return newSecrets;
@@ -1039,7 +1043,8 @@ export const secretServiceFactory = ({
       secretPath: path,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name
     });
 
     return secrets;
@@ -1141,7 +1146,8 @@ export const secretServiceFactory = ({
       secretPath: path,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name
     });
 
     return secretsDeleted;
@@ -2855,6 +2861,7 @@ export const secretServiceFactory = ({
       projectId: project.id,
       orgId: project.orgId,
       environmentSlug: environment,
+      environmentName: folder.environment.name,
       excludeReplication: true
     });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
@@ -2966,6 +2973,7 @@ export const secretServiceFactory = ({
       projectId: project.id,
       orgId: project.orgId,
       environmentSlug: environment,
+      environmentName: folder.environment.name,
       excludeReplication: true
     });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
@@ -3461,6 +3469,7 @@ export const secretServiceFactory = ({
         orgId: project.orgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
+        environmentName: destinationFolder.environment.name,
         actorId,
         actor
       });
@@ -3473,6 +3482,7 @@ export const secretServiceFactory = ({
         orgId: project.orgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
+        environmentName: sourceFolder.environment.name,
         actorId,
         actor
       });

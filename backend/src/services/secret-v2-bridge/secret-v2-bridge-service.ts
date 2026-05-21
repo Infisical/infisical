@@ -448,6 +448,7 @@ export const secretV2BridgeServiceFactory = ({
         actor,
         projectId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretCreate,
@@ -756,6 +757,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretUpdate,
@@ -885,6 +887,7 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folder.environment.slug,
+          environmentName: folder.environment.name,
           events: [
             {
               type: ProjectEvents.SecretDelete,
@@ -2074,6 +2077,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       orgId: actorOrgId,
       environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name,
       events: [
         {
           type: ProjectEvents.SecretCreate,
@@ -2545,6 +2549,7 @@ export const secretV2BridgeServiceFactory = ({
               projectId,
               orgId: actorOrgId,
               environmentSlug: environment,
+              environmentName: projectEnvironment.name,
               events: [
                 {
                   type: ProjectEvents.SecretUpdate,
@@ -2682,6 +2687,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretDelete,
@@ -3356,6 +3362,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
+        environmentName: destinationFolder.environment.name,
         actorId,
         actor,
         events: [
@@ -3376,6 +3383,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
+        environmentName: sourceFolder.environment.name,
         actorId,
         actor,
         events: [

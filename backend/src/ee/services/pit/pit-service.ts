@@ -420,6 +420,7 @@ export const pitServiceFactory = ({
               projectId,
               orgId: actorOrgId,
               environmentSlug: fp.environmentSlug,
+              environmentName: fp.environmentName,
               actorId,
               actor
             })
@@ -456,6 +457,7 @@ export const pitServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folderPath.environmentSlug,
+          environmentName: folderPath.environmentName,
           actorId,
           actor
         });
@@ -504,6 +506,7 @@ export const pitServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folderPath.environmentSlug,
+          environmentName: folderPath.environmentName,
           actorId,
           actor
         });

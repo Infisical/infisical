@@ -679,6 +679,7 @@ export const secretRotationV2ServiceFactory = ({
         secretPath,
         projectId,
         environmentSlug: environment,
+        environmentName: folder.environment.name,
         excludeReplication: true
       });
 
@@ -819,6 +820,7 @@ export const secretRotationV2ServiceFactory = ({
           secretPath: folder.path,
           projectId,
           environmentSlug: environment.slug,
+          environmentName: environment.name,
           excludeReplication: true
         });
       }
@@ -955,6 +957,7 @@ export const secretRotationV2ServiceFactory = ({
         secretPath: folder.path,
         projectId,
         environmentSlug: environment.slug,
+        environmentName: environment.name,
         excludeReplication: true
       });
     }
@@ -1137,6 +1140,7 @@ export const secretRotationV2ServiceFactory = ({
       secretPath: destinationSecretPath,
       projectId,
       environmentSlug: destinationEnvironment,
+      environmentName: destinationFolder.environment.name,
       excludeReplication: true
     });
 
@@ -1146,6 +1150,7 @@ export const secretRotationV2ServiceFactory = ({
       secretPath: folder.path,
       projectId,
       environmentSlug: environment.slug,
+      environmentName: environment.name,
       excludeReplication: true
     });
 
@@ -1174,6 +1179,7 @@ export const secretRotationV2ServiceFactory = ({
         payload: {
           projectId,
           environment: environment.slug,
+          environmentName: environment.name,
           secretPath: folder.path,
           rotationName: secretRotation.name,
           triggeredManually: isManualRotation,
@@ -1362,6 +1368,7 @@ export const secretRotationV2ServiceFactory = ({
         secretPath: folder.path,
         projectId,
         environmentSlug: environment.slug,
+        environmentName: environment.name,
         excludeReplication: true
       });
 
@@ -2005,6 +2012,7 @@ export const secretRotationV2ServiceFactory = ({
       secretPath: folder.path,
       projectId,
       environmentSlug: environment.slug,
+      environmentName: environment.name,
       excludeReplication: true
     });
 

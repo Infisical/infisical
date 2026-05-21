@@ -541,6 +541,7 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
   projectId: string;
   orgId: string;
   environmentSlug: string;
+  environmentName: string;
   // cases for just doing sync integration and webhook
   excludeReplication?: T;
 } & (T extends true
