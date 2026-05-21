@@ -54,6 +54,13 @@ The short video below walks through configuring a Vercel Sync end-to-end.
             <Note>
                 Vercel does not expose the values of [sensitive environment variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables), so Infisical cannot import them during the initial sync. As a result, these secrets are created in Infisical with empty values. After the first sync, you'll need to manually re-enter their values in Infisical to ensure both platforms stay aligned.
             </Note>
+            <Note>
+                **Team-scoped sync — initial import scope matching**
+
+                On the initial import, Infisical only imports Vercel shared environment variables whose scope exactly matches this sync's configuration (same target environments, target projects, and Apply to all Custom Environments flag). Variables covering a broader set of environments — or split across separate records per environment — will not be imported. The next sync will detach those records and create a new one for the sync's scope using the value from Infisical.
+
+                Example: Vercel has a single shared variable `FOO` scoped to **Production and Preview**, but the sync targets only **Production**. `FOO` is not imported. On the next sync, the existing `FOO` is rescoped to Preview (value preserved) and a new `FOO` record is created for Production with the value from Infisical.
+            </Note>
             - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
             <Note>
                 We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
