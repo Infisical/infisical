@@ -81,8 +81,8 @@ export type TRevokeCertDTO = {
 
 export type TImportCertificateDTO = {
   certificatePem: string;
-  privateKeyPem: string;
-  chainPem: string;
+  privateKeyPem?: string;
+  chainPem?: string;
 
   pkiCollectionId?: string;
   friendlyName?: string;
@@ -91,8 +91,8 @@ export type TImportCertificateDTO = {
 
 export type TImportCertificateResponse = {
   certificate: string;
-  certificateChain: string;
-  privateKey: string;
+  certificateChain?: string;
+  privateKey?: string;
   serialNumber: string;
 };
 
