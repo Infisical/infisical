@@ -739,6 +739,13 @@ export const projectServiceFactory = ({
       return {
         ...project,
         environments: envs,
+        deletedEnvironments: [] as {
+          id: string;
+          name: string;
+          slug: string;
+          expireAfter: Date;
+          requestedSoftDeleteAt: Date;
+        }[],
         _id: project.id
       };
     });
@@ -845,10 +852,20 @@ export const projectServiceFactory = ({
   };
 
   const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
-    const workspaces =
+    const workspaces = (
       actor === ActorType.IDENTITY
         ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type);
+        : await projectDAL.findUserProjects(actorId, actorOrgId, type)
+    ).map((workspace) => ({
+      ...workspace,
+      deletedEnvironments: [] as {
+        id: string;
+        name: string;
+        slug: string;
+        expireAfter: Date;
+        requestedSoftDeleteAt: Date;
+      }[]
+    }));
 
     if (includeRoles) {
       const { permission } = await permissionService.getOrgPermission({
@@ -900,7 +917,9 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    return project;
+    const deletedEnvironments = await projectDAL.findProjectDeletedEnvironments(project.id);
+
+    return { ...project, deletedEnvironments };
   };
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {

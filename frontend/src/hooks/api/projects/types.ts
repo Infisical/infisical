@@ -34,6 +34,7 @@ export type Project = {
   updatedAt: string;
   autoCapitalization: boolean;
   environments: ProjectEnv[];
+  deletedEnvironments: ProjectDeletedEnv[];
   pitVersionLimit: number;
   auditLogsRetentionDays: number;
   slug: string;
@@ -50,6 +51,11 @@ export type ProjectEnv = {
   id: string;
   name: string;
   slug: string;
+};
+
+export type ProjectDeletedEnv = ProjectEnv & {
+  expireAfter: string;
+  requestedSoftDeleteAt: string;
 };
 
 export type ProjectTag = { id: string; name: string; slug: string };
@@ -121,7 +127,9 @@ export type UpdateEnvironmentDTO = {
   position?: number;
 };
 
-export type DeleteEnvironmentDTO = { projectId: string; id: string };
+export type DeleteEnvironmentDTO = { projectId: string; id: string; hardDelete?: boolean };
+
+export type RestoreEnvironmentDTO = { projectId: string; id: string };
 
 export type TUpdateWorkspaceUserRoleDTO = {
   membershipId: string;

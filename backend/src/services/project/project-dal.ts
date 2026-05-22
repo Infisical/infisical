@@ -454,6 +454,27 @@ export const projectDALFactory = (db: TDbClient) => {
     return project;
   };
 
+  const findProjectDeletedEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Environment)
+        .where({ projectId })
+        .whereNotNull("expireAfter")
+        .whereNotNull("requestedSoftDeleteAt")
+        .select("id", "slug", "name", "expireAfter", "requestedSoftDeleteAt")
+        .orderBy("position", "asc");
+
+      return rows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        expireAfter: row.expireAfter as Date,
+        requestedSoftDeleteAt: row.requestedSoftDeleteAt as Date
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project deleted environments" });
+    }
+  };
+
   const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
@@ -484,6 +505,7 @@ export const projectDALFactory = (db: TDbClient) => {
     checkProjectUpgradeStatus,
     searchProjects,
     findProjectByEnvId,
+    findProjectDeletedEnvironments,
     countOfOrgProjects
   };
 };

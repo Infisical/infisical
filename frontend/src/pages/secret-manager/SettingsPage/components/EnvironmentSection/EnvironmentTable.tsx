@@ -1,8 +1,23 @@
-import { ArrowDownIcon, ArrowUpIcon, PencilIcon, XIcon } from "lucide-react";
+import { format } from "date-fns";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  HourglassIcon,
+  MoreVerticalIcon,
+  PencilIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+  XIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -24,22 +39,15 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { useUpdateWsEnvironment } from "@app/hooks/api";
+import { useRestoreWsEnvironment, useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+type PopUpKeys = "updateEnv" | "deleteEnv" | "hardDeleteEnv" | "upgradePlan";
+
+type EnvPayload = { name: string; slug: string; id: string; expireAfter?: string };
+
 type Props = {
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["updateEnv", "deleteEnv", "upgradePlan"]>,
-    {
-      name,
-      slug,
-      id
-    }: {
-      name: string;
-      slug: string;
-      id: string;
-    }
-  ) => void;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
 };
 
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
@@ -47,6 +55,10 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { subscription } = useSubscription();
 
   const updateEnvironment = useUpdateWsEnvironment();
+  const restoreEnvironment = useRestoreWsEnvironment();
+
+  const activeEnvironments = currentProject.environments ?? [];
+  const deletedEnvironments = currentProject.deletedEnvironments ?? [];
 
   const handleReorderEnv = async (id: string, position: number) => {
     if (!currentProject?.id) return;
@@ -63,17 +75,39 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
     });
   };
 
+  const handleRestoreEnv = async (id: string) => {
+    if (!currentProject?.id) return;
+
+    try {
+      await restoreEnvironment.mutateAsync({
+        projectId: currentProject.id,
+        id
+      });
+
+      createNotification({
+        text: "Successfully restored environment",
+        type: "success"
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to restore environment";
+      createNotification({
+        text: message,
+        type: "error"
+      });
+    }
+  };
+
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentProject?.environments
-      ? currentProject.environments.length <= subscription.environmentLimit
+    subscription?.environmentLimit && activeEnvironments
+      ? activeEnvironments.length <= subscription.environmentLimit
       : true;
 
   const environmentsOverPlanLimit =
-    subscription?.environmentLimit && currentProject?.environments
-      ? Math.max(0, currentProject.environments.length - subscription.environmentLimit)
+    subscription?.environmentLimit && activeEnvironments
+      ? Math.max(0, activeEnvironments.length - subscription.environmentLimit)
       : 0;
 
-  if (!currentProject.environments?.length) {
+  if (!activeEnvironments.length && !deletedEnvironments.length) {
     return (
       <Empty className="border">
         <EmptyHeader>
@@ -96,7 +130,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {currentProject.environments.map(({ name, slug, id }, pos) => (
+        {activeEnvironments.map(({ name, slug, id }, pos) => (
           <TableRow key={id}>
             <TableCell>{name}</TableCell>
             <TableCell>{slug}</TableCell>
@@ -112,9 +146,9 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                       variant="ghost-muted"
                       size="xs"
                       onClick={() =>
-                        handleReorderEnv(id, Math.min(currentProject.environments.length, pos + 2))
+                        handleReorderEnv(id, Math.min(activeEnvironments.length, pos + 2))
                       }
-                      isDisabled={pos === currentProject.environments.length - 1 || !isAllowed}
+                      isDisabled={pos === activeEnvironments.length - 1 || !isAllowed}
                     >
                       <ArrowDownIcon className="size-4" />
                     </IconButton>
@@ -184,6 +218,62 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     >
                       <XIcon className="size-4" />
                     </IconButton>
+                  )}
+                </ProjectPermissionCan>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+        {deletedEnvironments.map(({ name, slug, id, expireAfter }) => (
+          <TableRow key={id} className="bg-warning/[0.025]">
+            <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
+            <TableCell className="text-mineshaft-400">{slug}</TableCell>
+            <TableCell>
+              <div className="flex items-center justify-end gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="warning">
+                      <HourglassIcon className="size-3" />
+                      Pending deletion
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Will be permanently deleted on{" "}
+                    {format(new Date(expireAfter), "MMM d, yyyy 'at' h:mm a")}
+                  </TooltipContent>
+                </Tooltip>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={ProjectPermissionSub.Environments}
+                >
+                  {(isAllowed) => (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                        <IconButton
+                          aria-label="Environment options"
+                          variant="ghost-muted"
+                          size="xs"
+                          isDisabled={!isAllowed}
+                        >
+                          <MoreVerticalIcon className="size-4" />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleRestoreEnv(id)}>
+                          <RotateCcwIcon />
+                          Restore environment
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={() =>
+                            handlePopUpOpen("hardDeleteEnv", { name, slug, id, expireAfter })
+                          }
+                        >
+                          <Trash2Icon />
+                          Delete permanently
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </ProjectPermissionCan>
               </div>

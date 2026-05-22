@@ -33,6 +33,7 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  RestoreEnvironmentDTO,
   TGetIdentityPermissionAuditResponse,
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
@@ -350,8 +351,25 @@ export const useDeleteWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, DeleteEnvironmentDTO>({
+    mutationFn: ({ id, projectId, hardDelete }) => {
+      return apiRequest.delete(`/api/v1/projects/${projectId}/environments/${id}`, {
+        params: hardDelete ? { hardDelete: true } : undefined
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getAllUserProjects()
+      });
+    }
+  });
+};
+
+export const useRestoreWsEnvironment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<object, object, RestoreEnvironmentDTO>({
     mutationFn: ({ id, projectId }) => {
-      return apiRequest.delete(`/api/v1/projects/${projectId}/environments/${id}`);
+      return apiRequest.post(`/api/v1/projects/${projectId}/environments/restore/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
