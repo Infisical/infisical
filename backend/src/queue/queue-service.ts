@@ -99,7 +99,8 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal"
+  CaAutoRenewal = "ca-auto-renewal",
+  ProjectEnvHardDelete = "project-env-hard-delete"
 }
 
 export enum QueueJobs {
@@ -171,7 +172,8 @@ export enum QueueJobs {
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
-  DigiCertOrderPolling = "digicert-order-polling-job"
+  DigiCertOrderPolling = "digicert-order-polling-job",
+  ProjectEnvHardDelete = "project-env-hard-delete-job"
 }
 
 export type TQueueOptions = {
@@ -485,6 +487,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
+  [QueueName.ProjectEnvHardDelete]: {
+    name: QueueJobs.ProjectEnvHardDelete;
+    payload: { envId: string; projectId: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -543,6 +549,7 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  jobExistsById: <T extends QueueName>(name: T, jobId: string) => Promise<boolean>;
   // @deprecated Use getJobSchedulers instead.
   getRepeatableJobs: (
     name: QueueName,
@@ -766,6 +773,12 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return job?.remove().catch(() => undefined);
   };
 
+  const jobExistsById: TQueueServiceFactory["jobExistsById"] = async (name, jobId) => {
+    const q = queueContainer[name];
+    const job = await q?.getJob(jobId);
+    return Boolean(job);
+  };
+
   const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
     await q?.drain();
@@ -877,6 +890,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    jobExistsById,
     getRepeatableJobs,
     getDelayedJobs,
     upsertJobScheduler,

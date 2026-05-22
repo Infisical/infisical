@@ -18,6 +18,10 @@ export type TDeleteEnvDTO = {
   hardDelete?: boolean;
 } & TProjectPermission;
 
+export type TRestoreEnvDTO = {
+  id: string;
+} & TProjectPermission;
+
 export type TReorderEnvDTO = {
   id: string;
   pos: number;

@@ -1197,6 +1197,10 @@ export const ENVIRONMENTS = {
     hardDelete:
       "When true, permanently removes the environment. When false or omitted, the environment is soft-deleted (preserved with an expiredAt timestamp) and hidden from subsequent reads."
   },
+  RESTORE: {
+    projectId: "The ID of the project the environment belongs to.",
+    id: "The ID of the soft-deleted environment to restore."
+  },
   GET: {
     projectId: "The ID of the project the environment belongs to.",
     id: "The ID of the environment to fetch."

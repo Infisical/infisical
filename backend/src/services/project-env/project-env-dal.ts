@@ -64,16 +64,40 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
-  const softDeleteById = async (id: string, projectId: string, tx?: Knex) => {
+  const softDeleteById = async (id: string, projectId: string, expiredAt: Date, tx?: Knex) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNull("expiredAt")
-        .update({ expiredAt: new Date() })
+        .update({ expiredAt })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Soft delete environment" });
+    }
+  };
+
+  // Bypasses the soft-delete read filter on findById/findOne/find. Only intended
+  // for the restore flow — every other read path must keep soft-deleted envs hidden.
+  const findByIdIncludingExpired = async (id: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment).where({ id }).first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id including expired" });
+    }
+  };
+
+  const restoreById = async (id: string, projectId: string, position: number, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNotNull("expiredAt")
+        .update({ expiredAt: null, position })
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Restore environment" });
     }
   };
 
@@ -133,6 +157,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     find,
     findBySlugs,
     softDeleteById,
+    findByIdIncludingExpired,
+    restoreById,
     findLastEnvPosition,
     updateAllPosition,
     shiftPositions

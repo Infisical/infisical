@@ -12,7 +12,8 @@ import { logger } from "@app/lib/logger";
 
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
-import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import { SOFT_DELETE_GRACE_MS, TProjectEnvQueueFactory } from "./project-env-queue";
+import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TRestoreEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
@@ -22,6 +23,7 @@ type TProjectEnvServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
+  projectEnvQueue: Pick<TProjectEnvQueueFactory, "scheduleHardDelete" | "cancelScheduledHardDelete">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -33,7 +35,8 @@ export const projectEnvServiceFactory = ({
   keyStore,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
-  secretApprovalPolicyEnvironmentDAL
+  secretApprovalPolicyEnvironmentDAL,
+  projectEnvQueue
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -267,14 +270,101 @@ export const projectEnvServiceFactory = ({
               name: "DeleteEnvironment"
             });
 
+          // Clear any pending soft-delete cleanup; harmless if none exists.
+          await projectEnvQueue.cancelScheduledHardDelete(id);
+
           return doc;
         }
 
-        const doc = await projectEnvDAL.softDeleteById(id, projectId, tx);
+        const expiredAt = new Date(Date.now() + SOFT_DELETE_GRACE_MS);
+        const doc = await projectEnvDAL.softDeleteById(id, projectId, expiredAt, tx);
         if (!doc)
           throw new NotFoundError({
             message: `Environment with id '${id}' in project with ID '${projectId}' not found`,
             name: "DeleteEnvironment"
+          });
+
+        // Schedule inside the tx so a Redis-side failure rolls back the soft-delete.
+        await projectEnvQueue.scheduleHardDelete(id, projectId, SOFT_DELETE_GRACE_MS);
+
+        return doc;
+      });
+
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
+        KeyStoreTtls.ProjectEnvironmentOperationMarkerInSeconds,
+        "true"
+      );
+
+      return env;
+    } finally {
+      await lock?.release();
+    }
+  };
+
+  const restoreEnvironment = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod, id }: TRestoreEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
+
+    const lock = await keyStore
+      .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
+      .catch(() => null);
+
+    try {
+      if (!lock) {
+        await keyStore.waitTillReady({
+          key: KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
+          keyCheckCb: (val) => val === "true",
+          waitingCb: () => logger.debug("Restore project environment. Waiting for "),
+          delay: 500
+        });
+      }
+
+      // Cancel the scheduled hard-delete BEFORE clearing expiredAt so the worker cannot
+      // race-fire between commit and removal. cancelScheduledHardDelete is idempotent.
+      await projectEnvQueue.cancelScheduledHardDelete(id);
+
+      const env = await projectEnvDAL.transaction(async (tx) => {
+        const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
+        if (!target || target.projectId !== projectId || target.expiredAt === null) {
+          throw new NotFoundError({
+            message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "RestoreEnvironment"
+          });
+        }
+
+        const slugConflict = await projectEnvDAL.findOne({ projectId, slug: target.slug }, tx);
+        if (slugConflict) {
+          throw new BadRequestError({
+            message: `Cannot restore environment: slug '${target.slug}' is already in use by another environment in this project. Rename or remove the conflicting environment, then retry.`,
+            name: "RestoreEnvironment"
+          });
+        }
+
+        const activeEnvs = await projectEnvDAL.find({ projectId }, { tx });
+        // getProjectPermission above guarantees project existence and org membership,
+        // so actorOrgId === project.orgId — no separate project lookup needed.
+        const plan = await licenseService.getPlan(actorOrgId);
+        if (plan.environmentLimit !== null && activeEnvs.length >= plan.environmentLimit) {
+          throw new BadRequestError({
+            message:
+              "Failed to restore environment due to environment limit reached. Upgrade plan or remove an existing environment."
+          });
+        }
+
+        const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
+        const doc = await projectEnvDAL.restoreById(id, projectId, lastPos + 1, tx);
+        if (!doc)
+          throw new NotFoundError({
+            message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "RestoreEnvironment"
           });
 
         return doc;
@@ -319,6 +409,7 @@ export const projectEnvServiceFactory = ({
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
+    restoreEnvironment,
     getEnvironmentById
   };
 };
