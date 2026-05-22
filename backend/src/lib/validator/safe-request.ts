@@ -41,14 +41,22 @@ export const validateAndPinUrl = async (
     throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
   }
 
+  // IPv6 literal hostnames come back from `new URL()` wrapped in brackets
+  // (e.g. "[::1]"). isIP and dns.lookup both reject the bracketed form, so
+  // strip them before passing the host on.
+  const rawHost =
+    validUrl.hostname.startsWith("[") && validUrl.hostname.endsWith("]")
+      ? validUrl.hostname.slice(1, -1)
+      : validUrl.hostname;
+
   let entries: LookupAddress[];
-  if (isIP(validUrl.hostname)) {
-    entries = [{ address: validUrl.hostname, family: isIP(validUrl.hostname) }];
+  if (isIP(rawHost)) {
+    entries = [{ address: rawHost, family: isIP(rawHost) }];
   } else {
-    if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
+    if (rawHost === "localhost" || rawHost === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const lookups = await dns.lookup(validUrl.hostname, { all: true });
+    const lookups = await dns.lookup(rawHost, { all: true });
 
     if (!lookups || lookups.length === 0) {
       throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
@@ -63,13 +71,13 @@ export const validateAndPinUrl = async (
 
   // Block Infisical's own infrastructure (DB, Redis, etc.).
   await verifyHostInputValidity({
-    host: validUrl.hostname,
+    host: rawHost,
     isGateway: false,
     isDynamicSecret: false,
     preResolvedIps: entries.map((e) => e.address)
   });
 
-  return { hostname: validUrl.hostname, entries };
+  return { hostname: rawHost, entries };
 };
 
 type TLookupOneCallback = (err: NodeJS.ErrnoException | null, address: string, family: number) => void;

@@ -173,6 +173,28 @@ describe("safe-request SSRF helpers", () => {
       setLookup([]);
       await expect(validateAndPinUrl("https://example.com")).rejects.toThrow(/Could not resolve hostname/i);
     });
+
+    it("handles IPv6 literal URLs — strips the brackets new URL() adds", async () => {
+      // public-ish v6 literal; should NOT hit dns.lookup at all
+      const result = await validateAndPinUrl(`http://[${PUBLIC_IP_V6}]/`);
+      expect(result).toEqual({ hostname: PUBLIC_IP_V6, entries: [{ address: PUBLIC_IP_V6, family: 6 }] });
+      expect(lookupMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects IPv6 loopback literal `[::1]` via the local-IP check, not a DNS error", async () => {
+      await expect(validateAndPinUrl("http://[::1]/")).rejects.toThrow(/Local IPs not allowed/i);
+      expect(lookupMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects IPv4-mapped IPv6 loopback `[::ffff:127.0.0.1]` via the local-IP check", async () => {
+      await expect(validateAndPinUrl("http://[::ffff:127.0.0.1]/")).rejects.toThrow(/Local IPs not allowed/i);
+      expect(lookupMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects the hex form of IPv4-mapped loopback `[::ffff:7f00:1]` (same address, different notation)", async () => {
+      await expect(validateAndPinUrl("http://[::ffff:7f00:1]/")).rejects.toThrow(/Local IPs not allowed/i);
+      expect(lookupMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("buildSsrfSafeAgent / pinned lookup", () => {
