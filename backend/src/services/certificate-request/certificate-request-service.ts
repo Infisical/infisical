@@ -435,7 +435,7 @@ export const certificateRequestServiceFactory = ({
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    return certificateRequestDAL.updateStatus(certificateRequestId, status, errorMessage);
+    return certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
   };
 
   const attachCertificateToRequest = async ({
@@ -624,7 +624,10 @@ export const certificateRequestServiceFactory = ({
       actorLabel = identity?.name ? `identity ${identity.name}` : "identity";
     }
 
-    const updated = await certificateRequestDAL.updateStatus(
+    const previousStatus = certificateRequest.status as CertificateRequestStatus;
+    const previousPendingMessage = certificateRequest.pendingMessage ?? null;
+
+    const updated = await certificateRequestDAL.transitionFromPending(
       certificateRequestId,
       CertificateRequestStatus.FAILED,
       `Cancelled by ${actorLabel}`
@@ -635,7 +638,9 @@ export const certificateRequestServiceFactory = ({
       return {
         certificateRequest: refreshed,
         projectId: certificateRequest.projectId,
-        cancelled: false
+        cancelled: false,
+        previousStatus,
+        previousPendingMessage
       };
     }
 
@@ -669,7 +674,9 @@ export const certificateRequestServiceFactory = ({
     return {
       certificateRequest: updated,
       projectId: certificateRequest.projectId,
-      cancelled: true
+      cancelled: true,
+      previousStatus,
+      previousPendingMessage
     };
   };
 

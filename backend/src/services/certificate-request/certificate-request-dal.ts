@@ -95,7 +95,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateStatus = async (
+  const transitionFromPending = async (
     id: string,
     status: string,
     errorMessage?: string,
@@ -113,7 +113,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .returning("*");
       return updated ?? null;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Update certificate request status" });
+      throw new DatabaseError({ error, name: "Transition certificate request from pending status" });
     }
   };
 
@@ -508,7 +508,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     findByIdWithCertificate,
     findPendingByProjectId,
     findPendingValidationByCaType,
-    updateStatus,
+    transitionFromPending,
     setPendingMessage,
     transitionToPendingValidation,
     attachCertificate,

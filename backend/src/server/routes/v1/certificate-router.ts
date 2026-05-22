@@ -766,7 +766,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { certificateRequest, projectId, cancelled } =
+      const { certificateRequest, projectId, cancelled, previousStatus, previousPendingMessage } =
         await server.services.certificateRequest.cancelCertificateRequest({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -782,7 +782,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           type: EventType.CANCEL_CERTIFICATE_REQUEST,
           metadata: {
             certificateRequestId: req.params.requestId,
-            cancelled
+            cancelled,
+            previousStatus,
+            previousPendingMessage
           }
         }
       });

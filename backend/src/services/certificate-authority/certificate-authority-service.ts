@@ -121,7 +121,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "findById" | "updateById" | "updateStatus" | "attachCertificate" | "setPendingMessage"
+    "findById" | "updateById" | "transitionFromPending" | "attachCertificate" | "setPendingMessage"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -1151,7 +1151,7 @@ export const certificateAuthorityServiceFactory = ({
         certificateRequestDAL,
         certificateRequestService: {
           updateCertificateRequestStatus: async ({ certificateRequestId: id, status, errorMessage }) =>
-            certificateRequestDAL.updateStatus(id, status, errorMessage),
+            certificateRequestDAL.transitionFromPending(id, status, errorMessage),
           attachCertificateToRequest: async ({ certificateRequestId: id, certificateId }) =>
             certificateRequestDAL.attachCertificate(id, certificateId)
         },

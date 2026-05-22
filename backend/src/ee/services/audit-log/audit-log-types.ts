@@ -6190,6 +6190,8 @@ interface CancelCertificateRequestEvent {
   metadata: {
     certificateRequestId: string;
     cancelled: boolean;
+    previousStatus: string;
+    previousPendingMessage: string | null;
   };
 }
 
