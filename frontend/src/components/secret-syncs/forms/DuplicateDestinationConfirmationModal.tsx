@@ -1,12 +1,15 @@
+import { AlertTriangleIcon } from "lucide-react";
+
 import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle
 } from "@app/components/v3";
 
 type Props = {
@@ -27,11 +30,14 @@ export const DuplicateDestinationConfirmationModal = ({
   isDisabled
 }: Props) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Duplicate Destination Configuration</DialogTitle>
-          <DialogDescription>
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="sm:max-w-lg!">
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <AlertTriangleIcon className="text-danger" />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Duplicate Destination Configuration</AlertDialogTitle>
+          <AlertDialogDescription>
             Another secret sync in your organization is already configured with the same
             destination.{" "}
             <span className={isDisabled ? "text-danger" : ""}>
@@ -39,8 +45,8 @@ export const DuplicateDestinationConfirmationModal = ({
                 ? "Your organization does not allow duplicate destination configurations."
                 : "Proceeding may cause conflicts or overwrite existing data."}
             </span>
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
         {duplicateProjectId && (
           <p className="text-xs text-mineshaft-400">
             Duplicate found in project ID:{" "}
@@ -50,26 +56,17 @@ export const DuplicateDestinationConfirmationModal = ({
           </p>
         )}
         {!isDisabled && <p className="text-sm">Are you sure you want to continue?</p>}
-        {!isDisabled && (
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost" isDisabled={isLoading}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <DialogClose asChild>
-              <Button
-                onClick={onConfirm}
-                variant="danger"
-                isPending={isLoading}
-                isDisabled={isLoading}
-              >
-                Continue
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
+        <AlertDialogFooter>
+          <AlertDialogCancel isDisabled={isLoading}>
+            {isDisabled ? "Close" : "Cancel"}
+          </AlertDialogCancel>
+          {!isDisabled && (
+            <AlertDialogAction variant="danger" isDisabled={isLoading} onClick={onConfirm}>
+              Continue
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
