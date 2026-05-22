@@ -192,6 +192,19 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         ...req.body,
         id: req.params.tagId
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretTagUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.params.projectId,
+            tagId: tag.id
+          }
+        })
+        .catch(() => {});
+
       return { tag };
     }
   });
@@ -225,6 +238,19 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.tagId
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretTagDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.params.projectId,
+            tagId: tag.id
+          }
+        })
+        .catch(() => {});
+
       return { tag };
     }
   });

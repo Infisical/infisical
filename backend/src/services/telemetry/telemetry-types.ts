@@ -94,6 +94,8 @@ export enum PostHogEventTypes {
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
+  GatewayUpdated = "Gateway Updated",
+  GatewayDeleted = "Gateway Deleted",
   PamResourceCreated = "PAM Resource Created",
   PamResourceDeleted = "PAM Resource Deleted",
   PamAccountCreated = "PAM Account Created",
@@ -178,35 +180,52 @@ export enum PostHogEventTypes {
 
   // Groups
   GroupCreated = "Group Created",
+  GroupUpdated = "Group Updated",
+  GroupDeleted = "Group Deleted",
   GroupMemberAdded = "Group Member Added",
+  GroupMemberRemoved = "Group Member Removed",
   GroupAddedToProject = "Group Added to Project",
 
   // Secret Tags
   SecretTagCreated = "Secret Tag Created",
+  SecretTagUpdated = "Secret Tag Updated",
+  SecretTagDeleted = "Secret Tag Deleted",
 
   // Project Templates
   ProjectTemplateCreated = "Project Template Created",
+  ProjectTemplateUpdated = "Project Template Updated",
+  ProjectTemplateDeleted = "Project Template Deleted",
   ProjectTemplateApplied = "Project Template Applied",
 
   // KMIP
   KmipClientCreated = "KMIP Client Created",
+  KmipClientUpdated = "KMIP Client Updated",
+  KmipClientDeleted = "KMIP Client Deleted",
   KmipOperation = "KMIP Operation",
 
   // Audit Log Streams
   AuditLogStreamCreated = "Audit Log Stream Created",
+  AuditLogStreamUpdated = "Audit Log Stream Updated",
+  AuditLogStreamDeleted = "Audit Log Stream Deleted",
 
   // Email Domains
   EmailDomainCreated = "Email Domain Created",
+  EmailDomainVerified = "Email Domain Verified",
+  EmailDomainDeleted = "Email Domain Deleted",
 
   // External Migrations
   ExternalMigrationCreated = "External Migration Created",
 
   // GitHub Org Sync
   GitHubOrgSyncConfigured = "GitHub Org Sync Configured",
+  GitHubOrgSyncUpdated = "GitHub Org Sync Updated",
+  GitHubOrgSyncDeleted = "GitHub Org Sync Deleted",
   GitHubOrgSyncExecuted = "GitHub Org Sync Executed",
 
   // Secret Validation Rules
   SecretValidationRuleCreated = "Secret Validation Rule Created",
+  SecretValidationRuleUpdated = "Secret Validation Rule Updated",
+  SecretValidationRuleDeleted = "Secret Validation Rule Deleted",
 
   // Lifecycle gaps
   SecretSyncFailed = "Secret Sync Failed",
@@ -898,6 +917,20 @@ export type TGatewayCertExchangedEvent = {
   };
 };
 
+export type TGatewayUpdatedEvent = {
+  event: PostHogEventTypes.GatewayUpdated;
+  properties: {
+    gatewayId: string;
+  };
+};
+
+export type TGatewayDeletedEvent = {
+  event: PostHogEventTypes.GatewayDeleted;
+  properties: {
+    gatewayId: string;
+  };
+};
+
 export type TPamResourceEvent = {
   event: PostHogEventTypes.PamResourceCreated | PostHogEventTypes.PamResourceDeleted;
   properties: {
@@ -1454,8 +1487,32 @@ export type TGroupCreatedEvent = {
   };
 };
 
+export type TGroupUpdatedEvent = {
+  event: PostHogEventTypes.GroupUpdated;
+  properties: {
+    groupId: string;
+    name: string;
+  };
+};
+
+export type TGroupDeletedEvent = {
+  event: PostHogEventTypes.GroupDeleted;
+  properties: {
+    groupId: string;
+    name: string;
+  };
+};
+
 export type TGroupMemberAddedEvent = {
   event: PostHogEventTypes.GroupMemberAdded;
+  properties: {
+    groupId: string;
+    memberType: "user" | "identity";
+  };
+};
+
+export type TGroupMemberRemovedEvent = {
+  event: PostHogEventTypes.GroupMemberRemoved;
   properties: {
     groupId: string;
     memberType: "user" | "identity";
@@ -1479,9 +1536,41 @@ export type TSecretTagCreatedEvent = {
   };
 };
 
+export type TSecretTagUpdatedEvent = {
+  event: PostHogEventTypes.SecretTagUpdated;
+  properties: {
+    projectId: string;
+    tagId: string;
+  };
+};
+
+export type TSecretTagDeletedEvent = {
+  event: PostHogEventTypes.SecretTagDeleted;
+  properties: {
+    projectId: string;
+    tagId: string;
+  };
+};
+
 // Project Template events
 export type TProjectTemplateCreatedEvent = {
   event: PostHogEventTypes.ProjectTemplateCreated;
+  properties: {
+    templateId: string;
+    name: string;
+  };
+};
+
+export type TProjectTemplateUpdatedEvent = {
+  event: PostHogEventTypes.ProjectTemplateUpdated;
+  properties: {
+    templateId: string;
+    name: string;
+  };
+};
+
+export type TProjectTemplateDeletedEvent = {
+  event: PostHogEventTypes.ProjectTemplateDeleted;
   properties: {
     templateId: string;
     name: string;
@@ -1505,6 +1594,22 @@ export type TKmipClientCreatedEvent = {
   };
 };
 
+export type TKmipClientUpdatedEvent = {
+  event: PostHogEventTypes.KmipClientUpdated;
+  properties: {
+    clientId: string;
+    projectId: string;
+  };
+};
+
+export type TKmipClientDeletedEvent = {
+  event: PostHogEventTypes.KmipClientDeleted;
+  properties: {
+    clientId: string;
+    projectId: string;
+  };
+};
+
 export type TKmipOperationEvent = {
   event: PostHogEventTypes.KmipOperation;
   properties: {
@@ -1522,9 +1627,41 @@ export type TAuditLogStreamCreatedEvent = {
   };
 };
 
+export type TAuditLogStreamUpdatedEvent = {
+  event: PostHogEventTypes.AuditLogStreamUpdated;
+  properties: {
+    streamId: string;
+    destinationType: string;
+  };
+};
+
+export type TAuditLogStreamDeletedEvent = {
+  event: PostHogEventTypes.AuditLogStreamDeleted;
+  properties: {
+    streamId: string;
+    destinationType: string;
+  };
+};
+
 // Email Domain event
 export type TEmailDomainCreatedEvent = {
   event: PostHogEventTypes.EmailDomainCreated;
+  properties: {
+    emailDomainId: string;
+    domain: string;
+  };
+};
+
+export type TEmailDomainVerifiedEvent = {
+  event: PostHogEventTypes.EmailDomainVerified;
+  properties: {
+    emailDomainId: string;
+    domain: string;
+  };
+};
+
+export type TEmailDomainDeletedEvent = {
+  event: PostHogEventTypes.EmailDomainDeleted;
   properties: {
     emailDomainId: string;
     domain: string;
@@ -1548,6 +1685,21 @@ export type TGitHubOrgSyncConfiguredEvent = {
   };
 };
 
+export type TGitHubOrgSyncUpdatedEvent = {
+  event: PostHogEventTypes.GitHubOrgSyncUpdated;
+  properties: {
+    githubOrgName?: string;
+    isActive?: boolean;
+  };
+};
+
+export type TGitHubOrgSyncDeletedEvent = {
+  event: PostHogEventTypes.GitHubOrgSyncDeleted;
+  properties: {
+    githubOrgName?: string;
+  };
+};
+
 export type TGitHubOrgSyncExecutedEvent = {
   event: PostHogEventTypes.GitHubOrgSyncExecuted;
   properties: {
@@ -1561,6 +1713,22 @@ export type TGitHubOrgSyncExecutedEvent = {
 // Secret Validation Rule event
 export type TSecretValidationRuleCreatedEvent = {
   event: PostHogEventTypes.SecretValidationRuleCreated;
+  properties: {
+    ruleId: string;
+    projectId: string;
+  };
+};
+
+export type TSecretValidationRuleUpdatedEvent = {
+  event: PostHogEventTypes.SecretValidationRuleUpdated;
+  properties: {
+    ruleId: string;
+    projectId: string;
+  };
+};
+
+export type TSecretValidationRuleDeletedEvent = {
+  event: PostHogEventTypes.SecretValidationRuleDeleted;
   properties: {
     ruleId: string;
     projectId: string;
@@ -1772,6 +1940,8 @@ export type TPostHogEvent = {
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
+  | TGatewayUpdatedEvent
+  | TGatewayDeletedEvent
   | TPamResourceEvent
   | TPamAccountEvent
   | TPamAccountAccessedEvent
@@ -1840,19 +2010,36 @@ export type TPostHogEvent = {
   | TSecretScanningScanCompletedEvent
   | TSecretScanningFindingResolvedEvent
   | TGroupCreatedEvent
+  | TGroupUpdatedEvent
+  | TGroupDeletedEvent
   | TGroupMemberAddedEvent
+  | TGroupMemberRemovedEvent
   | TGroupAddedToProjectEvent
   | TSecretTagCreatedEvent
+  | TSecretTagUpdatedEvent
+  | TSecretTagDeletedEvent
   | TProjectTemplateCreatedEvent
+  | TProjectTemplateUpdatedEvent
+  | TProjectTemplateDeletedEvent
   | TProjectTemplateAppliedEvent
   | TKmipClientCreatedEvent
+  | TKmipClientUpdatedEvent
+  | TKmipClientDeletedEvent
   | TKmipOperationEvent
   | TAuditLogStreamCreatedEvent
+  | TAuditLogStreamUpdatedEvent
+  | TAuditLogStreamDeletedEvent
   | TEmailDomainCreatedEvent
+  | TEmailDomainVerifiedEvent
+  | TEmailDomainDeletedEvent
   | TExternalMigrationCreatedEvent
   | TGitHubOrgSyncConfiguredEvent
+  | TGitHubOrgSyncUpdatedEvent
+  | TGitHubOrgSyncDeletedEvent
   | TGitHubOrgSyncExecutedEvent
   | TSecretValidationRuleCreatedEvent
+  | TSecretValidationRuleUpdatedEvent
+  | TSecretValidationRuleDeletedEvent
   | TSecretSyncFailedEvent
   | TSecretFolderUpdatedEvent
   | TSecretFolderDeletedEvent

@@ -88,6 +88,18 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         isActive: req.body.isActive
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            githubOrgName: githubOrgSyncConfig.githubOrgName,
+            isActive: githubOrgSyncConfig.isActive ?? undefined
+          }
+        })
+        .catch(() => {});
+
       return { githubOrgSyncConfig };
     }
   });
@@ -110,6 +122,17 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
       const githubOrgSyncConfig = await server.services.githubOrgSync.deleteGithubOrgSync({
         orgPermission: req.permission
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            githubOrgName: githubOrgSyncConfig.githubOrgName
+          }
+        })
+        .catch(() => {});
 
       return { githubOrgSyncConfig };
     }

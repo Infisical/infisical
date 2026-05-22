@@ -121,6 +121,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         req.permission
       );
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
+
       return { auditLogStream };
     }
   });
@@ -146,6 +155,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       const { logStreamId } = req.params;
 
       const auditLogStream = await server.services.auditLogStream.deleteById(logStreamId, provider, req.permission);
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
 
       return { auditLogStream };
     }

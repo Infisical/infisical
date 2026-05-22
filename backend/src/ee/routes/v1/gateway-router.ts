@@ -239,6 +239,18 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         id: req.params.id,
         name: req.body.name
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GatewayUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            gatewayId: gateway.id
+          }
+        })
+        .catch(() => {});
+
       return { gateway };
     }
   });
@@ -265,6 +277,18 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         orgPermission: req.permission,
         id: req.params.id
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GatewayDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            gatewayId: gateway.id
+          }
+        })
+        .catch(() => {});
+
       return { gateway };
     }
   });

@@ -201,6 +201,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            name: group.name
+          }
+        })
+        .catch(() => {});
+
       return group;
     }
   });
@@ -253,6 +265,20 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
                 }
               }
         });
+
+        if (!isUnlinked) {
+          void server.services.telemetry
+            .sendPostHogEvents({
+              event: PostHogEventTypes.GroupDeleted,
+              distinctId: getTelemetryDistinctId(req),
+              organizationId: req.permission.orgId,
+              properties: {
+                groupId: group.id,
+                name: group.name
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       return group;
@@ -707,6 +733,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            memberType: "user"
+          }
+        })
+        .catch(() => {});
+
       return user;
     }
   });
@@ -754,6 +792,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            memberType: "identity"
+          }
+        })
+        .catch(() => {});
 
       return identity;
     }

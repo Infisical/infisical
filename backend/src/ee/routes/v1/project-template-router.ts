@@ -416,6 +416,18 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProjectTemplateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            templateId: projectTemplate.id,
+            name: projectTemplate.name
+          }
+        })
+        .catch(() => {});
+
       return { projectTemplate };
     }
   });
@@ -454,6 +466,18 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProjectTemplateDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            templateId: projectTemplate.id,
+            name: projectTemplate.name
+          }
+        })
+        .catch(() => {});
 
       return { projectTemplate };
     }
