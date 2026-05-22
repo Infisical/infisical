@@ -79,13 +79,14 @@ const isDeploymentFile = (file: string) =>
     "standalone-entrypoint.sh",
     "docker-compose",
     "docker-swarm/",
-    "helm-charts/",
     "render.yaml",
     "nginx/",
     ".nvmrc",
     "backend/package.json",
     "frontend/package.json"
   ].some((pattern) => file === pattern || file.startsWith(pattern));
+
+const isExcludedFromAnalysis = (file: string) => file.startsWith("helm-charts/");
 
 const isConfigFile = (file: string) =>
   [
@@ -102,8 +103,8 @@ export const collectEvidence = async (tag: string): Promise<ReleaseEvidenceBundl
   }
 
   const previousTag = getPreviousStableTag(tag);
-  const changedFiles = getChangedFiles(previousTag, tag);
-  const addedFiles = getAddedFiles(previousTag, tag);
+  const changedFiles = getChangedFiles(previousTag, tag).filter((file) => !isExcludedFromAnalysis(file));
+  const addedFiles = getAddedFiles(previousTag, tag).filter((file) => !isExcludedFromAnalysis(file));
   const commits = getCommitSummaries(previousTag, tag);
 
   const release = await fetchJson<{

@@ -28,8 +28,18 @@ export const validateIpIdentifier = (identifier: string): boolean => {
 };
 
 export const validateDnsIdentifier = (identifier: string): boolean => {
-  // DNS label pattern: 1-63 chars, alphanumeric or hyphen, but not starting or ending with hyphen
+  let domain = identifier;
+
+  if (domain.startsWith("*.")) {
+    domain = domain.slice(2);
+    if (domain.length === 0) {
+      return false;
+    }
+  } else if (domain.includes("*")) {
+    return false;
+  }
+
   const labelPattern = new RE2(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/);
-  const labels = identifier.split(".");
+  const labels = domain.split(".");
   return labels.every((label) => label.length >= 1 && label.length <= 63 && labelPattern.test(label));
 };

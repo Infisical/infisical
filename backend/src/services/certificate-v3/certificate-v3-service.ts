@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -94,7 +95,8 @@ import {
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi,
-  removeRootCaFromChain
+  removeRootCaFromChain,
+  validatePqcLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
@@ -165,6 +167,7 @@ type TCertificateV3ServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findAllByProfileId">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -683,7 +686,8 @@ export const certificateV3ServiceFactory = ({
   approvalPolicyService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  licenseService
 }: TCertificateV3ServiceFactoryDep) => {
   const $resolveApplicationIdForProfile = async (
     profile: {
@@ -845,6 +849,23 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
+
+    if (certificateRequest.keyAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.keyAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
+    if (certificateRequest.signatureAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.signatureAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
