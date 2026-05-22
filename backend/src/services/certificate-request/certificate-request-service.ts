@@ -574,16 +574,34 @@ export const certificateRequestServiceFactory = ({
       ({ key, value }) => ({ key, value: value || "" })
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certificateRequest.commonName ?? undefined,
-        altNames: Array.isArray(certificateRequest.altNames)
-          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
-          : undefined,
-        metadata: requestMetadata
-      })
-    );
+    let allowedByResource = false;
+    if (certificateRequest.applicationId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificateRequest.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificateRequest.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      allowedByResource = resourcePermission.can(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    }
+    if (!allowedByResource) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificateRequest.commonName ?? undefined,
+          altNames: Array.isArray(certificateRequest.altNames)
+            ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+            : undefined,
+          metadata: requestMetadata
+        })
+      );
+    }
 
     if (
       certificateRequest.status !== CertificateRequestStatus.PENDING &&
