@@ -4,7 +4,6 @@ import { AxiosError, AxiosResponse } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
@@ -371,10 +370,6 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
         } else if (e instanceof BadRequestError) {
           throw e;
         } else {
-          logger.error(
-            e,
-            "validateAzureKeyVaultConnectionCredentials: Failed to get access token using certificate authentication"
-          );
           throw new InternalServerError({
             message: "Failed to get access token"
           });

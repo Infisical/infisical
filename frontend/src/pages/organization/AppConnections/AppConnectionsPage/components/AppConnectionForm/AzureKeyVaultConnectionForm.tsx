@@ -10,9 +10,9 @@ import {
   FormControl,
   Input,
   ModalClose,
+  SecretInput,
   Select,
-  SelectItem,
-  TextArea
+  SelectItem
 } from "@app/components/v2";
 import {
   APP_CONNECTION_MAP,
@@ -390,17 +390,18 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             <Controller
               name="credentials.certificateBody"
               control={control}
-              render={({ field, fieldState: { error } }) => (
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   isError={Boolean(error?.message)}
                   label="Certificate"
                   errorText={error?.message}
                   tooltipText="The PEM-encoded public certificate uploaded to your Azure App Registration."
                 >
-                  <TextArea
-                    {...field}
-                    className="h-[6rem] resize-none!"
-                    placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
+                  <SecretInput
+                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="-----BEGIN CERTIFICATE-----..."
                   />
                 </FormControl>
               )}
@@ -408,17 +409,18 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             <Controller
               name="credentials.privateKey"
               control={control}
-              render={({ field, fieldState: { error } }) => (
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   isError={Boolean(error?.message)}
                   label="Private Key"
                   errorText={error?.message}
                   tooltipText="The PEM-encoded private key matching the certificate. The private key is never transmitted to Azure; it is only used locally to sign the client assertion."
                 >
-                  <TextArea
-                    {...field}
-                    className="h-[6rem] resize-none!"
-                    placeholder={"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}
+                  <SecretInput
+                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="-----BEGIN PRIVATE KEY-----..."
                   />
                 </FormControl>
               )}
