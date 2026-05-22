@@ -10,6 +10,21 @@ import {
   TUpdateIdentityProjectPrivlegeDTO
 } from "./types";
 
+const invalidateAuditForIdentityMembership = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  identityId: string
+) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      if (!Array.isArray(key) || key.length < 2) return false;
+      if (key[1] !== "identity-permission-audit") return false;
+      const params = key[0] as { identityId?: string } | undefined;
+      return params?.identityId === identityId;
+    }
+  });
+};
+
 export const useCreateIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
@@ -23,6 +38,7 @@ export const useCreateIdentityProjectAdditionalPrivilege = () => {
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
       queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
+      invalidateAuditForIdentityMembership(queryClient, identityId);
     }
   });
 };
@@ -50,6 +66,7 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
       queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
+      invalidateAuditForIdentityMembership(queryClient, identityId);
     }
   });
 };
@@ -76,6 +93,7 @@ export const useDeleteIdentityProjectAdditionalPrivilege = () => {
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
       queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
+      invalidateAuditForIdentityMembership(queryClient, identityId);
     }
   });
 };

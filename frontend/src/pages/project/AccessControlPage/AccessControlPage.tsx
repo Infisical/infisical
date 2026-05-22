@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -38,14 +38,19 @@ const Page = () => {
   };
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={currentProject.type}
-          title="Project Access Control"
-          description="Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
+          title={isCertManager ? "Access Control" : "Project Access Control"}
+          description={
+            isCertManager
+              ? "Manage access for users, groups, and machine identities."
+              : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
+          }
         >
           <Link
             to="/organizations/$orgId/access-management"
@@ -58,26 +63,24 @@ const Page = () => {
             control?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
-          {/* <TabList>
-            <Tab variant="project" value={ProjectAccessControlTabs.Member}>
-              Users
-            </Tab>
-            <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
-              Groups
-            </Tab>
-            <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
-              Machine Identities
-            </Tab>
-            {isSecretManager && (
-              <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>
-                Service Tokens
+        <Tabs
+          orientation={isCertManager ? "horizontal" : "vertical"}
+          value={selectedTab}
+          onValueChange={updateSelectedTab}
+        >
+          {isCertManager && (
+            <TabList>
+              <Tab variant="project" value={ProjectAccessControlTabs.Member}>
+                Users
               </Tab>
-            )}
-            <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
-              Roles
-            </Tab>
-          </TabList> */}
+              <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
+                Groups
+              </Tab>
+              <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
+                Machine Identities
+              </Tab>
+            </TabList>
+          )}
           <TabPanel value={ProjectAccessControlTabs.Member}>
             <MembersTab />
           </TabPanel>

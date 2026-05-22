@@ -4,6 +4,7 @@ export {
   useCreateSecretV3,
   useDeleteSecretBatch,
   useDeleteSecretV3,
+  useDuplicateSecret,
   useMoveSecrets,
   useRedactSecretValue,
   useUpdateSecretBatch,

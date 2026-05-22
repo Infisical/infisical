@@ -1,0 +1,153 @@
+---
+title: "Certificate Policies"
+sidebarTitle: "Policies"
+description: "Define rules and constraints for certificates issued across your organization."
+---
+
+A certificate policy defines the rules that certificates must follow — allowed domains, validity periods, key algorithms, and more. Policies ensure that every certificate issued through Certificate Manager meets your organization's security and compliance requirements.
+
+<Info>
+  Certificate policies are created by product admins and shared across the organization. Teams consume policies through [Certificate Profiles](/documentation/platform/pki/settings/profiles).
+</Info>
+
+## How Policies Work
+
+When a certificate is requested, Certificate Manager validates the request against the policy bound to its profile. If the request violates any policy constraint, the certificate is not issued.
+
+This enforcement happens automatically — teams don't need to know the policy details. They just request certificates, and the policy ensures compliance.
+
+## Create a Certificate Policy
+
+Navigate to **Certificate Manager → Settings → Certificate Policies** and click **Create**.
+
+### Policy Presets
+
+For common use cases, select a **preset** to pre-fill all the right settings:
+
+| Preset | Use Case | Key Settings |
+|--------|----------|--------------|
+| **TLS Server Certificate** | Web servers, API endpoints, HTTPS | Server Auth, Digital Signature, DNS/IP SANs |
+| **TLS Client Certificate** | mTLS, API authentication | Client Auth, Digital Signature, Email/DNS SANs |
+| **Code Signing Certificate** | Software signing, executables | Code Signing, Digital Signature, Non-Repudiation |
+| **Device Certificate** | IoT devices, embedded systems | Client Auth, Digital Signature |
+| **User Certificate** | Personal authentication, smart cards | Client Auth, Email Protection |
+| **Email Protection Certificate** | S/MIME, email encryption | Email Protection, Digital Signature |
+| **Dual-Purpose Server Certificate** | Microservices, service mesh | Server Auth + Client Auth |
+| **Intermediate CA Certificate** | Subordinate CAs | Key Cert Sign, CRL Sign, CA constraint |
+
+<Tip>
+  For most TLS use cases, start with the **TLS Server Certificate** preset. You can customize any settings after selecting a preset.
+</Tip>
+
+### Basic Settings
+
+| Field | Description |
+|-------|-------------|
+| **Policy Name** | A slug-friendly name like `tls-server` or `internal-mtls` |
+| **Description** | Optional context about this policy's purpose |
+| **Certificate Validity** | Maximum lifetime for certificates (e.g., 90 days, 1 year) |
+
+### Subject Attributes
+
+Control what X.509 distinguished name attributes can appear in certificates:
+
+| Attribute | Abbreviation | Example |
+|-----------|--------------|---------|
+| Common Name | CN | `api.example.com` |
+| Organization | O | `Acme Corp` |
+| Organizational Unit | OU | `Engineering` |
+| Country | C | `US` |
+| State/Province | ST | `California` |
+| Locality | L | `San Francisco` |
+
+For each attribute, configure enforcement:
+
+<AccordionGroup>
+  <Accordion title="Require">
+    Values that **must** be present. The request is rejected if the attribute is missing or doesn't match the required pattern.
+  </Accordion>
+  <Accordion title="Allow">
+    Values that are **permitted but not required**. Accepts fixed values or wildcard patterns like `*.example.com`.
+  </Accordion>
+  <Accordion title="Deny">
+    Values that **must not appear**. The request is rejected if the attribute matches a denied pattern.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Any subject attribute in a certificate request that isn't explicitly defined in the policy will be rejected. If no subject rules are defined, any request with subject attributes will fail.
+</Warning>
+
+### Subject Alternative Names (SANs)
+
+Control which SANs can appear on certificates:
+
+| SAN Type | Example Pattern | Use Case |
+|----------|-----------------|----------|
+| DNS | `*.example.com` | Web servers, APIs |
+| IP | `10.0.0.0/8` | Internal services |
+| Email | `*@example.com` | S/MIME certificates |
+| URI | `spiffe://example.com/*` | SPIFFE identities |
+
+Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to **allow** or **deny** it.
+
+### Key & Signature Algorithms
+
+Restrict which cryptographic algorithms are permitted:
+
+<Columns cols="2">
+  <Card title="Signature Algorithms">
+    - SHA256-RSA
+    - SHA384-RSA
+    - SHA512-RSA
+    - SHA256-ECDSA
+    - SHA384-ECDSA
+  </Card>
+  <Card title="Key Algorithms">
+    - RSA-2048
+    - RSA-4096
+    - ECDSA-P256
+    - ECDSA-P384
+    - Ed25519
+  </Card>
+</Columns>
+
+### Key Usages
+
+Define the cryptographic purposes of certificates:
+
+| Key Usage | Purpose |
+|-----------|---------|
+| Digital Signature | Sign data (TLS, code signing) |
+| Key Encipherment | Encrypt symmetric keys (TLS with RSA) |
+| Key Agreement | Key exchange (ECDH) |
+| Certificate Sign | Sign other certificates (CA only) |
+| CRL Sign | Sign certificate revocation lists (CA only) |
+
+### Extended Key Usages
+
+Define higher-level intended uses:
+
+| Extended Key Usage | Purpose |
+|--------------------|---------|
+| Server Authentication | TLS servers |
+| Client Authentication | mTLS clients |
+| Code Signing | Software artifacts |
+| Email Protection | S/MIME |
+| OCSP Signing | OCSP responders |
+
+### Basic Constraints
+
+Control whether certificates can act as CAs:
+
+| Setting | Effect |
+|---------|--------|
+| **Forbid CA** | Certificates are end-entity only — cannot sign other certificates |
+| **Allow CA** | Certificates can be either CA or end-entity based on request |
+| **Require CA** | All certificates must be CAs (for Root/Intermediate CA policies) |
+
+**Maximum Path Length**: Limits how many intermediate CAs can exist below this certificate. `0` means the CA can only sign end-entity certificates.
+
+## Next Steps
+
+Once you've created a policy, combine it with a CA in a [Certificate Profile](/documentation/platform/pki/settings/profiles) that teams can consume.

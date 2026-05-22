@@ -1,12 +1,13 @@
 import { Knex } from "knex";
 
+import { TApprovalPolicies } from "@app/db/schemas";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 
-import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
+import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
@@ -46,6 +47,29 @@ export type TApprovalPolicyConstraints =
 export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest;
 export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData | TCodeSigningRequestData;
 
+// Bypass-affordance fields the service stamps onto every request response.
+export type TBypassAffordances = {
+  canBreakGlass: boolean;
+  isBreakGlass: boolean;
+  bypassReason: string | null;
+};
+
+export type BreakGlassBypassMetadata = {
+  grantId: string;
+  resourceName?: string;
+  accountName?: string;
+  accessDuration: string;
+  bypassReason: string;
+  approverCount: number;
+};
+
+export type TDecorationContext = {
+  getUserGroupIds: () => Promise<Set<string>>;
+  grantsByRequestId?: Map<string, { isBreakGlass: boolean; bypassReason: string | null }>;
+  policyById?: Map<string, TApprovalPolicies>;
+  bypassersByPolicyId?: Map<string, PolicyBypasser[]>;
+};
+
 export interface ApprovalPolicyStep {
   name?: string | null;
   requiredApprovals: number;
@@ -56,15 +80,23 @@ export interface ApprovalPolicyStep {
   }[];
 }
 
+export interface PolicyBypasser {
+  type: ApproverType;
+  id: string;
+}
+
 // Policy DTOs
 export interface TCreatePolicyDTO {
-  projectId: TApprovalPolicy["projectId"];
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   name: TApprovalPolicy["name"];
   maxRequestTtl?: TApprovalPolicy["maxRequestTtl"];
   conditions: TApprovalPolicy["conditions"]["conditions"];
   constraints: TApprovalPolicy["constraints"]["constraints"];
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel?: EnforcementLevel;
+  bypassers?: PolicyBypasser[];
 }
 
 export interface TUpdatePolicyDTO {
@@ -74,11 +106,14 @@ export interface TUpdatePolicyDTO {
   constraints?: TApprovalPolicy["constraints"]["constraints"];
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel?: EnforcementLevel;
+  bypassers?: PolicyBypasser[];
 }
 
 // Request DTOs
 export interface TCreateRequestDTO {
-  projectId: TApprovalRequest["projectId"];
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   requestData: TApprovalRequest["requestData"]["requestData"];
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;

@@ -194,7 +194,10 @@ export const OrgSsoTab = withPermission(
 
     const handleConnectOidc = () => {
       if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO" });
+        handlePopUpOpen("upgradePlan", {
+          featureName: "OIDC SSO",
+          isEnterpriseFeature: true
+        });
         return;
       }
       handlePopUpOpen("addOIDC");

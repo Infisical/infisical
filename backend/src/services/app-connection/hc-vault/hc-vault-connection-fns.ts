@@ -3,6 +3,7 @@ import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { request } from "@app/lib/config/request";
@@ -62,6 +63,11 @@ const isVault404Error = (error: unknown): boolean => {
     return axiosError.response?.status === 404;
   }
   return false;
+};
+
+// Helper to check if error is 404 from gateway
+const isGateway404Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
 };
 
 // Helper to extract error message from Vault API errors
@@ -129,13 +135,24 @@ type TokenRespData = {
 };
 
 export const requestWithHCVaultGateway = async <T>(
-  appConnection: { gatewayId?: string | null },
+  appConnection: { gatewayId?: string | null; gatewayPoolId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   requestConfig: AxiosRequestConfig,
-  gatewayDetails?: TGatewayDetails
+  gatewayDetails?: TGatewayDetails,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<AxiosResponse<T>> => {
-  const { gatewayId } = appConnection;
+  const { gatewayId: directGatewayId, gatewayPoolId } = appConnection;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   const url = new URL(requestConfig.url as string);
   await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
@@ -497,7 +514,7 @@ export const listHCVaultNamespaces = async (
 
       return data.data.keys || [];
     } catch (error: unknown) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         // No child namespaces at this path
         return null;
       }
@@ -662,7 +679,7 @@ export const listHCVaultSecretPaths = async (
 
       return data.data.keys;
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
       }
 
@@ -1074,7 +1091,7 @@ export const getHCVaultKubernetesRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1161,7 +1178,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       connectionNames = connectionListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1209,7 +1226,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1315,7 +1332,7 @@ export const getHCVaultLdapRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 

@@ -1,0 +1,79 @@
+---
+title: "Slack Alerts"
+sidebarTitle: "Slack"
+description: "Send certificate alert notifications to a Slack channel."
+---
+
+Send certificate alert notifications to a Slack channel using [Incoming Webhooks](https://api.slack.com/messaging/webhooks). Get notified when certificates expire, are issued, renewed, or revoked.
+
+<Info>
+  Alerts are configured per Application and apply to all certificates within that Application.
+</Info>
+
+## Create a Slack Alert
+
+<Steps>
+  <Step title="Create a Slack App">
+    1. Go to the [Slack API Apps page](https://api.slack.com/apps) and click **Create New App**
+    2. Select **From scratch**
+    3. Name your app (e.g., "Infisical PKI Alerts") and select your workspace
+    4. Click **Create App**
+  </Step>
+  <Step title="Enable Incoming Webhooks">
+    1. In your app settings, go to **Incoming Webhooks** under "Features"
+    2. Toggle **Activate Incoming Webhooks** to **On**
+    3. Click **Add New Webhook to Workspace**
+    4. Select the channel for alerts and click **Allow**
+    5. Copy the **Webhook URL**
+    
+    <Note>
+      Keep your webhook URL secure. Anyone with access can post to your channel.
+    </Note>
+  </Step>
+  <Step title="Navigate to your Application">
+    Go to **Certificate Manager → Applications** and select your Application.
+  </Step>
+  <Step title="Create an alert">
+    Go to the **Settings** tab and find the **Alerting** section. Click **Create Alert**.
+    
+    | Setting | Description |
+    |---------|-------------|
+    | **Alert Type** | Certificate Expiration, Issuance, Renewal, or Revocation |
+    | **Alert Name** | A slug-friendly name like `tls-expiry-alert` |
+    | **Description** | Optional context about this alert |
+    | **Alert Before** | *(Expiration only)* Time before expiry to trigger, e.g., `30d` |
+  </Step>
+  <Step title="Add a Slack channel">
+    Add a **Slack** notification channel and paste the webhook URL from Slack.
+  </Step>
+</Steps>
+
+## Message Format
+
+Slack messages include alert details and the two most relevant certificates, with a link to view all certificates in Infisical.
+
+Messages are color-coded by event type:
+
+| Event Type | Color |
+|------------|-------|
+| Certificate Expiration | Amber |
+| Certificate Issuance | Green |
+| Certificate Renewal | Blue |
+| Certificate Revocation | Red |
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Webhook Alerts" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
+    Send alerts to custom HTTP endpoints.
+  </Card>
+  <Card title="PagerDuty Alerts" icon="pager" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
+    Create incidents in PagerDuty.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View and manage certificates.
+  </Card>
+</CardGroup>

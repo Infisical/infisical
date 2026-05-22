@@ -28,15 +28,22 @@ export const SshConnectionSshKeyCredentialsSchema = z.object({
   passphrase: z.string().trim().optional().describe(AppConnections.CREDENTIALS.SSH.passphrase)
 });
 
+// Configuration schema for SSH-specific settings
+export const SshConnectionConfigurationSchema = z.object({
+  blockedUsers: z.string().trim().optional().describe(AppConnections.CREDENTIALS.SSH.blockedUsers)
+});
+
 // Validation schema for credentials - top-level method discrimination
 export const ValidateSshConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z.literal(SshConnectionMethod.Password).describe(AppConnections.CREATE(AppConnection.SSH).method),
-    credentials: SshConnectionPasswordCredentialsSchema.describe(AppConnections.CREATE(AppConnection.SSH).credentials)
+    credentials: SshConnectionPasswordCredentialsSchema.describe(AppConnections.CREATE(AppConnection.SSH).credentials),
+    configuration: SshConnectionConfigurationSchema.optional()
   }),
   z.object({
     method: z.literal(SshConnectionMethod.SshKey).describe(AppConnections.CREATE(AppConnection.SSH).method),
-    credentials: SshConnectionSshKeyCredentialsSchema.describe(AppConnections.CREATE(AppConnection.SSH).credentials)
+    credentials: SshConnectionSshKeyCredentialsSchema.describe(AppConnections.CREATE(AppConnection.SSH).credentials),
+    configuration: SshConnectionConfigurationSchema.optional()
   })
 ]);
 
@@ -53,7 +60,8 @@ export const UpdateSshConnectionSchema = z
     credentials: z
       .union([SshConnectionPasswordCredentialsSchema, SshConnectionSshKeyCredentialsSchema])
       .optional()
-      .describe(AppConnections.UPDATE(AppConnection.SSH).credentials)
+      .describe(AppConnections.UPDATE(AppConnection.SSH).credentials),
+    configuration: SshConnectionConfigurationSchema.optional()
   })
   .and(
     GenericUpdateAppConnectionFieldsSchema(AppConnection.SSH, {
@@ -72,11 +80,13 @@ export const SshConnectionSchema = z.intersection(
   z.discriminatedUnion("method", [
     z.object({
       method: z.literal(SshConnectionMethod.Password),
-      credentials: SshConnectionPasswordCredentialsSchema
+      credentials: SshConnectionPasswordCredentialsSchema,
+      configuration: SshConnectionConfigurationSchema.optional()
     }),
     z.object({
       method: z.literal(SshConnectionMethod.SshKey),
-      credentials: SshConnectionSshKeyCredentialsSchema
+      credentials: SshConnectionSshKeyCredentialsSchema,
+      configuration: SshConnectionConfigurationSchema.optional()
     })
   ])
 );
@@ -92,11 +102,13 @@ const SanitizedSshConnectionCredentialsSchema = z.object({
 export const SanitizedSshConnectionSchema = z.discriminatedUnion("method", [
   BaseSshConnectionSchema.extend({
     method: z.literal(SshConnectionMethod.Password),
-    credentials: SanitizedSshConnectionCredentialsSchema
+    credentials: SanitizedSshConnectionCredentialsSchema,
+    configuration: SshConnectionConfigurationSchema.optional()
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.SSH]} (Password)` })),
   BaseSshConnectionSchema.extend({
     method: z.literal(SshConnectionMethod.SshKey),
-    credentials: SanitizedSshConnectionCredentialsSchema
+    credentials: SanitizedSshConnectionCredentialsSchema,
+    configuration: SshConnectionConfigurationSchema.optional()
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.SSH]} (SSH Key)` }))
 ]);
 

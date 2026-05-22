@@ -396,11 +396,6 @@ const setsEqual = (a: readonly string[] | undefined, b: readonly string[] | unde
   return av.every((v) => bSet.has(v));
 };
 
-const isSubset = (a: readonly string[] | undefined, b: readonly string[] | undefined) => {
-  const bSet = new Set(b ?? []);
-  return (a ?? []).every((v) => bSet.has(v));
-};
-
 // Ownership is by exact (target, projectId, applyToAllCustomEnvironments) scope match.
 const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
   const effectiveTargets = destinationConfig.sensitive
@@ -414,35 +409,20 @@ const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinati
   );
 };
 
-// True when an existing team shared env var's scope is a strict superset of the sync's scope
-const teamVarStrictlyCoversSyncScope = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
+// True when an existing team shared env var overlaps the sync's scope in Vercel's conflict
+// space: (target, applyToAllCustomEnvironments).
+const teamVarOverlapsSyncScope = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
   const effectiveTargets =
     (destinationConfig.sensitive
       ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
       : destinationConfig.targetEnvironments) ?? [];
+  const effectiveTargetsSet = new Set<string>(effectiveTargets);
 
-  if (!isSubset(effectiveTargets, envVar.target)) return false;
+  const targetOverlap = (envVar.target ?? []).some((t) => effectiveTargetsSet.has(t));
+  const applyAllOverlap =
+    Boolean(envVar.applyToAllCustomEnvironments) && Boolean(destinationConfig.applyToAllCustomEnvironments);
 
-  const ourProjects = destinationConfig.targetProjects ?? [];
-  const varProjects = envVar.projectId ?? [];
-
-  // var.projectId empty means "team-wide / all projects" in Vercel
-  if (varProjects.length > 0) {
-    if (ourProjects.length === 0) return false;
-    if (!isSubset(ourProjects, varProjects)) return false;
-  }
-
-  // If our sync claims all-custom-environments, the existing var must also have it set —
-  // otherwise it doesn't cover the custom-env dimension we need.
-  const ourApplyAll = Boolean(destinationConfig.applyToAllCustomEnvironments);
-  const varApplyAll = Boolean(envVar.applyToAllCustomEnvironments);
-  if (ourApplyAll && !varApplyAll) return false;
-
-  // Scopes must not be exactly equal. If they are, this is the "owned" path.
-  const targetEqual = setsEqual(envVar.target, effectiveTargets);
-  const projectEqual = setsEqual(varProjects, ourProjects);
-  const applyAllEqual = ourApplyAll === varApplyAll;
-  return !(targetEqual && projectEqual && applyAllEqual);
+  return targetOverlap || applyAllOverlap;
 };
 
 const listTeamSharedEnvVarsWithRetries = async (
@@ -863,32 +843,35 @@ export const VercelSyncFns = {
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
-      const sharedEnvVarsMap = new Map(allSharedEnvVars.map((s) => [s.key, s]));
 
-      // Vars whose scope strictly covers ours — Vercel rejects creating an overlapping var,
-      // so we must split (detach our scope from the existing var, then create a dedicated
-      // record)
-      const mergedSharedEnvVarsMap = new Map(
-        allSharedEnvVars
-          .filter((envVar) => teamVarStrictlyCoversSyncScope(envVar, teamDestinationConfig))
-          .map((s) => [s.key, s])
-      );
+      // Vercel allows multiple shared env var records with the same key when their
+      // (target, applyToAllCustomEnvironments) scopes do not overlap. Group by key so we
+      // don't lose siblings — a key-only Map would drop all but one and then any create or
+      // scope-expanding patch would collide with the invisible sibling.
+      const sharedEnvVarsByKey = new Map<string, VercelSharedEnvVar[]>();
+      for (const envVar of allSharedEnvVars) {
+        const arr = sharedEnvVarsByKey.get(envVar.key) ?? [];
+        arr.push(envVar);
+        sharedEnvVarsByKey.set(envVar.key, arr);
+      }
 
-      const { targetEnvironments, targetProjects, sensitive, applyToAllCustomEnvironments } =
-        secretSync.destinationConfig;
+      const { sensitive } = secretSync.destinationConfig;
 
       for await (const key of Object.keys(secretMap)) {
-        const existingVar = sharedEnvVarsMap.get(key);
-        const mergedVar = mergedSharedEnvVarsMap.get(key);
+        const records = sharedEnvVarsByKey.get(key) ?? [];
+        const ownedRecord = records.find((r) => isTeamSharedEnvVarOwnedByThisSync(r, teamDestinationConfig));
+        const conflictingRecords = records.filter(
+          (r) => r.id !== ownedRecord?.id && teamVarOverlapsSyncScope(r, teamDestinationConfig)
+        );
 
-        if (mergedVar) {
-          await detachTeamSharedEnvVar(secretSync, mergedVar);
-          await createTeamSharedEnvVar(secretSync, key, secretMap[key].value);
-          // eslint-disable-next-line no-continue
-          continue;
+        // Detach our scope from any sibling that overlaps ours before any create/recreate —
+        // including ahead of the sensitivity-flip delete+create branch, whose CREATE would
+        // otherwise collide with the sibling.
+        for await (const conflict of conflictingRecords) {
+          await detachTeamSharedEnvVar(secretSync, conflict);
         }
 
-        if (!existingVar) {
+        if (!ownedRecord) {
           await createTeamSharedEnvVar(secretSync, key, secretMap[key].value);
           // eslint-disable-next-line no-continue
           continue;
@@ -896,41 +879,18 @@ export const VercelSyncFns = {
 
         // Vercel does not allow changing a secret's `type` between encrypted and sensitive
         // via PATCH, so we delete and recreate when the desired sensitivity differs.
-        const existingIsSensitive = existingVar.type === "sensitive";
+        const existingIsSensitive = ownedRecord.type === "sensitive";
         const sensitivityChanged = existingIsSensitive !== Boolean(sensitive);
 
         if (sensitivityChanged) {
-          await deleteTeamSharedEnvVar(secretSync, existingVar);
+          await deleteTeamSharedEnvVar(secretSync, ownedRecord);
           await createTeamSharedEnvVar(secretSync, key, secretMap[key].value);
           // eslint-disable-next-line no-continue
           continue;
         }
 
-        const hasValueChanged = existingVar.value !== secretMap[key].value;
-
-        // Sensitive secrets cannot target Development in Vercel — strip before comparing.
-        const isSensitive = sensitive || existingVar.type === "sensitive";
-        const effectiveTargets = targetEnvironments?.filter(
-          (env) => !isSensitive || env !== VercelEnvironmentType.Development
-        );
-
-        const existingTarget = existingVar.target ?? [];
-        const hasTargetChanged =
-          effectiveTargets !== undefined
-            ? existingTarget.length !== effectiveTargets.length ||
-              !effectiveTargets.every((env) => existingTarget.includes(env))
-            : false;
-
-        const hasProjectsChanged = targetProjects
-          ? (existingVar.projectId?.length ?? 0) !== targetProjects.length ||
-            !targetProjects.every((pid) => existingVar.projectId?.includes(pid))
-          : false;
-
-        const hasAllCustomChanged =
-          Boolean(applyToAllCustomEnvironments) !== (existingVar.applyToAllCustomEnvironments ?? false);
-
-        if (hasValueChanged || hasTargetChanged || hasProjectsChanged || hasAllCustomChanged) {
-          await updateTeamSharedEnvVar(secretSync, existingVar, secretMap[key].value);
+        if (ownedRecord.value !== secretMap[key].value) {
+          await updateTeamSharedEnvVar(secretSync, ownedRecord, secretMap[key].value);
         }
       }
 

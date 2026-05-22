@@ -8,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   TApprovalPolicy,
   useCreateApprovalPolicy,
@@ -136,7 +137,8 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       await createPolicy({
         policyType: ApprovalPolicyType.CertCodeSigning,
-        projectId: currentProject.id,
+        scope: ApprovalPolicyScope.Project,
+        scopeId: currentProject.id,
         conditions: [],
         ...cleanedData
       });

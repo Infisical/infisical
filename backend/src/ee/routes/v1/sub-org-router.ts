@@ -8,8 +8,10 @@ import { pick } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const sanitizedSubOrganizationSchema = OrganizationsSchema.pick({
   id: true,
@@ -64,6 +66,16 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
             ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SubOrganizationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: organization.id,
+        properties: {
+          name: organization.name,
+          parentOrgId: req.permission.orgId
         }
       });
 

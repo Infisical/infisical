@@ -31,8 +31,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     isPlatformManagedCredentials?: boolean;
     isAutoRotationEnabled?: boolean | null;
     gatewayId?: string | null;
+    gatewayPoolId?: string | null;
     projectId?: string;
     rotation?: TCreateAppConnectionCredentialRotationSchema | null;
+    configuration?: Record<string, unknown>;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -40,8 +42,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    gatewayPoolId?: string | null;
     isAutoRotationEnabled?: boolean | null;
     rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
+    configuration?: Record<string, unknown>;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -288,9 +292,11 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         description,
         isPlatformManagedCredentials,
         gatewayId,
+        gatewayPoolId,
         projectId,
         isAutoRotationEnabled,
-        rotation
+        rotation,
+        configuration
       } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
@@ -302,9 +308,11 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           description,
           isPlatformManagedCredentials,
           gatewayId,
+          gatewayPoolId,
           projectId,
           rotation,
-          isAutoRotationEnabled: isAutoRotationEnabled ?? false
+          isAutoRotationEnabled: isAutoRotationEnabled ?? false,
+          configuration
         },
         req.permission
       )) as T;
@@ -369,8 +377,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         description,
         isPlatformManagedCredentials,
         gatewayId,
+        gatewayPoolId,
         rotation,
-        isAutoRotationEnabled
+        isAutoRotationEnabled,
+        configuration
       } = req.body;
       const { connectionId } = req.params;
 
@@ -382,8 +392,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           description,
           isPlatformManagedCredentials,
           gatewayId,
+          gatewayPoolId,
           isAutoRotationEnabled: isAutoRotationEnabled ?? undefined,
-          rotation: rotation ?? undefined
+          rotation: rotation ?? undefined,
+          configuration
         },
         req.permission
       )) as T;

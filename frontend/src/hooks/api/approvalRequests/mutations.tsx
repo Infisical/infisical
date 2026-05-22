@@ -30,10 +30,15 @@ export const useCreateApprovalRequest = () => {
 export const useApproveApprovalRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ policyType, requestId, comment }: TApproveApprovalRequestDTO) => {
+    mutationFn: async ({
+      policyType,
+      requestId,
+      comment,
+      bypassReason
+    }: TApproveApprovalRequestDTO) => {
       const { data } = await apiRequest.post<{ request: TApprovalRequest }>(
         `/api/v1/approval-policies/${policyType}/requests/${requestId}/approve`,
-        { comment }
+        { comment, bypassReason }
       );
       return data.request;
     },

@@ -2,6 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 
+import { haveDisjointLiteralPrefixes, isGlobSubsetOfGlob } from "./glob-subset";
 import { PermissionConditionOperators } from "./index";
 
 type TMissingPermission = {
@@ -132,9 +133,7 @@ const isOperatorsASubset = (parentSet: TPermissionConditionShape, subset: TPermi
     }
     if (
       parentSet[PermissionConditionOperators.$GLOB] &&
-      !picomatch.isMatch(subsetOperatorValue, parentSet[PermissionConditionOperators.$GLOB], {
-        strictSlashes: false
-      })
+      !isGlobSubsetOfGlob(parentSet[PermissionConditionOperators.$GLOB], subsetOperatorValue)
     ) {
       return false;
     }
@@ -142,13 +141,69 @@ const isOperatorsASubset = (parentSet: TPermissionConditionShape, subset: TPermi
   return true;
 };
 
+/**
+ * Returns true if we can prove the two operator constraints define disjoint match sets (share no
+ * elements). Returns false when uncertain — callers should treat that as "potentially overlapping"
+ * and behave conservatively. Used by the inverted (deny) rule overlap check.
+ */
+const areOperatorsDisjoint = (a: TPermissionConditionShape, b: TPermissionConditionShape): boolean => {
+  const aEq = a[PermissionConditionOperators.$EQ];
+  const aNeq = a[PermissionConditionOperators.$NEQ];
+  const aIn = a[PermissionConditionOperators.$IN];
+  const aGlob = a[PermissionConditionOperators.$GLOB];
+  const bEq = b[PermissionConditionOperators.$EQ];
+  const bNeq = b[PermissionConditionOperators.$NEQ];
+  const bIn = b[PermissionConditionOperators.$IN];
+  const bGlob = b[PermissionConditionOperators.$GLOB];
+
+  if (aEq !== undefined && bEq !== undefined) return aEq !== bEq;
+  if (aEq !== undefined && bNeq !== undefined) return aEq === bNeq;
+  if (bEq !== undefined && aNeq !== undefined) return bEq === aNeq;
+  if (aEq !== undefined && bIn !== undefined) return !bIn.includes(aEq);
+  if (bEq !== undefined && aIn !== undefined) return !aIn.includes(bEq);
+  if (aEq !== undefined && bGlob !== undefined) {
+    return !picomatch.isMatch(aEq, bGlob, { strictSlashes: false });
+  }
+  if (bEq !== undefined && aGlob !== undefined) {
+    return !picomatch.isMatch(bEq, aGlob, { strictSlashes: false });
+  }
+
+  if (aIn !== undefined && bIn !== undefined) {
+    return !aIn.some((v) => bIn.includes(v));
+  }
+  if (aIn !== undefined && bGlob !== undefined) {
+    return !aIn.some((v) => picomatch.isMatch(v, bGlob, { strictSlashes: false }));
+  }
+  if (bIn !== undefined && aGlob !== undefined) {
+    return !bIn.some((v) => picomatch.isMatch(v, aGlob, { strictSlashes: false }));
+  }
+  // $in vs $neq: disjoint if every $in value is excluded by $neq (i.e., equals the $neq value).
+  if (aIn !== undefined && bNeq !== undefined) return aIn.every((v) => v === bNeq);
+  if (bIn !== undefined && aNeq !== undefined) return bIn.every((v) => v === aNeq);
+
+  if (aGlob !== undefined && bGlob !== undefined) {
+    return haveDisjointLiteralPrefixes(aGlob, bGlob);
+  }
+
+  // $glob vs $neq: $glob covers a (typically infinite) set; $neq excludes one value. Probably
+  // disjoint only if the glob is exactly the excluded value as a literal string.
+  if (aGlob !== undefined && bNeq !== undefined) return aGlob === bNeq;
+  if (bGlob !== undefined && aNeq !== undefined) return bGlob === aNeq;
+
+  // Two $neq constraints almost always overlap over an infinite string domain.
+  return false;
+};
+
 const isSubsetForSamePermissionSubjectAction = (
   parentSetRules: ReturnType<MongoAbility["possibleRulesFor"]>,
   subsetRules: ReturnType<MongoAbility["possibleRulesFor"]>,
   appendToMissingPermission: (condition?: MongoQuery) => void
 ) => {
-  const isMissingConditionInParent = parentSetRules.every((el) => !el.conditions);
-  if (isMissingConditionInParent) return true;
+  // Fast path: if every NON-inverted parent rule is unconditional and there are no inverted
+  // rules, the parent grants the action universally
+  const hasOnlyUnconditionalNonInvertedRules =
+    parentSetRules.length > 0 && parentSetRules.every((el) => !el.inverted && !el.conditions);
+  if (hasOnlyUnconditionalNonInvertedRules) return true;
 
   // all subset rules must pass in comparison to parent rul
   return subsetRules.every((subsetRule) => {
@@ -173,27 +228,35 @@ const isSubsetForSamePermissionSubjectAction = (
       });
 
     const invertedParentSetRules = parentSetRules.filter((el) => el.inverted);
-    const isNotSubsetOfInvertedParentSet = invertedParentSetRules.length
+    // A subset is invalid if it overlaps any inverted (deny) parent rule. Since conditions are
+    // AND-of-fields, proving any single field disjoint between the subset and the deny rule is
+    // enough to prove non-overlap.
+    const overlapsWithInvertedParent = (invertedConditions: Record<string, TPermissionConditionShape | string>) => {
+      const fields = Object.keys(invertedConditions);
+      for (const field of fields) {
+        const subsetField = subsetRuleConditions?.[field];
+        // If the subset doesn't constrain this field, it matches every value and inevitably
+        // overlaps the deny region for this field — leave the field unproven and check the next.
+        if (subsetField) {
+          const invertedOps = formatConditionOperator(invertedConditions[field]);
+          const subsetOps = formatConditionOperator(subsetField);
+          if (areOperatorsDisjoint(invertedOps, subsetOps)) return false;
+        }
+      }
+      return true;
+    };
+    const isNotInDeniedRegion = invertedParentSetRules.length
       ? !invertedParentSetRules.some((parentSetRule) => {
-          // get conditions and iterate
           const parentSetRuleConditions = parentSetRule?.conditions as Record<
             string,
             TPermissionConditionShape | string
           >;
+          // Unconditional inverted rule denies everything; any subset overlaps it.
           if (!parentSetRuleConditions) return true;
-          return Object.keys(parentSetRuleConditions).every((parentConditionField) => {
-            // if parent condition is missing then it's never a subset
-            if (!subsetRuleConditions?.[parentConditionField]) return false;
-
-            // standardize the conditions plain string operator => $eq function
-            const parentRuleConditionOperators = formatConditionOperator(parentSetRuleConditions[parentConditionField]);
-            const selectedSubsetRuleCondition = subsetRuleConditions?.[parentConditionField];
-            const subsetRuleConditionOperators = formatConditionOperator(selectedSubsetRuleCondition);
-            return isOperatorsASubset(parentRuleConditionOperators, subsetRuleConditionOperators);
-          });
+          return overlapsWithInvertedParent(parentSetRuleConditions);
         })
       : true;
-    const isSubset = isSubsetOfNonInvertedParentSet && isNotSubsetOfInvertedParentSet;
+    const isSubset = isSubsetOfNonInvertedParentSet && isNotInDeniedRegion;
     if (!isSubset) {
       appendToMissingPermission(subsetRule.conditions);
     }

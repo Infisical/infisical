@@ -7,6 +7,18 @@ import { userKeys } from "../users/query-keys";
 import { groupKeys } from "./queries";
 import { TGroup, TGroupMachineIdentity } from "./types";
 
+const invalidateAllAudits = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      return (
+        Array.isArray(key) &&
+        (key[1] === "membership-permission-audit" || key[1] === "identity-permission-audit")
+      );
+    }
+  });
+};
+
 export const useCreateGroup = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -114,6 +126,7 @@ export const useAddUserToGroup = () => {
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      invalidateAllAudits(queryClient);
     }
   });
 };
@@ -139,6 +152,7 @@ export const useRemoveUserFromGroup = () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      invalidateAllAudits(queryClient);
     }
   });
 };
@@ -163,6 +177,7 @@ export const useAddIdentityToGroup = () => {
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentitiesMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      invalidateAllAudits(queryClient);
     }
   });
 };
@@ -187,6 +202,7 @@ export const useRemoveIdentityFromGroup = () => {
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentitiesMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      invalidateAllAudits(queryClient);
     }
   });
 };

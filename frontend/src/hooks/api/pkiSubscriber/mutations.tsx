@@ -26,8 +26,7 @@ export const useCreatePkiSubscriber = () => {
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
-          subscriberName: name,
-          projectId
+          subscriberName: name
         })
       });
     }
@@ -50,8 +49,7 @@ export const useUpdatePkiSubscriber = () => {
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
-          subscriberName: name,
-          projectId
+          subscriberName: name
         })
       });
     }
@@ -61,14 +59,9 @@ export const useUpdatePkiSubscriber = () => {
 export const useDeletePkiSubscriber = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiSubscriber, object, TDeletePkiSubscriberDTO>({
-    mutationFn: async ({ subscriberName, projectId }) => {
+    mutationFn: async ({ subscriberName }) => {
       const { data: subscriber } = await apiRequest.delete(
-        `/api/v1/pki/subscribers/${subscriberName}`,
-        {
-          data: {
-            projectId
-          }
-        }
+        `/api/v1/pki/subscribers/${subscriberName}`
       );
       return subscriber;
     },
@@ -78,8 +71,7 @@ export const useDeletePkiSubscriber = () => {
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
-          subscriberName: name,
-          projectId
+          subscriberName: name
         })
       });
     }
@@ -89,20 +81,17 @@ export const useDeletePkiSubscriber = () => {
 export const useIssuePkiSubscriberCert = () => {
   const queryClient = useQueryClient();
   return useMutation<TCreateCertificateResponse, object, TIssuePkiSubscriberCertDTO>({
-    mutationFn: async ({ subscriberName, projectId }) => {
+    mutationFn: async ({ subscriberName }) => {
       const { data } = await apiRequest.post(
         `/api/v1/pki/subscribers/${subscriberName}/issue-certificate`,
-        {
-          projectId
-        }
+        {}
       );
       return data;
     },
-    onSuccess: (_, { subscriberName, projectId }) => {
+    onSuccess: (_, { subscriberName }) => {
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.forPkiSubscriberCertificates({
-          subscriberName,
-          projectId
+          subscriberName
         })
       });
     }
@@ -111,12 +100,10 @@ export const useIssuePkiSubscriberCert = () => {
 
 export const useOrderPkiSubscriberCert = () => {
   return useMutation<{ message: string }, object, TIssuePkiSubscriberCertDTO>({
-    mutationFn: async ({ subscriberName, projectId }) => {
+    mutationFn: async ({ subscriberName }) => {
       const { data } = await apiRequest.post(
         `/api/v1/pki/subscribers/${subscriberName}/order-certificate`,
-        {
-          projectId
-        }
+        {}
       );
       return data;
     }

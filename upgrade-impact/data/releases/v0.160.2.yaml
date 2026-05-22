@@ -1,0 +1,32 @@
+version: v0.160.2
+releasedAt: 2026-05-20T19:13:07+08:00
+sourceTag: v0.160.2
+previousTag: v0.160.1
+impactLevel: low
+summary: Adds one startup database migration for internal PKI certificate
+  authorities. No operator configuration changes are required.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PKI serial number constraint
+    description: Startup drops the unique constraint on internal certificate
+      authority serialNumber values if the table exists. This is an additive
+      compatibility change for existing databases.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260519162000_drop-internal-ca-serial-number-unique.ts
+        path: backend/src/db/migrations/20260519162000_drop-internal-ca-serial-number-unique.ts
+        description: Drops unique constraint in migration file
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-20T11:53:40.742Z
+  sourceRange:
+    from: v0.160.1
+    to: v0.160.2

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { rolesBase } from "@app/hooks/api/certManagerAccess";
 
 import { roleQueryKeys } from "./queries";
 import {
@@ -14,18 +15,35 @@ import {
   TUpdateProjectRoleDTO
 } from "./types";
 
+const invalidateAuditForProject = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string
+) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+      if (!Array.isArray(key) || key.length < 2) return false;
+      if (key[1] !== "membership-permission-audit" && key[1] !== "identity-permission-audit")
+        return false;
+      const params = key[0] as { projectId?: string } | undefined;
+      return params?.projectId === projectId;
+    }
+  });
+};
+
 export const useCreateProjectRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TProjectRole, object, TCreateProjectRoleDTO>({
-    mutationFn: async ({ projectId, ...dto }: TCreateProjectRoleDTO) => {
+    mutationFn: async ({ projectId, projectType, ...dto }: TCreateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.post(`/api/v1/projects/${projectId}/roles`, dto);
+      } = await apiRequest.post(rolesBase(projectType, projectId), dto);
       return role;
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -34,10 +52,10 @@ export const useUpdateProjectRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TProjectRole, object, TUpdateProjectRoleDTO>({
-    mutationFn: async ({ id, projectId, ...dto }: TUpdateProjectRoleDTO) => {
+    mutationFn: async ({ id, projectId, projectType, ...dto }: TUpdateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.patch(`/api/v1/projects/${projectId}/roles/${id}`, dto);
+      } = await apiRequest.patch(`${rolesBase(projectType, projectId)}/${id}`, dto);
       return role;
     },
     onSuccess: (_, { projectId, slug }) => {
@@ -47,6 +65,7 @@ export const useUpdateProjectRole = () => {
           queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, slug)
         });
       }
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };
@@ -54,14 +73,15 @@ export const useUpdateProjectRole = () => {
 export const useDeleteProjectRole = () => {
   const queryClient = useQueryClient();
   return useMutation<TProjectRole, object, TDeleteProjectRoleDTO>({
-    mutationFn: async ({ projectId, id }: TDeleteProjectRoleDTO) => {
+    mutationFn: async ({ projectId, projectType, id }: TDeleteProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.delete(`/api/v1/projects/${projectId}/roles/${id}`);
+      } = await apiRequest.delete(`${rolesBase(projectType, projectId)}/${id}`);
       return role;
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
+      invalidateAuditForProject(queryClient, projectId);
     }
   });
 };

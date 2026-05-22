@@ -2,7 +2,7 @@ Feature: Challenge
 
   Scenario: Validate challenge with HTTP-01
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
@@ -24,7 +24,7 @@ Feature: Challenge
 
   Scenario: Validate challenge with DNS-01
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
@@ -46,7 +46,7 @@ Feature: Challenge
 
   Scenario: Validate challenge with retry
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
@@ -68,7 +68,7 @@ Feature: Challenge
 
   Scenario: Validate challenges for multiple domains
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
@@ -102,7 +102,7 @@ Feature: Challenge
 
   Scenario: Did not finish all challenges
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
@@ -159,7 +159,7 @@ Feature: Challenge
 
   Scenario: CSR names mismatch with order identifier
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
@@ -222,7 +222,7 @@ Feature: Challenge
         "skipDnsOwnershipVerification": true
       }
       """
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr

@@ -40,7 +40,7 @@ jobs:
         run: kubectl create namespace infisical-gateway
 
       - name: Create gateway secret
-        run: kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=my-test-token -n infisical-gateway
+        run: kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=my-test-token --from-literal=INFISICAL_GATEWAY_NAME=ci-test-gateway -n infisical-gateway
 
       - name: Run chart-testing (install)
         run: |
@@ -49,3 +49,19 @@ jobs:
             --charts helm-charts/infisical-gateway \
             --helm-extra-args="--timeout=300s" \
             --namespace infisical-gateway
+
+      - name: Validate enrollment flow templates (token)
+        run: |
+          helm template test-token helm-charts/infisical-gateway \
+            --set gateway.name=ci-test-gateway \
+            --set gateway.enrollment.method=token \
+            --set gateway.enrollment.token.value=ci-test-token \
+            --set gateway.domain=https://app.infisical.com
+
+      - name: Validate enrollment flow templates (aws)
+        run: |
+          helm template test-aws helm-charts/infisical-gateway \
+            --set gateway.name=ci-test-gateway \
+            --set gateway.enrollment.method=aws \
+            --set gateway.enrollment.aws.gatewayId=ci-test-id \
+            --set gateway.domain=https://app.infisical.com

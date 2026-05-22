@@ -1,12 +1,12 @@
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 
 type TPkiSyncCleanupQueueServiceFactoryDep = {
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "findPkiSyncsWithExpiredCertificates">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
@@ -14,7 +14,7 @@ type TPkiSyncCleanupQueueServiceFactoryDep = {
 export type TPkiSyncCleanupQueueServiceFactory = ReturnType<typeof pkiSyncCleanupQueueServiceFactory>;
 
 export const pkiSyncCleanupQueueServiceFactory = ({
-  queueService,
+  cronJob,
   pkiSyncDAL,
   pkiSyncQueue
 }: TPkiSyncCleanupQueueServiceFactoryDep) => {
@@ -53,28 +53,17 @@ export const pkiSyncCleanupQueueServiceFactory = ({
     }
   };
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
-
-    queueService.start(QueueName.PkiSyncCleanup, async () => {
-      try {
-        logger.info(`${QueueName.PkiSyncCleanup}: queue task started`);
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.PkiSyncCleanup,
+      pattern: "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info("cron[pki-sync-cleanup]: task started");
         await syncExpiredCertificatesForPkiSyncs();
-        logger.info(`${QueueName.PkiSyncCleanup}: queue task completed`);
-      } catch (error) {
-        logger.error(error, `${QueueName.PkiSyncCleanup}: PKI sync cleanup failed`);
-        throw error;
       }
     });
-
-    await queueService.upsertJobScheduler(
-      QueueName.PkiSyncCleanup,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PkiSyncCleanup}`,
-      { pattern: "0 0 * * *" },
-      { name: QueueJobs.PkiSyncCleanup }
-    );
   };
 
   return {

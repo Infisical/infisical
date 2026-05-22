@@ -146,7 +146,14 @@ export enum ProjectPermissionCertificateProfileActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
-  RotateAcmeEabSecret = "rotate-acme-eab-secret"
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  ManageApplicationAttachments = "manage-application-attachments"
+}
+
+export enum ProjectPermissionApplicationActions {
+  Read = "read",
+  List = "list",
+  Create = "create"
 }
 
 export enum ProjectPermissionSecretSyncActions {
@@ -378,6 +385,7 @@ export enum ProjectPermissionSub {
   PamInsights = "pam-insights",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
+  Application = "certificate-application",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   McpEndpoints = "mcp-endpoints",
@@ -533,6 +541,10 @@ export type CertificateSubjectFields = {
 };
 
 export type CertificateProfileSubjectFields = {
+  slug: string;
+};
+
+export type ApplicationSubjectFields = {
   slug: string;
 };
 
@@ -729,6 +741,10 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.CertificateProfiles
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> & CertificateProfileSubjectFields)
       )
+    ]
+  | [
+      ProjectPermissionApplicationActions,
+      ProjectPermissionSub.Application | (ForcedSubject<ProjectPermissionSub.Application> & ApplicationSubjectFields)
     ]
   | [
       ProjectPermissionCertificatePolicyActions,
@@ -2105,8 +2121,10 @@ export type TProjectPermissionV2Schema = z.infer<typeof ProjectPermissionV2Schem
 
 export const buildServiceTokenProjectPermission = (
   scopes: Array<{ secretPath: string; environment: string }>,
-  permission: string[]
+  permission: string[],
+  options: { useLegacyRead?: boolean } = {}
 ) => {
+  const { useLegacyRead = true } = options;
   const canWrite = permission.includes("write");
   const canRead = permission.includes("read");
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
@@ -2131,11 +2149,26 @@ export const buildServiceTokenProjectPermission = (
           });
         }
         if (canRead) {
-          can(ProjectPermissionActions.Read, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
+          if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
+            can(ProjectPermissionSecretActions.ReadValue, subject, {
+              secretPath: { $glob: secretPath },
+              environment
+            });
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
+            can(ProjectPermissionSecretActions.DescribeSecret, subject, {
+              secretPath: { $glob: secretPath },
+              environment
+            });
+          } else {
+            can(ProjectPermissionActions.Read, subject, {
+              // @ts-expect-error type
+              secretPath: { $glob: secretPath },
+              environment
+            });
+          }
         }
       }
     );

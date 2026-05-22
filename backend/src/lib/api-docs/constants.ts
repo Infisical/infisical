@@ -67,6 +67,8 @@ export enum ApiDocsTags {
   PkiCertificatePolicies = "PKI Certificate Policies",
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateProfiles = "PKI Certificate Profiles",
+  PkiApplications = "PKI Applications",
+  CertManagerInstance = "Certificate Manager Instance",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
   PkiDiscovery = "PKI Discovery",
@@ -1343,6 +1345,19 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located.",
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
+  },
+  DUPLICATE_SECRET: {
+    projectId: "The ID of the project containing the secret.",
+    sourceEnvironment: "The slug of the source environment.",
+    sourceSecretPath: "The folder path of the source secret.",
+    destinationEnvironment: "The slug of the destination environment.",
+    destinationSecretPath: "The folder path where the secret will be duplicated to.",
+    secretIds:
+      "Array of source secret IDs to duplicate. All secrets must belong to the source environment and path. Rotation and honey-token secrets cannot be duplicated. Maximum 50 secrets per request.",
+    shouldOverwrite:
+      "When true, overwrite an existing secret with the same key at the destination. When false (default), the request fails if the destination already has a secret with that key.",
+    attributesToCopy:
+      "Object specifying which attributes of the source secret to copy to the destination. Each key is optional and defaults to false. Available keys: value, comment, tags, metadata, skipMultilineEncoding."
   }
 } as const;
 
@@ -2183,15 +2198,17 @@ export const CERTIFICATES = {
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
     certificatePem: "The PEM-encoded leaf certificate.",
-    privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
-    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
+    chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
 
-    certificate: "The issued certificate.",
-    certificateChain: "The certificate chain of the issued certificate.",
-    privateKey: "The private key of the issued certificate.",
-    serialNumber: "The serial number of the issued certificate."
+    certificate: "The imported certificate.",
+    certificateChain:
+      "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
+    privateKey:
+      "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
+    serialNumber: "The serial number of the imported certificate."
   }
 };
 
@@ -2590,7 +2607,9 @@ export const CertificateAuthorities = {
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
       crlDistributionPointUrls:
-        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is always included as the primary."
+        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
+      disableManagedCrlDistributionPointUrl:
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
     }
   }
 };
@@ -2794,6 +2813,11 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    DATADOG: {
+      url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
+      apiKey: "The Datadog API key used to authenticate.",
+      applicationKey: "The Datadog Application key used to authenticate."
+    },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
       port: "The port number of the SSH server (default: 22).",
@@ -2801,7 +2825,9 @@ export const AppConnections = {
       authMethod: "The authentication method to use (password or ssh-key).",
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
-      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod).",
+      blockedUsers:
+        "A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu')."
     },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
@@ -3216,6 +3242,9 @@ export const SecretRotations = {
   RECONCILE: {
     rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
   },
+  CHECK_CREDENTIALS: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to check active credentials for.`
+  }),
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:
@@ -3313,6 +3342,9 @@ export const SecretRotations = {
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3376,6 +3408,10 @@ export const SecretRotations = {
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
+      applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
     }
   }
 };
@@ -3565,7 +3601,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   },
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the LDAP config for.",
@@ -3582,7 +3622,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   }
 };
 

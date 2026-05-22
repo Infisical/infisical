@@ -14,6 +14,7 @@ export type TPamPlaybackChunk = {
 
 export type TPamPlaybackBundle = {
   legacy: boolean;
+  sessionComplete: boolean;
   sessionKey: string | null;
   projectId?: string;
   storageBackend?: TPamRecordingStorageBackend;

@@ -231,7 +231,8 @@ const CertificateProfilePolicyActionSchema = z.object({
   [ProjectPermissionCertificateProfileActions.Delete]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret]: z.boolean().optional(),
-  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional()
+  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.ManageApplicationAttachments]: z.boolean().optional()
 });
 
 const CertificatePolicyPolicyActionSchema = z.object({

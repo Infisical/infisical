@@ -41,10 +41,81 @@ faker = Faker()
 
 
 class AcmeProfile:
-    def __init__(self, id: str, eab_kid: str, eab_secret: str):
+    def __init__(self, id: str, app_id: str, eab_kid: str, eab_secret: str):
         self.id = id
+        self.app_id = app_id
         self.eab_kid = eab_kid
         self.eab_secret = eab_secret
+
+
+def _create_acme_profile_with_app(
+    context: Context,
+    ca_id: str | None = None,
+    policy_id: str | None = None,
+    acme_config: dict | None = None,
+) -> "AcmeProfile":
+    """Create a certificate profile, a PKI application, attach them, enable ACME
+    enrollment on the junction, and reveal the EAB secret. Returns an AcmeProfile
+    carrying both the profile id and the application id needed for the new
+    application-scoped ACME routes."""
+    jwt_token = context.vars["AUTH_TOKEN"]
+    headers = {"authorization": f"Bearer {jwt_token}"}
+    project_id = context.vars["PROJECT_ID"]
+    ca_id = ca_id or context.vars["CERT_CA_ID"]
+    policy_id = policy_id or context.vars["CERT_POLICY_ID"]
+
+    response = context.http_client.post(
+        "/api/v1/cert-manager/certificate-profiles",
+        headers=headers,
+        json={
+            "projectId": project_id,
+            "slug": faker.slug(),
+            "description": "ACME Profile created by BDD test",
+            "caId": ca_id,
+            "certificatePolicyId": policy_id,
+        },
+    )
+    response.raise_for_status()
+    profile_id = response.json()["certificateProfile"]["id"]
+
+    response = context.http_client.post(
+        "/api/v1/cert-manager/applications",
+        headers=headers,
+        params={"projectId": project_id},
+        json={"name": faker.slug()},
+    )
+    response.raise_for_status()
+    app_id = response.json()["application"]["id"]
+
+    response = context.http_client.post(
+        f"/api/v1/cert-manager/applications/{app_id}/profiles",
+        headers=headers,
+        params={"projectId": project_id},
+        json={"profileIds": [profile_id]},
+    )
+    response.raise_for_status()
+
+    response = context.http_client.put(
+        f"/api/v1/cert-manager/applications/{app_id}/profiles/{profile_id}/enrollment/acme",
+        headers=headers,
+        params={"projectId": project_id},
+        json=acme_config or {},
+    )
+    response.raise_for_status()
+
+    response = context.http_client.post(
+        f"/api/v1/cert-manager/applications/{app_id}/profiles/{profile_id}/enrollment/acme/eab/reveal",
+        headers=headers,
+        params={"projectId": project_id},
+    )
+    response.raise_for_status()
+    body = response.json()
+    return AcmeProfile(
+        id=profile_id,
+        app_id=app_id,
+        eab_kid=body["eabKid"],
+        eab_secret=body["eabSecret"],
+    )
 
 
 @given("I make a random {faker_type} as {var_name}")
@@ -54,44 +125,7 @@ def step_impl(context: Context, faker_type: str, var_name: str):
 
 @given('I have an ACME cert profile as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
-    profile_id = context.vars.get("PROFILE_ID")
-    secret = context.vars.get("EAB_SECRET")
-    if profile_id is not None and secret is not None:
-        kid = profile_id
-    else:
-        profile_slug = faker.slug()
-        jwt_token = context.vars["AUTH_TOKEN"]
-        response = context.http_client.post(
-            "/api/v1/cert-manager/certificate-profiles",
-            headers=dict(authorization="Bearer {}".format(jwt_token)),
-            json={
-                "projectId": context.vars["PROJECT_ID"],
-                "slug": profile_slug,
-                "description": "ACME Profile created by BDD test",
-                "enrollmentType": "acme",
-                "caId": context.vars["CERT_CA_ID"],
-                "certificatePolicyId": context.vars["CERT_POLICY_ID"],
-                "acmeConfig": {},
-            },
-        )
-        response.raise_for_status()
-        resp_json = response.json()
-        profile_id = resp_json["certificateProfile"]["id"]
-        kid = profile_id
-
-        response = context.http_client.get(
-            f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
-            headers=dict(authorization="Bearer {}".format(jwt_token)),
-        )
-        response.raise_for_status()
-        resp_json = response.json()
-        secret = resp_json["eabSecret"]
-
-    context.vars[profile_var] = AcmeProfile(
-        profile_id,
-        eab_kid=kid,
-        eab_secret=secret,
-    )
+    context.vars[profile_var] = _create_acme_profile_with_app(context)
 
 
 @given("I create a Cloudflare connection as {var_name}")
@@ -231,119 +265,24 @@ def step_impl(context: Context, var_name: str):
     'I create an ACME profile with ca {ca_id} and policy {policy_id} as "{profile_var}"'
 )
 def step_impl(context: Context, ca_id: str, policy_id: str, profile_var: str):
-    profile_slug = faker.slug()
-    jwt_token = context.vars["AUTH_TOKEN"]
-    response = context.http_client.post(
-        "/api/v1/cert-manager/certificate-profiles",
-        headers=dict(authorization="Bearer {}".format(jwt_token)),
-        json={
-            "projectId": context.vars["PROJECT_ID"],
-            "slug": profile_slug,
-            "description": "ACME Profile created by BDD test",
-            "enrollmentType": "acme",
-            "caId": replace_vars(ca_id, context.vars),
-            "certificatePolicyId": replace_vars(policy_id, context.vars),
-            "acmeConfig": {},
-        },
-    )
-    response.raise_for_status()
-    resp_json = response.json()
-    profile_id = resp_json["certificateProfile"]["id"]
-    kid = profile_id
-
-    response = context.http_client.get(
-        f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
-        headers=dict(authorization="Bearer {}".format(jwt_token)),
-    )
-    response.raise_for_status()
-    resp_json = response.json()
-    secret = resp_json["eabSecret"]
-
-    context.vars[profile_var] = AcmeProfile(
-        profile_id,
-        eab_kid=kid,
-        eab_secret=secret,
+    context.vars[profile_var] = _create_acme_profile_with_app(
+        context,
+        ca_id=replace_vars(ca_id, context.vars),
+        policy_id=replace_vars(policy_id, context.vars),
     )
 
 
 @given('I create an ACME profile with config as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
-    profile_slug = faker.slug()
-    jwt_token = context.vars["AUTH_TOKEN"]
     acme_config = replace_vars(json.loads(context.text), context.vars)
-    response = context.http_client.post(
-        "/api/v1/cert-manager/certificate-profiles",
-        headers=dict(authorization="Bearer {}".format(jwt_token)),
-        json={
-            "projectId": context.vars["PROJECT_ID"],
-            "slug": profile_slug,
-            "description": "ACME Profile created by BDD test",
-            "enrollmentType": "acme",
-            "caId": context.vars["CERT_CA_ID"],
-            "certificatePolicyId": context.vars["CERT_POLICY_ID"],
-            "acmeConfig": acme_config,
-        },
-    )
-    response.raise_for_status()
-    resp_json = response.json()
-    profile_id = resp_json["certificateProfile"]["id"]
-    kid = profile_id
-
-    response = context.http_client.get(
-        f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
-        headers=dict(authorization="Bearer {}".format(jwt_token)),
-    )
-    response.raise_for_status()
-    resp_json = response.json()
-    secret = resp_json["eabSecret"]
-
-    context.vars[profile_var] = AcmeProfile(
-        profile_id,
-        eab_kid=kid,
-        eab_secret=secret,
+    context.vars[profile_var] = _create_acme_profile_with_app(
+        context, acme_config=acme_config
     )
 
 
 @given('I have an ACME cert profile with external ACME CA as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
-    profile_id = context.vars.get("PROFILE_ID")
-    secret = context.vars.get("EAB_SECRET")
-    if profile_id is not None and secret is not None:
-        kid = profile_id
-    else:
-        profile_slug = faker.slug()
-        jwt_token = context.vars["AUTH_TOKEN"]
-        response = context.http_client.post(
-            "/api/v1/cert-manager/certificate-profiles",
-            headers=dict(authorization="Bearer {}".format(jwt_token)),
-            json={
-                "projectId": context.vars["PROJECT_ID"],
-                "slug": profile_slug,
-                "description": "ACME Profile created by BDD test",
-                "enrollmentType": "acme",
-                "caId": context.vars["CERT_CA_ID"],
-                "certificatePolicyId": context.vars["CERT_POLICY_ID"],
-                "acmeConfig": {},
-            },
-        )
-        response.raise_for_status()
-        resp_json = response.json()
-        profile_id = resp_json["certificateProfile"]["id"]
-        kid = profile_id
-
-        response = context.http_client.get(
-            f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
-            headers=dict(authorization="Bearer {}".format(jwt_token)),
-        )
-        response.raise_for_status()
-        resp_json = response.json()
-        secret = resp_json["eabSecret"]
-
-    context.vars[profile_var] = AcmeProfile(
-        profile_id,
-        eab_kid=kid,
-        eab_secret=secret,
-    )
+    context.vars[profile_var] = _create_acme_profile_with_app(context)
 
 
 @given("I intercept outgoing requests")

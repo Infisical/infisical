@@ -1,3 +1,5 @@
+import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
+
 import { registerCaRouter } from "./certificate-authority-router";
 import { registerDeprecatedGroupProjectRouter } from "./deprecated-group-project-router";
 import { registerDeprecatedIdentityProjectRouter } from "./deprecated-identity-project-router";
@@ -24,6 +26,7 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (pkiRouter) => {
+      await pkiRouter.register(injectCertManagerProjectId);
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(registerPkiTemplatesRouter, { prefix: "/certificate-templates" });
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });

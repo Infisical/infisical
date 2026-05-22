@@ -11,11 +11,7 @@ import {
 
 export const certTemplateKeys = {
   getCertTemplateById: (id: string) => [{ id }, "cert-template"],
-  listTemplates: ({ projectId, ...el }: { limit?: number; offset?: number; projectId: string }) => [
-    "list-template",
-    projectId,
-    el
-  ],
+  listTemplates: (el: { limit?: number; offset?: number } = {}) => ["list-template", el] as const,
   getEstConfig: (id: string) => [{ id }, "cert-template-est-config"]
 };
 
@@ -36,11 +32,10 @@ export const useGetCertTemplate = (id: string) => {
 // TODO: DEPRECATE
 export const useListCertificateTemplates = ({
   limit = 100,
-  offset = 0,
-  projectId
-}: TListCertificateTemplatesDTO) => {
+  offset = 0
+}: TListCertificateTemplatesDTO = {}) => {
   return useQuery({
-    queryKey: certTemplateKeys.listTemplates({ limit, offset, projectId }),
+    queryKey: certTemplateKeys.listTemplates({ limit, offset }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateTemplates: TCertificateTemplateV2[];
@@ -48,8 +43,7 @@ export const useListCertificateTemplates = ({
       }>("/api/v2/pki/certificate-templates", {
         params: {
           limit,
-          offset,
-          projectId
+          offset
         }
       });
       return data;

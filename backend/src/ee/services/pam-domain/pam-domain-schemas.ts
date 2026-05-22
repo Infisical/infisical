@@ -38,8 +38,24 @@ const CoreCreatePamDomainSchema = z.object({
 });
 
 export const CreateActiveDirectoryDomainSchema = CoreCreatePamDomainSchema.extend({
-  gatewayId: z.string().uuid(),
+  gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional(),
   connectionDetails: ActiveDirectoryConnectionDetailsSchema
+}).superRefine((data, ctx) => {
+  if (data.gatewayId && data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayPoolId"],
+      code: z.ZodIssueCode.custom,
+      message: "Cannot specify both a gateway and a gateway pool"
+    });
+  }
+  if (!data.gatewayId && !data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayId"],
+      code: z.ZodIssueCode.custom,
+      message: "A gateway or gateway pool is required"
+    });
+  }
 });
 
 const CoreUpdatePamDomainSchema = z.object({
@@ -49,7 +65,16 @@ const CoreUpdatePamDomainSchema = z.object({
 
 export const UpdateActiveDirectoryDomainSchema = CoreUpdatePamDomainSchema.extend({
   gatewayId: z.string().uuid().optional(),
+  gatewayPoolId: z.string().uuid().optional(),
   connectionDetails: ActiveDirectoryConnectionDetailsSchema.optional()
+}).superRefine((data, ctx) => {
+  if (data.gatewayId && data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayPoolId"],
+      code: z.ZodIssueCode.custom,
+      message: "Cannot specify both a gateway and a gateway pool"
+    });
+  }
 });
 
 export const SanitizedDomainSchema = z.discriminatedUnion("domainType", [SanitizedActiveDirectoryDomainSchema]);

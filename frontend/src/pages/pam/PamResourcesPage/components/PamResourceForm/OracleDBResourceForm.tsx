@@ -43,11 +43,13 @@ export const OracleDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) 
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined
+          gatewayId: resource.gatewayId ?? null,
+          gatewayPoolId: resource.gatewayPoolId ?? null
         }
       : {
           resourceType: PamResourceType.OracleDB,
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             host: "",
             port: 1521,

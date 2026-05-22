@@ -53,7 +53,8 @@ vi.mock("../certificate-authority/certificate-authority-fns", () => ({
   extractDnParts: vi.fn().mockReturnValue({
     commonName: "test.example.com"
   }),
-  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com")
+  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com"),
+  assertCaInProfileProject: vi.fn()
 }));
 
 describe("CertificateV3Service", () => {
@@ -124,7 +125,7 @@ describe("CertificateV3Service", () => {
       issueCertFromCa: vi.fn()
     };
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission"> = {
+  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
         throwUnlessCan: vi.fn(),
@@ -133,6 +134,18 @@ describe("CertificateV3Service", () => {
         relevantRuleFor: vi.fn(),
         rules: []
       }
+    }),
+    getResourcePermission: vi.fn().mockResolvedValue({
+      permission: {
+        throwUnlessCan: vi.fn(),
+        can: vi.fn().mockReturnValue(true),
+        cannot: vi.fn().mockReturnValue(false),
+        relevantRuleFor: vi.fn(),
+        rules: []
+      },
+      memberships: [],
+      hasRole: vi.fn().mockReturnValue(false),
+      isImplicitAdmin: false
     })
   };
 
@@ -260,6 +273,12 @@ describe("CertificateV3Service", () => {
         insertMany: vi.fn().mockResolvedValue([]),
         delete: vi.fn().mockResolvedValue([]),
         find: vi.fn().mockResolvedValue([])
+      },
+      pkiApplicationProfileDAL: {
+        findAllByProfileId: vi.fn().mockResolvedValue([])
+      } as never,
+      licenseService: {
+        getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
       }
     });
   });
@@ -291,7 +310,8 @@ describe("CertificateV3Service", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile",
-        description: "Test profile"
+        description: "Test profile",
+        apiConfigId: "api-config-legacy"
       };
 
       const mockCA = {
@@ -317,7 +337,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-123",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -380,7 +401,8 @@ describe("CertificateV3Service", () => {
             notAfter: null,
             activeCaCertId: "cert-123",
             caId: "ca-123",
-            crlDistributionPointUrls: []
+            crlDistributionPointUrls: [],
+            disableManagedCrlDistributionPointUrl: false
           }
         }
       };
@@ -448,7 +470,7 @@ describe("CertificateV3Service", () => {
         slug: "test-profile-camel",
         description: "Test camelCase profile",
         estConfigId: null,
-        apiConfigId: null
+        apiConfigId: "api-config-legacy"
       };
 
       const mockCA = {
@@ -474,7 +496,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-123",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -585,7 +608,8 @@ describe("CertificateV3Service", () => {
             notAfter: null,
             activeCaCertId: "cert-123",
             caId: "ca-123",
-            crlDistributionPointUrls: []
+            crlDistributionPointUrls: [],
+            disableManagedCrlDistributionPointUrl: false
           }
         }
       };
@@ -670,7 +694,7 @@ describe("CertificateV3Service", () => {
         slug: "test-profile-est",
         description: "Test EST profile",
         estConfigId: null,
-        apiConfigId: null
+        apiConfigId: "api-config-legacy"
       };
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
@@ -724,7 +748,7 @@ describe("CertificateV3Service", () => {
         slug: "test-profile-sign",
         description: "Test signing profile",
         estConfigId: null,
-        apiConfigId: null
+        apiConfigId: "api-config-legacy"
       };
 
       const mockCA = {
@@ -750,7 +774,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-123",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -793,7 +818,8 @@ describe("CertificateV3Service", () => {
             notAfter: null,
             activeCaCertId: "cert-123",
             caId: "ca-123",
-            crlDistributionPointUrls: []
+            crlDistributionPointUrls: [],
+            disableManagedCrlDistributionPointUrl: false
           }
         }
       };
@@ -893,7 +919,7 @@ describe("CertificateV3Service", () => {
         slug: "test-profile-est-sign",
         description: "Test EST signing profile",
         estConfigId: null,
-        apiConfigId: null
+        apiConfigId: "api-config-legacy"
       };
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
@@ -945,7 +971,7 @@ describe("CertificateV3Service", () => {
         slug: "test-profile-est-order",
         description: "Test EST order profile",
         estConfigId: null,
-        apiConfigId: null
+        apiConfigId: "api-config-legacy"
       };
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
@@ -981,7 +1007,7 @@ describe("CertificateV3Service", () => {
       updatedAt: new Date(),
       description: "Test profile for algorithm compatibility",
       estConfigId: null,
-      apiConfigId: null
+      apiConfigId: "api-config-legacy"
     };
 
     const mockCertificateRequest = {
@@ -1024,7 +1050,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1187,7 +1214,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1350,7 +1378,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1513,7 +1542,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1741,7 +1771,8 @@ describe("CertificateV3Service", () => {
         activeCaCertId: "cert-123",
         dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
         serialNumber: "123456789",
-        crlDistributionPointUrls: []
+        crlDistributionPointUrls: [],
+        disableManagedCrlDistributionPointUrl: false
       }
     };
 

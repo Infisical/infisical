@@ -32,7 +32,8 @@ export const PkiSyncsSchema = z.object({
   removeStatus: z.string().nullable().optional(),
   lastRemoveJobId: z.string().nullable().optional(),
   lastRemoveMessage: z.string().nullable().optional(),
-  lastRemovedAt: z.date().nullable().optional()
+  lastRemovedAt: z.date().nullable().optional(),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiSyncs = z.infer<typeof PkiSyncsSchema>;

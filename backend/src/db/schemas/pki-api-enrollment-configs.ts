@@ -12,7 +12,8 @@ export const PkiApiEnrollmentConfigsSchema = z.object({
   autoRenew: z.boolean().default(false).nullable().optional(),
   renewBeforeDays: z.number().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  applicationProfileId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiApiEnrollmentConfigs = z.infer<typeof PkiApiEnrollmentConfigsSchema>;

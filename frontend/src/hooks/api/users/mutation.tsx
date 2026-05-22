@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { userMembershipsBase } from "@app/hooks/api/certManagerAccess";
 
 import { projectKeys } from "../projects";
 import { userKeys } from "./query-keys";
@@ -10,8 +11,8 @@ export const useAddUserToWsNonE2EE = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, AddUserToWsDTONonE2EE>({
-    mutationFn: async ({ projectId, usernames, roleSlugs }) => {
-      const { data } = await apiRequest.post(`/api/v1/projects/${projectId}/memberships`, {
+    mutationFn: async ({ projectId, projectType, usernames, roleSlugs }) => {
+      const { data } = await apiRequest.post(userMembershipsBase(projectType, projectId), {
         usernames,
         roleSlugs
       });

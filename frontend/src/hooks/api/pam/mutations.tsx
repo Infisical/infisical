@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { gatewayPoolsQueryKeys } from "../gateway-pools/queries";
 import { pamKeys } from "./queries";
 import {
   TCreatePamAccountDTO,
@@ -42,6 +43,7 @@ export const useCreatePamResource = () => {
     },
     onSuccess: ({ projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -62,6 +64,7 @@ export const useUpdatePamResource = () => {
       queryClient.invalidateQueries({
         queryKey: pamKeys.getResource(resourceType, resourceId)
       });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -78,6 +81,7 @@ export const useDeletePamResource = () => {
     },
     onSuccess: ({ projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };

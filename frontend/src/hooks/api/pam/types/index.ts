@@ -5,7 +5,7 @@ import {
   PamResourceOrderBy,
   PamResourceType,
   PamSessionStatus,
-  TerminalChannelType
+  SessionChannelType
 } from "../enums";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
 import { TSessionSummaryConfig } from "./base-resource";
@@ -71,10 +71,10 @@ export type TPamCommandLog = {
   timestamp: string;
 };
 
-export type TTerminalEvent = {
+export type TSessionEvent = {
   timestamp: string;
   eventType: "input" | "output" | "resize" | "error";
-  channelType?: TerminalChannelType; // Optional for backwards compatibility with existing logs
+  channelType?: SessionChannelType; // Optional for backwards compatibility with existing logs
   data: string; // Base64 encoded binary data
   elapsedTime: number; // Seconds since session start (for replay)
 };
@@ -100,7 +100,7 @@ export type THttpResponseEvent = {
 
 export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
 
-export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent;
+export type TPamSessionLog = TPamCommandLog | TSessionEvent | THttpEvent;
 
 export type TPamSessionAiInsights = {
   summary: string;
@@ -148,19 +148,21 @@ export type TListPamResourcesDTO = {
 
 export type TCreatePamResourceDTO = Pick<
   TPamResource,
-  "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
+  "name" | "connectionDetails" | "resourceType" | "projectId"
 > & {
+  gatewayId?: string;
+  gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
 };
 
 export type { TSessionSummaryConfig };
 
-export type TUpdatePamResourceDTO = Partial<
-  Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
-> & {
+export type TUpdatePamResourceDTO = Partial<Pick<TPamResource, "name" | "connectionDetails">> & {
   resourceId: string;
   resourceType: PamResourceType;
+  gatewayId?: string;
+  gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
   rotationAccountCredentials?: { username: string; password: string } | null;

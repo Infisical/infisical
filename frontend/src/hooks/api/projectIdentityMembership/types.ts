@@ -12,22 +12,26 @@ export type TProjectIdentityMembership = {
 export type TCreateProjectIdentityMembershipDTO = {
   identityId: string;
   projectId: string;
+  projectType?: string;
   role?: string;
 };
 
 export type TUpdateProjectIdentityMembershipDTO = {
   identityId: string;
   projectId: string;
+  projectType?: string;
   roles: TRoles;
 };
 
 export type TDeleteProjectIdentityMembershipDTO = {
   identityId: string;
   projectId: string;
+  projectType?: string;
 };
 
 export type TListAvailableProjectIdentitiesDTO = {
   projectId: string;
+  projectType?: string;
   offset?: number;
   limit?: number;
   identityName?: string;
