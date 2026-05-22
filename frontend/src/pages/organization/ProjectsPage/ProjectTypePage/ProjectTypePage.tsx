@@ -221,7 +221,6 @@ const MyProjectsForType = ({
   onUpgradePlan,
   isAddingProjectsAllowed
 }: SubViewProps) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
@@ -306,111 +305,102 @@ const MyProjectsForType = ({
     }
   };
 
-  const navigateToProject = (workspace: Project) => {
-    navigate({
-      to: getProjectHomePage(workspace.type, workspace.environments),
-      params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-    });
-  };
-
   const renderProjectGridItem = (workspace: Project & { isFavorite: boolean }) => (
     <div
-      onClick={() => navigateToProject(workspace)}
       key={workspace.id}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") navigateToProject(workspace);
-      }}
-      className="cursor-pointer overflow-clip rounded-sm border border-l-4 border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700"
+      className="relative overflow-clip rounded-sm border border-l-4 border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700 focus-within:border-l-primary focus-within:bg-mineshaft-700"
     >
-      <div className="flex items-center gap-4">
-        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
-          <Lottie className="h-7 w-7 shrink-0" icon={getProjectLottieIcon(workspace.type)} />
+      <Link
+        to={getProjectHomePage(workspace.type, workspace.environments)}
+        params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+        className="block cursor-pointer p-4 focus-visible:outline-none"
+      >
+        <div className="flex items-center gap-4 pr-6">
+          <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
+            <Lottie className="h-7 w-7 shrink-0" icon={getProjectLottieIcon(workspace.type)} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-lg font-medium text-mineshaft-100">{workspace.name}</p>
+            <p className="truncate text-sm leading-4 text-mineshaft-300">
+              {getProjectTitle(workspace.type)}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-medium text-mineshaft-100">{workspace.name}</p>
-          <p className="truncate text-sm leading-4 text-mineshaft-300">
-            {getProjectTitle(workspace.type)}
-          </p>
-        </div>
-        <div className="mt-0.5 self-start">
-          {workspace.isFavorite ? (
-            <FontAwesomeIcon
-              icon={faSolidStar}
-              className="text-sm text-yellow-600 hover:text-mineshaft-400"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeProjectFromFavorites(workspace.id);
-              }}
-            />
-          ) : (
-            <FontAwesomeIcon
-              icon={faStar}
-              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
-              onClick={(e) => {
-                e.stopPropagation();
-                addProjectToFavorites(workspace.id);
-              }}
-            />
-          )}
-        </div>
-      </div>
-      <p className="mt-4 truncate text-sm text-mineshaft-400">
-        {workspace.description || "No description"}
-      </p>
+        <p className="mt-4 truncate text-sm text-mineshaft-400">
+          {workspace.description || "No description"}
+        </p>
+      </Link>
+      <button
+        type="button"
+        aria-label={
+          workspace.isFavorite ? "Remove project from favorites" : "Add project to favorites"
+        }
+        className="absolute top-3.5 right-3.5 cursor-pointer rounded-sm border-0 bg-transparent p-1 text-sm leading-none outline-0 focus-visible:ring-1 focus-visible:ring-primary"
+        onClick={() => {
+          if (workspace.isFavorite) removeProjectFromFavorites(workspace.id);
+          else addProjectToFavorites(workspace.id);
+        }}
+      >
+        <FontAwesomeIcon
+          icon={workspace.isFavorite ? faSolidStar : faStar}
+          className={
+            workspace.isFavorite
+              ? "text-yellow-600 hover:text-mineshaft-400"
+              : "text-mineshaft-400 hover:text-mineshaft-300"
+          }
+        />
+      </button>
     </div>
   );
 
   const renderProjectListItem = (workspace: Project & { isFavorite: boolean }, index: number) => (
     <div
-      onClick={() => navigateToProject(workspace)}
       key={workspace.id}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") navigateToProject(workspace);
-      }}
-      className={`group flex min-w-72 cursor-pointer border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
+      className={`group flex min-w-72 border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 hover:border-l-primary hover:bg-mineshaft-700 focus-within:border-l-primary focus-within:bg-mineshaft-700 ${
         index === 0 && "rounded-t-md"
       }`}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
-          <Lottie
-            className="h-[1.35rem] w-[1.35rem] shrink-0"
-            icon={getProjectLottieIcon(workspace.type)}
-          />
+      <Link
+        to={getProjectHomePage(workspace.type, workspace.environments)}
+        params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-6 py-3 focus-visible:outline-none"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
+            <Lottie
+              className="h-[1.35rem] w-[1.35rem] shrink-0"
+              icon={getProjectLottieIcon(workspace.type)}
+            />
+          </div>
+          <div className="-mt-0.5 flex min-w-0 flex-col">
+            <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+            <p className="truncate text-xs leading-4 text-mineshaft-300">
+              {getProjectTitle(workspace.type)}{" "}
+              {workspace.description ? `- ${workspace.description}` : ""}
+            </p>
+          </div>
         </div>
-        <div className="-mt-0.5 flex min-w-0 flex-col">
-          <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
-          <p className="truncate text-xs leading-4 text-mineshaft-300">
-            {getProjectTitle(workspace.type)}{" "}
-            {workspace.description ? `- ${workspace.description}` : ""}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center justify-end">
-        {workspace.isFavorite ? (
-          <FontAwesomeIcon
-            icon={faSolidStar}
-            className="ml-6 text-sm text-yellow-600 hover:text-mineshaft-400"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeProjectFromFavorites(workspace.id);
-            }}
-          />
-        ) : (
-          <FontAwesomeIcon
-            icon={faStar}
-            className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              addProjectToFavorites(workspace.id);
-            }}
-          />
-        )}
-      </div>
+      </Link>
+      <button
+        type="button"
+        aria-label={
+          workspace.isFavorite ? "Remove project from favorites" : "Add project to favorites"
+        }
+        className="flex cursor-pointer items-center justify-center border-0 bg-transparent px-6 py-3 text-sm outline-0 focus-visible:ring-1 focus-visible:ring-primary"
+        onClick={() => {
+          if (workspace.isFavorite) removeProjectFromFavorites(workspace.id);
+          else addProjectToFavorites(workspace.id);
+        }}
+      >
+        <FontAwesomeIcon
+          icon={workspace.isFavorite ? faSolidStar : faStar}
+          className={
+            workspace.isFavorite
+              ? "text-yellow-600 hover:text-mineshaft-400"
+              : "text-mineshaft-400 hover:text-mineshaft-300"
+          }
+        />
+      </button>
     </div>
   );
 
@@ -614,32 +604,8 @@ const AllProjectsForType = ({
             </div>
           ))}
         {!isProjectLoading &&
-          searchedProjects?.projects?.map((workspace) => (
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={(evt) => {
-                if (evt.key === "Enter" && workspace.isMember) {
-                  navigate({
-                    to: getProjectHomePage(workspace.type, workspace.environments),
-                    params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-                  });
-                }
-              }}
-              onClick={() => {
-                if (workspace.isMember) {
-                  navigate({
-                    to: getProjectHomePage(workspace.type, workspace.environments),
-                    params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-                  });
-                }
-              }}
-              key={workspace.id}
-              className={twMerge(
-                "group flex min-w-72 items-center justify-center border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
-                workspace.isMember ? "cursor-pointer hover:bg-mineshaft-700" : "cursor-default"
-              )}
-            >
+          searchedProjects?.projects?.map((workspace) => {
+            const rowContent = (
               <div className="mr-3 flex min-w-0 flex-1 items-center gap-3">
                 <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
                   <Lottie
@@ -655,12 +621,31 @@ const AllProjectsForType = ({
                   </p>
                 </div>
               </div>
-              {workspace.isMember ? (
-                <Badge variant="info">
-                  <CheckIcon />
-                  Joined
-                </Badge>
-              ) : (
+            );
+
+            if (workspace.isMember) {
+              return (
+                <Link
+                  key={workspace.id}
+                  to={getProjectHomePage(workspace.type, workspace.environments)}
+                  params={{ orgId: currentOrg?.id || workspace.orgId, projectId: workspace.id }}
+                  className="group flex min-w-72 cursor-pointer items-center justify-center border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:border-l-primary hover:bg-mineshaft-700 focus-visible:border-l-primary focus-visible:bg-mineshaft-700 focus-visible:outline-none first:rounded-t-md"
+                >
+                  {rowContent}
+                  <Badge variant="info">
+                    <CheckIcon />
+                    Joined
+                  </Badge>
+                </Link>
+              );
+            }
+
+            return (
+              <div
+                key={workspace.id}
+                className="group flex min-w-72 cursor-default items-center justify-center border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md"
+              >
+                {rowContent}
                 <OrgPermissionCan
                   I={OrgPermissionAdminConsoleAction.AccessAllProjects}
                   an={OrgPermissionSubjects.AdminConsole}
@@ -698,9 +683,9 @@ const AllProjectsForType = ({
                     )
                   }
                 </OrgPermissionCan>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
       </div>
       {!isProjectLoading && Boolean(searchedProjects?.totalCount) && (
         <Pagination
