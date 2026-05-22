@@ -445,10 +445,13 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectByEnvId = async (envId: string, tx?: Knex) => {
     const project = await (tx || db.replicaNode())(TableName.Project)
-      .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+        this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+          `${TableName.Environment}.expireAfter`
+        );
+      })
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter({ id: envId }, TableName.Environment))
-      .whereNull(`${TableName.Environment}.expireAfter`)
       .select(selectAllTableCols(TableName.Project))
       .first();
     return project;

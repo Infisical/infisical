@@ -49,12 +49,11 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretV2}.folderId`,
         `${TableName.SecretFolder}.id`
       )
-      .leftJoin<TProjectEnvironments>(
-        TableName.Environment,
-        `${TableName.SecretFolder}.envId`,
-        `${TableName.Environment}.id`
-      )
-      .whereNull(`${TableName.Environment}.expireAfter`)
+      .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolder() {
+        this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+          `${TableName.Environment}.expireAfter`
+        );
+      })
       .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .leftJoin<TOrganizations>(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
       .select(selectAllTableCols(TableName.Reminder))

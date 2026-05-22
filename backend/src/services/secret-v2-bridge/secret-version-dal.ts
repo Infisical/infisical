@@ -27,8 +27,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .where(buildFindFilter(filter, TableName.SecretVersionV2))
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .select(selectAllTableCols(TableName.SecretVersionV2))
         .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"))
         .first();
@@ -216,8 +219,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       const { offset, limit, sort = [["createdAt", "desc"]] } = findOpt;
       const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersionV2}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .leftJoin<TUsers>(
           `${TableName.Users} as user_actor`,
           "user_actor.id",

@@ -1,7 +1,9 @@
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectEnvDALFactory } from "./project-env-dal";
 
@@ -12,11 +14,17 @@ type TProjectEnvQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findByIdIncludingExpired" | "delete" | "transaction">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TProjectEnvQueueFactory = ReturnType<typeof projectEnvQueueFactory>;
 
-export const projectEnvQueueFactory = ({ queueService, projectEnvDAL, keyStore }: TProjectEnvQueueFactoryDep) => {
+export const projectEnvQueueFactory = ({
+  queueService,
+  projectEnvDAL,
+  keyStore,
+  auditLogService
+}: TProjectEnvQueueFactoryDep) => {
   const scheduleHardDelete = async (envId: string, projectId: string, delayMs: number) => {
     await queueService.queue(
       QueueName.ProjectEnvHardDelete,
@@ -79,6 +87,19 @@ export const projectEnvQueueFactory = ({ queueService, projectEnvDAL, keyStore }
 
       await projectEnvDAL.delete({ id: envId, projectId });
       logger.info(`project-env-hard-delete: hard-deleted environment [envId=${envId}] [projectId=${projectId}]`);
+
+      await auditLogService.createAuditLog({
+        projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.DELETE_ENVIRONMENT,
+          metadata: {
+            name: fresh.name,
+            slug: fresh.slug,
+            hardDelete: true
+          }
+        }
+      });
     } finally {
       await lock.release();
     }

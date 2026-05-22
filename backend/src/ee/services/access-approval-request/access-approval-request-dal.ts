@@ -352,8 +352,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               `reviewerOrgMembership.actorUserId`
             ).andOn(`reviewerOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
           })
-          .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
-          .whereNull(`${TableName.Environment}.expireAfter`)
+          .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicy() {
+            this.on(`${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`).andOnNull(
+              `${TableName.Environment}.expireAfter`
+            );
+          })
 
           .select(selectAllTableCols(TableName.AccessApprovalRequest))
           .select(
@@ -645,12 +648,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         `${TableName.AccessApprovalPolicyEnvironment}.policyId`
       )
 
-      .leftJoin(
-        TableName.Environment,
-        `${TableName.AccessApprovalPolicyEnvironment}.envId`,
-        `${TableName.Environment}.id`
-      )
-      .whereNull(`${TableName.Environment}.expireAfter`)
+      .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicyEnvironment() {
+        this.on(`${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`).andOnNull(
+          `${TableName.Environment}.expireAfter`
+        );
+      })
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
@@ -883,8 +885,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.AccessApprovalRequest}.policyId`,
           `${TableName.AccessApprovalPolicy}.id`
         )
-        .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicy() {
+          this.on(`${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .leftJoin(
           TableName.AdditionalPrivilege,
           `${TableName.AccessApprovalRequest}.privilegeId`,

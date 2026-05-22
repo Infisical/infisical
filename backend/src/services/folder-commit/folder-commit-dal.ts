@@ -64,8 +64,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
-        .leftJoin(TableName.Environment, `${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolderCommit() {
+          this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .where((qb) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);

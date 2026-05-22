@@ -14,9 +14,12 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .where({ projectId })
-        .whereNull(`${TableName.Environment}.expireAfter`)
         .whereNull("secretBlindIndex")
         .count(`${TableName.Secret}.id` as "id");
       return doc?.[0]?.count || 0;
@@ -29,9 +32,12 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .where({ projectId })
-        .whereNull(`${TableName.Environment}.expireAfter`)
         .select(selectAllTableCols(TableName.Secret))
         .select(
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
@@ -47,10 +53,13 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .where({ projectId })
         .whereIn(`${TableName.Secret}.id`, secretIds)
-        .whereNull(`${TableName.Environment}.expireAfter`)
         .select(selectAllTableCols(TableName.Secret))
         .select(
           db.ref("slug").withSchema(TableName.Environment).as("environment"),

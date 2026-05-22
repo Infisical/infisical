@@ -74,12 +74,20 @@ export const projectEnvServiceFactory = ({
       }
 
       const envs = await projectEnvDAL.find({ projectId });
-      const existingEnv = envs.find(({ slug: envSlug }) => envSlug === slug);
-      if (existingEnv)
+
+      const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
+      if (slugHolder) {
+        if (slugHolder.expireAfter) {
+          throw new BadRequestError({
+            message: `Environment slug '${slug}' is held by a pending-deletion environment. Permanently delete that environment first, then retry.`,
+            name: "CreateEnvironment"
+          });
+        }
         throw new BadRequestError({
           message: "Environment with slug already exists",
           name: "CreateEnvironment"
         });
+      }
 
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
@@ -170,8 +178,14 @@ export const projectEnvServiceFactory = ({
         });
       }
       if (slug) {
-        const existingEnv = await projectEnvDAL.findOne({ slug, projectId });
-        if (existingEnv && existingEnv.id !== id) {
+        const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
+        if (slugHolder && slugHolder.id !== id) {
+          if (slugHolder.expireAfter) {
+            throw new BadRequestError({
+              message: `Environment slug '${slug}' is held by a pending-deletion environment. Permanently delete that environment first, then retry.`,
+              name: "UpdateEnvironment"
+            });
+          }
           throw new BadRequestError({
             message: "Environment with slug already exists",
             name: "UpdateEnvironment"

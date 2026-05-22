@@ -1728,7 +1728,8 @@ export const registerRoutes = async (
   const projectEnvQueue = projectEnvQueueFactory({
     queueService,
     projectEnvDAL,
-    keyStore
+    keyStore,
+    auditLogService
   });
 
   const projectEnvService = projectEnvServiceFactory({

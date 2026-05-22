@@ -99,6 +99,18 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Bypasses the soft-delete read filter. Used by create/update to detect when a
+  // slug is held by a pending-deletion env so we can surface a friendly error
+  // instead of the DB unique-constraint failure.
+  const findBySlugIncludingExpired = async (projectId: string, slug: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment).where({ projectId, slug }).first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by slug including expired" });
+    }
+  };
+
   const restoreById = async (id: string, projectId: string, position: number, tx?: Knex) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
@@ -175,6 +187,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     findBySlugs,
     softDeleteById,
     findByIdIncludingExpired,
+    findBySlugIncludingExpired,
     restoreById,
     findLastEnvPosition,
     updateAllPosition,

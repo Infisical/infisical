@@ -167,8 +167,11 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
           `${TableName.DynamicSecret}.id`
         )
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.DynamicSecret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.expireAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.DynamicSecret),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
