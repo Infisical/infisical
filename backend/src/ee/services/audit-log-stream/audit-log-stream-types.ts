@@ -31,12 +31,12 @@ export type TLogStreamFactoryValidateCredentials<C extends TAuditLogStreamCreden
   credentials: C;
 }) => Promise<C>;
 
-export type TLogStreamFactoryStreamLog<C extends TAuditLogStreamCredentials> = (input: {
+export type TLogStreamFactoryBatchStreamLog<C extends TAuditLogStreamCredentials> = (input: {
   credentials: C;
-  auditLog: TAuditLogs;
+  auditLogs: TAuditLogs[];
 }) => Promise<void>;
 
 export type TLogStreamFactory<C extends TAuditLogStreamCredentials> = () => {
   validateCredentials: TLogStreamFactoryValidateCredentials<C>;
-  streamLog: TLogStreamFactoryStreamLog<C>;
+  batchStreamLog: TLogStreamFactoryBatchStreamLog<C>;
 };

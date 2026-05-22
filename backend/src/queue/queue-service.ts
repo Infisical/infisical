@@ -13,6 +13,7 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -108,6 +109,13 @@ export enum QueueName {
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
+  // One queue per provider so a slow Splunk endpoint can't starve fast Datadog flushes (and vice versa).
+  // BullMQ disallows ':' in queue names, so use '-' as the separator.
+  AuditLogStreamAzure = "audit-stream-azure",
+  AuditLogStreamCribl = "audit-stream-cribl",
+  AuditLogStreamCustom = "audit-stream-custom",
+  AuditLogStreamDatadog = "audit-stream-datadog",
+  AuditLogStreamSplunk = "audit-stream-splunk",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
@@ -176,6 +184,7 @@ export enum QueueJobs {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
+  AuditLogStreamFlush = "audit-log-stream-flush",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
@@ -477,6 +486,26 @@ export type TQueueJobTypes = {
   [QueueName.AuditLogClickHouseBatch]: {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
+  };
+  [QueueName.AuditLogStreamAzure]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogStreamCribl]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogStreamCustom]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogStreamDatadog]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogStreamSplunk]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
   };
   [QueueName.PamDiscoveryScan]:
     | {

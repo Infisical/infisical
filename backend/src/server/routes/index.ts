@@ -43,6 +43,9 @@ import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-lo
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
+import { auditLogStreamOutboxQueueFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-queue";
+import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
@@ -639,6 +642,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
+  const auditLogStreamOutboxDAL = auditLogStreamOutboxDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
@@ -913,12 +917,29 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
+    auditLogStreamOutboxDAL,
+    auditLogStreamDAL,
+    kmsService,
+    keyStore,
+    queueService,
+    // Reuse the existing sliding-window alerting so a wedged provider still
+    // emails org admins after the failure threshold is crossed.
+    onStreamFailure: ({ orgId, streamId, provider, errorMessage }) =>
+      auditLogStreamService.recordStreamFailure(orgId, streamId, provider, errorMessage)
+  });
+
+  auditLogStreamOutboxQueueFactory({
+    queueService,
+    auditLogStreamOutboxService
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamService,
+    auditLogStreamOutboxService,
     clickhouseClient: clickhouse,
     keyStore
   });

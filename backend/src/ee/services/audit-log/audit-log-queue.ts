@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
 import type { TProjects } from "@app/db/schemas";
-import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -21,7 +21,7 @@ import { TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
-  auditLogStreamService: Pick<TAuditLogStreamServiceFactory, "streamLog">;
+  auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForOrg">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -54,6 +54,10 @@ const normalizeEmptyValue = (value: string | undefined | null, isClickhouse: boo
 // keep this timeout 5s it must be fast because else the queue will take time to finish
 // audit log is a crowded queue thus needs to be fast
 export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
+
+// batch deliveries can carry up to AUDIT_LOG_STREAM_BATCH_SIZE events to remote intakes;
+// give them more headroom than the single-event ping timeout above.
+export const AUDIT_LOG_STREAM_BATCH_TIMEOUT = 30 * 1000;
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 const AUDIT_LOG_CLICKHOUSE_STREAM_KEY = "audit-log-stream";
 const AUDIT_LOG_CLICKHOUSE_BATCH_SIZE = 10_000;
@@ -64,7 +68,7 @@ export const auditLogQueueServiceFactory = async ({
   queueService,
   projectDAL,
   licenseService,
-  auditLogStreamService,
+  auditLogStreamOutboxService,
   clickhouseClient,
   keyStore
 }: TAuditLogQueueServiceFactoryDep): Promise<TAuditLogQueueServiceFactory> => {
@@ -183,7 +187,9 @@ export const auditLogQueueServiceFactory = async ({
         });
 
         if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
-          await auditLogStreamService.streamLog(orgId, auditLog);
+          // Hand off to the outbox: fan out one row per active stream and let
+          // per-provider workers batch-drain in the background.
+          await auditLogStreamOutboxService.enqueueForOrg(orgId, auditLog);
         }
       }
     } catch (error) {

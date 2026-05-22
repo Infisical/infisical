@@ -5,8 +5,8 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
+import { TLogStreamFactoryBatchStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
 import { TDatadogProviderCredentials } from "./datadog-provider-types";
 
 function createPayload(event: Record<string, unknown>) {
@@ -45,21 +45,27 @@ export const DatadogProviderFactory = () => {
     return credentials;
   };
 
-  const streamLog: TLogStreamFactoryStreamLog<TDatadogProviderCredentials> = async ({ credentials, auditLog }) => {
+  // Datadog v2 logs intake accepts a JSON array of events in a single POST.
+  const batchStreamLog: TLogStreamFactoryBatchStreamLog<TDatadogProviderCredentials> = async ({
+    credentials,
+    auditLogs
+  }) => {
+    if (auditLogs.length === 0) return;
+
     const { url, token } = credentials;
 
     await blockLocalAndPrivateIpAddresses(url);
 
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json", "DD-API-KEY": token };
 
-    await request.post(url, createPayload(auditLog), {
+    await request.post(url, auditLogs.map(createPayload), {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
     });
   };
 
   return {
     validateCredentials,
-    streamLog
+    batchStreamLog
   };
 };

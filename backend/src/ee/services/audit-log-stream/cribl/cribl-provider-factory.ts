@@ -4,8 +4,8 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
+import { TLogStreamFactoryBatchStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
 import { TCriblProviderCredentials } from "./cribl-provider-types";
 
 export const CriblProviderFactory = () => {
@@ -33,24 +33,32 @@ export const CriblProviderFactory = () => {
     return credentials;
   };
 
-  const streamLog: TLogStreamFactoryStreamLog<TCriblProviderCredentials> = async ({ credentials, auditLog }) => {
+  // Cribl HTTP source ingests newline-delimited JSON for batch payloads.
+  const batchStreamLog: TLogStreamFactoryBatchStreamLog<TCriblProviderCredentials> = async ({
+    credentials,
+    auditLogs
+  }) => {
+    if (auditLogs.length === 0) return;
+
     const { url, token } = credentials;
 
     await blockLocalAndPrivateIpAddresses(url);
 
     const streamHeaders: RawAxiosRequestHeaders = {
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-ndjson",
       Authorization: `Bearer ${token}`
     };
 
-    await request.post(url, JSON.stringify(auditLog), {
+    const body = auditLogs.map((auditLog) => JSON.stringify(auditLog)).join("\n");
+
+    await request.post(url, body, {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
     });
   };
 
   return {
     validateCredentials,
-    streamLog
+    batchStreamLog
   };
 };

@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { isAxiosError } from "axios";
 
 import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
 import {
@@ -279,7 +278,6 @@ export const auditLogStreamServiceFactory = ({
     deleteById,
     getById,
     list,
-    listProviderOptions,
-    streamLog
+    listProviderOptions
   };
 };
