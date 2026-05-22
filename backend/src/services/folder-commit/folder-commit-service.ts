@@ -1022,7 +1022,8 @@ export const folderCommitServiceFactory = ({
                 encryptedValue: secretVersion.encryptedValue,
                 encryptedComment: secretVersion.encryptedComment,
                 userId: secretVersion.userId,
-                folderId
+                folderId,
+                secretValueBlindIndex: secretVersion.secretValueBlindIndex
               }
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
@@ -1060,6 +1061,7 @@ export const folderCommitServiceFactory = ({
                 actorType: actorInfo.actorType,
                 envId: secretVersion.envId,
                 metadata: metadata ? JSON.stringify(metadata) : null,
+                secretValueBlindIndex: secretVersion.secretValueBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
@@ -1100,7 +1102,8 @@ export const folderCommitServiceFactory = ({
                 reminderRepeatDays: secretVersion?.reminderRepeatDays,
                 encryptedValue: secretVersion?.encryptedValue,
                 encryptedComment: secretVersion?.encryptedComment,
-                userId: secretVersion?.userId
+                userId: secretVersion?.userId,
+                secretValueBlindIndex: secretVersion?.secretValueBlindIndex
               },
               tx
             );
@@ -1139,6 +1142,7 @@ export const folderCommitServiceFactory = ({
                 envId: secretVersion.envId,
                 folderId,
                 secretId: secretVersion.secretId,
+                secretValueBlindIndex: secretVersion.secretValueBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },

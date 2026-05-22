@@ -804,10 +804,11 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -821,12 +822,22 @@ export const createManySecretsRawFnFactory = ({
           message: `Secret already exists: ${secretsStoredInDB.map((el) => el.key).join(",")}`
         });
 
-      const inputSecrets = secrets.map((secret) => {
+      const encryptedSecrets = secrets.map((secret) => ({
+        secret,
+        encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob
+      }));
+
+      const blindIndexes = await Promise.all(
+        encryptedSecrets.map(({ encryptedValue }) => generateSecretBlindIndex(encryptedValue))
+      );
+
+      const inputSecrets = encryptedSecrets.map(({ secret, encryptedValue }, idx) => {
         return {
           type: secret.type,
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.secretName,
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedValue,
+          secretValueBlindIndex: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,
@@ -988,10 +999,11 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1021,7 +1033,17 @@ export const updateManySecretsRawFnFactory = ({
       }
 
       const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
-      const inputSecrets = secrets.map((secret) => {
+
+      const encryptedSecrets = secrets.map((secret) => ({
+        secret,
+        encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob
+      }));
+
+      const blindIndexes = await Promise.all(
+        encryptedSecrets.map(({ encryptedValue }) => generateSecretBlindIndex(encryptedValue))
+      );
+
+      const inputSecrets = encryptedSecrets.map(({ secret, encryptedValue }, idx) => {
         if (secret.newSecretName === "") {
           throw new BadRequestError({ message: "New secret name cannot be empty" });
         }
@@ -1030,7 +1052,8 @@ export const updateManySecretsRawFnFactory = ({
           type: secret.type,
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.newSecretName || secret.secretName,
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedValue,
+          secretValueBlindIndex: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,

@@ -185,6 +185,7 @@ export type TFnSecretBulkInsert = {
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
       parentSecretVersionId?: string;
+      secretValueBlindIndex?: string | null;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -203,10 +204,12 @@ type TRequireReferenceIfValue =
   | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
+      secretValueBlindIndex?: string | null;
     })
   | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
       encryptedValue?: never;
       references?: never;
+      secretValueBlindIndex?: never;
     });
 
 export type TFnSecretBulkUpdate = {
