@@ -225,6 +225,9 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(ENVIRONMENTS.DELETE.projectId),
         id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
+      querystring: z.object({
+        hardDelete: z.coerce.boolean().optional().default(false).describe(ENVIRONMENTS.DELETE.hardDelete)
+      }),
       response: {
         200: z.object({
           message: z.string(),
@@ -241,7 +244,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        id: req.params.id
+        id: req.params.id,
+        hardDelete: req.query.hardDelete
       });
 
       await server.services.auditLog.createAuditLog({
@@ -251,7 +255,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
           type: EventType.DELETE_ENVIRONMENT,
           metadata: {
             slug: environment.slug,
-            name: environment.name
+            name: environment.name,
+            hardDelete: req.query.hardDelete
           }
         }
       });

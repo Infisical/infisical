@@ -15,6 +15,7 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
   const query = (tx || db.replicaNode())(TableName.SecretSync)
     .leftJoin(TableName.SecretFolder, `${TableName.SecretSync}.folderId`, `${TableName.SecretFolder}.id`)
     .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+    .whereNull(`${TableName.Environment}.expiredAt`)
     .join(TableName.AppConnection, `${TableName.SecretSync}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretSync))
     .select(

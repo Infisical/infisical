@@ -1,23 +1,79 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TProjectEnvironments } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { buildFindFilter, ormify, TFindFilter, TFindOpt } from "@app/lib/knex";
 
 export type TProjectEnvDALFactory = ReturnType<typeof projectEnvDALFactory>;
 
 export const projectEnvDALFactory = (db: TDbClient) => {
   const projectEnvOrm = ormify(db, TableName.Environment);
 
+  const findById: typeof projectEnvOrm.findById = async (id, tx) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment)
+        .where({ id })
+        .whereNull("expiredAt")
+        .first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
+  const findOne: typeof projectEnvOrm.findOne = async (filter, tx) => {
+    try {
+      const res = await (tx || db.replicaNode())(TableName.Environment).where(filter).whereNull("expiredAt").first("*");
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
+  const find = (async (
+    filter: TFindFilter<TProjectEnvironments>,
+    { offset, limit, sort, tx }: TFindOpt<TProjectEnvironments> = {}
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Environment)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter))
+        .whereNull("expiredAt");
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      }
+      const res = await query;
+      return res as TProjectEnvironments[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find" });
+    }
+  }) as typeof projectEnvOrm.find;
+
   const findBySlugs = async (projectId: string, env: string[], tx?: Knex) => {
     try {
       const envs = await (tx || db.replicaNode())(TableName.Environment)
         .where("projectId", projectId)
-        .whereIn("slug", env);
+        .whereIn("slug", env)
+        .whereNull("expiredAt");
       return envs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by slugs" });
+    }
+  };
+
+  const softDeleteById = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNull("expiredAt")
+        .update({ expiredAt: new Date() })
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete environment" });
     }
   };
 
@@ -72,7 +128,11 @@ export const projectEnvDALFactory = (db: TDbClient) => {
 
   return {
     ...projectEnvOrm,
+    findById,
+    findOne,
+    find,
     findBySlugs,
+    softDeleteById,
     findLastEnvPosition,
     updateAllPosition,
     shiftPositions

@@ -51,7 +51,11 @@ export const projectDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.expiredAt`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
@@ -113,7 +117,11 @@ export const projectDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.expiredAt`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
@@ -184,7 +192,11 @@ export const projectDALFactory = (db: TDbClient) => {
       const workspaces = await db
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.id`, id)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.expiredAt`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -237,7 +249,11 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.expiredAt`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -432,6 +448,7 @@ export const projectDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter({ id: envId }, TableName.Environment))
+      .whereNull(`${TableName.Environment}.expiredAt`)
       .select(selectAllTableCols(TableName.Project))
       .first();
     return project;

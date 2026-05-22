@@ -283,7 +283,8 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
           type: EventType.DELETE_ENVIRONMENT,
           metadata: {
             slug: environment.slug,
-            name: environment.name
+            name: environment.name,
+            hardDelete: false
           }
         }
       });

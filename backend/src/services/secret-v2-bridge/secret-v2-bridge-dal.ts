@@ -175,6 +175,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         )
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
@@ -870,7 +871,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             .from(TableName.SecretV2)
             .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .where(`${TableName.Environment}.projectId`, projectId);
+            .where(`${TableName.Environment}.projectId`, projectId)
+            .whereNull(`${TableName.Environment}.expiredAt`);
         })
         .where({
           environment: envSlug,
@@ -930,6 +932,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
 
@@ -960,6 +963,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false
         })
         .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
 
@@ -986,7 +990,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             .from(TableName.SecretV2)
             .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .where(`${TableName.Environment}.projectId`, projectId);
+            .where(`${TableName.Environment}.projectId`, projectId)
+            .whereNull(`${TableName.Environment}.expiredAt`);
         })
         .where({
           environment: oldEnvSlug,
@@ -1008,6 +1013,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         // not empty
         .whereNotNull("encryptedValue")
         .select("encryptedValue", `${TableName.SecretV2}.id` as "id");
@@ -1034,6 +1040,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
@@ -1171,6 +1178,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         .whereNull(`${TableName.SecretV2}.userId`)
         .where(`${TableName.SecretV2}.updatedAt`, "<", staleBeforeDate)
         .select(
@@ -1195,6 +1203,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.expiredAt`)
         .whereNull(`${TableName.SecretV2}.userId`)
         .where(`${TableName.SecretV2}.updatedAt`, "<", staleBeforeDate)
         .count("* as count")

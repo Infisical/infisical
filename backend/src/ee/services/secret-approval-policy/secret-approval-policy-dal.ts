@@ -40,6 +40,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicy}.id`
       )
       .join(TableName.Environment, `${TableName.SecretApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.expiredAt`)
       .where((qb) => {
         if (customFilter?.envId) {
           void qb.where(`${TableName.SecretApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);

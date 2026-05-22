@@ -2333,6 +2333,7 @@ interface DeleteEnvironmentEvent {
   metadata: {
     name: string;
     slug: string;
+    hardDelete: boolean;
   };
 }
 

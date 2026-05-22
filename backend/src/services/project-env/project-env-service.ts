@@ -211,7 +211,15 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const deleteEnvironment = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod, id }: TDeleteEnvDTO) => {
+  const deleteEnvironment = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    hardDelete = false
+  }: TDeleteEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -251,7 +259,18 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
         }
-        const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
+        if (hardDelete) {
+          const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
+          if (!doc)
+            throw new NotFoundError({
+              message: `Environment with id '${id}' in project with ID '${projectId}' not found`,
+              name: "DeleteEnvironment"
+            });
+
+          return doc;
+        }
+
+        const doc = await projectEnvDAL.softDeleteById(id, projectId, tx);
         if (!doc)
           throw new NotFoundError({
             message: `Environment with id '${id}' in project with ID '${projectId}' not found`,
