@@ -318,11 +318,6 @@ export const certificateIssuanceQueueFactory = ({
 
     const jobIdSeed = certificateRequestId ?? certificateId;
 
-    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
-      jobId: `certificate-issuance-${jobIdSeed}`,
-      ...queueOpts
-    });
-
     if (certificateRequestId && certificateRequestDAL) {
       try {
         await certificateRequestDAL.setPendingMessage(certificateRequestId, "Waiting in the issuance queue");
@@ -330,6 +325,11 @@ export const certificateIssuanceQueueFactory = ({
         logger.warn(error, `Failed to set queued pendingMessage [certificateRequestId=${certificateRequestId}]`);
       }
     }
+
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+      jobId: `certificate-issuance-${jobIdSeed}`,
+      ...queueOpts
+    });
   };
 
   /**

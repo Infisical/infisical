@@ -14,7 +14,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
@@ -813,7 +813,7 @@ describe("CertificateRequestService", () => {
       });
     });
 
-    it("throws BadRequestError when the request is already in a terminal status", async () => {
+    it("returns cancelled:false when the request is already in a terminal status", async () => {
       const terminalRow = {
         id: requestId,
         status: CertificateRequestStatus.ISSUED,
@@ -827,9 +827,18 @@ describe("CertificateRequestService", () => {
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(terminalRow);
       (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
 
-      await expect(service.cancelCertificateRequest(cancelInput)).rejects.toThrow(BadRequestError);
+      const result = await service.cancelCertificateRequest(cancelInput);
+
       expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
       expect(mockQueueService.cancelActiveJob).not.toHaveBeenCalled();
+      expect(mockQueueService.stopJobById).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        certificateRequest: terminalRow,
+        projectId,
+        cancelled: false,
+        previousStatus: CertificateRequestStatus.ISSUED,
+        previousPendingMessage: null
+      });
     });
 
     it("throws NotFoundError when the request does not exist", async () => {

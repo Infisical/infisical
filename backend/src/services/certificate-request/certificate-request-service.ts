@@ -603,13 +603,20 @@ export const certificateRequestServiceFactory = ({
       );
     }
 
+    const previousStatus = certificateRequest.status as CertificateRequestStatus;
+    const previousPendingMessage = certificateRequest.pendingMessage ?? null;
+
     if (
       certificateRequest.status !== CertificateRequestStatus.PENDING &&
       certificateRequest.status !== CertificateRequestStatus.PENDING_VALIDATION
     ) {
-      throw new BadRequestError({
-        message: `Only pending certificate requests can be cancelled [status=${certificateRequest.status}]`
-      });
+      return {
+        certificateRequest,
+        projectId: certificateRequest.projectId,
+        cancelled: false,
+        previousStatus,
+        previousPendingMessage
+      };
     }
 
     let actorLabel = "user";
@@ -623,9 +630,6 @@ export const certificateRequestServiceFactory = ({
       const identity = await identityDAL.findById(actorId);
       actorLabel = identity?.name ? `identity ${identity.name}` : "identity";
     }
-
-    const previousStatus = certificateRequest.status as CertificateRequestStatus;
-    const previousPendingMessage = certificateRequest.pendingMessage ?? null;
 
     const updated = await certificateRequestDAL.transitionFromPending(
       certificateRequestId,
