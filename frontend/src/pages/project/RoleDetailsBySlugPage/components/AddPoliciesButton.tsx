@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ChevronDownIcon, DownloadIcon, LayersIcon, PlusIcon } from "lucide-react";
 
 import {
@@ -29,6 +30,61 @@ type Props = {
   portalContainer?: React.RefObject<HTMLElement | null>;
 };
 
+type VaultImportControlsProps = {
+  projectId: string;
+  isDisabled?: boolean;
+  onCloseOptionsMenu: () => void;
+};
+
+// Mounted only when a projectId is present so the project-permission hook
+// isn't called outside a ProjectPermissionContext (e.g. the org-level
+// project-templates editor).
+const VaultImportControls = ({
+  projectId,
+  isDisabled,
+  onCloseOptionsMenu
+}: VaultImportControlsProps) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    ProjectPermissionSub.Secrets
+  );
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
+
+  if (vaultAppConnections.length === 0) return null;
+
+  return (
+    <>
+      <Tooltip open={!canUseAppConnectionImport ? undefined : false}>
+        <TooltipTrigger className="block w-full">
+          <DropdownMenuItem
+            onClick={() => {
+              setIsModalOpen(true);
+              onCloseOptionsMenu();
+            }}
+            isDisabled={isDisabled}
+          >
+            <DownloadIcon />
+            Add from HashiCorp Vault
+          </DropdownMenuItem>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          Only authorized users can import policies from HashiCorp Vault
+        </TooltipContent>
+      </Tooltip>
+      <VaultPolicyImportModal
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        appConnections={vaultAppConnections}
+      />
+    </>
+  );
+};
+
 export const AddPoliciesButton = ({
   isDisabled,
   projectType,
@@ -39,20 +95,8 @@ export const AddPoliciesButton = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addPolicy",
     "addPolicyOptions",
-    "applyTemplate",
-    "importFromVault"
+    "applyTemplate"
   ] as const);
-
-  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
-    ProjectPermissionSub.Secrets
-  );
-  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
-    AppConnection.HCVault,
-    projectId ?? "",
-    { enabled: Boolean(projectId) && canUseAppConnectionImport }
-  );
-  const hasVaultConnection = vaultAppConnections.length > 0;
-  const isVaultImportDisabled = isDisabled;
 
   return (
     <div>
@@ -95,24 +139,12 @@ export const AddPoliciesButton = ({
               <LayersIcon />
               Add From Template
             </DropdownMenuItem>
-            {hasVaultConnection && (
-              <Tooltip open={!canUseAppConnectionImport ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      handlePopUpOpen("importFromVault");
-                      handlePopUpClose("addPolicyOptions");
-                    }}
-                    isDisabled={isVaultImportDisabled}
-                  >
-                    <DownloadIcon />
-                    Add from HashiCorp Vault
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  Only authorized users can import policies from HashiCorp Vault
-                </TooltipContent>
-              </Tooltip>
+            {projectId && (
+              <VaultImportControls
+                projectId={projectId}
+                isDisabled={isDisabled}
+                onCloseOptionsMenu={() => handlePopUpClose("addPolicyOptions")}
+              />
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -121,11 +153,6 @@ export const AddPoliciesButton = ({
         type={projectType}
         isOpen={popUp.applyTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("applyTemplate", isOpen)}
-      />
-      <VaultPolicyImportModal
-        isOpen={popUp.importFromVault.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
-        appConnections={vaultAppConnections}
       />
     </div>
   );
