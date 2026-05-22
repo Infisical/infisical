@@ -1,20 +1,19 @@
 import { useCallback } from "react";
-import {
-  faBan,
-  faCheck,
-  faCopy,
-  faDownload,
-  faEllipsisV,
-  faEraser,
-  faInfoCircle,
-  faRotate,
-  faToggleOff,
-  faToggleOn,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertTriangleIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  BanIcon,
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  EraserIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  RefreshCwIcon,
+  ToggleLeftIcon,
+  ToggleRightIcon,
+  Trash2Icon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -25,16 +24,18 @@ import {
   SecretSyncStatusBadge
 } from "@app/components/secret-syncs";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -44,7 +45,6 @@ import { SecretSyncStatus, TSecretSync, useSecretSyncOption } from "@app/hooks/a
 import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { SecretSyncDestinationCol } from "./SecretSyncDestinationCol";
-import { SecretSyncTableCell } from "./SecretSyncTableCell";
 
 type Props = {
   secretSync: TSecretSync;
@@ -53,6 +53,31 @@ type Props = {
   onTriggerImportSecrets: (secretSync: TSecretSync) => void;
   onTriggerRemoveSecrets: (secretSync: TSecretSync) => void;
   onToggleEnable: (secretSync: TSecretSync) => void;
+};
+
+const SecretSyncDestinationSourceCell = ({
+  folderPath,
+  environmentName
+}: {
+  folderPath: string;
+  environmentName: string;
+}) => {
+  return (
+    <TableCell className="max-w-0 min-w-32!">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>
+            <p className="truncate text-sm">{folderPath}</p>
+            <p className="truncate text-xs leading-4 text-accent">{environmentName}</p>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-2xl break-words">
+          <p className="text-sm">{folderPath}</p>
+          <p className="text-xs leading-3 text-accent">{environmentName}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TableCell>
+  );
 };
 
 export const SecretSyncRow = ({
@@ -105,7 +130,7 @@ export const SecretSyncRow = ({
   const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
-    <Tr
+    <TableRow
       onClick={() =>
         navigate({
           to: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path,
@@ -118,49 +143,56 @@ export const SecretSyncRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
+        "group h-12",
         syncStatus === SecretSyncStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
-      key={`sync-${id}`}
     >
-      <Td>
+      <TableCell>
         <img
           alt={`${destinationDetails.name} sync`}
           src={`/images/integrations/${destinationDetails.image}`}
-          className="min-w-7"
+          className="size-6 min-w-6"
         />
-      </Td>
-      <Td className="max-w-0 min-w-32!">
+      </TableCell>
+      <TableCell className="max-w-0 min-w-32!">
         <div>
           <div className="flex w-full items-center">
             <p className="truncate">{name}</p>
             {description && (
-              <Tooltip content={description}>
-                <FontAwesomeIcon
-                  icon={faInfoCircle}
-                  size="xs"
-                  className="ml-1 text-mineshaft-400"
-                />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="ml-1 size-3 text-accent" />
+                </TooltipTrigger>
+                <TooltipContent>{description}</TooltipContent>
               </Tooltip>
             )}
           </div>
-          <p className="truncate text-xs leading-4 text-bunker-300">{destinationDetails.name}</p>
+          <p className="truncate text-xs leading-4 text-accent">{destinationDetails.name}</p>
         </div>
-      </Td>
+      </TableCell>
       {folder && environment ? (
-        <SecretSyncTableCell primaryText={folder.path} secondaryText={environment.name} />
+        <SecretSyncDestinationSourceCell
+          folderPath={folder.path}
+          environmentName={environment.name}
+        />
       ) : (
-        <Td>
-          <Tooltip content="The source location for this sync has been deleted. Configure a new source or remove this sync.">
-            <Badge variant="danger">
-              <AlertTriangleIcon />
-              <span>Source Folder Deleted</span>
-            </Badge>
+        <TableCell>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="danger">
+                <AlertTriangleIcon />
+                <span>Source Folder Deleted</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              The source location for this sync has been deleted. Configure a new source or remove
+              this sync.
+            </TooltipContent>
           </Tooltip>
-        </Td>
+        </TableCell>
       )}
       <SecretSyncDestinationCol secretSync={secretSync} />
-      <Td>
+      <TableCell>
         <div className="flex items-center gap-1">
           {syncStatus && (
             <SecretSyncStatusBadge
@@ -170,177 +202,182 @@ export const SecretSyncRow = ({
             />
           )}
           {!isAutoSyncEnabled && (
-            <Tooltip
-              className="text-xs"
-              content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
-            >
-              <div>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Badge variant="neutral">
-                  <FontAwesomeIcon icon={faBan} />
+                  <BanIcon />
                   {!syncStatus && "Auto-Sync Disabled"}
                 </Badge>
-              </div>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                Auto-Sync is disabled. Changes to the source location will not be automatically
+                synced to the destination.
+              </TooltipContent>
             </Tooltip>
           )}
           <SecretSyncImportStatusBadge mini secretSync={secretSync} />
           <SecretSyncRemoveStatusBadge mini secretSync={secretSync} />
         </div>
-      </Td>
-      <Td>
-        <Tooltip className="max-w-sm text-center" content="Options">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                ariaLabel="Options"
-                colorSchema="secondary"
-                className="w-6"
-                variant="plain"
-              >
-                <FontAwesomeIcon icon={faEllipsisV} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={2} align="end">
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyId();
-                }}
-              >
-                Copy Sync ID
-              </DropdownMenuItem>
+      </TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Options"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontalIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Options</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent sideOffset={2} align="end">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCopyId();
+              }}
+            >
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+              Copy Sync ID
+            </DropdownMenuItem>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretSyncActions.SyncSecrets}
+              a={permissionSubject}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onTriggerSyncSecrets(secretSync);
+                  }}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="flex items-center gap-2">
+                          <RefreshCwIcon />
+                          Trigger Sync
+                        </span>
+                        <InfoIcon className="size-3.5 text-bunker-300" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={20}>
+                      Manually trigger a sync for this {destinationName} destination.
+                    </TooltipContent>
+                  </Tooltip>
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            {syncOption?.canImportSecrets && (
               <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.SyncSecrets}
+                I={ProjectPermissionSecretSyncActions.ImportSecrets}
                 a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faRotate} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTriggerSyncSecrets(secretSync);
-                    }}
                     isDisabled={!isAllowed}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onTriggerImportSecrets(secretSync);
+                    }}
                   >
-                    <Tooltip
-                      position="left"
-                      sideOffset={42}
-                      content={`Manually trigger a sync for this ${destinationName} destination.`}
-                    >
-                      <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span> Trigger Sync</span>
-                        <FontAwesomeIcon
-                          className="text-bunker-300"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
-                      </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <span className="flex items-center gap-2">
+                            <DownloadIcon />
+                            Import Secrets
+                          </span>
+                          <InfoIcon className="size-3.5 text-bunker-300" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={20}>
+                        Import secrets from this {destinationName} destination into Infisical.
+                      </TooltipContent>
                     </Tooltip>
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-              {syncOption?.canImportSecrets && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionSecretSyncActions.ImportSecrets}
-                  a={permissionSubject}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      icon={<FontAwesomeIcon icon={faDownload} />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTriggerImportSecrets(secretSync);
-                      }}
-                      isDisabled={!isAllowed}
-                    >
-                      <Tooltip
-                        position="left"
-                        sideOffset={42}
-                        content={`Import secrets from this ${destinationName} destination into Infisical.`}
-                      >
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Import Secrets</span>
-                          <FontAwesomeIcon
-                            className="text-bunker-300"
-                            size="sm"
-                            icon={faInfoCircle}
-                          />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              )}
-              {syncOption?.canRemoveSecretsOnDeletion && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionSecretSyncActions.RemoveSecrets}
-                  a={permissionSubject}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      icon={<FontAwesomeIcon icon={faEraser} />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTriggerRemoveSecrets(secretSync);
-                      }}
-                      isDisabled={!isAllowed}
-                    >
-                      <Tooltip
-                        position="left"
-                        sideOffset={42}
-                        content={`Remove secrets synced by Infisical from this ${destinationName} destination.`}
-                      >
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Remove Secrets</span>
-                          <FontAwesomeIcon
-                            className="text-bunker-300"
-                            size="sm"
-                            icon={faInfoCircle}
-                          />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              )}
+            )}
+            {syncOption?.canRemoveSecretsOnDeletion && (
               <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.Edit}
+                I={ProjectPermissionSecretSyncActions.RemoveSecrets}
                 a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={isAutoSyncEnabled ? faToggleOff : faToggleOn} />}
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
-                      onToggleEnable(secretSync);
+                      onTriggerRemoveSecrets(secretSync);
                     }}
                   >
-                    {isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <span className="flex items-center gap-2">
+                            <EraserIcon />
+                            Remove Secrets
+                          </span>
+                          <InfoIcon className="size-3.5 text-bunker-300" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={20}>
+                        Remove secrets synced by Infisical from this {destinationName} destination.
+                      </TooltipContent>
+                    </Tooltip>
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.Delete}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faTrash} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(secretSync);
-                    }}
-                  >
-                    Delete Sync
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
-      </Td>
-    </Tr>
+            )}
+            <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleEnable(secretSync);
+                  }}
+                >
+                  {isAutoSyncEnabled ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+                  {isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretSyncActions.Delete}
+              a={permissionSubject}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  variant="danger"
+                  isDisabled={!isAllowed}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete(secretSync);
+                  }}
+                >
+                  <Trash2Icon />
+                  Delete Sync
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -1,11 +1,20 @@
-import { useMemo } from "react";
-import { faInfoCircle, faMagnifyingGlass, faSearch } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
-import { EmptyState, Input, Pagination, Spinner, Tooltip } from "@app/components/v2";
+import { Spinner } from "@app/components/v2";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput
+} from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { POPULAR_SECRET_SYNCS, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import { usePopUp } from "@app/hooks";
 import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
 
 import { UpgradePlanModal } from "../license/UpgradePlanModal";
@@ -14,39 +23,105 @@ type Props = {
   onSelect: (destination: SecretSync) => void;
 };
 
+type SyncOption = {
+  destination: SecretSync;
+  enterprise?: boolean;
+};
+
+const ProviderCard = ({
+  destination,
+  onClick
+}: {
+  destination: SecretSync;
+  onClick: () => void;
+}) => {
+  const { name, image, category, description } = SECRET_SYNC_MAP[destination];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+          <img
+            src={`/images/integrations/${image}`}
+            alt={`${name} logo`}
+            className="h-6 w-6 object-contain"
+          />
+        </div>
+        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+          {category}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-foreground">{name}</p>
+        <p className="text-xs leading-relaxed text-muted">{description}</p>
+      </div>
+    </button>
+  );
+};
+
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
+);
+
 export const SecretSyncSelect = ({ onSelect }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
-
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const [search, setSearch] = useState("");
 
-  const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
-    initPerPage: 16
-  });
+  const handleSelect = (option: SyncOption) => {
+    if (option.enterprise && !subscription.enterpriseSecretSyncs) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
+      });
+      return;
+    }
+    onSelect(option.destination);
+  };
+
+  const optionsByDestination = useMemo(() => {
+    const map = new Map<SecretSync, SyncOption>();
+    secretSyncOptions?.forEach((option) => map.set(option.destination, option));
+    return map;
+  }, [secretSyncOptions]);
 
   const filteredOptions = useMemo(() => {
-    const searchLower = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
+    if (!query) return secretSyncOptions ?? [];
+
     return (
-      secretSyncOptions?.filter(({ name, destination }) => {
-        const aliases = SECRET_SYNC_MAP[destination]?.aliases ?? [];
+      secretSyncOptions?.filter(({ destination }) => {
+        const entry = SECRET_SYNC_MAP[destination];
+        if (!entry) return false;
+        const aliases = entry.aliases ?? [];
         return (
-          name?.toLowerCase().includes(searchLower) ||
-          destination.toLowerCase().includes(searchLower) ||
-          aliases.some((alias) => alias.toLowerCase().includes(searchLower))
+          entry.name.toLowerCase().includes(query) ||
+          entry.category.toLowerCase().includes(query) ||
+          destination.toLowerCase().includes(query) ||
+          aliases.some((alias) => alias.toLowerCase().includes(query))
         );
       }) ?? []
     );
   }, [secretSyncOptions, search]);
 
-  useResetPageHelper({
-    totalCount: filteredOptions.length,
-    offset,
-    setPage
-  });
+  const popularOptions = useMemo(
+    () =>
+      POPULAR_SECRET_SYNCS.map((destination) => optionsByDestination.get(destination)).filter(
+        (option): option is SyncOption => Boolean(option)
+      ),
+    [optionsByDestination]
+  );
+
+  const isSearching = search.trim().length > 0;
 
   if (isPending) {
     return (
-      <div className="flex h-full flex-col items-center justify-center py-2.5">
+      <div className="flex h-full flex-col items-center justify-center py-10">
         <Spinner size="lg" className="text-mineshaft-500" />
         <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
       </div>
@@ -54,102 +129,73 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search options..."
-        className="bg-mineshaft-800 placeholder:text-mineshaft-400"
-      />
-      <div className="grid h-118 grid-cols-4 content-start gap-2">
-        {filteredOptions.slice(offset, perPage * page)?.map(({ destination, enterprise }) => {
-          const { image, name } = SECRET_SYNC_MAP[destination];
-          return (
-            <button
-              key={name}
-              type="button"
-              onClick={() =>
-                enterprise && !subscription.enterpriseSecretSyncs
-                  ? handlePopUpOpen("upgradePlan", {
-                      isEnterpriseFeature: true,
-                      text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
-                    })
-                  : onSelect(destination)
-              }
-              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
-            >
-              <img
-                src={`/images/integrations/${image}`}
-                height={40}
-                width={40}
-                className="mt-auto"
-                alt={`${name} logo`}
-              />
-              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-                {name}
-              </div>
-            </button>
-          );
-        })}
-        {!filteredOptions?.length && (
-          <EmptyState
-            className="col-span-full mt-40"
-            title="No Secret Syncs match search"
-            icon={faSearch}
-          />
-        )}
-      </div>
-      {Boolean(filteredOptions.length) && (
-        <Pagination
-          startAdornment={
-            <Tooltip
-              side="bottom"
-              className="max-w-sm py-4"
-              content={
-                <>
-                  <p className="mb-2">Infisical is constantly adding support for more services.</p>
-                  <p>
-                    {`If you don't see the third-party
-            service you're looking for,`}{" "}
-                    <a
-                      target="_blank"
-                      className="underline hover:text-mineshaft-300"
-                      href="https://infisical.com/slack"
-                      rel="noopener noreferrer"
-                    >
-                      let us know on Slack
-                    </a>{" "}
-                    or{" "}
-                    <a
-                      target="_blank"
-                      className="underline hover:text-mineshaft-300"
-                      href="https://github.com/Infisical/infisical/discussions"
-                      rel="noopener noreferrer"
-                    >
-                      make a request on GitHub
-                    </a>
-                    .
-                  </p>
-                </>
-              }
-            >
-              <div className="-ml-3 flex items-center gap-1.5 text-mineshaft-400">
-                <span className="text-xs">
-                  Don&#39;t see the third-party service you&#39;re looking for?
-                </span>
-                <FontAwesomeIcon size="xs" icon={faInfoCircle} />
-              </div>
-            </Tooltip>
-          }
-          count={filteredOptions.length}
-          page={page}
-          perPage={perPage}
-          onChangePage={setPage}
-          onChangePerPage={setPerPage}
-          perPageList={[16]}
+    <div className="flex flex-col gap-6">
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search providers — AWS, Vercel, GitHub Actions, Vault..."
         />
+      </InputGroup>
+
+      {isSearching ? (
+        <section>
+          {filteredOptions.length ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {filteredOptions.map((option) => (
+                <ProviderCard
+                  key={option.destination}
+                  destination={option.destination}
+                  onClick={() => handleSelect(option)}
+                />
+              ))}
+            </div>
+          ) : (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search />
+                </EmptyMedia>
+                <EmptyTitle>No matching providers</EmptyTitle>
+                <EmptyDescription>Try a different search term.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </section>
+      ) : (
+        <>
+          {popularOptions.length > 0 && (
+            <section>
+              <SectionLabel>Popular</SectionLabel>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {popularOptions.map((option) => (
+                  <ProviderCard
+                    key={option.destination}
+                    destination={option.destination}
+                    onClick={() => handleSelect(option)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          <section>
+            <SectionLabel>All providers</SectionLabel>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {(secretSyncOptions ?? []).map((option) => (
+                <ProviderCard
+                  key={option.destination}
+                  destination={option.destination}
+                  onClick={() => handleSelect(option)}
+                />
+              ))}
+            </div>
+          </section>
+        </>
       )}
+
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}

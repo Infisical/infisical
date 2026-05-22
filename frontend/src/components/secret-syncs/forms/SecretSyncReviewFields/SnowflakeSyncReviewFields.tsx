@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const SnowflakeSyncReviewFields = () => {
@@ -11,8 +11,14 @@ export const SnowflakeSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Database">{database}</GenericFieldLabel>
-      <GenericFieldLabel label="Schema">{schema}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Database</DetailLabel>
+        <DetailValue>{database}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Schema</DetailLabel>
+        <DetailValue>{schema}</DetailValue>
+      </Detail>
     </>
   );
 };

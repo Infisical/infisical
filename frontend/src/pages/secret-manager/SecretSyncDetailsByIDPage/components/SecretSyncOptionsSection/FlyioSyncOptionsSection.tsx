@@ -1,5 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge } from "@app/components/v3";
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TFlyioSync } from "@app/hooks/api/secretSyncs/types/flyio-sync";
 
 type Props = {
@@ -12,10 +11,13 @@ export const FlyioSyncOptionsSection = ({ secretSync }: Props) => {
   } = secretSync;
 
   return (
-    <GenericFieldLabel label="Auto Redeploy On Secret Change">
-      <Badge variant={autoRedeploy ? "success" : "danger"}>
-        {autoRedeploy ? "Enabled" : "Disabled"}
-      </Badge>
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Auto Redeploy On Secret Change</DetailLabel>
+      <DetailValue>
+        <Badge variant={autoRedeploy ? "success" : "danger"}>
+          {autoRedeploy ? "Enabled" : "Disabled"}
+        </Badge>
+      </DetailValue>
+    </Detail>
   );
 };

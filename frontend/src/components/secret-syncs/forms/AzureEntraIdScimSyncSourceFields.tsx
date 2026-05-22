@@ -1,9 +1,20 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
+import { Info } from "lucide-react";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  SecretPathInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretSyncActions,
@@ -51,15 +62,18 @@ export const AzureEntraIdScimSyncSourceFields = () => {
   }, [existingSecretId, currentSecretKey, secrets, setValue]);
 
   useEffect(() => {
-    const hasAccessToSource =
-      selectedEnvironment &&
-      permission.can(
-        ProjectPermissionSecretSyncActions.Create,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: selectedEnvironment.slug,
-          secretPath: selectedSecretPath
-        })
-      );
+    if (!selectedEnvironment) {
+      clearErrors("secretPath");
+      return;
+    }
+
+    const hasAccessToSource = permission.can(
+      ProjectPermissionSecretSyncActions.Create,
+      subject(ProjectPermissionSub.SecretSyncs, {
+        environment: selectedEnvironment.slug,
+        secretPath: selectedSecretPath
+      })
+    );
 
     if (!hasAccessToSource) {
       setError("secretPath", {
@@ -76,63 +90,85 @@ export const AzureEntraIdScimSyncSourceFields = () => {
         Specify the environment and path where you would like to sync secrets from.
       </p>
 
-      <Controller
-        defaultValue={currentProject.environments[0]}
-        control={control}
-        name="environment"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl label="Environment" isError={Boolean(error)} errorText={error?.message}>
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              options={currentProject.environments}
-              placeholder="Select environment..."
-              getOptionLabel={(option) => option?.name}
-              getOptionValue={(option) => option?.id}
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        defaultValue="/"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Secret Path">
-            <SecretPathInput
-              environment={selectedEnvironment?.slug}
-              value={value}
-              onChange={onChange}
-            />
-          </FormControl>
-        )}
-        control={control}
-        name="secretPath"
-      />
-      <Controller
-        name="syncOptions.secretKey"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Secret"
-            tooltipText="The secret whose value will be used as the SCIM provisioning token."
-          >
-            <FilterableSelect
-              value={secrets?.find((s) => s.key === value) ?? null}
-              onChange={(option) => {
-                const selected = option as { id: string; key: string } | null;
-                onChange(selected?.key ?? "");
-              }}
-              isLoading={isLoading}
-              options={secrets ?? []}
-              placeholder="Select a secret..."
-              getOptionLabel={(option) => option.key}
-              getOptionValue={(option) => option.id}
-              isDisabled={!selectedEnvironment?.slug || !selectedSecretPath}
-            />
-          </FormControl>
-        )}
-      />
+      <FieldGroup>
+        <Controller
+          defaultValue={currentProject.environments[0]}
+          control={control}
+          name="environment"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Environment</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  value={value}
+                  onChange={onChange}
+                  options={currentProject.environments}
+                  placeholder="Select environment..."
+                  getOptionLabel={(option) => option?.name}
+                  getOptionValue={(option) => option?.id}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          defaultValue="/"
+          control={control}
+          name="secretPath"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Secret Path</FieldLabel>
+              <FieldContent>
+                <SecretPathInput
+                  environment={selectedEnvironment?.slug}
+                  value={value}
+                  onChange={onChange}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          name="syncOptions.secretKey"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Secret
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The secret whose value will be used as the SCIM provisioning token.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  value={secrets?.find((s) => s.key === value) ?? null}
+                  onChange={(option) => {
+                    const selected = option as { id: string; key: string } | null;
+                    onChange(selected?.key ?? "");
+                  }}
+                  isLoading={isLoading}
+                  options={secrets ?? []}
+                  placeholder="Select a secret..."
+                  getOptionLabel={(option) => option.key}
+                  getOptionValue={(option) => option.id}
+                  isDisabled={!selectedEnvironment?.slug || !selectedSecretPath}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      </FieldGroup>
     </>
   );
 };

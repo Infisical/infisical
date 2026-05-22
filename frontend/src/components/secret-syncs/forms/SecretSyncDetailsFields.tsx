@@ -1,6 +1,13 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import { FormControl, Input, TextArea } from "@app/components/v2";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  TextArea
+} from "@app/components/v3";
 
 import { TSecretSyncForm } from "./schemas";
 
@@ -9,42 +16,45 @@ export const SecretSyncDetailsFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Provide a name and description for this Secret Sync.
-      </p>
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            helperText="Must be slug-friendly"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Name"
-          >
-            <Input value={value} onChange={onChange} placeholder="my-secret-sync" />
-          </FormControl>
-        )}
         control={control}
         name="name"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field className="mb-4">
+            <FieldLabel htmlFor="sync-name">Name</FieldLabel>
+            <Input
+              id="sync-name"
+              value={value ?? ""}
+              onChange={onChange}
+              placeholder="my-secret-sync"
+              isError={Boolean(error)}
+              autoFocus
+            />
+            {!error && <FieldDescription>Must be slug-friendly.</FieldDescription>}
+            <FieldError errors={[error]} />
+          </Field>
+        )}
       />
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            isOptional
-            errorText={error?.message}
-            label="Description"
-          >
-            <TextArea
-              value={value}
-              onChange={onChange}
-              placeholder="Describe the purpose of this sync..."
-              className="resize-none!"
-              rows={4}
-            />
-          </FormControl>
-        )}
         control={control}
         name="description"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field className="mb-4">
+            <FieldLabel htmlFor="sync-description">
+              Description <span className="text-muted">(optional)</span>
+            </FieldLabel>
+            <TextArea
+              id="sync-description"
+              value={value ?? ""}
+              onChange={onChange}
+              placeholder="Describe the purpose of this sync..."
+              isError={Boolean(error)}
+              className="resize-none"
+              rows={4}
+            />
+            <FieldError errors={[error]} />
+          </Field>
+        )}
       />
     </>
   );

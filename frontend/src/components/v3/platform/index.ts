@@ -5,3 +5,4 @@ export * from "./PageLoader";
 export * from "./PasswordGenerator";
 export * from "./ScopeIcons";
 export * from "./SecretInput";
+export * from "./SecretPathInput";

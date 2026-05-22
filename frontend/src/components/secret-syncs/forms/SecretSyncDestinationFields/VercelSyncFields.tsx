@@ -1,12 +1,32 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
-import { faCircleInfo, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Switch, Tooltip } from "@app/components/v2";
-import { CreatableSelect } from "@app/components/v2/CreatableSelect";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  CreatableSelect,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
   TVercelConnectionOrganization,
@@ -27,6 +47,9 @@ const standardVercelEnvironments = [
 ] as const;
 
 const teamVercelEnvironments = [...standardVercelEnvironments] as const;
+
+const formatScopeLabel = (scope: VercelSyncScope) =>
+  scope.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const VercelSyncFields = () => {
   const { control, watch, setValue } = useFormContext<
@@ -94,16 +117,11 @@ export const VercelSyncFields = () => {
       name: branch
     })) || [];
 
-  const scopeOptions = Object.values(VercelSyncScope).map((s) => ({
-    value: s,
-    label: s.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  }));
-
   const isPreviewEnvironment = currentEnv === "preview";
   const isTeamScope = scope === VercelSyncScope.Team;
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.app", "");
@@ -121,37 +139,45 @@ export const VercelSyncFields = () => {
         name="destinationConfig.scope"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Scope">
-            <FilterableSelect
-              isLoading={isTeamsLoading}
-              isDisabled={!connectionId}
-              value={scopeOptions.find((opt) => opt.value === value) ?? null}
-              onChange={(option) => {
-                const newScope =
-                  (option as SingleValue<(typeof scopeOptions)[number]>)?.value ?? null;
-                onChange(newScope);
+          <Field>
+            <FieldLabel>Scope</FieldLabel>
+            <FieldContent>
+              <Select
+                value={value}
+                onValueChange={(newScope) => {
+                  onChange(newScope);
 
-                if (newScope === VercelSyncScope.Team) {
-                  setValue("destinationConfig.teamId", "");
-                  setValue("destinationConfig.targetEnvironments", []);
-                  setValue("destinationConfig.applyToAllCustomEnvironments", false);
-                  setValue("destinationConfig.targetProjects", undefined);
-                  setValue("destinationConfig.teamName", "");
-                } else {
-                  setValue("destinationConfig.app", "");
-                  setValue("destinationConfig.appName", "");
-                  setValue("destinationConfig.env", "production");
-                  setValue("destinationConfig.branch", "");
-                  setValue("destinationConfig.teamId", "");
-                }
-                setValue("destinationConfig.sensitive", false);
-              }}
-              options={scopeOptions}
-              placeholder="Select a scope..."
-              getOptionLabel={(opt) => opt.label}
-              getOptionValue={(opt) => opt.value}
-            />
-          </FormControl>
+                  if (newScope === VercelSyncScope.Team) {
+                    setValue("destinationConfig.teamId", "");
+                    setValue("destinationConfig.targetEnvironments", []);
+                    setValue("destinationConfig.applyToAllCustomEnvironments", false);
+                    setValue("destinationConfig.targetProjects", undefined);
+                    setValue("destinationConfig.teamName", "");
+                  } else {
+                    setValue("destinationConfig.app", "");
+                    setValue("destinationConfig.appName", "");
+                    setValue("destinationConfig.env", "production");
+                    setValue("destinationConfig.branch", "");
+                    setValue("destinationConfig.teamId", "");
+                  }
+                  setValue("destinationConfig.sensitive", false);
+                }}
+                disabled={!connectionId}
+              >
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a scope..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(VercelSyncScope).map((s) => (
+                    <SelectItem value={s} key={s}>
+                      {formatScopeLabel(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -161,21 +187,25 @@ export const VercelSyncFields = () => {
             name="destinationConfig.teamId"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} errorText={error?.message} label="Team">
-                <FilterableSelect
-                  value={teams?.find((team) => team.id === value) ?? null}
-                  onChange={(option) => {
-                    const selectedOption = option as SingleValue<TVercelConnectionOrganization>;
+              <Field>
+                <FieldLabel>Team</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    value={teams?.find((team) => team.id === value) ?? null}
+                    onChange={(option) => {
+                      const selectedOption = option as SingleValue<TVercelConnectionOrganization>;
 
-                    onChange(selectedOption?.id ?? null);
-                    setValue("destinationConfig.teamName", selectedOption?.name || "");
-                  }}
-                  options={teams}
-                  placeholder="Select a team..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                />
-              </FormControl>
+                      onChange(selectedOption?.id ?? null);
+                      setValue("destinationConfig.teamName", selectedOption?.name || "");
+                    }}
+                    options={teams}
+                    placeholder="Select a team..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
 
@@ -183,27 +213,27 @@ export const VercelSyncFields = () => {
             name="destinationConfig.targetEnvironments"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Target Environments"
-              >
-                <FilterableSelect
-                  isMulti
-                  value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
-                  onChange={(option) =>
-                    onChange(
-                      (option as MultiValue<(typeof teamVercelEnvironments)[number]>).map(
-                        (o) => o.slug
+              <Field>
+                <FieldLabel>Target Environments</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    isMulti
+                    value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
+                    onChange={(option) =>
+                      onChange(
+                        (option as MultiValue<(typeof teamVercelEnvironments)[number]>).map(
+                          (o) => o.slug
+                        )
                       )
-                    )
-                  }
-                  options={teamVercelEnvironments}
-                  placeholder="Select target environments..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.slug}
-                />
-              </FormControl>
+                    }
+                    options={teamVercelEnvironments}
+                    placeholder="Select target environments..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.slug}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
 
@@ -211,26 +241,25 @@ export const VercelSyncFields = () => {
             name="destinationConfig.targetProjects"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isOptional
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Target Projects"
-              >
-                <FilterableSelect
-                  isMulti
-                  value={availableApps.filter((app) => (value || []).includes(app.id))}
-                  onChange={(option) =>
-                    onChange(
-                      (option as MultiValue<(typeof availableApps)[number]>).map((o) => o.id)
-                    )
-                  }
-                  options={availableApps}
-                  placeholder="Select target projects..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                />
-              </FormControl>
+              <Field>
+                <FieldLabel>Target Projects (Optional)</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    isMulti
+                    value={availableApps.filter((app) => (value || []).includes(app.id))}
+                    onChange={(option) =>
+                      onChange(
+                        (option as MultiValue<(typeof availableApps)[number]>).map((o) => o.id)
+                      )
+                    }
+                    options={availableApps}
+                    placeholder="Select target projects..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
 
@@ -238,30 +267,23 @@ export const VercelSyncFields = () => {
             name="destinationConfig.applyToAllCustomEnvironments"
             control={control}
             render={({ field: { value, onChange } }) => (
-              <FormControl>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="vercel-sync-all-custom-environments">
+                    Apply to All Custom Environments
+                  </Label>
+                  <FieldDescription>
+                    Shared environment variables will be applied to all custom environments in the
+                    Vercel team.
+                  </FieldDescription>
+                </FieldContent>
                 <Switch
-                  className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                   id="vercel-sync-all-custom-environments"
-                  thumbClassName="bg-mineshaft-800"
-                  isChecked={Boolean(value)}
+                  variant="project"
+                  checked={Boolean(value)}
                   onCheckedChange={onChange}
-                >
-                  <p className="w-fit">
-                    Apply to All Custom Environments{" "}
-                    <Tooltip
-                      className="max-w-md"
-                      content={
-                        <span>
-                          When enabled, shared environment variables will be applied to all custom
-                          environments in the Vercel team.
-                        </span>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                    </Tooltip>
-                  </p>
-                </Switch>
-              </FormControl>
+                />
+              </Field>
             )}
           />
         </>
@@ -273,14 +295,14 @@ export const VercelSyncFields = () => {
             name="destinationConfig.app"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Vercel Project"
-                helperText={
-                  <Tooltip
-                    className="max-w-md"
-                    content={
+              <Field>
+                <FieldLabel>
+                  Vercel Project
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
                       <div className="flex flex-col gap-2">
                         <span>
                           Ensure the project exists and the API token scope for this connection
@@ -291,41 +313,37 @@ export const VercelSyncFields = () => {
                           are shown, but you can search for more projects by name.
                         </span>
                       </div>
-                    }
-                  >
-                    <div>
-                      <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                      <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                    </div>
+                    </TooltipContent>
                   </Tooltip>
-                }
-              >
-                <FilterableSelect
-                  menuPlacement="top"
-                  noOptionsMessage={({ inputValue }) => {
-                    return inputValue
-                      ? "No projects found matching your search."
-                      : "No projects found.";
-                  }}
-                  isLoading={isTeamsLoading && Boolean(connectionId)}
-                  isDisabled={!connectionId}
-                  value={availableApps.find((app) => app.id === value) ?? null}
-                  onChange={(option) => {
-                    const selected = option as SingleValue<(typeof availableApps)[number]>;
-                    onChange(selected?.id ?? null);
-                    setValue("destinationConfig.branch", "");
-                    setValue("destinationConfig.teamId", selected?.teamId || "");
-                    setValue("destinationConfig.appName", selected?.name || "");
-                  }}
-                  onInputChange={(newValue) => setProjectSearch(newValue)}
-                  filterOption={null}
-                  options={availableApps}
-                  placeholder="Search for a project..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id.toString()}
-                  groupBy="teamName"
-                />
-              </FormControl>
+                </FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    noOptionsMessage={({ inputValue }) => {
+                      return inputValue
+                        ? "No projects found matching your search."
+                        : "No projects found.";
+                    }}
+                    isLoading={isTeamsLoading && Boolean(connectionId)}
+                    isDisabled={!connectionId}
+                    value={availableApps.find((app) => app.id === value) ?? null}
+                    onChange={(option) => {
+                      const selected = option as SingleValue<(typeof availableApps)[number]>;
+                      onChange(selected?.id ?? null);
+                      setValue("destinationConfig.branch", "");
+                      setValue("destinationConfig.teamId", selected?.teamId || "");
+                      setValue("destinationConfig.appName", selected?.name || "");
+                    }}
+                    onInputChange={(newValue) => setProjectSearch(newValue)}
+                    filterOption={null}
+                    options={availableApps}
+                    placeholder="Search for a project..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id.toString()}
+                    groupBy="teamName"
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
 
@@ -333,39 +351,38 @@ export const VercelSyncFields = () => {
             name="destinationConfig.env"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Vercel Project Environment"
-              >
-                <FilterableSelect
-                  menuPlacement="top"
-                  isDisabled={!connectionId || !currentApp}
-                  value={
-                    value
-                      ? {
-                          key: environmentOptions.find((env) => env.key === value)?.key,
-                          type: environmentOptions.find((env) => env.key === value)?.type,
-                          name: environmentOptions.find((env) => env.key === value)?.name
-                        }
-                      : null
-                  }
-                  onChange={(option) => {
-                    const envKey = (option as any)?.key ?? null;
-                    onChange(envKey);
-
-                    setValue("destinationConfig.branch", "");
-
-                    if (envKey === VercelEnvironmentType.Development) {
-                      setValue("destinationConfig.sensitive", false);
+              <Field>
+                <FieldLabel>Vercel Project Environment</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    isDisabled={!connectionId || !currentApp}
+                    value={
+                      value
+                        ? {
+                            key: environmentOptions.find((env) => env.key === value)?.key,
+                            type: environmentOptions.find((env) => env.key === value)?.type,
+                            name: environmentOptions.find((env) => env.key === value)?.name
+                          }
+                        : null
                     }
-                  }}
-                  options={environmentOptions}
-                  placeholder="Select an environment..."
-                  getOptionLabel={(option) => option.name || option.key || ""}
-                  getOptionValue={(option) => option.key || ""}
-                />
-              </FormControl>
+                    onChange={(option) => {
+                      const envKey = (option as any)?.key ?? null;
+                      onChange(envKey);
+
+                      setValue("destinationConfig.branch", "");
+
+                      if (envKey === VercelEnvironmentType.Development) {
+                        setValue("destinationConfig.sensitive", false);
+                      }
+                    }}
+                    options={environmentOptions}
+                    placeholder="Select an environment..."
+                    getOptionLabel={(option) => option.name || option.key || ""}
+                    getOptionValue={(option) => option.key || ""}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
 
@@ -374,46 +391,45 @@ export const VercelSyncFields = () => {
               name="destinationConfig.branch"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Vercel Preview Branch (Optional)"
-                >
-                  <CreatableSelect
-                    className="w-full"
-                    placeholder="Select a branch..."
-                    isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}
-                    isDisabled={!connectionId || !currentApp}
-                    options={previewBranchOptions}
-                    menuPlacement="top"
-                    value={previewBranchOptions.find((branch) => branch.id === value) ?? null}
-                    onChange={(option) =>
-                      onChange((option as SingleValue<{ id: string }>)?.id || "")
-                    }
-                    onCreateOption={(option) => {
-                      onChange(option);
-                      if (!option || option.trim() === "") return;
-                      previewBranchOptions.push({ id: option, name: option });
-                    }}
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    getNewOptionData={(inputValue, _optionLabel) => {
-                      return {
-                        id: inputValue,
-                        name: `${inputValue} - press Enter`
-                      };
-                    }}
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option?.id || ""}
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    isValidNewOption={(inputValue, _value, _options, _accessors) => {
-                      return (
-                        inputValue.trim().length > 0 &&
-                        previewBranchOptions.filter((branch) => branch.id === inputValue).length ===
-                          0
-                      );
-                    }}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel>Vercel Preview Branch (Optional)</FieldLabel>
+                  <FieldContent>
+                    <CreatableSelect
+                      className="w-full"
+                      placeholder="Select a branch..."
+                      isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}
+                      isDisabled={!connectionId || !currentApp}
+                      options={previewBranchOptions}
+                      value={previewBranchOptions.find((branch) => branch.id === value) ?? null}
+                      onChange={(option) =>
+                        onChange((option as SingleValue<{ id: string }>)?.id || "")
+                      }
+                      onCreateOption={(option) => {
+                        onChange(option);
+                        if (!option || option.trim() === "") return;
+                        previewBranchOptions.push({ id: option, name: option });
+                      }}
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      getNewOptionData={(inputValue, _optionLabel) => {
+                        return {
+                          id: inputValue,
+                          name: `${inputValue} - press Enter`
+                        };
+                      }}
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option?.id || ""}
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      isValidNewOption={(inputValue, _value, _options, _accessors) => {
+                        return (
+                          inputValue.trim().length > 0 &&
+                          previewBranchOptions.filter((branch) => branch.id === inputValue)
+                            .length === 0
+                        );
+                      }}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
               )}
             />
           )}
@@ -427,56 +443,43 @@ export const VercelSyncFields = () => {
           const showTeamDevWarning = isTeamDevTargeted && Boolean(value);
 
           return (
-            <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-              <div className="flex w-fit items-center gap-2">
-                <Tooltip
-                  className="max-w-md"
-                  content="Marking secrets as sensitive in Vercel is not supported for development environments."
-                  isDisabled={!isProjectDevTargeted}
-                >
-                  <div className="w-fit">
-                    <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                      id="vercel-sync-sensitive"
-                      thumbClassName="bg-mineshaft-800"
-                      isChecked={Boolean(value) && !isProjectDevTargeted}
-                      isDisabled={isProjectDevTargeted}
-                      onCheckedChange={(isChecked) => {
-                        if (isProjectDevTargeted) return;
-                        onChange(isChecked);
-                      }}
-                    >
-                      <p className="w-fit">
-                        Mark Secrets as Sensitive in Vercel{" "}
-                        <Tooltip
-                          className="max-w-md"
-                          content={
-                            <span>
-                              When enabled, secrets will be created in Vercel as Sensitive.
-                              Sensitive environment variables cannot be read back via the Vercel API
-                              after creation.
-                            </span>
-                          }
-                        >
-                          <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                        </Tooltip>
-                      </p>
-                    </Switch>
-                  </div>
-                </Tooltip>
-                {showTeamDevWarning && (
-                  <Tooltip
-                    className="max-w-md"
-                    content="Marking secrets as sensitive in Vercel is not supported for development environments. Sensitive secrets will only be applied to your other selected environments."
-                  >
-                    <FontAwesomeIcon icon={faTriangleExclamation} className="text-yellow" />
-                  </Tooltip>
-                )}
-              </div>
-            </FormControl>
+            <>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="vercel-sync-sensitive">Mark Secrets as Sensitive in Vercel</Label>
+                  <FieldDescription>
+                    When enabled, secrets will be created in Vercel as Sensitive. Sensitive
+                    environment variables cannot be read back via the Vercel API after creation.
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </FieldContent>
+                <Switch
+                  id="vercel-sync-sensitive"
+                  variant="project"
+                  checked={Boolean(value) && !isProjectDevTargeted}
+                  disabled={isProjectDevTargeted}
+                  onCheckedChange={(checked) => {
+                    if (isProjectDevTargeted) return;
+                    onChange(checked);
+                  }}
+                />
+              </Field>
+              {(isProjectDevTargeted || showTeamDevWarning) && (
+                <Alert variant="warning">
+                  <TriangleAlert />
+                  <AlertTitle>Sensitive not supported for Development</AlertTitle>
+                  <AlertDescription>
+                    Marking secrets as sensitive in Vercel is not supported for development
+                    environments.
+                    {showTeamDevWarning &&
+                      " Sensitive secrets will only be applied to your other selected environments."}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
           );
         }}
       />
-    </>
+    </FieldGroup>
   );
 };

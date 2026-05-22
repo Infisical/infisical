@@ -1,5 +1,4 @@
-import { SecretSyncEditFields } from "@app/components/secret-syncs/types";
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@app/components/v3";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { EditSecretSyncForm } from "./forms";
@@ -9,25 +8,23 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   secretSync?: TSecretSync;
-  fields: SecretSyncEditFields;
 };
 
-export const EditSecretSyncModal = ({ secretSync, onOpenChange, fields, ...props }: Props) => {
+export const EditSecretSyncModal = ({ isOpen, secretSync, onOpenChange }: Props) => {
   if (!secretSync) return null;
 
   return (
-    <Modal {...props} onOpenChange={onOpenChange}>
-      <ModalContent
-        title={<SecretSyncModalHeader isConfigured destination={secretSync.destination} />}
-        className="max-w-2xl"
-        bodyClassName="overflow-visible"
-      >
-        <EditSecretSyncForm
-          onComplete={() => onOpenChange(false)}
-          fields={fields}
-          secretSync={secretSync}
-        />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+        <SheetHeader className="border-b">
+          <SheetTitle>
+            <SecretSyncModalHeader isConfigured destination={secretSync.destination} />
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <EditSecretSyncForm secretSync={secretSync} onComplete={() => onOpenChange(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

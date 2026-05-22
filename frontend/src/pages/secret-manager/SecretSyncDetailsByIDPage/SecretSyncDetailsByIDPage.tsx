@@ -1,18 +1,32 @@
 import { Helmet } from "react-helmet";
-import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
+import { BanIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EditSecretSyncModal } from "@app/components/secret-syncs";
-import { SecretSyncEditFields } from "@app/components/secret-syncs/types";
-import { Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { ContentLoader } from "@app/components/v2";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  DetailGroup,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
 import { SecretSync, useGetSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
@@ -25,7 +39,6 @@ import {
 } from "./components";
 
 const PageContent = () => {
-  const navigate = useNavigate();
   const { destination, syncId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.id,
     select: (params) => ({
@@ -51,71 +64,86 @@ const PageContent = () => {
   if (!secretSync) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          icon={faBan}
-          title={`Could not find ${SECRET_SYNC_MAP[destination].name ?? "Secret"} Sync with ID ${syncId}`}
-        />
+        <Empty className="max-w-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BanIcon />
+            </EmptyMedia>
+            <EmptyTitle>
+              Could not find {SECRET_SYNC_MAP[destination].name ?? "Secret"} Sync with ID {syncId}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
 
   const destinationDetails = SECRET_SYNC_MAP[secretSync.destination];
 
-  const handleEditDetails = () => handlePopUpOpen("editSync", SecretSyncEditFields.Details);
-
-  const handleEditSource = () => handlePopUpOpen("editSync", SecretSyncEditFields.Source);
-
-  const handleEditOptions = () => handlePopUpOpen("editSync", SecretSyncEditFields.Options);
-
-  const handleEditDestination = () => handlePopUpOpen("editSync", SecretSyncEditFields.Destination);
+  const handleEdit = () => handlePopUpOpen("editSync");
 
   return (
     <>
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
         <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Button
-            variant="link"
-            type="submit"
-            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            onClick={() => {
-              navigate({
-                to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
-                params: {
-                  orgId,
-                  projectId
-                },
-                search: {
-                  selectedTab: IntegrationsListPageTabs.SecretSyncs
-                }
-              });
-            }}
+          <Link
+            to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
+            params={{ orgId, projectId }}
+            search={{ selectedTab: IntegrationsListPageTabs.SecretSyncs }}
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
+            <FontAwesomeIcon icon={faChevronLeft} />
             Secret Syncs
-          </Button>
+          </Link>
           <div className="mb-6 flex w-full items-center gap-3">
             <img
               alt={`${destinationDetails.name} sync`}
               src={`/images/integrations/${destinationDetails.image}`}
-              className="mt-3 ml-1 w-16"
+              className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">
-              <p className="truncate text-3xl font-medium text-white">{secretSync.name}</p>
-              <p className="leading-3 text-bunker-300">{destinationDetails.name} Sync</p>
+              <p className="truncate text-2xl font-medium text-white">{secretSync.name}</p>
+              <p className="mt-1 leading-3 text-accent">
+                {secretSync.description || `${destinationDetails.name} Sync`}
+              </p>
             </div>
-            <SecretSyncActionTriggers secretSync={secretSync} />
+            <SecretSyncActionTriggers secretSync={secretSync} onEdit={handleEdit} />
           </div>
           <div className="flex justify-center">
-            <div className="mr-4 flex w-72 flex-col gap-4">
-              <SecretSyncDetailsSection secretSync={secretSync} onEditDetails={handleEditDetails} />
-              <SecretSyncSourceSection secretSync={secretSync} onEditSource={handleEditSource} />
-              <SecretSyncOptionsSection secretSync={secretSync} onEditOptions={handleEditOptions} />
+            <div className="mr-4 w-96">
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Details</CardTitle>
+                  <CardAction>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionSecretSyncActions.Edit}
+                      a={getSecretSyncPermissionSubject(secretSync)}
+                    >
+                      {(isAllowed) => (
+                        <IconButton
+                          variant="ghost-muted"
+                          size="xs"
+                          isDisabled={!isAllowed}
+                          aria-label="Edit sync details"
+                          onClick={handleEdit}
+                        >
+                          <PencilIcon />
+                        </IconButton>
+                      )}
+                    </ProjectPermissionCan>
+                  </CardAction>
+                </CardHeader>
+                <CardContent>
+                  <DetailGroup>
+                    <SecretSyncDetailsSection secretSync={secretSync} />
+                    <SecretSyncSourceSection secretSync={secretSync} />
+                    <SecretSyncDestinationSection secretSync={secretSync} />
+                  </DetailGroup>
+                  <SecretSyncOptionsSection secretSync={secretSync} />
+                </CardContent>
+              </Card>
             </div>
             <div className="flex flex-1 flex-col gap-4">
-              <SecretSyncDestinationSection
-                secretSync={secretSync}
-                onEditDestination={handleEditDestination}
-              />
               <SecretSyncAuditLogsSection secretSync={secretSync} />
             </div>
           </div>
@@ -124,7 +152,6 @@ const PageContent = () => {
       <EditSecretSyncModal
         isOpen={popUp.editSync.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSync", isOpen)}
-        fields={popUp.editSync.data}
         secretSync={secretSync}
       />
     </>

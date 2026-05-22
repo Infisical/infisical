@@ -12,11 +12,13 @@ export const SecretSyncModalHeader = ({ destination, isConfigured }: Props) => {
 
   return (
     <div className="flex w-full items-start gap-2">
-      <img
-        alt={`${destinationDetails.name} logo`}
-        src={`/images/integrations/${destinationDetails.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
-      />
+      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-container">
+        <img
+          alt={`${destinationDetails.name} logo`}
+          src={`/images/integrations/${destinationDetails.image}`}
+          className="h-7 w-7 object-contain"
+        />
+      </div>
       <div>
         <div className="flex items-center gap-x-2 text-mineshaft-300">
           {destinationDetails.name} Sync

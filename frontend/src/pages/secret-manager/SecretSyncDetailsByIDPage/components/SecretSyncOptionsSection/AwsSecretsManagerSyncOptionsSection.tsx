@@ -1,10 +1,20 @@
-import { faEye } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { EyeIcon } from "lucide-react";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Detail,
+  DetailLabel,
+  DetailValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TAwsSecretsManagerSync } from "@app/hooks/api/secretSyncs/types/aws-secrets-manager-sync";
 
 type Props = {
@@ -18,43 +28,54 @@ export const AwsSecretsManagerSyncOptionsSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      {keyId && <GenericFieldLabel label="KMS Key">{keyId}</GenericFieldLabel>}
+      {keyId && (
+        <Detail>
+          <DetailLabel>KMS Key</DetailLabel>
+          <DetailValue>{keyId}</DetailValue>
+        </Detail>
+      )}
       {tags && tags.length > 0 && (
-        <GenericFieldLabel label="Tags">
-          <Tooltip
-            side="right"
-            className="max-w-xl p-1"
-            content={
-              <Table>
-                <THead>
-                  <Th className="p-2 whitespace-nowrap">Key</Th>
-                  <Th className="p-2">Value</Th>
-                </THead>
-                <TBody>
-                  {tags.map((tag) => (
-                    <Tr key={tag.key}>
-                      <Td className="p-2">{tag.key}</Td>
-                      <Td className="p-2">{tag.value}</Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
-            }
-          >
-            <div className="w-min">
-              <Badge variant="neutral">
-                <EyeIcon />
-                <FontAwesomeIcon icon={faEye} />
-                {tags.length} Tag{tags.length > 1 ? "s" : ""}
-              </Badge>
-            </div>
-          </Tooltip>
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Tags</DetailLabel>
+          <DetailValue>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-block w-min">
+                  <Badge variant="neutral">
+                    <EyeIcon />
+                    {tags.length} Tag{tags.length > 1 ? "s" : ""}
+                  </Badge>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xl bg-background p-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="p-2 whitespace-nowrap">Key</TableHead>
+                      <TableHead className="p-2">Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tags.map((tag) => (
+                      <TableRow key={tag.key}>
+                        <TableCell className="p-2">{tag.key}</TableCell>
+                        <TableCell className="p-2">{tag.value}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TooltipContent>
+            </Tooltip>
+          </DetailValue>
+        </Detail>
       )}
       {syncSecretMetadataAsTags && (
-        <GenericFieldLabel label="Sync Secret Metadata as Tags">
-          <Badge variant="success">Enabled</Badge>
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Sync Secret Metadata as Tags</DetailLabel>
+          <DetailValue>
+            <Badge variant="success">Enabled</Badge>
+          </DetailValue>
+        </Detail>
       )}
     </>
   );
