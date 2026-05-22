@@ -6,9 +6,11 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SignerStatus, SigningOperationStatus } from "@app/services/signer/signer-enums";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSignerRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -53,6 +55,15 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
             certificateId: signer.certificateId,
             approvalPolicyId: signer.approvalPolicyId
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
         }
       });
 
@@ -257,6 +268,15 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       return signer;
     }
   });
@@ -322,6 +342,16 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
             name: result.signerName,
             signingAlgorithm: req.body.signingAlgorithm
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CodeSigningOperation,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          signerId: req.params.signerId
         }
       });
 

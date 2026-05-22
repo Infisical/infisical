@@ -5,8 +5,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerCertificateCleanupRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -95,6 +97,16 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
             postExpiryRetentionDays: config.postExpiryRetentionDays,
             skipCertsWithActiveSyncs: config.skipCertsWithActiveSyncs
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateCleanupConfigured,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          isEnabled: config.isEnabled,
+          orgId: req.permission.orgId
         }
       });
 
