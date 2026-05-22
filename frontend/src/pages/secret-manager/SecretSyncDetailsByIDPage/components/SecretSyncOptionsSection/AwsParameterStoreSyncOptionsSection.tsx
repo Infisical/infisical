@@ -5,15 +5,15 @@ import {
   Detail,
   DetailLabel,
   DetailValue,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
 
@@ -38,16 +38,16 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
         <Detail>
           <DetailLabel>Resource Tags</DetailLabel>
           <DetailValue>
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <HoverCard>
+              <HoverCardTrigger asChild>
                 <span className="inline-block w-min">
                   <Badge variant="neutral">
                     <EyeIcon />
                     {tags.length} Tag{tags.length > 1 ? "s" : ""}
                   </Badge>
                 </span>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xl bg-background p-1">
+              </HoverCardTrigger>
+              <HoverCardContent side="top" className="w-fit max-w-xl">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -64,8 +64,8 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
                     ))}
                   </TableBody>
                 </Table>
-              </TooltipContent>
-            </Tooltip>
+              </HoverCardContent>
+            </HoverCard>
           </DetailValue>
         </Detail>
       )}

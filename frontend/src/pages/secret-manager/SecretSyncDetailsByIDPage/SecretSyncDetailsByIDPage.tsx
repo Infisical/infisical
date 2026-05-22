@@ -6,7 +6,6 @@ import { BanIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EditSecretSyncModal } from "@app/components/secret-syncs";
-import { ContentLoader } from "@app/components/v2";
 import {
   Card,
   CardAction,
@@ -18,7 +17,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  IconButton
+  IconButton,
+  PageLoader
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
@@ -54,11 +54,7 @@ const PageContent = () => {
   });
 
   if (isPending) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!secretSync) {

@@ -2,8 +2,21 @@ import { useFormContext } from "react-hook-form";
 import { EyeIcon } from "lucide-react";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
-import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import {
+  Badge,
+  Detail,
+  DetailLabel,
+  DetailValue,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -26,33 +39,34 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
         <Detail>
           <DetailLabel>Resource Tags</DetailLabel>
           <DetailValue>
-            <Tooltip
-              side="right"
-              className="max-w-xl p-1"
-              content={
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <div className="w-min">
+                  <Badge variant="neutral">
+                    <EyeIcon />
+                    {tags.length} Tag{tags.length > 1 ? "s" : ""}
+                  </Badge>
+                </div>
+              </HoverCardTrigger>
+              <HoverCardContent side="right" className="w-fit max-w-xl p-1">
                 <Table>
-                  <THead>
-                    <Th className="p-2 whitespace-nowrap">Key</Th>
-                    <Th className="p-2">Value</Th>
-                  </THead>
-                  <TBody>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="p-2 whitespace-nowrap">Key</TableHead>
+                      <TableHead className="p-2">Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {tags.map((tag) => (
-                      <Tr key={tag.key}>
-                        <Td className="p-2">{tag.key}</Td>
-                        <Td className="p-2">{tag.value}</Td>
-                      </Tr>
+                      <TableRow key={tag.key}>
+                        <TableCell className="p-2">{tag.key}</TableCell>
+                        <TableCell className="p-2">{tag.value}</TableCell>
+                      </TableRow>
                     ))}
-                  </TBody>
+                  </TableBody>
                 </Table>
-              }
-            >
-              <div className="w-min">
-                <Badge variant="neutral">
-                  <EyeIcon />
-                  {tags.length} Tag{tags.length > 1 ? "s" : ""}
-                </Badge>
-              </div>
-            </Tooltip>
+              </HoverCardContent>
+            </HoverCard>
           </DetailValue>
         </Detail>
       )}

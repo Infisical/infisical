@@ -1,4 +1,13 @@
-import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 
 type Props = {
   isOpen: boolean;
@@ -18,49 +27,49 @@ export const DuplicateDestinationConfirmationModal = ({
   isDisabled
 }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent className="max-w-lg" title="Duplicate Destination Configuration">
-        <div className="mb-4 text-sm">
-          <p>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Duplicate Destination Configuration</DialogTitle>
+          <DialogDescription>
             Another secret sync in your organization is already configured with the same
             destination.{" "}
-            <span className={isDisabled ? "text-red-400" : ""}>
+            <span className={isDisabled ? "text-danger" : ""}>
               {isDisabled
                 ? "Your organization does not allow duplicate destination configurations."
                 : "Proceeding may cause conflicts or overwrite existing data."}
             </span>
+          </DialogDescription>
+        </DialogHeader>
+        {duplicateProjectId && (
+          <p className="text-xs text-mineshaft-400">
+            Duplicate found in project ID:{" "}
+            <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
+              {duplicateProjectId}
+            </code>
           </p>
-          {duplicateProjectId && (
-            <p className="mt-2 text-xs text-mineshaft-400">
-              Duplicate found in project ID:{" "}
-              <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
-                {duplicateProjectId}
-              </code>
-            </p>
-          )}
-          {!isDisabled && <p className="mt-2">Are you sure you want to continue?</p>}
-        </div>
-
+        )}
+        {!isDisabled && <p className="text-sm">Are you sure you want to continue?</p>}
         {!isDisabled && (
-          <div className="flex items-center gap-4 pt-4">
-            <ModalClose asChild>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" isDisabled={isLoading}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <DialogClose asChild>
               <Button
                 onClick={onConfirm}
-                colorSchema="danger"
-                isLoading={isLoading}
+                variant="danger"
+                isPending={isLoading}
                 isDisabled={isLoading}
               >
                 Continue
               </Button>
-            </ModalClose>
-            <ModalClose asChild>
-              <Button colorSchema="secondary" variant="plain" isDisabled={isLoading}>
-                Cancel
-              </Button>
-            </ModalClose>
-          </div>
+            </DialogClose>
+          </DialogFooter>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

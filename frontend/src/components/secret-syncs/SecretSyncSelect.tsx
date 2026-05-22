@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Loader2Icon, Search } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Empty,
   EmptyDescription,
@@ -122,8 +121,8 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-10">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <Loader2Icon className="size-8 animate-spin text-accent" />
+        <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );
   }
