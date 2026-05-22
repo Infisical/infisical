@@ -10,6 +10,7 @@ export const RailwaySyncReviewFields = () => {
   const connectionId = watch("connection.id");
   const projectId = watch("destinationConfig.projectId");
   const environmentId = watch("destinationConfig.environmentId");
+  const serviceIds = watch("destinationConfig.serviceIds");
 
   const { data: projects = [] } = useRailwayConnectionListProjects(connectionId, {
     enabled: Boolean(connectionId)
@@ -17,6 +18,7 @@ export const RailwaySyncReviewFields = () => {
 
   const project = projects.find((p) => p.id === projectId);
   const environment = project?.environments.find((e) => e.id === environmentId);
+  const selectedServices = project?.services.filter((s) => serviceIds?.includes(s.id)) ?? [];
 
   return (
     <>
@@ -24,6 +26,11 @@ export const RailwaySyncReviewFields = () => {
       <GenericFieldLabel label="Environment">
         {environment?.name ?? environmentId}
       </GenericFieldLabel>
+      {selectedServices.length > 0 && (
+        <GenericFieldLabel label="Services">
+          {selectedServices.map((s) => s.name).join(", ")}
+        </GenericFieldLabel>
+      )}
     </>
   );
 };

@@ -11,8 +11,13 @@ export type TRailwaySync = TRootSecretSync & {
     environmentName: string;
     environmentId: string;
 
+    // Deprecated single-service fields kept for backward compatibility
     serviceId?: string;
     serviceName?: string;
+
+    // New multi-service fields
+    serviceIds?: string[];
+    serviceNames?: string[];
   };
   connection: {
     app: AppConnection.Railway;

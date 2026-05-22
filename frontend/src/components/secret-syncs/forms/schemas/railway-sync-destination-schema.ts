@@ -12,7 +12,9 @@ export const RailwaySyncDestinationSchema = BaseSecretSyncSchema().merge(
       environmentName: z.string(),
       environmentId: z.string().min(1, "Environment is required"),
       serviceId: z.string().optional(),
-      serviceName: z.string().optional()
+      serviceName: z.string().optional(),
+      serviceIds: z.array(z.string()).optional(),
+      serviceNames: z.array(z.string()).optional()
     })
   })
 );
