@@ -694,27 +694,25 @@ export const listHCVaultSecretPaths = async (
     limiter: ReturnType<typeof createConcurrencyLimiter>,
     currentPath: string = ""
   ): Promise<string[]> => {
-    const paths = await getPaths(mountPath, currentPath, kvVersion);
+    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion));
 
     if (paths === null || paths.length === 0) {
       return [];
     }
 
-    // Process paths in parallel with concurrency control
+    // Process paths in parallel; concurrency is enforced on getPaths
     const secretPathsArrays = await Promise.all(
-      paths.map((path) =>
-        limiter(async () => {
-          const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
-          const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
+      paths.map(async (path) => {
+        const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
+        const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
 
-          if (path.endsWith("/")) {
-            // it's a folder so we recurse into it
-            return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
-          }
-          // it's a secret so we return it
-          return [`${mountPath}/${fullItemPath}`];
-        })
-      )
+        if (path.endsWith("/")) {
+          // it's a folder so we recurse into it
+          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
+        }
+        // it's a secret so we return it
+        return [`${mountPath}/${fullItemPath}`];
+      })
     );
 
     // Flatten the arrays into a single array
