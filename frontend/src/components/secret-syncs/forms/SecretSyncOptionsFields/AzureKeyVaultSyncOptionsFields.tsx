@@ -23,7 +23,7 @@ export const AzureKeyVaultSyncOptionsFields = () => {
             onCheckedChange={onChange}
             isChecked={value}
           >
-            <p className="w-64">
+            <p className="w-52">
               Disable Certificate Import{" "}
               <Tooltip
                 className="max-w-md"

@@ -23,13 +23,19 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import {
+  calculateFinalRenewBeforeDays,
+  resolveEffectiveApiConfig
+} from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
 import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
+import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -136,6 +142,8 @@ type TCertificateIssuanceQueueFactoryDep = {
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -161,6 +169,8 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL,
   gatewayV2Service,
   gatewayPoolService
 }: TCertificateIssuanceQueueFactoryDep) => {
@@ -921,6 +931,40 @@ export const certificateIssuanceQueueFactory = ({
         logger.warn(
           stampErr,
           `Failed to stamp applicationId on async-issued certificate [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
+      try {
+        if (scopedApplicationId && profileId && certificateProfileDAL && certificateRequestDAL) {
+          const req = await certificateRequestDAL.findById(certificateRequestId!);
+          if (req?.certificateId) {
+            const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+            if (profile) {
+              const effectiveApiConfig = await resolveEffectiveApiConfig({
+                applicationId: scopedApplicationId,
+                profileId,
+                profileApiConfig: profile.apiConfig,
+                pkiApplicationProfileDAL,
+                apiEnrollmentConfigDAL
+              });
+              const cert = await certificateDAL.findById(req.certificateId);
+              if (cert && !cert.renewBeforeDays) {
+                const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+                  { apiConfig: effectiveApiConfig },
+                  ttl,
+                  new Date(cert.notAfter)
+                );
+                if (finalRenewBeforeDays !== undefined) {
+                  await certificateDAL.updateById(req.certificateId, { renewBeforeDays: finalRenewBeforeDays });
+                }
+              }
+            }
+          }
+        }
+      } catch (renewErr) {
+        logger.warn(
+          renewErr,
+          `Failed to set renewBeforeDays on async-issued certificate [certificateRequestId=${certificateRequestId}]`
         );
       }
 
