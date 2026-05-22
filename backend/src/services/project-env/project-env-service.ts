@@ -21,7 +21,7 @@ type TProjectEnvServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   projectEnvQueue: Pick<TProjectEnvQueueFactory, "scheduleHardDelete" | "cancelScheduledHardDelete">;
@@ -342,6 +342,7 @@ export const projectEnvServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
+    const operationMarkerKey = KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId);
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
       .catch(() => null);
@@ -349,16 +350,18 @@ export const projectEnvServiceFactory = ({
     try {
       if (!lock) {
         await keyStore.waitTillReady({
-          key: KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
-          keyCheckCb: (val) => val === "true",
+          key: operationMarkerKey,
+          keyCheckCb: (val) => !val || val === "false",
           waitingCb: () => logger.debug("Restore project environment. Waiting for "),
           delay: 500
         });
       }
 
-      // Cancel the scheduled hard-delete BEFORE clearing expireAfter so the worker cannot
-      // race-fire between commit and removal. cancelScheduledHardDelete is idempotent.
-      await projectEnvQueue.cancelScheduledHardDelete(id);
+      await keyStore.setItemWithExpiry(
+        operationMarkerKey,
+        KeyStoreTtls.ProjectEnvironmentOperationMarkerInSeconds,
+        "true"
+      );
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
@@ -399,14 +402,13 @@ export const projectEnvServiceFactory = ({
         return doc;
       });
 
-      await keyStore.setItemWithExpiry(
-        KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
-        KeyStoreTtls.ProjectEnvironmentOperationMarkerInSeconds,
-        "true"
-      );
+      // Cancel the scheduled hard-delete BEFORE clearing expireAfter so the worker cannot
+      // race-fire between commit and removal. cancelScheduledHardDelete is idempotent.
+      await projectEnvQueue.cancelScheduledHardDelete(id);
 
       return env;
     } finally {
+      await keyStore.deleteItem(operationMarkerKey);
       await lock?.release();
     }
   };
