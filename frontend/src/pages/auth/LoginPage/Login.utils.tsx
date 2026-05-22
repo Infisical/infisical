@@ -1,17 +1,14 @@
 import { NavigateFn, useNavigate } from "@tanstack/react-router";
 
 import { useServerConfig } from "@app/context";
-import { getLastProject } from "@app/helpers/lastProject";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { userKeys } from "@app/hooks/api/users";
-import { User, UserEnc } from "@app/hooks/api/users/types";
 
 type NavigateUserToOrgParams = {
   navigate: NavigateFn;
   organizationId?: string;
   navigateTo?: string;
-  userId?: string;
 };
 
 export enum LoginSection {
@@ -20,36 +17,25 @@ export enum LoginSection {
   OIDC = "oidc"
 }
 
-const getLastProjectId = (organizationId: string, userId?: string): string | null => {
-  const resolvedUserId = userId || queryClient.getQueryData<User & UserEnc>(userKeys.getUser)?.id;
-  if (!resolvedUserId) return null;
-  return getLastProject(resolvedUserId, organizationId);
-};
-
 const navigateToOrg = (
   navigate: NavigateFn,
   organizationId: string,
-  navigateTo?: string,
-  userId?: string
+  navigateTo?: string
 ) => {
-  const lastProjectId = !navigateTo ? getLastProjectId(organizationId, userId) : null;
-
   navigate({
     to: navigateTo || ("/organizations/$orgId/projects" as const),
-    params: { orgId: organizationId },
-    search: lastProjectId ? { projectRedirect: lastProjectId } : undefined
+    params: { orgId: organizationId }
   });
 };
 
 export const navigateUserToOrg = async ({
   navigate,
   organizationId,
-  navigateTo,
-  userId
+  navigateTo
 }: NavigateUserToOrgParams) => {
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigateToOrg(navigate, organizationId, navigateTo, userId);
+    navigateToOrg(navigate, organizationId, navigateTo);
     return;
   }
 
@@ -58,7 +44,7 @@ export const navigateUserToOrg = async ({
   if (nonAuthEnforcedOrgs.length > 0) {
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigateToOrg(navigate, userOrg, navigateTo, userId);
+    navigateToOrg(navigate, userOrg, navigateTo);
   } else {
     localStorage.removeItem("orgData.id");
     navigate({ to: "/organizations/none" });

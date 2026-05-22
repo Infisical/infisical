@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
-import { getLastProject } from "@app/helpers/lastProject";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
@@ -102,13 +101,9 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         setAuthToken(result.token);
         createNotification({ text: "Successfully logged in", type: "success" });
 
-        const user = await fetchUserDetails();
-        const lastProjectId = user?.id ? getLastProject(user.id, orgId) : null;
-
         throw redirect({
           to: "/organizations/$orgId/projects",
-          params: { orgId },
-          search: lastProjectId ? { projectRedirect: lastProjectId } : undefined
+          params: { orgId }
         });
       }
     } catch (error) {
