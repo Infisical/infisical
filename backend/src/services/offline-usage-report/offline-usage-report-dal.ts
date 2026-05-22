@@ -111,7 +111,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
       .where("p.type", ProjectType.SecretManager)
-      .whereNull("e.expiredAt")
+      .whereNull("e.expireAfter")
       .groupBy("p.id")
       .whereNotNull("p.id")) as Array<{ projectId: string; count: string }>;
 
@@ -147,7 +147,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
       .where("p.type", ProjectType.SecretManager)
-      .whereNull("e.expiredAt")
+      .whereNull("e.expireAfter")
       .groupBy("p.id", "p.name")
       .whereNotNull("p.id")) as Array<{ projectId: string; projectName: string; secretCount: string }>;
 

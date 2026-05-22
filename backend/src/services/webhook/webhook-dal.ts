@@ -14,7 +14,7 @@ export const webhookDALFactory = (db: TDbClient) => {
     tx(TableName.Webhook)
       .where(filter)
       .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -77,7 +77,7 @@ export const webhookDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("envId"))

@@ -16,7 +16,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .whereNull("secretBlindIndex")
         .count(`${TableName.Secret}.id` as "id");
       return doc?.[0]?.count || 0;
@@ -31,7 +31,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .select(selectAllTableCols(TableName.Secret))
         .select(
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
@@ -50,7 +50,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
         .whereIn(`${TableName.Secret}.id`, secretIds)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .select(selectAllTableCols(TableName.Secret))
         .select(
           db.ref("slug").withSchema(TableName.Environment).as("environment"),

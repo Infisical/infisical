@@ -353,7 +353,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             ).andOn(`reviewerOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
           })
           .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
-          .whereNull(`${TableName.Environment}.expiredAt`)
+          .whereNull(`${TableName.Environment}.expireAfter`)
 
           .select(selectAllTableCols(TableName.AccessApprovalRequest))
           .select(
@@ -650,7 +650,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         `${TableName.AccessApprovalPolicyEnvironment}.envId`,
         `${TableName.Environment}.id`
       )
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
@@ -884,7 +884,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.AccessApprovalPolicy}.id`
         )
         .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .leftJoin(
           TableName.AdditionalPrivilege,
           `${TableName.AccessApprovalRequest}.privilegeId`,

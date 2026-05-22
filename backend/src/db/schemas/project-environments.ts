@@ -15,7 +15,8 @@ export const ProjectEnvironmentsSchema = z.object({
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  expiredAt: z.date().nullable().optional()
+  expireAfter: z.date().nullable().optional(),
+  requestedSoftDeleteAt: z.date().nullable().optional()
 });
 
 export type TProjectEnvironments = z.infer<typeof ProjectEnvironmentsSchema>;

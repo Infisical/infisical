@@ -53,7 +53,7 @@ export const projectDALFactory = (db: TDbClient) => {
         })
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expiredAt`
+            `${TableName.Environment}.expireAfter`
           );
         })
         .select(
@@ -119,7 +119,7 @@ export const projectDALFactory = (db: TDbClient) => {
         })
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expiredAt`
+            `${TableName.Environment}.expireAfter`
           );
         })
         .select(
@@ -194,7 +194,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.id`, id)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expiredAt`
+            `${TableName.Environment}.expireAfter`
           );
         })
         .select(
@@ -251,7 +251,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.orgId`, orgId)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expiredAt`
+            `${TableName.Environment}.expireAfter`
           );
         })
         .select(
@@ -448,7 +448,7 @@ export const projectDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter({ id: envId }, TableName.Environment))
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .select(selectAllTableCols(TableName.Project))
       .first();
     return project;

@@ -36,7 +36,7 @@ const baseSecretRotationV2Query = ({
   const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
     .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
     .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-    .whereNull(`${TableName.Environment}.expiredAt`)
+    .whereNull(`${TableName.Environment}.expireAfter`)
     .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretRotationV2))
     .select(
@@ -192,7 +192,7 @@ export const secretRotationV2DALFactory = (
     const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
       .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .join(
         TableName.SecretRotationV2SecretMapping,
         `${TableName.SecretRotationV2SecretMapping}.rotationId`,
@@ -493,7 +493,7 @@ export const secretRotationV2DALFactory = (
       const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,
@@ -575,7 +575,7 @@ export const secretRotationV2DALFactory = (
       const rawRotations = await (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,

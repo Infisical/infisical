@@ -409,7 +409,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         `${TableName.AccessApprovalPolicyEnvironment}.policyId`
       )
       .join(TableName.Environment, `${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .where((qb) => {
         if (customFilter?.envId) {
           void qb.where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);

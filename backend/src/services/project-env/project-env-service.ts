@@ -276,8 +276,9 @@ export const projectEnvServiceFactory = ({
           return doc;
         }
 
-        const expiredAt = new Date(Date.now() + SOFT_DELETE_GRACE_MS);
-        const doc = await projectEnvDAL.softDeleteById(id, projectId, expiredAt, tx);
+        const requestedSoftDeleteAt = new Date();
+        const expireAfter = new Date(requestedSoftDeleteAt.getTime() + SOFT_DELETE_GRACE_MS);
+        const doc = await projectEnvDAL.softDeleteById(id, projectId, expireAfter, requestedSoftDeleteAt, tx);
         if (!doc)
           throw new NotFoundError({
             message: `Environment with id '${id}' in project with ID '${projectId}' not found`,
@@ -327,13 +328,13 @@ export const projectEnvServiceFactory = ({
         });
       }
 
-      // Cancel the scheduled hard-delete BEFORE clearing expiredAt so the worker cannot
+      // Cancel the scheduled hard-delete BEFORE clearing expireAfter so the worker cannot
       // race-fire between commit and removal. cancelScheduledHardDelete is idempotent.
       await projectEnvQueue.cancelScheduledHardDelete(id);
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.expiredAt === null) {
+        if (!target || target.projectId !== projectId || target.expireAfter === null) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
             name: "RestoreEnvironment"

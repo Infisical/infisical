@@ -56,7 +56,7 @@ export const projectEnvQueueFactory = ({ queueService, projectEnvDAL, keyStore }
     // first we check to see if a lock needs to be acquired, if not we skip the job
     // Read via transaction → primary, not replica. Defeats replica-lag races against a recent restore commit.
     const env = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdIncludingExpired(envId, tx));
-    if (!env || !env.expiredAt || env.expiredAt.getTime() > Date.now()) {
+    if (!env || !env.expireAfter || env.expireAfter.getTime() > Date.now()) {
       logger.info(
         `project-env-hard-delete: skipping (gone/restored/not-yet-expired) [envId=${envId}] [projectId=${projectId}]`
       );
@@ -72,7 +72,7 @@ export const projectEnvQueueFactory = ({ queueService, projectEnvDAL, keyStore }
 
     try {
       const fresh = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdIncludingExpired(envId, tx));
-      if (!fresh || !fresh.expiredAt) {
+      if (!fresh || !fresh.expireAfter) {
         logger.info(`project-env-hard-delete: restored during lock acquisition, skipping [envId=${envId}]`);
         return;
       }

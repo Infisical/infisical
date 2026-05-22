@@ -14,7 +14,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
         .where({ id })
-        .whereNull("expiredAt")
+        .whereNull("expireAfter")
         .first("*");
       return result;
     } catch (error) {
@@ -24,7 +24,10 @@ export const projectEnvDALFactory = (db: TDbClient) => {
 
   const findOne: typeof projectEnvOrm.findOne = async (filter, tx) => {
     try {
-      const res = await (tx || db.replicaNode())(TableName.Environment).where(filter).whereNull("expiredAt").first("*");
+      const res = await (tx || db.replicaNode())(TableName.Environment)
+        .where(filter)
+        .whereNull("expireAfter")
+        .first("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
@@ -39,7 +42,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.Environment)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter))
-        .whereNull("expiredAt");
+        .whereNull("expireAfter");
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
@@ -57,19 +60,25 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const envs = await (tx || db.replicaNode())(TableName.Environment)
         .where("projectId", projectId)
         .whereIn("slug", env)
-        .whereNull("expiredAt");
+        .whereNull("expireAfter");
       return envs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by slugs" });
     }
   };
 
-  const softDeleteById = async (id: string, projectId: string, expiredAt: Date, tx?: Knex) => {
+  const softDeleteById = async (
+    id: string,
+    projectId: string,
+    expireAfter: Date,
+    requestedSoftDeleteAt: Date,
+    tx?: Knex
+  ) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
-        .whereNull("expiredAt")
-        .update({ expiredAt })
+        .whereNull("expireAfter")
+        .update({ expireAfter, requestedSoftDeleteAt })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
@@ -92,8 +101,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
-        .whereNotNull("expiredAt")
-        .update({ expiredAt: null, position })
+        .whereNotNull("expireAfter")
+        .update({ expireAfter: null, requestedSoftDeleteAt: null, position })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {

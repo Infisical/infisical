@@ -168,7 +168,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
         )
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.DynamicSecret}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .select(
           selectAllTableCols(TableName.DynamicSecret),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
@@ -217,7 +217,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     const docs = await (tx || db.replicaNode())(TableName.DynamicSecret)
       .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
       .select(
@@ -245,7 +245,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     const docs = await (tx || db.replicaNode())(TableName.DynamicSecret)
       .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.DynamicSecret}.gatewayPoolId`, gatewayPoolId)
       .select(

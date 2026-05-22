@@ -27,7 +27,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, id)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.Snapshot))
         .select(
@@ -65,7 +65,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin(
           TableName.SecretVersion,
@@ -160,7 +160,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .leftJoin(TableName.SnapshotSecretV2, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecretV2}.snapshotId`)
         .leftJoin(
           TableName.SecretVersionV2,

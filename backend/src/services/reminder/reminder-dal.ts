@@ -54,7 +54,7 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretFolder}.envId`,
         `${TableName.Environment}.id`
       )
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .leftJoin<TOrganizations>(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
       .select(selectAllTableCols(TableName.Reminder))
@@ -171,7 +171,7 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretFolder}.envId`,
         `${TableName.Environment}.id`
       )
-      .whereNull(`${TableName.Environment}.expiredAt`)
+      .whereNull(`${TableName.Environment}.expireAfter`)
       .where(`${TableName.Environment}.projectId`, projectId);
 
     const rawReminders = await query

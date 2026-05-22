@@ -396,7 +396,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         )
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.expiredAt`)
+        .whereNull(`${TableName.Environment}.expireAfter`)
         .leftJoin(
           TableName.SecretApprovalRequestSecretTag,
           `${TableName.SecretApprovalRequestSecret}.id`,
