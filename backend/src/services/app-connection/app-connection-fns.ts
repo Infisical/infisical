@@ -42,6 +42,7 @@ import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
   TAppConnection,
   TAppConnectionConfig,
+  TAppConnectionConfiguration,
   TAppConnectionCredentialsValidator,
   TAppConnectionTransitionCredentialsToPlatform
 } from "./app-connection-types";
@@ -414,6 +415,67 @@ export const decryptAppConnectionCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
 };
 
+export const encryptAppConnectionConfiguration = async ({
+  orgId,
+  configuration,
+  kmsService,
+  projectId
+}: {
+  orgId: string;
+  configuration: TAppConnectionConfiguration;
+  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  projectId: string | null | undefined;
+}) => {
+  if (!configuration) return null;
+
+  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
+
+  const { cipherTextBlob: encryptedConfigurationBlob } = encryptor({
+    plainText: Buffer.from(JSON.stringify(configuration))
+  });
+
+  return encryptedConfigurationBlob;
+};
+
+export const decryptAppConnectionConfiguration = async ({
+  orgId,
+  encryptedConfiguration,
+  kmsService,
+  projectId
+}: {
+  orgId: string;
+  encryptedConfiguration: Buffer | null | undefined;
+  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  projectId: string | null | undefined;
+}): Promise<TAppConnectionConfiguration> => {
+  if (!encryptedConfiguration) return undefined;
+
+  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? { type: KmsDataKey.SecretManager, projectId }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
+
+  const decryptedPlainTextBlob = decryptor({
+    cipherTextBlob: encryptedConfiguration
+  });
+
+  return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnectionConfiguration;
+};
+
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -620,8 +682,10 @@ export const decryptAppConnection = async (
   },
   kmsService: TAppConnectionServiceFactoryDep["kmsService"]
 ) => {
+  const { encryptedCredentials, encryptedConfiguration, ...connectionWithoutEncrypted } = appConnection;
+
   return {
-    ...appConnection,
+    ...connectionWithoutEncrypted,
     rotation: appConnection.rotation
       ? {
           ...appConnection.rotation,
@@ -636,12 +700,18 @@ export const decryptAppConnection = async (
         }
       : undefined,
     credentials: await decryptAppConnectionCredentials({
-      encryptedCredentials: appConnection.encryptedCredentials,
+      encryptedCredentials,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
       kmsService
     }),
-    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")
+    configuration: await decryptAppConnectionConfiguration({
+      encryptedConfiguration,
+      orgId: appConnection.orgId,
+      projectId: appConnection.projectId,
+      kmsService
+    }),
+    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(encryptedCredentials).digest("hex")
   } as TAppConnection;
 };
 
