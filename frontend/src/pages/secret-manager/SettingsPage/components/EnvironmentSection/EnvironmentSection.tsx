@@ -173,8 +173,8 @@ export const EnvironmentSection = () => {
               Schedule deletion of {deleteEnvData?.name ?? "environment"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The {deleteEnvData?.slug ?? ""} environment will be inaccessible immediately, then
-              permanently deleted on{" "}
+              The <Badge variant="neutral">{deleteEnvData?.slug ?? ""}</Badge> environment will be
+              inaccessible immediately, then permanently deleted on{" "}
               <span className="font-medium text-foreground">
                 {format(addDays(new Date(), 14), "MMM d, yyyy")}
               </span>
@@ -192,8 +192,9 @@ export const EnvironmentSection = () => {
             <div className="flex gap-2 opacity-80">
               <KeyIcon className="mt-0.5 size-4 shrink-0 text-muted" />
               <p>
-                Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail to
-                resolve. Fix or remove them before the grace period ends.
+                Service tokens and integrations referencing{" "}
+                <Badge variant="neutral">{deleteEnvData?.slug ?? ""}</Badge> will fail to resolve.
+                Fix or remove them before the grace period ends.
               </p>
             </div>
             <div className="flex gap-2 opacity-80">

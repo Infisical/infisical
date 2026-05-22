@@ -456,20 +456,82 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectDeletedEnvironments = async (projectId: string, tx?: Knex) => {
     try {
-      const rows = await (tx || db.replicaNode())(TableName.Environment)
-        .where({ projectId })
-        .whereNotNull("expireAfter")
-        .whereNotNull("requestedSoftDeleteAt")
-        .select("id", "slug", "name", "expireAfter", "requestedSoftDeleteAt")
-        .orderBy("position", "asc");
+      type DeletedEnvironmentRow = {
+        id: string;
+        slug: string;
+        name: string;
+        expireAfter: Date;
+        requestedSoftDeleteAt: Date;
+        deletedByUserId: string | null;
+        deletedByIdentityId: string | null;
+        deletedByUserEmail: string | null;
+        deletedByUserUsername: string | null;
+        deletedByUserFirstName: string | null;
+        deletedByUserLastName: string | null;
+        deletedByIdentityName: string | null;
+      };
 
-      return rows.map((row) => ({
-        id: row.id,
-        slug: row.slug,
-        name: row.name,
-        expireAfter: row.expireAfter as Date,
-        requestedSoftDeleteAt: row.requestedSoftDeleteAt as Date
-      }));
+      const rows = (await (tx || db.replicaNode())(TableName.Environment)
+        .leftJoin(TableName.Users, `${TableName.Environment}.deletedByUserId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Environment}.deletedByIdentityId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNotNull(`${TableName.Environment}.expireAfter`)
+        .whereNotNull(`${TableName.Environment}.requestedSoftDeleteAt`)
+        .select(
+          `${TableName.Environment}.id`,
+          `${TableName.Environment}.slug`,
+          `${TableName.Environment}.name`,
+          `${TableName.Environment}.expireAfter`,
+          `${TableName.Environment}.requestedSoftDeleteAt`,
+          `${TableName.Environment}.deletedByUserId`,
+          `${TableName.Environment}.deletedByIdentityId`,
+          db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
+          db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("deletedByUserLastName"),
+          db.ref("name").withSchema(TableName.Identity).as("deletedByIdentityName")
+        )
+        .orderBy(`${TableName.Environment}.position`, "asc")) as DeletedEnvironmentRow[];
+
+      return rows.map((row) => {
+        let deletedBy:
+          | {
+              type: "user";
+              id: string;
+              email: string | null;
+              username: string | null;
+              firstName: string | null;
+              lastName: string | null;
+            }
+          | { type: "identity"; id: string; name: string }
+          | null = null;
+
+        if (row.deletedByUserId) {
+          deletedBy = {
+            type: "user",
+            id: row.deletedByUserId,
+            email: row.deletedByUserEmail,
+            username: row.deletedByUserUsername,
+            firstName: row.deletedByUserFirstName,
+            lastName: row.deletedByUserLastName
+          };
+        } else if (row.deletedByIdentityId) {
+          deletedBy = {
+            type: "identity",
+            id: row.deletedByIdentityId,
+            name: row.deletedByIdentityName ?? ""
+          };
+        }
+
+        return {
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          expireAfter: row.expireAfter,
+          requestedSoftDeleteAt: row.requestedSoftDeleteAt,
+          deletedBy
+        };
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project deleted environments" });
     }

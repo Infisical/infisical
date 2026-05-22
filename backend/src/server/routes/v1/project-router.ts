@@ -59,7 +59,24 @@ const projectWithEnv = SanitizedProjectSchema.merge(
         name: z.string(),
         slug: z.string(),
         expireAfter: z.date(),
-        requestedSoftDeleteAt: z.date()
+        requestedSoftDeleteAt: z.date(),
+        deletedBy: z
+          .discriminatedUnion("type", [
+            z.object({
+              type: z.literal("user"),
+              id: z.string(),
+              email: z.string().nullable(),
+              username: z.string().nullable(),
+              firstName: z.string().nullable(),
+              lastName: z.string().nullable()
+            }),
+            z.object({
+              type: z.literal("identity"),
+              id: z.string(),
+              name: z.string()
+            })
+          ])
+          .nullable()
       })
       .array()
   })

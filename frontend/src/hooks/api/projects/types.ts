@@ -53,9 +53,21 @@ export type ProjectEnv = {
   slug: string;
 };
 
+export type ProjectDeletedEnvActor =
+  | {
+      type: "user";
+      id: string;
+      email: string | null;
+      username: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: "identity"; id: string; name: string };
+
 export type ProjectDeletedEnv = ProjectEnv & {
   expireAfter: string;
   requestedSoftDeleteAt: string;
+  deletedBy: ProjectDeletedEnvActor | null;
 };
 
 export type ProjectTag = { id: string; name: string; slug: string };

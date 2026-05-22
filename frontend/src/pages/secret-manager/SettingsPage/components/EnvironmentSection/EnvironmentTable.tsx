@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, intervalToDuration } from "date-fns";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -40,6 +40,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useRestoreWsEnvironment, useUpdateWsEnvironment } from "@app/hooks/api";
+import { ProjectDeletedEnvActor } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type PopUpKeys = "updateEnv" | "deleteEnv" | "hardDeleteEnv" | "upgradePlan";
@@ -48,6 +49,32 @@ type EnvPayload = { name: string; slug: string; id: string; expireAfter?: string
 
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
+};
+
+const getActorLabel = (actor: ProjectDeletedEnvActor | null): string => {
+  if (!actor) return "Someone";
+  if (actor.type === "identity") return actor.name || "An identity";
+
+  return actor.firstName || actor.username || actor.email || "A user";
+};
+
+const formatRemainingDuration = (target: Date): string | null => {
+  const now = new Date();
+  if (target.getTime() <= now.getTime()) return null;
+
+  const duration = intervalToDuration({ start: now, end: target });
+  const parts: Array<[number | undefined, string]> = [
+    [duration.years, "y"],
+    [duration.months, "mo"],
+    [duration.days, "d"],
+    [duration.hours, "h"],
+    [duration.minutes, "m"]
+  ];
+
+  const nonZero = parts.filter(([value]) => value && value > 0).slice(0, 2);
+  if (nonZero.length === 0) return "<1m";
+
+  return nonZero.map(([value, suffix]) => `${value}${suffix}`).join(" ");
 };
 
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
@@ -224,62 +251,81 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
             </TableCell>
           </TableRow>
         ))}
-        {deletedEnvironments.map(({ name, slug, id, expireAfter }) => (
-          <TableRow key={id} className="bg-warning/[0.025]">
-            <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
-            <TableCell className="text-mineshaft-400">{slug}</TableCell>
-            <TableCell>
-              <div className="flex items-center justify-end gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="warning">
-                      <HourglassIcon className="size-3" />
-                      Pending deletion
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Will be permanently deleted on{" "}
-                    {format(new Date(expireAfter), "MMM d, yyyy 'at' h:mm a")}
-                  </TooltipContent>
-                </Tooltip>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Delete}
-                  a={ProjectPermissionSub.Environments}
-                >
-                  {(isAllowed) => (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild disabled={!isAllowed}>
-                        <IconButton
-                          aria-label="Environment options"
-                          variant="ghost-muted"
-                          size="xs"
-                          isDisabled={!isAllowed}
-                        >
-                          <MoreVerticalIcon className="size-4" />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleRestoreEnv(id)}>
-                          <RotateCcwIcon />
-                          Restore environment
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="danger"
-                          onClick={() =>
-                            handlePopUpOpen("hardDeleteEnv", { name, slug, id, expireAfter })
-                          }
-                        >
-                          <Trash2Icon />
-                          Delete permanently
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </ProjectPermissionCan>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
+        {deletedEnvironments.map(
+          ({ name, slug, id, expireAfter, requestedSoftDeleteAt, deletedBy }) => {
+            const expireAfterDate = new Date(expireAfter);
+            const remaining = formatRemainingDuration(expireAfterDate);
+
+            return (
+              <TableRow key={id} className="bg-warning/[0.025]">
+                <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
+                <TableCell className="text-mineshaft-400">{slug}</TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-end gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="warning">
+                          <HourglassIcon className="size-3" />
+                          Pending deletion
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-semibold text-foreground">
+                            {remaining
+                              ? `${remaining} until permanent deletion`
+                              : "Awaiting permanent deletion"}
+                          </span>
+                          <span className="text-xs text-mineshaft-300">
+                            Scheduled for {format(expireAfterDate, "MMM d, yyyy, h:mm a")}
+                          </span>
+                          <span className="text-xs text-mineshaft-300">
+                            Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
+                            {format(new Date(requestedSoftDeleteAt), "MMM d, yyyy")}
+                          </span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Delete}
+                      a={ProjectPermissionSub.Environments}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                            <IconButton
+                              aria-label="Environment options"
+                              variant="ghost-muted"
+                              size="xs"
+                              isDisabled={!isAllowed}
+                            >
+                              <MoreVerticalIcon className="size-4" />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleRestoreEnv(id)}>
+                              <RotateCcwIcon />
+                              Restore environment
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() =>
+                                handlePopUpOpen("hardDeleteEnv", { name, slug, id, expireAfter })
+                              }
+                            >
+                              <Trash2Icon />
+                              Delete permanently
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          }
+        )}
       </TableBody>
     </Table>
   );

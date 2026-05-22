@@ -72,13 +72,15 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     projectId: string,
     expireAfter: Date,
     requestedSoftDeleteAt: Date,
+    deletedByUserId: string | null,
+    deletedByIdentityId: string | null,
     tx?: Knex
   ) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNull("expireAfter")
-        .update({ expireAfter, requestedSoftDeleteAt })
+        .update({ expireAfter, requestedSoftDeleteAt, deletedByUserId, deletedByIdentityId })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
@@ -102,7 +104,13 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNotNull("expireAfter")
-        .update({ expireAfter: null, requestedSoftDeleteAt: null, position })
+        .update({
+          expireAfter: null,
+          requestedSoftDeleteAt: null,
+          deletedByUserId: null,
+          deletedByIdentityId: null,
+          position
+        })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
