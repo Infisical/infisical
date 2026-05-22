@@ -307,7 +307,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                   onCheckedChange={onChange}
                   isChecked={value}
                 >
-                  <p className="w-44">
+                  <p className="w-52">
                     Disable Secret Deletion{" "}
                     <Tooltip
                       className="max-w-md"

@@ -4,6 +4,7 @@ import { AxiosError, AxiosResponse } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
@@ -14,9 +15,11 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import { generateClientAssertion } from "../shared/azure/generate-client-assertion";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault-connection-enums";
 import {
   ExchangeCodeAzureResponse,
+  TAzureKeyVaultConnectionCertificateCredentials,
   TAzureKeyVaultConnectionClientSecretCredentials,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionCredentials
@@ -135,6 +138,65 @@ export const getAzureConnectionAccessToken = async (
 
       return { accessToken: clientData.access_token };
 
+    case AzureKeyVaultConnectionMethod.Certificate:
+      const certificateCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
+      })) as TAzureKeyVaultConnectionCertificateCredentials;
+
+      const {
+        accessToken: certAccessToken,
+        expiresAt: certExpiresAt,
+        clientId: certClientId,
+        tenantId: certTenantId,
+        certificateBody,
+        privateKey
+      } = certificateCredentials;
+
+      // Check if token is still valid (with 5 minute buffer)
+      if (certAccessToken && certExpiresAt && certExpiresAt > currentTime + 300000) {
+        return { accessToken: certAccessToken };
+      }
+
+      const certificateClientAssertion = generateClientAssertion(
+        certClientId,
+        certTenantId,
+        privateKey,
+        certificateBody
+      );
+
+      const { data: certificateData } = await request.post<ExchangeCodeAzureResponse>(
+        IntegrationUrls.AZURE_TOKEN_URL.replace("common", certTenantId || "common"),
+        new URLSearchParams({
+          grant_type: "client_credentials",
+          scope: `https://vault.azure.net/.default`,
+          client_id: certClientId,
+          client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+          client_assertion: certificateClientAssertion
+        })
+      );
+
+      const updatedCertificateCredentials = {
+        ...certificateCredentials,
+        accessToken: certificateData.access_token,
+        expiresAt: currentTime + certificateData.expires_in * 1000
+      };
+
+      const encryptedCertificateCredentials = await encryptAppConnectionCredentials({
+        credentials: updatedCertificateCredentials,
+        orgId: appConnection.orgId,
+        kmsService,
+        projectId: appConnection.projectId
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, {
+        encryptedCredentials: encryptedCertificateCredentials
+      });
+
+      return { accessToken: certificateData.access_token };
+
     default:
       throw new InternalServerError({
         message: `Unhandled Azure Key Vault connection method: ${appConnection.method as AzureKeyVaultConnectionMethod}`
@@ -150,7 +212,8 @@ export const getAzureKeyVaultConnectionListItem = () => {
     app: AppConnection.AzureKeyVault as const,
     methods: Object.values(AzureKeyVaultConnectionMethod) as [
       AzureKeyVaultConnectionMethod.OAuth,
-      AzureKeyVaultConnectionMethod.ClientSecret
+      AzureKeyVaultConnectionMethod.ClientSecret,
+      AzureKeyVaultConnectionMethod.Certificate
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID
   };
@@ -257,6 +320,61 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
             }`
           });
         } else {
+          throw new InternalServerError({
+            message: "Failed to get access token"
+          });
+        }
+      }
+
+    case AzureKeyVaultConnectionMethod.Certificate:
+      const {
+        tenantId: certTenantId,
+        certificateBody,
+        privateKey,
+        clientId: certClientId
+      } = inputCredentials as {
+        tenantId: string;
+        certificateBody: string;
+        privateKey: string;
+        clientId: string;
+      };
+
+      try {
+        const clientAssertion = generateClientAssertion(certClientId, certTenantId, privateKey, certificateBody);
+
+        const { data: certificateData } = await request.post<ExchangeCodeAzureResponse>(
+          IntegrationUrls.AZURE_TOKEN_URL.replace("common", certTenantId || "common"),
+          new URLSearchParams({
+            grant_type: "client_credentials",
+            scope: `https://vault.azure.net/.default`,
+            client_id: certClientId,
+            client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            client_assertion: clientAssertion
+          })
+        );
+
+        return {
+          tenantId: certTenantId,
+          clientId: certClientId,
+          certificateBody,
+          privateKey,
+          accessToken: certificateData.access_token,
+          expiresAt: Date.now() + certificateData.expires_in * 1000
+        };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        } else if (e instanceof BadRequestError) {
+          throw e;
+        } else {
+          logger.error(
+            e,
+            "validateAzureKeyVaultConnectionCredentials: Failed to get access token using certificate authentication"
+          );
           throw new InternalServerError({
             message: "Failed to get access token"
           });
