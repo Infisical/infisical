@@ -65,6 +65,24 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findActiveDigiCertCertsByOrderIds = async (caId: string, orderIds: number[]) => {
+    if (orderIds.length === 0) return [];
+    try {
+      const stringIds = orderIds.map(String);
+      const placeholders = stringIds.map(() => "?").join(", ");
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ caId, status: CertStatus.ACTIVE })
+        .whereRaw(`"externalMetadata"->>'type' = ?`, ["digicert"])
+        .whereRaw(`("externalMetadata"->>'orderId') IN (${placeholders})`, stringIds)
+        .select("id", "commonName", "serialNumber", "projectId");
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active DigiCert certs by order IDs" });
+    }
+  };
+
   type TInventoryFilterParams = {
     friendlyName?: string;
     commonName?: string;
@@ -1113,6 +1131,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     countCertificatesForPkiSubscriber,
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
+    findActiveDigiCertCertsByOrderIds,
     findExpiredSyncedCertificates,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
