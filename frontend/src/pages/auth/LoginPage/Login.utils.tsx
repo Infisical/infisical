@@ -17,11 +17,7 @@ export enum LoginSection {
   OIDC = "oidc"
 }
 
-const navigateToOrg = (
-  navigate: NavigateFn,
-  organizationId: string,
-  navigateTo?: string
-) => {
+const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?: string) => {
   navigate({
     to: navigateTo || ("/organizations/$orgId/projects" as const),
     params: { orgId: organizationId }
