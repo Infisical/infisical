@@ -807,7 +807,28 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.id`
         )
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .select(db.raw(`COALESCE("${TableName.PkiCertificateProfile}"."enrollmentType", 'API') as label`))
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??,
+              'api'
+            ) as label`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType"
+            ]
+          )
+        )
         .count("* as count")
         .groupBy("label");
 
