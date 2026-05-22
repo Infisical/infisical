@@ -30,20 +30,20 @@ const CreateForm = ({ domainType, closeSheet, projectId }: CreateFormProps) => {
   const onSubmit = async (
     formData: Record<string, unknown> & {
       name: string;
-      gateway?: { id: string; name: string } | null;
-      gatewayId?: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
       connectionDetails: unknown;
       metadata?: { key: string; value: string }[];
     }
   ) => {
-    const { gateway, ...rest } = formData;
     const domain = await createPamDomain.mutateAsync({
-      ...rest,
+      ...formData,
       domainType,
       projectId,
-      gatewayId: gateway?.id ?? rest.gatewayId!,
-      connectionDetails: rest.connectionDetails as TPamDomain["connectionDetails"],
-      metadata: rest.metadata
+      gatewayId: formData.gatewayId ?? undefined,
+      gatewayPoolId: formData.gatewayPoolId ?? undefined,
+      connectionDetails: formData.connectionDetails as TPamDomain["connectionDetails"],
+      metadata: formData.metadata
     });
     createNotification({
       text: `Successfully created ${domainName} domain`,
@@ -69,20 +69,20 @@ const UpdateForm = ({ domain, closeSheet }: UpdateFormProps) => {
   const onSubmit = async (
     formData: Record<string, unknown> & {
       name?: string;
-      gateway?: { id: string; name: string } | null;
-      gatewayId?: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
       connectionDetails?: unknown;
       metadata?: { key: string; value: string }[];
     }
   ) => {
-    const { gateway, ...rest } = formData;
     const updatedDomain = await updatePamDomain.mutateAsync({
       domainId: domain.id,
       domainType: domain.domainType,
-      ...rest,
-      gatewayId: gateway?.id ?? rest.gatewayId,
-      connectionDetails: rest.connectionDetails as TPamDomain["connectionDetails"],
-      metadata: rest.metadata
+      ...formData,
+      gatewayId: formData.gatewayId ?? undefined,
+      gatewayPoolId: formData.gatewayPoolId ?? undefined,
+      connectionDetails: formData.connectionDetails as TPamDomain["connectionDetails"],
+      metadata: formData.metadata
     });
     createNotification({
       text: `Successfully updated ${domainName} domain`,

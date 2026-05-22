@@ -1,6 +1,7 @@
 export { certKeyAlgorithmToNameMap, certSignatureAlgorithmToNameMap } from "./constants";
 export { CertificateRequestStatus, CertKeyAlgorithm, CertSource, CertStatus } from "./enums";
 export {
+  useAssignCertificateToApplication,
   useCancelCertificateRequest,
   useDeleteCert,
   useDownloadCertPkcs12,

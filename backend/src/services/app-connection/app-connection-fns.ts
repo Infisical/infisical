@@ -22,6 +22,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
+import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -41,6 +42,7 @@ import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
   TAppConnection,
   TAppConnectionConfig,
+  TAppConnectionConfiguration,
   TAppConnectionCredentialsValidator,
   TAppConnectionTransitionCredentialsToPlatform
 } from "./app-connection-types";
@@ -107,7 +109,9 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
+import { DatadogConnectionMethod, getDatadogConnectionListItem, validateDatadogConnectionCredentials } from "./datadog";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
+import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
   DigiCertConnectionMethod,
   getDigiCertConnectionListItem,
@@ -185,12 +189,18 @@ import {
   OpenRouterConnectionMethod,
   validateOpenRouterConnectionCredentials
 } from "./open-router";
+import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
+import {
+  getSnowflakeConnectionListItem,
+  SnowflakeConnectionMethod,
+  validateSnowflakeConnectionCredentials
+} from "./snowflake";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -218,6 +228,7 @@ import {
   validateVenafiTppConnectionCredentials,
   VenafiTppConnectionMethod
 } from "./venafi-tpp";
+import { TVenafiTppConnectionConfig } from "./venafi-tpp/venafi-tpp-connection-types";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -307,6 +318,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
     getAnthropicConnectionListItem(),
+    getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
@@ -314,16 +326,20 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
     getNetScalerConnectionListItem(),
+    getOvhConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
-    getTravisCIConnectionListItem()
+    getTravisCIConnectionListItem(),
+    getSnowflakeConnectionListItem(),
+    getDatadogConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
         case ProjectType.SecretManager:
           return (
             Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
-            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app])
+            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
+            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
           );
         case ProjectType.SecretScanning:
           return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
@@ -399,6 +415,67 @@ export const decryptAppConnectionCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
 };
 
+export const encryptAppConnectionConfiguration = async ({
+  orgId,
+  configuration,
+  kmsService,
+  projectId
+}: {
+  orgId: string;
+  configuration: TAppConnectionConfiguration;
+  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  projectId: string | null | undefined;
+}) => {
+  if (!configuration) return null;
+
+  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
+
+  const { cipherTextBlob: encryptedConfigurationBlob } = encryptor({
+    plainText: Buffer.from(JSON.stringify(configuration))
+  });
+
+  return encryptedConfigurationBlob;
+};
+
+export const decryptAppConnectionConfiguration = async ({
+  orgId,
+  encryptedConfiguration,
+  kmsService,
+  projectId
+}: {
+  orgId: string;
+  encryptedConfiguration: Buffer | null | undefined;
+  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  projectId: string | null | undefined;
+}): Promise<TAppConnectionConfiguration> => {
+  if (!encryptedConfiguration) return undefined;
+
+  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? { type: KmsDataKey.SecretManager, projectId }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
+
+  const decryptedPlainTextBlob = decryptor({
+    cipherTextBlob: encryptedConfiguration
+  });
+
+  return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnectionConfiguration;
+};
+
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -459,10 +536,15 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.VenafiTpp]: validateVenafiTppConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
+      validateVenafiTppConnectionCredentials(
+        config as TVenafiTppConnectionConfig,
+        gatewayV2Service
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -472,7 +554,10 @@ export const validateAppConnectionCredentials = async (
         deps.identityUaDAL
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -536,6 +621,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
+    case SnowflakeConnectionMethod.UsernameAndToken:
+      return "Username & Token";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
@@ -560,7 +647,9 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -572,6 +661,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Machine Identity - Universal Auth";
     case DopplerConnectionMethod.ApiToken:
       return "API Token";
+    case OVHConnectionMethod.Certificate:
+      return "Certificate";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -591,8 +682,10 @@ export const decryptAppConnection = async (
   },
   kmsService: TAppConnectionServiceFactoryDep["kmsService"]
 ) => {
+  const { encryptedCredentials, encryptedConfiguration, ...connectionWithoutEncrypted } = appConnection;
+
   return {
-    ...appConnection,
+    ...connectionWithoutEncrypted,
     rotation: appConnection.rotation
       ? {
           ...appConnection.rotation,
@@ -607,12 +700,18 @@ export const decryptAppConnection = async (
         }
       : undefined,
     credentials: await decryptAppConnectionCredentials({
-      encryptedCredentials: appConnection.encryptedCredentials,
+      encryptedCredentials,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
       kmsService
     }),
-    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")
+    configuration: await decryptAppConnectionConfiguration({
+      encryptedConfiguration,
+      orgId: appConnection.orgId,
+      projectId: appConnection.projectId,
+      kmsService
+    }),
+    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(encryptedCredentials).digest("hex")
   } as TAppConnection;
 };
 
@@ -677,6 +776,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
+  [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
@@ -684,9 +784,12 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
+  [AppConnection.OVH]: platformManagedCredentialsNotSupported,
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
-  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
+  [AppConnection.Datadog]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

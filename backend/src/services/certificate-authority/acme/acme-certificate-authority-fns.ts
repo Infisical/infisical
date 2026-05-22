@@ -48,6 +48,7 @@ import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
+import { throwIfAcmeOrderAborted } from "./acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
 import {
   TAcmeCertificateAuthority,
@@ -299,7 +300,8 @@ export const orderCertificate = async (
     isRenewal,
     originalCertificateId,
     onProgress,
-    isCancelled
+    isCancelled,
+    abortSignal
   }: {
     caId: string;
     profileId?: string;
@@ -317,6 +319,7 @@ export const orderCertificate = async (
     originalCertificateId?: string;
     onProgress?: (message: string) => Promise<void> | void;
     isCancelled?: () => Promise<boolean>;
+    abortSignal?: AbortSignal;
   },
   deps: TOrderCertificateDeps,
   tx?: Knex
@@ -546,6 +549,7 @@ export const orderCertificate = async (
   if (isCancelled && (await isCancelled())) {
     throw new CertificateRequestCancelledError();
   }
+  throwIfAcmeOrderAborted(abortSignal);
 
   const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
   const certObj = new x509.X509Certificate(leafCert);
@@ -953,7 +957,8 @@ export const AcmeCertificateAuthorityFns = ({
     isRenewal,
     originalCertificateId,
     onProgress,
-    isCancelled
+    isCancelled,
+    abortSignal
   }: {
     caId: string;
     profileId?: string;
@@ -970,6 +975,7 @@ export const AcmeCertificateAuthorityFns = ({
     originalCertificateId?: string;
     onProgress?: (message: string) => Promise<void> | void;
     isCancelled?: () => Promise<boolean>;
+    abortSignal?: AbortSignal;
   }) => {
     return orderCertificate(
       {
@@ -988,7 +994,8 @@ export const AcmeCertificateAuthorityFns = ({
         isRenewal,
         originalCertificateId,
         onProgress,
-        isCancelled
+        isCancelled,
+        abortSignal
       },
       {
         appConnectionDAL,

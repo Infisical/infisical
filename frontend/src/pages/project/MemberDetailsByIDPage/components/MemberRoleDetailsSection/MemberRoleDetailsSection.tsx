@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 import picomatch from "picomatch";
@@ -42,9 +43,11 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { canModifyByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
@@ -64,8 +67,9 @@ export const MemberRoleDetailsSection = ({
 }: Props) => {
   const { user } = useUser();
   const userId = user?.id;
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const navigate = useNavigate();
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -91,12 +95,14 @@ export const MemberRoleDetailsSection = ({
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
     await updateUserWorkspaceRole({
       projectId,
+      projectType: currentProject?.type,
       roles: updatedRoles.map(
         ({
           role,
@@ -121,7 +127,7 @@ export const MemberRoleDetailsSection = ({
               })
         })
       ),
-      membershipId: membershipDetails.id
+      membershipId: isCertManager ? membershipDetails.user.id : membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed role" });
     handlePopUpClose("deleteRole");
@@ -133,7 +139,7 @@ export const MemberRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Project Roles</CardTitle>
+          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>
@@ -217,8 +223,23 @@ export const MemberRoleDetailsSection = ({
 
                     return (
                       <TableRow
-                        className="group h-10"
+                        className={`group h-10 ${isCertManager ? "" : "cursor-pointer"}`}
                         key={`user-project-identity-${roleDetails?.id}`}
+                        onClick={
+                          isCertManager
+                            ? undefined
+                            : () =>
+                                navigate({
+                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                                  params: {
+                                    projectId: currentProject.id,
+                                    roleSlug:
+                                      roleDetails.role === "custom"
+                                        ? roleDetails.customRoleSlug
+                                        : roleDetails.role
+                                  }
+                                })
+                        }
                       >
                         <TableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
@@ -247,7 +268,11 @@ export const MemberRoleDetailsSection = ({
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <IconButton size="xs" variant="ghost">
+                                <IconButton
+                                  size="xs"
+                                  variant="ghost"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <EllipsisIcon />
                                 </IconButton>
                               </DropdownMenuTrigger>

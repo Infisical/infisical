@@ -73,6 +73,7 @@ jobs:
             -e ENCRYPTION_KEY="p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=" \
             -e NODE_ENV="test" \
             -e NODE_OPTIONS="--force-fips" \
+            -e TELEMETRY_ENABLED="false" \
             -e E2E_TEST_ORACLE_DB_19_HOST="${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}" \
             -e E2E_TEST_ORACLE_DB_19_USERNAME="${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}" \
             -e E2E_TEST_ORACLE_DB_19_PASSWORD="${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}" \

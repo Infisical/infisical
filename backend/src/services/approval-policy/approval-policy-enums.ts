@@ -4,6 +4,11 @@ export enum ApprovalPolicyType {
   CertCodeSigning = "cert-code-signing"
 }
 
+export enum ApprovalPolicyScope {
+  Project = "project",
+  PkiApplication = "pki-application"
+}
+
 export enum ApproverType {
   Group = "group",
   User = "user"
@@ -32,4 +37,9 @@ export enum ApprovalRequestGrantStatus {
   Active = "active",
   Expired = "expired",
   Revoked = "revoked"
+}
+
+export enum EnforcementLevel {
+  Hard = "hard",
+  Soft = "soft"
 }

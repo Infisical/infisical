@@ -96,7 +96,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Vercel:
       if (destinationConfig.scope === VercelSyncScope.Team) {
         primaryText = destinationConfig.teamName || destinationConfig.teamId;
-        secondaryText = destinationConfig.targetEnvironments.join(", ");
+        const envLabels = destinationConfig.targetEnvironments.map(
+          (env) => env.charAt(0).toUpperCase() + env.slice(1)
+        );
+        if (destinationConfig.applyToAllCustomEnvironments) {
+          envLabels.push("All Custom Environments");
+        }
+        secondaryText = envLabels.join(", ") || "All Custom Environments";
       } else {
         primaryText = destinationConfig.appName || destinationConfig.app;
         secondaryText = destinationConfig.env;
@@ -233,6 +239,14 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectId;
       secondaryText = `${destinationConfig.environment} - ${destinationConfig.secretPath}`;
       break;
+    case SecretSync.OVH:
+      primaryText = destinationConfig.path;
+      secondaryText = "OVH Secret Manager";
+      break;
+    case SecretSync.Devin:
+      primaryText = destinationConfig.orgId;
+      secondaryText = "Organization";
+      break;
     case SecretSync.Ona:
       primaryText = destinationConfig.projectName || destinationConfig.projectId;
       secondaryText = "Ona Project";
@@ -242,6 +256,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.branch
         ? `Branch - ${destinationConfig.branch}`
         : "Repository";
+      break;
+    case SecretSync.Snowflake:
+      primaryText = destinationConfig.database;
+      secondaryText = `Schema - ${destinationConfig.schema}`;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

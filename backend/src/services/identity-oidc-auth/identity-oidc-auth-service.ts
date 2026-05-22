@@ -29,7 +29,7 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -38,10 +38,10 @@ import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -61,11 +61,15 @@ type TIdentityOidcAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+  >;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -78,7 +82,8 @@ export const identityOidcAuthServiceFactory = ({
   licenseService,
   identityAccessTokenDAL,
   kmsService,
-  orgDAL
+  orgDAL,
+  identityAccessTokenService
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt, organizationSlug }: TLoginOidcAuthDTO) => {
     const appCfg = getConfig();
@@ -87,7 +92,9 @@ export const identityOidcAuthServiceFactory = ({
       throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
     }
 
-    const identity = await identityDAL.findById(identityOidcAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityOidcAuth.identityId), () =>
+      identityDAL.findById(identityOidcAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
@@ -112,7 +119,7 @@ export const identityOidcAuthServiceFactory = ({
         caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
       }
 
-      const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
+      const requestAgent = caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined;
 
       await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
 
@@ -126,6 +133,18 @@ export const identityOidcAuthServiceFactory = ({
         );
         discoveryDoc = response.data;
       } catch (error) {
+        logger.error(
+          {
+            error,
+            errorName: error instanceof Error ? error.name : undefined,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            errorCode: (error as NodeJS.ErrnoException)?.code,
+            errorCause: (error as Error)?.cause,
+            identityId: identity.id,
+            discoveryUrl: identityOidcAuth.oidcDiscoveryUrl
+          },
+          `OIDC discovery document fetch failed [identityId=${identity.id}]`
+        );
         throw new UnauthorizedError({
           message: `Access denied: Failed to fetch OIDC discovery document from ${identityOidcAuth.oidcDiscoveryUrl}. ${error instanceof Error ? error.message : String(error)}`,
           detail: {
@@ -180,6 +199,19 @@ export const identityOidcAuthServiceFactory = ({
         try {
           oidcSigningKey = await client.getSigningKey(kid);
         } catch (error) {
+          logger.error(
+            {
+              error,
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              errorCode: (error as NodeJS.ErrnoException)?.code,
+              errorCause: (error as Error)?.cause,
+              identityId: identity.id,
+              jwksUri,
+              kid
+            },
+            `OIDC signing key retrieval failed [identityId=${identity.id}] [kid=${kid}]`
+          );
           if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
             throw new UnauthorizedError({
               message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`,
@@ -207,6 +239,17 @@ export const identityOidcAuthServiceFactory = ({
             issuer: identityOidcAuth.boundIssuer
           }) as Record<string, string>;
         } catch (error) {
+          logger.error(
+            {
+              error,
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              identityId: identity.id,
+              boundIssuer: identityOidcAuth.boundIssuer,
+              kid
+            },
+            `OIDC JWT verification failed [identityId=${identity.id}] [kid=${kid}]`
+          );
           if (error instanceof jwt.JsonWebTokenError) {
             throw new UnauthorizedError({
               message: `Access denied: ${error.message}`,
@@ -230,6 +273,18 @@ export const identityOidcAuthServiceFactory = ({
         try {
           allSigningKeys = await client.getSigningKeys();
         } catch (error) {
+          logger.error(
+            {
+              error,
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              errorCode: (error as NodeJS.ErrnoException)?.code,
+              errorCause: (error as Error)?.cause,
+              identityId: identity.id,
+              jwksUri
+            },
+            `OIDC signing keys retrieval failed [identityId=${identity.id}]`
+          );
           throw new UnauthorizedError({
             message: `Access denied: Failed to retrieve signing keys from OIDC provider: ${error instanceof Error ? error.message : String(error)}`,
             detail: {
@@ -289,6 +344,17 @@ export const identityOidcAuthServiceFactory = ({
         }
 
         if (!verified) {
+          logger.error(
+            {
+              error: lastError,
+              errorName: lastError?.name,
+              errorMessage: lastError?.message,
+              identityId: identity.id,
+              boundIssuer: identityOidcAuth.boundIssuer,
+              signingKeysCount: allSigningKeys.length
+            },
+            `OIDC JWT verification failed with all signing keys [identityId=${identity.id}]`
+          );
           throw new UnauthorizedError({
             message: `Access denied: Unable to verify JWT signature with any available signing key. ${lastError ? lastError.message : "Invalid token"}`,
             detail: {
@@ -424,7 +490,7 @@ export const identityOidcAuthServiceFactory = ({
         }
       }
 
-      const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
+      await identityOidcAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -444,41 +510,33 @@ export const identityOidcAuthServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityOidcAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityOidcAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.OIDC_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
       });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityOidcAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
-          identityAuth: {
-            oidc: {
-              claims: filteredClaims
-            }
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identityOidcAuth.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.OIDC_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityOidcAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityOidcAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityOidcAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: Number(identityOidcAuth.accessTokenPeriod) || 0,
+        accessTokenTrustedIps: identityOidcAuth.accessTokenTrustedIps as TIp[],
+        identityAuth: {
+          oidc: {
+            claims: filteredClaims
           }
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+        }
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -906,6 +964,14 @@ export const identityOidcAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OIDC_AUTH }, tx);
 
       return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
+    });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.OIDC_AUTH
     });
 
     return revokedIdentityOidcAuth;

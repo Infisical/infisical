@@ -2,7 +2,7 @@ Feature: Access Control
 
   Scenario Outline: Access resources across different account
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account0
     Then I memorize acme_account0.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account0_id
     When I create certificate signing request as csr
@@ -34,7 +34,7 @@ Feature: Access Control
     Then the value response.status_code should not be equal to 404
     And I put away current ACME client as client0
 
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email maidu@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account1
     Then I peak and memorize the next nonce as nonce
     When I send a raw ACME request to "<url>"
@@ -62,7 +62,7 @@ Feature: Access Control
 
   Scenario Outline: Access resources across a different profiles
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account0
     Then I memorize acme_account0.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account0_id
     When I create certificate signing request as csr
@@ -94,27 +94,9 @@ Feature: Access Control
     Then the value response.status_code should not be equal to 404
     And I put away current ACME client as client0
 
-    Given I make a random slug as profile_slug
-    Given I use AUTH_TOKEN for authentication
-    When I send a "POST" request to "/api/v1/cert-manager/certificate-profiles" with JSON payload
-      """
-      {
-        "projectId": "{PROJECT_ID}",
-        "slug": "{profile_slug}",
-        "description": "",
-        "enrollmentType": "acme",
-        "caId": "{CERT_CA_ID}",
-        "certificatePolicyId": "{CERT_POLICY_ID}",
-        "acmeConfig": {}
-      }
-      """
-    Then the value response.status_code should be equal to 200
-    Then I memorize response with jq ".certificateProfile.id" as profile_id
-    When I send a "GET" request to "/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal"
-    Then I memorize response with jq ".eabKid" as eab_kid
-    And I memorize response with jq ".eabSecret" as eab_secret
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{profile_id}/directory"
-    Then I register a new ACME account with email maidu@infisical.com and EAB key id "{eab_kid}" with secret "{eab_secret}" as acme_account1
+    Given I have an ACME cert profile as "acme_profile1"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile1.app_id}/profiles/{acme_profile1.id}/directory"
+    Then I register a new ACME account with email maidu@infisical.com and EAB key id "{acme_profile1.eab_kid}" with secret "{acme_profile1.eab_secret}" as acme_account1
     Then I peak and memorize the next nonce as nonce
     Then I memorize <src_var> with jq "<jq>" as <dest_var>
     When I send a raw ACME request to "<url>"
@@ -143,7 +125,7 @@ Feature: Access Control
 
   Scenario Outline: Access resources across a different profile with the same key pair
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account0
     Then I memorize acme_account0.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account0_id
     When I create certificate signing request as csr
@@ -175,27 +157,9 @@ Feature: Access Control
     Then the value response.status_code should not be equal to 404
     And I put away current ACME client as client0
 
-    Given I make a random slug as profile_slug
-    Given I use AUTH_TOKEN for authentication
-    When I send a "POST" request to "/api/v1/cert-manager/certificate-profiles" with JSON payload
-      """
-      {
-        "projectId": "{PROJECT_ID}",
-        "slug": "{profile_slug}",
-        "description": "",
-        "enrollmentType": "acme",
-        "caId": "{CERT_CA_ID}",
-        "certificatePolicyId": "{CERT_POLICY_ID}",
-        "acmeConfig": {}
-      }
-      """
-    Then the value response.status_code should be equal to 200
-    Then I memorize response with jq ".certificateProfile.id" as profile_id
-    When I send a "GET" request to "/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal"
-    Then I memorize response with jq ".eabKid" as eab_kid
-    And I memorize response with jq ".eabSecret" as eab_secret
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{profile_id}/directory" with the key pair from client0
-    Then I register a new ACME account with email maidu@infisical.com and EAB key id "{eab_kid}" with secret "{eab_secret}" as acme_account1
+    Given I have an ACME cert profile as "acme_profile1"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile1.app_id}/profiles/{acme_profile1.id}/directory" with the key pair from client0
+    Then I register a new ACME account with email maidu@infisical.com and EAB key id "{acme_profile1.eab_kid}" with secret "{acme_profile1.eab_secret}" as acme_account1
     Then I peak and memorize the next nonce as nonce
     Then I memorize <src_var> with jq "<jq>" as <dest_var>
     When I send a raw ACME request to "<url>"
@@ -223,7 +187,7 @@ Feature: Access Control
 
   Scenario Outline: URL mismatch
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     Then I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
     When I create certificate signing request as csr
@@ -273,7 +237,7 @@ Feature: Access Control
 
   Scenario Outline: Send KID and JWK in the same time
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/applications/{acme_profile.app_id}/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     And I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
     When I create certificate signing request as csr

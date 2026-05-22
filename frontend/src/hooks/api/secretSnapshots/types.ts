@@ -11,7 +11,7 @@ export type TSecretSnapshot = {
 
 export type TSnapshotData = Omit<TSecretSnapshot, "secretVersions"> & {
   id: string;
-  secretVersions: (SecretVersions & { isRotatedSecret?: boolean })[];
+  secretVersions: (SecretVersions & { isRotatedSecret?: boolean; isHoneyTokenSecret?: boolean })[];
   folderVersion: Array<{ name: string; id: string }>;
   environment: ProjectEnv;
 };

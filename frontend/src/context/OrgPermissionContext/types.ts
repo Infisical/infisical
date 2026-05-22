@@ -26,7 +26,8 @@ export enum OrgGatewayPermissionActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  RevokeGatewayAccess = "revoke-gateway-access"
 }
 
 export enum OrgGatewayPoolPermissionActions {
@@ -81,7 +82,15 @@ export enum OrgPermissionSubjects {
   GithubOrgSyncManual = "github-org-sync-manual",
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
   SubOrganization = "sub-organization",
-  EmailDomains = "email-domains"
+  EmailDomains = "email-domains",
+  CertManager = "certificate-manager",
+  HoneyTokens = "honey-tokens"
+}
+
+export enum OrgPermissionCertManagerActions {
+  Read = "read",
+  ManageInstance = "manage-instance",
+  ManageSettings = "manage-settings"
 }
 
 export enum OrgPermissionEmailDomainActions {
@@ -89,6 +98,15 @@ export enum OrgPermissionEmailDomainActions {
   Create = "create",
   VerifyDomain = "verify-domain",
   Delete = "delete"
+}
+
+export enum OrgPermissionHoneyTokenActions {
+  Setup = "setup"
+}
+
+export enum OrgPermissionProjectActions {
+  Create = "create",
+  RequestAccess = "request-access"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -152,7 +170,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
-  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
+  | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -188,6 +206,8 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
-  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

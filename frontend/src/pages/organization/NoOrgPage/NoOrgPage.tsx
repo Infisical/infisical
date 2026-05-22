@@ -13,7 +13,7 @@ export const NoOrgPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="min-h-screen bg-bunker-800">
-        <CreateOrgModal isOpen />
+        <CreateOrgModal isOpen logoutOnClose />
       </div>
     </>
   );

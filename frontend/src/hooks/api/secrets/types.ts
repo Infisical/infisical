@@ -42,6 +42,7 @@ export type SecretV3RawSanitized = {
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
@@ -73,6 +74,7 @@ export type SecretV3Raw = {
   createdAt: string;
   updatedAt: string;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   rotationId?: string;
   secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
@@ -261,6 +263,46 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
+};
+
+export type TDuplicateSecretAttributes = {
+  value?: boolean;
+  comment?: boolean;
+  tags?: boolean;
+  metadata?: boolean;
+  skipMultilineEncoding?: boolean;
+};
+
+export type TDuplicateSecretDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  shouldOverwrite: boolean;
+  attributesToCopy: TDuplicateSecretAttributes;
+};
+
+export type TDuplicateSecretResult =
+  | {
+      sourceSecretId: string;
+      sourceSecretKey: string;
+      destinationSecretId: string;
+    }
+  | {
+      sourceSecretId: string;
+      sourceSecretKey: string;
+      approval: {
+        id: string;
+        slug: string;
+        status: string;
+        committerUserId: string;
+      };
+    };
+
+export type TDuplicateSecretResponse = {
+  results: TDuplicateSecretResult[];
 };
 
 export type TGetSecretReferenceTreeDTO = {

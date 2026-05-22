@@ -6,6 +6,9 @@ import { Switch } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 
+import { OrgCertManagerTab } from "../OrgCertManagerTab";
+import { HoneyTokenSection } from "./HoneyTokenSection";
+
 export const OrgProductSettingsTab = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg } = useUpdateOrg();
@@ -36,31 +39,35 @@ export const OrgProductSettingsTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-medium text-mineshaft-100">Secrets Management</h2>
-      </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="mb-2 text-lg font-medium text-mineshaft-100">
-            Unique Secret Sync Destination Policy
-          </h3>
-          <p className="text-sm text-mineshaft-400">
-            When enabled, ensures each destination can only be used by one secret sync
-            configuration, preventing potential conflicts or overwrites.
-          </p>
+    <>
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+        <div className="mb-6">
+          <h2 className="text-xl font-medium text-mineshaft-100">Secrets Management</h2>
         </div>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <Switch
-              id="blockDuplicateSecretSyncDestinations"
-              isDisabled={!isAllowed || isLoading}
-              isChecked={currentOrg?.blockDuplicateSecretSyncDestinations ?? false}
-              onCheckedChange={(state) => handleToggle(state as boolean)}
-            />
-          )}
-        </OrgPermissionCan>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="mb-2 text-lg font-medium text-mineshaft-100">
+              Unique Secret Sync Destination Policy
+            </h3>
+            <p className="text-sm text-mineshaft-400">
+              When enabled, ensures each destination can only be used by one secret sync
+              configuration, preventing potential conflicts or overwrites.
+            </p>
+          </div>
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+            {(isAllowed) => (
+              <Switch
+                id="blockDuplicateSecretSyncDestinations"
+                isDisabled={!isAllowed || isLoading}
+                isChecked={currentOrg?.blockDuplicateSecretSyncDestinations ?? false}
+                onCheckedChange={(state) => handleToggle(state as boolean)}
+              />
+            )}
+          </OrgPermissionCan>
+        </div>
+        <HoneyTokenSection />
       </div>
-    </div>
+      <OrgCertManagerTab />
+    </>
   );
 };

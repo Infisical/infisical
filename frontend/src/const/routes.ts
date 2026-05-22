@@ -70,8 +70,12 @@ export const ROUTE_PATHS = Object.freeze({
       )
     },
     NetworkingPage: setRoute(
-      "/organizations/$orgId/networking",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking"
+      "/organizations/$orgId/networking/",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/"
+    ),
+    GatewayDetailsByIDPage: setRoute(
+      "/organizations/$orgId/networking/gateways/$gatewayId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId"
     )
   },
   SecretManager: {
@@ -372,6 +376,10 @@ export const ROUTE_PATHS = Object.freeze({
     ResourcesPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/resources/",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/"
+    ),
+    SettingsPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/settings",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings"
     ),
     SessionsPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions",

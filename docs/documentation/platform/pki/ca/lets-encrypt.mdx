@@ -14,3 +14,22 @@ To connect Infisical to Let's Encrypt, follow the steps in the [ACME-compatible 
 Note that Let’s Encrypt issues 90-day certificates and enforces a limit of 50 certificates per registered domain per week.
 
 We strongly recommend testing your setup against the Let's Encrypt staging environment first at the **ACME Directory URL** `https://acme-staging-v02.api.letsencrypt.org/directory` prior to switching to the production environment. This allows you to verify your DNS configuration and certificate issuance process without consuming production rate limits.
+
+## What's Next
+
+Now that your Let's Encrypt CA is configured, set up the infrastructure to issue certificates:
+
+<CardGroup cols={2}>
+  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+    Create a profile that references your Let's Encrypt CA.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Create an Application, attach a profile, and configure enrollment.
+  </Card>
+  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Choose how certificates are requested — API, ACME, EST, or SCEP.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">
+    Issue your first certificate end-to-end.
+  </Card>
+</CardGroup>

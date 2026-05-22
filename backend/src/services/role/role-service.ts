@@ -5,7 +5,9 @@ import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } fr
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -27,6 +29,22 @@ import {
   TListRoleDTO,
   TUpdateRoleDTO
 } from "./role-types";
+
+const stripExpiredTemporaryRoles = <
+  M extends {
+    roles: Array<{
+      role: string;
+      isTemporary?: boolean;
+      temporaryAccessEndTime?: Date | null;
+    }>;
+  }
+>(
+  memberships: M[]
+): M[] =>
+  memberships.map((m) => ({
+    ...m,
+    roles: m.roles.filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && new Date() < r.temporaryAccessEndTime))
+  }));
 
 type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;
@@ -257,7 +275,11 @@ export const roleServiceFactory = ({
         actorAuthMethod: dto.permission.authMethod,
         scope: OrganizationActionScope.Any
       });
-      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails: undefined };
+      return {
+        permissions: packRules(permission.rules),
+        memberships: stripExpiredTemporaryRoles(memberships),
+        assumedPrivilegeDetails: undefined
+      };
     }
 
     if (dto.scopeData.scope === AccessScope.Project) {
@@ -282,19 +304,28 @@ export const roleServiceFactory = ({
         : undefined;
 
       if (assumedPrivilegeDetails?.actorType === ActorType.IDENTITY) {
-        const identityDetails = await identityDAL.findById(assumedPrivilegeDetails.actorId);
+        const identityDetails = await requestMemoize(
+          requestMemoKeys.identityFindById(assumedPrivilegeDetails.actorId),
+          () => identityDAL.findById(assumedPrivilegeDetails.actorId)
+        );
         if (!identityDetails)
           throw new NotFoundError({ message: `Identity with ID ${assumedPrivilegeDetails.actorId} not found` });
         assumedPrivilegeDetails.actorName = identityDetails.name;
       } else if (assumedPrivilegeDetails?.actorType === ActorType.USER) {
-        const userDetails = await userDAL.findById(assumedPrivilegeDetails?.actorId);
+        const userDetails = await requestMemoize(requestMemoKeys.userFindById(assumedPrivilegeDetails.actorId), () =>
+          userDAL.findById(assumedPrivilegeDetails.actorId)
+        );
         if (!userDetails)
           throw new NotFoundError({ message: `User with ID ${assumedPrivilegeDetails.actorId} not found` });
         assumedPrivilegeDetails.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
         assumedPrivilegeDetails.actorEmail = userDetails?.email || "";
       }
 
-      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails };
+      return {
+        permissions: packRules(permission.rules),
+        memberships: stripExpiredTemporaryRoles(memberships),
+        assumedPrivilegeDetails
+      };
     }
 
     throw new BadRequestError({ message: "Invalid scope defined" });

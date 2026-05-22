@@ -1,6 +1,6 @@
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Badge } from "@app/components/v3";
+import { Badge } from "../../generic/Badge";
 
 type TDocumentationLinkBadgeProps = {
   href: string;

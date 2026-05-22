@@ -81,12 +81,6 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailValue>{certificate.commonName}</DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>Friendly Name</DetailLabel>
-              <DetailValue>
-                {certificate.friendlyName || <span className="text-muted">—</span>}
-              </DetailValue>
-            </Detail>
-            <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
                 {certificate.status === CertStatus.REVOKED ? (
@@ -171,6 +165,25 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <Detail>
                 <DetailLabel>Issuer Organization</DetailLabel>
                 <DetailValue>{certificate.discoveryMetadata.issuerOrganization}</DetailValue>
+              </Detail>
+            )}
+            {certificate.applicationId && certificate.applicationName && (
+              <Detail>
+                <DetailLabel>Application</DetailLabel>
+                <DetailValue>
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                    params={{
+                      orgId,
+                      projectId,
+                      applicationName: certificate.applicationName
+                    }}
+                    className="inline-flex items-center gap-1 underline"
+                  >
+                    {certificate.applicationName}
+                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                  </Link>
+                </DetailValue>
               </Detail>
             )}
             <Detail>

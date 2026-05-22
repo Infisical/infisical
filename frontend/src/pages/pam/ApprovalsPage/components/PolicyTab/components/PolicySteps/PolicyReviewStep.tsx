@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApproverType, EnforcementLevel } from "@app/hooks/api/approvalPolicies";
 
 import { TPolicyForm } from "../PolicySchema";
 
@@ -31,21 +31,24 @@ export const PolicyReviewStep = () => {
   }[];
   const constraints = getValues("constraints");
   const steps = getValues("steps");
+  const enforcementLevel = getValues("enforcementLevel");
+  const userBypassers = getValues("userBypassers") || [];
+  const groupBypassers = getValues("groupBypassers") || [];
+  const isSoft = enforcementLevel === EnforcementLevel.Soft;
+  const bypasserCount = userBypassers.length + groupBypassers.length;
 
-  const getApproverLabel = (approverId: string, approverType: ApproverType) => {
-    if (approverType === ApproverType.User) {
-      const member = members?.find((m) => m.user.id === approverId);
-      if (member) {
-        return getMemberLabel(member);
-      }
-    } else if (approverType === ApproverType.Group) {
-      const group = groups?.find(({ group: g }) => g.id === approverId);
-      if (group) {
-        return group.group.name;
-      }
-    }
-    return approverId;
+  const getUserLabel = (userId: string) => {
+    const member = members?.find((m) => m.user.id === userId);
+    return member ? getMemberLabel(member) : userId;
   };
+
+  const getGroupLabel = (groupId: string) => {
+    const group = groups?.find(({ group: g }) => g.id === groupId);
+    return group ? group.group.name : groupId;
+  };
+
+  const getApproverLabel = (approverId: string, approverType: ApproverType) =>
+    approverType === ApproverType.User ? getUserLabel(approverId) : getGroupLabel(approverId);
 
   const resourceNames = conditions[0]?.resourceNames || [];
   const accountNames = conditions[0]?.accountNames || [];
@@ -156,6 +159,63 @@ export const PolicyReviewStep = () => {
             );
           })}
         </div>
+      </div>
+
+      <div>
+        <div className="mb-3 border-b border-mineshaft-600 pb-2">
+          <h3 className="text-sm font-medium text-mineshaft-200">Bypass Approvals</h3>
+        </div>
+        {!isSoft ? (
+          <ReviewField label="Status" value="Disabled" />
+        ) : (
+          <div className="space-y-3">
+            <ReviewField label="Status" value="Enabled" />
+            {bypasserCount === 0 ? (
+              <div className="mt-1 flex rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm text-bunker-300">
+                Not selecting specific users or groups will allow anyone to bypass this policy.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {userBypassers.length > 0 && (
+                  <div>
+                    <div className="mb-1 text-xs text-mineshaft-400">
+                      User Bypassers ({userBypassers.length}):
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {userBypassers.map((b, i) => (
+                        <div
+                          key={`bypasser-user-${i + 1}`}
+                          className="flex items-center gap-1.5 rounded bg-mineshaft-700 px-2 py-1 text-xs text-mineshaft-300"
+                        >
+                          <FontAwesomeIcon icon={faUsers} className="text-mineshaft-400" />
+                          <span className="text-mineshaft-200">{getUserLabel(b.id)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {groupBypassers.length > 0 && (
+                  <div>
+                    <div className="mb-1 text-xs text-mineshaft-400">
+                      Group Bypassers ({groupBypassers.length}):
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {groupBypassers.map((b, i) => (
+                        <div
+                          key={`bypasser-group-${i + 1}`}
+                          className="flex items-center gap-1.5 rounded bg-mineshaft-700 px-2 py-1 text-xs text-mineshaft-300"
+                        >
+                          <FontAwesomeIcon icon={faUsers} className="text-mineshaft-400" />
+                          <span className="text-mineshaft-200">{getGroupLabel(b.id)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Summary Notice */}

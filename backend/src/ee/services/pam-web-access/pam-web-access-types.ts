@@ -48,6 +48,8 @@ export const WS_PING_INTERVAL_MS = 30000;
 // only when the tab has been hidden/backgrounded for the full window.
 export const WS_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
+export type TEarlyBufferedMsg = { data: Buffer; isBinary: boolean };
+
 export type TSessionContext = {
   socket: WebSocket;
   relayPort: number;
@@ -57,6 +59,8 @@ export type TSessionContext = {
   sendSessionEnd: (reason: SessionEndReason) => void;
   isNearSessionExpiry: () => boolean;
   onCleanup: () => void;
+  earlyMessages: TEarlyBufferedMsg[];
+  releaseEarlyBuffer: () => void;
 };
 
 export type TSessionHandlerResult = {
@@ -73,4 +77,5 @@ export type TIssueWebSocketTicketDTO = {
   auditLogInfo: AuditLogInfo;
   mfaSessionId?: string;
   reason?: string;
+  resourceId?: string;
 };

@@ -1,11 +1,11 @@
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type THealthAlertServiceFactoryDep = {
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "healthcheckNotify">;
   relayService: Pick<TRelayServiceFactory, "healthcheckNotify">;
 };
@@ -13,35 +13,24 @@ type THealthAlertServiceFactoryDep = {
 export type THealthAlertServiceFactory = ReturnType<typeof healthAlertServiceFactory>;
 
 export const healthAlertServiceFactory = ({
-  queueService,
+  cronJob,
   gatewayV2Service,
   relayService
 }: THealthAlertServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
-
-    queueService.start(QueueName.HealthAlert, async () => {
-      try {
-        logger.info(`${QueueName.HealthAlert}: health check alert task started`);
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.HealthAlert,
+      pattern: "*/5 * * * *",
+      runHashTtlS: 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info("cron[health-alert]: health check task started");
         await gatewayV2Service.healthcheckNotify();
         await relayService.healthcheckNotify();
-        logger.info(`${QueueName.HealthAlert}: health check alert task completed`);
-      } catch (error) {
-        logger.error(error, `${QueueName.HealthAlert}: health check alert failed`);
-        throw error;
       }
     });
-
-    await queueService.upsertJobScheduler(
-      QueueName.HealthAlert,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.HealthAlert}`,
-      { pattern: "*/5 * * * *" },
-      { name: QueueJobs.HealthAlert }
-    );
   };
 
   return {

@@ -37,6 +37,7 @@ export type TIssueCertificateFromProfileDTO = {
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
+  applicationId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertificateFromProfileDTO = {
@@ -54,6 +55,7 @@ export type TSignCertificateFromProfileDTO = {
     isCA: boolean;
     pathLength?: number;
   };
+  applicationId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
@@ -83,6 +85,7 @@ export type TOrderCertificateFromProfileDTO = {
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
+  applicationId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCertificateIssuanceResponse = {

@@ -6,3 +6,6 @@ export const applyJitter = (delay: number, jitter: number) => {
   const jitterTime = Math.floor(Math.random() * (2 * jitter)) - jitter;
   return delay + jitterTime;
 };
+
+export const utcDayStamp = (d: Date = new Date()) =>
+  `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;

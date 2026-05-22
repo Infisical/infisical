@@ -1,8 +1,13 @@
-import { AxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import https from "https";
 import RE2 from "re2";
 
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -35,23 +40,100 @@ const normalizeTppUrl = (tppUrl: string): string => {
 };
 
 /**
+ * Issues an HTTP request to the Venafi TPP server, routing through the configured
+ * gateway transport when the connection has a gatewayId set.
+ */
+export const requestWithVenafiTppGateway = async <T>(
+  appConnection: { gatewayId?: string | null },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  requestConfig: AxiosRequestConfig
+): Promise<AxiosResponse<T>> => {
+  const { gatewayId } = appConnection;
+
+  const url = new URL(requestConfig.url as string);
+  await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
+
+  if (!gatewayId) {
+    return request.request(requestConfig);
+  }
+
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+  // eslint-disable-next-line no-nested-ternary
+  const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+
+  const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort
+  });
+
+  if (!gatewayConnectionDetails) {
+    throw new BadRequestError({
+      message: "Venafi TPP connections only support v2 gateways. Please attach a v2 gateway to this connection."
+    });
+  }
+
+  return withGatewayV2Proxy(
+    async (proxyPort) => {
+      const isHttps = url.protocol === "https:";
+      url.host = `localhost:${proxyPort}`;
+
+      const finalRequestConfig: AxiosRequestConfig = {
+        ...requestConfig,
+        url: url.toString(),
+        headers: {
+          ...requestConfig.headers,
+          Host: targetHost
+        },
+        ...(isHttps && {
+          httpsAgent: new https.Agent({
+            servername: targetHost
+          })
+        })
+      };
+
+      try {
+        return await request.request(finalRequestConfig);
+      } catch (error) {
+        if (error instanceof AxiosError) {
+          logger.error(
+            { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+            "Error during Venafi TPP gateway request:"
+          );
+        }
+        throw error;
+      }
+    },
+    {
+      protocol: GatewayProxyProtocol.Tcp,
+      relayHost: gatewayConnectionDetails.relayHost,
+      gateway: gatewayConnectionDetails.gateway,
+      relay: gatewayConnectionDetails.relay
+    }
+  );
+};
+
+/**
  * Authenticates with Venafi TPP via OAuth and returns an access token.
  */
-export const authenticateVenafiTpp = async ({
-  tppUrl,
-  clientId,
-  username,
-  password
-}: TVenafiTppCredentials): Promise<TVenafiTppOAuthResponse> => {
+export const authenticateVenafiTpp = async (
+  { credentials, ...appConnection }: { gatewayId?: string | null; credentials: TVenafiTppCredentials },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+): Promise<TVenafiTppOAuthResponse> => {
+  const { tppUrl, clientId, username, password } = credentials;
   const baseUrl = normalizeTppUrl(tppUrl);
 
   logger.info("Venafi TPP: Authenticating via OAuth token endpoint");
 
-  const { data } = await request.post<TVenafiTppOAuthResponse>(`${baseUrl}/vedauth/authorize/oauth`, {
-    client_id: clientId,
-    username,
-    password,
-    scope: "certificate:manage,discover,revoke;configuration"
+  const { data } = await requestWithVenafiTppGateway<TVenafiTppOAuthResponse>(appConnection, gatewayV2Service, {
+    method: "POST",
+    url: `${baseUrl}/vedauth/authorize/oauth`,
+    data: {
+      client_id: clientId,
+      username,
+      password,
+      scope: "certificate:manage,discover,revoke;configuration"
+    }
   });
 
   logger.info("Venafi TPP: Successfully obtained access token");
@@ -62,11 +144,17 @@ export const authenticateVenafiTpp = async ({
 /**
  * Revokes a Venafi TPP access token.
  */
-export const revokeVenafiTppToken = async (tppUrl: string, accessToken: string): Promise<void> => {
-  const baseUrl = normalizeTppUrl(tppUrl);
+export const revokeVenafiTppToken = async (
+  { credentials, ...appConnection }: { gatewayId?: string | null; credentials: { tppUrl: string } },
+  accessToken: string,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+): Promise<void> => {
+  const baseUrl = normalizeTppUrl(credentials.tppUrl);
 
   try {
-    await request.get(`${baseUrl}/vedauth/revoke/token`, {
+    await requestWithVenafiTppGateway(appConnection, gatewayV2Service, {
+      method: "GET",
+      url: `${baseUrl}/vedauth/revoke/token`,
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
@@ -90,23 +178,18 @@ export const getVenafiTppConnectionListItem = () => {
   };
 };
 
-export const validateVenafiTppConnectionCredentials = async (config: TVenafiTppConnectionConfig) => {
-  const { tppUrl, clientId, username, password } = config.credentials as TVenafiTppCredentials;
-  const hasGateway = Boolean(config.gatewayId);
-
-  const normalizedUrl = normalizeTppUrl(tppUrl);
-  try {
-    await blockLocalAndPrivateIpAddresses(normalizedUrl, hasGateway);
-  } catch (error) {
-    logger.error({ tppUrl, hasGateway }, "Venafi TPP: URL blocked by SSRF protection");
-    throw error;
-  }
+export const validateVenafiTppConnectionCredentials = async (
+  config: TVenafiTppConnectionConfig,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+) => {
+  const credentials = config.credentials as TVenafiTppCredentials;
+  const { tppUrl } = credentials;
 
   logger.info({ tppUrl }, "Venafi TPP: Validating connection credentials");
 
   let accessToken: string | undefined;
   try {
-    const authResponse = await authenticateVenafiTpp({ tppUrl, clientId, username, password });
+    const authResponse = await authenticateVenafiTpp({ gatewayId: config.gatewayId, credentials }, gatewayV2Service);
     accessToken = authResponse.access_token;
 
     logger.info(
@@ -142,7 +225,7 @@ export const validateVenafiTppConnectionCredentials = async (config: TVenafiTppC
     });
   } finally {
     if (accessToken) {
-      await revokeVenafiTppToken(tppUrl, accessToken);
+      await revokeVenafiTppToken({ gatewayId: config.gatewayId, credentials }, accessToken, gatewayV2Service);
     }
   }
 

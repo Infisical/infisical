@@ -1,0 +1,26 @@
+{
+  "name": "@infisical/upgrade-impact",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "generate:dry-run": "tsx scripts/generate.ts --dry-run",
+    "generate:local": "tsx scripts/local-generate.ts",
+    "generate:local:no-ai": "tsx scripts/local-generate.ts --no-ai",
+    "test": "vitest run",
+    "type:check": "tsc --noEmit",
+    "validate": "tsx scripts/validate.ts"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.8.5",
+    "yaml": "^2.8.3",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

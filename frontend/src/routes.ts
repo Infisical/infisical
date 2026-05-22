@@ -277,6 +277,7 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
     index("cert-manager/DashboardPage/route-index.tsx"),
     route("/overview", "cert-manager/DashboardPage/route.tsx"),
     route("/policies", "cert-manager/PoliciesPage/route.tsx"),
+    route("/inventory", "cert-manager/InventoryPage/route.tsx"),
     route("/subscribers", [
       index("cert-manager/PkiSubscribersPage/route.tsx"),
       route("/$subscriberName", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")
@@ -289,6 +290,11 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       route("/installations/$installationId", "cert-manager/InstallationDetailsByIDPage/route.tsx")
     ]),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
+    route("/applications", [
+      index("cert-manager/ApplicationsPage/route.tsx"),
+      route("/$applicationName", "cert-manager/ApplicationDetailsByIDPage/route.tsx")
+    ]),
+    route("/requests", "cert-manager/RequestsPage/route.tsx"),
     route("/code-signing", [
       index("cert-manager/CodeSigningPage/route.tsx"),
       route("/$signerId", "cert-manager/SignerDetailPage/route.tsx")
@@ -404,6 +410,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
       route("/$discoveryType/$discoverySourceId", "pam/PamDiscoveryDetailPage/route.tsx")
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
+    route("/insights", "pam/InsightsPage/route.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
     route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
     route("/approvals", [
@@ -427,6 +434,7 @@ const pamAccessRoute = route(
 
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
+  route("/projects/$type", "organization/ProjectsPage/ProjectTypePage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
@@ -446,7 +454,10 @@ const organizationRoutes = route("/organizations/$orgId", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", "organization/NetworkingPage/route.tsx")
+  route("/networking", [
+    index("organization/NetworkingPage/route.tsx"),
+    route("/gateways/$gatewayId", "organization/NetworkingPage/GatewayDetailsByIDPage/route.tsx")
+  ])
 ]);
 
 export const routes = rootRoute("root.tsx", [

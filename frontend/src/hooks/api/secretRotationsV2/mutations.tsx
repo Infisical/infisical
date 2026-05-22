@@ -3,8 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
+  TCheckSecretRotationV2CredentialsDTO,
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
+  TMoveSecretRotationV2DTO,
   TReconcileLocalAccountRotationDTO,
   TReconcileLocalAccountRotationResponse,
   TRotateSecretRotationV2DTO,
@@ -92,6 +94,39 @@ export const useDeleteSecretRotationV2 = () => {
   });
 };
 
+export const useMoveSecretRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      type,
+      rotationId,
+      destinationEnvironment,
+      destinationSecretPath,
+      overwriteDestination
+    }: TMoveSecretRotationV2DTO) => {
+      const { data } = await apiRequest.post<TSecretRotationV2Response>(
+        `/api/v2/secret-rotations/${type}/${rotationId}/move`,
+        { destinationEnvironment, destinationSecretPath, overwriteDestination }
+      );
+
+      return data.secretRotation;
+    },
+    onSuccess: (_, { projectId, secretPath, destinationSecretPath }) => {
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+      if (destinationSecretPath !== secretPath) {
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getDashboardSecrets({
+            projectId,
+            secretPath: destinationSecretPath
+          })
+        });
+      }
+    }
+  });
+};
+
 export const useReconcileLocalAccountRotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -110,5 +145,13 @@ export const useReconcileLocalAccountRotation = () => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       })
+  });
+};
+
+export const useCheckSecretRotationV2Credentials = () => {
+  return useMutation({
+    mutationFn: async ({ type, rotationId }: TCheckSecretRotationV2CredentialsDTO) => {
+      await apiRequest.post(`/api/v2/secret-rotations/${type}/${rotationId}/check-credentials`);
+    }
   });
 };

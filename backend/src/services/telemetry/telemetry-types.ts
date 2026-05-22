@@ -105,7 +105,27 @@ export enum PostHogEventTypes {
   PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
   PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
   PamRotationRuleCreated = "PAM Rotation Rule Created",
-  PamRotationRuleDeleted = "PAM Rotation Rule Deleted"
+  PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
+
+  ResourceAuthMethodLogin = "Resource Auth Method Login",
+  ResourceAuthMethodUpdated = "Resource Auth Method Updated",
+
+  HoneyTokenCreated = "Honey Token Created",
+  HoneyTokenUpdated = "Honey Token Updated",
+  HoneyTokenRevoked = "Honey Token Revoked",
+  HoneyTokenReset = "Honey Token Reset",
+  HoneyTokenTriggered = "Honey Token Triggered",
+
+  CustomRoleCreated = "Custom Role Created",
+  CustomRoleUpdated = "Custom Role Updated",
+  CustomRoleDeleted = "Custom Role Deleted",
+  OrgMembershipRoleUpdated = "Org Membership Role Updated",
+  OrgMembershipDeleted = "Org Membership Deleted",
+  ProjectMembershipCreated = "Project Membership Created",
+  ProjectMembershipRoleUpdated = "Project Membership Role Updated",
+  ProjectMembershipDeleted = "Project Membership Deleted",
+  OrganizationCreated = "Organization Created",
+  SubOrganizationCreated = "Sub Organization Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -156,6 +176,22 @@ export type TUserSignedUpEvent = {
     username: string;
     email: string;
     attributionSource?: string;
+    signupMethod?: string;
+  };
+};
+
+export type TOrganizationCreatedEvent = {
+  event: PostHogEventTypes.OrganizationCreated;
+  properties: {
+    name: string;
+  };
+};
+
+export type TSubOrganizationCreatedEvent = {
+  event: PostHogEventTypes.SubOrganizationCreated;
+  properties: {
+    name: string;
+    parentOrgId: string;
   };
 };
 
@@ -325,9 +361,20 @@ export type TTelemetryInstanceStatsEvent = {
     projects: number;
     secrets: number;
     organizations: number;
-    organizationNames: number;
+    organizationNames: string[];
     numberOfSecretOperationsMade: number;
     numberOfSecretProcessed: number;
+    environments: number;
+    secretSyncs: number;
+    appConnections: number;
+    integrations: number;
+    certificateAuthorities: number;
+    certificates: number;
+    dynamicSecrets: number;
+    identityAuthMethods: number;
+    groups: number;
+    secretApprovalPolicies: number;
+    activeGateways: number;
   };
 };
 
@@ -822,7 +869,148 @@ export type TPamRotationRuleDeletedEvent = {
   };
 };
 
-export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
+export type TResourceAuthMethodEvent = {
+  event: PostHogEventTypes.ResourceAuthMethodLogin | PostHogEventTypes.ResourceAuthMethodUpdated;
+  properties: {
+    resourceType: "gateway";
+    resourceId: string;
+    orgId: string;
+    method: "aws" | "token";
+  };
+};
+
+export type THoneyTokenCreatedEvent = {
+  event: PostHogEventTypes.HoneyTokenCreated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type THoneyTokenUpdatedEvent = {
+  event: PostHogEventTypes.HoneyTokenUpdated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenRevokedEvent = {
+  event: PostHogEventTypes.HoneyTokenRevoked;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenResetEvent = {
+  event: PostHogEventTypes.HoneyTokenReset;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenTriggeredEvent = {
+  event: PostHogEventTypes.HoneyTokenTriggered;
+  properties: {
+    type: string;
+  };
+};
+
+export type TCustomRoleCreatedEvent = {
+  event: PostHogEventTypes.CustomRoleCreated;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TCustomRoleUpdatedEvent = {
+  event: PostHogEventTypes.CustomRoleUpdated;
+  properties: {
+    roleId: string;
+    name?: string;
+    slug?: string;
+    scope: string;
+    permissionsUpdated: boolean;
+  };
+};
+
+export type TCustomRoleDeletedEvent = {
+  event: PostHogEventTypes.CustomRoleDeleted;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TOrgMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.OrgMembershipRoleUpdated;
+  properties: {
+    membershipId: string;
+    newRole: string;
+  };
+};
+
+export type TProjectMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipRoleUpdated;
+  properties: {
+    projectId: string;
+    userId: string;
+    roles: string[];
+  };
+};
+
+export type TOrgMembershipDeletedEvent = {
+  event: PostHogEventTypes.OrgMembershipDeleted;
+  properties: {
+    membershipIds: string[];
+  };
+};
+
+export type TProjectMembershipCreatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipCreated;
+  properties: {
+    projectId: string;
+    userIds: string[];
+    roles: string[];
+  };
+};
+
+export type TProjectMembershipDeletedEvent = {
+  event: PostHogEventTypes.ProjectMembershipDeleted;
+  properties: {
+    projectId: string;
+    userIds: string[];
+  };
+};
+
+export type TPostHogEvent = {
+  distinctId: string;
+  organizationId?: string;
+  organizationName?: string;
+  /**
+   * When true, the event is captured without creating or updating a PostHog
+   * person record (`$process_person_profile: false`). Use for events fired
+   * from unauthenticated, single-shot interactions where the distinctId is
+   * synthesised per-request (e.g. anonymous public secret shares) and there
+   * is no real user/identity to attribute the event to. The event itself is
+   * still recorded so funnels and breakdowns continue to work — only the
+   * person record is suppressed.
+   */
+  anonymous?: boolean;
+} & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
@@ -892,4 +1080,20 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TPamDiscoveryEvent
   | TPamRotationRuleCreatedEvent
   | TPamRotationRuleDeletedEvent
+  | TResourceAuthMethodEvent
+  | THoneyTokenCreatedEvent
+  | THoneyTokenUpdatedEvent
+  | THoneyTokenRevokedEvent
+  | THoneyTokenResetEvent
+  | THoneyTokenTriggeredEvent
+  | TCustomRoleCreatedEvent
+  | TCustomRoleUpdatedEvent
+  | TCustomRoleDeletedEvent
+  | TOrgMembershipRoleUpdatedEvent
+  | TOrgMembershipDeletedEvent
+  | TProjectMembershipCreatedEvent
+  | TProjectMembershipRoleUpdatedEvent
+  | TProjectMembershipDeletedEvent
+  | TOrganizationCreatedEvent
+  | TSubOrganizationCreatedEvent
 );

@@ -455,6 +455,12 @@ Supports conditions and permission inversion.
 | `delete`           | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
 | `read-credentials` | View sensitive account credentials like passwords and private keys | `resourceName`, `accountName`, `resourceType`, `metadata` |
 
+#### Subject: `pam-insights`
+
+| Action | Description |
+| ------ | ----------- |
+| `read` | View the PAM insights dashboard, including resource and account totals, session activity, top actors, resource breakdown, and upcoming rotations |
+
 ## Condition Operators
 
 When defining conditions for permissions, you can use the following operators to match values:
@@ -576,3 +582,19 @@ curl --request POST \
     ]
   }'
 ```
+
+## Auditing a User's Effective Permissions
+
+Because a member can receive access from direct roles, group-inherited roles, and additional privileges at the same time, it isn't always obvious what they can actually do. The **Permission Audit** view resolves all sources into a single, effective answer per subject and action.
+
+Open **Access Control → Users**, click a member, then click **Permission Audit** in the page header.
+
+<Frame caption="Open a member from Access Control → Users and click Permission Audit.">
+  <img src="/images/internals/permissions/permission-audit-button.png" alt="Permission Audit button on the member details page" />
+</Frame>
+
+Each action is shown as **Allow**, **Conditional** (hover for the matching conditions), or **Forbid** (red icon = explicit forbid; muted dash = no rule grants it). The **Granted by** column lists every contributing source — direct role, group-inherited role, or additional privilege — with the source's role/group name. Use the search box to filter by resource, action, or source, and **Export CSV** to download a flat report.
+
+<Frame caption="Effective access for a member, grouped by resource with per-action state and source attribution.">
+  <img src="/images/internals/permissions/permission-audit-sheet.png" alt="Permission Audit sheet showing effective access per resource" />
+</Frame>

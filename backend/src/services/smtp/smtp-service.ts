@@ -10,15 +10,19 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccessPamRequestBypassedTemplate,
   AccountDeletionConfirmationTemplate,
   AuditLogMigrationAlertTemplate,
+  AuditLogStreamFailedTemplate,
   CredentialRotationFailedTemplate,
+  EmailChangeRequestNotificationTemplate,
   EmailMfaTemplate,
   EmailVerificationTemplate,
   ExternalImportFailedTemplate,
   ExternalImportStartedTemplate,
   ExternalImportSucceededTemplate,
   HealthAlertTemplate,
+  HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
   NewDeviceLoginTemplate,
   OAuthPasswordResetTemplate,
@@ -63,12 +67,14 @@ export enum SmtpTemplates {
   SignupEmailVerification = "signupEmailVerification",
   SignupExistingAccount = "signupExistingAccount",
   EmailVerification = "emailVerification",
+  EmailChangeRequestNotification = "emailChangeRequestNotification",
   SecretReminder = "secretReminder",
   EmailMfa = "emailMfa",
   UnlockAccount = "unlockAccount",
   AccessApprovalRequest = "accessApprovalRequest",
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
+  AccessPamRequestBypassed = "accessPamRequestBypassed",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
@@ -100,7 +106,9 @@ export enum SmtpTemplates {
   HealthAlert = "healthAlert",
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
   CredentialRotationFailed = "credentialRotationFailed",
-  AuditLogMigrationAlert = "auditLogMigrationAlert"
+  AuditLogMigrationAlert = "auditLogMigrationAlert",
+  HoneyTokenTriggered = "honeyTokenTriggered",
+  AuditLogStreamFailed = "auditLogStreamFailed"
 }
 
 export enum SmtpHost {
@@ -124,10 +132,12 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.AccessApprovalRequest]: AccessApprovalRequestTemplate,
   [SmtpTemplates.AccessApprovalRequestUpdated]: AccessApprovalRequestUpdatedTemplate,
   [SmtpTemplates.EmailVerification]: EmailVerificationTemplate,
+  [SmtpTemplates.EmailChangeRequestNotification]: EmailChangeRequestNotificationTemplate,
   [SmtpTemplates.ExternalImportFailed]: ExternalImportFailedTemplate,
   [SmtpTemplates.ExternalImportStarted]: ExternalImportStartedTemplate,
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
+  [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
   [SmtpTemplates.OrgAdminBreakglassAccess]: OrgAdminBreakglassAccessTemplate,
   [SmtpTemplates.SecretLeakIncident]: SecretLeakIncidentTemplate,
@@ -153,7 +163,9 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.HealthAlert]: HealthAlertTemplate,
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
-  [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate
+  [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
+  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
+  [SmtpTemplates.AuditLogStreamFailed]: AuditLogStreamFailedTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

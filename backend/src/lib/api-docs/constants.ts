@@ -67,6 +67,8 @@ export enum ApiDocsTags {
   PkiCertificatePolicies = "PKI Certificate Policies",
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateProfiles = "PKI Certificate Profiles",
+  PkiApplications = "PKI Applications",
+  CertManagerInstance = "Certificate Manager Instance",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
   PkiDiscovery = "PKI Discovery",
@@ -88,7 +90,8 @@ export enum ApiDocsTags {
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
-  Events = "Event Subscriptions"
+  Events = "Event Subscriptions",
+  GatewaysV3 = "Gateways"
 }
 
 export const GROUPS = {
@@ -572,7 +575,10 @@ export const KUBERNETES_AUTH = {
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
-    caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
+    caCert:
+      "The PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; explicitly setting the toggle to false in the same request is rejected.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and caCert must be empty. If omitted, defaults to true when caCert is provided and false otherwise.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
@@ -591,7 +597,10 @@ export const KUBERNETES_AUTH = {
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
-    caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
+    caCert:
+      "The new PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; the update is rejected if the resulting effective state would store a CA together with verifyTlsCertificate=false.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
@@ -1336,6 +1345,19 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located.",
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
+  },
+  DUPLICATE_SECRET: {
+    projectId: "The ID of the project containing the secret.",
+    sourceEnvironment: "The slug of the source environment.",
+    sourceSecretPath: "The folder path of the source secret.",
+    destinationEnvironment: "The slug of the destination environment.",
+    destinationSecretPath: "The folder path where the secret will be duplicated to.",
+    secretIds:
+      "Array of source secret IDs to duplicate. All secrets must belong to the source environment and path. Rotation and honey-token secrets cannot be duplicated. Maximum 50 secrets per request.",
+    shouldOverwrite:
+      "When true, overwrite an existing secret with the same key at the destination. When false (default), the request fails if the destination already has a secret with that key.",
+    attributesToCopy:
+      "Object specifying which attributes of the source secret to copy to the destination. Each key is optional and defaults to false. Available keys: value, comment, tags, metadata, skipMultilineEncoding."
   }
 } as const;
 
@@ -1393,6 +1415,7 @@ export const DASHBOARD = {
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1410,7 +1433,8 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
-    includeSecretRotations: "Whether to include secret rotations in the response."
+    includeSecretRotations: "Whether to include secret rotations in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response."
   }
 } as const;
 
@@ -2174,15 +2198,17 @@ export const CERTIFICATES = {
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
     certificatePem: "The PEM-encoded leaf certificate.",
-    privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
-    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
+    chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
 
-    certificate: "The issued certificate.",
-    certificateChain: "The certificate chain of the issued certificate.",
-    privateKey: "The private key of the issued certificate.",
-    serialNumber: "The serial number of the issued certificate."
+    certificate: "The imported certificate.",
+    certificateChain:
+      "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
+    privateKey:
+      "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
+    serialNumber: "The serial number of the imported certificate."
   }
 };
 
@@ -2579,7 +2605,11 @@ export const CertificateAuthorities = {
       maxPathLength:
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
-        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      crlDistributionPointUrls:
+        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
+      disableManagedCrlDistributionPointUrl:
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
     }
   }
 };
@@ -2721,6 +2751,9 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    DEVIN: {
+      apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
+    },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
       accessToken: "The Access Token used to access GitLab.",
@@ -2780,6 +2813,11 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    DATADOG: {
+      url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
+      apiKey: "The Datadog API key used to authenticate.",
+      applicationKey: "The Datadog Application key used to authenticate."
+    },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
       port: "The port number of the SSH server (default: 22).",
@@ -2787,7 +2825,9 @@ export const AppConnections = {
       authMethod: "The authentication method to use (password or ssh-key).",
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
-      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod).",
+      blockedUsers:
+        "A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu')."
     },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
@@ -2806,6 +2846,19 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    OVH: {
+      privateKey:
+        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+      certificate:
+        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+    },
+    SNOWFLAKE: {
+      account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
+      username: "The username (login name) used to authenticate with Snowflake.",
+      password: "The Programmatic Access Token used to authenticate with Snowflake."
     },
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
@@ -2987,7 +3040,10 @@ export const SecretSyncs = {
       teamId: "The ID of the Vercel team to sync secrets to.",
       teamName:
         "The name of the team to sync the secrets to. This is an optional field only intended for display purposes.",
-      targetEnvironments: "An optional array of Vercel environments to add shared environment variables to.",
+      targetEnvironments:
+        "An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.",
+      applyToAllCustomEnvironments:
+        "Whether to apply shared environment variables to all custom environments in the team.",
       targetProjects: "An optional array of Vercel projects to add shared environment variables to.",
       sensitive:
         "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
@@ -3016,6 +3072,9 @@ export const SecretSyncs = {
       mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
       path: "The Hashicorp Vault path to sync secrets to."
     },
+    OVH: {
+      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
+    },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
@@ -3041,6 +3100,9 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    DEVIN: {
+      orgId: "The Devin organization ID to sync secrets to."
     },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",
@@ -3118,6 +3180,10 @@ export const SecretSyncs = {
       repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
       branch:
         "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
+    },
+    SNOWFLAKE: {
+      database: "The name of the Snowflake database to sync secrets to.",
+      schema: "The name of the Snowflake schema (within the database) to sync secrets to."
     }
   }
 };
@@ -3176,6 +3242,9 @@ export const SecretRotations = {
   RECONCILE: {
     rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
   },
+  CHECK_CREDENTIALS: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to check active credentials for.`
+  }),
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:
@@ -3273,6 +3342,9 @@ export const SecretRotations = {
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3336,6 +3408,10 @@ export const SecretRotations = {
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
+    },
+    DATADOG_APPLICATION_KEY_SECRET: {
+      applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
+      applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
     }
   }
 };
@@ -3525,7 +3601,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   },
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the LDAP config for.",
@@ -3542,7 +3622,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   }
 };
 
@@ -3591,5 +3675,31 @@ export const SECRET_SHARING = {
   },
   DELETE: {
     id: "The ID of the shared secret to delete."
+  }
+} as const;
+
+export const GATEWAYS = {
+  CREATE: {
+    name: "Name of the gateway.",
+    authMethod:
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+  },
+  UPDATE: {
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+  },
+  AUTH_METHOD: {
+    stsEndpoint: "The endpoint URL for the AWS STS API.",
+    allowedPrincipalArns:
+      "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
+    allowedAccountIds:
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+  },
+  LOGIN: {
+    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;

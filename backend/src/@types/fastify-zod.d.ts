@@ -1,4 +1,6 @@
 import { FastifyInstance, RawReplyDefaultExpression, RawRequestDefaultExpression, RawServerDefault } from "fastify";
+import type { Cluster, Redis } from "ioredis";
+import type { Knex } from "knex";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { CustomLogger } from "@app/lib/logger/logger";
@@ -17,6 +19,8 @@ declare global {
 
   // used only for testing
   const testServer: FastifyZodProvider;
+  const testDb: Knex;
+  const testRedis: Redis | Cluster;
   const testSuperAdminDAL: TSuperAdminDALFactory;
   const testKmsRootConfigDAL: TKmsRootConfigDALFactory;
   const testHsmService: THsmServiceFactory;

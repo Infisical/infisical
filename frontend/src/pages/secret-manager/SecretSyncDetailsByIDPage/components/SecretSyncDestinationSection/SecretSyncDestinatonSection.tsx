@@ -25,6 +25,7 @@ import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
+import { DevinSyncDestinationSection } from "./DevinSyncDestinationSection";
 import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanAppPlatformSyncDestinationSection";
 import { ExternalInfisicalSyncDestinationSection } from "./ExternalInfisicalSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
@@ -40,8 +41,10 @@ import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSec
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
 import { OnaSyncDestinationSection } from "./OnaSyncDestinationSection";
+import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
@@ -177,11 +180,20 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.ExternalInfisical:
       DestinationComponents = <ExternalInfisicalSyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.OVH:
+      DestinationComponents = <OvhSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Devin:
+      DestinationComponents = <DevinSyncDestinationSection secretSync={secretSync} />;
+      break;
     case SecretSync.Ona:
       DestinationComponents = <OnaSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.TravisCI:
       DestinationComponents = <TravisCISyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Snowflake:
+      DestinationComponents = <SnowflakeSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

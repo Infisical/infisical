@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import {
   Button,
   FilterableSelect,
@@ -26,6 +27,7 @@ import {
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const schema = z.object({
@@ -52,10 +54,16 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const navigate = useNavigate();
 
   const { currentProject } = useProject();
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
   const isUpdate = Boolean(identity);
 
-  const { data: roles } = useGetProjectRoles(currentProject.id);
+  // Roles list is sourced product-aware (cert-manager filters to Admin + Member server-side).
+  const { data: roles } = useGetProjectRoles(currentProject.id, currentProject.type);
+  // For cert-manager, default to Member instead of No Access (No Access is filtered out server-side).
+  const defaultRole = isCertManager
+    ? { slug: ProjectMembershipRole.Member, name: "Member" }
+    : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
 
   const { mutateAsync: createMutateAsync } = useCreateProjectIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
@@ -73,7 +81,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       name: identity?.name ?? "",
       hasDeleteProtection: identity?.hasDeleteProtection ?? false,
       metadata: identity?.metadata ?? [],
-      role: isUpdate ? undefined : { slug: ProjectMembershipRole.NoAccess, name: "No Access" }
+      role: isUpdate ? undefined : defaultRole
     }
   });
 
@@ -96,20 +104,20 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
 
         onClose();
       } else {
-        // create
-
-        const { id: createdId } = await createMutateAsync({
+        const created = await createMutateAsync({
           name,
           projectId: currentProject.id,
           hasDeleteProtection,
           metadata
         });
+        const createdId = created.id;
 
         if (role) {
           await updateMembershipMutateAsync({
             roles: [{ role: role.slug }],
             identityId: createdId,
-            projectId: currentProject.id
+            projectId: currentProject.id,
+            projectType: currentProject.type
           });
         }
 
@@ -138,7 +146,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       }
 
       createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} project machine identity`,
+        text: `Successfully ${isUpdate ? "updated" : "created"} machine identity`,
         type: "success"
       });
 
@@ -148,7 +156,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       const error = err as any;
       const text =
         error?.response?.data?.message ??
-        `Failed to ${isUpdate ? "update" : "create"} project machine identity`;
+        `Failed to ${isUpdate ? "update" : "create"} machine identity`;
 
       createNotification({
         text,
@@ -187,6 +195,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
                 value={value}
                 getOptionValue={(option) => option.slug}
                 getOptionLabel={(option) => option.name}
+                components={{ Option: RoleOption }}
               />
             </FormControl>
           )}

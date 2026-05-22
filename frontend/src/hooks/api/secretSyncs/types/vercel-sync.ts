@@ -32,6 +32,7 @@ export type TVercelSync = TRootSecretSync & {
         teamId: string;
         teamName?: string;
         targetEnvironments: string[];
+        applyToAllCustomEnvironments: boolean;
         targetProjects?: string[];
         sensitive: boolean;
       };

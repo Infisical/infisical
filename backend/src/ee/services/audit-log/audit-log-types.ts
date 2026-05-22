@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
@@ -52,6 +53,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -96,6 +98,8 @@ export type TCreateAuditLogDTO = {
   projectId?: string;
 } & BaseAuthData;
 
+export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
@@ -128,8 +132,6 @@ export type TAuditLogServiceFactory = {
   }>;
   checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
-
-export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {
   ipAddress?: string;
@@ -165,6 +167,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  DUPLICATE_SECRET = "duplicate-secret",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
@@ -310,6 +313,8 @@ export enum EventType {
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
+  GET_PROJECT_IDENTITY_PERMISSION_AUDIT = "get-project-identity-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -324,6 +329,9 @@ export enum EventType {
   DELETE_SECRET_IMPORT = "delete-secret-import",
   UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
   UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
+  ADD_PROJECT_GROUP = "add-project-group",
+  UPDATE_PROJECT_GROUP = "update-project-group",
+  REMOVE_PROJECT_GROUP = "remove-project-group",
   SECRET_APPROVAL_MERGED = "secret-approval-merged",
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
@@ -360,6 +368,7 @@ export enum EventType {
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
+  EXPORT_CERT_MANAGER_PROJECT = "export-cert-manager-project",
   GET_CA_CSR = "get-certificate-authority-csr",
   GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
@@ -381,6 +390,7 @@ export enum EventType {
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
+  ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
@@ -435,6 +445,40 @@ export enum EventType {
   DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
   GET_CERTIFICATE_PROFILE = "get-certificate-profile",
   LIST_CERTIFICATE_PROFILES = "list-certificate-profiles",
+  CREATE_PKI_APPLICATION = "create-pki-application",
+  UPDATE_PKI_APPLICATION = "update-pki-application",
+  DELETE_PKI_APPLICATION = "delete-pki-application",
+  GET_PKI_APPLICATION = "get-pki-application",
+  LIST_PKI_APPLICATIONS = "list-pki-applications",
+  ATTACH_PKI_APPLICATION_PROFILES = "attach-pki-application-profiles",
+  DETACH_PKI_APPLICATION_PROFILE = "detach-pki-application-profile",
+  ADD_PKI_APPLICATION_MEMBER = "add-pki-application-member",
+  UPDATE_PKI_APPLICATION_MEMBER_ROLE = "update-pki-application-member-role",
+  REMOVE_PKI_APPLICATION_MEMBER = "remove-pki-application-member",
+  LIST_PKI_APPLICATION_MEMBERS = "list-pki-application-members",
+  GET_PKI_APPLICATION_ENROLLMENT = "get-pki-application-enrollment",
+  SET_PKI_APPLICATION_API_ENROLLMENT = "set-pki-application-api-enrollment",
+  CLEAR_PKI_APPLICATION_API_ENROLLMENT = "clear-pki-application-api-enrollment",
+  SET_PKI_APPLICATION_EST_ENROLLMENT = "set-pki-application-est-enrollment",
+  CLEAR_PKI_APPLICATION_EST_ENROLLMENT = "clear-pki-application-est-enrollment",
+  SET_PKI_APPLICATION_ACME_ENROLLMENT = "set-pki-application-acme-enrollment",
+  CLEAR_PKI_APPLICATION_ACME_ENROLLMENT = "clear-pki-application-acme-enrollment",
+  REVEAL_PKI_APPLICATION_ACME_EAB_SECRET = "reveal-pki-application-acme-eab-secret",
+  ROTATE_PKI_APPLICATION_ACME_EAB_SECRET = "rotate-pki-application-acme-eab-secret",
+  SET_PKI_APPLICATION_SCEP_ENROLLMENT = "set-pki-application-scep-enrollment",
+  CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT = "clear-pki-application-scep-enrollment",
+  GET_CERT_MANAGER_INSTANCE_STATE = "get-cert-manager-instance-state",
+  SET_CERT_MANAGER_ACTIVE_PROJECT = "set-cert-manager-active-project",
+  INVITE_CERT_MANAGER_USERS = "invite-cert-manager-users",
+  UPDATE_CERT_MANAGER_USER = "update-cert-manager-user",
+  REMOVE_CERT_MANAGER_USER = "remove-cert-manager-user",
+  REMOVE_CERT_MANAGER_USERS_BATCH = "remove-cert-manager-users-batch",
+  ADD_CERT_MANAGER_IDENTITY = "add-cert-manager-identity",
+  UPDATE_CERT_MANAGER_IDENTITY = "update-cert-manager-identity",
+  REMOVE_CERT_MANAGER_IDENTITY = "remove-cert-manager-identity",
+  ADD_CERT_MANAGER_GROUP = "add-cert-manager-group",
+  UPDATE_CERT_MANAGER_GROUP = "update-cert-manager-group",
+  REMOVE_CERT_MANAGER_GROUP = "remove-cert-manager-group",
   ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
@@ -477,9 +521,25 @@ export enum EventType {
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
   CMEK_BULK_EXPORT_PRIVATE_KEYS = "cmek-bulk-export-private-keys",
+  CMEK_BULK_IMPORT_KEYS = "cmek-bulk-import-keys",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
+
+  CREATE_GROUP = "create-group",
+  UPDATE_GROUP = "update-group",
+  DELETE_GROUP = "delete-group",
+  LINK_GROUP_TO_SUB_ORG = "link-group-to-sub-org",
+  UPDATE_GROUP_ORG_MEMBERSHIP = "update-group-org-membership",
+  UNLINK_GROUP_FROM_SUB_ORG = "unlink-group-from-sub-org",
+  ADD_USER_TO_GROUP = "add-user-to-group",
+  REMOVE_USER_FROM_GROUP = "remove-user-from-group",
+  ADD_IDENTITY_TO_GROUP = "add-identity-to-group",
+  REMOVE_IDENTITY_FROM_GROUP = "remove-identity-from-group",
+  ADD_GROUP_TO_PROJECT = "add-group-to-project",
+  UPDATE_GROUP_PROJECT_MEMBERSHIP = "update-group-project-membership",
+  REMOVE_GROUP_FROM_PROJECT = "remove-group-from-project",
+
   GET_PROJECT_TEMPLATES = "get-project-templates",
   GET_PROJECT_TEMPLATE = "get-project-template",
   CREATE_PROJECT_TEMPLATE = "create-project-template",
@@ -545,8 +605,10 @@ export enum EventType {
   CREATE_SECRET_ROTATION = "create-secret-rotation",
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  MOVE_SECRET_ROTATION = "move-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
   RECONCILE_SECRET_ROTATION = "reconcile-secret-rotation",
+  SECRET_ROTATION_CHECK_CREDENTIALS = "secret-rotation-check-credentials",
 
   PROJECT_ACCESS_REQUEST = "project-access-request",
 
@@ -592,6 +654,8 @@ export enum EventType {
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
   DELETE_PROJECT_ROLE = "delete-project-role",
+  LIST_PROJECT_ROLES = "list-project-roles",
+  GET_PROJECT_ROLE = "get-project-role",
 
   CREATE_ORG_ROLE = "create-org-role",
   UPDATE_ORG_ROLE = "update-org-role",
@@ -610,6 +674,11 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+  VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
+  VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
+  VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
+  VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN = "view-insights-pam-resource-breakdown",
+  VIEW_INSIGHTS_PAM_ROTATION_CALENDAR = "view-insights-pam-rotation-calendar",
 
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
@@ -619,6 +688,11 @@ export enum EventType {
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
   PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
+  PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
+  PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
+  PAM_RECORDING_CONFIG_UPDATE = "pam-recording-config-update",
+  PAM_RECORDING_CONFIG_DELETE = "pam-recording-config-delete",
+  PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED = "pam-recording-bucket-connection-test-failed",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
@@ -677,10 +751,12 @@ export enum EventType {
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+  PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
+  VIEW_AUDIT_LOGS = "view-audit-logs",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -778,12 +854,24 @@ export enum EventType {
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
 
+  // Resource Auth Methods
+  RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
+  RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
   GATEWAY_POOL_UPDATE = "gateway-pool-update",
   GATEWAY_POOL_DELETE = "gateway-pool-delete",
   GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
-  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member"
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member",
+
+  // Honey Tokens
+  CREATE_HONEY_TOKEN = "create-honey-token",
+  UPDATE_HONEY_TOKEN = "update-honey-token",
+  REVOKE_HONEY_TOKEN = "revoke-honey-token",
+  TRIGGER_HONEY_TOKEN = "trigger-honey-token"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -1064,6 +1152,22 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+interface DuplicateSecretEvent {
+  type: EventType.DUPLICATE_SECRET;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    sourceSecretId: string;
+    sourceSecretKey: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    destinationSecretId?: string;
+    approvalRequestId?: string;
+    shouldOverwrite: boolean;
+    attributesCopied: TDuplicateSecretAttributes;
   };
 }
 
@@ -2259,6 +2363,21 @@ interface RemoveProjectMemberEvent {
   };
 }
 
+interface GetProjectMemberPermissionAuditEvent {
+  type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT;
+  metadata: {
+    targetUserId: string;
+    membershipId: string;
+  };
+}
+
+interface GetProjectIdentityPermissionAuditEvent {
+  type: EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT;
+  metadata: {
+    targetIdentityId: string;
+  };
+}
+
 interface CreateFolderEvent {
   type: EventType.CREATE_FOLDER;
   metadata: {
@@ -2417,6 +2536,30 @@ interface UpdateUserDeniedPermissions {
     }[];
   };
 }
+
+interface AddProjectGroupEvent {
+  type: EventType.ADD_PROJECT_GROUP;
+  metadata: {
+    groupId: string;
+    roles: string[];
+  };
+}
+
+interface UpdateProjectGroupEvent {
+  type: EventType.UPDATE_PROJECT_GROUP;
+  metadata: {
+    groupId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveProjectGroupEvent {
+  type: EventType.REMOVE_PROJECT_GROUP;
+  metadata: {
+    groupId: string;
+  };
+}
+
 interface SecretApprovalMerge {
   type: EventType.SECRET_APPROVAL_MERGED;
   metadata: {
@@ -2711,6 +2854,149 @@ interface RemoveHostFromSshHostGroupEvent {
   };
 }
 
+interface CreateGroupEvent {
+  type: EventType.CREATE_GROUP;
+  metadata: {
+    groupId: string;
+    name: string;
+    slug: string;
+    role: string;
+  };
+}
+
+interface UpdateGroupEvent {
+  type: EventType.UPDATE_GROUP;
+  metadata: {
+    groupId: string;
+    name?: string;
+    slug?: string;
+    role?: string;
+  };
+}
+
+interface DeleteGroupEvent {
+  type: EventType.DELETE_GROUP;
+  metadata: {
+    groupId: string;
+    name: string;
+    slug: string;
+  };
+}
+
+interface LinkGroupToSubOrgEvent {
+  type: EventType.LINK_GROUP_TO_SUB_ORG;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UpdateGroupOrgMembershipEvent {
+  type: EventType.UPDATE_GROUP_ORG_MEMBERSHIP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UnlinkGroupFromSubOrgEvent {
+  type: EventType.UNLINK_GROUP_FROM_SUB_ORG;
+  metadata: {
+    groupId: string;
+    groupName: string;
+  };
+}
+
+interface AddUserToGroupEvent {
+  type: EventType.ADD_USER_TO_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    userId: string;
+    username: string;
+  };
+}
+
+interface RemoveUserFromGroupEvent {
+  type: EventType.REMOVE_USER_FROM_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    userId: string;
+    username: string;
+  };
+}
+
+interface AddIdentityToGroupEvent {
+  type: EventType.ADD_IDENTITY_TO_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    identityId: string;
+  };
+}
+
+interface RemoveIdentityFromGroupEvent {
+  type: EventType.REMOVE_IDENTITY_FROM_GROUP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    identityId: string;
+  };
+}
+
+interface AddGroupToProjectEvent {
+  type: EventType.ADD_GROUP_TO_PROJECT;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UpdateGroupProjectMembershipEvent {
+  type: EventType.UPDATE_GROUP_PROJECT_MEMBERSHIP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface RemoveGroupFromProjectEvent {
+  type: EventType.REMOVE_GROUP_FROM_PROJECT;
+  metadata: {
+    groupId: string;
+    groupName: string;
+  };
+}
+
 interface CreateCa {
   type: EventType.CREATE_CA;
   metadata: {
@@ -2760,6 +3046,21 @@ interface RenewCa {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ExportCertManagerProject {
+  type: EventType.EXPORT_CERT_MANAGER_PROJECT;
+  metadata: {
+    sourceProjectId: string;
+    destinationProjectId: string;
+    exportedCertificateAuthorities: number;
+    renamedCertificateAuthorities: { originalName: string; newName: string }[];
+    exportedCertificatePolicies: number;
+    renamedCertificatePolicies: { originalName: string; newName: string }[];
+    exportedCertificateProfiles: number;
+    skippedCertificateProfiles: number;
+    renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
   };
 }
 
@@ -2943,6 +3244,17 @@ interface RevokeCert {
   };
 }
 
+interface AssignCertToApplication {
+  type: EventType.ASSIGN_CERT_TO_APPLICATION;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId: string;
+    applicationName: string;
+  };
+}
+
 interface GetCertBody {
   type: EventType.GET_CERT_BODY;
   metadata: {
@@ -2983,6 +3295,7 @@ interface CreatePkiAlert {
   metadata: {
     pkiAlertId: string;
     pkiCollectionId?: string;
+    applicationId?: string;
     name: string;
     alertBefore?: string;
     eventType: PkiAlertEventType;
@@ -2993,6 +3306,7 @@ interface GetPkiAlert {
   type: EventType.GET_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
+    applicationId?: string;
   };
 }
 
@@ -3001,6 +3315,7 @@ interface UpdatePkiAlert {
   metadata: {
     pkiAlertId: string;
     pkiCollectionId?: string;
+    applicationId?: string;
     name?: string;
     alertBefore?: string;
     eventType?: PkiAlertEventType;
@@ -3011,6 +3326,7 @@ interface DeletePkiAlert {
   type: EventType.DELETE_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
+    applicationId?: string;
   };
 }
 
@@ -3077,6 +3393,7 @@ interface CreateCertificateInventoryView {
     filters?: Record<string, unknown>;
     columns?: string[];
     isShared?: boolean;
+    applicationId?: string;
   };
 }
 
@@ -3088,6 +3405,7 @@ interface UpdateCertificateInventoryView {
     filters?: Record<string, unknown>;
     columns?: string[];
     isShared?: boolean;
+    applicationId?: string;
   };
 }
 
@@ -3096,6 +3414,7 @@ interface DeleteCertificateInventoryView {
   metadata: {
     viewId: string;
     name: string;
+    applicationId?: string;
   };
 }
 
@@ -3427,6 +3746,318 @@ interface DeleteCertificateProfile {
   };
 }
 
+interface CreatePkiApplication {
+  type: EventType.CREATE_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    name: string;
+    profileIds?: string[];
+  };
+}
+
+interface UpdatePkiApplication {
+  type: EventType.UPDATE_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiApplication {
+  type: EventType.DELETE_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    name: string;
+  };
+}
+
+interface GetPkiApplication {
+  type: EventType.GET_PKI_APPLICATION;
+  metadata: {
+    applicationId: string;
+    name: string;
+  };
+}
+
+interface ListPkiApplications {
+  type: EventType.LIST_PKI_APPLICATIONS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface AttachPkiApplicationProfiles {
+  type: EventType.ATTACH_PKI_APPLICATION_PROFILES;
+  metadata: {
+    applicationId: string;
+    profileIds: string[];
+  };
+}
+
+interface DetachPkiApplicationProfile {
+  type: EventType.DETACH_PKI_APPLICATION_PROFILE;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface AddPkiApplicationMember {
+  type: EventType.ADD_PKI_APPLICATION_MEMBER;
+  metadata: {
+    applicationId: string;
+    applicationName?: string;
+    membershipId: string;
+    userId?: string;
+    userName?: string;
+    identityId?: string;
+    identityName?: string;
+    groupId?: string;
+    groupName?: string;
+    role: string;
+  };
+}
+
+interface UpdatePkiApplicationMemberRole {
+  type: EventType.UPDATE_PKI_APPLICATION_MEMBER_ROLE;
+  metadata: {
+    applicationId: string;
+    applicationName?: string;
+    membershipId: string;
+    userId?: string;
+    userName?: string;
+    identityId?: string;
+    identityName?: string;
+    groupId?: string;
+    groupName?: string;
+    role: string;
+  };
+}
+
+interface RemovePkiApplicationMember {
+  type: EventType.REMOVE_PKI_APPLICATION_MEMBER;
+  metadata: {
+    applicationId: string;
+    applicationName?: string;
+    membershipId: string;
+    userId?: string;
+    userName?: string;
+    identityId?: string;
+    identityName?: string;
+    groupId?: string;
+    groupName?: string;
+  };
+}
+
+interface ListPkiApplicationMembers {
+  type: EventType.LIST_PKI_APPLICATION_MEMBERS;
+  metadata: {
+    applicationId: string;
+    applicationName?: string;
+  };
+}
+
+interface GetPkiApplicationEnrollment {
+  type: EventType.GET_PKI_APPLICATION_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationApiEnrollment {
+  type: EventType.SET_PKI_APPLICATION_API_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    autoRenew: boolean;
+    renewBeforeDays: number | null;
+  };
+}
+
+interface ClearPkiApplicationApiEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationEstEnrollment {
+  type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    disableBootstrapCaValidation: boolean;
+  };
+}
+
+interface ClearPkiApplicationEstEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationAcmeEnrollment {
+  type: EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    skipDnsOwnershipVerification: boolean;
+    skipEabBinding: boolean;
+  };
+}
+
+interface ClearPkiApplicationAcmeEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface RevealPkiApplicationAcmeEabSecret {
+  type: EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface RotatePkiApplicationAcmeEabSecret {
+  type: EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface SetPkiApplicationScepEnrollment {
+  type: EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+    challengeType: string;
+  };
+}
+
+interface ClearPkiApplicationScepEnrollment {
+  type: EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT;
+  metadata: {
+    applicationId: string;
+    profileId: string;
+  };
+}
+
+interface GetCertManagerInstanceState {
+  type: EventType.GET_CERT_MANAGER_INSTANCE_STATE;
+  metadata: {
+    activeProjectId: string | null;
+    projectCount: number;
+    isMultiInstance: boolean;
+  };
+}
+
+interface SetCertManagerActiveProject {
+  type: EventType.SET_CERT_MANAGER_ACTIVE_PROJECT;
+  metadata: {
+    activeProjectId: string;
+    previousActiveProjectId: string | null;
+    projectName: string;
+  };
+}
+
+interface InviteCertManagerUsers {
+  type: EventType.INVITE_CERT_MANAGER_USERS;
+  metadata: {
+    emails: string[];
+    usernames: string[];
+    userIds: string[];
+    membershipIds: string[];
+    roleSlugs?: string[];
+  };
+}
+
+interface UpdateCertManagerUser {
+  type: EventType.UPDATE_CERT_MANAGER_USER;
+  metadata: {
+    userId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveCertManagerUser {
+  type: EventType.REMOVE_CERT_MANAGER_USER;
+  metadata: {
+    userId: string;
+    membershipId: string;
+  };
+}
+
+interface RemoveCertManagerUsersBatch {
+  type: EventType.REMOVE_CERT_MANAGER_USERS_BATCH;
+  metadata: {
+    emails: string[];
+    usernames: string[];
+    userIds: string[];
+    membershipIds: string[];
+  };
+}
+
+interface AddCertManagerIdentity {
+  type: EventType.ADD_CERT_MANAGER_IDENTITY;
+  metadata: {
+    identityId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface UpdateCertManagerIdentity {
+  type: EventType.UPDATE_CERT_MANAGER_IDENTITY;
+  metadata: {
+    identityId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveCertManagerIdentity {
+  type: EventType.REMOVE_CERT_MANAGER_IDENTITY;
+  metadata: {
+    identityId: string;
+    membershipId: string;
+  };
+}
+
+interface AddCertManagerGroup {
+  type: EventType.ADD_CERT_MANAGER_GROUP;
+  metadata: {
+    groupId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface UpdateCertManagerGroup {
+  type: EventType.UPDATE_CERT_MANAGER_GROUP;
+  metadata: {
+    groupId: string;
+    membershipId: string;
+    roles: string[];
+  };
+}
+
+interface RemoveCertManagerGroup {
+  type: EventType.REMOVE_CERT_MANAGER_GROUP;
+  metadata: {
+    groupId: string;
+    membershipId: string;
+  };
+}
+
 interface GetCertificateProfile {
   type: EventType.GET_CERTIFICATE_PROFILE;
   metadata: {
@@ -3449,6 +4080,7 @@ interface IssueCertificateFromProfile {
     certificateId: string;
     commonName: string;
     profileName: string;
+    applicationId?: string;
   };
 }
 
@@ -3459,6 +4091,7 @@ interface SignCertificateFromProfile {
     certificateId: string;
     profileName: string;
     commonName: string;
+    applicationId?: string;
   };
 }
 
@@ -3467,6 +4100,7 @@ interface OrderCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     profileName: string;
+    applicationId?: string;
   };
 }
 
@@ -3679,6 +4313,15 @@ interface CmekBulkGetPrivateKeysEvent {
   type: EventType.CMEK_BULK_EXPORT_PRIVATE_KEYS;
   metadata: {
     keys: { keyId: string; name: string }[];
+  };
+}
+
+interface CmekBulkImportKeysEvent {
+  type: EventType.CMEK_BULK_IMPORT_KEYS;
+  metadata: {
+    keyNames: string[];
+    failedKeyNames: string[];
+    projectId: string;
   };
 }
 
@@ -3917,6 +4560,7 @@ interface GetPkiSyncEvent {
   metadata: {
     destination: string;
     syncId: string;
+    applicationId?: string;
   };
 }
 
@@ -3927,6 +4571,7 @@ interface GetPkiSyncCertificatesEvent {
     count: number;
     certificateIds: string[];
     destination: string;
+    applicationId?: string;
   };
 }
 
@@ -3936,6 +4581,7 @@ interface CreatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     destination: string;
+    applicationId?: string;
   };
 }
 
@@ -3944,6 +4590,7 @@ interface UpdatePkiSyncEvent {
   metadata: {
     pkiSyncId: string;
     name: string;
+    applicationId?: string;
   };
 }
 
@@ -3953,6 +4600,7 @@ interface DeletePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     destination: string;
+    applicationId?: string;
   };
 }
 
@@ -3992,6 +4640,7 @@ interface PkiSyncSetDefaultCertificateEvent {
     pkiSyncId: string;
     name: string;
     certificateId: string;
+    applicationId?: string;
   };
 }
 
@@ -4000,6 +4649,7 @@ interface PkiSyncClearDefaultCertificateEvent {
   metadata: {
     pkiSyncId: string;
     name: string;
+    applicationId?: string;
   };
 }
 
@@ -4381,6 +5031,18 @@ interface DeleteSecretRotationEvent {
   metadata: TDeleteSecretRotationV2DTO;
 }
 
+interface MoveSecretRotationEvent {
+  type: EventType.MOVE_SECRET_ROTATION;
+  metadata: {
+    type: string;
+    rotationId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+  };
+}
+
 interface RotateSecretRotationEvent {
   type: EventType.SECRET_ROTATION_ROTATE_SECRETS;
   metadata: Pick<TSecretRotationV2Raw, "parameters" | "secretsMapping" | "type" | "connectionId" | "folderId"> & {
@@ -4398,6 +5060,18 @@ interface ReconcileSecretRotationEvent {
     type: string;
     rotationId: string;
     reconciled: boolean;
+  };
+}
+
+interface CheckSecretRotationCredentialsEvent {
+  type: EventType.SECRET_ROTATION_CHECK_CREDENTIALS;
+  metadata: {
+    type: string;
+    rotationId: string;
+    connectionId: string;
+    folderId: string;
+    success: boolean;
+    errorMessage?: string;
   };
 }
 
@@ -4785,6 +5459,48 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewAuditLogsEvent {
+  type: EventType.VIEW_AUDIT_LOGS;
+  metadata?: Record<string, unknown>;
+}
+
+interface ViewPamInsightsSummaryEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_SUMMARY;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsSessionActivityEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_SESSION_ACTIVITY;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsTopActorsEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_TOP_ACTORS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsResourceBreakdownEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewPamInsightsRotationCalendarEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_ROTATION_CALENDAR;
+  metadata: {
+    projectId: string;
+    month: number;
+    year: number;
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -4813,6 +5529,21 @@ interface ProjectRoleDeleteEvent {
     roleId: string;
     slug: string;
     name: string;
+  };
+}
+
+interface ProjectRoleListEvent {
+  type: EventType.LIST_PROJECT_ROLES;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ProjectRoleGetEvent {
+  type: EventType.GET_PROJECT_ROLE;
+  metadata: {
+    projectId: string;
+    slug: string;
   };
 }
 
@@ -4906,6 +5637,52 @@ interface PamSessionEventBatchUploadEvent {
   metadata: {
     sessionId: string;
     startOffset: number;
+  };
+}
+
+interface PamSessionChunkUploadEvent {
+  type: EventType.PAM_SESSION_CHUNK_UPLOAD;
+  metadata: {
+    sessionId: string;
+    chunkIndex: number;
+    storageBackend: string;
+    ciphertextBytes: number;
+  };
+}
+
+interface PamSessionUploadTokenInvalidEvent {
+  type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID;
+  metadata: {
+    sessionId: string;
+    chunkIndex?: number;
+  };
+}
+
+interface PamRecordingConfigUpsertEvent {
+  type: EventType.PAM_RECORDING_CONFIG_UPDATE;
+  metadata: {
+    projectId: string;
+    storageBackend: string;
+    bucket: string;
+    region: string;
+  };
+}
+
+interface PamRecordingConfigDeleteEvent {
+  type: EventType.PAM_RECORDING_CONFIG_DELETE;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface PamRecordingBucketConnectionTestFailedEvent {
+  type: EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED;
+  metadata: {
+    projectId: string;
+    storageBackend: string;
+    bucket: string;
+    region: string;
+    reason: string;
   };
 }
 
@@ -5548,6 +6325,22 @@ interface ApprovalRequestGrantRevokeEvent {
   };
 }
 
+interface PamAccessPolicyBypassedEvent {
+  type: EventType.PAM_ACCESS_POLICY_BYPASSED;
+  metadata: {
+    policyType: string;
+    policyId: string | null;
+    requestId: string;
+    grantId: string;
+    granteeUserId: string;
+    resourceName?: string;
+    accountName?: string;
+    accessDuration: string;
+    bypassReason: string;
+    approverCount: number;
+  };
+}
+
 interface AccessApprovalRequestCreateEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_CREATE;
   metadata: {
@@ -5612,6 +6405,7 @@ interface CreateAcmeOrderEvent {
     identifiers: Array<{
       type: AcmeIdentifierType;
       value: string;
+      wildcard?: boolean;
     }>;
   };
 }
@@ -6044,6 +6838,7 @@ interface ScepDynamicChallengeGeneratedEvent {
     profileId: string;
     profileSlug: string;
     expiresAt: string;
+    applicationId?: string;
   };
 }
 
@@ -6151,6 +6946,58 @@ interface GatewayEnrollEvent {
   };
 }
 
+type ResourceAuthMethodKind = "aws" | "token";
+
+interface ResourceAuthMethodLoginEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    principalArn?: string;
+    accountId?: string;
+    enrollmentTokenId?: string;
+  };
+}
+
+interface ResourceAuthMethodLoginFailedEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    reasonCode: string;
+    message: string;
+    principalArn?: string;
+    accountId?: string;
+  };
+}
+
+interface ResourceAuthMethodUpdateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+  };
+}
+
+interface ResourceAuthMethodRevokeEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    gatewayName: string;
+    deletedTokenCount: number;
+  };
+}
+
 interface GatewayPoolCreateEvent {
   type: EventType.GATEWAY_POOL_CREATE;
   metadata: {
@@ -6195,6 +7042,53 @@ interface GatewayPoolRemoveMemberEvent {
   };
 }
 
+interface CreateHoneyTokenEvent {
+  type: EventType.CREATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateHoneyTokenEvent {
+  type: EventType.UPDATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RevokeHoneyTokenEvent {
+  type: EventType.REVOKE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface TriggerHoneyTokenEvent {
+  type: EventType.TRIGGER_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    projectId: string;
+    eventName: string;
+    eventTime: string;
+    sourceIp: string;
+    awsRegion: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6207,6 +7101,7 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | DuplicateSecretEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | RedactSecretVersionValueEvent
@@ -6328,6 +7223,8 @@ export type Event =
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent
+  | GetProjectMemberPermissionAuditEvent
+  | GetProjectIdentityPermissionAuditEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
@@ -6342,6 +7239,9 @@ export type Event =
   | DeleteSecretImportEvent
   | UpdateUserRole
   | UpdateUserDeniedPermissions
+  | AddProjectGroupEvent
+  | UpdateProjectGroupEvent
+  | RemoveProjectGroupEvent
   | SecretApprovalMerge
   | SecretApprovalClosed
   | SecretApprovalRequest
@@ -6369,6 +7269,7 @@ export type Event =
   | UpdateCa
   | DeleteCa
   | RenewCa
+  | ExportCertManagerProject
   | GetCaCsr
   | GetCaCerts
   | GetCaCert
@@ -6390,6 +7291,7 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
+  | AssignCertToApplication
   | GetCertBody
   | GetCertPrivateKey
   | GetCertBundle
@@ -6437,6 +7339,40 @@ export type Event =
   | CreateCertificateProfile
   | UpdateCertificateProfile
   | DeleteCertificateProfile
+  | CreatePkiApplication
+  | UpdatePkiApplication
+  | DeletePkiApplication
+  | GetPkiApplication
+  | ListPkiApplications
+  | AttachPkiApplicationProfiles
+  | DetachPkiApplicationProfile
+  | AddPkiApplicationMember
+  | UpdatePkiApplicationMemberRole
+  | RemovePkiApplicationMember
+  | ListPkiApplicationMembers
+  | GetPkiApplicationEnrollment
+  | SetPkiApplicationApiEnrollment
+  | ClearPkiApplicationApiEnrollment
+  | SetPkiApplicationEstEnrollment
+  | ClearPkiApplicationEstEnrollment
+  | SetPkiApplicationAcmeEnrollment
+  | ClearPkiApplicationAcmeEnrollment
+  | RevealPkiApplicationAcmeEabSecret
+  | RotatePkiApplicationAcmeEabSecret
+  | SetPkiApplicationScepEnrollment
+  | ClearPkiApplicationScepEnrollment
+  | GetCertManagerInstanceState
+  | SetCertManagerActiveProject
+  | InviteCertManagerUsers
+  | UpdateCertManagerUser
+  | RemoveCertManagerUser
+  | RemoveCertManagerUsersBatch
+  | AddCertManagerIdentity
+  | UpdateCertManagerIdentity
+  | RemoveCertManagerIdentity
+  | AddCertManagerGroup
+  | UpdateCertManagerGroup
+  | RemoveCertManagerGroup
   | GetCertificateProfile
   | ListCertificateProfiles
   | GetCertificateProfileLatestActiveBundle
@@ -6468,6 +7404,7 @@ export type Event =
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent
   | CmekBulkGetPrivateKeysEvent
+  | CmekBulkImportKeysEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent
@@ -6561,8 +7498,10 @@ export type Event =
   | CreateSecretRotationEvent
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
+  | MoveSecretRotationEvent
   | RotateSecretRotationEvent
   | ReconcileSecretRotationEvent
+  | CheckSecretRotationCredentialsEvent
   | MicrosoftTeamsWorkflowIntegrationCreateEvent
   | MicrosoftTeamsWorkflowIntegrationDeleteEvent
   | MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent
@@ -6606,9 +7545,17 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewAuditLogsEvent
+  | ViewPamInsightsSummaryEvent
+  | ViewPamInsightsSessionActivityEvent
+  | ViewPamInsightsTopActorsEvent
+  | ViewPamInsightsResourceBreakdownEvent
+  | ViewPamInsightsRotationCalendarEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
+  | ProjectRoleListEvent
+  | ProjectRoleGetEvent
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
@@ -6620,6 +7567,11 @@ export type Event =
   | PamSessionGetEvent
   | PamSessionListEvent
   | PamSessionEventBatchUploadEvent
+  | PamSessionChunkUploadEvent
+  | PamSessionUploadTokenInvalidEvent
+  | PamRecordingConfigUpsertEvent
+  | PamRecordingConfigDeleteEvent
+  | PamRecordingBucketConnectionTestFailedEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
@@ -6692,6 +7644,7 @@ export type Event =
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
+  | PamAccessPolicyBypassedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent
@@ -6753,8 +7706,29 @@ export type Event =
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
+  | ResourceAuthMethodLoginEvent
+  | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodUpdateEvent
+  | ResourceAuthMethodRevokeEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent
   | GatewayPoolAddMemberEvent
-  | GatewayPoolRemoveMemberEvent;
+  | GatewayPoolRemoveMemberEvent
+  | CreateHoneyTokenEvent
+  | UpdateHoneyTokenEvent
+  | RevokeHoneyTokenEvent
+  | TriggerHoneyTokenEvent
+  | CreateGroupEvent
+  | UpdateGroupEvent
+  | DeleteGroupEvent
+  | LinkGroupToSubOrgEvent
+  | UpdateGroupOrgMembershipEvent
+  | UnlinkGroupFromSubOrgEvent
+  | AddUserToGroupEvent
+  | RemoveUserFromGroupEvent
+  | AddIdentityToGroupEvent
+  | RemoveIdentityFromGroupEvent
+  | AddGroupToProjectEvent
+  | UpdateGroupProjectMembershipEvent
+  | RemoveGroupFromProjectEvent;

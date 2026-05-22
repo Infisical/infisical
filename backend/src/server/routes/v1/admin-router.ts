@@ -651,6 +651,25 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.user.username ?? "",
+        properties: {
+          username: user.user.username,
+          email: user.user.email ?? "",
+          signupMethod: "admin_init"
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: user.user.username ?? "",
+        organizationId: organization.id,
+        properties: {
+          name: organization.name
+        }
+      });
+
       const adminDistinctId = user.user.username ?? user.user.email ?? "";
       if (adminDistinctId) {
         void server.services.telemetry.identifyUser(
@@ -811,6 +830,25 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.user.username ?? "",
+        properties: {
+          username: user.user.username,
+          email: user.user.email ?? "",
+          signupMethod: "admin_bootstrap"
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: user.user.username ?? "",
+        organizationId: organization.id,
+        properties: {
+          name: organization.name
+        }
+      });
+
       const bootstrapDistinctId = user.user.username ?? user.user.email ?? "";
       if (bootstrapDistinctId) {
         void server.services.telemetry.identifyUser(
@@ -926,6 +964,16 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const organization = await server.services.superAdmin.createOrganization(req.body, req.permission);
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: organization.id,
+        properties: {
+          name: organization.name
+        }
+      });
+
       return { organization };
     }
   });

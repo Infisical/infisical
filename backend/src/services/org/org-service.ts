@@ -23,6 +23,7 @@ import {
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -35,7 +36,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { QueueName } from "@app/queue";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -45,7 +45,9 @@ import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
+import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -92,6 +94,7 @@ type TOrgServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipUserDAL: TMembershipUserDALFactory;
+  membershipDAL: TMembershipDALFactory;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
     "findProjectMembershipsByUserId" | "findProjectMembershipsByUserIds"
@@ -149,6 +152,7 @@ export const orgServiceFactory = ({
   reminderService,
   membershipRoleDAL,
   membershipUserDAL,
+  membershipDAL,
   userGroupMembershipDAL,
   additionalPrivilegeDAL
 }: TOrgServiceFactoryDep) => {
@@ -676,12 +680,22 @@ export const orgServiceFactory = ({
         );
       }
 
+      await bootstrapCertManagerProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
       return org;
     };
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+
     return organization;
   };
 
@@ -829,6 +843,15 @@ export const orgServiceFactory = ({
 
       userRole = OrgMembershipRole.Custom;
       userRoleId = customRole.id;
+    }
+
+    if (role) {
+      const [permissionRole] = await permissionService.getOrgPermissionByRoles([role], orgId);
+      assertPermissionBoundary(
+        permission,
+        permissionRole.permission,
+        "Cannot assign a role exceeding your own privileges to an org member"
+      );
     }
     const membership = await orgDAL.transaction(async (tx) => {
       // this is because if isActive is undefined then this would fail due to knexjs error
@@ -1228,7 +1251,7 @@ export const orgServiceFactory = ({
    * Re-send emails to users who haven't accepted an invite yet
    */
   const notifyInvitedUsers = async () => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: notify invited users started`);
+    logger.info(`daily-resource-cleanup: notify invited users started`);
 
     const invitedUsers = await orgMembershipDAL.findRecentInvitedMemberships();
     const appCfg = getConfig();
@@ -1272,7 +1295,7 @@ export const orgServiceFactory = ({
             });
             notifiedUsers.push(invitedUser.id);
           } catch (err) {
-            logger.error(err, `${QueueName.DailyResourceCleanUp}: notify invited users failed to send email`);
+            logger.error(err, `daily-resource-cleanup: notify invited users failed to send email`);
           }
         }
       })
@@ -1280,7 +1303,7 @@ export const orgServiceFactory = ({
 
     await orgMembershipDAL.updateLastInvitedAtByIds(notifiedUsers);
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: notify invited users completed`);
+    logger.info(`daily-resource-cleanup: notify invited users completed`);
   };
 
   return {

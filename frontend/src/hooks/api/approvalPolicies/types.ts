@@ -4,9 +4,19 @@ export enum ApprovalPolicyType {
   CertCodeSigning = "cert-code-signing"
 }
 
+export enum ApprovalPolicyScope {
+  Project = "project",
+  PkiApplication = "pki-application"
+}
+
 export enum ApproverType {
   Group = "group",
   User = "user"
+}
+
+export enum EnforcementLevel {
+  Hard = "hard",
+  Soft = "soft"
 }
 
 export type ApprovalPolicyStep = {
@@ -17,6 +27,11 @@ export type ApprovalPolicyStep = {
     type: ApproverType;
     id: string;
   }[];
+};
+
+export type PolicyBypasser = {
+  type: ApproverType;
+  id: string;
 };
 
 export type PamAccessPolicyConditions = {
@@ -66,13 +81,18 @@ export type TApprovalPolicy = {
   };
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel: EnforcementLevel;
+  bypassers: PolicyBypasser[];
+  scopeType?: ApprovalPolicyScope | string | null;
+  scopeId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TCreateApprovalPolicyDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
   name: string;
   maxRequestTtl?: string | null;
   conditions: PamAccessPolicyConditions | CertRequestPolicyConditions | CodeSigningPolicyConditions;
@@ -82,6 +102,8 @@ export type TCreateApprovalPolicyDTO = {
     | CodeSigningPolicyConstraints;
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel?: EnforcementLevel;
+  bypassers?: PolicyBypasser[];
 };
 
 export type TUpdateApprovalPolicyDTO = {
@@ -99,6 +121,8 @@ export type TUpdateApprovalPolicyDTO = {
     | CodeSigningPolicyConstraints;
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel?: EnforcementLevel;
+  bypassers?: PolicyBypasser[];
 };
 
 export type TGetApprovalPolicyByIdDTO = {
@@ -108,7 +132,8 @@ export type TGetApprovalPolicyByIdDTO = {
 
 export type TListApprovalPoliciesDTO = {
   policyType: ApprovalPolicyType;
-  projectId: string;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
 };
 
 export type TDeleteApprovalPolicyDTO = {
@@ -125,4 +150,7 @@ export type TCheckPolicyMatchDTO = {
 export type TCheckPolicyMatchResult = {
   requiresApproval: boolean;
   hasActiveGrant: boolean;
+  constraints?: {
+    accessDuration: { max: string };
+  };
 };

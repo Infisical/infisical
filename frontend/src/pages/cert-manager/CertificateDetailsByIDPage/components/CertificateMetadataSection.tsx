@@ -6,7 +6,6 @@ import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
@@ -22,9 +21,15 @@ import {
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { useGetCertificateById, useUpdateCertificate } from "@app/hooks/api";
+import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub
+} from "@app/hooks/api/pkiApplications/types";
 import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 type Props = {
@@ -51,6 +56,30 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
   const certificate = data?.certificate;
   const metadata = certificate?.metadata || [];
 
+  const { permission } = useProjectPermission();
+  const { data: appPermissionData } = useGetPkiApplicationPermissions(
+    certificate?.applicationId ?? ""
+  );
+  const canEditMetadata =
+    (certificate
+      ? permission.can(
+          ProjectPermissionCertificateActions.Edit,
+          subject(ProjectPermissionSub.Certificates, {
+            commonName: certificate.commonName,
+            altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+            serialNumber: certificate.serialNumber,
+            friendlyName: certificate.friendlyName,
+            metadata: certificate.metadata
+          })
+        )
+      : false) ||
+    Boolean(
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Edit,
+        PkiApplicationResourceSub.Certificates
+      )
+    );
+
   const { control, handleSubmit, reset, formState } = useForm<MetadataFormData>({
     resolver: zodResolver(metadataFormSchema),
     defaultValues: {
@@ -76,7 +105,6 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
       try {
         await updateMetadata({
           certificateId,
-          projectId: currentProject.id,
           metadata: formData.metadata || []
         });
         createNotification({
@@ -113,30 +141,17 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
           <CardTitle>Metadata</CardTitle>
           <CardDescription>Custom key-value pairs attached to this certificate</CardDescription>
           <CardAction>
-            <ProjectPermissionCan
-              I={ProjectPermissionCertificateActions.Edit}
-              a={subject(ProjectPermissionSub.Certificates, {
-                commonName: certificate.commonName,
-                altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-                serialNumber: certificate.serialNumber,
-                friendlyName: certificate.friendlyName,
-                metadata: certificate.metadata
-              })}
+            <IconButton
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                reset({ metadata: metadata.length > 0 ? metadata : [] });
+                setIsModalOpen(true);
+              }}
+              isDisabled={!canEditMetadata}
             >
-              {(isAllowed) => (
-                <IconButton
-                  variant="outline"
-                  size="xs"
-                  onClick={() => {
-                    reset({ metadata: metadata.length > 0 ? metadata : [] });
-                    setIsModalOpen(true);
-                  }}
-                  isDisabled={!isAllowed}
-                >
-                  <PencilIcon />
-                </IconButton>
-              )}
-            </ProjectPermissionCan>
+              <PencilIcon />
+            </IconButton>
           </CardAction>
         </CardHeader>
         <CardContent>

@@ -8,7 +8,11 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useUser } from "@app/context";
-import { useRequestEmailChangeOTP, useUpdateUserEmail } from "@app/hooks/api/users";
+import {
+  useRequestEmailChangeOTP,
+  useUpdateUserEmail,
+  useVerifyCurrentEmailOTP
+} from "@app/hooks/api/users";
 import { clearSession } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
@@ -41,12 +45,15 @@ const otpInputProps = {
   }
 };
 
+type OtpStep = "currentEmail" | "newEmail";
+
 export const ChangeEmailSection = () => {
   const navigate = useNavigate();
   const { user } = useUser();
   const hasEmailAuth = user?.authMethods?.includes(AuthMethod.EMAIL) ?? false;
-  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+  const [otpStep, setOtpStep] = useState<OtpStep | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [typedOTP, setTypedOTP] = useState("");
 
   const emailForm = useForm<EmailFormData>({
     defaultValues: { newEmail: "" },
@@ -55,16 +62,16 @@ export const ChangeEmailSection = () => {
 
   const { mutateAsync: requestEmailChangeOTP, isPending: isRequestingOTP } =
     useRequestEmailChangeOTP();
+  const { mutateAsync: verifyCurrentEmailOTP, isPending: isVerifyingCurrent } =
+    useVerifyCurrentEmailOTP();
   const { mutateAsync: updateUserEmail, isPending: isUpdatingEmail } = useUpdateUserEmail();
 
-  // Watch the email field to enable/disable the button
   const watchedEmail = useWatch({
     control: emailForm.control,
     name: "newEmail",
     defaultValue: ""
   });
 
-  // Helper function to check if email is valid
   const isEmailValid = (email: string): boolean => {
     try {
       emailSchema.parse({ newEmail: email });
@@ -72,6 +79,17 @@ export const ChangeEmailSection = () => {
     } catch {
       return false;
     }
+  };
+
+  const closeOtpModal = () => {
+    setOtpStep(null);
+    setTypedOTP("");
+  };
+
+  const resetFlow = () => {
+    closeOtpModal();
+    setPendingEmail("");
+    emailForm.reset();
   };
 
   const handleEmailSubmit = async ({ newEmail }: EmailFormData) => {
@@ -84,18 +102,45 @@ export const ChangeEmailSection = () => {
     }
 
     await requestEmailChangeOTP({ newEmail });
+
     setPendingEmail(newEmail);
-    setIsOTPModalOpen(true);
+    setTypedOTP("");
+    setOtpStep("currentEmail");
 
     createNotification({
-      text: "Verification code sent to your new email address. Check your inbox!",
+      text: "Verification code sent to your current email address. Check your inbox!",
       type: "success"
     });
   };
 
-  const [typedOTP, setTypedOTP] = useState("");
+  const handleCurrentOtpSubmit = async () => {
+    if (typedOTP.length !== 6) {
+      createNotification({
+        text: "Please enter the complete 6-digit verification code",
+        type: "error"
+      });
+      return;
+    }
 
-  const handleOTPSubmit = async () => {
+    try {
+      await verifyCurrentEmailOTP({ otpCode: typedOTP });
+    } catch {
+      // The OTP token is single-use (triesLeft = 1) — any failure consumes it server-side,
+      // so the user must restart the flow to request a fresh code.
+      resetFlow();
+      return;
+    }
+
+    setTypedOTP("");
+    setOtpStep("newEmail");
+
+    createNotification({
+      text: "Confirmed. A second verification code has been sent to your new email address.",
+      type: "success"
+    });
+  };
+
+  const handleNewOtpSubmit = async () => {
     if (typedOTP.length !== 6) {
       createNotification({
         text: "Please enter the complete 6-digit verification code",
@@ -106,47 +151,35 @@ export const ChangeEmailSection = () => {
 
     try {
       await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
-
-      createNotification({
-        text: "Email updated successfully. You will be redirected to login.",
-        type: "success"
-      });
-
-      // Reset forms and close modal
-      emailForm.reset();
-      setIsOTPModalOpen(false);
-      setPendingEmail("");
-      setTypedOTP("");
-
-      // Clear frontend session/token to ensure proper logout
-      clearSession();
-
-      // Redirect to login after a short delay
-      setTimeout(() => {
-        navigate({ to: "/login" });
-      }, 2000);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || "Invalid verification code";
-      if (errorMessage.includes("Invalid verification code")) {
-        // Reset to email step so user must request new OTP
-        setIsOTPModalOpen(false);
-        setPendingEmail("");
-        setTypedOTP("");
-        emailForm.reset();
-
-        createNotification({
-          text: "Invalid verification code. Please request a new one.",
-          type: "error"
-        });
-      }
+    } catch {
+      resetFlow();
+      return;
     }
+
+    createNotification({
+      text: "Email updated successfully. You will be redirected to login.",
+      type: "success"
+    });
+
+    resetFlow();
+    clearSession();
+
+    setTimeout(() => {
+      navigate({ to: "/login" });
+    }, 2000);
   };
 
-  const handleOTPModalClose = () => {
-    setIsOTPModalOpen(false);
-    setPendingEmail("");
-    setTypedOTP("");
-  };
+  const isOtpModalOpen = otpStep !== null;
+  const otpRecipient = otpStep === "currentEmail" ? (user?.email ?? "") : pendingEmail;
+  const otpSubTitle =
+    otpStep === "currentEmail"
+      ? `Enter the 6-digit code sent to your current email: ${otpRecipient}`
+      : `Enter the 6-digit code sent to your new email: ${otpRecipient}`;
+  const otpTitle =
+    otpStep === "currentEmail" ? "Confirm from current email" : "Confirm from new email";
+  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm Email Change";
+  const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
+  const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
 
   return (
     <>
@@ -188,24 +221,23 @@ export const ChangeEmailSection = () => {
             Send Verification Code
           </Button>
           <p className="mt-2 font-inter text-sm text-mineshaft-400">
-            We&apos;ll send an 6-digit verification code to your new email address.
+            We&apos;ll first send a 6-digit code to your current email to confirm the change. After
+            you approve, a second code will be sent to your new email to finalize it.
           </p>
         </form>
       </div>
 
       <Modal
-        isOpen={isOTPModalOpen}
+        isOpen={isOtpModalOpen}
         onOpenChange={(isOpen) => {
-          if (!isOpen) handleOTPModalClose();
+          if (!isOpen) closeOtpModal();
         }}
       >
-        <ModalContent
-          title="Email Verification"
-          subTitle={`Enter the 6-digit verification code sent to: ${pendingEmail}`}
-        >
+        <ModalContent title={otpTitle} subTitle={otpSubTitle}>
           <div className="flex flex-col items-center space-y-4">
             <div className="flex justify-center">
               <ReactCodeInput
+                key={otpStep ?? "closed"}
                 name="otp-input"
                 inputMode="tel"
                 type="text"
@@ -217,15 +249,15 @@ export const ChangeEmailSection = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button colorSchema="secondary" variant="outline" onClick={handleOTPModalClose}>
+              <Button colorSchema="secondary" variant="outline" onClick={closeOtpModal}>
                 Cancel
               </Button>
               <Button
-                onClick={handleOTPSubmit}
-                isLoading={isUpdatingEmail}
-                isDisabled={typedOTP.length !== 6}
+                onClick={onOtpSubmit}
+                isLoading={isOtpSubmitLoading}
+                isDisabled={typedOTP.length !== 6 || isOtpSubmitLoading}
               >
-                Confirm Email Change
+                {otpButtonLabel}
               </Button>
             </div>
           </div>

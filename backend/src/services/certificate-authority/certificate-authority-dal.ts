@@ -50,7 +50,15 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("internalKeyAlgorithm"),
         db.ref("notBefore").withSchema(TableName.InternalCertificateAuthority).as("internalNotBefore"),
         db.ref("notAfter").withSchema(TableName.InternalCertificateAuthority).as("internalNotAfter"),
-        db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId")
+        db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId"),
+        db
+          .ref("crlDistributionPointUrls")
+          .withSchema(TableName.InternalCertificateAuthority)
+          .as("internalCrlDistributionPointUrls"),
+        db
+          .ref("disableManagedCrlDistributionPointUrl")
+          .withSchema(TableName.InternalCertificateAuthority)
+          .as("internalDisableManagedCrlDistributionPointUrl")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -85,7 +93,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             keyAlgorithm: result.internalKeyAlgorithm,
             notBefore: result.internalNotBefore?.toISOString(),
             notAfter: result.internalNotAfter?.toISOString(),
-            activeCaCertId: result.internalActiveCaCertId
+            activeCaCertId: result.internalActiveCaCertId,
+            crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
           }
         : undefined,
       externalCa: result
@@ -134,7 +144,15 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("internalKeyAlgorithm"),
         db.ref("notBefore").withSchema(TableName.InternalCertificateAuthority).as("internalNotBefore"),
         db.ref("notAfter").withSchema(TableName.InternalCertificateAuthority).as("internalNotAfter"),
-        db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId")
+        db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId"),
+        db
+          .ref("crlDistributionPointUrls")
+          .withSchema(TableName.InternalCertificateAuthority)
+          .as("internalCrlDistributionPointUrls"),
+        db
+          .ref("disableManagedCrlDistributionPointUrl")
+          .withSchema(TableName.InternalCertificateAuthority)
+          .as("internalDisableManagedCrlDistributionPointUrl")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -169,7 +187,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             keyAlgorithm: result.internalKeyAlgorithm,
             notBefore: result.internalNotBefore?.toISOString(),
             notAfter: result.internalNotAfter?.toISOString(),
-            activeCaCertId: result.internalActiveCaCertId
+            activeCaCertId: result.internalActiveCaCertId,
+            crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
           }
         : undefined,
       externalCa: result
@@ -259,7 +279,15 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("internalKeyAlgorithm"),
           db.ref("notBefore").withSchema(TableName.InternalCertificateAuthority).as("internalNotBefore"),
           db.ref("notAfter").withSchema(TableName.InternalCertificateAuthority).as("internalNotAfter"),
-          db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId")
+          db.ref("activeCaCertId").withSchema(TableName.InternalCertificateAuthority).as("internalActiveCaCertId"),
+          db
+            .ref("crlDistributionPointUrls")
+            .withSchema(TableName.InternalCertificateAuthority)
+            .as("internalCrlDistributionPointUrls"),
+          db
+            .ref("disableManagedCrlDistributionPointUrl")
+            .withSchema(TableName.InternalCertificateAuthority)
+            .as("internalDisableManagedCrlDistributionPointUrl")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -313,7 +341,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               keyAlgorithm: ca.internalKeyAlgorithm,
               notBefore: ca.internalNotBefore?.toISOString(),
               notAfter: ca.internalNotAfter?.toISOString(),
-              activeCaCertId: ca.internalActiveCaCertId
+              activeCaCertId: ca.internalActiveCaCertId,
+              crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
+              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false
             }
           : undefined,
         externalCa: ca

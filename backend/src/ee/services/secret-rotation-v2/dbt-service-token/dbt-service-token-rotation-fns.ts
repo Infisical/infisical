@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -209,10 +210,34 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     serviceToken
   }) => [{ key: secretsMapping.serviceToken, value: serviceToken }];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TDbtServiceTokenRotationGeneratedCredentials
+  > = async ({ serviceToken }) => {
+    const instanceUrl = await getDbtUrl(connection);
+
+    try {
+      await request.get(`${instanceUrl}/api/v2/accounts/${connection.credentials.accountId}/`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${serviceToken}`
+        }
+      });
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        const dbtErrorMessage = createDbtError(error);
+        throw new BadRequestError({
+          message: `DBT service token verification failed: ${dbtErrorMessage ?? error.message ?? "Unknown error"}`
+        });
+      }
+      throw error;
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

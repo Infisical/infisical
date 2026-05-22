@@ -7,17 +7,17 @@ import { ExternalLinkIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
+import { Tooltip } from "@app/components/v2";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TableCell,
+  TableRow
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
   CertificateRequestStatus,
@@ -29,9 +29,10 @@ import {
 type Props = {
   request: TCertificateRequestListItem;
   onViewCertificates?: (certificateId: string) => void;
+  applicationName?: string;
 };
 
-export const CertificateRequestRow = ({ request, onViewCertificates }: Props) => {
+export const CertificateRequestRow = ({ request, onViewCertificates, applicationName }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { mutateAsync: triggerValidation, isPending: isTriggering } =
@@ -135,6 +136,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
                   projectId: currentProject.id,
                   approvalRequestId
                 }}
+                search={applicationName ? { applicationName } : undefined}
               >
                 Pending Approval
                 <ExternalLinkIcon />
@@ -167,71 +169,48 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
     isCancellable;
 
   return (
-    <Tr className="h-10 hover:bg-mineshaft-700">
-      <Td>
-        <div className="max-w-xs truncate" title={displayName}>
-          {displayName}
-        </div>
-      </Td>
-      <Td>
-        <div className="max-w-xs truncate" title={request.certificate?.serialNumber || "N/A"}>
-          {truncateSerialNumber(request.certificate?.serialNumber)}
-        </div>
-      </Td>
-      <Td>{getStatusBadge(request)}</Td>
-      <Td>
-        <div className="max-w-xs truncate">{request.profileName || "N/A"}</div>
-      </Td>
-      <Td>
+    <TableRow className="group">
+      <TableCell isTruncatable>{displayName}</TableCell>
+      <TableCell isTruncatable>
+        {truncateSerialNumber(request.certificate?.serialNumber) || "—"}
+      </TableCell>
+      <TableCell>{getStatusBadge(request)}</TableCell>
+      <TableCell isTruncatable>{request.profileName || "—"}</TableCell>
+      <TableCell className="whitespace-nowrap text-accent">
         <Tooltip content={format(new Date(request.createdAt), "MMM dd, yyyy HH:mm:ss")}>
           <time dateTime={request.createdAt}>
             {format(new Date(request.createdAt), "yyyy-MM-dd")}
           </time>
         </Tooltip>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         {hasMenu && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild className="rounded-lg">
-              <IconButton
-                variant="plain"
-                ariaLabel="More options"
-                className="h-max bg-transparent p-0"
-              >
-                <FontAwesomeIcon size="lg" icon={faEllipsis} />
+            <DropdownMenuTrigger asChild>
+              <IconButton variant="ghost" size="xs" aria-label="Request actions">
+                <FontAwesomeIcon icon={faEllipsis} />
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={3}>
               {request.status === CertificateRequestStatus.ISSUED && request.certificateId && (
-                <DropdownMenuItem
-                  onClick={() => onViewCertificates?.(request.certificateId!)}
-                  className="flex items-center gap-2"
-                >
+                <DropdownMenuItem onClick={() => onViewCertificates?.(request.certificateId!)}>
                   View Certificate
                 </DropdownMenuItem>
               )}
               {request.status === CertificateRequestStatus.PENDING_VALIDATION && (
-                <DropdownMenuItem
-                  onClick={handleTriggerValidation}
-                  isDisabled={isTriggering}
-                  className="flex items-center gap-2"
-                >
+                <DropdownMenuItem onClick={handleTriggerValidation} isDisabled={isTriggering}>
                   {isTriggering ? "Triggering…" : "Trigger Validation"}
                 </DropdownMenuItem>
               )}
               {isCancellable && (
-                <DropdownMenuItem
-                  onClick={handleCancel}
-                  isDisabled={isCancelling}
-                  className="flex items-center gap-2"
-                >
+                <DropdownMenuItem onClick={handleCancel} isDisabled={isCancelling}>
                   {isCancelling ? "Cancelling…" : "Cancel Request"}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -354,6 +354,57 @@ In the following steps, we explore how to verify data using an existing key in I
     </Tab>
 </Tabs>
 
+## Bulk Export & Import
+
+Infisical KMS supports bulk export and bulk import of key material, allowing you to export multiple keys at once or import keys in bulk from an external file.
+
+### Bulk Export
+
+1. Navigate to **Project > Key Management**.
+2. Use the checkboxes to select the keys you want to export (up to 100 at a time).
+3. Click the **Export** button that appears in the action bar above the table.
+![kms bulk export](/images/platform/kms/infisical-kms/kms-bulk-export.png)
+4. A `.json` file is downloaded containing the key metadata and key material.
+
+The exported file is a JSON array where each entry is one of the following shapes:
+
+```json
+// Encrypt/Decrypt key
+{
+  "name": "my-aes-key",
+  "keyType": "encrypt-decrypt",
+  "algorithm": "aes-256-gcm",
+  "keyMaterial": "<base64-encoded key material>"
+}
+
+// Sign/Verify key
+{
+  "name": "my-rsa-key",
+  "keyType": "sign-verify",
+  "algorithm": "RSA_4096",
+  "privateKey": "<base64-encoded private key>",
+  "publicKey": "<base64-encoded public key>"
+}
+```
+
+<Warning>
+  The exported file contains sensitive cryptographic key material. Store it securely and do not share it.
+</Warning>
+
+### Bulk Import
+
+1. Navigate to **Project > Key Management**.
+2. In the top-right of the keys table, click the dropdown arrow next to **Add Key** and select **Import Keys**.
+3. Upload a `.json` file matching the export format described above (drag and drop, or click to browse).
+![kms import modal](/images/platform/kms/infisical-kms/kms-import-modal.png)
+4. A preview of the keys to be imported is shown, along with any validation errors.
+![kms import preview](/images/platform/kms/infisical-kms/kms-import-preview.png)
+5. Click **Import** to create the keys in the project.
+
+<Note>
+  Importing creates new key entries. It does not overwrite existing keys with the same name.
+</Note>
+
 ## FAQ
 
 <AccordionGroup>

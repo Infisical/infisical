@@ -18,6 +18,7 @@ export type TPkiSync = {
   destinationConfig: Record<string, unknown>;
   syncOptions: Record<string, unknown>;
   projectId: string;
+  applicationId?: string | null;
   subscriberId?: string;
   connectionId: string;
   createdAt: Date;
@@ -47,6 +48,7 @@ export type TPkiSync = {
     description?: string;
     version: number;
     gatewayId?: string;
+    gatewayPoolId?: string | null;
     createdAt: Date;
     updatedAt: Date;
     isPlatformManagedCredentials?: boolean;
@@ -65,6 +67,7 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     credentials: Record<string, unknown>;
     orgId: string;
     gatewayId?: string;
+    gatewayPoolId?: string | null;
   };
 };
 
@@ -95,6 +98,7 @@ export type TCreatePkiSyncDTO = {
   subscriberId?: string | null;
   connectionId: string;
   projectId: string;
+  applicationId?: string;
   certificateIds?: string[];
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
@@ -103,6 +107,7 @@ export type TCreatePkiSyncDTO = {
 export type TUpdatePkiSyncDTO = {
   id: string;
   projectId?: string;
+  applicationId?: string;
   name?: string;
   description?: string;
   isAutoSyncEnabled?: boolean;
@@ -118,17 +123,20 @@ export type TUpdatePkiSyncDTO = {
 export type TDeletePkiSyncDTO = {
   id: string;
   projectId?: string;
+  applicationId?: string;
   auditLogInfo: AuditLogInfo;
 };
 
 export type TListPkiSyncsByProjectId = {
   projectId: string;
   certificateId?: string;
+  applicationId?: string | null;
 };
 
 export type TFindPkiSyncByIdDTO = {
   id: string;
   projectId?: string;
+  applicationId?: string;
 };
 
 export type TTriggerPkiSyncSyncCertificatesByIdDTO = {

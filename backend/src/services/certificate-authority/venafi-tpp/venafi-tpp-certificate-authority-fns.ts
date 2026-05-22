@@ -4,7 +4,8 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
-import { request } from "@app/lib/config/request";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
@@ -17,6 +18,7 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import {
   authenticateVenafiTpp,
   getVenafiTppHeaders,
+  requestWithVenafiTppGateway,
   revokeVenafiTppToken
 } from "@app/services/app-connection/venafi-tpp/venafi-tpp-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -27,7 +29,8 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
-  TAltNameType
+  CertSubjectAlternativeNameType,
+  mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
 import { calculateRenewalThreshold, parseTtlToDays } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
@@ -47,57 +50,11 @@ import {
 } from "./venafi-tpp-certificate-authority-types";
 
 // -- SAN type codes for Venafi TPP SubjectAltNames --
-const VENAFI_SAN_TYPE_DNS = 2;
-const VENAFI_SAN_TYPE_IP = 7;
-const VENAFI_SAN_TYPE_EMAIL = 1;
-const VENAFI_SAN_TYPE_URI = 6;
-
-const IPV4_DOTTED_QUAD_REGEX = new RE2("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
-
-type TNormalizedSanType = "dns" | "ip" | "email" | "uri";
-
-const parseSanEntry = (san: string): { type: TNormalizedSanType; value: string } => {
-  const colonIdx = san.indexOf(":");
-  if (colonIdx > 0) {
-    const prefix = san.substring(0, colonIdx).toLowerCase();
-    const value = san.substring(colonIdx + 1);
-    switch (prefix) {
-      case "dns":
-      case "dns_name":
-        return { type: "dns", value };
-      case "ip":
-      case "ip_address":
-        return { type: "ip", value };
-      case "email":
-        return { type: "email", value };
-      case "uri":
-        return { type: "uri", value };
-      default:
-        throw new BadRequestError({
-          message: `Unsupported Subject Alternative Name type prefix '${prefix}'. Supported prefixes: dns, dns_name, ip, ip_address, email, uri.`
-        });
-    }
-  }
-
-  if (IPV4_DOTTED_QUAD_REGEX.test(san)) {
-    return { type: "ip", value: san };
-  }
-
-  return { type: "dns", value: san };
-};
-
-const VENAFI_SAN_TYPE_BY_NORMALIZED: Record<TNormalizedSanType, number> = {
-  dns: VENAFI_SAN_TYPE_DNS,
-  ip: VENAFI_SAN_TYPE_IP,
-  email: VENAFI_SAN_TYPE_EMAIL,
-  uri: VENAFI_SAN_TYPE_URI
-};
-
-const X509_ALT_NAME_TYPE_BY_NORMALIZED: Record<TNormalizedSanType, TAltNameType> = {
-  dns: "dns" as TAltNameType,
-  ip: "ip" as TAltNameType,
-  email: "email" as TAltNameType,
-  uri: "url" as TAltNameType
+const VENAFI_SAN_TYPE_BY_SAN_TYPE: Record<CertSubjectAlternativeNameType, number> = {
+  [CertSubjectAlternativeNameType.DNS_NAME]: 2,
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: 7,
+  [CertSubjectAlternativeNameType.EMAIL]: 1,
+  [CertSubjectAlternativeNameType.URI]: 6
 };
 
 type TVenafiTppCertificateRequest = {
@@ -145,18 +102,22 @@ const normalizeTppUrl = (tppUrl: string): string => {
   return tppUrl.replace(new RE2("\\/+$"), "");
 };
 
-/**
- * Parses a SAN string (e.g., "dns:example.com" or just "example.com") into Venafi TPP SAN format.
- */
-const parseSanToVenafiFormat = (san: string): { Type: number; Name: string } => {
-  const { type, value } = parseSanEntry(san);
-  return { Type: VENAFI_SAN_TYPE_BY_NORMALIZED[type], Name: value };
-};
+const sanToVenafiFormat = (san: {
+  type: CertSubjectAlternativeNameType;
+  value: string;
+}): {
+  Type: number;
+  Name: string;
+} => ({
+  Type: VENAFI_SAN_TYPE_BY_SAN_TYPE[san.type],
+  Name: san.value
+});
 
-const getVenafiTppConnectionCredentials = async (
+const getVenafiTppConnection = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -191,25 +152,34 @@ const getVenafiTppConnectionCredentials = async (
     password: string;
   };
 
-  return credentials;
+  const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+    gatewayId: appConnection.gatewayId,
+    gatewayPoolId: appConnection.gatewayPoolId
+  });
+
+  return { credentials, gatewayId: effectiveGatewayId ?? null };
 };
 
 const submitCertificateToTpp = async ({
+  appConnection,
   baseUrl,
   accessToken,
   policyDN,
   csrPem,
   objectName,
   altNames,
-  workToDoTimeout = 30
+  workToDoTimeout = 30,
+  gatewayV2Service
 }: {
+  appConnection: { gatewayId?: string | null };
   baseUrl: string;
   accessToken: string;
   policyDN: string;
   csrPem: string;
   objectName: string;
-  altNames?: string[];
+  altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
   workToDoTimeout?: number;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 }): Promise<TVenafiTppRequestResponse> => {
   const requestBody: TVenafiTppCertificateRequest = {
     PolicyDN: policyDN,
@@ -221,7 +191,7 @@ const submitCertificateToTpp = async ({
   };
 
   if (altNames && altNames.length > 0) {
-    requestBody.SubjectAltNames = altNames.map((san) => parseSanToVenafiFormat(san));
+    requestBody.SubjectAltNames = altNames.map(sanToVenafiFormat);
   }
 
   logger.info(
@@ -233,10 +203,13 @@ const submitCertificateToTpp = async ({
     "Venafi TPP: Submitting certificate request"
   );
 
-  const { data, status } = await request.post<TVenafiTppRequestResponse>(
-    `${baseUrl}/vedsdk/certificates/request`,
-    requestBody,
+  const { data, status } = await requestWithVenafiTppGateway<TVenafiTppRequestResponse>(
+    appConnection,
+    gatewayV2Service,
     {
+      method: "POST",
+      url: `${baseUrl}/vedsdk/certificates/request`,
+      data: requestBody,
       headers: getVenafiTppHeaders(accessToken),
       validateStatus: (s) => s === 200 || s === 202
     }
@@ -256,28 +229,35 @@ const submitCertificateToTpp = async ({
 };
 
 const retrieveCertificateFromTpp = async ({
+  appConnection,
   baseUrl,
   accessToken,
   certificateDN,
-  includeChain = true
+  includeChain = true,
+  gatewayV2Service
 }: {
+  appConnection: { gatewayId?: string | null };
   baseUrl: string;
   accessToken: string;
   certificateDN: string;
   includeChain?: boolean;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 }): Promise<{ certificate: string; chain: string }> => {
   logger.info({ certificateDN, includeChain }, "Venafi TPP: Retrieving certificate");
 
-  const { data, status } = await request.post<TVenafiTppRetrieveResponse>(
-    `${baseUrl}/vedsdk/certificates/retrieve`,
+  const { data, status } = await requestWithVenafiTppGateway<TVenafiTppRetrieveResponse>(
+    appConnection,
+    gatewayV2Service,
     {
-      CertificateDN: certificateDN,
-      Format: "Base64",
-      IncludeChain: includeChain,
-      IncludePrivateKey: false,
-      RootFirstOrder: false
-    },
-    {
+      method: "POST",
+      url: `${baseUrl}/vedsdk/certificates/retrieve`,
+      data: {
+        CertificateDN: certificateDN,
+        Format: "Base64",
+        IncludeChain: includeChain,
+        IncludePrivateKey: false,
+        RootFirstOrder: false
+      },
       headers: getVenafiTppHeaders(accessToken),
       validateStatus: (s) => s === 200 || s === 202
     }
@@ -369,6 +349,8 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const VenafiTppCertificateAuthorityFns = ({
@@ -381,7 +363,9 @@ export const VenafiTppCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsService,
   projectDAL,
-  certificateProfileDAL
+  certificateProfileDAL,
+  gatewayV2Service,
+  gatewayPoolService
 }: TVenafiTppCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -578,7 +562,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     caId: string;
     profileId: string;
     commonName: string;
-    altNames?: string[];
+    altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyUsages?: CertKeyUsage[];
     extendedKeyUsages?: CertExtendedKeyUsage[];
     validity: { ttl: string };
@@ -630,13 +614,15 @@ export const VenafiTppCertificateAuthorityFns = ({
       kmsId: certificateManagerKmsId
     });
 
-    const credentials = await getVenafiTppConnectionCredentials(
+    const { credentials, gatewayId } = await getVenafiTppConnection(
       venafiCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsService,
+      gatewayPoolService
     );
 
     const baseUrl = normalizeTppUrl(credentials.tppUrl);
+    const appConnection = { gatewayId };
 
     let csrPem: string;
     let skLeaf: string | undefined;
@@ -695,12 +681,12 @@ export const VenafiTppCertificateAuthorityFns = ({
 
       const sanExtensions: x509.SubjectAlternativeNameExtension[] = [];
       if (altNames.length > 0) {
-        const sanEntries = altNames.map((name) => {
-          const { type, value } = parseSanEntry(name);
-          return { type: X509_ALT_NAME_TYPE_BY_NORMALIZED[type], value };
-        });
-
-        sanExtensions.push(new x509.SubjectAlternativeNameExtension(sanEntries, false));
+        sanExtensions.push(
+          new x509.SubjectAlternativeNameExtension(
+            altNames.map((san) => ({ type: mapSanTypeToX509Type(san.type), value: san.value })),
+            false
+          )
+        );
       }
 
       const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
@@ -716,22 +702,19 @@ export const VenafiTppCertificateAuthorityFns = ({
     let accessToken: string | undefined;
 
     try {
-      const authResponse = await authenticateVenafiTpp({
-        tppUrl: credentials.tppUrl,
-        clientId: credentials.clientId,
-        username: credentials.username,
-        password: credentials.password
-      });
+      const authResponse = await authenticateVenafiTpp({ gatewayId, credentials }, gatewayV2Service);
       accessToken = authResponse.access_token;
 
       const requestResponse = await submitCertificateToTpp({
+        appConnection,
         baseUrl,
         accessToken,
         policyDN: venafiCa.configuration.policyDN,
         csrPem,
         objectName: commonName,
         altNames,
-        workToDoTimeout: 60
+        workToDoTimeout: 60,
+        gatewayV2Service
       });
 
       let certificateResult: { certificate: string; chain: string } | undefined;
@@ -758,10 +741,12 @@ export const VenafiTppCertificateAuthorityFns = ({
         for (let attempt = 0; attempt < maxRetries; attempt += 1) {
           try {
             certificateResult = await retrieveCertificateFromTpp({
+              appConnection,
               baseUrl,
               accessToken,
               certificateDN: requestResponse.CertificateDN,
-              includeChain: true
+              includeChain: true,
+              gatewayV2Service
             });
             break;
           } catch (error) {
@@ -862,7 +847,7 @@ export const VenafiTppCertificateAuthorityFns = ({
             status: CertStatus.ACTIVE,
             friendlyName: commonName,
             commonName,
-            altNames: altNames.join(","),
+            altNames: altNames.map((san) => san.value).join(","),
             serialNumber: certObj.serialNumber,
             notBefore: certObj.notBefore,
             notAfter: certObj.notAfter,
@@ -968,7 +953,7 @@ export const VenafiTppCertificateAuthorityFns = ({
       });
     } finally {
       if (accessToken) {
-        await revokeVenafiTppToken(baseUrl, accessToken);
+        await revokeVenafiTppToken({ gatewayId, credentials }, accessToken, gatewayV2Service);
       }
     }
   };

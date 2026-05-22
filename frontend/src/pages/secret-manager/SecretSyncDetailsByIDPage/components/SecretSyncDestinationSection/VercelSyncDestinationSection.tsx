@@ -43,7 +43,14 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
         <GenericFieldLabel label="Scope">Team</GenericFieldLabel>
         <GenericFieldLabel label="Vercel Team">{selectedTeam?.name}</GenericFieldLabel>
         <GenericFieldLabel label="Target Environments">
-          {destinationConfig.targetEnvironments?.join(", ")}
+          {destinationConfig.targetEnvironments?.length
+            ? destinationConfig.targetEnvironments
+                .map((env) => env.charAt(0).toUpperCase() + env.slice(1))
+                .join(", ")
+            : "None"}
+        </GenericFieldLabel>
+        <GenericFieldLabel label="All Custom Environments">
+          {destinationConfig.applyToAllCustomEnvironments ? "Yes" : "No"}
         </GenericFieldLabel>
         <GenericFieldLabel label="Target Projects">
           {selectedProjects?.map((project) => project?.name).join(", ")}

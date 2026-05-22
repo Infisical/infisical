@@ -18,7 +18,9 @@ import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDatadogConnection } from "./datadog-connection";
 import { TDbtConnection } from "./dbt-connection";
+import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
@@ -46,11 +48,13 @@ import { TOktaConnection } from "./okta-connection";
 import { TOnaConnection } from "./ona-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
+import { TOvhConnection } from "./ovh-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TSmbConnection } from "./smb-connection";
+import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -79,7 +83,9 @@ export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
+export * from "./datadog-connection";
 export * from "./dbt-connection";
+export * from "./devin-connection";
 export * from "./digicert-connection";
 export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
@@ -106,11 +112,13 @@ export * from "./okta-connection";
 export * from "./ona-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
+export * from "./ovh-connection";
 export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./smb-connection";
+export * from "./snowflake-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -181,9 +189,13 @@ export type TAppConnection =
   | TExternalInfisicalConnection
   | TNetScalerConnection
   | TDopplerConnection
+  | TOvhConnection
+  | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
-  | TTravisCIConnection;
+  | TTravisCIConnection
+  | TSnowflakeConnection
+  | TDatadogConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
@@ -203,13 +215,21 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
+  | "gatewayPoolId"
   | "projectId"
->;
+> & {
+  configuration?: Record<string, unknown>;
+};
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
     TAppConnection,
-    "name" | "credentials" | "description" | "isPlatformManagedCredentials" | "gatewayId"
+    | "name"
+    | "credentials"
+    | "description"
+    | "isPlatformManagedCredentials"
+    | "gatewayId"
+    | "gatewayPoolId"
   >
 > & {
   connectionId: string;
@@ -219,6 +239,7 @@ export type TUpdateAppConnectionDTO = Partial<
     rotationInterval?: number;
     rotateAtUtc?: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 export type TDeleteAppConnectionDTO = {

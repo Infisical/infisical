@@ -101,8 +101,17 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       body: z.object({
-        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
-        projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
+        projectName: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .describe(PROJECTS.CREATE.projectName),
+        projectDescription: z
+          .string()
+          .trim()
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.CREATE.projectDescription),
         slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
@@ -271,8 +280,18 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to update.")
       }),
       body: z.object({
-        name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
-        description: z.string().trim().optional().describe(PROJECTS.UPDATE.projectDescription),
+        name: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.name),
+        description: z
+          .string()
+          .trim()
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
         hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection)
       }),

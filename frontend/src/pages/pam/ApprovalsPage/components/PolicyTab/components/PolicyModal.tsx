@@ -7,7 +7,10 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
+  ApprovalPolicyScope,
   ApprovalPolicyType,
+  ApproverType,
+  EnforcementLevel,
   PamAccessPolicyConditions,
   PamAccessPolicyConstraints,
   TApprovalPolicy,
@@ -62,7 +65,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
           notifyApprovers: true,
           approvers: []
         }
-      ]
+      ],
+      enforcementLevel: EnforcementLevel.Hard,
+      userBypassers: [],
+      groupBypassers: []
     }
   });
 
@@ -74,6 +80,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
   useEffect(() => {
     if (policyData?.policy) {
       const conditions = policyData.policy.conditions.conditions as PamAccessPolicyConditions;
+      const policyBypassers = policyData.policy.bypassers ?? [];
       reset({
         name: policyData.policy.name,
         maxRequestTtl: policyData.policy.maxRequestTtl,
@@ -85,7 +92,14 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         steps: policyData.policy.steps.map((step) => ({
           ...step,
           name: step.name || ""
-        }))
+        })),
+        enforcementLevel: policyData.policy.enforcementLevel ?? EnforcementLevel.Hard,
+        userBypassers: policyBypassers
+          .filter((b) => b.type === ApproverType.User)
+          .map((b) => ({ type: ApproverType.User, id: b.id })),
+        groupBypassers: policyBypassers
+          .filter((b) => b.type === ApproverType.Group)
+          .map((b) => ({ type: ApproverType.Group, id: b.id }))
       });
     } else {
       reset({
@@ -105,7 +119,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
             notifyApprovers: true,
             approvers: []
           }
-        ]
+        ],
+        enforcementLevel: EnforcementLevel.Hard,
+        userBypassers: [],
+        groupBypassers: []
       });
     }
     setSelectedStepIndex(0);
@@ -114,12 +131,16 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onSubmit = async (data: TPolicyForm) => {
     if (!currentProject?.id) return;
 
+    const { userBypassers, groupBypassers, ...rest } = data;
+    const bypassers = [...userBypassers, ...groupBypassers];
+
     try {
       if (policyData?.policyId) {
         await updatePolicy({
           policyType: ApprovalPolicyType.PamAccess,
           policyId: policyData.policyId,
-          ...data
+          ...rest,
+          bypassers
         });
         createNotification({
           text: "Successfully updated policy",
@@ -128,8 +149,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       } else {
         await createPolicy({
           policyType: ApprovalPolicyType.PamAccess,
-          projectId: currentProject.id,
-          ...data
+          scope: ApprovalPolicyScope.Project,
+          scopeId: currentProject.id,
+          ...rest,
+          bypassers
         });
         createNotification({
           text: "Successfully created policy",

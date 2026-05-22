@@ -78,8 +78,9 @@ export type TFeatureSet = {
     secretsLimit: number;
   };
   pkiEst: boolean;
-  pkiAcme: false;
+  pkiAcme: true;
   pkiScep: false;
+  pkiPqc: false;
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;
@@ -95,6 +96,8 @@ export type TFeatureSet = {
   fips: false;
   eventSubscriptions: false;
   secretShareExternalBranding: false;
+  honeyTokens: false;
+  honeyTokenLimit: 0;
 };
 
 export type TOrgPlansTableDTO = {

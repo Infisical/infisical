@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
+import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 
@@ -41,10 +42,12 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import {
   canModifyByGrantConditions,
@@ -64,6 +67,7 @@ export const IdentityRoleDetailsSection = ({
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -91,6 +95,7 @@ export const IdentityRoleDetailsSection = ({
     const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
     await updateIdentityProjectMembership({
       projectId: currentProject?.id || "",
+      projectType: currentProject?.type,
       identityId: identityMembershipDetails.identity.id,
       roles: updatedRoles.map(
         ({
@@ -122,12 +127,13 @@ export const IdentityRoleDetailsSection = ({
   };
 
   const hasRoles = Boolean(identityMembershipDetails?.roles.length);
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Project Roles</CardTitle>
+          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this machine identity</CardDescription>
           {hasRoles && (
             <CardAction>
@@ -212,7 +218,25 @@ export const IdentityRoleDetailsSection = ({
                     }
 
                     return (
-                      <TableRow key={`user-project-identity-${roleDetails?.id}`}>
+                      <TableRow
+                        key={`user-project-identity-${roleDetails?.id}`}
+                        className={isCertManager ? "" : "cursor-pointer"}
+                        onClick={
+                          isCertManager
+                            ? undefined
+                            : () =>
+                                navigate({
+                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                                  params: {
+                                    projectId: currentProject.id,
+                                    roleSlug:
+                                      roleDetails.role === "custom"
+                                        ? roleDetails.customRoleSlug
+                                        : roleDetails.role
+                                  }
+                                })
+                        }
+                      >
                         <TableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
                             ? roleDetails.customRoleName
@@ -239,7 +263,11 @@ export const IdentityRoleDetailsSection = ({
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton size="xs" variant="ghost">
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <EllipsisIcon />
                               </IconButton>
                             </DropdownMenuTrigger>

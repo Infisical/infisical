@@ -28,6 +28,8 @@ export enum TableName {
   PkiCertificateTemplateV2 = "pki_certificate_templates_v2",
   PkiCertificatePolicy = "pki_certificate_policies",
   PkiCertificateProfile = "pki_certificate_profiles",
+  PkiApplication = "pki_applications",
+  PkiApplicationProfile = "pki_application_profiles",
   PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
   PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
@@ -93,6 +95,7 @@ export enum TableName {
   Webhook = "webhooks",
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
+  IdentityAccessTokenRevocation = "identity_access_token_revocations",
   IdentityTokenAuth = "identity_token_auths",
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityKubernetesAuth = "identity_kubernetes_auths",
@@ -217,7 +220,9 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
-  GatewayEnrollmentTokens = "gateway_enrollment_tokens",
+  ResourceAuthMethod = "resource_auth_methods",
+  ResourceAwsAuth = "resource_aws_auths",
+  ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
 
@@ -229,6 +234,8 @@ export enum TableName {
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
   PamSessionEventBatch = "pam_session_event_batches",
+  PamSessionEventChunk = "pam_session_event_chunks",
+  PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
@@ -276,6 +283,7 @@ export enum TableName {
   ApprovalPolicies = "approval_policies",
   ApprovalPolicySteps = "approval_policy_steps",
   ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
+  ApprovalPolicyBypassers = "approval_policy_bypassers",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
@@ -288,6 +296,12 @@ export enum TableName {
 
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
+
+  // Honey Tokens
+  HoneyTokenConfig = "honey_token_configs",
+  HoneyToken = "honey_tokens",
+  HoneyTokenEvent = "honey_token_events",
+  HoneyTokenSecretMapping = "honey_token_secret_mappings",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
@@ -337,6 +351,17 @@ export enum ProjectMembershipRole {
   SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
   KmsCryptographicOperator = "cryptographic-operator"
+}
+
+export enum ApplicationMembershipRole {
+  Admin = "admin",
+  Operator = "operator",
+  Auditor = "auditor",
+  Custom = "custom"
+}
+
+export enum ResourceType {
+  CertificateApplication = "certificate-application"
 }
 
 export enum SecretEncryptionAlgo {
@@ -429,6 +454,8 @@ export enum AccessScope {
   Organization = "organization",
   Project = "project"
 }
+
+export const RESOURCE_SCOPE = "resource";
 
 export type AccessScopeData =
   | {

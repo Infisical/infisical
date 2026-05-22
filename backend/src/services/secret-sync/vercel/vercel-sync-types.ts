@@ -44,8 +44,9 @@ export interface VercelSharedEnvVar {
   key: string;
   value: string;
   type: string;
-  target: string[];
+  target?: string[];
   projectId?: string[];
+  applyToAllCustomEnvironments?: boolean;
   decrypted?: boolean;
   comment?: string;
   createdAt?: number;

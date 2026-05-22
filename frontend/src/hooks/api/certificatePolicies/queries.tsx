@@ -9,45 +9,46 @@ import {
 } from "./types";
 
 export const certificatePolicyKeys = {
-  listPolicies: ({ projectId, ...el }: { limit?: number; offset?: number; projectId: string }) => [
-    "list-certificate-policies",
-    projectId,
-    el
-  ],
-  getPolicyById: (id: string) => ["certificate-policy", id]
+  listPolicies: (el: { limit?: number; offset?: number } = {}) => ["list-certificate-policies", el],
+  getPolicyById: (id: string, applicationId?: string) =>
+    applicationId
+      ? (["certificate-policy", id, { applicationId }] as const)
+      : (["certificate-policy", id] as const)
 };
 
 export const useListCertificatePolicies = ({
-  projectId,
   limit = 20,
   offset = 0
-}: TListCertificatePoliciesDTO) => {
+}: TListCertificatePoliciesDTO = {}) => {
   return useQuery({
-    queryKey: certificatePolicyKeys.listPolicies({ projectId, limit, offset }),
+    queryKey: certificatePolicyKeys.listPolicies({ limit, offset }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificatePolicies: TCertificatePolicy[];
         totalCount: number;
       }>("/api/v1/cert-manager/certificate-policies", {
         params: {
-          projectId,
           limit,
           offset
         }
       });
       return data;
-    },
-    enabled: Boolean(projectId)
+    }
   });
 };
 
-export const useGetCertificatePolicyById = ({ policyId }: TGetCertificatePolicyByIdDTO) => {
+export const useGetCertificatePolicyById = ({
+  policyId,
+  applicationId
+}: TGetCertificatePolicyByIdDTO) => {
   return useQuery({
-    queryKey: certificatePolicyKeys.getPolicyById(policyId),
+    queryKey: certificatePolicyKeys.getPolicyById(policyId, applicationId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificatePolicy: TCertificatePolicy;
-      }>(`/api/v1/cert-manager/certificate-policies/${policyId}`);
+      }>(`/api/v1/cert-manager/certificate-policies/${policyId}`, {
+        params: applicationId ? { applicationId } : undefined
+      });
       return data.certificatePolicy;
     },
     enabled: Boolean(policyId)

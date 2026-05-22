@@ -35,6 +35,7 @@ import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy } from "@app/lib/fn";
@@ -543,8 +544,14 @@ export const secretV2BridgeServiceFactory = ({
       });
       if (!sharedSecretToModify)
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
-      if (sharedSecretToModify.isRotatedSecret && inputSecret.newSecretName)
-        throw new BadRequestError({ message: "Cannot update rotated secret name" });
+      if (sharedSecretToModify.isHoneyTokenSecret || sharedSecretToModify.isRotatedSecret) {
+        if (inputSecret.newSecretName || inputSecret.secretValue) {
+          throw new BadRequestError({
+            message: `Cannot update ${sharedSecretToModify.isHoneyTokenSecret ? "honey token" : "rotated"} secret name or value`
+          });
+        }
+      }
+
       secretId = sharedSecretToModify.id;
       secret = sharedSecretToModify;
     }
@@ -830,6 +837,10 @@ export const secretV2BridgeServiceFactory = ({
           })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
+    if (inputSecret.type === SecretType.Shared) {
+      if (secretToDelete.isHoneyTokenSecret)
+        throw new BadRequestError({ message: "Cannot delete honey token secrets" });
+    }
 
     if (secretToDelete.type !== SecretType.Personal)
       ForbiddenError.from(permission).throwUnlessCan(
@@ -1177,7 +1188,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId);
+    const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
       environment,
       path,
@@ -1905,8 +1916,13 @@ export const secretV2BridgeServiceFactory = ({
     projectId,
     secrets: inputSecrets,
     tx: providedTx,
-    commitChanges
-  }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    commitChanges,
+    skipPostProcessing = false
+  }: TCreateManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2055,24 +2071,26 @@ export const secretV2BridgeServiceFactory = ({
       ? await executeBulkInsert(providedTx)
       : await secretDAL.transaction(executeBulkInsert);
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath,
-      projectId,
-      orgId: actorOrgId,
-      environmentSlug: folder.environment.slug,
-      events: [
-        {
-          type: ProjectEvents.SecretCreate,
-          secretKeys: newSecrets.map((el) => el.key),
-          secretPath,
-          environment: folder.environment.slug,
-          projectId
-        }
-      ]
-    });
+    if (!skipPostProcessing) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        actor,
+        actorId,
+        secretPath,
+        projectId,
+        orgId: actorOrgId,
+        environmentSlug: folder.environment.slug,
+        events: [
+          {
+            type: ProjectEvents.SecretCreate,
+            secretKeys: newSecrets.map((el) => el.key),
+            secretPath,
+            environment: folder.environment.slug,
+            projectId
+          }
+        ]
+      });
+    }
 
     return newSecrets.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -2112,8 +2130,13 @@ export const secretV2BridgeServiceFactory = ({
     secrets: inputSecrets,
     mode: updateMode,
     tx: providedTx,
-    commitChanges
-  }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    commitChanges,
+    skipPostProcessing = false
+  }: TUpdateManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2215,6 +2238,19 @@ export const secretV2BridgeServiceFactory = ({
               secretTags: el.tags.map((i) => i.slug)
             })
           );
+
+          if (el.isHoneyTokenSecret) {
+            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
+
+            if (input) {
+              if (input.newSecretName) {
+                delete input.newSecretName;
+              }
+              if (input.secretValue !== undefined) {
+                delete input.secretValue;
+              }
+            }
+          }
 
           if (el.isRotatedSecret) {
             const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
@@ -2510,30 +2546,32 @@ export const secretV2BridgeServiceFactory = ({
       ? await executeBulkUpdate(providedTx)
       : await secretDAL.transaction(executeBulkUpdate);
 
-    await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
-    await Promise.allSettled(
-      folders.map((el) =>
-        el
-          ? secretQueueService.syncSecrets({
-              actor,
-              actorId,
-              secretPath: el.path,
-              projectId,
-              orgId: actorOrgId,
-              environmentSlug: environment,
-              events: [
-                {
-                  type: ProjectEvents.SecretUpdate,
-                  secretKeys: updatedSecrets.map((sec) => sec.key),
-                  projectId,
-                  secretPath: el.path,
-                  environment
-                }
-              ]
-            })
-          : undefined
-      )
-    );
+    if (!skipPostProcessing) {
+      await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
+      await Promise.allSettled(
+        folders.map((el) =>
+          el
+            ? secretQueueService.syncSecrets({
+                actor,
+                actorId,
+                secretPath: el.path,
+                projectId,
+                orgId: actorOrgId,
+                environmentSlug: environment,
+                events: [
+                  {
+                    type: ProjectEvents.SecretUpdate,
+                    secretKeys: updatedSecrets.map((sec) => sec.key),
+                    projectId,
+                    secretPath: el.path,
+                    environment
+                  }
+                ]
+              })
+            : undefined
+        )
+      );
+    }
 
     return updatedSecrets.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -2617,6 +2655,12 @@ export const secretV2BridgeServiceFactory = ({
         })
       );
     });
+    const honeyTokenSecretsToDelete = secretsToDelete.filter((el) => el.isHoneyTokenSecret);
+    if (honeyTokenSecretsToDelete.length) {
+      throw new BadRequestError({
+        message: `Cannot delete honey token secrets: ${honeyTokenSecretsToDelete.map((el) => el.key).join(", ")}`
+      });
+    }
 
     const executeBulkDelete = async (tx: Knex) => {
       const modifiedSecretsInDB = await fnSecretBulkDelete({
@@ -2761,7 +2805,6 @@ export const secretV2BridgeServiceFactory = ({
         sort: [["createdAt", "desc"]]
       }
     });
-
     return secretVersions.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
         permission,
@@ -2903,7 +2946,6 @@ export const secretV2BridgeServiceFactory = ({
         message: `One or more secrets not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
       });
     }
-
     const sourceActions = [
       ProjectPermissionSecretActions.Delete,
       ProjectPermissionSecretActions.ReadValue,
@@ -2914,6 +2956,9 @@ export const secretV2BridgeServiceFactory = ({
     sourceSecrets.forEach((secret) => {
       if (secret.isRotatedSecret) {
         throw new BadRequestError({ message: `Cannot move rotated secret: ${secret.key}` });
+      }
+      if (secret.isHoneyTokenSecret) {
+        throw new BadRequestError({ message: `Cannot move honey token secret: ${secret.key}` });
       }
 
       for (const sourceAction of sourceActions) {
@@ -2982,6 +3027,26 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       const destinationSecretsGroupedByKey = groupBy(decryptedDestinationSecrets, (i) => i.key);
+
+      const sourceKeys = decryptedSourceSecrets.map((s) => s.key);
+
+      const conflictingRotationSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isRotatedSecret
+      );
+      if (conflictingRotationSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a secret rotation at the destination: ${conflictingRotationSecretKeys.join(", ")}`
+        });
+      }
+
+      const conflictingHoneyTokenSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isHoneyTokenSecret
+      );
+      if (conflictingHoneyTokenSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a honey token at the destination: ${conflictingHoneyTokenSecretKeys.join(", ")}`
+        });
+      }
 
       const locallyCreatedSecrets = decryptedSourceSecrets
         .filter(({ key }) => !destinationSecretsGroupedByKey[key]?.[0])

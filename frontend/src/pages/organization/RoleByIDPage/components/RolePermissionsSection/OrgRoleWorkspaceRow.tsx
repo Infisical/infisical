@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { OrgPermissionProjectActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
@@ -17,10 +18,14 @@ type Props = {
 
 enum Permission {
   NoAccess = "no-access",
+  FullAccess = "full-access",
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [{ action: "create", label: "Create projects" }] as const;
+const PERMISSION_ACTIONS = [
+  { action: OrgPermissionProjectActions.Create, label: "Create projects" },
+  { action: OrgPermissionProjectActions.RequestAccess, label: "Request project access" }
+] as const;
 
 export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
@@ -32,10 +37,14 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
   });
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.create) {
-      return Permission.Custom;
-    }
-    return Permission.NoAccess;
+    const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
+    const totalActions = PERMISSION_ACTIONS.length;
+    const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
+
+    if (isCustom) return Permission.Custom;
+    if (score === 0) return Permission.NoAccess;
+    if (score === totalActions) return Permission.FullAccess;
+    return Permission.Custom;
   }, [rule, isCustom]);
 
   useEffect(() => {
@@ -59,8 +68,29 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
     }
     setIsCustom.off();
 
-    if (val === Permission.NoAccess) {
-      setValue("permissions.project", { create: false }, { shouldDirty: true });
+    switch (val) {
+      case Permission.NoAccess:
+        setValue(
+          "permissions.project",
+          {
+            [OrgPermissionProjectActions.Create]: false,
+            [OrgPermissionProjectActions.RequestAccess]: false
+          },
+          { shouldDirty: true }
+        );
+        break;
+      case Permission.FullAccess:
+        setValue(
+          "permissions.project",
+          {
+            [OrgPermissionProjectActions.Create]: true,
+            [OrgPermissionProjectActions.RequestAccess]: true
+          },
+          { shouldDirty: true }
+        );
+        break;
+      default:
+        break;
     }
   };
 
@@ -84,6 +114,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
             position="popper"
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+            <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
             <SelectItem value={Permission.Custom}>Custom</SelectItem>
           </Select>
         </Td>
@@ -111,7 +142,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
                           }
                           field.onChange(e);
                         }}
-                        id={`permissions.organization-admin-console.${action}`}
+                        id={`permissions.project.${action}`}
                       >
                         {label}
                       </Checkbox>

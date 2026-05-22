@@ -639,7 +639,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (ca) {
       await updateMutateAsync({
         id: ca.id,
-        projectId: currentProject.id,
         name,
         type,
         status,
@@ -647,7 +646,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     } else {
       await createMutateAsync({
-        projectId: currentProject.id,
         name,
         type,
         status,

@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { ApprovalStepsSchema } from "@app/components/approvals";
+import { ApproverType, EnforcementLevel } from "@app/hooks/api/approvalPolicies";
 
 const DurationSchema = (
   min = 30,
@@ -48,7 +49,10 @@ export const PolicyFormSchema = z.object({
       max: DurationSchema()
     })
   }),
-  steps: ApprovalStepsSchema
+  steps: ApprovalStepsSchema,
+  enforcementLevel: z.nativeEnum(EnforcementLevel),
+  userBypassers: z.object({ type: z.literal(ApproverType.User), id: z.string() }).array(),
+  groupBypassers: z.object({ type: z.literal(ApproverType.Group), id: z.string() }).array()
 });
 
 export type TPolicyForm = z.infer<typeof PolicyFormSchema>;

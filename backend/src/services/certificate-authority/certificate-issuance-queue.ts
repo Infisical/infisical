@@ -1,6 +1,8 @@
 import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -34,6 +36,13 @@ import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { runWithAcmeCancellation } from "./acme/acme-cancellation";
+import {
+  ACME_ORDER_TIMEOUT_MS,
+  AcmeOrderTimeoutError,
+  AcmeRateLimitError,
+  isAcmeRateLimitError,
+  runWithAcmeOrderTimeout
+} from "./acme/acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AcmPendingError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
 import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -96,6 +105,7 @@ export type TIssueCertificateFromProfileJobData = {
   country?: string;
   state?: string;
   locality?: string;
+  applicationId?: string;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -126,6 +136,8 @@ type TCertificateIssuanceQueueFactoryDep = {
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -148,7 +160,9 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestService,
   certificateRequestDAL,
   resourceMetadataDAL,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  gatewayV2Service,
+  gatewayPoolService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -230,7 +244,9 @@ export const certificateIssuanceQueueFactory = ({
     certificateSecretDAL,
     kmsService,
     projectDAL,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   /**
@@ -256,7 +272,8 @@ export const certificateIssuanceQueueFactory = ({
     organizationalUnit,
     country,
     state,
-    locality
+    locality,
+    applicationId
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -278,7 +295,8 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      applicationId
     };
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
@@ -397,25 +415,39 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmeResult = await runWithAcmeCancellation(signal, () =>
-          acmeFns.orderCertificateFromProfile({
-            caId,
-            profileId,
-            commonName: commonName || "",
-            altNames: altNames?.map((san) => san.value) || [],
-            csr: Buffer.from(certificateCsr),
-            csrPrivateKey: skLeaf,
-            keyUsages: keyUsages as CertKeyUsage[],
-            extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
-            ttl,
-            signatureAlgorithm,
-            keyAlgorithm,
-            isRenewal,
-            originalCertificateId,
-            onProgress: setPending,
-            isCancelled
-          })
-        );
+        let acmeResult;
+        try {
+          acmeResult = await runWithAcmeCancellation(signal, () =>
+            runWithAcmeOrderTimeout(
+              (timeoutSignal) =>
+                acmeFns.orderCertificateFromProfile({
+                  caId,
+                  profileId,
+                  commonName: commonName || "",
+                  altNames: altNames?.map((san) => san.value) || [],
+                  csr: Buffer.from(certificateCsr),
+                  csrPrivateKey: skLeaf,
+                  keyUsages: keyUsages as CertKeyUsage[],
+                  extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+                  ttl,
+                  signatureAlgorithm,
+                  keyAlgorithm,
+                  isRenewal,
+                  originalCertificateId,
+                  onProgress: setPending,
+                  isCancelled,
+                  abortSignal: timeoutSignal
+                }),
+              ACME_ORDER_TIMEOUT_MS
+            )
+          );
+        } catch (acmeError) {
+          if (isAcmeRateLimitError(acmeError)) {
+            const message = acmeError instanceof Error ? acmeError.message : String(acmeError);
+            throw new AcmeRateLimitError(`ACME CA rate-limited the order: ${message}`);
+          }
+          throw acmeError;
+        }
 
         if (await isCancelled()) {
           logger.info(
@@ -806,7 +838,7 @@ export const certificateIssuanceQueueFactory = ({
           caId,
           profileId,
           commonName: commonName || "",
-          altNames: altNames?.map((san) => san.value) || [],
+          altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
           keyUsages: keyUsages as CertKeyUsage[],
           extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
           validity: { ttl },
@@ -873,11 +905,31 @@ export const certificateIssuanceQueueFactory = ({
         `Successfully processed certificate issuance job with [certificateId=${certificateId}] [caId=${caId}]`
       );
 
+      let scopedApplicationId: string | null = data.applicationId ?? null;
+      try {
+        if (!scopedApplicationId && isRenewal && originalCertificateId) {
+          const orig = await certificateDAL.findById(originalCertificateId);
+          scopedApplicationId = orig?.applicationId ?? null;
+        }
+        if (scopedApplicationId && certificateRequestId && certificateRequestDAL) {
+          const req = await certificateRequestDAL.findById(certificateRequestId);
+          if (req?.certificateId) {
+            await certificateDAL.updateById(req.certificateId, { applicationId: scopedApplicationId });
+          }
+        }
+      } catch (stampErr) {
+        logger.warn(
+          stampErr,
+          `Failed to stamp applicationId on async-issued certificate [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
       try {
         await pkiAlertV2Queue?.queueCertificateEvent({
           certificateId,
           projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE
+          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+          applicationId: scopedApplicationId
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
@@ -903,12 +955,15 @@ export const certificateIssuanceQueueFactory = ({
 
       logger.error(error, `Certificate issuance job failed for [certificateId=${certificateId}] [caId=${caId}]`);
 
+      const isAcmeTerminal = error instanceof AcmeOrderTimeoutError || error instanceof AcmeRateLimitError;
+
       if (certificateRequestId && certificateRequestService) {
         try {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           await certificateRequestService.updateCertificateRequestStatus({
             certificateRequestId,
             status: CertificateRequestStatus.FAILED,
-            errorMessage: `Certificate issuance failed: ${error instanceof Error ? error.message : String(error)}`
+            errorMessage: isAcmeTerminal ? errorMessage : `Certificate issuance failed: ${errorMessage}`
           });
           logger.info(`Updated certificate request ${certificateRequestId} status to failed due to issuance error`);
         } catch (statusUpdateError) {
@@ -921,7 +976,7 @@ export const certificateIssuanceQueueFactory = ({
 
       // For ACM's 30-attempt queue, wrap non-retryable errors so BullMQ stops retrying immediately.
       // Other CAs keep default retry behavior (3 attempts is short enough that running through them is fine).
-      if (data.caType === CaType.AWS_ACM_PUBLIC_CA) {
+      if (data.caType === CaType.AWS_ACM_PUBLIC_CA || isAcmeTerminal) {
         const message = error instanceof Error ? error.message : String(error);
         const wrapped = new UnrecoverableError(message);
         (wrapped as Error).cause = error;

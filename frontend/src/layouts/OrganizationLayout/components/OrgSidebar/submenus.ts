@@ -27,9 +27,9 @@ import {
   Shield,
   ShieldCheck,
   ShieldUser,
-  Trash2,
   User,
-  Users
+  Users,
+  Video
 } from "lucide-react";
 
 import { SubOrgIcon } from "@app/components/v3";
@@ -79,6 +79,23 @@ export const SECRET_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
   items: [
     ...PROJECT_ACCESS_CONTROL_SUBMENU.items,
     { label: "Service Tokens", icon: Key, tab: "service-tokens" }
+  ]
+};
+
+export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
+  title: "Access Control",
+  pathSuffix: "access-management",
+  defaultTab: "members",
+  activeMatch: /\/members\/|\/groups\/|\/identities\//,
+  items: [
+    { label: "Users", icon: User, tab: "members", activeMatch: /\/members\// },
+    { label: "Groups", icon: Users, tab: "groups", activeMatch: /\/groups\// },
+    {
+      label: "Machine Identities",
+      icon: HardDrive,
+      tab: "identities",
+      activeMatch: /\/identities\//
+    }
   ]
 };
 
@@ -133,7 +150,7 @@ export const getOrgSettingsSubmenu = ({
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
-    { label: "Product Enforcements", icon: ClipboardList, tab: "product-enforcements" },
+    { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
     ...(!isSubOrganization && hasSubOrganization
       ? [{ label: "Sub Organizations", icon: SubOrgIcon, tab: "tab-sub-organizations" }]
       : [])
@@ -199,16 +216,6 @@ export const CERT_APPROVALS_SUBMENU: Submenu = {
   ]
 };
 
-export const CERT_SETTINGS_SUBMENU: Submenu = {
-  title: "Settings",
-  pathSuffix: "settings",
-  defaultTab: "general",
-  items: [
-    { label: "General", icon: Cog, tab: "general" },
-    { label: "Certificate Cleanup", icon: Trash2, tab: "certificate-cleanup" }
-  ]
-};
-
 export const CERT_INTEGRATIONS_SUBMENU: Submenu = {
   title: "Integrations",
   pathSuffix: "integrations",
@@ -241,6 +248,16 @@ export const PAM_APPROVALS_SUBMENU: Submenu = {
     { label: "Requests", icon: FileCheck, tab: "requests" },
     { label: "Policies", icon: Shield, tab: "policies" },
     { label: "Grants", icon: Key, tab: "grants" }
+  ]
+};
+
+export const PAM_SETTINGS_SUBMENU: Submenu = {
+  title: "Settings",
+  pathSuffix: "settings",
+  defaultTab: "tab-project-general",
+  items: [
+    { label: "General", icon: Cog, tab: "tab-project-general" },
+    { label: "Session Recording", icon: Video, tab: "tab-pam-session-recording" }
   ]
 };
 

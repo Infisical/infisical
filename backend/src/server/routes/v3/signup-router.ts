@@ -27,7 +27,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          message: z.string()
+          message: z.string(),
+          cooldownSeconds: z.number()
         })
       }
     },
@@ -50,8 +51,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           });
         }
       }
-      await server.services.signup.beginEmailSignupProcess(email);
-      return { message: `Sent an email verification code to ${email}` };
+      const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess(email);
+      return { message: `Sent an email verification code to ${email}`, cooldownSeconds };
     }
   });
 
@@ -60,7 +61,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) =>
+          (req.body as { email?: string })?.email?.trim()?.toLowerCase().substring(0, 100) || req.realIp
       })
     },
     schema: {
@@ -155,9 +157,21 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         properties: {
           username: user.username,
           email: user.email ?? "",
-          attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource
+          attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource,
+          signupMethod: isInvitedUser ? "invite" : "email"
         }
       });
+
+      if (organizationId) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.OrganizationCreated,
+          distinctId: user.username ?? "",
+          organizationId,
+          properties: {
+            name: "organizationName" in req.body ? (req.body.organizationName as string) : ""
+          }
+        });
+      }
 
       const signupDistinctId = user.username ?? user.email ?? "";
       if (signupDistinctId) {

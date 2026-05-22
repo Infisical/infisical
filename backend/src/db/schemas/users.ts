@@ -31,7 +31,8 @@ export const UsersSchema = z.object({
   hashedPassword: z.string().nullable().optional(),
   isGoogleVerified: z.boolean().nullable().optional(),
   isGitHubVerified: z.boolean().nullable().optional(),
-  isGitLabVerified: z.boolean().nullable().optional()
+  isGitLabVerified: z.boolean().nullable().optional(),
+  lastSeenAnnouncementId: z.string().nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

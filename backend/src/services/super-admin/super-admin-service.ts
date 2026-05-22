@@ -726,7 +726,9 @@ export const superAdminServiceFactory = ({
   };
 
   const deleteIdentitySuperAdminAccess = async (identityId: string, actorId: string) => {
-    const identity = await identityDAL.findById(identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityId), () =>
+      identityDAL.findById(identityId)
+    );
     if (!identity) {
       throw new NotFoundError({ name: "Identity", message: "Identity not found" });
     }

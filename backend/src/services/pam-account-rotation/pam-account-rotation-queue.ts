@@ -1,43 +1,32 @@
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type TPamAccountRotationServiceFactoryDep = {
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   pamAccountService: Pick<TPamAccountServiceFactory, "rotateAllDueAccounts">;
 };
 
 export type TPamAccountRotationServiceFactory = ReturnType<typeof pamAccountRotationServiceFactory>;
 
 export const pamAccountRotationServiceFactory = ({
-  queueService,
+  cronJob,
   pamAccountService
 }: TPamAccountRotationServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  const init = async () => {
-    if (appCfg.isSecondaryInstance) {
-      return;
-    }
-
-    queueService.start(QueueName.PamAccountRotation, async () => {
-      try {
-        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.PamAccountRotation,
+      pattern: "0 * * * *",
+      runHashTtlS: 1 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info("cron[pam-account-rotation]: task started");
         await pamAccountService.rotateAllDueAccounts();
-        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
-      } catch (error) {
-        logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
-        throw error;
       }
     });
-
-    await queueService.upsertJobScheduler(
-      QueueName.PamAccountRotation,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PamAccountRotation}`,
-      { pattern: "0 * * * *" },
-      { name: QueueJobs.PamAccountRotation }
-    );
   };
 
   return {

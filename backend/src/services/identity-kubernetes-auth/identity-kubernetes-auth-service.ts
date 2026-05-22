@@ -33,7 +33,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -43,17 +42,17 @@ import {
 } from "@app/lib/errors";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -83,7 +82,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TIdentityKubernetesAuthDALFactory,
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -98,6 +97,10 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   >;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+  >;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -118,7 +121,8 @@ export const identityKubernetesAuthServiceFactory = ({
   kmsService,
   gatewayPoolService,
   gatewayPoolDAL,
-  orgDAL
+  orgDAL,
+  identityAccessTokenService
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
     inputs: {
@@ -127,6 +131,7 @@ export const identityKubernetesAuthServiceFactory = ({
       targetHost?: string;
       targetPort?: number;
       caCert?: string;
+      verifyTlsCertificate?: boolean;
       reviewTokenThroughGateway: boolean;
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
@@ -147,8 +152,9 @@ export const identityKubernetesAuthServiceFactory = ({
       let httpsAgent: https.Agent | undefined;
       if (!inputs.reviewTokenThroughGateway) {
         httpsAgent = new https.Agent({
-          ca: inputs.caCert,
-          rejectUnauthorized: Boolean(inputs.caCert)
+          ca: inputs.caCert || undefined,
+          rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
+          servername: inputs.targetHost
         });
       }
 
@@ -193,8 +199,9 @@ export const identityKubernetesAuthServiceFactory = ({
         ...(!inputs.reviewTokenThroughGateway
           ? {
               httpsAgent: new https.Agent({
-                ca: inputs.caCert,
-                rejectUnauthorized: Boolean(inputs.caCert)
+                ca: inputs.caCert || undefined,
+                rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
+                servername: inputs.targetHost
               })
             }
           : {})
@@ -211,7 +218,7 @@ export const identityKubernetesAuthServiceFactory = ({
    */
   const $createGatewayValidationRequest = (
     gatewayId: string,
-    options?: { kubernetesHost?: string; caCert?: string }
+    options?: { kubernetesHost?: string; caCert?: string; verifyTlsCertificate?: boolean }
   ): GatewayRequestExecutor => {
     const useGatewayServiceAccount = !options?.kubernetesHost;
 
@@ -232,7 +239,8 @@ export const identityKubernetesAuthServiceFactory = ({
           reviewTokenThroughGateway: useGatewayServiceAccount,
           targetHost,
           targetPort,
-          caCert: options?.caCert
+          caCert: options?.caCert,
+          verifyTlsCertificate: options?.verifyTlsCertificate
         },
         async (host: string, port: number, httpsAgent?: https.Agent) => {
           const config: AxiosRequestConfig = {
@@ -268,6 +276,14 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
+  const $resolveEffectiveVerifyTlsCertificate = (
+    caCert: string | null | undefined,
+    storedVerify: boolean | null | undefined
+  ): boolean => {
+    if (!caCert?.length) return false;
+    return storedVerify ?? false;
+  };
+
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
@@ -277,7 +293,9 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityKubernetesAuth.identityId), () =>
+      identityDAL.findById(identityKubernetesAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
@@ -355,8 +373,11 @@ export const identityKubernetesAuthServiceFactory = ({
               signal: AbortSignal.timeout(10000),
               timeout: 10000,
               httpsAgent: new https.Agent({
-                ca: caCert,
-                rejectUnauthorized: Boolean(caCert),
+                ca: caCert || undefined,
+                rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
                 servername
               })
             }
@@ -474,6 +495,11 @@ export const identityKubernetesAuthServiceFactory = ({
               ? undefined
               : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
             gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
+            caCert: caCert || undefined,
+            verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+              caCert,
+              identityKubernetesAuth.verifyTlsCertificate
+            ),
             reviewTokenThroughGateway: true
           },
           tokenReviewCallbackThroughGateway
@@ -506,6 +532,11 @@ export const identityKubernetesAuthServiceFactory = ({
                 gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
                 targetHost: k8sHost,
                 targetPort: k8sPort ? Number(k8sPort) : 443,
+                caCert: caCert || undefined,
+                verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
                 reviewTokenThroughGateway: false
               },
               tokenReviewCallbackRaw
@@ -638,7 +669,7 @@ export const identityKubernetesAuthServiceFactory = ({
         }
       }
 
-      const identityAccessToken = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      await identityKubernetesAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -658,42 +689,34 @@ export const identityKubernetesAuthServiceFactory = ({
           },
           tx
         );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityKubernetesAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityKubernetesAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityKubernetesAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
       });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityKubernetesAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
-          identityAuth: {
-            kubernetes: {
-              namespace: targetNamespace,
-              name: targetName
-            }
+      const subOrgDetails =
+        subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
+      const tokenScopeOrg = subOrgDetails ?? org;
+      const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
+      const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
+
+      const { accessToken, identityAccessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: identityKubernetesAuth.identityId,
+        identityName: identity.name,
+        authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+        orgId: tokenScopeOrg.id,
+        rootOrgId: tokenRootOrgId,
+        parentOrgId: tokenParentOrgId,
+        subOrganizationId,
+        accessTokenTTL: Number(identityKubernetesAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(identityKubernetesAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(identityKubernetesAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: Number(identityKubernetesAuth.accessTokenPeriod) || 0,
+        accessTokenTrustedIps: identityKubernetesAuth.accessTokenTrustedIps as TIp[],
+        identityAuth: {
+          kubernetes: {
+            namespace: targetNamespace,
+            name: targetName
           }
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+        }
+      });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -743,6 +766,7 @@ export const identityKubernetesAuthServiceFactory = ({
     gatewayPoolId,
     kubernetesHost,
     caCert,
+    verifyTlsCertificate,
     tokenReviewerJwt,
     tokenReviewMode,
     allowedNamespaces,
@@ -828,6 +852,20 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (
+      caCert &&
+      caCert.length > 0 &&
+      verifyTlsCertificate === false &&
+      tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
+    const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
+
     let isGatewayV1 = true;
     if (gatewayId) {
       if (!plan.gateway) {
@@ -871,7 +909,8 @@ export const identityKubernetesAuthServiceFactory = ({
         // API mode through gateway: gateway proxies requests with user's JWT
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId, {
           kubernetesHost,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         logger.info({ gatewayId, kubernetesHost }, "Validating Kubernetes connectivity through gateway");
         await validateKubernetesHostConnectivity({ gatewayExecutor });
@@ -913,7 +952,8 @@ export const identityKubernetesAuthServiceFactory = ({
       } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost) {
         const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id, {
           kubernetesHost,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         await validateKubernetesHostConnectivity({ gatewayExecutor });
         if (tokenReviewerJwt) {
@@ -924,7 +964,8 @@ export const identityKubernetesAuthServiceFactory = ({
       logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for new auth method");
       await validateKubernetesHostConnectivity({
         kubernetesHost,
-        caCert: caCert || undefined
+        caCert: caCert || undefined,
+        verifyTlsCertificate: resolvedVerifyTlsCertificate
       });
 
       if (tokenReviewerJwt) {
@@ -932,7 +973,8 @@ export const identityKubernetesAuthServiceFactory = ({
         await validateTokenReviewerPermissions({
           kubernetesHost,
           tokenReviewerJwt,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
       }
     }
@@ -967,24 +1009,31 @@ export const identityKubernetesAuthServiceFactory = ({
           gatewayId: resolvedGatewayId,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
             : null,
-          encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+          encryptedKubernetesCaCertificate: caCert ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob : null
         },
         tx
       );
       return doc;
     });
 
-    return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.scopeOrgId };
+    return {
+      ...identityKubernetesAuth,
+      caCert: caCert ?? "",
+      tokenReviewerJwt,
+      orgId: identityMembershipOrg.scopeOrgId
+    };
   };
 
   const updateKubernetesAuth = async ({
     identityId,
     kubernetesHost,
     caCert,
+    verifyTlsCertificate,
     tokenReviewerJwt,
     tokenReviewMode,
     allowedNamespaces,
@@ -1183,6 +1232,42 @@ export const identityKubernetesAuthServiceFactory = ({
       effectiveCaCert = undefined;
     }
 
+    // Auto-promote verifyTlsCertificate when the caller is supplying a non-empty
+    // CA in this update without explicitly setting the toggle. Required for
+    // backwards compatibility.
+    let resolvedVerifyTlsCertificate: boolean | undefined;
+    if (verifyTlsCertificate !== undefined) {
+      resolvedVerifyTlsCertificate = verifyTlsCertificate;
+    } else if (caCert !== undefined && caCert.length > 0) {
+      resolvedVerifyTlsCertificate = true;
+    }
+    const effectiveVerifyTlsCertificate =
+      resolvedVerifyTlsCertificate ??
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert, identityKubernetesAuth.verifyTlsCertificate);
+
+    if (
+      effectiveVerifyTlsCertificate &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !effectiveCaCert
+    ) {
+      throw new BadRequestError({
+        message:
+          "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+      });
+    }
+
+    if (
+      effectiveVerifyTlsCertificate === false &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      effectiveCaCert &&
+      effectiveCaCert.length > 0
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
     let validationGatewayId: string | null = effectiveGatewayId ?? null;
     if (!validationGatewayId && effectiveGatewayPoolId) {
       const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolId);
@@ -1202,7 +1287,8 @@ export const identityKubernetesAuthServiceFactory = ({
       } else if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && effectiveKubernetesHost) {
         const gatewayExecutor = $createGatewayValidationRequest(validationGatewayId, {
           kubernetesHost: effectiveKubernetesHost,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
         logger.info(
           {
@@ -1223,7 +1309,8 @@ export const identityKubernetesAuthServiceFactory = ({
         logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
         await validateKubernetesHostConnectivity({
           kubernetesHost,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
       }
 
@@ -1235,7 +1322,8 @@ export const identityKubernetesAuthServiceFactory = ({
         await validateTokenReviewerPermissions({
           kubernetesHost: effectiveKubernetesHost,
           tokenReviewerJwt,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
       }
     }
@@ -1249,6 +1337,7 @@ export const identityKubernetesAuthServiceFactory = ({
       gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
       gatewayV2Id: shouldUpdateGatewayId ? gatewayV2IdValue : undefined,
       gatewayPoolId: gatewayPoolIdValue,
+      verifyTlsCertificate: resolvedVerifyTlsCertificate,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -1258,7 +1347,9 @@ export const identityKubernetesAuthServiceFactory = ({
     };
 
     if (caCert !== undefined) {
-      updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
+      updateQuery.encryptedKubernetesCaCertificate = caCert
+        ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+        : null;
     }
 
     if (tokenReviewerJwt) {
@@ -1367,6 +1458,7 @@ export const identityKubernetesAuthServiceFactory = ({
       ...identityKubernetesAuth,
       caCert,
       tokenReviewerJwt,
+      verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(caCert, identityKubernetesAuth.verifyTlsCertificate),
       orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
     };
@@ -1456,6 +1548,15 @@ export const identityKubernetesAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
       return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
+
+    // Detaching the auth method must invalidate any tokens already issued
+    // through it; without this, leaked tokens authenticate up to MAX_AGE
+    // even after the admin pulled the auth method.
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.KUBERNETES_AUTH
+    });
+
     return revokedIdentityKubernetesAuth;
   };
 

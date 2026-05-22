@@ -1,0 +1,22 @@
+# Binary output
+/infisical
+/main
+*.exe
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Test infra shared state (delete these if tests misbehave)
+.test-infra-state.json
+.test-infra.lock
+
+# Air hot-reload temp dir
+tmp/

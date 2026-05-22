@@ -14,7 +14,8 @@ export enum IdentityKubernetesAuthTokenReviewMode {
 export type TAttachKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string | null;
-  caCert: string;
+  caCert?: string;
+  verifyTlsCertificate?: boolean;
   tokenReviewerJwt?: string;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
@@ -33,6 +34,7 @@ export type TUpdateKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost?: string | null;
   caCert?: string;
+  verifyTlsCertificate?: boolean;
   tokenReviewerJwt?: string | null;
   tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;

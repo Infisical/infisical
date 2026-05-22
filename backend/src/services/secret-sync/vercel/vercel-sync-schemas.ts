@@ -30,13 +30,29 @@ const VercelSyncDestinationConfigSchema = z
       teamName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.teamName),
       targetEnvironments: z
         .array(z.nativeEnum(VercelEnvironmentType))
-        .min(1, "At least one environment is required")
+        .optional()
+        .default([])
         .describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.targetEnvironments),
+      applyToAllCustomEnvironments: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.applyToAllCustomEnvironments),
       targetProjects: z.array(z.string()).optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.targetProjects),
       sensitive: z.boolean().default(false).describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.sensitive)
     })
   ])
   .superRefine((config, ctx) => {
+    if (config.scope === VercelSyncScope.Team) {
+      if (!config.targetEnvironments?.length && !config.applyToAllCustomEnvironments) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one target environment or applyToAllCustomEnvironments must be set.",
+          path: ["targetEnvironments"]
+        });
+      }
+    }
+
     if (!config.sensitive) return;
 
     if (config.scope === VercelSyncScope.Project && config.env === VercelEnvironmentType.Development) {

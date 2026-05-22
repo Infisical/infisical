@@ -337,16 +337,18 @@ export const secretApprovalRequestServiceFactory = ({
     const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
       const isReviewer = policy.approvers.some(({ userId }) => userId === actorId);
 
-      if (!isReviewer) {
-        const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment,
-          secretPath: secretPath || "/",
-          secretTags: tags.map((i) => i.slug)
-        });
-        return canRead;
+      // Reviewers get temporary read access only while the request is open for review
+      if (isReviewer && secretApprovalRequest.status === RequestState.Open) {
+        return true;
       }
 
-      return true;
+      // Otherwise check actual read permissions
+      const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: secretPath || "/",
+        secretTags: tags.map((i) => i.slug)
+      });
+      return canRead;
     };
 
     let secrets;
@@ -1638,7 +1640,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    const user = await userDAL.findById(actorId);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
@@ -2071,7 +2073,7 @@ export const secretApprovalRequestServiceFactory = ({
       ? await executeApprovalRequestCreation(providedTx)
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
-    const user = await userDAL.findById(actorId);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;

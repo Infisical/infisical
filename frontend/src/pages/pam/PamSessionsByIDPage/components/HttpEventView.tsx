@@ -5,9 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { THttpEvent } from "@app/hooks/api/pam";
+import { isBrokenChunkMarker, TBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
 
 type Props = {
-  events: THttpEvent[];
+  events: (THttpEvent | TBrokenChunkMarker)[];
 };
 
 export const HttpEventView = ({ events }: Props) => {
@@ -59,6 +60,7 @@ export const HttpEventView = ({ events }: Props) => {
   const filteredEvents = useMemo(
     () =>
       events.filter((event) => {
+        if (isBrokenChunkMarker(event)) return true;
         const searchValue = search.trim().toLowerCase();
         if (!searchValue) return true;
 
@@ -175,6 +177,17 @@ export const HttpEventView = ({ events }: Props) => {
       <div className="flex grow flex-col gap-2 overflow-y-auto text-xs">
         {filteredEvents.length > 0 ? (
           filteredEvents.map((event, index) => {
+            if (isBrokenChunkMarker(event)) {
+              return (
+                <div
+                  key={`broken-${event.chunkIndex}`}
+                  className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"
+                >
+                  Chunk {event.chunkIndex} unavailable: {event.message}
+                </div>
+              );
+            }
+
             const eventKey = `${event.timestamp}-${event.requestId}-${index}`;
             const isRequest = event.eventType === "request";
             const kubectlCommand = getKubectlCommand(event.headers);

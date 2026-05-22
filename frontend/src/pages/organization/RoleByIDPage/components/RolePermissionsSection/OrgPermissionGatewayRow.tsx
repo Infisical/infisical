@@ -28,7 +28,8 @@ const PERMISSION_ACTIONS = [
   { action: OrgGatewayPermissionActions.CreateGateways, label: "Create Gateways" },
   { action: OrgGatewayPermissionActions.EditGateways, label: "Edit Gateways" },
   { action: OrgGatewayPermissionActions.DeleteGateways, label: "Delete Gateways" },
-  { action: OrgGatewayPermissionActions.AttachGateways, label: "Attach Gateways" }
+  { action: OrgGatewayPermissionActions.AttachGateways, label: "Attach Gateways" },
+  { action: OrgGatewayPermissionActions.RevokeGatewayAccess, label: "Revoke Gateway Access" }
 ] as const;
 
 export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props) => {
@@ -80,9 +81,11 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
           "permissions.gateway",
           {
             [OrgGatewayPermissionActions.ListGateways]: true,
-            [OrgGatewayPermissionActions.EditGateways]: true,
             [OrgGatewayPermissionActions.CreateGateways]: true,
-            [OrgGatewayPermissionActions.DeleteGateways]: true
+            [OrgGatewayPermissionActions.EditGateways]: true,
+            [OrgGatewayPermissionActions.DeleteGateways]: true,
+            [OrgGatewayPermissionActions.AttachGateways]: true,
+            [OrgGatewayPermissionActions.RevokeGatewayAccess]: true
           },
           { shouldDirty: true }
         );
@@ -92,9 +95,11 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
           "permissions.gateway",
           {
             [OrgGatewayPermissionActions.ListGateways]: true,
-            [OrgGatewayPermissionActions.EditGateways]: false,
             [OrgGatewayPermissionActions.CreateGateways]: false,
-            [OrgGatewayPermissionActions.DeleteGateways]: false
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false,
+            [OrgGatewayPermissionActions.AttachGateways]: false,
+            [OrgGatewayPermissionActions.RevokeGatewayAccess]: false
           },
           { shouldDirty: true }
         );
@@ -106,9 +111,11 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
           "permissions.gateway",
           {
             [OrgGatewayPermissionActions.ListGateways]: false,
-            [OrgGatewayPermissionActions.EditGateways]: false,
             [OrgGatewayPermissionActions.CreateGateways]: false,
-            [OrgGatewayPermissionActions.DeleteGateways]: false
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false,
+            [OrgGatewayPermissionActions.AttachGateways]: false,
+            [OrgGatewayPermissionActions.RevokeGatewayAccess]: false
           },
           { shouldDirty: true }
         );

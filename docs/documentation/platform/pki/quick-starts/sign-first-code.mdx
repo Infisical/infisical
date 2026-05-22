@@ -1,0 +1,78 @@
+---
+title: "Sign Your First Artifact"
+sidebarTitle: "Sign Artifact"
+description: "Sign a JAR file using Infisical Code Signing in under 10 minutes."
+---
+
+Sign a Java JAR file using Infisical-managed keys in about 10 minutes. You'll issue a code signing certificate, create a signer, and sign your first artifact.
+
+## Prerequisites
+
+- Product Admin permissions (to create CAs, policies, and profiles)
+- Java JDK 9+ (for jarsigner)
+- A JAR file to sign
+
+## Steps
+
+<Steps>
+  <Step title="Issue a Code Signing Certificate">
+    First, issue a certificate for code signing. Go to **Certificate Manager → Settings → Certificate Policies** and click **Create**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Preset | Code Signing Certificate |
+    | Name | `code-signing` |
+    
+    Then create a profile and issue a certificate following the same flow as the [Issue Certificate quick start](/documentation/platform/pki/quick-starts/issue-first-certificate), but using the `code-signing` policy.
+    
+    Download the certificate — you'll need it for the signer.
+  </Step>
+  <Step title="Create a Signer">
+    Go to **Code Signing → Signers** and click **Create**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Name | `my-signer` |
+    | Certificate | Select the code signing certificate you just issued |
+    
+    [Learn more about Signers →](/documentation/platform/pki/code-signing/signers)
+  </Step>
+  <Step title="Install PKCS#11 Module">
+    Install the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) for your platform. This enables standard signing tools to use Infisical signers.
+    
+    Create a PKCS#11 config file (`pkcs11.cfg`):
+    
+    ```
+    name = Infisical
+    library = /path/to/infisical-pkcs11.so
+    ```
+  </Step>
+  <Step title="Sign with jarsigner">
+    Run jarsigner with the PKCS#11 provider:
+
+    ```bash
+    jarsigner -keystore NONE -storetype PKCS11 \
+      -providerClass sun.security.pkcs11.SunPKCS11 \
+      -providerArg pkcs11.cfg \
+      your-app.jar "my-signer"
+    ```
+  </Step>
+</Steps>
+
+## Result
+
+Your JAR file is now signed with your Infisical-managed key.
+
+**Verify the signature:**
+
+```bash
+jarsigner -verify -verbose your-app.jar
+```
+
+You should see `jar verified` with details about the signing certificate.
+
+## Next Steps
+
+- Add [Signing Policies](/documentation/platform/pki/code-signing/signing-policies) for approval workflows
+- Request signing access with [Grants](/documentation/platform/pki/code-signing/grants)
+- See the full [jarsigner guide](/documentation/platform/pki/guides/code-signing/jarsigner) for advanced options

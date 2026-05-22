@@ -55,6 +55,8 @@ export type TCertificate = {
   profileName?: string | null;
   enrollmentType?: string | null;
   caType?: "internal" | "external" | null;
+  applicationId?: string | null;
+  applicationName?: string | null;
   source?: TCertificateSource;
   discoveryMetadata?: {
     issuerCommonName?: string;
@@ -70,30 +72,27 @@ export type TCertificateByIdResponse = {
 
 export type TDeleteCertDTO = {
   id: string;
-  projectId: string;
 };
 
 export type TRevokeCertDTO = {
-  projectId: string;
   id: string;
   revocationReason: string;
 };
 
 export type TImportCertificateDTO = {
-  projectSlug: string;
-
   certificatePem: string;
-  privateKeyPem: string;
-  chainPem: string;
+  privateKeyPem?: string;
+  chainPem?: string;
 
   pkiCollectionId?: string;
   friendlyName?: string;
+  applicationId?: string;
 };
 
 export type TImportCertificateResponse = {
   certificate: string;
-  certificateChain: string;
-  privateKey: string;
+  certificateChain?: string;
+  privateKey?: string;
   serialNumber: string;
 };
 
@@ -116,25 +115,22 @@ export type TUpdateRenewalConfigDTO = {
   certificateId: string;
   renewBeforeDays?: number;
   enableAutoRenewal?: boolean;
-  projectSlug: string;
 };
 
 export type TDownloadPkcs12DTO = {
   certificateId: string;
-  projectSlug: string;
   password: string;
   alias: string;
 };
 
 export type TUnifiedCertificateIssuanceDTO = {
-  projectSlug: string;
   profileId: string;
-  projectId: string;
+  applicationId?: string;
   csr?: string;
   attributes?: {
     commonName?: string | null;
     organization?: string | null;
-    organizationUnit?: string | null;
+    organizationalUnit?: string | null;
     country?: string | null;
     state?: string | null;
     locality?: string | null;
@@ -205,7 +201,6 @@ export type TCertificateRequestDetails = {
 
 export type TUpdateCertificateDTO = {
   certificateId: string;
-  projectId: string;
   metadata: Array<{ key: string; value: string }>;
 };
 
@@ -242,7 +237,6 @@ export type TListCertificateRequestsResponse = {
 };
 
 export type TListCertificateRequestsParams = {
-  projectSlug: string;
   offset?: number;
   limit?: number;
   search?: string;
@@ -250,6 +244,7 @@ export type TListCertificateRequestsParams = {
   fromDate?: Date;
   toDate?: Date;
   profileIds?: string[];
+  applicationId?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   metadataFilter?: Array<{ key: string; value?: string }>;

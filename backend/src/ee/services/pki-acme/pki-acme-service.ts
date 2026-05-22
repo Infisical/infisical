@@ -33,6 +33,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
@@ -53,7 +54,9 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -114,7 +117,11 @@ type TPkiAcmeServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
-    "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
+    | "findByProjectIdAndAccountId"
+    | "findByProfileIdAndPublicKeyThumbprintAndAlg"
+    | "findApplicationProfileId"
+    | "findApplicationIdByJunctionId"
+    | "create"
   >;
   acmeOrderDAL: Pick<
     TPkiAcmeOrderDALFactory,
@@ -148,6 +155,8 @@ type TPkiAcmeServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -172,17 +181,33 @@ export const pkiAcmeServiceFactory = ({
   auditLogService,
   approvalPolicyDAL,
   approvalPolicyService,
-  certificateRequestDAL
+  certificateRequestDAL,
+  pkiApplicationProfileDAL,
+  acmeEnrollmentConfigDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
-  const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
+  const validateAcmeProfile = async (
+    profileId: string,
+    applicationId?: string
+  ): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
-    if (profile.enrollmentType !== EnrollmentType.ACME) {
+    if (!applicationId && profile.enrollmentType !== EnrollmentType.ACME) {
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
     return profile;
+  };
+
+  const resolveApplicationIdFromAccount = async (profileId: string, accountId: string): Promise<string | undefined> => {
+    const account = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId);
+    const accountApplicationProfileId = (account as { applicationProfileId?: string | null } | null)
+      ?.applicationProfileId;
+    if (!accountApplicationProfileId) {
+      return undefined;
+    }
+    const applicationId = await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId);
+    return applicationId ?? undefined;
   };
 
   const validateJwsPayload = async <
@@ -305,7 +330,10 @@ export const pkiAcmeServiceFactory = ({
     schema?: TSchema;
     expectedAccountId?: string;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
     const result = await validateJwsPayload({
       url,
       rawJwsPayload,
@@ -350,6 +378,7 @@ export const pkiAcmeServiceFactory = ({
         id: string;
         identifierType: string;
         identifierValue: string;
+        wildcard?: boolean;
         expiresAt: Date;
       }[];
     };
@@ -362,7 +391,7 @@ export const pkiAcmeServiceFactory = ({
       notAfter: order.notAfter?.toISOString(),
       identifiers: order.authorizations.map((auth) => ({
         type: auth.identifierType,
-        value: auth.identifierValue
+        value: auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue
       })),
       authorizations: order.authorizations.map((auth) => buildUrl(profileId, `/authorizations/${auth.id}`)),
       finalize: buildUrl(profileId, `/orders/${order.id}/finalize`),
@@ -419,12 +448,19 @@ export const pkiAcmeServiceFactory = ({
     });
   };
 
-  const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
-    const profile = await validateAcmeProfile(profileId);
-    const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+  const getAcmeDirectory = async (profileId: string, applicationId?: string): Promise<TGetAcmeDirectoryResponse> => {
+    const profile = await validateAcmeProfile(profileId, applicationId);
+    let skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+    if (applicationId) {
+      const junctionRow = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profile.id);
+      const junctionAcmeConfig = junctionRow?.acmeConfigId
+        ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
+        : null;
+      skipEabBinding = junctionAcmeConfig?.skipEabBinding ?? false;
+    }
     return {
       newNonce: buildUrl(profile.id, "/new-nonce"),
-      newAccount: buildUrl(profile.id, "/new-account"),
+      newAccount: buildUrl(profile.id, "/new-account", applicationId),
       newOrder: buildUrl(profile.id, "/new-order"),
       meta: {
         externalAccountRequired: !skipEabBinding
@@ -433,7 +469,10 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const getAcmeNewNonce = async (profileId: string): Promise<string> => {
-    await validateAcmeProfile(profileId);
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
     const nonce = crypto.randomBytes(32).toString("base64url");
     const nonceKey = KeyStorePrefixes.PkiAcmeNonce(nonce);
     // TODO: read config from the profile to get the expiration time instead
@@ -446,24 +485,37 @@ export const pkiAcmeServiceFactory = ({
    * -------------------------------------------------------------- */
   const createAcmeAccount = async ({
     profileId,
+    applicationId,
     alg,
     jwk,
     payload: { onlyReturnExisting, contact, externalAccountBinding },
     auditLogInfo
   }: {
     profileId: string;
+    applicationId?: string;
     alg: string;
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const profile = await validateAcmeProfile(profileId, applicationId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
 
+    const junctionRow = applicationId
+      ? await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profile.id)
+      : null;
+    const junctionAcmeConfig = junctionRow?.acmeConfigId
+      ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
+      : null;
+    const effectiveAcmeConfig = applicationId ? junctionAcmeConfig : (profile.acmeConfig ?? null);
+    const expectedEabKid = applicationId ? junctionAcmeConfig?.id : profile.id;
+
+    const accountApplicationProfileId = junctionRow?.id ?? null;
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
       profileId,
       alg,
-      publicKeyThumbprint
+      publicKeyThumbprint,
+      accountApplicationProfileId
     );
     if (onlyReturnExisting) {
       if (!existingAccount) {
@@ -484,7 +536,7 @@ export const pkiAcmeServiceFactory = ({
     }
 
     // Check if EAB is required for this profile (EAB is required by default unless skipEabBinding is true)
-    const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+    const skipEabBinding = effectiveAcmeConfig?.skipEabBinding ?? false;
 
     // Note: We only check EAB for the new account request. This is a very special case for cert-manager.
     // There's a bug in their ACME client implementation, they don't take the account KID value they have
@@ -535,6 +587,9 @@ export const pkiAcmeServiceFactory = ({
     }
 
     if (externalAccountBinding && !skipEabBinding) {
+      if (!effectiveAcmeConfig?.encryptedEabSecret) {
+        throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
+      }
       const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
         projectId: profile.projectId,
         projectDAL,
@@ -543,7 +598,7 @@ export const pkiAcmeServiceFactory = ({
       const kmsDecryptor = await kmsService.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
-      const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
+      const eabSecret = await kmsDecryptor({ cipherTextBlob: effectiveAcmeConfig.encryptedEabSecret });
       const { eabPayload, eabProtectedHeader } = await (async () => {
         try {
           const result = await flattenedVerify(externalAccountBinding, eabSecret);
@@ -563,14 +618,14 @@ export const pkiAcmeServiceFactory = ({
           message: "Invalid algorithm for external account binding JWS payload"
         });
       }
-      // Make sure the KID in the EAB payload matches the profile ID
-      if (eabKid !== profile.id) {
+      // Make sure the KID in the EAB payload matches the expected scope (profile or junction)
+      if (eabKid !== expectedEabKid) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding KID mismatch" });
       }
 
       // Make sure the URL matches the expected URL
       const url = eabProtectedHeader!.url!;
-      if (url !== buildUrl(profile.id, "/new-account")) {
+      if (url !== buildUrl(profile.id, "/new-account", applicationId)) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding URL mismatch" });
       }
 
@@ -586,9 +641,9 @@ export const pkiAcmeServiceFactory = ({
       }
     }
 
-    // TODO: handle unique constraint violation error, should be very very rare
     const newAccount = await acmeAccountDAL.create({
       profileId: profile.id,
+      applicationProfileId: accountApplicationProfileId,
       alg,
       publicKey: jwk,
       publicKeyThumbprint,
@@ -664,8 +719,26 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeOrderPayload;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
-    const profile = await validateAcmeProfile(profileId);
-    const skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
+    const orderAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId);
+    const orderAccountApplicationProfileId = (orderAccount as { applicationProfileId?: string | null } | null)
+      ?.applicationProfileId;
+    const accountApplicationId = orderAccountApplicationProfileId
+      ? await acmeAccountDAL.findApplicationIdByJunctionId(orderAccountApplicationProfileId)
+      : null;
+    const profile = await validateAcmeProfile(profileId, accountApplicationId ?? undefined);
+    let skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
+    if (accountApplicationId) {
+      const junctionRow = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(
+        accountApplicationId,
+        profileId
+      );
+      const junctionAcmeConfig = junctionRow?.acmeConfigId
+        ? await acmeEnrollmentConfigDAL.findById(junctionRow.acmeConfigId)
+        : null;
+      if (junctionAcmeConfig) {
+        skipDnsOwnershipVerification = junctionAcmeConfig.skipDnsOwnershipVerification ?? false;
+      }
+    }
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
     // TODO: check the identifiers and see if are they even allowed for this profile.
@@ -674,10 +747,13 @@ export const pkiAcmeServiceFactory = ({
     // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
     for (const identifier of payload.identifiers) {
       if (identifier.type === AcmeIdentifierType.DNS) {
+        if (!validateDnsIdentifier(identifier.value)) {
+          throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
+        }
+        const strippedValue = identifier.value.startsWith("*.") ? identifier.value.slice(2) : identifier.value;
         if (
-          !validateDnsIdentifier(identifier.value) ||
-          isPrivateIp(identifier.value) ||
-          (!getConfig().isDevelopmentMode && identifier.value.toLowerCase() === "localhost")
+          isPrivateIp(strippedValue) ||
+          (!getConfig().isDevelopmentMode && strippedValue.toLowerCase() === "localhost")
         ) {
           throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
         }
@@ -719,18 +795,23 @@ export const pkiAcmeServiceFactory = ({
               });
             }
           } else if (identifier.type === AcmeIdentifierType.DNS) {
-            if (isPrivateIp(identifier.value)) {
+            const stripped = identifier.value.startsWith("*.") ? identifier.value.slice(2) : identifier.value;
+            if (isPrivateIp(stripped)) {
               throw new AcmeUnsupportedIdentifierError({ message: "Private IP addresses are not allowed" });
             }
           } else {
             throw new AcmeUnsupportedIdentifierError({ message: "Only DNS and IP identifiers are supported" });
           }
+          const isWildcard = identifier.type === AcmeIdentifierType.DNS && identifier.value.startsWith("*.");
+          const identifierValue = isWildcard ? identifier.value.slice(2) : identifier.value;
+
           const auth = await acmeAuthDAL.create(
             {
               accountId: account.id,
               status: skipDnsOwnershipVerification ? AcmeAuthStatus.Valid : AcmeAuthStatus.Pending,
               identifierType: identifier.type,
-              identifierValue: identifier.value,
+              identifierValue,
+              wildcard: isWildcard,
               // RFC 8555 suggests a token with at least 128 bits of entropy
               // We are using 256 bits of entropy here, should be enough for now
               // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
@@ -741,11 +822,14 @@ export const pkiAcmeServiceFactory = ({
             tx
           );
           if (!skipDnsOwnershipVerification) {
-            // IP identifiers only support HTTP-01 challenges (DNS-01 doesn't apply per RFC 8738)
-            const challengeTypes =
-              identifier.type === AcmeIdentifierType.IP
-                ? [AcmeChallengeType.HTTP_01]
-                : [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            let challengeTypes: AcmeChallengeType[];
+            if (identifier.type === AcmeIdentifierType.IP) {
+              challengeTypes = [AcmeChallengeType.HTTP_01];
+            } else if (isWildcard) {
+              challengeTypes = [AcmeChallengeType.DNS_01];
+            } else {
+              challengeTypes = [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            }
             for (const challengeType of challengeTypes) {
               // eslint-disable-next-line no-await-in-loop
               await acmeChallengeDAL.create(
@@ -785,7 +869,8 @@ export const pkiAcmeServiceFactory = ({
             orderId: createdOrder.id,
             identifiers: authorizations.map((auth) => ({
               type: auth.identifierType as AcmeIdentifierType,
-              value: auth.identifierValue
+              value: auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue,
+              ...(auth.wildcard ? { wildcard: true } : {})
             }))
           }
         }
@@ -843,7 +928,8 @@ export const pkiAcmeServiceFactory = ({
     certificateRequest,
     profile,
     ca,
-    tx
+    tx,
+    applicationId
   }: {
     caType: CaType;
     accountId: string;
@@ -859,6 +945,7 @@ export const pkiAcmeServiceFactory = ({
     profile: TCertificateProfileWithConfigs;
     ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
     tx?: Knex;
+    applicationId?: string;
   }): Promise<{ certificateId?: string; certIssuanceJobData?: TIssueCertificateFromProfileJobData }> => {
     if (caType === CaType.INTERNAL) {
       const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
@@ -883,7 +970,8 @@ export const pkiAcmeServiceFactory = ({
             }
           : // ttl is not used if notAfter is provided
             ({ ttl: "0d" } as const),
-        enrollmentType: EnrollmentType.ACME
+        enrollmentType: EnrollmentType.ACME,
+        applicationId
       });
       if ("certificateId" in result) {
         return {
@@ -938,6 +1026,7 @@ export const pkiAcmeServiceFactory = ({
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,
+      applicationId,
       commonName: updatedCertificateRequest.commonName ?? "",
       keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
       extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
@@ -969,7 +1058,8 @@ export const pkiAcmeServiceFactory = ({
         keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
         extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
         certificateRequestId: certRequest.id,
-        csr: csrPem
+        csr: csrPem,
+        ...(applicationId && { applicationId })
       }
     };
   };
@@ -1058,9 +1148,10 @@ export const pkiAcmeServiceFactory = ({
         }
         if (
           csrIdentifierPairs.size !== orderWithAuthorizations.authorizations.length ||
-          !orderWithAuthorizations.authorizations.every((auth) =>
-            csrIdentifierPairs.has(`${auth.identifierType}:${auth.identifierValue.toLowerCase()}`)
-          )
+          !orderWithAuthorizations.authorizations.every((auth) => {
+            const value = auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue;
+            return csrIdentifierPairs.has(`${auth.identifierType}:${value.toLowerCase()}`);
+          })
         ) {
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
@@ -1070,6 +1161,15 @@ export const pkiAcmeServiceFactory = ({
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
 
+        assertCaInProfileProject(ca, profile);
+
+        const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
+        const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
+          ?.applicationProfileId;
+        const accountApplicationId = accountApplicationProfileId
+          ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
+          : null;
+
         const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
           ApprovalPolicyType.CertRequest
         );
@@ -1077,7 +1177,8 @@ export const pkiAcmeServiceFactory = ({
           approvalPolicyDAL as TApprovalPolicyDALFactory,
           profile.projectId,
           {
-            profileName: profile.slug
+            profileName: profile.slug,
+            applicationId: accountApplicationId ?? undefined
           }
         )) as TCertRequestPolicy | null;
 
@@ -1125,6 +1226,7 @@ export const pkiAcmeServiceFactory = ({
             {
               projectId: profile.projectId,
               profileId: profile.id,
+              applicationId: accountApplicationId ?? null,
               commonName: certificateRequest.commonName || null,
               altNames: altNames ? JSON.stringify(altNames) : null,
               keyUsages: certificateRequest.keyUsages || null,
@@ -1134,6 +1236,7 @@ export const pkiAcmeServiceFactory = ({
               keyAlgorithm: null,
               signatureAlgorithm: null,
               ttl,
+              enrollmentType: EnrollmentType.ACME,
               status: CertificateRequestStatus.PENDING_APPROVAL,
               organization: certificateRequest.organization || null,
               organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -1241,7 +1344,8 @@ export const pkiAcmeServiceFactory = ({
             certificateRequest,
             profile,
             ca,
-            tx
+            tx,
+            applicationId: accountApplicationId ?? undefined
           });
           await acmeOrderDAL.updateById(
             orderId,
@@ -1331,7 +1435,8 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<string>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const accountApplicationId = await resolveApplicationIdFromAccount(profileId, accountId);
+    const profile = await validateAcmeProfile(profileId, accountApplicationId);
     const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -1440,6 +1545,7 @@ export const pkiAcmeServiceFactory = ({
           type: auth.identifierType,
           value: auth.identifierValue
         },
+        ...(auth.wildcard ? { wildcard: true } : {}),
         challenges: auth.challenges.map((challenge) => {
           return {
             type: challenge.type,
@@ -1469,7 +1575,8 @@ export const pkiAcmeServiceFactory = ({
     challengeId: string;
     auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const accountApplicationId = await resolveApplicationIdFromAccount(profileId, accountId);
+    const profile = await validateAcmeProfile(profileId, accountApplicationId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });

@@ -6,7 +6,9 @@ export {
   OrgPermissionBillingActions,
   OrgPermissionEmailDomainActions,
   OrgPermissionGroupActions,
+  OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
+  OrgPermissionProjectActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects,
   useOrgPermission
@@ -29,6 +31,7 @@ export {
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPamInsightsActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,

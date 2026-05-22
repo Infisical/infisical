@@ -183,7 +183,6 @@ export const ShareSecretForm = ({
       setSecretLink(link.toString());
 
       navigator.clipboard.writeText(link.toString());
-      setCopyTextSecret("secret");
 
       createNotification({
         text: "Shared secret link copied to clipboard.",
@@ -229,7 +228,7 @@ export const ShareSecretForm = ({
               <TextArea
                 placeholder="Enter sensitive data to share via an encrypted link"
                 {...field}
-                className={twMerge("min-h-[70px] resize-none", isPublic ? "h-40" : "h-14")}
+                className={twMerge("min-h-[70px] resize-y", isPublic ? "h-40" : "h-14")}
                 disabled={value !== undefined}
                 aria-invalid={Boolean(error)}
               />

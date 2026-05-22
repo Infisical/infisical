@@ -113,6 +113,8 @@ export const newOrgMembershipGroupFactory = ({
           });
       }
     }
+
+    return { group: { id: group.id, name: group.name } };
   };
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
@@ -125,6 +127,10 @@ export const newOrgMembershipGroupFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    const groupDetails = await groupDAL.findById(dto.selector.groupId);
+    if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
+
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       dto.permission.orgId
@@ -155,6 +161,8 @@ export const newOrgMembershipGroupFactory = ({
           });
       }
     }
+
+    return { group: { id: groupDetails.id, name: groupDetails.name } };
   };
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
@@ -189,6 +197,8 @@ export const newOrgMembershipGroupFactory = ({
       scope: OrganizationActionScope.ChildOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
+
+    return { group: { id: group.id, name: group.name } };
   };
 
   const onListMembershipGroupGuard: TMembershipGroupScopeFactory["onListMembershipGroupGuard"] = async (dto) => {

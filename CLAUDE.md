@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make reviewable-api` / `make reviewable-ui` — lint:fix + type:check (run before PRs)
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
+- `cd backend-go && make gen-goa` — regenerate Goa HTTP handlers from DSL
+- `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
 
@@ -17,7 +19,9 @@ Infisical is an open-source secret management platform. Monorepo layout:
 ```
 infisical/
 ├── backend/               # Fastify 4 API server (see backend/CLAUDE.md)
+├── backend-go/            # Go API server — partial rewrite (see backend-go/CLAUDE.md)
 ├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
+├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
@@ -30,7 +34,9 @@ infisical/
 ```
 
 - **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
+- **`backend-go/`** — Go API server (partial rewrite), Goa v3 for API design, raw pgx queries, same PostgreSQL database. See [`backend-go/CLAUDE.md`](backend-go/CLAUDE.md) for architecture, patterns, and commands.
 - **`frontend/`** — React 18 SPA, Vite 6, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
+- **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 
 Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.
@@ -49,13 +55,23 @@ Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm 
 
 ## Cross-Cutting Patterns
 
+### Design System & Voice
+
+The v3 visual system (colors, typography, components, layout) and product voice/content tone are documented in [`DESIGN.md`](DESIGN.md). Read it before producing new UI or user-visible copy.
+
 ### Auth & Permissions
 
 Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN, MCP_JWT) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/CLAUDE.md` for backend details and `frontend/CLAUDE.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
 
 ### Service Factory + Manual DI (Backend)
 
-No IoC container. Every service is a factory function with explicit dependencies. The entire dependency graph is wired in `backend/src/server/routes/index.ts` — see `backend/CLAUDE.md` for the full wiring map and patterns.
+No IoC container in either backend. Every service is a factory function with explicit dependencies.
+- **Node.js**: Wired in `backend/src/server/routes/index.ts` — see `backend/CLAUDE.md`.
+- **Go**: Wired in `backend-go/internal/server/api/api.go` via `NewRegistry()` — see `backend-go/CLAUDE.md`.
+
+### Interface Pattern (Go)
+
+Both handlers and services define narrow interfaces for their dependencies (consumer-defined interfaces). Only expose methods or fields that are needed — keep everything else private. This enables testability and loose coupling.
 
 ### API Layer (Frontend)
 
@@ -63,7 +79,7 @@ React Query + Axios with query key factories per domain. Each API domain in `fro
 
 ## Keeping CLAUDE.md Up to Date
 
-When making significant changes to the codebase (new services, architectural shifts, new patterns, major refactors), update the relevant CLAUDE.md file(s) with high-level findings. This includes this root file for cross-cutting concerns, `backend/CLAUDE.md` for backend changes, and `frontend/CLAUDE.md` for frontend changes. The goal is to keep these files accurate as living documentation so future sessions start with correct context.
+When making significant changes to the codebase (new services, architectural shifts, new patterns, major refactors), update the relevant CLAUDE.md file(s) with high-level findings. This includes this root file for cross-cutting concerns, `backend/CLAUDE.md` for Node.js backend changes, `backend-go/CLAUDE.md` for Go backend changes, and `frontend/CLAUDE.md` for frontend changes. The goal is to keep these files accurate as living documentation so future sessions start with correct context.
 
 ## Wiring a New Full-Stack Feature
 
