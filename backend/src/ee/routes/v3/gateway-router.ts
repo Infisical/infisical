@@ -118,7 +118,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         authMethod: authMethodArg
       });
 
-      const view = await server.services.resourceAuthMethod.loadView(gateway.id);
+      const view = await server.services.resourceAuthMethod.loadView({ type: "gateway", id: gateway.id });
       if (!view) throw new UnauthorizedError({ message: "Auth method missing after create" });
 
       await server.services.auditLog.createAuditLog({
@@ -268,7 +268,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         event: {
           type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE,
-          metadata: { tokenId: result.id, name: result.gatewayName }
+          metadata: { tokenId: result.id, name: result.resourceName }
         }
       });
 
@@ -309,7 +309,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             resourceType: "gateway",
             resourceId: req.params.gatewayId,
             method: result.method,
-            gatewayName: result.gatewayName,
+            resourceName: result.resourceName,
             deletedTokenCount: result.deletedTokenCount
           }
         }
@@ -362,13 +362,13 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
 
           await server.services.auditLog
             .createAuditLog({
-              orgId: result.gateway.orgId,
-              actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.gateway.id } },
+              orgId: result.orgId,
+              actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.resourceId } },
               event: {
                 type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
                 metadata: {
                   resourceType: "gateway",
-                  resourceId: result.gateway.id,
+                  resourceId: result.resourceId,
                   method: "aws",
                   methodConfigId: result.config.id,
                   principalArn: result.principalArn,
@@ -384,35 +384,35 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           void server.services.telemetry
             .sendPostHogEvents({
               event: PostHogEventTypes.ResourceAuthMethodLogin,
-              distinctId: `gateway-${result.gateway.id}`,
-              organizationId: result.gateway.orgId,
+              distinctId: `gateway-${result.resourceId}`,
+              organizationId: result.orgId,
               properties: {
                 resourceType: "gateway",
-                resourceId: result.gateway.id,
-                orgId: result.gateway.orgId,
+                resourceId: result.resourceId,
+                orgId: result.orgId,
                 method: "aws"
               }
             })
             .catch((err) => {
-              logger.error(err, `Failed to send telemetry [gatewayId=${result.gateway.id}]`);
+              logger.error(err, `Failed to send telemetry [gatewayId=${result.resourceId}]`);
             });
 
           return {
             accessToken: result.accessToken,
-            gatewayId: result.gateway.id,
+            gatewayId: result.resourceId,
             tokenType: "Bearer" as const
           };
         } catch (error) {
-          if (error instanceof UnauthorizedError && error.detail?.gatewayId) {
+          if (error instanceof UnauthorizedError && error.detail?.resourceId) {
             await server.services.auditLog
               .createAuditLog({
                 orgId: error.detail.orgId as string,
-                actor: { type: ActorType.GATEWAY, metadata: { gatewayId: error.detail.gatewayId as string } },
+                actor: { type: ActorType.GATEWAY, metadata: { gatewayId: error.detail.resourceId as string } },
                 event: {
                   type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED,
                   metadata: {
                     resourceType: "gateway",
-                    resourceId: error.detail.gatewayId as string,
+                    resourceId: error.detail.resourceId as string,
                     method: "aws",
                     reasonCode: error.detail.reasonCode as string,
                     message: error.message,
@@ -430,19 +430,22 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       }
 
-      const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
+      const result = await server.services.resourceAuthMethod.loginWithToken({
+        token: req.body.token,
+        expectedResourceType: "gateway"
+      });
 
       await server.services.auditLog
         .createAuditLog({
           orgId: result.orgId,
-          actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.gatewayId } },
+          actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.resourceId } },
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
             metadata: {
               resourceType: "gateway",
-              resourceId: result.gatewayId,
+              resourceId: result.resourceId,
               method: "token",
-              methodConfigId: result.gatewayId,
+              methodConfigId: result.resourceId,
               enrollmentTokenId: result.enrollmentTokenId
             }
           },
@@ -455,22 +458,22 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.ResourceAuthMethodLogin,
-          distinctId: `gateway-${result.gatewayId}`,
+          distinctId: `gateway-${result.resourceId}`,
           organizationId: result.orgId,
           properties: {
             resourceType: "gateway",
-            resourceId: result.gatewayId,
+            resourceId: result.resourceId,
             orgId: result.orgId,
             method: "token"
           }
         })
         .catch((err) => {
-          logger.error(err, `Failed to send telemetry [gatewayId=${result.gatewayId}]`);
+          logger.error(err, `Failed to send telemetry [gatewayId=${result.resourceId}]`);
         });
 
       return {
         accessToken: result.accessToken,
-        gatewayId: result.gatewayId,
+        gatewayId: result.resourceId,
         tokenType: "Bearer" as const
       };
     }
@@ -492,19 +495,22 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
+      const result = await server.services.resourceAuthMethod.loginWithToken({
+        token: req.body.token,
+        expectedResourceType: "gateway"
+      });
 
       await server.services.auditLog
         .createAuditLog({
           orgId: result.orgId,
-          actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.gatewayId } },
+          actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.resourceId } },
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
             metadata: {
               resourceType: "gateway",
-              resourceId: result.gatewayId,
+              resourceId: result.resourceId,
               method: "token",
-              methodConfigId: result.gatewayId,
+              methodConfigId: result.resourceId,
               enrollmentTokenId: result.enrollmentTokenId
             }
           },
@@ -514,7 +520,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         })
         .catch(() => {});
 
-      return { accessToken: result.accessToken, gatewayId: result.gatewayId };
+      return { accessToken: result.accessToken, gatewayId: result.resourceId };
     }
   });
 

@@ -12,7 +12,8 @@ export const ResourceAuthMethodsSchema = z.object({
   gatewayId: z.string().uuid().nullable().optional(),
   method: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  relayId: z.string().uuid().nullable().optional()
 });
 
 export type TResourceAuthMethods = z.infer<typeof ResourceAuthMethodsSchema>;

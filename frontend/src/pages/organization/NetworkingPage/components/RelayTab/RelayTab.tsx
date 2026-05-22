@@ -37,6 +37,7 @@ import {
 } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -49,16 +50,20 @@ import { RelayDeployModal } from "./components/RelayDeployModal";
 
 const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const isHealthy = !heartbeatDate || heartbeatDate >= oneHourAgo;
-  const tooltipContent = heartbeatDate
-    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
-    : "No heartbeat data available";
+  if (!heartbeatDate) {
+    return (
+      <Tooltip content="No heartbeat data available">
+        <span className="cursor-default text-yellow-400">Unregistered</span>
+      </Tooltip>
+    );
+  }
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const isHealthy = heartbeatDate >= oneHourAgo;
 
   return (
-    <Tooltip content={tooltipContent}>
+    <Tooltip content={`Last heartbeat: ${heartbeatDate.toLocaleString()}`}>
       <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
         {isHealthy ? "Healthy" : "Unreachable"}
       </span>
@@ -70,6 +75,8 @@ export const RelayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
+    const { currentOrg } = useOrganization();
+    const orgId = currentOrg?.id || "";
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deleteRelay",
@@ -124,7 +131,7 @@ export const RelayTab = withPermission(
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("deployRelay")}
             >
-              Deploy Relay
+              Create Relay
             </Button>
           </div>
         </div>
@@ -166,7 +173,18 @@ export const RelayTab = withPermission(
                   <TableSkeleton innerKey="relay-table" columns={4} key="relay-table" />
                 )}
                 {filteredRelays?.map((el) => (
-                  <Tr key={el.id}>
+                  <Tr
+                    key={el.id}
+                    className={el.orgId ? "cursor-pointer hover:bg-mineshaft-700" : ""}
+                    onClick={() => {
+                      if (el.orgId) {
+                        navigate({
+                          to: "/organizations/$orgId/networking/relays/$relayId",
+                          params: { orgId, relayId: el.id }
+                        });
+                      }
+                    }}
+                  >
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
