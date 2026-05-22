@@ -10,9 +10,12 @@ import { isIP } from "net";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { logger } from "@app/lib/logger";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
+
+const formatEntries = (entries: LookupAddress[]) => entries.map((e) => `${e.family}:${e.address}`).join(",");
 
 export type TValidatedHost = {
   hostname: string;
@@ -38,6 +41,7 @@ export const validateAndPinUrl = async (
   const validUrl = new URL(url);
 
   if (validUrl.username || validUrl.password) {
+    logger.warn(`safeRequest: rejecting URL with embedded credentials [hostname=${validUrl.hostname}]`);
     throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
   }
 
@@ -57,11 +61,13 @@ export const validateAndPinUrl = async (
     entries = [{ address: rawHost, family: isIP(rawHost) }];
   } else {
     if (rawHost === "localhost" || rawHost === "host.docker.internal") {
+      logger.warn(`safeRequest: rejecting literal local hostname [hostname=${rawHost}]`);
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
     const lookups = await dns.lookup(rawHost, { all: true });
 
     if (!lookups || lookups.length === 0) {
+      logger.warn(`safeRequest: DNS returned no addresses [hostname=${rawHost}]`);
       throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
     }
     entries = lookups;
@@ -69,6 +75,7 @@ export const validateAndPinUrl = async (
 
   const isInternalIp = entries.some((e) => isPrivateIp(e.address));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+    logger.warn(`safeRequest: rejecting private/internal IP [hostname=${rawHost}] [entries=${formatEntries(entries)}]`);
     throw new BadRequestError({ message: "Local IPs not allowed as URL" });
   }
 
@@ -79,6 +86,8 @@ export const validateAndPinUrl = async (
     isDynamicSecret: false,
     preResolvedIps: entries.map((e) => e.address)
   });
+
+  logger.debug(`safeRequest: validated and pinned [hostname=${rawHost}] [entries=${formatEntries(entries)}]`);
 
   return { hostname: rawHost, entries };
 };
@@ -238,14 +247,21 @@ const buildPinnedAgent = (
 
   const cacheKey = buildAgentCacheKey(validated, protocol, opts);
   const cached = agentCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    logger.debug(`safeRequest: pinned agent cache hit [hostname=${validated?.hostname ?? "n/a"}]`);
+    return cached;
+  }
 
   if (agentCache.size >= AGENT_CACHE_MAX) {
+    logger.info(`safeRequest: pinned agent cache full, clearing [size=${agentCache.size}]`);
     agentCache.clear();
   }
 
   const agent = constructAgent(validated, protocol, opts);
   agentCache.set(cacheKey, agent);
+  logger.debug(
+    `safeRequest: pinned agent cache miss, built new agent [hostname=${validated?.hostname ?? "n/a"}] [cacheSize=${agentCache.size}]`
+  );
   return agent;
 };
 
@@ -310,6 +326,11 @@ const resolveBaseUrl = (url: string, baseURL?: string): string => {
   return combineURLs(baseURL, url);
 };
 
+const logDispatch = (method: string, effectiveUrl: string, validated: TValidatedHost | undefined) => {
+  const pinned = validated ? formatEntries(validated.entries) : "none";
+  logger.debug(`safeRequest: dispatching [method=${method}] [url=${effectiveUrl}] [pinned=${pinned}]`);
+};
+
 const dispatch = async <T>(
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   url: string,
@@ -321,6 +342,7 @@ const dispatch = async <T>(
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
+  logDispatch(method, effectiveUrl, validated);
 
   return request.request<T>({
     ...axiosOpts,
@@ -339,6 +361,7 @@ const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
+  logDispatch(axiosOpts.method ?? "GET", effectiveUrl, validated);
 
   return request.request<T>({
     ...axiosOpts,

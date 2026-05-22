@@ -59,6 +59,10 @@ vi.mock("@app/lib/config/request", () => ({
   request: { request: (...args: unknown[]) => (requestRequestMock as any)(...args) }
 }));
 
+vi.mock("@app/lib/logger", () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+}));
+
 const PUBLIC_IP_V4 = "8.8.8.8";
 const PUBLIC_IP_V4_ALT = "1.1.1.1";
 const PRIVATE_IP_V4 = "10.0.0.1";
