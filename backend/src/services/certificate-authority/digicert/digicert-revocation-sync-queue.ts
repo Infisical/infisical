@@ -20,7 +20,7 @@ import {
 } from "./digicert-certificate-authority-fns";
 
 // 03:00 UTC: off-peak and one hour after the existing daily certificate-cleanup cron (02:00 UTC).
-const REVOCATION_SYNC_CRON_SCHEDULE = "* * * * *";
+const REVOCATION_SYNC_CRON_SCHEDULE = "0 3 * * *";
 const REVOCATION_LOOKBACK_SECONDS = 24 * 60 * 60;
 const ORDER_ID_LOOKUP_CHUNK_SIZE = 500;
 const HANDLER_TIMEOUT_MS = 30 * 60 * 1000;

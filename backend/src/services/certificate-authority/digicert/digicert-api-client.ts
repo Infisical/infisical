@@ -56,36 +56,6 @@ type TCheckValidationResponse = {
   }[];
 };
 
-export type TDigiCertOrderStatus =
-  | "pending"
-  | "issued"
-  | "rejected"
-  | "revoked"
-  | "waiting_pickup"
-  | "reissue_pending"
-  | "canceled"
-  | "active_issued";
-
-type TListOrdersResponse = {
-  orders: {
-    id: number;
-    status: string;
-    certificate?: {
-      id?: number;
-      serial_number?: string;
-      common_name?: string;
-    };
-    organization?: {
-      id?: number;
-    };
-  }[];
-  page: {
-    total: number;
-    limit: number;
-    offset: number;
-  };
-};
-
 type TOrderStatusChangesResponse = {
   orders?: {
     order_id: number;
@@ -153,30 +123,6 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       await request.put(`${baseURL}/order/certificate/${orderId}/revoke`, { comments }, { headers });
     }, `order revocation for ${orderId}`);
 
-  const listOrders = async ({
-    organizationId,
-    status,
-    offset,
-    limit
-  }: {
-    organizationId: number;
-    status: TDigiCertOrderStatus;
-    offset: number;
-    limit: number;
-  }) =>
-    wrap(async () => {
-      const params = new URLSearchParams({
-        "filters[organization_id]": String(organizationId),
-        "filters[status]": status,
-        offset: String(offset),
-        limit: String(limit)
-      });
-      const { data } = await request.get<TListOrdersResponse>(`${baseURL}/order/certificate?${params.toString()}`, {
-        headers
-      });
-      return data;
-    }, `list orders (status=${status}, org=${organizationId})`);
-
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>
     wrap(async () => {
       const params = new URLSearchParams({ seconds: String(seconds) });
@@ -193,7 +139,6 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
     checkValidation,
     downloadCertificatePem,
     revokeOrder,
-    listOrders,
     listOrderStatusChanges
   };
 };
