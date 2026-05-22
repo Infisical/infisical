@@ -822,16 +822,12 @@ export const createManySecretsRawFnFactory = ({
           message: `Secret already exists: ${secretsStoredInDB.map((el) => el.key).join(",")}`
         });
 
-      const encryptedSecrets = secrets.map((secret) => ({
-        secret,
-        encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob
-      }));
-
       const blindIndexes = await Promise.all(
-        encryptedSecrets.map(({ encryptedValue }) => generateSecretBlindIndex(encryptedValue))
+        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
       );
 
-      const inputSecrets = encryptedSecrets.map(({ secret, encryptedValue }, idx) => {
+      const inputSecrets = secrets.map((secret, idx) => {
+        const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob;
         return {
           type: secret.type,
           userId: secret.type === SecretType.Personal ? userId : null,
@@ -1034,16 +1030,12 @@ export const updateManySecretsRawFnFactory = ({
 
       const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
-      const encryptedSecrets = secrets.map((secret) => ({
-        secret,
-        encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob
-      }));
-
       const blindIndexes = await Promise.all(
-        encryptedSecrets.map(({ encryptedValue }) => generateSecretBlindIndex(encryptedValue))
+        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
       );
 
-      const inputSecrets = encryptedSecrets.map(({ secret, encryptedValue }, idx) => {
+      const inputSecrets = secrets.map((secret, idx) => {
+        const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob;
         if (secret.newSecretName === "") {
           throw new BadRequestError({ message: "New secret name cannot be empty" });
         }

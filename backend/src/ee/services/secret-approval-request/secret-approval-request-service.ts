@@ -750,7 +750,9 @@ export const secretApprovalRequestServiceFactory = ({
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
         const creationBlindIndexes = await Promise.all(
           secretCreationCommits.map((el) =>
-            el.encryptedValue ? generateSecretBlindIndex(el.encryptedValue) : Promise.resolve(undefined)
+            el.encryptedValue
+              ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
+              : Promise.resolve(undefined)
           )
         );
 
@@ -853,7 +855,7 @@ export const secretApprovalRequestServiceFactory = ({
             const shouldComputeBlindIndex =
               !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined;
             return shouldComputeBlindIndex
-              ? generateSecretBlindIndex(el.encryptedValue as Buffer)
+              ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
               : Promise.resolve(undefined);
           })
         );
