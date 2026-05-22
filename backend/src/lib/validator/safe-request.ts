@@ -41,13 +41,16 @@ export const validateAndPinUrl = async (
     throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
   }
 
-  // IPv6 literal hostnames come back from `new URL()` wrapped in brackets
-  // (e.g. "[::1]"). isIP and dns.lookup both reject the bracketed form, so
-  // strip them before passing the host on.
-  const rawHost =
-    validUrl.hostname.startsWith("[") && validUrl.hostname.endsWith("]")
-      ? validUrl.hostname.slice(1, -1)
-      : validUrl.hostname;
+  // `new URL()` preserves both IPv6 brackets (e.g. "[::1]") and trailing
+  // FQDN dots (e.g. "localhost."). Strip both so isIP / dns.lookup / the
+  // literal-hostname check all see a clean form.
+  let rawHost = validUrl.hostname;
+  if (rawHost.startsWith("[") && rawHost.endsWith("]")) {
+    rawHost = rawHost.slice(1, -1);
+  }
+  if (rawHost.endsWith(".")) {
+    rawHost = rawHost.slice(0, -1);
+  }
 
   let entries: LookupAddress[];
   if (isIP(rawHost)) {

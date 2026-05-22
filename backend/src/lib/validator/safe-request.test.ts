@@ -116,6 +116,16 @@ describe("safe-request SSRF helpers", () => {
       await expect(validateAndPinUrl("http://host.docker.internal")).rejects.toThrow(/Local IPs not allowed/i);
     });
 
+    it("rejects the trailing-dot FQDN form `localhost.`", async () => {
+      await expect(validateAndPinUrl("http://localhost./")).rejects.toThrow(/Local IPs not allowed/i);
+      expect(lookupMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects the trailing-dot FQDN form `host.docker.internal.`", async () => {
+      await expect(validateAndPinUrl("http://host.docker.internal./")).rejects.toThrow(/Local IPs not allowed/i);
+      expect(lookupMock).not.toHaveBeenCalled();
+    });
+
     it("rejects RFC1918 / loopback IPs by default", async () => {
       setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
       await expect(validateAndPinUrl("https://example.com")).rejects.toThrow(/Local IPs not allowed/i);
