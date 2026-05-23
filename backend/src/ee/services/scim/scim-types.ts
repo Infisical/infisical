@@ -114,6 +114,7 @@ export type TCreateScimGroupDTO = {
 export type TGetScimGroupDTO = {
   groupId: string;
   orgId: string;
+  isMembersExcluded?: boolean;
 };
 
 export type TUpdateScimGroupNamePutDTO = {

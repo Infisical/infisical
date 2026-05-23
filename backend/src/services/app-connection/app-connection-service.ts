@@ -29,6 +29,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
+  encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
   getAppConnectionMethodName,
@@ -429,6 +430,7 @@ export const appConnectionServiceFactory = ({
       method,
       app,
       credentials,
+      configuration,
       gatewayId,
       gatewayPoolId,
       projectId,
@@ -543,10 +545,18 @@ export const appConnectionServiceFactory = ({
             projectId
           });
 
+          const encryptedConfiguration = await encryptAppConnectionConfiguration({
+            configuration,
+            orgId: actor.orgId,
+            kmsService,
+            projectId
+          });
+
           const appConnection = await appConnectionDAL.create(
             {
               orgId: actor.orgId,
               encryptedCredentials,
+              encryptedConfiguration,
               method,
               app,
               gatewayId: gatewayPoolId ? null : gatewayId,
@@ -594,7 +604,8 @@ export const appConnectionServiceFactory = ({
       return {
         ...connection,
         credentialsHash: crypto.nativeCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
-        credentials: validatedCredentials
+        credentials: validatedCredentials,
+        configuration
       } as TAppConnection;
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -609,6 +620,7 @@ export const appConnectionServiceFactory = ({
     {
       connectionId,
       credentials,
+      configuration,
       gatewayId,
       gatewayPoolId,
       isAutoRotationEnabled,
@@ -767,11 +779,22 @@ export const appConnectionServiceFactory = ({
             })
           : undefined;
 
+        const encryptedConfiguration =
+          configuration !== undefined
+            ? await encryptAppConnectionConfiguration({
+                configuration,
+                orgId: actor.orgId,
+                kmsService,
+                projectId: appConnection.projectId
+              })
+            : undefined;
+
         return appConnectionDAL.updateById(
           connectionId,
           {
             orgId: actor.orgId,
             encryptedCredentials,
+            ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
             ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
             ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
             ...params

@@ -6,7 +6,14 @@ export enum SshConnectionMethod {
   SshKey = "ssh-key"
 }
 
-export type TSshConnection = TRootAppConnection & { app: AppConnection.SSH } & (
+export type TSshConnectionConfiguration = {
+  blockedUsers?: string;
+};
+
+export type TSshConnection = TRootAppConnection & {
+  app: AppConnection.SSH;
+  configuration?: TSshConnectionConfiguration;
+} & (
     | {
         method: SshConnectionMethod.Password;
         credentials: {

@@ -11,8 +11,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -147,6 +149,70 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           projectId: req.params.projectId
         }
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/memberships/:membershipId/permissions/audit",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      params: z.object({
+        projectId: z.string().min(1).trim(),
+        membershipId: z.string().min(1).trim()
+      }),
+      response: {
+        200: z.object({
+          sources: z
+            .object({
+              id: z.string(),
+              type: z.enum(["role", "group_role", "additional_privilege"]),
+              name: z.string(),
+              slug: z.string().optional(),
+              groupId: z.string().optional(),
+              groupName: z.string().optional(),
+              isTemporary: z.boolean(),
+              temporaryAccessStartTime: z.string().optional(),
+              temporaryAccessEndTime: z.string().optional(),
+              permissions: z.array(z.unknown())
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { sources } = await server.services.permission.getMembershipPermissionAudit({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        targetUserId: userId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.params.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
+          metadata: {
+            targetUserId: userId,
+            membershipId: req.params.membershipId
+          }
+        }
+      });
+
+      return { sources };
     }
   });
 
@@ -293,6 +359,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id)),
+          roles: req.body.roleSlugs || [ProjectMembershipRole.Member]
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({
           ...el,
@@ -373,6 +450,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipRoleUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userId,
+          roles: req.body.roles.map((r) => r.role)
+        }
+      });
+
       return { roles: membership.roles.map((el) => ({ ...el, projectMembershipId: req.params.membershipId })) };
     }
   });
@@ -443,6 +531,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           }
         });
       }
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id))
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({
           ...el,
@@ -509,6 +608,16 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: [userId]
+        }
+      });
+
       return {
         membership: {
           ...membership,
@@ -544,6 +653,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         projectId: req.params.projectId
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          userIds: [membership.actorUserId as string]
+        }
+      });
+
       return {
         membership: {
           ...membership,

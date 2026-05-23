@@ -11,8 +11,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
 
@@ -203,6 +205,15 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerIdentityAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       return { identityMembership: { ...membership, identityId: req.params.identityId } };
     }
   });

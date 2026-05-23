@@ -4,6 +4,7 @@ import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
+  AzureKeyVaultConnectionCertificateOutputCredentialsSchema,
   AzureKeyVaultConnectionClientSecretOutputCredentialsSchema,
   AzureKeyVaultConnectionOAuthOutputCredentialsSchema,
   AzureKeyVaultConnectionSchema,
@@ -40,4 +41,8 @@ export type TAzureKeyVaultConnectionCredentials = z.infer<typeof AzureKeyVaultCo
 
 export type TAzureKeyVaultConnectionClientSecretCredentials = z.infer<
   typeof AzureKeyVaultConnectionClientSecretOutputCredentialsSchema
+>;
+
+export type TAzureKeyVaultConnectionCertificateCredentials = z.infer<
+  typeof AzureKeyVaultConnectionCertificateOutputCredentialsSchema
 >;

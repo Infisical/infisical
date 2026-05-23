@@ -278,6 +278,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case AzureClientSecretsConnectionMethod.Certificate:
+    case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };

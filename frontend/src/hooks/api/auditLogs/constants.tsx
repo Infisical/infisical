@@ -51,6 +51,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
   [EventType.ADD_PROJECT_MEMBER]: "Add member",
   [EventType.REMOVE_PROJECT_MEMBER]: "Remove member",
+  [EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT]: "View member permission audit",
+  [EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT]: "View machine identity permission audit",
   [EventType.CREATE_FOLDER]: "Create folder",
   [EventType.UPDATE_FOLDER]: "Update folder",
   [EventType.DELETE_FOLDER]: "Delete folder",
@@ -439,10 +441,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GATEWAY_CREATE]: "Create gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
-  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Gateway login",
-  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Gateway login failed",
-  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update gateway auth method",
-  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke gateway access"
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Resource login",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Resource login failed",
+  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update resource auth method",
+  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke resource access",
+  [EventType.RELAY_CREATE]: "Create relay",
+  [EventType.RELAY_UPDATE]: "Update relay",
+  [EventType.RELAY_DELETE]: "Delete relay",
+  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -458,6 +464,8 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
 const sharedProjectEvents = [
   EventType.ADD_PROJECT_MEMBER,
   EventType.REMOVE_PROJECT_MEMBER,
+  EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
+  EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT,
   EventType.CREATE_PROJECT_ROLE,
   EventType.UPDATE_PROJECT_ROLE,
   EventType.DELETE_PROJECT_ROLE,

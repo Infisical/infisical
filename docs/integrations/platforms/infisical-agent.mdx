@@ -143,7 +143,7 @@ The secret template functions is what you will use to fetch resources such as st
 
   <Accordion title="dynamicSecret">
     ```bash
-    dynamicSecret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>"
+    dynamicSecret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>" "<optional-principals>"
     ```
 
     ```bash example-redis-dynamic-secret
@@ -153,11 +153,21 @@ The secret template functions is what you will use to fetch resources such as st
 
     ```
 
+    ```bash example-ssh-dynamic-secret
+      {{ with dynamicSecret "my-project" "dev" "/" "my-ssh-secret" "1h" "root,deploy" }}
+      {{ .PRIVATE_KEY }}
+      {{ .SIGNED_KEY }}
+      {{- end }}
+
+    ```
+
     **Function Name**: `dynamicSecret`
 
     **Description**: This function can be used to render a dynamic secret lease credentials. The credentials are automatically renewed before they expire, ensuring that the rendered credentials are always up-to-date.
 
     **Returns**: An object with keys corresponding to the dynamic secret lease credentials.
+
+    The `principals` argument is only applicable to SSH dynamic secrets, where it is **required**. It accepts a comma-separated list of principals for the SSH certificate. The requested principals must be in the allowed list configured on the dynamic secret.
 
     <Tip>
       Note that if you have multiple dynamic secret templates with identical configurations, only one lease will be created in Infisical for those templates, and the same lease will be written to your specified destination paths.

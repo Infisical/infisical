@@ -5,6 +5,7 @@ import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
+import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -145,6 +146,10 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
+      if (!privilegeDoc.actorIdentityId) {
+        throw new NotFoundError({ message: `Identity privilege with id ${req.params.id} not found` });
+      }
+
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
@@ -154,7 +159,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         selector: {
           id: req.params.id,
-          actorId: privilegeDoc.actorIdentityId as string,
+          actorId: privilegeDoc.actorIdentityId,
           actorType: ActorType.IDENTITY
         },
         data: {
@@ -168,7 +173,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       return {
         privilege: {
           ...privilege,
-          identityId: privilegeDoc.actorIdentityId as string,
+          identityId: privilegeDoc.actorIdentityId,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
@@ -205,6 +210,10 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
+      if (!privilegeDoc.actorIdentityId) {
+        throw new NotFoundError({ message: `Identity privilege with id ${req.params.id} not found` });
+      }
+
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
@@ -214,7 +223,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         selector: {
           id: req.params.id,
-          actorId: privilegeDoc.actorIdentityId as string,
+          actorId: privilegeDoc.actorIdentityId,
           actorType: ActorType.IDENTITY
         }
       });
@@ -222,7 +231,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       return {
         privilege: {
           ...privilege,
-          identityId: privilegeDoc.actorIdentityId as string,
+          identityId: privilegeDoc.actorIdentityId,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
@@ -259,6 +268,10 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
+      if (!privilegeDoc.actorIdentityId) {
+        throw new NotFoundError({ message: `Identity privilege with id ${req.params.id} not found` });
+      }
+
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
         permission: req.permission,
         scopeData: {
@@ -268,7 +281,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         selector: {
           id: req.params.id,
-          actorId: privilegeDoc.actorIdentityId as string,
+          actorId: privilegeDoc.actorIdentityId,
           actorType: ActorType.IDENTITY
         }
       });
@@ -276,7 +289,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       return {
         privilege: {
           ...privilege,
-          identityId: privilegeDoc.actorIdentityId as string,
+          identityId: privilegeDoc.actorIdentityId,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }

@@ -1,5 +1,5 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 import handlebars from "handlebars";
 
@@ -13,6 +13,7 @@ import {
   ServiceTokenScopes,
   TProjects
 } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   applicationAdminPermissions,
   applicationAuditorPermissions,
@@ -34,6 +35,7 @@ import { objectify } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -50,14 +52,20 @@ import {
   OrgPermissionSubjects
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
+import { escapeHandlebarsMissingDict, expandLegacyForbidActions, validateOrgSSO } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
   TGetServiceTokenProjectPermissionArg,
   TPermissionServiceFactory
 } from "./permission-service-types";
-import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./project-permission";
+import {
+  buildServiceTokenProjectPermission,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "./project-permission";
 
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles
@@ -84,35 +92,36 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 };
 
 const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
-  const rules = projectUserRoles
-    .map(({ role, permissions }) => {
-      switch (role) {
-        case ProjectMembershipRole.Admin:
-          return projectAdminPermissions;
-        case ProjectMembershipRole.Member:
-          return projectMemberPermissions;
-        case ProjectMembershipRole.Viewer:
-          return projectViewerPermission;
-        case ProjectMembershipRole.NoAccess:
-          return projectNoAccessPermissions;
-        case ProjectMembershipRole.SshHostBootstrapper:
-          return sshHostBootstrapPermissions;
-        case ProjectMembershipRole.KmsCryptographicOperator:
-          return cryptographicOperatorPermissions;
-        case ProjectMembershipRole.Custom: {
-          return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
-            permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-          );
+  const rules = expandLegacyForbidActions(
+    projectUserRoles
+      .map(({ role, permissions }) => {
+        switch (role) {
+          case ProjectMembershipRole.Admin:
+            return projectAdminPermissions;
+          case ProjectMembershipRole.Member:
+            return projectMemberPermissions;
+          case ProjectMembershipRole.Viewer:
+            return projectViewerPermission;
+          case ProjectMembershipRole.NoAccess:
+            return projectNoAccessPermissions;
+          case ProjectMembershipRole.SshHostBootstrapper:
+            return sshHostBootstrapPermissions;
+          case ProjectMembershipRole.KmsCryptographicOperator:
+            return cryptographicOperatorPermissions;
+          case ProjectMembershipRole.Custom: {
+            return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
+              permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
+            );
+          }
+          default:
+            throw new NotFoundError({
+              name: "ProjectRoleInvalid",
+              message: `Project role '${role}' not found`
+            });
         }
-        default:
-          throw new NotFoundError({
-            name: "ProjectRoleInvalid",
-            message: `Project role '${role}' not found`
-          });
-      }
-    })
-    .reduce((prev, curr) => prev.concat(curr), [])
-    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
+      })
+      .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[])
+  ).sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
 };
@@ -197,6 +206,8 @@ type TPermissionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
 };
 
 export const permissionServiceFactory = ({
@@ -206,7 +217,9 @@ export const permissionServiceFactory = ({
   userDAL,
   identityDAL,
   keyStore,
-  roleDAL
+  roleDAL,
+  additionalPrivilegeDAL,
+  groupDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
@@ -401,6 +414,7 @@ export const permissionServiceFactory = ({
     });
     if (!permissionData?.length)
       throw new ForbiddenRequestError({
+        name: "ProjectMembershipNotFound",
         message: `You are not a member of this project with ID ${projectId}. Please assign this ${actor} to the project with the appropriate permissions, then try again.`
       });
 
@@ -629,6 +643,10 @@ export const permissionServiceFactory = ({
       });
     }
 
+    if (!actorOrgId) {
+      throw new BadRequestError({ message: "Organization context is required for resource permission checks" });
+    }
+
     const memoKey = requestMemoKeys.resourcePermission({
       projectId,
       resourceType,
@@ -640,15 +658,8 @@ export const permissionServiceFactory = ({
     });
 
     return requestMemoize(memoKey, async () => {
-      const resourceMemberships = await permissionDAL.getResourceMembership({
-        projectId,
-        resourceType,
-        resourceId,
-        actorId,
-        actorType: actor
-      });
-
       let isProjectAdmin = false;
+      let isProjectMember = false;
       try {
         const projectPerm = await getProjectPermission({
           actor,
@@ -659,9 +670,31 @@ export const permissionServiceFactory = ({
           actionProjectType: ActionProjectType.CertificateManager
         });
         isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
-      } catch {
-        isProjectAdmin = false;
+        isProjectMember = true;
+      } catch (err) {
+        if (!(err instanceof ForbiddenRequestError) || err.name !== "ProjectMembershipNotFound") {
+          throw err;
+        }
       }
+
+      if (!isProjectMember) {
+        await getOrgPermission({
+          actor,
+          actorId,
+          orgId: actorOrgId,
+          actorOrgId,
+          scope: OrganizationActionScope.Any,
+          actorAuthMethod
+        });
+      }
+
+      const resourceMemberships = await permissionDAL.getResourceMembership({
+        projectId,
+        resourceType,
+        resourceId,
+        actorId,
+        actorType: actor
+      });
 
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(
@@ -946,6 +979,217 @@ export const permissionServiceFactory = ({
     return groupPermissions.some((groupPermission) => groupPermission.permission.can(...checkPermissions));
   };
 
+  const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    targetUserId
+  }) => {
+    const { permission } = await getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+
+    const targetMemberships = await permissionDAL.getPermission({
+      scopeData: {
+        scope: AccessScope.Project,
+        orgId: actorOrgId,
+        projectId
+      },
+      actorId: targetUserId,
+      actorType: ActorType.USER
+    });
+    if (!targetMemberships?.length) {
+      throw new NotFoundError({
+        message: `Target user with ID '${targetUserId}' is not a member of project with ID '${projectId}' [targetUserId=${targetUserId}] [projectId=${projectId}]`
+      });
+    }
+
+    const groupIds = [...new Set(targetMemberships.filter((m) => m.actorGroupId).map((m) => m.actorGroupId as string))];
+    const groupNameById: Record<string, string> = {};
+    if (groupIds.length) {
+      const groups = await groupDAL.find({ $in: { id: groupIds } });
+      groups.forEach((g) => {
+        groupNameById[g.id] = g.name;
+      });
+    }
+
+    const targetPrivileges = await additionalPrivilegeDAL.find({
+      projectId,
+      actorUserId: targetUserId
+    });
+    const privilegeNameById: Record<string, string> = {};
+    targetPrivileges.forEach((p) => {
+      privilegeNameById[p.id] = p.name;
+    });
+
+    const sources: Awaited<ReturnType<TPermissionServiceFactory["getMembershipPermissionAudit"]>>["sources"] = [];
+
+    targetMemberships.forEach((membership) => {
+      const isGroupInherited = Boolean(membership.actorGroupId);
+      const groupId = isGroupInherited ? (membership.actorGroupId as string) : undefined;
+      const groupName = groupId ? groupNameById[groupId] : undefined;
+
+      const activeRoles = (membership.roles ?? []).filter(isActiveRole);
+      activeRoles.forEach((role) => {
+        const isCustom = role.role === ProjectMembershipRole.Custom;
+        const builtRules = buildProjectPermissionRules([
+          { role: role.role, permissions: isCustom ? role.permissions : [] }
+        ]);
+        const packedPermissions = packRules(builtRules) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+        sources.push({
+          id: role.id,
+          type: isGroupInherited ? "group_role" : "role",
+          name: isCustom ? role.customRoleName || role.customRoleSlug || "Custom" : role.role,
+          slug: isCustom ? ProjectMembershipRole.Custom : role.role,
+          groupId,
+          groupName,
+          isTemporary: Boolean(role.isTemporary),
+          temporaryAccessStartTime: role.temporaryAccessStartTime?.toISOString(),
+          temporaryAccessEndTime: role.temporaryAccessEndTime?.toISOString(),
+          permissions: packedPermissions
+        });
+      });
+
+      if (isGroupInherited) return;
+
+      const activePrivileges = (membership.additionalPrivileges ?? []).filter(isActiveRole);
+      activePrivileges.forEach((priv) => {
+        const builtRules = buildProjectPermissionRules([
+          { role: ProjectMembershipRole.Custom, permissions: priv.permissions }
+        ]);
+        const packedPermissions = packRules(builtRules) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+        sources.push({
+          id: priv.id,
+          type: "additional_privilege",
+          name: privilegeNameById[priv.id] || "Additional Privilege",
+          isTemporary: Boolean(priv.isTemporary),
+          temporaryAccessStartTime: priv.temporaryAccessStartTime?.toISOString(),
+          temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
+          permissions: packedPermissions
+        });
+      });
+    });
+
+    return { sources };
+  };
+
+  const getIdentityPermissionAudit: TPermissionServiceFactory["getIdentityPermissionAudit"] = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    targetIdentityId
+  }) => {
+    const { permission } = await getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId: targetIdentityId })
+    );
+
+    const targetMemberships = await permissionDAL.getPermission({
+      scopeData: {
+        scope: AccessScope.Project,
+        orgId: actorOrgId,
+        projectId
+      },
+      actorId: targetIdentityId,
+      actorType: ActorType.IDENTITY
+    });
+    if (!targetMemberships?.length) {
+      throw new NotFoundError({
+        message: `Target identity with ID '${targetIdentityId}' is not a member of project with ID '${projectId}' [targetIdentityId=${targetIdentityId}] [projectId=${projectId}]`
+      });
+    }
+
+    const groupIds = [...new Set(targetMemberships.filter((m) => m.actorGroupId).map((m) => m.actorGroupId as string))];
+    const groupNameById: Record<string, string> = {};
+    if (groupIds.length) {
+      const groups = await groupDAL.find({ $in: { id: groupIds } });
+      groups.forEach((g) => {
+        groupNameById[g.id] = g.name;
+      });
+    }
+
+    const targetPrivileges = await additionalPrivilegeDAL.find({
+      projectId,
+      actorIdentityId: targetIdentityId
+    });
+    const privilegeNameById: Record<string, string> = {};
+    targetPrivileges.forEach((p) => {
+      privilegeNameById[p.id] = p.name;
+    });
+
+    const sources: Awaited<ReturnType<TPermissionServiceFactory["getIdentityPermissionAudit"]>>["sources"] = [];
+
+    targetMemberships.forEach((membership) => {
+      const isGroupInherited = Boolean(membership.actorGroupId);
+      const groupId = isGroupInherited ? (membership.actorGroupId as string) : undefined;
+      const groupName = groupId ? groupNameById[groupId] : undefined;
+
+      const activeRoles = (membership.roles ?? []).filter(isActiveRole);
+      activeRoles.forEach((role) => {
+        const isCustom = role.role === ProjectMembershipRole.Custom;
+        const builtRules = buildProjectPermissionRules([
+          { role: role.role, permissions: isCustom ? role.permissions : [] }
+        ]);
+        const packedPermissions = packRules(builtRules) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+        sources.push({
+          id: role.id,
+          type: isGroupInherited ? "group_role" : "role",
+          name: isCustom ? role.customRoleName || role.customRoleSlug || "Custom" : role.role,
+          slug: isCustom ? ProjectMembershipRole.Custom : role.role,
+          groupId,
+          groupName,
+          isTemporary: Boolean(role.isTemporary),
+          temporaryAccessStartTime: role.temporaryAccessStartTime?.toISOString(),
+          temporaryAccessEndTime: role.temporaryAccessEndTime?.toISOString(),
+          permissions: packedPermissions
+        });
+      });
+
+      if (isGroupInherited) return;
+
+      const activePrivileges = (membership.additionalPrivileges ?? []).filter(isActiveRole);
+      activePrivileges.forEach((priv) => {
+        const builtRules = buildProjectPermissionRules([
+          { role: ProjectMembershipRole.Custom, permissions: priv.permissions }
+        ]);
+        const packedPermissions = packRules(builtRules) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+        sources.push({
+          id: priv.id,
+          type: "additional_privilege",
+          name: privilegeNameById[priv.id] || "Additional Privilege",
+          isTemporary: Boolean(priv.isTemporary),
+          temporaryAccessStartTime: priv.temporaryAccessStartTime?.toISOString(),
+          temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
+          permissions: packedPermissions
+        });
+      });
+    });
+
+    return { sources };
+  };
+
   return {
     getOrgPermission,
     getProjectPermission,
@@ -953,6 +1197,8 @@ export const permissionServiceFactory = ({
     getProjectPermissions,
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
-    checkGroupProjectPermission
+    checkGroupProjectPermission,
+    getMembershipPermissionAudit,
+    getIdentityPermissionAudit
   };
 };

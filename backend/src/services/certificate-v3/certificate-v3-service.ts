@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -46,11 +47,16 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { createDistinguishedName, extractDnParts } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  createDistinguishedName,
+  extractDnParts
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
@@ -79,6 +85,7 @@ import {
   generateSelfSignedCertificate,
   getEffectiveAlgorithms,
   isValidRenewalTiming,
+  resolveEffectiveApiConfig,
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
@@ -90,7 +97,8 @@ import {
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi,
-  removeRootCaFromChain
+  removeRootCaFromChain,
+  validatePqcLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
@@ -160,7 +168,12 @@ type TCertificateV3ServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
-  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findAllByProfileId">;
+  pkiApplicationProfileDAL: Pick<
+    TPkiApplicationProfileDALFactory,
+    "findAllByProfileId" | "findOneByApplicationAndProfile"
+  >;
+  apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -679,7 +692,9 @@ export const certificateV3ServiceFactory = ({
   approvalPolicyService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL,
+  licenseService
 }: TCertificateV3ServiceFactoryDep) => {
   const $resolveApplicationIdForProfile = async (
     profile: {
@@ -841,6 +856,23 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
+
+    if (certificateRequest.keyAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.keyAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
+    if (certificateRequest.signatureAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.signatureAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
@@ -1139,8 +1171,15 @@ export const certificateV3ServiceFactory = ({
           });
         }
 
+        const effectiveApiConfig = await resolveEffectiveApiConfig({
+          applicationId,
+          profileId: profile.id,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          profile,
+          { apiConfig: effectiveApiConfig },
           resolvedTtl,
           processResult.selfSignedResult.notAfter
         );
@@ -1237,6 +1276,8 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
 
+    assertCaInProfileProject(ca, profile);
+
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1308,8 +1349,15 @@ export const certificateV3ServiceFactory = ({
         flowDefaultTtl: ""
       });
 
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId,
+        profileId: profile.id,
+        profileApiConfig: profile.apiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-        profile,
+        { apiConfig: effectiveApiConfig },
         effectiveTtl,
         new Date(certificateRecord.notAfter)
       );
@@ -1486,6 +1534,8 @@ export const certificateV3ServiceFactory = ({
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     validateCaSupport(ca, "CSR signing");
 
@@ -1739,8 +1789,15 @@ export const certificateV3ServiceFactory = ({
           throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
         }
 
+        const effectiveApiConfig = await resolveEffectiveApiConfig({
+          applicationId,
+          profileId: profile.id,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          profile,
+          { apiConfig: effectiveApiConfig },
           effectiveTtl,
           new Date(signedCertRecord.notAfter)
         );
@@ -1930,6 +1987,9 @@ export const certificateV3ServiceFactory = ({
     // already approved a request that's guaranteed to fail downstream.
     if (profile.caId) {
       const preflightCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+      if (preflightCa) {
+        assertCaInProfileProject(preflightCa, profile);
+      }
       if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
         validateAcmIssuanceInputs({
           csr: certificateOrder.csr,
@@ -2085,6 +2145,8 @@ export const certificateV3ServiceFactory = ({
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
@@ -2314,6 +2376,8 @@ export const certificateV3ServiceFactory = ({
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
 
+        assertCaInProfileProject(ca, profile ?? originalCert);
+
         const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
         if (!eligibilityCheck.isEligible) {
           await certificateDAL.updateById(
@@ -2412,7 +2476,18 @@ export const certificateV3ServiceFactory = ({
       const notBefore = new Date();
       const notAfter = new Date(Date.now() + parseTtlToMs(ttl));
 
-      const finalRenewBeforeDays = profile ? calculateFinalRenewBeforeDays(profile, ttl, notAfter) : undefined;
+      const effectiveApiConfig = profile
+        ? await resolveEffectiveApiConfig({
+            applicationId: originalCert.applicationId ?? undefined,
+            profileId: profile.id,
+            profileApiConfig: profile.apiConfig,
+            pkiApplicationProfileDAL,
+            apiEnrollmentConfigDAL
+          })
+        : undefined;
+      const finalRenewBeforeDays = profile
+        ? calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, ttl, notAfter)
+        : undefined;
 
       let certificate: string;
       let certificateChain: string;

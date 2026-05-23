@@ -3,6 +3,10 @@ import { useFormContext } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import {
+  defaultVaultConnectionId,
+  VaultConnectionAndNamespaceFields
+} from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -14,11 +18,8 @@ import {
   TextArea
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import {
-  useGetVaultMounts,
-  useGetVaultNamespaces,
-  useGetVaultPolicies
-} from "@app/hooks/api/migration/queries";
+import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
+import { useGetVaultMounts, useGetVaultPolicies } from "@app/hooks/api/migration/queries";
 
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
 import { analyzeVaultPolicy, PolicyBlock, PolicyLine } from "./VaultPolicyAnalyzer.utils";
@@ -28,14 +29,20 @@ import { VaultPolicyPreview } from "./VaultPolicyPreview";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  appConnections: TAvailableAppConnection[];
 };
 
 type ContentProps = {
   onClose: () => void;
+  appConnections: TAvailableAppConnection[];
 };
 
-const Content = ({ onClose }: ContentProps) => {
+const Content = ({ onClose, appConnections }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
+  const hasAppConnections = appConnections.length > 0;
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
+    defaultVaultConnectionId(appConnections)
+  );
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
   const [hclPolicy, setHclPolicy] = useState<string>("");
@@ -46,17 +53,34 @@ const Content = ({ onClose }: ContentProps) => {
     lines: PolicyLine[];
   } | null>(null);
 
-  const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
+  const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
+
   const { data: policies, isLoading: isLoadingPolicies } = useGetVaultPolicies(
     shouldFetchPolicies,
-    selectedNamespace ?? undefined
+    selectedNamespace ?? undefined,
+    activeConnectionId
   );
   const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
     shouldFetchMounts,
-    selectedNamespace ?? undefined
+    selectedNamespace ?? undefined,
+    activeConnectionId
   );
 
-  // Enable fetching policies and mounts when namespace is selected
+  const handleConnectionChange = (id: string) => {
+    setSelectedConnectionId(id);
+    setSelectedNamespace(null);
+    setSelectedPolicy(null);
+    setHclPolicy("");
+    setAnalysisResult(null);
+    setShouldFetchMounts(false);
+    setShouldFetchPolicies(false);
+  };
+
+  const handleNamespaceChange = (ns: string) => {
+    setSelectedNamespace(ns);
+    setSelectedPolicy(null);
+  };
+
   useEffect(() => {
     if (selectedNamespace) {
       setShouldFetchPolicies(true);
@@ -120,6 +144,11 @@ const Content = ({ onClose }: ContentProps) => {
   const handleTranslateAndApply = () => {
     if (!hclPolicy.trim()) {
       createNotification({ type: "error", text: "Please provide a Vault HCL policy" });
+      return;
+    }
+
+    if (hasAppConnections && !selectedConnectionId) {
+      createNotification({ type: "error", text: "Please select an app connection" });
       return;
     }
 
@@ -206,33 +235,15 @@ const Content = ({ onClose }: ContentProps) => {
         </div>
       </div>
 
-      <FormControl
-        label="Namespace"
-        className="mb-4"
-        tooltipText="Required to fetch mount information. Policies will be translated using your Vault's KV secret engine mounts to extract environments and secret paths."
-      >
-        <>
-          <FilterableSelect
-            value={namespaces?.find((ns) => ns.id === selectedNamespace)}
-            onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                const namespace = value as { id: string; name: string };
-                setSelectedNamespace(namespace.name);
-                setSelectedPolicy(null);
-              }
-            }}
-            options={namespaces || []}
-            getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
-            isDisabled={isLoadingNamespaces}
-            placeholder="Select namespace..."
-            className="w-full"
-          />
-          <p className="mt-1 text-xs text-mineshaft-400">
-            Select the Vault namespace to fetch policies and mount information
-          </p>
-        </>
-      </FormControl>
+      <VaultConnectionAndNamespaceFields
+        appConnections={appConnections}
+        connectionId={selectedConnectionId}
+        onConnectionIdChange={handleConnectionChange}
+        namespace={selectedNamespace}
+        onNamespaceChange={handleNamespaceChange}
+        namespaceTooltip="Required to fetch mount information. Policies will be translated using your Vault's KV secret engine mounts to extract environments and secret paths."
+        namespaceHelpText="Select the Vault namespace to fetch policies and mount information"
+      />
 
       <FormControl label="Select Vault Policy (Optional)" className="mb-4">
         <>
@@ -312,7 +323,7 @@ path "secret/metadata/prod/*" {
   );
 };
 
-export const VaultPolicyImportModal = ({ isOpen, onOpenChange }: Props) => {
+export const VaultPolicyImportModal = ({ isOpen, onOpenChange, appConnections }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -320,7 +331,7 @@ export const VaultPolicyImportModal = ({ isOpen, onOpenChange }: Props) => {
         subTitle="Select a policy from your Vault namespace or paste your own HCL policy to translate it into Infisical permissions."
         className="max-w-4xl"
       >
-        <Content onClose={() => onOpenChange(false)} />
+        <Content onClose={() => onOpenChange(false)} appConnections={appConnections} />
       </ModalContent>
     </Modal>
   );

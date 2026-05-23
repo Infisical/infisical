@@ -20,6 +20,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -70,6 +72,7 @@ type TPkiSyncQueueFactoryDep = {
   certificateSyncDAL: TCertificateSyncDALFactory;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 type PkiSyncActionJob = Job<
@@ -103,7 +106,8 @@ export const pkiSyncQueueFactory = ({
   certificateAuthorityCertDAL,
   certificateSyncDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  telemetryService
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -588,6 +592,17 @@ export const pkiSyncQueueFactory = ({
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
           lastSyncedAt: isSynced ? ranAt : undefined
+        });
+
+        await telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.PkiSyncExecuted,
+          distinctId: `platform/${pkiSync.projectId}`,
+          organizationId: pkiSync.connection.orgId,
+          properties: {
+            orgId: pkiSync.connection.orgId,
+            destination: pkiSync.destination,
+            success: isSynced
+          }
         });
       }
     }

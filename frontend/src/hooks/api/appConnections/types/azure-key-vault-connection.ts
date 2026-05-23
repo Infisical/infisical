@@ -3,7 +3,8 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 
 export enum AzureKeyVaultConnectionMethod {
   OAuth = "oauth",
-  ClientSecret = "client-secret"
+  ClientSecret = "client-secret",
+  Certificate = "certificate"
 }
 
 export type TAzureKeyVaultConnection = TRootAppConnection & { app: AppConnection.AzureKeyVault } & (
@@ -20,6 +21,15 @@ export type TAzureKeyVaultConnection = TRootAppConnection & { app: AppConnection
           clientId: string;
           clientSecret: string;
           tenantId: string;
+        };
+      }
+    | {
+        method: AzureKeyVaultConnectionMethod.Certificate;
+        credentials: {
+          clientId: string;
+          tenantId: string;
+          certificateBody: string;
+          privateKey: string;
         };
       }
   );

@@ -15,6 +15,7 @@ import {
 
 export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   encryptedCredentials: true,
+  encryptedConfiguration: true,
   app: true,
   method: true
 }).extend({

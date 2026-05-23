@@ -42,7 +42,8 @@ export enum OrgRelayPermissionActions {
   CreateRelays = "create-relays",
   ListRelays = "list-relays",
   EditRelays = "edit-relays",
-  DeleteRelays = "delete-relays"
+  DeleteRelays = "delete-relays",
+  RevokeRelayAccess = "revoke-relay-access"
 }
 
 export enum OrgPermissionMachineIdentityAuthTemplateActions {

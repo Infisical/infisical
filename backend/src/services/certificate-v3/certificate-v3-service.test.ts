@@ -53,7 +53,8 @@ vi.mock("../certificate-authority/certificate-authority-fns", () => ({
   extractDnParts: vi.fn().mockReturnValue({
     commonName: "test.example.com"
   }),
-  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com")
+  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com"),
+  assertCaInProfileProject: vi.fn()
 }));
 
 describe("CertificateV3Service", () => {
@@ -274,8 +275,15 @@ describe("CertificateV3Service", () => {
         find: vi.fn().mockResolvedValue([])
       },
       pkiApplicationProfileDAL: {
-        findAllByProfileId: vi.fn().mockResolvedValue([])
-      } as never
+        findAllByProfileId: vi.fn().mockResolvedValue([]),
+        findOneByApplicationAndProfile: vi.fn().mockResolvedValue(undefined)
+      } as never,
+      apiEnrollmentConfigDAL: {
+        findById: vi.fn().mockResolvedValue(undefined)
+      },
+      licenseService: {
+        getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
+      }
     });
   });
 
@@ -333,7 +341,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-123",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -396,7 +405,8 @@ describe("CertificateV3Service", () => {
             notAfter: null,
             activeCaCertId: "cert-123",
             caId: "ca-123",
-            crlDistributionPointUrls: []
+            crlDistributionPointUrls: [],
+            disableManagedCrlDistributionPointUrl: false
           }
         }
       };
@@ -490,7 +500,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-123",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -601,7 +612,8 @@ describe("CertificateV3Service", () => {
             notAfter: null,
             activeCaCertId: "cert-123",
             caId: "ca-123",
-            crlDistributionPointUrls: []
+            crlDistributionPointUrls: [],
+            disableManagedCrlDistributionPointUrl: false
           }
         }
       };
@@ -766,7 +778,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-123",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -809,7 +822,8 @@ describe("CertificateV3Service", () => {
             notAfter: null,
             activeCaCertId: "cert-123",
             caId: "ca-123",
-            crlDistributionPointUrls: []
+            crlDistributionPointUrls: [],
+            disableManagedCrlDistributionPointUrl: false
           }
         }
       };
@@ -1040,7 +1054,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1203,7 +1218,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1366,7 +1382,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1529,7 +1546,8 @@ describe("CertificateV3Service", () => {
           notAfter: undefined,
           activeCaCertId: "cert-123",
           caId: "ca-1",
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       };
 
@@ -1757,7 +1775,8 @@ describe("CertificateV3Service", () => {
         activeCaCertId: "cert-123",
         dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
         serialNumber: "123456789",
-        crlDistributionPointUrls: []
+        crlDistributionPointUrls: [],
+        disableManagedCrlDistributionPointUrl: false
       }
     };
 

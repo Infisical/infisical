@@ -128,7 +128,8 @@ const orgRelayPermissionSchema = z
     [OrgRelayPermissionActions.ListRelays]: z.boolean().optional(),
     [OrgRelayPermissionActions.EditRelays]: z.boolean().optional(),
     [OrgRelayPermissionActions.DeleteRelays]: z.boolean().optional(),
-    [OrgRelayPermissionActions.CreateRelays]: z.boolean().optional()
+    [OrgRelayPermissionActions.CreateRelays]: z.boolean().optional(),
+    [OrgRelayPermissionActions.RevokeRelayAccess]: z.boolean().optional()
   })
   .optional();
 
@@ -231,13 +232,15 @@ export const rolePermission2Form = (permissions: TPermission[] = []) => {
   // i would have to write a if loop with both conditions same
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
-    const { action } = permission;
+    const actions = Array.isArray(permission.action) ? permission.action : [permission.action];
     let { subject } = permission;
     if (subject === OrgPermissionSubjects.Workspace) {
       subject = OrgPermissionSubjects.Project;
     }
     if (!formVal?.[subject]) formVal[subject] = {};
-    formVal[subject][action] = true;
+    actions.forEach((action) => {
+      formVal[subject][action] = true;
+    });
   });
 
   return formVal;

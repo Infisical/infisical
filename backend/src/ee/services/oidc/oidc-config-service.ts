@@ -255,6 +255,8 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+        } else if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
         }
 
         return foundUser;

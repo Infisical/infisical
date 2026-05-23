@@ -11,6 +11,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
+import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TCertificateCleanupConfigDALFactory } from "./certificate-cleanup-dal";
 import { CLEANUP_BATCH_SIZE, CleanupRunStatus } from "./certificate-cleanup-types";
 
@@ -21,6 +23,7 @@ type TCertificateCleanupQueueFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "delete">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "delete">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateCleanupQueueFactory = ReturnType<typeof certificateCleanupQueueFactory>;
@@ -31,7 +34,8 @@ export const certificateCleanupQueueFactory = ({
   certificateCleanupConfigDAL,
   certificateDAL,
   certificateRequestDAL,
-  auditLogService
+  auditLogService,
+  telemetryService
 }: TCertificateCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -194,6 +198,17 @@ export const certificateCleanupQueueFactory = ({
         logger.info(
           `${QueueJobs.CertificateCleanup}: completed — deleted ${totalDeleted} total, ${totalErrors} errors`
         );
+
+        if (totalDeleted > 0) {
+          await telemetryService.sendPostHogEvents({
+            event: PostHogEventTypes.CertificateCleanupCompleted,
+            distinctId: "platform/certificate-cleanup",
+            properties: {
+              deletedCount: totalDeleted,
+              projectsProcessed: configs.length
+            }
+          });
+        }
       }
     });
   };

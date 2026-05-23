@@ -865,13 +865,6 @@ export const secretRotationV2ServiceFactory = ({
     { type, rotationId, deleteSecrets, revokeGeneratedCredentials }: TDeleteSecretRotationV2DTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretRotation)
-      throw new BadRequestError({
-        message: "Failed to delete secret rotation due to plan restriction. Upgrade plan to delete secret rotation."
-      });
-
     const secretRotation = await secretRotationV2DAL.findById(rotationId);
 
     if (!secretRotation)

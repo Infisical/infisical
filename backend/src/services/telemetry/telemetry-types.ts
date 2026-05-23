@@ -7,6 +7,7 @@ import {
   IdentityActor,
   KmipClientActor,
   PlatformActor,
+  RelayActor,
   ScepAccountActor,
   ScimClientActor,
   ServiceActor,
@@ -114,7 +115,55 @@ export enum PostHogEventTypes {
   HoneyTokenUpdated = "Honey Token Updated",
   HoneyTokenRevoked = "Honey Token Revoked",
   HoneyTokenReset = "Honey Token Reset",
-  HoneyTokenTriggered = "Honey Token Triggered"
+  HoneyTokenTriggered = "Honey Token Triggered",
+
+  // PKI / Certificate Manager events
+  CaCreated = "CA Created",
+  CaDeleted = "CA Deleted",
+  CaRenewed = "CA Renewed",
+  CertificatePolicyCreated = "Certificate Policy Created",
+  CertificatePolicyDeleted = "Certificate Policy Deleted",
+  CertificateProfileCreated = "Certificate Profile Created",
+  CertificateProfileDeleted = "Certificate Profile Deleted",
+  PkiApplicationCreated = "PKI Application Created",
+  PkiApplicationDeleted = "PKI Application Deleted",
+  PkiApplicationMemberAdded = "PKI Application Member Added",
+  PkiApplicationProfileAttached = "PKI Application Profile Attached",
+  EnrollmentMethodConfigured = "Enrollment Method Configured",
+  EnrollmentMethodRemoved = "Enrollment Method Removed",
+  CertificateRevoked = "Certificate Revoked",
+  CertificateRenewed = "Certificate Renewed",
+  CertificateAutoRenewalFailed = "Certificate Auto-Renewal Failed",
+  CertificateDeleted = "Certificate Deleted",
+  CertificateExported = "Certificate Exported",
+  CertificateRequestCreated = "Certificate Request Created",
+  PkiSyncCreated = "PKI Sync Created",
+  PkiSyncDeleted = "PKI Sync Deleted",
+  PkiSyncExecuted = "PKI Sync Executed",
+  PkiAlertCreated = "PKI Alert Created",
+  PkiAlertDeleted = "PKI Alert Deleted",
+  PkiApprovalPolicyCreated = "PKI Approval Policy Created",
+  PkiApprovalRequestReviewed = "PKI Approval Request Reviewed",
+  PkiDiscoveryCreated = "PKI Discovery Created",
+  PkiDiscoveryScanTriggered = "PKI Discovery Scan Triggered",
+  PkiDiscoveryDeleted = "PKI Discovery Deleted",
+  SignerCreated = "Signer Created",
+  SignerDeleted = "Signer Deleted",
+  CodeSigningOperation = "Code Signing Operation",
+  CertManagerIdentityAdded = "Cert Manager Identity Added",
+  CertificateCleanupConfigured = "Certificate Cleanup Configured",
+  CertificateCleanupCompleted = "Certificate Cleanup Completed",
+
+  CustomRoleCreated = "Custom Role Created",
+  CustomRoleUpdated = "Custom Role Updated",
+  CustomRoleDeleted = "Custom Role Deleted",
+  OrgMembershipRoleUpdated = "Org Membership Role Updated",
+  OrgMembershipDeleted = "Org Membership Deleted",
+  ProjectMembershipCreated = "Project Membership Created",
+  ProjectMembershipRoleUpdated = "Project Membership Role Updated",
+  ProjectMembershipDeleted = "Project Membership Deleted",
+  OrganizationCreated = "Organization Created",
+  SubOrganizationCreated = "Sub Organization Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -145,7 +194,8 @@ export type TSecretModifiedEvent = {
       | KmipClientActor
       | EstAccountActor
       | ScepAccountActor
-      | GatewayActor;
+      | GatewayActor
+      | RelayActor;
   };
 };
 
@@ -166,6 +216,21 @@ export type TUserSignedUpEvent = {
     email: string;
     attributionSource?: string;
     signupMethod?: string;
+  };
+};
+
+export type TOrganizationCreatedEvent = {
+  event: PostHogEventTypes.OrganizationCreated;
+  properties: {
+    name: string;
+  };
+};
+
+export type TSubOrganizationCreatedEvent = {
+  event: PostHogEventTypes.SubOrganizationCreated;
+  properties: {
+    name: string;
+    parentOrgId: string;
   };
 };
 
@@ -335,9 +400,20 @@ export type TTelemetryInstanceStatsEvent = {
     projects: number;
     secrets: number;
     organizations: number;
-    organizationNames: number;
+    organizationNames: string[];
     numberOfSecretOperationsMade: number;
     numberOfSecretProcessed: number;
+    environments: number;
+    secretSyncs: number;
+    appConnections: number;
+    integrations: number;
+    certificateAuthorities: number;
+    certificates: number;
+    dynamicSecrets: number;
+    identityAuthMethods: number;
+    groups: number;
+    secretApprovalPolicies: number;
+    activeGateways: number;
   };
 };
 
@@ -887,6 +963,358 @@ export type THoneyTokenTriggeredEvent = {
   };
 };
 
+// PKI / Certificate Manager event types
+
+export type TCaCreatedEvent = {
+  event: PostHogEventTypes.CaCreated;
+  properties: {
+    caType: string;
+    caKeyAlgorithm?: string;
+    orgId: string;
+  };
+};
+
+export type TCaDeletedEvent = {
+  event: PostHogEventTypes.CaDeleted;
+  properties: {
+    caType: string;
+    orgId: string;
+  };
+};
+
+export type TCaRenewedEvent = {
+  event: PostHogEventTypes.CaRenewed;
+  properties: {
+    caType: string;
+    orgId: string;
+  };
+};
+
+export type TCertificatePolicyCreatedEvent = {
+  event: PostHogEventTypes.CertificatePolicyCreated;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TCertificatePolicyDeletedEvent = {
+  event: PostHogEventTypes.CertificatePolicyDeleted;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TCertificateProfileCreatedEvent = {
+  event: PostHogEventTypes.CertificateProfileCreated;
+  properties: {
+    orgId: string;
+    issuerType: string;
+  };
+};
+
+export type TCertificateProfileDeletedEvent = {
+  event: PostHogEventTypes.CertificateProfileDeleted;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPkiApplicationCreatedEvent = {
+  event: PostHogEventTypes.PkiApplicationCreated;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPkiApplicationDeletedEvent = {
+  event: PostHogEventTypes.PkiApplicationDeleted;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPkiApplicationMemberAddedEvent = {
+  event: PostHogEventTypes.PkiApplicationMemberAdded;
+  properties: {
+    orgId: string;
+    applicationId: string;
+    role: string;
+  };
+};
+
+export type TPkiApplicationProfileAttachedEvent = {
+  event: PostHogEventTypes.PkiApplicationProfileAttached;
+  properties: {
+    orgId: string;
+    applicationId: string;
+  };
+};
+
+export type TEnrollmentMethodConfiguredEvent = {
+  event: PostHogEventTypes.EnrollmentMethodConfigured;
+  properties: {
+    orgId: string;
+    enrollmentMethod: string;
+  };
+};
+
+export type TEnrollmentMethodRemovedEvent = {
+  event: PostHogEventTypes.EnrollmentMethodRemoved;
+  properties: {
+    orgId: string;
+    enrollmentMethod: string;
+  };
+};
+
+export type TCertificateRevokedEvent = {
+  event: PostHogEventTypes.CertificateRevoked;
+  properties: {
+    orgId: string;
+    applicationId?: string;
+  };
+};
+
+export type TCertificateRenewedEvent = {
+  event: PostHogEventTypes.CertificateRenewed;
+  properties: {
+    orgId: string;
+    applicationId?: string;
+    profileId?: string;
+  };
+};
+
+export type TCertificateAutoRenewalFailedEvent = {
+  event: PostHogEventTypes.CertificateAutoRenewalFailed;
+  properties: {
+    orgId: string;
+    profileId?: string;
+  };
+};
+
+export type TCertificateDeletedEvent = {
+  event: PostHogEventTypes.CertificateDeleted;
+  properties: {
+    orgId: string;
+    applicationId?: string;
+  };
+};
+
+export type TCertificateExportedEvent = {
+  event: PostHogEventTypes.CertificateExported;
+  properties: {
+    orgId: string;
+    format?: string;
+  };
+};
+
+export type TCertificateRequestCreatedEvent = {
+  event: PostHogEventTypes.CertificateRequestCreated;
+  properties: {
+    orgId: string;
+    applicationId?: string;
+    profileId?: string;
+  };
+};
+
+export type TPkiSyncCreatedEvent = {
+  event: PostHogEventTypes.PkiSyncCreated;
+  properties: {
+    orgId: string;
+    destination: string;
+    isAutoSyncEnabled?: boolean;
+  };
+};
+
+export type TPkiSyncDeletedEvent = {
+  event: PostHogEventTypes.PkiSyncDeleted;
+  properties: {
+    orgId: string;
+    destination: string;
+  };
+};
+
+export type TPkiSyncExecutedEvent = {
+  event: PostHogEventTypes.PkiSyncExecuted;
+  properties: {
+    orgId: string;
+    destination: string;
+    success: boolean;
+  };
+};
+
+export type TPkiAlertCreatedEvent = {
+  event: PostHogEventTypes.PkiAlertCreated;
+  properties: {
+    orgId: string;
+    applicationId: string;
+    alertType?: string;
+  };
+};
+
+export type TPkiAlertDeletedEvent = {
+  event: PostHogEventTypes.PkiAlertDeleted;
+  properties: {
+    orgId: string;
+    applicationId: string;
+  };
+};
+
+export type TPkiApprovalPolicyCreatedEvent = {
+  event: PostHogEventTypes.PkiApprovalPolicyCreated;
+  properties: {
+    orgId: string;
+    policyType: string;
+  };
+};
+
+export type TPkiApprovalRequestReviewedEvent = {
+  event: PostHogEventTypes.PkiApprovalRequestReviewed;
+  properties: {
+    orgId: string;
+    decision: string;
+  };
+};
+
+export type TPkiDiscoveryCreatedEvent = {
+  event: PostHogEventTypes.PkiDiscoveryCreated;
+  properties: {
+    orgId: string;
+    discoveryType: string;
+  };
+};
+
+export type TPkiDiscoveryScanTriggeredEvent = {
+  event: PostHogEventTypes.PkiDiscoveryScanTriggered;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPkiDiscoveryDeletedEvent = {
+  event: PostHogEventTypes.PkiDiscoveryDeleted;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TSignerCreatedEvent = {
+  event: PostHogEventTypes.SignerCreated;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TSignerDeletedEvent = {
+  event: PostHogEventTypes.SignerDeleted;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TCodeSigningOperationEvent = {
+  event: PostHogEventTypes.CodeSigningOperation;
+  properties: {
+    orgId: string;
+    signerId: string;
+  };
+};
+
+export type TCertManagerIdentityAddedEvent = {
+  event: PostHogEventTypes.CertManagerIdentityAdded;
+  properties: {
+    orgId: string;
+    role?: string;
+  };
+};
+
+export type TCertificateCleanupConfiguredEvent = {
+  event: PostHogEventTypes.CertificateCleanupConfigured;
+  properties: {
+    orgId: string;
+    isEnabled: boolean;
+  };
+};
+
+export type TCertificateCleanupCompletedEvent = {
+  event: PostHogEventTypes.CertificateCleanupCompleted;
+  properties: {
+    deletedCount: number;
+    projectsProcessed: number;
+  };
+};
+
+export type TCustomRoleCreatedEvent = {
+  event: PostHogEventTypes.CustomRoleCreated;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TCustomRoleUpdatedEvent = {
+  event: PostHogEventTypes.CustomRoleUpdated;
+  properties: {
+    roleId: string;
+    name?: string;
+    slug?: string;
+    scope: string;
+    permissionsUpdated: boolean;
+  };
+};
+
+export type TCustomRoleDeletedEvent = {
+  event: PostHogEventTypes.CustomRoleDeleted;
+  properties: {
+    roleId: string;
+    name: string;
+    slug: string;
+    scope: string;
+  };
+};
+
+export type TOrgMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.OrgMembershipRoleUpdated;
+  properties: {
+    membershipId: string;
+    newRole: string;
+  };
+};
+
+export type TProjectMembershipRoleUpdatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipRoleUpdated;
+  properties: {
+    projectId: string;
+    userId: string;
+    roles: string[];
+  };
+};
+
+export type TOrgMembershipDeletedEvent = {
+  event: PostHogEventTypes.OrgMembershipDeleted;
+  properties: {
+    membershipIds: string[];
+  };
+};
+
+export type TProjectMembershipCreatedEvent = {
+  event: PostHogEventTypes.ProjectMembershipCreated;
+  properties: {
+    projectId: string;
+    userIds: string[];
+    roles: string[];
+  };
+};
+
+export type TProjectMembershipDeletedEvent = {
+  event: PostHogEventTypes.ProjectMembershipDeleted;
+  properties: {
+    projectId: string;
+    userIds: string[];
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -977,4 +1405,49 @@ export type TPostHogEvent = {
   | THoneyTokenRevokedEvent
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
+  | TCaCreatedEvent
+  | TCaDeletedEvent
+  | TCaRenewedEvent
+  | TCertificatePolicyCreatedEvent
+  | TCertificatePolicyDeletedEvent
+  | TCertificateProfileCreatedEvent
+  | TCertificateProfileDeletedEvent
+  | TPkiApplicationCreatedEvent
+  | TPkiApplicationDeletedEvent
+  | TPkiApplicationMemberAddedEvent
+  | TPkiApplicationProfileAttachedEvent
+  | TEnrollmentMethodConfiguredEvent
+  | TEnrollmentMethodRemovedEvent
+  | TCertificateRevokedEvent
+  | TCertificateRenewedEvent
+  | TCertificateAutoRenewalFailedEvent
+  | TCertificateDeletedEvent
+  | TCertificateExportedEvent
+  | TCertificateRequestCreatedEvent
+  | TPkiSyncCreatedEvent
+  | TPkiSyncDeletedEvent
+  | TPkiSyncExecutedEvent
+  | TPkiAlertCreatedEvent
+  | TPkiAlertDeletedEvent
+  | TPkiApprovalPolicyCreatedEvent
+  | TPkiApprovalRequestReviewedEvent
+  | TPkiDiscoveryCreatedEvent
+  | TPkiDiscoveryScanTriggeredEvent
+  | TPkiDiscoveryDeletedEvent
+  | TSignerCreatedEvent
+  | TSignerDeletedEvent
+  | TCodeSigningOperationEvent
+  | TCertManagerIdentityAddedEvent
+  | TCertificateCleanupConfiguredEvent
+  | TCertificateCleanupCompletedEvent
+  | TCustomRoleCreatedEvent
+  | TCustomRoleUpdatedEvent
+  | TCustomRoleDeletedEvent
+  | TOrgMembershipRoleUpdatedEvent
+  | TOrgMembershipDeletedEvent
+  | TProjectMembershipCreatedEvent
+  | TProjectMembershipRoleUpdatedEvent
+  | TProjectMembershipDeletedEvent
+  | TOrganizationCreatedEvent
+  | TSubOrganizationCreatedEvent
 );

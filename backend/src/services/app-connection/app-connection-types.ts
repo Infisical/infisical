@@ -390,7 +390,9 @@ import {
   TZabbixConnectionInput
 } from "./zabbix";
 
-export type TAppConnection = { id: string } & (
+export type TAppConnectionConfiguration = Record<string, unknown> | undefined;
+
+export type TAppConnection = { id: string; configuration?: TAppConnectionConfiguration } & (
   | TAwsConnection
   | TGitHubConnection
   | TGitHubRadarConnection
@@ -555,7 +557,9 @@ export type TCreateAppConnectionDTO = Pick<
   | "projectId"
   | "rotation"
   | "isAutoRotationEnabled"
->;
+> & {
+  configuration?: Record<string, unknown>;
+};
 
 export type TUpdateAppConnectionDTO = Partial<
   Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId" | "rotation">

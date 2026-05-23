@@ -66,6 +66,8 @@ export enum EventType {
   DELETE_ENVIRONMENT = "delete-environment",
   ADD_PROJECT_MEMBER = "add-project-member",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
+  GET_PROJECT_IDENTITY_PERMISSION_AUDIT = "get-project-identity-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -438,5 +440,9 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
-  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke"
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+  RELAY_CREATE = "relay-create",
+  RELAY_UPDATE = "relay-update",
+  RELAY_DELETE = "relay-delete",
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create"
 }

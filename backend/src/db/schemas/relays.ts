@@ -16,7 +16,8 @@ export const RelaysSchema = z.object({
   name: z.string(),
   host: z.string(),
   heartbeat: z.date().nullable().optional(),
-  healthAlertedAt: z.date().nullable().optional()
+  healthAlertedAt: z.date().nullable().optional(),
+  tokenVersion: z.number().default(0)
 });
 
 export type TRelays = z.infer<typeof RelaysSchema>;

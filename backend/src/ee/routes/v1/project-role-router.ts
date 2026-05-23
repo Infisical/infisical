@@ -8,9 +8,11 @@ import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-p
 import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -80,6 +82,18 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
             description: req.body.description,
             permissions: stringifiedPermissions
           }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: req.body.name,
+          slug: req.body.slug,
+          scope: "project"
         }
       });
 
@@ -162,6 +176,19 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: req.body.name,
+          slug: req.body.slug,
+          scope: "project",
+          permissionsUpdated: !!req.body.permissions
+        }
+      });
+
       return { role: { ...role, projectId: role.projectId as string } };
     }
   });
@@ -216,6 +243,18 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
             slug: role.slug,
             name: role.name
           }
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CustomRoleDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          roleId: role.id,
+          name: role.name,
+          slug: role.slug,
+          scope: "project"
         }
       });
 

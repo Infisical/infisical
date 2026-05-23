@@ -1117,7 +1117,7 @@ export const gatewayV2ServiceFactory = ({
             type: NotificationType.GATEWAY_HEALTH_ALERT,
             title: "Gateway Health Alert",
             body,
-            link: "/organization/networking"
+            link: `/organizations/${orgId}/networking`
           }))
         );
 
@@ -1259,7 +1259,7 @@ export const gatewayV2ServiceFactory = ({
         throw err;
       }
 
-      await resourceAuthMethodService.initAtCreate({ gatewayId: created.id, authMethod }, tx);
+      await resourceAuthMethodService.initAtCreate({ resource: { type: "gateway", id: created.id }, authMethod }, tx);
 
       return created;
     });
@@ -1309,7 +1309,7 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const enrollGateway = async ({ token }: { token: string }) => {
-    return resourceAuthMethodService.loginWithToken({ token });
+    return resourceAuthMethodService.loginWithToken({ token, expectedResourceType: "gateway" });
   };
 
   return {

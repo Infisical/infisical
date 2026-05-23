@@ -13,7 +13,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
+import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGenerateKmipClientCertificate } from "@app/hooks/api/kmip";
 import { KmipClientCertificate, TKmipClient } from "@app/hooks/api/kmip/types";
@@ -98,11 +98,13 @@ const KmipClientCertificateForm = ({
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
-              {certKeyAlgorithms.map(({ label, value }) => (
-                <SelectItem value={String(value || "")} key={label}>
-                  {label}
-                </SelectItem>
-              ))}
+              {certKeyAlgorithms
+                .filter(({ value }) => !isPqcAlgorithm(value))
+                .map(({ label, value }) => (
+                  <SelectItem value={String(value || "")} key={label}>
+                    {label}
+                  </SelectItem>
+                ))}
             </Select>
           </FormControl>
         )}

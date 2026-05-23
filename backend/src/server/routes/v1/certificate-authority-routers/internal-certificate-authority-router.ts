@@ -4,6 +4,7 @@ import { CaSigningConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaSigningConfigType } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-enums";
@@ -19,6 +20,7 @@ import {
   InternalCertificateAuthoritySchema,
   UpdateInternalCertificateAuthoritySchema
 } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { registerCertificateAuthorityEndpoints } from "./certificate-authority-endpoints";
 
@@ -135,6 +137,16 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
             caId: ca.id,
             dn: ca.dn
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CaRenewed,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          caType: CaType.INTERNAL,
+          orgId: req.permission.orgId
         }
       });
 

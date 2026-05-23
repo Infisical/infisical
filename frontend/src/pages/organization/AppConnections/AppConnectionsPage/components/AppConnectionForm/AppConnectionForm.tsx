@@ -94,6 +94,7 @@ type AppConnectionFormData = DiscriminativePick<
     rotationInterval: number;
     rotateAtUtc: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 const RotationConfirmation = ({

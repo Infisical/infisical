@@ -93,7 +93,8 @@ export type TCreateAuditLogDTO = {
     | AcmeAccountActor
     | EstAccountActor
     | ScepAccountActor
-    | GatewayActor;
+    | GatewayActor
+    | RelayActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -313,6 +314,8 @@ export enum EventType {
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+  GET_PROJECT_MEMBER_PERMISSION_AUDIT = "get-project-member-permission-audit",
+  GET_PROJECT_IDENTITY_PERMISSION_AUDIT = "get-project-identity-permission-audit",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -366,6 +369,7 @@ export enum EventType {
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   RENEW_CA = "renew-certificate-authority",
+  EXPORT_CERT_MANAGER_PROJECT = "export-cert-manager-project",
   GET_CA_CSR = "get-certificate-authority-csr",
   GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
@@ -855,6 +859,10 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+  RELAY_CREATE = "relay-create",
+  RELAY_UPDATE = "relay-update",
+  RELAY_DELETE = "relay-delete",
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -883,7 +891,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
-  [ActorType.GATEWAY]: "gatewayId"
+  [ActorType.GATEWAY]: "gatewayId",
+  [ActorType.RELAY]: "relayId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -951,6 +960,10 @@ interface GatewayActorMetadata {
   gatewayId: string;
 }
 
+interface RelayActorMetadata {
+  relayId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1010,6 +1023,11 @@ export interface GatewayActor {
   metadata: GatewayActorMetadata;
 }
 
+export interface RelayActor {
+  type: ActorType.RELAY;
+  metadata: RelayActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1021,7 +1039,8 @@ export type Actor =
   | AcmeAccountActor
   | EstAccountActor
   | ScepAccountActor
-  | GatewayActor;
+  | GatewayActor
+  | RelayActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -2359,6 +2378,21 @@ interface RemoveProjectMemberEvent {
   };
 }
 
+interface GetProjectMemberPermissionAuditEvent {
+  type: EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT;
+  metadata: {
+    targetUserId: string;
+    membershipId: string;
+  };
+}
+
+interface GetProjectIdentityPermissionAuditEvent {
+  type: EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT;
+  metadata: {
+    targetIdentityId: string;
+  };
+}
+
 interface CreateFolderEvent {
   type: EventType.CREATE_FOLDER;
   metadata: {
@@ -3027,6 +3061,21 @@ interface RenewCa {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ExportCertManagerProject {
+  type: EventType.EXPORT_CERT_MANAGER_PROJECT;
+  metadata: {
+    sourceProjectId: string;
+    destinationProjectId: string;
+    exportedCertificateAuthorities: number;
+    renamedCertificateAuthorities: { originalName: string; newName: string }[];
+    exportedCertificatePolicies: number;
+    renamedCertificatePolicies: { originalName: string; newName: string }[];
+    exportedCertificateProfiles: number;
+    skippedCertificateProfiles: number;
+    renamedCertificateProfiles: { originalSlug: string; newSlug: string }[];
   };
 }
 
@@ -6363,6 +6412,7 @@ interface CreateAcmeOrderEvent {
     identifiers: Array<{
       type: AcmeIdentifierType;
       value: string;
+      wildcard?: boolean;
     }>;
   };
 }
@@ -6904,11 +6954,12 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodResourceType = "gateway" | "relay";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
@@ -6921,7 +6972,7 @@ interface ResourceAuthMethodLoginEvent {
 interface ResourceAuthMethodLoginFailedEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     reasonCode: string;
@@ -6934,7 +6985,7 @@ interface ResourceAuthMethodLoginFailedEvent {
 interface ResourceAuthMethodUpdateEvent {
   type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
@@ -6947,11 +6998,44 @@ interface ResourceAuthMethodUpdateEvent {
 interface ResourceAuthMethodRevokeEvent {
   type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
-    gatewayName: string;
+    resourceName: string;
     deletedTokenCount: number;
+  };
+}
+
+interface RelayCreateEvent {
+  type: EventType.RELAY_CREATE;
+  metadata: {
+    relayId: string;
+    name: string;
+  };
+}
+
+interface RelayUpdateEvent {
+  type: EventType.RELAY_UPDATE;
+  metadata: {
+    relayId: string;
+    name: string;
+    host: string;
+  };
+}
+
+interface RelayDeleteEvent {
+  type: EventType.RELAY_DELETE;
+  metadata: {
+    relayId: string;
+    name: string;
+  };
+}
+
+interface RelayEnrollmentTokenCreateEvent {
+  type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
   };
 }
 
@@ -7180,6 +7264,8 @@ export type Event =
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent
+  | GetProjectMemberPermissionAuditEvent
+  | GetProjectIdentityPermissionAuditEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
@@ -7224,6 +7310,7 @@ export type Event =
   | UpdateCa
   | DeleteCa
   | RenewCa
+  | ExportCertManagerProject
   | GetCaCsr
   | GetCaCerts
   | GetCaCert
@@ -7663,6 +7750,10 @@ export type Event =
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
+  | RelayCreateEvent
+  | RelayUpdateEvent
+  | RelayDeleteEvent
+  | RelayEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent
