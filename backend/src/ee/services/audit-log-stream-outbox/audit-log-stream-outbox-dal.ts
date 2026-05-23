@@ -139,11 +139,11 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // Flip them back to 'retry' with nextRetryAt=NOW() so the next debounce-driven
   // flush picks them up. Attempts is left unchanged — a stale claim is a worker
   // fault, not a delivery failure, and shouldn't burn retry budget.
-  const requeueStaleClaims = async (staleBefore: Date): Promise<number> => {
+  const requeueStaleClaims = async (thresholdMs: number): Promise<number> => {
     try {
       const updated = await db(TableName.AuditLogStreamOutbox)
         .where("status", AuditLogStreamOutboxStatus.Processing)
-        .andWhere("lockedAt", "<", staleBefore)
+        .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
         .update({
           status: AuditLogStreamOutboxStatus.Retry,
           nextRetryAt: db.fn.now(),

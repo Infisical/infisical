@@ -238,11 +238,10 @@ export const auditLogStreamOutboxServiceFactory = ({
   // forever and never re-enter the drain query. Flip them back to 'retry' so
   // the next event for that stream picks them up via the normal debounce path.
   const sweepStaleClaims = async () => {
-    const staleBefore = new Date(Date.now() - STALE_CLAIM_THRESHOLD_MS);
-    const recovered = await auditLogStreamOutboxDAL.requeueStaleClaims(staleBefore);
+    const recovered = await auditLogStreamOutboxDAL.requeueStaleClaims(STALE_CLAIM_THRESHOLD_MS);
     if (recovered > 0) {
       logger.warn(
-        `audit-log-stream-outbox: recovered ${recovered} stale claims [staleBefore=${staleBefore.toISOString()}]`
+        `audit-log-stream-outbox: recovered ${recovered} stale claims [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
       );
     }
   };
