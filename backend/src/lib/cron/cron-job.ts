@@ -35,7 +35,8 @@ export const CronJobName = {
   GoDaddyOrderPolling: "godaddy-order-polling",
   CaCrlRotation: "ca-crl-rotation",
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
-  SignerIssuancePolling: "signer-issuance-polling"
+  SignerIssuancePolling: "signer-issuance-polling",
+  AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

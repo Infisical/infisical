@@ -1,18 +1,26 @@
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
 import { TAuditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
 
+// Sweeper cadence. Runs every 5 min — comfortably tighter than the 10-minute
+// stale-claim threshold so a stuck worker is recovered within ~15 min worst case.
+const STALE_CLAIM_SWEEPER_CRON = "*/5 * * * *";
+const STALE_CLAIM_SWEEPER_RUN_HASH_TTL_S = 60 * 60;
+
 export type TAuditLogStreamOutboxQueueDep = {
   queueService: TQueueServiceFactory;
-  auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "drainStream">;
+  cronJob: TCronJobFactory;
+  auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "drainStream" | "sweepStaleClaims">;
 };
 
 // Boots one BullMQ worker per provider so a slow upstream (e.g. a wedged
 // Splunk HEC) can't block deliveries to a healthy one (e.g. Datadog).
 export const auditLogStreamOutboxQueueFactory = ({
   queueService,
+  cronJob,
   auditLogStreamOutboxService
 }: TAuditLogStreamOutboxQueueDep) => {
   const registerWorker = <T extends QueueName>(queueName: T, provider: LogProvider) => {
@@ -35,4 +43,19 @@ export const auditLogStreamOutboxQueueFactory = ({
   registerWorker(QueueName.AuditLogStreamCustom, LogProvider.Custom);
   registerWorker(QueueName.AuditLogStreamDatadog, LogProvider.Datadog);
   registerWorker(QueueName.AuditLogStreamSplunk, LogProvider.Splunk);
+
+  // Stale-claim sweeper. Registered separately via init() so it lands in the
+  // cron startup batch alongside the other cron registrations in routes/index.ts.
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.AuditLogStreamOutboxStaleClaimSweeper,
+      pattern: STALE_CLAIM_SWEEPER_CRON,
+      runHashTtlS: STALE_CLAIM_SWEEPER_RUN_HASH_TTL_S,
+      handler: async () => {
+        await auditLogStreamOutboxService.sweepStaleClaims();
+      }
+    });
+  };
+
+  return { init };
 };

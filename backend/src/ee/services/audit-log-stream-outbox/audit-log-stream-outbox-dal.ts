@@ -134,11 +134,36 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Stale-claim recovery: rows whose worker crashed mid-batch never had their
+  // 'processing' status flipped back, so they're invisible to the drain query.
+  // Flip them back to 'retry' with nextRetryAt=NOW() so the next debounce-driven
+  // flush picks them up. Attempts is left unchanged — a stale claim is a worker
+  // fault, not a delivery failure, and shouldn't burn retry budget.
+  const requeueStaleClaims = async (staleBefore: Date): Promise<number> => {
+    try {
+      const updated = await db(TableName.AuditLogStreamOutbox)
+        .where("status", AuditLogStreamOutboxStatus.Processing)
+        .andWhere("lockedAt", "<", staleBefore)
+        .update({
+          status: AuditLogStreamOutboxStatus.Retry,
+          nextRetryAt: db.fn.now(),
+          lockedAt: null,
+          workerId: null,
+          lastError: "stale-claim-recovered: worker did not release lock before threshold"
+        });
+
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: requeueStaleClaims" });
+    }
+  };
+
   return {
     batchInsert,
     claimBatchForStream,
     deleteByIds,
     markBatchForRetry,
-    moveToDlq
+    moveToDlq,
+    requeueStaleClaims
   };
 };

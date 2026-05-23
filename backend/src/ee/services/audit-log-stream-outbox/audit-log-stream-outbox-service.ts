@@ -27,6 +27,11 @@ const MAX_ATTEMPTS = 5;
 const BACKOFF_BASE_MS = 30_000;
 const BACKOFF_MAX_MS = 15 * 60_000;
 
+// Stale-claim sweeper threshold: a single flush job's worst-case legitimate
+// hold time is MAX_BATCHES_PER_JOB × AUDIT_LOG_STREAM_BATCH_TIMEOUT ≈ 5 min.
+// Anything older than this can't be a live worker.
+export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
+
 const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
   [LogProvider.Azure]: QueueName.AuditLogStreamAzure,
   [LogProvider.Cribl]: QueueName.AuditLogStreamCribl,
@@ -81,6 +86,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
 export type TAuditLogStreamOutboxServiceFactory = {
   enqueueForOrg: (orgId: string, auditLog: TAuditLogs) => Promise<void>;
   drainStream: (data: TAuditLogStreamFlushJobData) => Promise<void>;
+  sweepStaleClaims: () => Promise<void>;
 };
 
 export const auditLogStreamOutboxServiceFactory = ({
@@ -91,6 +97,37 @@ export const auditLogStreamOutboxServiceFactory = ({
   queueService,
   onStreamFailure
 }: TAuditLogStreamOutboxServiceFactoryDep): TAuditLogStreamOutboxServiceFactory => {
+  // Try to win the 5s SETNX debounce for a stream and, on win, enqueue a delayed
+  // flush job on the matching per-provider queue. Returning false means another
+  // writer already covered the window — there's nothing for the caller to do.
+  const debounceAndEnqueueFlush = async (streamId: string, orgId: string, provider: LogProvider): Promise<boolean> => {
+    const queueName = PROVIDER_QUEUE_MAP[provider];
+    if (!queueName) {
+      logger.warn(
+        `audit-log-stream-outbox: unknown provider, skipping flush enqueue [provider=${provider}] [streamId=${streamId}]`
+      );
+      return false;
+    }
+
+    const debounceKey = KeyStorePrefixes.AuditLogStreamFlushDebounce(streamId);
+    const acquired = await keyStore.setItemWithExpiryNX(debounceKey, FLUSH_DEBOUNCE_SECONDS, "1");
+    if (!acquired) return false;
+
+    // Job ID matches the debounce key so BullMQ collapses any in-flight duplicates.
+    await queueService.queue(
+      queueName,
+      QueueJobs.AuditLogStreamFlush,
+      { streamId, orgId, provider },
+      {
+        jobId: `flush:${streamId}`,
+        delay: FLUSH_DEBOUNCE_MS,
+        removeOnComplete: true,
+        removeOnFail: { count: 50 }
+      }
+    );
+    return true;
+  };
+
   // Per-audit-log fanout:
   //   1. Look up active streams for the org.
   //   2. Insert one outbox row per stream (payload is self-contained).
@@ -106,33 +143,7 @@ export const auditLogStreamOutboxServiceFactory = ({
     );
 
     await Promise.allSettled(
-      streams.map(async (stream) => {
-        const provider = stream.provider as LogProvider;
-        const queueName = PROVIDER_QUEUE_MAP[provider];
-        if (!queueName) {
-          logger.warn(
-            `audit-log-stream-outbox: unknown provider, skipping flush enqueue [provider=${provider}] [streamId=${stream.id}]`
-          );
-          return;
-        }
-
-        const debounceKey = KeyStorePrefixes.AuditLogStreamFlushDebounce(stream.id);
-        const acquired = await keyStore.setItemWithExpiryNX(debounceKey, FLUSH_DEBOUNCE_SECONDS, "1");
-        if (!acquired) return;
-
-        // Job ID matches the debounce key so BullMQ collapses any in-flight duplicates.
-        await queueService.queue(
-          queueName,
-          QueueJobs.AuditLogStreamFlush,
-          { streamId: stream.id, orgId, provider },
-          {
-            jobId: `flush:${stream.id}`,
-            delay: FLUSH_DEBOUNCE_MS,
-            removeOnComplete: true,
-            removeOnFail: { count: 50 }
-          }
-        );
-      })
+      streams.map((stream) => debounceAndEnqueueFlush(stream.id, orgId, stream.provider as LogProvider))
     );
   };
 
@@ -223,8 +234,22 @@ export const auditLogStreamOutboxServiceFactory = ({
     }
   };
 
+  // Stale-claim sweeper. Rows whose worker crashed mid-batch stay 'processing'
+  // forever and never re-enter the drain query. Flip them back to 'retry' so
+  // the next event for that stream picks them up via the normal debounce path.
+  const sweepStaleClaims = async () => {
+    const staleBefore = new Date(Date.now() - STALE_CLAIM_THRESHOLD_MS);
+    const recovered = await auditLogStreamOutboxDAL.requeueStaleClaims(staleBefore);
+    if (recovered > 0) {
+      logger.warn(
+        `audit-log-stream-outbox: recovered ${recovered} stale claims [staleBefore=${staleBefore.toISOString()}]`
+      );
+    }
+  };
+
   return {
     enqueueForOrg,
-    drainStream
+    drainStream,
+    sweepStaleClaims
   };
 };
