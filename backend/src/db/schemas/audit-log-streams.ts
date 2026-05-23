@@ -21,8 +21,7 @@ export const AuditLogStreamsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   provider: z.string().default("custom"),
-  encryptedCredentials: zodBuffer,
-  streamMode: z.string().default("batch")
+  encryptedCredentials: zodBuffer
 });
 
 export type TAuditLogStreams = z.infer<typeof AuditLogStreamsSchema>;
