@@ -23,7 +23,7 @@ const createProjectEnvironment = async (name: string, slug: string) => {
 const deleteProjectEnvironment = async (envId: string) => {
   const res = await testServer.inject({
     method: "DELETE",
-    url: `/api/v1/workspace/${seedData1.project.id}/environments/${envId}`,
+    url: `/api/v1/workspace/${seedData1.project.id}/environments/${envId}?hardDelete=true`,
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
     }
