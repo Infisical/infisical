@@ -21,11 +21,7 @@ import {
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
@@ -2643,96 +2639,18 @@ export const secretServiceFactory = ({
     secretId,
     secretVersions: filterSecretVersions
   }: TGetSecretVersionsDTO) => {
-    const secretVersionV2 = await secretV2BridgeService
-      .getSecretVersions({
-        actorId,
-        actor,
-        actorOrgId,
-        actorAuthMethod,
-        limit,
-        offset,
-        secretId,
-        secretVersions: filterSecretVersions
-      })
-      .catch((err) => {
-        if ((err as Error).message === "BadRequest: Failed to find secret") {
-          return null;
-        }
-
-        logger.error(err);
-      });
-
-    if (secretVersionV2) return secretVersionV2;
-
-    const secret = await secretDAL.findById(secretId);
-    if (!secret) throw new NotFoundError({ message: `Secret with ID '${secretId}' not found` });
-    const folder = await folderDAL.findById(secret.folderId);
-    if (!folder) throw new NotFoundError({ message: `Folder with ID '${secret.folderId}' not found` });
-
-    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
-
-    if (!folderWithPath) {
-      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
-    }
-
-    const { botKey } = await projectBotService.getBotKey(folder.projectId);
-    if (!botKey)
-      throw new NotFoundError({ message: `Project bot for project with ID '${folder.projectId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
+    const secretVersionV2 = await secretV2BridgeService.getSecretVersions({
       actorId,
-      projectId: folder.projectId,
-      actorAuthMethod,
+      actor,
       actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-    const secretVersions = await secretVersionDAL.findBySecretId(secretId, {
-      offset,
+      actorAuthMethod,
       limit,
-      sort: [["createdAt", "desc"]]
+      offset,
+      secretId,
+      secretVersions: filterSecretVersions
     });
 
-    return secretVersions.map((el) => {
-      const secretKey = crypto.encryption().symmetric().decrypt({
-        ciphertext: secret.secretKeyCiphertext,
-        iv: secret.secretKeyIV,
-        tag: secret.secretKeyTag,
-        key: botKey,
-        keySize: SymmetricKeySize.Bits128
-      });
-
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path,
-          secretName: secretKey,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
-          })
-        }
-      );
-
-      return {
-        ...decryptSecretRaw(
-          {
-            secretValueHidden,
-            ...el,
-            workspace: folder.projectId,
-            environment: folder.environment.envSlug,
-            secretPath: folderWithPath.path
-          },
-          botKey
-        ),
-        redactedByActor: null,
-        isRedacted: false,
-        redactedAt: null,
-        redactedByUserId: null
-      };
-    });
+    return secretVersionV2;
   };
 
   const getSecretVersionsV2ByIds = async ({
