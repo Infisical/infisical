@@ -136,25 +136,60 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
   // Stale-claim recovery: rows whose worker crashed mid-batch never had their
   // 'processing' status flipped back, so they're invisible to the drain query.
-  // Flip them back to 'retry' with nextRetryAt=NOW() so the next debounce-driven
-  // flush picks them up. Attempts is left unchanged — a stale claim is a worker
-  // fault, not a delivery failure, and shouldn't burn retry budget.
-  const requeueStaleClaims = async (thresholdMs: number): Promise<number> => {
+  // Treat a stale claim as a consumed attempt — a payload that crashes the worker
+  // is indistinguishable from one that fails delivery, and either way must respect
+  // MAX_ATTEMPTS so a poison pill can't loop forever. Rows that hit the cap are
+  // moved to DLQ in the same transaction.
+  const recoverStaleClaims = async (
+    thresholdMs: number,
+    maxAttempts: number
+  ): Promise<{ retried: number; movedToDlq: number }> => {
+    const errorMessage = "stale-claim-recovered: worker did not release lock before threshold";
     try {
-      const updated = await db(TableName.AuditLogStreamOutbox)
-        .where("status", AuditLogStreamOutboxStatus.Processing)
-        .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
-        .update({
-          status: AuditLogStreamOutboxStatus.Retry,
-          nextRetryAt: db.fn.now(),
-          lockedAt: null,
-          workerId: null,
-          lastError: "stale-claim-recovered: worker did not release lock before threshold"
-        });
+      return await db.transaction(async (tx) => {
+        const staleRows = await tx(TableName.AuditLogStreamOutbox)
+          .where("status", AuditLogStreamOutboxStatus.Processing)
+          .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
+          .forUpdate()
+          .skipLocked()
+          .select<TAuditLogStreamOutboxRow[]>("*");
 
-      return updated;
+        if (staleRows.length === 0) return { retried: 0, movedToDlq: 0 };
+
+        const exhausted: TAuditLogStreamOutboxRow[] = [];
+        const retriable: TAuditLogStreamOutboxRow[] = [];
+        for (const row of staleRows) {
+          if (row.attempts + 1 >= maxAttempts) {
+            exhausted.push(row);
+          } else {
+            retriable.push(row);
+          }
+        }
+
+        if (retriable.length > 0) {
+          await tx(TableName.AuditLogStreamOutbox)
+            .whereIn(
+              "id",
+              retriable.map((row) => row.id)
+            )
+            .update({
+              status: AuditLogStreamOutboxStatus.Retry,
+              attempts: db.raw('"attempts" + 1'),
+              nextRetryAt: tx.fn.now(),
+              lockedAt: null,
+              workerId: null,
+              lastError: errorMessage
+            });
+        }
+
+        if (exhausted.length > 0) {
+          await moveToDlq(exhausted, errorMessage, tx);
+        }
+
+        return { retried: retriable.length, movedToDlq: exhausted.length };
+      });
     } catch (error) {
-      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: requeueStaleClaims" });
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: recoverStaleClaims" });
     }
   };
 
@@ -164,6 +199,6 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     deleteByIds,
     markBatchForRetry,
     moveToDlq,
-    requeueStaleClaims
+    recoverStaleClaims
   };
 };
