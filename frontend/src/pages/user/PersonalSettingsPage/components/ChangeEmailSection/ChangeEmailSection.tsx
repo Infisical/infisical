@@ -113,8 +113,9 @@ export const ChangeEmailSection = () => {
     });
   };
 
-  const handleCurrentOtpSubmit = async () => {
-    if (typedOTP.length !== 6) {
+  const handleCurrentOtpSubmit = async (codeToVerify?: unknown) => {
+    const finalCode = typeof codeToVerify === "string" ? codeToVerify : typedOTP;
+    if (finalCode.length !== 6) {
       createNotification({
         text: "Please enter the complete 6-digit verification code",
         type: "error"
@@ -123,7 +124,7 @@ export const ChangeEmailSection = () => {
     }
 
     try {
-      await verifyCurrentEmailOTP({ otpCode: typedOTP });
+      await verifyCurrentEmailOTP({ otpCode: finalCode });
     } catch {
       // The OTP token is single-use (triesLeft = 1) — any failure consumes it server-side,
       // so the user must restart the flow to request a fresh code.
@@ -140,8 +141,9 @@ export const ChangeEmailSection = () => {
     });
   };
 
-  const handleNewOtpSubmit = async () => {
-    if (typedOTP.length !== 6) {
+  const handleNewOtpSubmit = async (codeToVerify?: unknown) => {
+    const finalCode = typeof codeToVerify === "string" ? codeToVerify : typedOTP;
+    if (finalCode.length !== 6) {
       createNotification({
         text: "Please enter the complete 6-digit verification code",
         type: "error"
@@ -150,7 +152,7 @@ export const ChangeEmailSection = () => {
     }
 
     try {
-      await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
+      await updateUserEmail({ newEmail: pendingEmail, otpCode: finalCode });
     } catch {
       resetFlow();
       return;
@@ -180,6 +182,13 @@ export const ChangeEmailSection = () => {
   const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm Email Change";
   const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
   const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
+
+  const handleOtpCodeChange = (value: string) => {
+    setTypedOTP(value);
+    if (value.length === 6 && !isOtpSubmitLoading) {
+      onOtpSubmit(value);
+    }
+  };
 
   return (
     <>
@@ -228,21 +237,21 @@ export const ChangeEmailSection = () => {
       </div>
 
       <Modal
-        isOpen={isOtpModalOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) closeOtpModal();
-        }}
-      >
-        <ModalContent title={otpTitle} subTitle={otpSubTitle}>
-          <div className="flex flex-col items-center space-y-4">
-            <div className="flex justify-center">
-              <ReactCodeInput
-                key={otpStep ?? "closed"}
-                name="otp-input"
-                inputMode="tel"
-                type="text"
-                fields={6}
-                onChange={setTypedOTP}
+          isOpen={isOtpModalOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) closeOtpModal();
+          }}
+        >
+          <ModalContent title={otpTitle} subTitle={otpSubTitle}>
+            <div className="flex flex-col items-center space-y-4">
+              <div className="flex justify-center">
+                <ReactCodeInput
+                  key={otpStep ?? "closed"}
+                  name="otp-input"
+                  inputMode="tel"
+                  type="text"
+                  fields={6}
+                  onChange={handleOtpCodeChange}
                 value={typedOTP}
                 {...otpInputProps}
                 className="mb-4"

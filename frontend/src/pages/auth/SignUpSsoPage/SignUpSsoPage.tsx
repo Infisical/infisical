@@ -79,10 +79,11 @@ export const SignupSsoPage = () => {
     SecurityClient.setSignupToken(token);
   }, [token]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (codeToVerify?: unknown) => {
+    const finalCode = typeof codeToVerify === "string" ? codeToVerify : code;
     const { token: accessToken } = await completeAccountSignup.mutateAsync({
       type: "alias",
-      code,
+      code: finalCode,
       hubspotUtk: getHubSpotUtk()
     });
 
@@ -106,6 +107,13 @@ export const SignupSsoPage = () => {
       });
     } else {
       navigate({ to: "/login/select-organization" });
+    }
+  };
+
+  const handleCodeChange = (value: string) => {
+    setCode(value);
+    if (value.length === 6 && !completeAccountSignup.isPending) {
+      handleSubmit(value);
     }
   };
 
@@ -158,7 +166,7 @@ export const SignupSsoPage = () => {
                     inputMode="tel"
                     type="text"
                     fields={6}
-                    onChange={setCode}
+                    onChange={handleCodeChange}
                     {...codeInputStyle}
                     className="code-input-v3 mt-6 mb-2"
                   />
@@ -169,7 +177,7 @@ export const SignupSsoPage = () => {
                     inputMode="tel"
                     type="text"
                     fields={6}
-                    onChange={setCode}
+                    onChange={handleCodeChange}
                     {...codeInputStylePhone}
                     className="code-input-v3 mt-2 mb-2"
                   />
