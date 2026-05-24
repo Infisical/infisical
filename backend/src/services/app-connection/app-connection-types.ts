@@ -312,6 +312,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TSalesforceConnection,
+  TSalesforceConnectionConfig,
+  TSalesforceConnectionInput,
+  TValidateSalesforceConnectionCredentialsSchema
+} from "./salesforce";
+import {
   TSmbConnection,
   TSmbConnectionConfig,
   TSmbConnectionInput,
@@ -450,6 +456,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
+  | TSalesforceConnection
   | TSnowflakeConnection
   | TDatadogConnection
 );
@@ -526,6 +533,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnaConnectionInput
   | TDigiCertConnectionInput
   | TTravisCIConnectionInput
+  | TSalesforceConnectionInput
   | TSnowflakeConnectionInput
   | TDatadogConnectionInput
 );
@@ -634,6 +642,7 @@ export type TAppConnectionConfig =
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
   | TTravisCIConnectionConfig
+  | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig;
 
@@ -701,6 +710,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
   | TValidateTravisCIConnectionCredentialsSchema
+  | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema;
 
