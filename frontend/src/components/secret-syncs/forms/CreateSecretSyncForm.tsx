@@ -78,10 +78,10 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       key: "source",
       shortDescription: "Pick env and path",
       title: "Source Secrets",
-      subtitle: "Pick the Infisical environment and path to read from.",
+      subtitle: "Pick the Infisical environment and path to sync from.",
       rightLabel: "SOURCE",
       rightDescription:
-        "Choose what Infisical reads. The environment + path together define the set of secrets this sync will push out.",
+        "Choose what gets synced. The environment + path together define the set of secrets this sync will push out.",
       fields: sourceFields
     },
     {
