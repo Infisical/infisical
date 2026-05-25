@@ -563,6 +563,7 @@ export const appConnectionServiceFactory = ({
               gatewayPoolId: gatewayPoolId ?? null,
               projectId,
               isAutoRotationEnabled,
+              version: 2, // v1 (legacy) always used orgId as AWS ExternalId; v2 uses scope-based ID
               ...params
             },
             tx

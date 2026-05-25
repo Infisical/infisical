@@ -61,14 +61,24 @@ Infisical supports two methods for connecting to AWS.
                 <Note>
                   **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
                 </Note>
-                4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Organization ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+                4. (Recommended) <strong>Enable "Require external ID"</strong> and input the appropriate ID to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html):
+                   - **Project-scoped connections** — use your **Project ID** as the External ID.
+                   - **Organization-scoped connections** — use your **Organization ID** as the External ID.
 
                 <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
-                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option and specify your **Organization ID**.
+                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option.
 
                     This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
 
-                    <strong>Always enable "Require external ID" and use your Organization ID when setting up the IAM Role.</strong>
+                    Infisical automatically sends the correct External ID based on the connection’s scope:
+                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project.
+                    - **Organization-scoped connections** use the **Organization ID** as the External ID.
+
+                    <strong>Always enable "Require external ID" when setting up the IAM Role, and use the ID that matches your connection’s scope.</strong>
+
+                    <Note>
+                        **Upgrading existing project-scoped connections:** Connections created before **May 26, 2026** (cloud) or release **v0.160.6** (self-hosted) use the Organization ID as the External ID (legacy behavior). To adopt the stronger project-scoped External ID, delete and recreate the connection, then update your IAM role’s trust policy to use your Project ID instead.
+                    </Note>
                 </Warning>
             </Step>
 
