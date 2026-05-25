@@ -1057,16 +1057,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       const query = (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`);
-
-      // Role filter requires joining MembershipRole + Role; the COUNT(DISTINCT) below
-      // collapses the multi-row fan-out back to one row per membership.
-      const hasRoleFilter = Boolean(searchFilter?.role);
-      if (hasRoleFilter) {
-        void query
-          .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-          .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
-      }
 
       const orgScopeBranch = (sub: Knex.QueryBuilder) => {
         void sub
