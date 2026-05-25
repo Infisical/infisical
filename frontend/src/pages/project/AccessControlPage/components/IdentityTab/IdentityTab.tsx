@@ -635,6 +635,9 @@ export const IdentityTab = withProjectPermission(
           open={popUp.createIdentity.isOpen}
           onOpenChange={(open) => {
             handlePopUpToggle("createIdentity", open);
+            if (!open) {
+              setAddMachineIdentityType(AddIdentityType.CreateNew);
+            }
           }}
         >
           <DialogContent className="max-w-xl overflow-visible">

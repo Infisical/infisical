@@ -330,7 +330,12 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         >
           Cancel
         </Button>
-        <Button type="submit" variant="org" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          type="submit"
+          variant={isSubOrganization ? "sub-org" : "org"}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           {popUp?.identity?.data ? "Update" : "Create"}
         </Button>
       </div>
