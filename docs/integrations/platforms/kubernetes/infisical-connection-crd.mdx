@@ -1,0 +1,83 @@
+---
+sidebarTitle: "InfisicalConnection"
+title: "Using the InfisicalConnection CRD"
+description: "Learn how to configure the InfisicalConnection CRD to define how the operator connects to your Infisical instance."
+---
+
+<Info>
+  This CRD is part of the **v1beta1** API and is only used with v1beta1 secret resources (`InfisicalStaticSecret`).
+</Info>
+
+## Overview
+
+The **InfisicalConnection** CRD defines how the Infisical Operator connects to your Infisical instance. It holds the instance address and optional TLS configuration. Once created, it can be referenced by multiple `InfisicalAuth` so you only need to define connection details once per Infisical instance.
+
+### Prerequisites
+
+- The operator is installed on your Kubernetes cluster.
+- Access to an Infisical instance (cloud or self-hosted).
+
+## Example
+
+```yaml infisical-connection.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalConnection
+metadata:
+  name: my-infisical-connection
+spec:
+  address: https://app.infisical.com/api
+  tls:
+    caCertificate:
+      name: custom-ca-certificate
+      namespace: default
+      key: ca.crt
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-connection.yaml
+```
+
+## CRD properties
+
+<Accordion title="address">
+  The URL of the Infisical API to connect to.
+
+  When `address` is not defined, the operator connects to the address defined in the environment variable `INFISICAL_HOST_API`.
+
+  For self-hosted instances, set this to `https://your-self-hosted-instance.com/api`.
+</Accordion>
+
+<Accordion title="tls">
+  This block defines TLS settings for connecting to the Infisical instance.
+</Accordion>
+
+<Accordion title="tls.cacaCertificateRef">
+  A reference to a Kubernetes secret containing a CA certificate for SSL/TLS connections.
+
+  - `name`: Name of the Kubernetes secret containing the CA certificate.
+  - `namespace`: Namespace of the Kubernetes secret.
+  - `key`: The key within the secret that holds the CA certificate value.
+
+  ```yaml
+  tls:
+    caRef:
+      name: custom-ca-certificate
+      namespace: default
+      key: ca.crt
+  ```
+</Accordion>
+
+## Usage
+
+Once created, reference the `InfisicalConnection` from your secret resources:
+
+```yaml
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: example-namespace
+```
+
+This keeps connection configuration centralized. If your Infisical host URL or TLS settings change, you only need to update the `InfisicalConnection` resource.

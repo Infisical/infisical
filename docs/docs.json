@@ -563,9 +563,23 @@
                     "group": "Kubernetes Operator",
                     "pages": [
                       "integrations/platforms/kubernetes/overview",
-                      "integrations/platforms/kubernetes/infisical-secret-crd",
-                      "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                      "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                      {
+                        "group": "V2",
+                        "tag": "RECOMMENDED",
+                        "pages": [
+                          "integrations/platforms/kubernetes/infisical-connection-crd",
+                          "integrations/platforms/kubernetes/infisical-auth-crd",
+                          "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                        ]
+                      },
+                      {
+                        "group": "V1",
+                        "pages": [
+                          "integrations/platforms/kubernetes/infisical-secret-crd",
+                          "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                          "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                        ]
+                      }
                     ]
                   },
                   "integrations/platforms/kubernetes-injector",

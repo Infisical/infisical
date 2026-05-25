@@ -1,0 +1,298 @@
+### Available helper functions
+
+The Infisical Secrets Operator exposes a wide range of helper functions to make it easier to work with secrets in Kubernetes.
+
+<AccordionGroup>
+
+<Accordion title="encodeBase64">
+  Encodes a string to a base64-encoded string (e.g. `hello world` becomes `aGVsbG8gd29ybGQ=`).
+
+  **Signature**
+  ```go
+  encodeBase64(plainString string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    data:
+      ENCODED_SECRET: "{{ .MY_SECRET.Value | encodeBase64 }}"
+  ```
+</Accordion>
+
+<Accordion title="decodeBase64ToBytes">
+  Decodes a base64-encoded string back to its original value (e.g. `aGVsbG8gd29ybGQ=` becomes `hello world`).
+
+  **Signature**
+  ```go
+  decodeBase64ToBytes(encodedString string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    data:
+      DECODED_SECRET: "{{ .MY_BASE64_SECRET.Value | decodeBase64ToBytes }}"
+  ```
+</Accordion>
+
+<Accordion title="pkcs12key">
+  Extracts all private keys from a PKCS#12 archive and returns them as PKCS#8 PEM-encoded blocks (`-----BEGIN PRIVATE KEY-----...`).
+  The archive must not be password-protected — use `pkcs12keyPass` for password-protected archives.
+
+  **Signature**
+  ```go
+  pkcs12key(input string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      tls.key: "{{ .TLS_CERT_PKCS12.Value | pkcs12key }}"
+  ```
+</Accordion>
+
+<Accordion title="pkcs12keyPass">
+  Same as `pkcs12key`, but uses the provided password to decrypt the PKCS#12 archive.
+
+  **Signature**
+  ```go
+  pkcs12keyPass(password string, input string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      tls.key: '{{ pkcs12keyPass "my-password" .TLS_CERT_PKCS12.Value }}'
+  ```
+</Accordion>
+
+<Accordion title="pkcs12cert">
+  Extracts all certificates from a PKCS#12 archive and returns them as an ordered PEM chain (`-----BEGIN CERTIFICATE-----...`).
+  Sort order: **leaf → intermediate(s) → root**. If disjunct or multiple leaf certs are provided, they are returned as-is.
+  The archive must not be password-protected — use `pkcs12certPass` for password-protected archives.
+
+  **Signature**
+  ```go
+  pkcs12cert(input string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      tls.crt: "{{ .TLS_CERT_PKCS12.Value | pkcs12cert }}"
+  ```
+</Accordion>
+
+<Accordion title="pkcs12certPass">
+  Same as `pkcs12cert`, but uses the provided password to decrypt the PKCS#12 archive.
+
+  **Signature**
+  ```go
+  pkcs12certPass(password string, input string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      tls.crt: '{{ pkcs12certPass "my-password" .TLS_CERT_PKCS12.Value }}'
+  ```
+</Accordion>
+
+<Accordion title="pemToPkcs12">
+  Takes a PEM-encoded certificate and private key and creates a base64-encoded PKCS#12 archive.
+  The output is not password-protected — use `pemToPkcs12Pass` to set a password.
+
+  **Signature**
+  ```go
+  pemToPkcs12(cert string, key string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      keystore.p12: '{{ pemToPkcs12 .TLS_CERT.Value .TLS_KEY.Value }}'
+  ```
+</Accordion>
+
+<Accordion title="pemToPkcs12Pass">
+  Same as `pemToPkcs12`, but encrypts the PKCS#12 archive with the provided password.
+
+  **Signature**
+  ```go
+  pemToPkcs12Pass(cert string, key string, password string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      keystore.p12: '{{ pemToPkcs12Pass .TLS_CERT.Value .TLS_KEY.Value "my-password" }}'
+  ```
+</Accordion>
+
+<Accordion title="fullPemToPkcs12">
+  Takes a full PEM-encoded certificate chain (leaf + intermediates + root) and a private key, and creates a base64-encoded PKCS#12 archive that includes the entire chain.
+  The output is not password-protected — use `fullPemToPkcs12Pass` to set a password.
+
+  **Signature**
+  ```go
+  fullPemToPkcs12(cert string, key string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      keystore.p12: '{{ fullPemToPkcs12 .TLS_FULL_CHAIN.Value .TLS_KEY.Value }}'
+  ```
+</Accordion>
+
+<Accordion title="fullPemToPkcs12Pass">
+  Same as `fullPemToPkcs12`, but encrypts the PKCS#12 archive with the provided password.
+
+  **Signature**
+  ```go
+  fullPemToPkcs12Pass(cert string, key string, password string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      keystore.p12: '{{ fullPemToPkcs12Pass .TLS_FULL_CHAIN.Value .TLS_KEY.Value "my-password" }}'
+  ```
+</Accordion>
+
+<Accordion title="filterPEM">
+  Filters PEM blocks by type from a bundle containing multiple PEM blocks (e.g. extract only `CERTIFICATE` or `PRIVATE KEY` blocks).
+  Common PEM types: `CERTIFICATE`, `PRIVATE KEY`, `PUBLIC KEY`, `RSA PRIVATE KEY`.
+
+  **Signature**
+  ```go
+  filterPEM(pemType string, input string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      ca.crt: '{{ filterPEM "CERTIFICATE" .TLS_BUNDLE.Value }}'
+      tls.key: '{{ filterPEM "PRIVATE KEY" .TLS_BUNDLE.Value }}'
+  ```
+</Accordion>
+
+<Accordion title="filterCertChain">
+  Filters PEM certificates by their position in a certificate chain. The chain is automatically ordered before filtering.
+  Accepted types: `leaf` (end-entity certificate), `intermediate` (all intermediate CA certificates), `root` (root CA certificate).
+  Returns an empty string if the requested type is not present in the chain.
+
+  **Signature**
+  ```go
+  filterCertChain(certType string, input string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      tls.crt: '{{ filterCertChain "leaf" .TLS_CHAIN.Value }}'
+      ca.crt: '{{ filterCertChain "root" .TLS_CHAIN.Value }}'
+      intermediate.crt: '{{ filterCertChain "intermediate" .TLS_CHAIN.Value }}'
+  ```
+</Accordion>
+
+<Accordion title="jwkPublicKeyPem">
+  Takes a JSON-serialized JWK and returns a PEM block of type `PUBLIC KEY` containing the public key.
+  Uses [`x509.MarshalPKIXPublicKey`](https://pkg.go.dev/crypto/x509#MarshalPKIXPublicKey) internally.
+
+  **Signature**
+  ```go
+  jwkPublicKeyPem(jwkJson string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      public.pem: "{{ .MY_JWK.Value | jwkPublicKeyPem }}"
+  ```
+</Accordion>
+
+<Accordion title="jwkPrivateKeyPem">
+  Takes a JSON-serialized JWK and returns a PEM block of type `PRIVATE KEY` containing the private key.
+  Uses [`x509.MarshalPKCS8PrivateKey`](https://pkg.go.dev/crypto/x509#MarshalPKCS8PrivateKey) internally.
+
+  **Signature**
+  ```go
+  jwkPrivateKeyPem(jwkJson string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      private.pem: "{{ .MY_JWK.Value | jwkPrivateKeyPem }}"
+  ```
+</Accordion>
+
+<Accordion title="toYaml">
+  Marshals a value to a YAML string. Returns an empty string on marshal error.
+
+  **Signature**
+  ```go
+  toYaml(v any) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    data:
+      config.yaml: "{{ .APP_CONFIG.Value | fromYaml | toYaml }}"
+  ```
+</Accordion>
+
+<Accordion title="fromYaml">
+  Parses a YAML string into a `map[string]any`, useful for extracting individual fields from a YAML-formatted secret (e.g. `(fromYaml .DB_CONFIG.Value).host` returns the `host` field).
+
+  **Signature**
+  ```go
+  fromYaml(str string) map[string]any
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    includeAllSecrets: false
+    data:
+      DB_HOST: '{{ (fromYaml .DB_CONFIG.Value).host }}'
+      DB_PORT: '{{ (fromYaml .DB_CONFIG.Value).port }}'
+  ```
+</Accordion>
+
+</AccordionGroup>
+
+### Sprig functions
+
+The Infisical Secrets Operator integrates with the [Sprig library](https://github.com/Masterminds/sprig) to provide additional helper functions.
+
+<Note>
+  We've removed `expandEnv` and `env` from the supported functions for security reasons.
+</Note>

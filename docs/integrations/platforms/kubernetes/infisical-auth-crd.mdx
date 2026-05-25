@@ -1,0 +1,294 @@
+---
+sidebarTitle: "InfisicalAuth"
+title: "Using the InfisicalAuth CRD"
+description: "Learn how to configure the InfisicalAuth CRD to define how the operator authenticates with Infisical."
+---
+
+<Info>
+  This CRD is part of the **v1beta1** API and is only used with v1beta1 secret resources (`InfisicalStaticSecret`).
+</Info>
+
+## Overview
+
+The **InfisicalAuth** CRD defines how the Infisical Operator authenticates with your Infisical instance. It encapsulates the machine identity authentication method and credentials. Once created, it can be referenced by multiple secret resources, so you only need to define authentication details once per identity.
+
+The operator caches authenticated credentials using the token's TTL (at 70% of the expiration time) so that multiple resources sharing the same `InfisicalAuth` don't trigger redundant login calls. The cache is automatically invalidated when the `InfisicalAuth` spec changes or when the referenced `InfisicalConnection` is updated.
+
+### Prerequisites
+
+- The operator is installed on your Kubernetes cluster.
+- A [machine identity](/documentation/platform/identities/machine-identities) configured in Infisical with access to the relevant project(s).
+- An [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) resource created in your cluster.
+
+## Example
+
+<Tabs>
+  <Tab title="Kubernetes Auth (Recommended)">
+```yaml infisical-auth-kubernetes.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: kubernetes
+  kubernetes:
+    identityIdRef:
+      name: kubernetes-credentials
+      namespace: default
+      key: identityId
+    serviceAccountRef:
+      name: service-account
+      namespace: default
+```
+
+The referenced Kubernetes secret must contain the machine identity ID:
+
+```bash
+kubectl create secret generic kubernetes-credentials \
+  --from-literal=identityId="<your-machine-identity-id>"
+```
+  </Tab>
+  <Tab title="Universal Auth">
+```yaml infisical-auth-universal.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: universal
+  universal:
+    clientIdRef:
+      name: universal-auth-credentials
+      namespace: default
+      key: clientId
+    clientSecretRef:
+      name: universal-auth-credentials
+      namespace: default
+      key: clientSecret
+```
+
+The referenced Kubernetes secret must contain `clientId` and `clientSecret` keys:
+
+```bash
+kubectl create secret generic universal-auth-credentials \
+  --from-literal=clientId="<your-client-id>" \
+  --from-literal=clientSecret="<your-client-secret>"
+```
+  </Tab>
+  <Tab title="AWS IAM Auth">
+```yaml infisical-auth-aws.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: aws-iam
+  awsIam:
+    identityIdRef:
+      name: aws-iam-credentials
+      namespace: default
+      key: identityId
+```
+
+The referenced Kubernetes secret must contain the machine identity ID:
+
+```bash
+kubectl create secret generic aws-iam-credentials \
+  --from-literal=identityId="<your-machine-identity-id>"
+```
+  </Tab>
+</Tabs>
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+
+## Spec
+
+The `InfisicalAuth` spec has the following top-level fields:
+
+| Field                    | Type           | Required | Description                                                                 |
+| ------------------------ | -------------- | -------- | --------------------------------------------------------------------------- |
+| `infisicalConnectionRef` | NamespacedName | Yes      | Reference to the `InfisicalConnection` resource that defines the Infisical host. |
+| `method`                 | string         | Yes      | The authentication method to use. Must be one of: `universal`, `kubernetes`, `aws-iam`, `azure`, `gcp-id-token`, `gcp-iam`, `ldap`. |
+
+In addition, you must provide the configuration object that matches your chosen `method` (e.g., `kubernetes`, `universal`, `awsIam`, etc.).
+
+## Authentication methods
+
+Only define **one** authentication method per resource. The method name in `spec.method` must match the configuration object you provide.
+
+<Accordion title="kubernetes">
+  Authenticates using a Kubernetes service account token. This is the recommended method when running inside a Kubernetes cluster. The operator automatically creates short-lived service account tokens (10 minutes) for authentication.
+
+  [Read more about Kubernetes Auth](/documentation/platform/identities/kubernetes-auth).
+
+  | Field                          | Type              | Required | Description                                                   |
+  | ------------------------------ | ----------------- | -------- | ------------------------------------------------------------- |
+  | `identityIdRef`                | SecretReference   | Yes      | Reference to the secret containing the machine identity ID.   |
+  | `serviceAccountRef.name`       | string            | Yes      | Name of the Kubernetes service account.                       |
+  | `serviceAccountRef.namespace`  | string            | Yes      | Namespace of the service account.                             |
+  | `serviceAccountTokenAudiences` | string[]          | No       | Custom audiences for the generated service account token.     |
+
+  ```yaml
+  method: kubernetes
+  kubernetes:
+    identityIdRef:
+      name: kubernetes-credentials
+      namespace: default
+      key: identityId
+    serviceAccountRef:
+      name: default
+      namespace: default
+  ```
+</Accordion>
+
+<Accordion title="universal">
+  Authenticates using a client ID and client secret. Works anywhere, not tied to any cloud provider.
+  [Read more about Universal Auth](/documentation/platform/identities/universal-auth).
+
+  | Field             | Type            | Required | Description                                                |
+  | ----------------- | --------------- | -------- | ---------------------------------------------------------- |
+  | `clientIdRef`     | SecretReference | Yes      | Reference to the secret containing the client ID.          |
+  | `clientSecretRef` | SecretReference | Yes      | Reference to the secret containing the client secret.      |
+
+  ```yaml
+  method: universal
+  universal:
+    clientIdRef:
+      name: universal-auth-credentials
+      namespace: default
+      key: clientId
+    clientSecretRef:
+      name: universal-auth-credentials
+      namespace: default
+      key: clientSecret
+  ```
+</Accordion>
+
+<Accordion title="awsIam">
+  Authenticates using AWS IAM. Can only be used within AWS environments (EC2, Lambda, EKS).
+  [Read more about AWS IAM Auth](/documentation/platform/identities/aws-auth).
+
+  | Field           | Type            | Required | Description                                               |
+  | --------------- | --------------- | -------- | --------------------------------------------------------- |
+  | `identityIdRef` | SecretReference | Yes      | Reference to the secret containing the machine identity ID. |
+
+  ```yaml
+  method: aws-iam
+  awsIam:
+    identityIdRef:
+      name: aws-iam-credentials
+      namespace: default
+      key: identityId
+  ```
+</Accordion>
+
+<Accordion title="azure">
+  Authenticates using Azure managed identity. Can only be used within Azure environments.
+  [Read more about Azure Auth](/documentation/platform/identities/azure-auth).
+
+  | Field           | Type            | Required | Description                                               |
+  | --------------- | --------------- | -------- | --------------------------------------------------------- |
+  | `identityIdRef` | SecretReference | Yes      | Reference to the secret containing the machine identity ID. |
+  | `resource`      | string          | No       | The Azure resource (audience) to request a token for.     |
+
+  ```yaml
+  method: azure
+  azure:
+    identityIdRef:
+      name: azure-credentials
+      namespace: default
+      key: identityId
+  ```
+</Accordion>
+
+<Accordion title="gcpIdToken">
+  Authenticates using GCP ID tokens. Can only be used within GCP environments.
+  [Read more about GCP Auth](/documentation/platform/identities/gcp-auth).
+
+  | Field           | Type            | Required | Description                                               |
+  | --------------- | --------------- | -------- | --------------------------------------------------------- |
+  | `identityIdRef` | SecretReference | Yes      | Reference to the secret containing the machine identity ID. |
+
+  ```yaml
+  method: gcp-id-token
+  gcpIdToken:
+    identityIdRef:
+      name: gcp-id-token-credentials
+      namespace: default
+      key: identityId
+  ```
+</Accordion>
+
+<Accordion title="gcpIam">
+  Authenticates using GCP IAM with a service account key file. Works both within and outside GCP environments.
+  [Read more about GCP Auth](/documentation/platform/identities/gcp-auth).
+
+  | Field                        | Type            | Required | Description                                               |
+  | ---------------------------- | --------------- | -------- | --------------------------------------------------------- |
+  | `identityIdRef`              | SecretReference | Yes      | Reference to the secret containing the machine identity ID. |
+  | `serviceAccountKeyFilePath`  | string          | Yes      | Path to the GCP service account key file mounted in the operator pod. |
+
+  ```yaml
+  method: gcp-iam
+  gcpIam:
+    identityIdRef:
+      name: gcp-iam-credentials
+      namespace: default
+      key: identityId
+    serviceAccountKeyFilePath: /path/to/service-account-key.json
+  ```
+</Accordion>
+
+<Accordion title="ldap">
+  Authenticates using LDAP credentials.
+  [Read more about LDAP Auth](/documentation/platform/identities/ldap-auth).
+
+  | Field           | Type            | Required | Description                                               |
+  | --------------- | --------------- | -------- | --------------------------------------------------------- |
+  | `identityIdRef` | SecretReference | Yes      | Reference to the secret containing the machine identity ID. |
+  | `usernameRef`   | SecretReference | Yes      | Reference to the secret containing the LDAP username.     |
+  | `passwordRef`   | SecretReference | Yes      | Reference to the secret containing the LDAP password.     |
+
+  ```yaml
+  method: ldap
+  ldap:
+    identityIdRef:
+      name: ldap-credentials
+      namespace: default
+      key: identityId
+    usernameRef:
+      name: ldap-credentials
+      namespace: default
+      key: username
+    passwordRef:
+      name: ldap-credentials
+      namespace: default
+      key: password
+  ```
+</Accordion>
+
+## Usage
+
+Once created, reference the `InfisicalAuth` from your secret resources:
+
+```yaml
+spec:
+  infisicalAuthRef:
+    name: my-infisical-auth
+    namespace: default
+```
+
+This keeps authentication centralized. If you rotate credentials or change identity, you only need to update the `InfisicalAuth` resource — the operator will detect the change, invalidate the cached credentials, and re-authenticate automatically.
