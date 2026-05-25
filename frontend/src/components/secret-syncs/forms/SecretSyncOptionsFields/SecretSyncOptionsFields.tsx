@@ -226,8 +226,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
           )}
         />
       )}
-      {syncOption?.supportsKeySchema !== false && <SecretSyncKeySchemaField />}
       {children}
+      {syncOption?.supportsKeySchema !== false && <SecretSyncKeySchemaField />}
       {AdditionalSyncOptionsFieldsComponent}
     </>
   );

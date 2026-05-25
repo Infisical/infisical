@@ -277,11 +277,14 @@ const BEHAVIOR_ORDER: SecretSyncInitialSyncBehavior[] = [
 ];
 
 type InitialSyncAlertsProps = {
-  onGoToInitialSync: () => void;
-  onGoToOptions: () => void;
+  onGoToInitialSync?: () => void;
+  onGoToOptions?: () => void;
 };
 
-export const InitialSyncAlerts = ({ onGoToInitialSync, onGoToOptions }: InitialSyncAlertsProps) => {
+export const InitialSyncAlerts = ({
+  onGoToInitialSync,
+  onGoToOptions
+}: InitialSyncAlertsProps = {}) => {
   const { watch } = useFormContext<TSecretSyncForm>();
   const destination = watch("destination");
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -296,6 +299,15 @@ export const InitialSyncAlerts = ({ onGoToInitialSync, onGoToOptions }: InitialS
   const linkClass =
     "font-medium text-warning cursor-pointer underline underline-offset-2 hover:text-warning/80 focus-visible:outline-1 focus-visible:outline-danger";
 
+  const renderRemedy = (text: string, onClick?: () => void) =>
+    onClick ? (
+      <button type="button" onClick={onClick} className={linkClass}>
+        {text}
+      </button>
+    ) : (
+      text
+    );
+
   return (
     !vercelSensitive &&
     initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
@@ -307,18 +319,9 @@ export const InitialSyncAlerts = ({ onGoToInitialSync, onGoToOptions }: InitialS
         <AlertDescription>
           <p>
             Anything in {destinationName} not in Infisical will be removed. To keep them,{" "}
-            <button type="button" onClick={onGoToInitialSync} className={linkClass}>
-              import from provider
-            </button>
-            ,{" "}
-            <button type="button" onClick={onGoToOptions} className={linkClass}>
-              customize key names
-            </button>
-            , or{" "}
-            <button type="button" onClick={onGoToOptions} className={linkClass}>
-              disable secret deletion
-            </button>
-            .
+            {renderRemedy("import from provider", onGoToInitialSync)},{" "}
+            {renderRemedy("customize key names", onGoToOptions)}, or{" "}
+            {renderRemedy("disable secret deletion", onGoToOptions)}.
           </p>
         </AlertDescription>
       </Alert>

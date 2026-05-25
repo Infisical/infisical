@@ -82,8 +82,8 @@ export const SecretSyncKeySchemaField = () => {
         <FieldContent>
           <Label htmlFor="customize-key-names">Customize key names</Label>
           <FieldDescription>
-            By default, keys keep their Infisical names when written to {destinationName}. Enable to
-            rewrite each key with a template.
+            Add a prefix or pattern so Infisical can identify which keys in {destinationName} it
+            manages — anything else is left untouched.
           </FieldDescription>
         </FieldContent>
         <Switch
