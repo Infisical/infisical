@@ -280,15 +280,16 @@ Only define **one** authentication method per resource. The method name in `spec
   ```
 </Accordion>
 
-## Usage
+## Troubleshooting
 
-Once created, reference the `InfisicalAuth` from your secret resources:
+You can check the status of your `InfisicalAuth` resource by inspecting its conditions:
 
-```yaml
-spec:
-  infisicalAuthRef:
-    name: my-infisical-auth
-    namespace: default
+```bash
+kubectl get infisicalauth my-infisical-auth -o jsonpath='{.status.conditions}' | jq
 ```
 
-This keeps authentication centralized. If you rotate credentials or change identity, you only need to update the `InfisicalAuth` resource — the operator will detect the change, invalidate the cached credentials, and re-authenticate automatically.
+When authentication is healthy, the `secrets.infisical.com/IsReady` condition will have `Status: "True"` and `Reason: "OK"`.
+
+If authentication is unhealthy, `Reason` will be set to `Error` and `Message` will contain details about what went wrong.
+
+The `ObservedGeneration` field indicates which generation of the resource spec the operator has last processed. If `ObservedGeneration` is less than `metadata.generation`, the operator has not yet reconciled the latest changes to the resource.

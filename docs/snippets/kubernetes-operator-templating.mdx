@@ -1,3 +1,30 @@
+## Templating
+
+Use Go templates to transform secrets before storing them in the managed Kubernetes resource. When a template is set, only the keys defined in `template.data` are included in the output.
+When no template is set, all fetched secrets are included as-is.
+
+| Field           | Type              | Required | Description                                                   |
+| --------------- | ----------------- | -------- | ------------------------------------------------------------- |
+| `engineVersion` | string            | Yes      | The template engine version. Must be `v1`.                    |
+| `data`          | map[string]string | Yes      | Map of output key names to Go template expressions.           |
+
+Each secret is available in the template context as `.SECRET_KEY`, which is an object with two accessors:
+- `.Value` — the secret's value.
+- `.SecretPath` — the path of the secret in Infisical.
+
+```yaml
+targets:
+  - name: my-app-config
+    namespace: default
+    kind: Secret
+    creationPolicy: Owner
+    template:
+      engineVersion: v1
+      data:
+        DATABASE_URL: "postgres://{{ .DB_USER.Value }}:{{ .DB_PASS.Value }}@{{ .DB_HOST.Value }}:5432/{{ .DB_NAME.Value }}"
+        REDIS_URL: "redis://{{ .REDIS_HOST.Value }}:6379"
+```
+
 ### Available helper functions
 
 The Infisical Secrets Operator exposes a wide range of helper functions to make it easier to work with secrets in Kubernetes.
@@ -48,7 +75,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       tls.key: "{{ .TLS_CERT_PKCS12.Value | pkcs12key }}"
   ```
@@ -65,7 +91,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       tls.key: '{{ pkcs12keyPass "my-password" .TLS_CERT_PKCS12.Value }}'
   ```
@@ -84,7 +109,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       tls.crt: "{{ .TLS_CERT_PKCS12.Value | pkcs12cert }}"
   ```
@@ -101,7 +125,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       tls.crt: '{{ pkcs12certPass "my-password" .TLS_CERT_PKCS12.Value }}'
   ```
@@ -119,7 +142,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       keystore.p12: '{{ pemToPkcs12 .TLS_CERT.Value .TLS_KEY.Value }}'
   ```
@@ -136,7 +158,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       keystore.p12: '{{ pemToPkcs12Pass .TLS_CERT.Value .TLS_KEY.Value "my-password" }}'
   ```
@@ -154,7 +175,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       keystore.p12: '{{ fullPemToPkcs12 .TLS_FULL_CHAIN.Value .TLS_KEY.Value }}'
   ```
@@ -171,7 +191,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       keystore.p12: '{{ fullPemToPkcs12Pass .TLS_FULL_CHAIN.Value .TLS_KEY.Value "my-password" }}'
   ```
@@ -189,7 +208,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       ca.crt: '{{ filterPEM "CERTIFICATE" .TLS_BUNDLE.Value }}'
       tls.key: '{{ filterPEM "PRIVATE KEY" .TLS_BUNDLE.Value }}'
@@ -209,7 +227,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       tls.crt: '{{ filterCertChain "leaf" .TLS_CHAIN.Value }}'
       ca.crt: '{{ filterCertChain "root" .TLS_CHAIN.Value }}'
@@ -229,7 +246,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       public.pem: "{{ .MY_JWK.Value | jwkPublicKeyPem }}"
   ```
@@ -247,7 +263,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       private.pem: "{{ .MY_JWK.Value | jwkPrivateKeyPem }}"
   ```
@@ -280,7 +295,6 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   **Template usage**
   ```yaml
   template:
-    includeAllSecrets: false
     data:
       DB_HOST: '{{ (fromYaml .DB_CONFIG.Value).host }}'
       DB_PORT: '{{ (fromYaml .DB_CONFIG.Value).port }}'

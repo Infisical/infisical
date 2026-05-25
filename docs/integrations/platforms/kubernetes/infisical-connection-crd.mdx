@@ -53,7 +53,7 @@ kubectl apply -f infisical-connection.yaml
   This block defines TLS settings for connecting to the Infisical instance.
 </Accordion>
 
-<Accordion title="tls.cacaCertificateRef">
+<Accordion title="tls.caCertificate">
   A reference to a Kubernetes secret containing a CA certificate for SSL/TLS connections.
 
   - `name`: Name of the Kubernetes secret containing the CA certificate.
@@ -62,22 +62,23 @@ kubectl apply -f infisical-connection.yaml
 
   ```yaml
   tls:
-    caRef:
+    caCertificate:
       name: custom-ca-certificate
       namespace: default
       key: ca.crt
   ```
 </Accordion>
 
-## Usage
+## Troubleshooting
 
-Once created, reference the `InfisicalConnection` from your secret resources:
+You can check the status of your `InfisicalConnection` resource by inspecting its conditions:
 
-```yaml
-spec:
-  infisicalConnectionRef:
-    name: my-infisical-connection
-    namespace: example-namespace
+```bash
+kubectl get infisicalconnection my-infisical-connection -o jsonpath='{.status.conditions}' | jq
 ```
 
-This keeps connection configuration centralized. If your Infisical host URL or TLS settings change, you only need to update the `InfisicalConnection` resource.
+When the connection is healthy, the `secrets.infisical.com/IsReady` condition will have `Status: "True"` and `Reason: "OK"`.
+
+If the connection is unhealthy, `Reason` will be set to `Error` and `Message` will contain details about what went wrong.
+
+The `ObservedGeneration` field indicates which generation of the resource spec the operator has last processed. If `ObservedGeneration` is less than `metadata.generation`, the operator has not yet reconciled the latest changes to the resource.

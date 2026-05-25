@@ -4,15 +4,22 @@ sidebarTitle: "Overview"
 description: "How to use Infisical to inject, push, and manage secrets within Kubernetes clusters"
 ---
 
-The Infisical Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Infisical and your Kubernetes cluster. 
+import KubernetesOperatorTemplating from "/snippets/kubernetes-operator-templating.mdx";
+
+The Infisical Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Infisical and your Kubernetes cluster.
 It provides multiple Custom Resource Definitions (CRDs) which enable you to:
 
-- **Sync** secrets from Infisical into Kubernetes (`InfisicalSecret`).
-- **Push** new secrets from Kubernetes to Infisical (`InfisicalPushSecret`).
-- **Manage** dynamic secrets and automatically create time-bound leases (`InfisicalDynamicSecret`).
+- **Sync** secrets from Infisical into Kubernetes.
+- **Push** new secrets from Kubernetes to Infisical.
+- **Manage** dynamic secrets and automatically create time-bound leases.
 
-When these CRDs are configured, the Infisical Operator will continuously monitors for changes and performs necessary updates to keep your Kubernetes secrets up to date. 
-It can also automatically reload dependent Deployments resources whenever relevant secrets are updated.
+When these CRDs are configured, the Infisical Operator will continuously monitor for changes and perform necessary updates to keep your Kubernetes secrets up to date.
+It can also automatically reload dependent Deployment resources whenever relevant secrets are updated.
+
+<Info>
+  The operator supports two CRD API versions. **v1beta1** is the recommended version for new installations.
+  v1alpha1 CRDs are deprecated and will be removed in a future release. See the [migration guide](#migrating-from-v1alpha1-to-v1beta1) below.
+</Info>
 
 <Note>
   If you are already using the External Secrets operator, you can view the
@@ -177,11 +184,29 @@ controllerManager:
 
 ## Custom Resource Definitions
 
-Currently the operator supports the following CRD's. We are constantly expanding the functionality of the operator, and this list will be updated as new CRD's are added.
+<Tabs>
+  <Tab title="v1beta1 (Recommended)">
+    The v1beta1 API separates authentication and connection configuration into their own reusable CRDs, making it easier to manage credentials across multiple secret resources.
 
-1. [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd): Sync secrets from Infisical to a Kubernetes secret.
-2. [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd): Push secrets from a Kubernetes secret to Infisical.
-3. [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd): Sync dynamic secrets and create leases automatically in Kubernetes.
+    | CRD | Description |
+    | --- | ----------- |
+    | [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) | Defines how to connect to an Infisical instance (host, TLS). Referenced by other CRDs. |
+    | [InfisicalAuth](/integrations/platforms/kubernetes/infisical-auth-crd) | Defines authentication credentials for a machine identity. Referenced by other CRDs. |
+    | [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. Replaces `InfisicalSecret`. |
+  </Tab>
+  <Tab title="v1alpha1 (Deprecated)">
+    <Warning>
+      v1alpha1 CRDs are deprecated and will be removed in a future release.
+      We recommend migrating to v1beta1. See [Migrating from v1alpha1 to v1beta1](#migrating-from-v1alpha1-to-v1beta1).
+    </Warning>
+
+    | CRD | Description |
+    | --- | ----------- |
+    | [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. |
+    | [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd) | Push secrets from a Kubernetes secret to Infisical. |
+    | [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) | Sync dynamic secrets and create leases automatically in Kubernetes. |
+  </Tab>
+</Tabs>
 
 ## Metrics and Prometheus
 
@@ -256,7 +281,9 @@ The operator exposes standard controller-runtime metrics. For a complete list of
 - `controller_runtime_reconcile_errors_total` - Error count  
 - `controller_runtime_reconcile_time_seconds` - Reconciliation duration
 
-**Controllers:** `InfisicalSecret`, `InfisicalPushSecret`, `InfisicalDynamicSecret`
+**v1beta1 controllers:** `InfisicalStaticSecret`, `InfisicalAuth`, `InfisicalConnection`
+
+**v1alpha1 controllers:** `InfisicalSecret`, `InfisicalPushSecret`, `InfisicalDynamicSecret`
 
 ### Example Prometheus Setup
 
@@ -313,67 +340,55 @@ process_resident_memory_bytes / 1024 / 1024
 
 ## General Configuration
 ### Private/self-signed certificate
-To connect to Infisical instances behind a private/self-signed certificate, you can configure the TLS settings in the CRD
+To connect to Infisical instances behind a private/self-signed certificate, you can configure TLS settings
 to point to a CA certificate stored in a Kubernetes secret resource.
 
-```yaml
----
-spec:
-  hostAPI: https://app.infisical.com/api
-  tls:
-    caRef:
-      secretName: custom-ca-certificate
-      secretNamespace: default
-      key: ca.crt
----
-```
+<Tabs>
+  <Tab title="v1beta1 (Recommended)">
+    In v1beta1, TLS is configured on the [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) resource:
+
+    ```yaml
+    apiVersion: secrets.infisical.com/v1beta1
+    kind: InfisicalConnection
+    metadata:
+      name: my-infisical-connection
+    spec:
+      address: https://app.infisical.com/api
+      tls:
+        caCertificate:
+          name: custom-ca-certificate
+          namespace: default
+          key: ca.crt
+    ```
+
+    All CRDs that reference this `InfisicalConnection` will automatically use the configured TLS settings.
+  </Tab>
+  <Tab title="v1alpha1 (Deprecated)">
+    In v1alpha1, TLS is configured inline on each CRD:
+
+    ```yaml
+    spec:
+      hostAPI: https://app.infisical.com/api
+      tls:
+        caRef:
+          secretName: custom-ca-certificate
+          secretNamespace: default
+          key: ca.crt
+    ```
+  </Tab>
+</Tabs>
+
+<KubernetesOperatorTemplating />
 
 
-## Advanced Templating
+## Global configuration (v1alpha1 only)
 
-With the Infisical Secrets Operator, you can use templating to dynamically generate secrets in Kubernetes. The templating is built on top of [Go templates](https://pkg.go.dev/text/template), which is a powerful and flexible template engine built into Go.
+<Warning>
+  Global configuration via ConfigMap only applies to v1alpha1 CRDs (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`).
+  In v1beta1, connection and TLS settings are configured through the [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) CRD, which can be shared across multiple resources.
+</Warning>
 
-Please be aware that trying to reference non-existing keys will result in an error. Additionally, each template field is processed individually, which means one template field cannot reference another template field.
-
-<Note>
-  Please note that templating is currently only supported for the `InfisicalPushSecret` and `InfisicalSecret` CRDs.
-</Note>
-
-### Available helper functions
-
-The Infisical Secrets Operator exposes a wide range of helper functions to make it easier to work with secrets in Kubernetes.
-
-| Function | Description | Signature |
-| -------- | ----------- | --------- |
-| `decodeBase64ToBytes` | Given a base64 encoded string, this function will decode the base64-encoded string. | `decodeBase64ToBytes(encodedString string) string` |
-| `encodeBase64` | Given a string, this function will encode the string to a base64 encoded string. | `encodeBase64(plainString string) string` |
-| `pkcs12key`| Extracts all private keys from a PKCS#12 archive and encodes them in PKCS#8 PEM format. | `pkcs12key(input string) string` |
-| `pkcs12keyPass`|Same as pkcs12key. Uses the provided password to decrypt the PKCS#12 archive. | `pkcs12keyPass(pass string, input string) string` |
-| `pkcs12cert`      | Extracts all certificates from a PKCS#12 archive and orders them if possible. If disjunct or multiple leaf certs are provided they are returned as-is. Sort order: `leaf / intermediate(s) / root`. | `pkcs12cert(input string) string` |
-| `pkcs12certPass`  | Same as `pkcs12cert`. Uses the provided password to decrypt the PKCS#12 archive. | `pkcs12certPass(pass string, input string) string` |
-| `pemToPkcs12`     | Takes a PEM encoded certificate and key and creates a base64 encoded PKCS#12 archive. | `pemToPkcs12(cert string, key string) string` |
-| `pemToPkcs12Pass` | Same as `pemToPkcs12`. Uses the provided password to encrypt the PKCS#12 archive. | `pemToPkcs12Pass(cert string, key string, pass string) string` |
-| `fullPemToPkcs12` | Takes a PEM encoded certificates chain and key and creates a base64 encoded PKCS#12 archive. | `fullPemToPkcs12(cert string, key string) string` |
-| `fullPemToPkcs12Pass`   | Same as `fullPemToPkcs12`. Uses the provided password to encrypt the PKCS#12 archive. | `fullPemToPkcs12Pass(cert string, key string, pass string) string` |
-| `filterPEM`       | Filters PEM blocks with a specific type from a list of PEM blocks.. | `filterPEM(pemType string, input string) string` |
-| `filterCertChain`   | Filters PEM block(s) with a specific certificate type (`leaf`, `intermediate` or `root`) from a certificate chain of PEM blocks (PEM blocks with type `CERTIFICATE`). | `filterCertChain(certType string, input string) string` |
-| `jwkPublicKeyPem`   | Takes an json-serialized JWK and returns an PEM block of type `PUBLIC KEY` that contains the public key. [See here](https://golang.org/pkg/crypto/x509/#MarshalPKIXPublicKey) for details. | `jwkPublicKeyPem(jwkjson string) string` |
-| `jwkPrivateKeyPem`   | Takes an json-serialized JWK and returns an PEM block of type `PRIVATE KEY` that contains the private key. [See here](https://pkg.go.dev/crypto/x509#MarshalPKCS8PrivateKey) for details. | `jwkPrivateKeyPem(jwkjson string) string` |
-| `toYaml`   | Takes an interface, marshals it to yaml. It returns a string, even on marshal error (empty string). | `toYaml(v any) string` |
-| `fromYaml`   | Function converts a YAML document into a `map[string]any`. | `fromYaml(str string) map[string]any` |
-
-### Sprig functions
-
-The Infisical Secrets Operator integrates with the [Sprig library](https://github.com/Masterminds/sprig) to provide additional helper functions.
-
-<Note>
-  We've removed `expandEnv` and `env` from the supported functions for security reasons.
-</Note>
-
-
-## Global configuration
-
-To configure global settings that will apply to all CRD instances (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`), you can define these configurations in a Kubernetes ConfigMap.
+To configure global settings that will apply to all v1alpha1 CRD instances, you can define these configurations in a Kubernetes ConfigMap.
 For example, you can configure all CRD instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
 
 ### Available global properties
@@ -414,35 +429,97 @@ Then apply this change via kubectl by running the following
 kubectl apply -f infisical-config.yaml
 ```
 
+## Migrating from v1alpha1 to v1beta1
+
+The v1beta1 API introduces a cleaner separation of concerns. Instead of defining authentication and connection details inline in each secret CRD, you now create dedicated `InfisicalConnection` and `InfisicalAuth` resources that can be shared across multiple secret resources.
+
+### Key changes
+
+| v1alpha1 | v1beta1 | What changed |
+| -------- | ------- | ------------ |
+| `InfisicalSecret` | `InfisicalStaticSecret` | New CRD that replaces `InfisicalSecret`. Auth and connection are now referenced via `InfisicalAuth` and `InfisicalConnection` instead of inline. |
+| Inline `authentication` block | `InfisicalAuth` CRD | Auth config is now a standalone resource, reusable across CRDs. Authenticated credentials are cached and shared by all resources referencing the same `InfisicalAuth`. |
+| Inline `hostAPI` / `tls` | `InfisicalConnection` CRD | Connection config is now a standalone resource. |
+
+### Migration steps
+
+<Steps>
+  <Step title="Create an InfisicalConnection resource">
+    Extract the `hostAPI` and `tls` settings from your existing CRD into a new `InfisicalConnection` resource.
+    See the [InfisicalConnection CRD](/integrations/platforms/kubernetes/infisical-connection-crd) documentation for the full spec.
+  </Step>
+  <Step title="Create an InfisicalAuth resource">
+    Extract the `authentication` block from your existing CRD into a new `InfisicalAuth` resource.
+    See the [InfisicalAuth CRD](/integrations/platforms/kubernetes/infisical-auth-crd) documentation for the full spec.
+  </Step>
+  <Step title="Replace InfisicalSecret with InfisicalStaticSecret">
+    Create a new `InfisicalStaticSecret` resource that references your `InfisicalConnection` and `InfisicalAuth` resources.
+    See the [InfisicalStaticSecret CRD](/integrations/platforms/kubernetes/infisical-secret-crd) documentation for the full spec.
+  </Step>
+  <Step title="Delete the old v1alpha1 resource">
+    Once you have verified that the new v1beta1 resources are working, delete the old `InfisicalSecret` CRD instance.
+  </Step>
+</Steps>
+
 ## Troubleshoot operator
 
 If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
 It will continue attempting to reconnect to the API indefinitely.
-The InfisicalSecret resource uses the `status.conditions` field to report its current state and any errors encountered.
+All operator CRDs use the `status.conditions` field to report their current state and any errors encountered.
 
-```yaml
-$ kubectl get infisicalSecrets
-NAME                     AGE
-infisicalsecret-sample   12s
+<Tabs>
+  <Tab title="v1beta1 (Recommended)">
+    In v1beta1, check the status of each resource independently: `InfisicalConnection`, `InfisicalAuth`, and `InfisicalStaticSecret`.
 
-$ kubectl describe infisicalSecret infisicalsecret-sample
-...
-Spec:
-...
-Status:
-  Conditions:
-    Last Transition Time:  2022-12-18T04:29:09Z
-    Message:               Infisical controller has located the Infisical token in provided Kubernetes secret
-    Reason:                OK
-    Status:                True
-    Type:                  secrets.infisical.com/LoadedInfisicalToken
-    Last Transition Time:  2022-12-18T04:29:10Z
-    Message:               Failed to update secret because: 400 Bad Request
-    Reason:                Error
-    Status:                False
-    Type:                  secrets.infisical.com/ReadyToSyncSecrets
-Events:                    <none>
-```
+    ```bash
+    # List all v1beta1 resources
+    $ kubectl get infisicalconnections
+    $ kubectl get infisicalauths
+    $ kubectl get infisicalstaticsecrets
+
+    # Inspect a specific resource
+    $ kubectl describe infisicalstaticsecret my-static-secret
+    ...
+    Status:
+      Conditions:
+        Last Transition Time:  2025-01-15T10:00:00Z
+        Message:               Secrets synced successfully.
+        Reason:                OK
+        Status:                True
+        Type:                  secrets.infisical.com/LastReconcileSuccessful
+    Events:                    <none>
+    ```
+
+    If your `InfisicalStaticSecret` is not syncing, also verify the `InfisicalConnection` and `InfisicalAuth` resources it references are both in a ready state:
+    ```bash
+    $ kubectl describe infisicalconnection my-infisical-connection
+    $ kubectl describe infisicalauth my-infisical-auth
+    ```
+  </Tab>
+  <Tab title="v1alpha1 (Deprecated)">
+    ```bash
+    $ kubectl get infisicalSecrets
+    NAME                     AGE
+    infisicalsecret-sample   12s
+
+    $ kubectl describe infisicalSecret infisicalsecret-sample
+    ...
+    Status:
+      Conditions:
+        Last Transition Time:  2022-12-18T04:29:09Z
+        Message:               Infisical controller has located the Infisical token in provided Kubernetes secret
+        Reason:                OK
+        Status:                True
+        Type:                  secrets.infisical.com/LoadedInfisicalToken
+        Last Transition Time:  2022-12-18T04:29:10Z
+        Message:               Failed to update secret because: 400 Bad Request
+        Reason:                Error
+        Status:                False
+        Type:                  secrets.infisical.com/ReadyToSyncSecrets
+    Events:                    <none>
+    ```
+  </Tab>
+</Tabs>
 
 ## Uninstall Operator
 
