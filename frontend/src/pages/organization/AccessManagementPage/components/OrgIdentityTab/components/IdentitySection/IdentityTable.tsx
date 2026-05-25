@@ -542,7 +542,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   let emptyTitle: string;
   let emptyDescription: string;
   if (isFiltered) {
-    emptyTitle = `No ${scopeLabel} machine identities match search filter`;
+    emptyTitle =
+      scopeTab === "all"
+        ? "No machine identities match search filter"
+        : `No ${scopeLabel} machine identities match search filter`;
     emptyDescription = "Adjust your search or filter criteria.";
   } else if (isProjectTab) {
     emptyTitle = "No project machine identities found";
