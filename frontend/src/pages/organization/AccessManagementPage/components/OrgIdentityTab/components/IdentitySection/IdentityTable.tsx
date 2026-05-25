@@ -474,6 +474,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const { data, isPending } = useSearchOrgIdentityMemberships({
+    orgId: organizationId,
     offset,
     limit,
     orderDirection,
@@ -483,6 +484,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   });
 
   const { data: scopeCounts } = useCountOrgIdentityMemberships({
+    orgId: organizationId,
     scope: TAB_TO_SCOPE.all,
     search: searchPayload
   });

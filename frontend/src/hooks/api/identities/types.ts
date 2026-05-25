@@ -955,6 +955,7 @@ export enum SearchIdentitiesScope {
 }
 
 export type TSearchIdentitiesDTO = {
+  orgId: string;
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
@@ -967,6 +968,7 @@ export type TSearchIdentitiesDTO = {
 };
 
 export type TCountIdentitiesDTO = {
+  orgId: string;
   scope: SearchIdentitiesScope[];
   search: {
     name?: { $contains: string };

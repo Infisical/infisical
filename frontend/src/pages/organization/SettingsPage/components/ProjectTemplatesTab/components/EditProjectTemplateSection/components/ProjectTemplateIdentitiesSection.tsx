@@ -28,7 +28,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge, OrgIcon, ProjectIcon } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useSearchOrgIdentityMemberships } from "@app/hooks/api";
 import {
@@ -97,6 +97,8 @@ enum AddIdentityType {
 }
 
 export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => {
+  const { currentOrg } = useOrganization();
+
   const [isAddIdentityModalOpen, setIsAddIdentityModalOpen] = useState(false);
 
   const [addMachineIdentityType, setAddMachineIdentityType] = useState<AddIdentityType>(
@@ -108,6 +110,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
 
   const { data: searchedIdentitiesResponse, isPending: isSearchingIdentities } =
     useSearchOrgIdentityMemberships({
+      orgId: currentOrg.id,
       limit: 100,
       search: debouncedIdentitySearch ? { name: { $contains: debouncedIdentitySearch } } : {}
     });
