@@ -632,11 +632,11 @@ export const pkiApplicationMembershipServiceFactory = ({
     actorId
   }: {
     projectId: string;
-    actorKind: "user" | "identity" | "group";
+    actorKind: ApplicationMemberKind;
     actorId: string;
   }): Promise<Array<{ id: string; name: string }>> => {
     const memberships =
-      actorKind === "group"
+      actorKind === ApplicationMemberKind.Group
         ? await membershipDAL.findResourceMembershipsForGroup({
             projectId,
             resourceType: ResourceType.CertificateApplication,
@@ -645,7 +645,7 @@ export const pkiApplicationMembershipServiceFactory = ({
         : await membershipDAL.findResourceMembershipsForActor({
             projectId,
             resourceType: ResourceType.CertificateApplication,
-            actorType: actorKind === "user" ? ActorType.USER : ActorType.IDENTITY,
+            actorType: actorKind === ApplicationMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
             actorId
           });
 
@@ -666,14 +666,14 @@ export const pkiApplicationMembershipServiceFactory = ({
     actorId
   }: {
     projectId: string;
-    actorKind: "user" | "identity" | "group";
+    actorKind: ApplicationMemberKind;
     actorId: string;
   }): Promise<{
     applications: Array<{ id: string; name: string }>;
     approvalPolicies: Array<{ id: string; name: string }>;
   }> => {
     const memberships =
-      actorKind === "group"
+      actorKind === ApplicationMemberKind.Group
         ? await membershipDAL.findResourceMembershipsForGroup({
             projectId,
             resourceType: ResourceType.CertificateApplication,
@@ -682,14 +682,16 @@ export const pkiApplicationMembershipServiceFactory = ({
         : await membershipDAL.findResourceMembershipsForActor({
             projectId,
             resourceType: ResourceType.CertificateApplication,
-            actorType: actorKind === "user" ? ActorType.USER : ActorType.IDENTITY,
+            actorType: actorKind === ApplicationMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
             actorId
           });
 
     const directMemberships =
-      actorKind === "group"
+      actorKind === ApplicationMemberKind.Group
         ? memberships
-        : memberships.filter((m) => (actorKind === "user" ? m.actorUserId === actorId : m.actorIdentityId === actorId));
+        : memberships.filter((m) =>
+            actorKind === ApplicationMemberKind.User ? m.actorUserId === actorId : m.actorIdentityId === actorId
+          );
 
     const applicationIds = Array.from(
       new Set(directMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
@@ -700,7 +702,7 @@ export const pkiApplicationMembershipServiceFactory = ({
     let approvalPoliciesTouched: Array<{ id: string; name: string }> = [];
 
     await membershipDAL.transaction(async (tx) => {
-      if (actorKind !== "identity" && applicationIds.length > 0) {
+      if (actorKind !== ApplicationMemberKind.Identity && applicationIds.length > 0) {
         for (const applicationId of applicationIds) {
           // eslint-disable-next-line no-await-in-loop
           const affected = await approvalPolicyDAL.deleteStepApproversBySubject(
@@ -708,8 +710,8 @@ export const pkiApplicationMembershipServiceFactory = ({
               projectId,
               scopeType: ApprovalPolicyScope.PkiApplication,
               scopeId: applicationId,
-              userId: actorKind === "user" ? actorId : undefined,
-              groupId: actorKind === "group" ? actorId : undefined
+              userId: actorKind === ApplicationMemberKind.User ? actorId : undefined,
+              groupId: actorKind === ApplicationMemberKind.Group ? actorId : undefined
             },
             tx
           );
@@ -751,7 +753,7 @@ export const pkiApplicationMembershipServiceFactory = ({
       // eslint-disable-next-line no-await-in-loop
       await removeActorFromApplicationMemberships({
         projectId,
-        actorKind: "user",
+        actorKind: ApplicationMemberKind.User,
         actorId: user.id
       });
     }

@@ -12,6 +12,7 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { RolesUpdateBodySchema } from "./schemas";
 
@@ -234,7 +235,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
       });
       await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
         projectId,
-        actorKind: "group",
+        actorKind: ApplicationMemberKind.Group,
         actorId: req.params.groupId
       });
       return {

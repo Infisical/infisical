@@ -12,6 +12,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { SanitizedUserSchema } from "../../sanitizedSchemas";
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
@@ -279,7 +280,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       });
       await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
         projectId,
-        actorKind: "user",
+        actorKind: ApplicationMemberKind.User,
         actorId: userId
       });
       return { membership: { ...membership, userId } };
