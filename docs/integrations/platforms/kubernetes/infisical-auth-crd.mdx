@@ -24,7 +24,7 @@ The operator caches authenticated credentials using the token's TTL (at 70% of t
 
 <Tabs>
   <Tab title="Kubernetes Auth (Recommended)">
-```yaml infisical-auth-kubernetes.yaml
+```yaml infisical-auth.yaml
 apiVersion: secrets.infisical.com/v1beta1
 kind: InfisicalAuth
 metadata:
@@ -52,7 +52,7 @@ kubectl create secret generic kubernetes-credentials \
 ```
   </Tab>
   <Tab title="Universal Auth">
-```yaml infisical-auth-universal.yaml
+```yaml infisical-auth.yaml
 apiVersion: secrets.infisical.com/v1beta1
 kind: InfisicalAuth
 metadata:
@@ -82,7 +82,7 @@ kubectl create secret generic universal-auth-credentials \
 ```
   </Tab>
   <Tab title="AWS IAM Auth">
-```yaml infisical-auth-aws.yaml
+```yaml infisical-auth.yaml
 apiVersion: secrets.infisical.com/v1beta1
 kind: InfisicalAuth
 metadata:
@@ -123,11 +123,21 @@ The `InfisicalAuth` spec has the following top-level fields:
 | `infisicalConnectionRef` | NamespacedName | Yes      | Reference to the `InfisicalConnection` resource that defines the Infisical host. |
 | `method`                 | string         | Yes      | The authentication method to use. Must be one of: `universal`, `kubernetes`, `aws-iam`, `azure`, `gcp-id-token`, `gcp-iam`, `ldap`. |
 
-In addition, you must provide the configuration object that matches your chosen `method` (e.g., `kubernetes`, `universal`, `awsIam`, etc.).
+In addition, you must provide the configuration object that matches your chosen `method`.
 
 ## Authentication methods
 
-Only define **one** authentication method per resource. The method name in `spec.method` must match the configuration object you provide.
+Only define **one** authentication method per resource. Note that `spec.method` uses kebab-case while the corresponding configuration field uses camelCase:
+
+| `spec.method`  | Configuration field |
+| -------------- | ------------------- |
+| `kubernetes`   | `kubernetes`        |
+| `universal`    | `universal`         |
+| `aws-iam`      | `awsIam`            |
+| `azure`        | `azure`             |
+| `gcp-id-token` | `gcpIdToken`        |
+| `gcp-iam`      | `gcpIam`            |
+| `ldap`         | `ldap`              |
 
 <Accordion title="kubernetes">
   Authenticates using a Kubernetes service account token. This is the recommended method when running inside a Kubernetes cluster. The operator automatically creates short-lived service account tokens (10 minutes) for authentication.
@@ -177,7 +187,7 @@ Only define **one** authentication method per resource. The method name in `spec
   ```
 </Accordion>
 
-<Accordion title="awsIam">
+<Accordion title="aws-iam">
   Authenticates using AWS IAM. Can only be used within AWS environments (EC2, Lambda, EKS).
   [Read more about AWS IAM Auth](/documentation/platform/identities/aws-auth).
 
@@ -214,7 +224,7 @@ Only define **one** authentication method per resource. The method name in `spec
   ```
 </Accordion>
 
-<Accordion title="gcpIdToken">
+<Accordion title="gcp-id-token">
   Authenticates using GCP ID tokens. Can only be used within GCP environments.
   [Read more about GCP Auth](/documentation/platform/identities/gcp-auth).
 
@@ -232,7 +242,7 @@ Only define **one** authentication method per resource. The method name in `spec
   ```
 </Accordion>
 
-<Accordion title="gcpIam">
+<Accordion title="gcp-iam">
   Authenticates using GCP IAM with a service account key file. Works both within and outside GCP environments.
   [Read more about GCP Auth](/documentation/platform/identities/gcp-auth).
 
