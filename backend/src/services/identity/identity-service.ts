@@ -545,10 +545,12 @@ export const identityServiceFactory = ({
         OrgPermissionSubjects.AdminConsole
       );
 
-      if (canAccessAllProjects) {
+      if (canAccessAllProjects && canReadOrgIdentities) {
         // Org admins read unconditionally across every project — skip the per-project probe,
         // which would otherwise throw ProjectMembershipNotFound for projects the admin hasn't
-        // explicitly joined and drop them from accessibleProjectIds.
+        // explicitly joined and drop them from accessibleProjectIds. The org-level identity:read
+        // gate stops access-all-projects holders without identity:read from enumerating
+        // project-scoped machine identities across the org.
         accessibleProjectIds.push(...(await projectDAL.findOrgProjectIds(actorOrgId)));
       } else {
         const candidateProjectIds = await projectDAL.findActorAccessibleProjectIds(actorId, actor, actorOrgId);
