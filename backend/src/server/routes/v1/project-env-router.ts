@@ -10,6 +10,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+const booleanParam = () => z.enum(["true", "false"]).transform((value) => value === "true");
+
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -226,7 +228,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
       querystring: z.object({
-        hardDelete: z.coerce.boolean().optional().default(false).describe(ENVIRONMENTS.DELETE.hardDelete)
+        hardDelete: booleanParam().optional().describe(ENVIRONMENTS.DELETE.hardDelete)
       }),
       response: {
         200: z.object({
@@ -256,7 +258,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
           metadata: {
             slug: environment.slug,
             name: environment.name,
-            hardDelete: req.query.hardDelete
+            hardDelete: req.query.hardDelete ?? false
           }
         }
       });
