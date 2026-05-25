@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"goa.design/goa/v3/security"
 
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/libs/errutil"
@@ -127,13 +126,12 @@ func assertErrorName(t *testing.T, err error, expectedName string) {
 // JWT User Token Tests
 // =============================================================================
 
-func TestJWTAuth_UserToken_Valid(t *testing.T) {
+func TestValidateJWT_UserToken_Valid(t *testing.T) {
 	token := stack.NodeJS().UserToken()
 
-	ctx, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "jwt"})
+	identity, err := authenticator.ValidateJWT(context.Background(), token)
 
 	require.NoError(t, err)
-	identity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, identity)
 	assert.Equal(t, auth.AuthModeJWT, identity.AuthMode)
 	assert.Equal(t, auth.ActorTypeUser, identity.Actor)
@@ -144,22 +142,12 @@ func TestJWTAuth_UserToken_Valid(t *testing.T) {
 	assert.NotEmpty(t, identity.Email)
 }
 
-func TestJWTAuth_UserToken_Errors(t *testing.T) {
+func TestValidateJWT_UserToken_Errors(t *testing.T) {
 	tests := []struct {
 		name        string
 		token       func(t *testing.T) string
 		assertError func(t *testing.T, err error)
 	}{
-		{
-			name: "empty token",
-			token: func(t *testing.T) string {
-				return ""
-			},
-			assertError: func(t *testing.T, err error) {
-				assertUnauthorized(t, err)
-				assert.Contains(t, err.Error(), "Token missing")
-			},
-		},
 		{
 			name: "invalid signature",
 			token: func(t *testing.T) string {
@@ -221,13 +209,13 @@ func TestJWTAuth_UserToken_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token := tt.token(t)
-			_, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "jwt"})
+			_, err := authenticator.ValidateJWT(context.Background(), token)
 			tt.assertError(t, err)
 		})
 	}
 }
 
-func TestJWTAuth_UserToken_StaleAccessVersion(t *testing.T) {
+func TestValidateJWT_UserToken_StaleAccessVersion(t *testing.T) {
 	// This test requires DB manipulation to create a session with a different access version
 	// We create a valid token but modify the session's access version in DB
 
@@ -252,14 +240,14 @@ func TestJWTAuth_UserToken_StaleAccessVersion(t *testing.T) {
 		c.AccessVersion = 1 // Different from DB's 5
 	})
 
-	_, err = authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "jwt"})
+	_, err = authenticator.ValidateJWT(context.Background(), token)
 
 	assertUnauthorized(t, err)
 	assertErrorName(t, err, "StaleSession")
 	assert.Contains(t, err.Error(), "stale")
 }
 
-func TestJWTAuth_UserToken_UserLocked(t *testing.T) {
+func TestValidateJWT_UserToken_UserLocked(t *testing.T) {
 	// Create a user that is permanently locked
 	lockedUserID := uuid.New()
 	testEmail := "locked-" + uuid.New().String() + "@test.com"
@@ -293,13 +281,13 @@ func TestJWTAuth_UserToken_UserLocked(t *testing.T) {
 		c.AccessVersion = 1
 	})
 
-	_, err = authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "jwt"})
+	_, err = authenticator.ValidateJWT(context.Background(), token)
 
 	assertUnauthorized(t, err)
 	assert.Contains(t, err.Error(), "locked")
 }
 
-func TestJWTAuth_UserToken_UserTemporarilyLocked(t *testing.T) {
+func TestValidateJWT_UserToken_UserTemporarilyLocked(t *testing.T) {
 	// Create a user that is temporarily locked (lock expires in the future)
 	tempLockedUserID := uuid.New()
 	testEmail := "templocked-" + uuid.New().String() + "@test.com"
@@ -334,13 +322,13 @@ func TestJWTAuth_UserToken_UserTemporarilyLocked(t *testing.T) {
 		c.AccessVersion = 1
 	})
 
-	_, err = authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "jwt"})
+	_, err = authenticator.ValidateJWT(context.Background(), token)
 
 	assertUnauthorized(t, err)
 	assert.Contains(t, err.Error(), "locked")
 }
 
-func TestJWTAuth_UserToken_UserNotAccepted(t *testing.T) {
+func TestValidateJWT_UserToken_UserNotAccepted(t *testing.T) {
 	// Create a user that has not accepted
 	notAcceptedUserID := uuid.New()
 	testEmail := "notaccepted-" + uuid.New().String() + "@test.com"
@@ -374,7 +362,7 @@ func TestJWTAuth_UserToken_UserNotAccepted(t *testing.T) {
 		c.AccessVersion = 1
 	})
 
-	_, err = authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "jwt"})
+	_, err = authenticator.ValidateJWT(context.Background(), token)
 
 	assertNotFound(t, err)
 }
@@ -383,13 +371,12 @@ func TestJWTAuth_UserToken_UserNotAccepted(t *testing.T) {
 // Identity Access Token Tests
 // =============================================================================
 
-func TestJWTAuth_IdentityToken_Valid(t *testing.T) {
+func TestValidateIdentityAccessToken_Valid(t *testing.T) {
 	token := stack.NodeJS().IdentityToken()
 
-	ctx, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "identity_access_token"})
+	identity, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
 
 	require.NoError(t, err)
-	identity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, identity)
 	assert.Equal(t, auth.AuthModeIdentityAccessToken, identity.AuthMode)
 	assert.Equal(t, auth.ActorTypeIdentity, identity.Actor)
@@ -400,7 +387,7 @@ func TestJWTAuth_IdentityToken_Valid(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, identity.IdentityAuthInfo.IdentityID)
 }
 
-func TestJWTAuth_IdentityToken_Errors(t *testing.T) {
+func TestValidateIdentityAccessToken_Errors(t *testing.T) {
 	tests := []struct {
 		name        string
 		token       func(t *testing.T) string
@@ -454,13 +441,13 @@ func TestJWTAuth_IdentityToken_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token := tt.token(t)
-			_, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "identity_access_token"})
+			_, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
 			tt.assertError(t, err)
 		})
 	}
 }
 
-func TestJWTAuth_IdentityToken_CustomIdentity(t *testing.T) {
+func TestValidateIdentityAccessToken_CustomIdentity(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create unique project and identity for this test
@@ -475,17 +462,16 @@ func TestJWTAuth_IdentityToken_CustomIdentity(t *testing.T) {
 
 	token := nodejs.GetIdentityAccessToken(t, identity.ID)
 
-	ctx, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "identity_access_token"})
+	authIdentity, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
 
 	require.NoError(t, err)
-	authIdentity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, authIdentity)
 	assert.Equal(t, auth.AuthModeIdentityAccessToken, authIdentity.AuthMode)
 	assert.Equal(t, auth.ActorTypeIdentity, authIdentity.Actor)
 	assert.Equal(t, uuid.MustParse(identity.ID), authIdentity.ActorID)
 }
 
-func TestJWTAuth_IdentityToken_Revoked(t *testing.T) {
+func TestValidateIdentityAccessToken_Revoked(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create identity and get token
@@ -503,13 +489,13 @@ func TestJWTAuth_IdentityToken_Revoked(t *testing.T) {
 	// Revoke the token via Node.js API
 	nodejs.RevokeAccessToken(t, token)
 
-	_, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "identity_access_token"})
+	_, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
 
 	assertUnauthorized(t, err)
 	assert.Contains(t, err.Error(), "revoked")
 }
 
-func TestJWTAuth_IdentityToken_IdentityDeleted(t *testing.T) {
+func TestValidateIdentityAccessToken_IdentityDeleted(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create identity and get token
@@ -527,7 +513,7 @@ func TestJWTAuth_IdentityToken_IdentityDeleted(t *testing.T) {
 	// Delete the identity - this revokes all tokens for the identity
 	nodejs.DeleteIdentity(t, identity.ID)
 
-	_, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "identity_access_token"})
+	_, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
 
 	// Token should fail - either as revoked or identity not found
 	require.Error(t, err)
@@ -537,7 +523,7 @@ func TestJWTAuth_IdentityToken_IdentityDeleted(t *testing.T) {
 // Service Token Tests
 // =============================================================================
 
-func TestJWTAuth_ServiceToken_Errors(t *testing.T) {
+func TestValidateServiceToken_Errors(t *testing.T) {
 	tests := []struct {
 		name        string
 		token       string
@@ -568,13 +554,13 @@ func TestJWTAuth_ServiceToken_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := authenticator.JWTAuth(context.Background(), tt.token, &security.JWTScheme{Name: "service_token"})
+			_, err := authenticator.ValidateServiceToken(context.Background(), tt.token)
 			tt.assertError(t, err)
 		})
 	}
 }
 
-func TestJWTAuth_ServiceToken_Valid(t *testing.T) {
+func TestValidateServiceToken_Valid(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create a project with an environment
@@ -590,17 +576,16 @@ func TestJWTAuth_ServiceToken_Valid(t *testing.T) {
 		nodejs.DeleteServiceToken(t, st.ID)
 	})
 
-	ctx, err := authenticator.JWTAuth(context.Background(), st.Token, &security.JWTScheme{Name: "service_token"})
+	identity, err := authenticator.ValidateServiceToken(context.Background(), st.Token)
 
 	require.NoError(t, err)
-	identity := auth.IdentityFromContext(ctx)
 	require.NotNil(t, identity)
 	assert.Equal(t, auth.AuthModeServiceToken, identity.AuthMode)
 	assert.Equal(t, auth.ActorTypeService, identity.Actor)
 	assert.Equal(t, st.ID, identity.ActorID.String())
 }
 
-func TestJWTAuth_ServiceToken_WrongSecret(t *testing.T) {
+func TestValidateServiceToken_WrongSecret(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create a project and service token
@@ -621,13 +606,13 @@ func TestJWTAuth_ServiceToken_WrongSecret(t *testing.T) {
 	require.Len(t, parts, 3)
 	wrongToken := "st." + parts[1] + ".wrong-secret-here"
 
-	_, err := authenticator.JWTAuth(context.Background(), wrongToken, &security.JWTScheme{Name: "service_token"})
+	_, err := authenticator.ValidateServiceToken(context.Background(), wrongToken)
 
 	assertUnauthorized(t, err)
 	assert.Contains(t, err.Error(), "Invalid service token")
 }
 
-func TestJWTAuth_ServiceToken_Expired(t *testing.T) {
+func TestValidateServiceToken_Expired(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create a project
@@ -645,7 +630,7 @@ func TestJWTAuth_ServiceToken_Expired(t *testing.T) {
 	// Wait for expiration
 	time.Sleep(2 * time.Second)
 
-	_, err := authenticator.JWTAuth(context.Background(), st.Token, &security.JWTScheme{Name: "service_token"})
+	_, err := authenticator.ValidateServiceToken(context.Background(), st.Token)
 
 	// Should fail - token is expired (and possibly deleted)
 	require.Error(t, err)
@@ -655,7 +640,7 @@ func TestJWTAuth_ServiceToken_Expired(t *testing.T) {
 // Identity Token numUsesLimit Tests
 // =============================================================================
 
-func TestJWTAuth_IdentityToken_NumUsesLimitExhausted(t *testing.T) {
+func TestValidateIdentityAccessToken_NumUsesLimitExhausted(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create identity with numUsesLimit
@@ -701,7 +686,7 @@ func TestJWTAuth_IdentityToken_NumUsesLimitExhausted(t *testing.T) {
 		c.ID = tokenID
 	})
 
-	_, err = authenticator.JWTAuth(context.Background(), tokenWithLimit, &security.JWTScheme{Name: "identity_access_token"})
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), tokenWithLimit, "")
 
 	assertUnauthorized(t, err)
 	assert.Contains(t, err.Error(), "usage limit")
@@ -711,19 +696,19 @@ func TestJWTAuth_IdentityToken_NumUsesLimitExhausted(t *testing.T) {
 // JWT Algorithm Attack Tests
 // =============================================================================
 
-func TestJWTAuth_UserToken_AlgNoneAttack(t *testing.T) {
+func TestValidateJWT_UserToken_AlgNoneAttack(t *testing.T) {
 	// Create a token with alg=none - this should be rejected
 	// JWT with alg:none has no signature
 	header := base64URLEncode(`{"alg":"none","typ":"JWT"}`)
 	payload := base64URLEncode(`{"authTokenType":"accessToken","userId":"` + stack.NodeJS().UserID() + `"}`)
 	algNoneToken := header + "." + payload + "."
 
-	_, err := authenticator.JWTAuth(context.Background(), algNoneToken, &security.JWTScheme{Name: "jwt"})
+	_, err := authenticator.ValidateJWT(context.Background(), algNoneToken)
 
 	assertUnauthorized(t, err)
 }
 
-func TestJWTAuth_UserToken_WrongAlgorithm(t *testing.T) {
+func TestValidateJWT_UserToken_WrongAlgorithm(t *testing.T) {
 	// Try to use RS256 when the server expects HS256
 	// This tests that the server properly validates the algorithm
 	token := jwt.NewWithClaims(jwt.SigningMethodHS384, &apiauth.UserJWTClaims{
@@ -741,7 +726,7 @@ func TestJWTAuth_UserToken_WrongAlgorithm(t *testing.T) {
 	tokenString, err := token.SignedString([]byte(infra.AuthSecret))
 	require.NoError(t, err)
 
-	_, err = authenticator.JWTAuth(context.Background(), tokenString, &security.JWTScheme{Name: "jwt"})
+	_, err = authenticator.ValidateJWT(context.Background(), tokenString)
 
 	// Should fail because algorithm doesn't match
 	assertUnauthorized(t, err)
@@ -751,7 +736,7 @@ func TestJWTAuth_UserToken_WrongAlgorithm(t *testing.T) {
 // Legacy Identity Token Tests
 // =============================================================================
 
-func TestJWTAuth_IdentityToken_LegacyRevoked(t *testing.T) {
+func TestValidateIdentityAccessToken_LegacyRevoked(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create identity
@@ -799,7 +784,7 @@ func TestJWTAuth_IdentityToken_LegacyRevoked(t *testing.T) {
 		c.AccessTokenPeriod = 0
 	})
 
-	_, err = authenticator.JWTAuth(context.Background(), legacyToken, &security.JWTScheme{Name: "identity_access_token"})
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), legacyToken, "")
 
 	assertUnauthorized(t, err)
 	assert.Contains(t, err.Error(), "revoked")
@@ -815,122 +800,14 @@ func base64URLEncode(s string) string {
 }
 
 // =============================================================================
-// Scheme Mismatch Tests
-// =============================================================================
-
-func TestJWTAuth_SchemeMismatch(t *testing.T) {
-	tests := []struct {
-		name   string
-		token  func() string
-		scheme string
-	}{
-		{
-			name:   "user JWT with identity scheme",
-			token:  func() string { return stack.NodeJS().UserToken() },
-			scheme: "identity_access_token",
-		},
-		{
-			name:   "user JWT with service token scheme",
-			token:  func() string { return stack.NodeJS().UserToken() },
-			scheme: "service_token",
-		},
-		{
-			name:   "identity token with jwt scheme",
-			token:  func() string { return stack.NodeJS().IdentityToken() },
-			scheme: "jwt",
-		},
-		{
-			name:   "identity token with service token scheme",
-			token:  func() string { return stack.NodeJS().IdentityToken() },
-			scheme: "service_token",
-		},
-		{
-			name:   "service token with jwt scheme",
-			token:  func() string { return "st." + uuid.New().String() + ".secret" },
-			scheme: "jwt",
-		},
-		{
-			name:   "service token with identity scheme",
-			token:  func() string { return "st." + uuid.New().String() + ".secret" },
-			scheme: "identity_access_token",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := authenticator.JWTAuth(context.Background(), tt.token(), &security.JWTScheme{Name: tt.scheme})
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "not supported")
-		})
-	}
-}
-
-func TestJWTAuth_UnknownScheme(t *testing.T) {
-	token := stack.NodeJS().UserToken()
-
-	_, err := authenticator.JWTAuth(context.Background(), token, &security.JWTScheme{Name: "unknown_scheme"})
-
-	assertUnauthorized(t, err)
-}
-
-// =============================================================================
-// AuthFailKey Context Propagation Test
-// =============================================================================
-
-func TestJWTAuth_AuthFailKeyPropagation(t *testing.T) {
-	// This tests the critical behavior: once a scheme matches the token type
-	// but validation fails, subsequent scheme attempts return the SAME error
-	// rather than a misleading "not supported" message.
-
-	// Create a JWT with valid format but invalid signature
-	invalidToken := signUserJWT(t, "wrong-secret", nil)
-
-	ctx := context.Background()
-
-	// First call: JWT scheme matches (it's a JWT) but validation fails (bad signature)
-	ctx, err1 := authenticator.JWTAuth(ctx, invalidToken, &security.JWTScheme{Name: "jwt"})
-	require.Error(t, err1)
-	assert.Contains(t, err1.Error(), "Invalid JWT")
-
-	// Second call with same context: identity_access_token scheme
-	// Should return the SAME error from the first matched scheme, not "not supported"
-	_, err2 := authenticator.JWTAuth(ctx, invalidToken, &security.JWTScheme{Name: "identity_access_token"})
-	require.Error(t, err2)
-	assert.Equal(t, err1.Error(), err2.Error(), "subsequent scheme should return same error as first matched scheme")
-
-	// Third call: service_token scheme - same behavior
-	_, err3 := authenticator.JWTAuth(ctx, invalidToken, &security.JWTScheme{Name: "service_token"})
-	require.Error(t, err3)
-	assert.Equal(t, err1.Error(), err3.Error())
-}
-
-func TestJWTAuth_FreshContextDoesNotCarryError(t *testing.T) {
-	// Verify that a fresh context doesn't inherit errors from previous calls
-	invalidToken := signUserJWT(t, "wrong-secret", nil)
-
-	// First context: fails
-	ctx1 := context.Background()
-	_, err1 := authenticator.JWTAuth(ctx1, invalidToken, &security.JWTScheme{Name: "jwt"})
-	require.Error(t, err1)
-
-	// Fresh context: should fail independently, not reuse err1
-	ctx2 := context.Background()
-	_, err2 := authenticator.JWTAuth(ctx2, invalidToken, &security.JWTScheme{Name: "jwt"})
-	require.Error(t, err2)
-	// Both errors should be the same type but from independent evaluation
-	assert.Contains(t, err2.Error(), "Invalid JWT")
-}
-
-// =============================================================================
 // Malformed Token Tests
 // =============================================================================
 
-func TestJWTAuth_MalformedTokens(t *testing.T) {
+func TestValidateJWT_MalformedTokens(t *testing.T) {
 	tests := []struct {
 		name  string
 		token string
 	}{
-		{"empty", ""},
 		{"single dot", "."},
 		{"two dots", ".."},
 		{"three dots", "..."},
@@ -942,8 +819,7 @@ func TestJWTAuth_MalformedTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Should fail on all schemes
-			_, err := authenticator.JWTAuth(context.Background(), tt.token, &security.JWTScheme{Name: "jwt"})
+			_, err := authenticator.ValidateJWT(context.Background(), tt.token)
 			require.Error(t, err)
 		})
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"goa.design/goa/v3/security"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/infisical/api/internal/database/pg"
@@ -25,8 +24,8 @@ import (
 // Used for usage counter expiry in Redis.
 const maxMachineIdentityTokenAge = 86400 * 30 // 30 days
 
-// Authenticator implements the Goa-generated authorization interface (JWTAuth method).
-// It performs real token validation — an exact port of the Node.js inject-identity logic.
+// Authenticator performs token validation for various auth methods.
+// It's an exact port of the Node.js inject-identity logic.
 type Authenticator struct {
 	db         pg.DB
 	keyStore   keystore.KeyStore
@@ -39,86 +38,10 @@ func NewAuthenticator(db pg.DB, authSecret string, keyStore keystore.KeyStore) A
 	return Authenticator{db: db, authSecret: []byte(authSecret), keyStore: keyStore}
 }
 
-// authFailKey is a context key used to propagate the authoritative auth error
-// across Goa's fallback chain. When the token type matches a scheme but validation
-// fails, we stash the real error so subsequent scheme attempts return it instead
-// of a misleading "not supported" message.
-type authFailKey struct{}
-
-// JWTAuth implements the Goa security handler. Goa calls this for each scheme in order
-// (jwt → identity_access_token → service_token) with the scheme name in sc.Name.
-// We classify the token cheaply and only accept when the token type matches the scheme being tried.
-func (a Authenticator) JWTAuth(ctx context.Context, token string, sc *security.JWTScheme) (context.Context, error) {
-	// If a previous scheme already matched the token and failed, return that error.
-	if prevErr, ok := ctx.Value(authFailKey{}).(error); ok {
-		return ctx, prevErr
-	}
-
-	if token == "" {
-		return ctx, errutil.Unauthorized("Token missing").WithErrf("JWTAuth: token is empty")
-	}
-
-	tokenMode := ClassifyToken(token)
-	if tokenMode == "" {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("token classification failed"))
-	}
-
-	// Map scheme name to expected auth mode.
-	var expectedMode auth.AuthMode
-	switch sc.Name {
-	case "jwt":
-		expectedMode = auth.AuthModeJWT
-	case "identity_access_token":
-		expectedMode = auth.AuthModeIdentityAccessToken
-	case "service_token":
-		expectedMode = auth.AuthModeServiceToken
-	default:
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("invalid token"))
-	}
-
-	// Fast reject: token type doesn't match the scheme being tried.
-	if tokenMode != expectedMode {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("provider token %v not supported", tokenMode)
-	}
-
-	var (
-		identity *auth.Identity
-		err      error
-	)
-	switch expectedMode {
-	case auth.AuthModeJWT:
-		identity, err = a.validateJWT(ctx, token)
-	case auth.AuthModeIdentityAccessToken:
-		ipAddress := ""
-		if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
-			ipAddress = httpInfo.IPAddress
-		}
-		identity, err = a.validateIdentityAccessToken(ctx, token, ipAddress)
-	case auth.AuthModeServiceToken:
-		identity, err = a.validateServiceToken(ctx, token)
-	}
-
-	if err != nil {
-		// Token matched this scheme but validation failed — this is the authoritative error.
-		// Stash it in context so subsequent scheme attempts return it directly.
-		ctx = context.WithValue(ctx, authFailKey{}, err)
-		return ctx, err
-	}
-
-	// Populate HTTP layer fields from context (set by HTTPInfoMiddleware).
-	if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
-		identity.IPAddress = httpInfo.IPAddress
-		identity.UserAgent = httpInfo.UserAgent
-		identity.UserAgentType = httpInfo.UserAgentType
-	}
-
-	return auth.WithIdentity(ctx, identity), nil
-}
-
 // TODO(gov0): Missing test
-// validateJWT performs real JWT validation.
+// ValidateJWT performs real JWT validation.
 // Exact port of fnValidateJwtIdentity in auth-token-service.ts:212-285.
-func (a Authenticator) validateJWT(ctx context.Context, token string) (*auth.Identity, error) {
+func (a Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
 	// 1. Parse and verify JWT signature (HS256 only).
 	claims := &UserJWTClaims{}
 	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
@@ -266,11 +189,11 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*auth.Ide
 	}, nil
 }
 
-// validateIdentityAccessToken performs real identity access token validation.
+// ValidateIdentityAccessToken performs real identity access token validation.
 // Port of fnValidateIdentityAccessTokenFast in identity-access-token-service.ts.
 // New-format tokens carry all claims in the JWT for stateless validation; legacy tokens
 // fall back to DB lookup.
-func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
+func (a Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
 	// 1. Parse and verify JWT signature (HS256 only).
 	claims := &IdentityJWTClaims{}
 	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
@@ -415,9 +338,9 @@ func (a Authenticator) validateIdentityAccessToken(ctx context.Context, token, i
 	}, nil
 }
 
-// validateServiceToken performs real service token validation.
+// ValidateServiceToken performs real service token validation.
 // Exact port of fnValidateServiceToken in service-token-service.ts:172-199.
-func (a Authenticator) validateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
+func (a Authenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
 	// 1. Split token: "st.<tokenID>.<tokenSecret>"
 	parts := strings.SplitN(token, ".", 3)
 	if len(parts) != 3 || parts[0] != "st" {

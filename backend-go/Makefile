@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-integration test-all gen-goa dev build
+.PHONY: lint lint-fix test test-integration test-all dev build
 
 # Run linters
 lint:
@@ -17,10 +17,6 @@ test-integration:
 # Run all tests (unit + integration)
 test-all:
 	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
-
-# Generate Goa code from design DSL
-gen-goa:
-	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
 
 # Start Go backend with hot-reload (uses root docker-compose.dev.yml)
 dev:

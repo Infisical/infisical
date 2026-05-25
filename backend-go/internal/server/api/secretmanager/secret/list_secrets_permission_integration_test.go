@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
 )
@@ -28,7 +28,7 @@ func TestIdentityAdmin_CanReadAllSecrets(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "admin-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -53,7 +53,7 @@ func TestIdentityMember_CanReadAllSecrets(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "member-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("member"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -76,7 +76,7 @@ func TestIdentityViewer_CanReadSecrets(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "viewer-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -99,7 +99,7 @@ func TestIdentityNoAccess_EmptyResult(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "noaccess-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -118,7 +118,7 @@ func TestIdentityNotMember_Forbidden(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "outsider-secrets-identity")
 
-	_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -142,7 +142,7 @@ func TestUserAdmin_CanReadSecrets(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "user-admin-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"admin"})
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -163,7 +163,7 @@ func TestUserViewer_CanReadSecrets(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "user-viewer-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"viewer"})
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -201,7 +201,7 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "env-scoped-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "dev",
 		SecretPath:      "/",
@@ -211,7 +211,7 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	require.Len(t, devResult.Secrets, 1)
 	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "staging",
 		SecretPath:      "/",
@@ -249,7 +249,7 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "path-scoped-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	appResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	appResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/app",
@@ -259,7 +259,7 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	require.Len(t, appResult.Secrets, 1)
 	assert.Equal(t, "APP_SECRET", appResult.Secrets[0].SecretKey)
 
-	configResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	configResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/app/config",
@@ -269,7 +269,7 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	require.Len(t, configResult.Secrets, 1)
 	assert.Equal(t, "CONFIG_SECRET", configResult.Secrets[0].SecretKey)
 
-	otherResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	otherResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/other",
@@ -294,7 +294,7 @@ func TestGroupAdmin_UserInheritsAccess(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, "admin")
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -318,7 +318,7 @@ func TestGroupViewer_UserInheritsReadAccess(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, "viewer")
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -354,7 +354,7 @@ func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, customRole.Slug)
 
-	devResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	devResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "dev",
 		SecretPath:      "/",
@@ -364,7 +364,7 @@ func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	require.Len(t, devResult.Secrets, 1)
 	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	stagingResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "staging",
 		SecretPath:      "/",
@@ -398,7 +398,7 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 		},
 	}, nil)
 
-	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "dev",
 		SecretPath:      "/",
@@ -408,7 +408,7 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	require.Len(t, devResult.Secrets, 1)
 	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "staging",
 		SecretPath:      "/",
@@ -448,7 +448,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 		},
 	}, nil)
 
-	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "dev",
 		SecretPath:      "/",
@@ -457,7 +457,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, devResult.Secrets, 1)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     "staging",
 		SecretPath:      "/",
@@ -492,7 +492,7 @@ func TestIdentityTemporaryRole_ActiveGrantsAccess(t *testing.T) {
 		},
 	})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -525,7 +525,7 @@ func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
 		},
 	})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -557,7 +557,7 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 		},
 	})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -585,7 +585,7 @@ func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
 		},
 	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().UTC().Format(time.RFC3339)})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -612,7 +612,7 @@ func TestIdentityTemporaryAdditionalPrivilege_Expired(t *testing.T) {
 		},
 	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -636,7 +636,7 @@ func TestViewSecretValue_False_HidesValues(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "view-value-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -658,7 +658,7 @@ func TestViewSecretValue_True_ShowsValues(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "view-value-true-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",

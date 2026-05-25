@@ -3,16 +3,15 @@
 package secret_test
 
 import (
-	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/pkg/chita"
 )
 
 func TestListSecrets_Basic(t *testing.T) {
@@ -30,7 +29,7 @@ func TestListSecrets_Basic(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "basic-test-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	getSecretByKey := func(secrets []*gensecrets.SecretRaw, key string) *gensecrets.SecretRaw {
+	getSecretByKey := func(secrets []*secret.SecretRaw, key string) *secret.SecretRaw {
 		for _, s := range secrets {
 			if s.SecretKey == key {
 				return s
@@ -40,7 +39,7 @@ func TestListSecrets_Basic(t *testing.T) {
 	}
 
 	t.Run("returns correct structure", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -48,22 +47,22 @@ func TestListSecrets_Basic(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "PLAIN_SECRET")
-		require.NotNil(t, secret)
+		secretItem := getSecretByKey(result.Secrets, "PLAIN_SECRET")
+		require.NotNil(t, secretItem)
 
-		assert.NotEmpty(t, secret.ID)
-		assert.Equal(t, "PLAIN_SECRET", secret.SecretKey)
-		assert.Equal(t, "plain-value", secret.SecretValue)
-		assert.Equal(t, proj.EnvSlug, secret.Environment)
-		assert.NotEmpty(t, secret.Workspace)
-		assert.NotEmpty(t, secret.CreatedAt)
-		assert.NotEmpty(t, secret.UpdatedAt)
-		assert.Equal(t, 1, secret.Version)
-		assert.Equal(t, "shared", secret.Type)
+		assert.NotEmpty(t, secretItem.ID)
+		assert.Equal(t, "PLAIN_SECRET", secretItem.SecretKey)
+		assert.Equal(t, "plain-value", secretItem.SecretValue)
+		assert.Equal(t, proj.EnvSlug, secretItem.Environment)
+		assert.NotEmpty(t, secretItem.Workspace)
+		assert.NotEmpty(t, secretItem.CreatedAt)
+		assert.NotEmpty(t, secretItem.UpdatedAt)
+		assert.Equal(t, 1, secretItem.Version)
+		assert.Equal(t, "shared", secretItem.Type)
 	})
 
 	t.Run("decrypts values", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -71,13 +70,13 @@ func TestListSecrets_Basic(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "ENCRYPTED_SECRET")
-		require.NotNil(t, secret)
-		assert.Equal(t, "decrypted-correctly", secret.SecretValue)
+		secretItem := getSecretByKey(result.Secrets, "ENCRYPTED_SECRET")
+		require.NotNil(t, secretItem)
+		assert.Equal(t, "decrypted-correctly", secretItem.SecretValue)
 	})
 
 	t.Run("includes tags", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -85,12 +84,12 @@ func TestListSecrets_Basic(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "TAGGED_SECRET")
-		require.NotNil(t, secret)
-		require.Len(t, secret.Tags, 2)
+		secretItem := getSecretByKey(result.Secrets, "TAGGED_SECRET")
+		require.NotNil(t, secretItem)
+		require.Len(t, secretItem.Tags, 2)
 
-		tagSlugs := make([]string, len(secret.Tags))
-		for i, tag := range secret.Tags {
+		tagSlugs := make([]string, len(secretItem.Tags))
+		for i, tag := range secretItem.Tags {
 			tagSlugs[i] = tag.Slug
 		}
 		assert.Contains(t, tagSlugs, "env-prod")
@@ -98,7 +97,7 @@ func TestListSecrets_Basic(t *testing.T) {
 	})
 
 	t.Run("returns multiple secrets", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -132,7 +131,7 @@ func TestListSecrets_Imports(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	t.Run("include imports returns imported secrets", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     "dev",
 			SecretPath:      "/",
@@ -158,7 +157,7 @@ func TestListSecrets_Imports(t *testing.T) {
 	})
 
 	t.Run("exclude imports omits imported secrets", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     "dev",
 			SecretPath:      "/",
@@ -216,7 +215,7 @@ func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	t.Run("root level expansion", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:              proj.ID,
 			Environment:            "dev",
 			SecretPath:             "/",
@@ -244,7 +243,7 @@ func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	})
 
 	t.Run("folder level expansion with folder import", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:              proj.ID,
 			Environment:            "dev",
 			SecretPath:             "/app",
@@ -293,7 +292,7 @@ func TestListSecrets_Expansion(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "expansion-test-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	getSecretByKey := func(secrets []*gensecrets.SecretRaw, key string) *gensecrets.SecretRaw {
+	getSecretByKey := func(secrets []*secret.SecretRaw, key string) *secret.SecretRaw {
 		for _, s := range secrets {
 			if s.SecretKey == key {
 				return s
@@ -303,7 +302,7 @@ func TestListSecrets_Expansion(t *testing.T) {
 	}
 
 	t.Run("nested expansion", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:              proj.ID,
 			Environment:            proj.EnvSlug,
 			SecretPath:             "/",
@@ -323,7 +322,7 @@ func TestListSecrets_Expansion(t *testing.T) {
 	})
 
 	t.Run("cross environment expansion", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:              proj.ID,
 			Environment:            proj.EnvSlug,
 			SecretPath:             "/",
@@ -332,13 +331,13 @@ func TestListSecrets_Expansion(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "CROSS_ENV_REF")
-		require.NotNil(t, secret)
-		assert.Equal(t, "shared-api-key-value", secret.SecretValue)
+		secretItem := getSecretByKey(result.Secrets, "CROSS_ENV_REF")
+		require.NotNil(t, secretItem)
+		assert.Equal(t, "shared-api-key-value", secretItem.SecretValue)
 	})
 
 	t.Run("cross path expansion", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:              proj.ID,
 			Environment:            proj.EnvSlug,
 			SecretPath:             "/",
@@ -347,13 +346,13 @@ func TestListSecrets_Expansion(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "CROSS_PATH_REF")
-		require.NotNil(t, secret)
-		assert.Equal(t, "common-value", secret.SecretValue)
+		secretItem := getSecretByKey(result.Secrets, "CROSS_PATH_REF")
+		require.NotNil(t, secretItem)
+		assert.Equal(t, "common-value", secretItem.SecretValue)
 	})
 
 	t.Run("no expansion preserves references", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:              proj.ID,
 			Environment:            proj.EnvSlug,
 			SecretPath:             "/",
@@ -362,9 +361,9 @@ func TestListSecrets_Expansion(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "REF_VALUE")
-		require.NotNil(t, secret)
-		assert.Equal(t, "${BASE_VALUE}", secret.SecretValue, "reference should NOT be expanded")
+		secretItem := getSecretByKey(result.Secrets, "REF_VALUE")
+		require.NotNil(t, secretItem)
+		assert.Equal(t, "${BASE_VALUE}", secretItem.SecretValue, "reference should NOT be expanded")
 	})
 }
 
@@ -388,7 +387,7 @@ func TestListSecrets_PathAndRecursive(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	t.Run("recursive includes subfolders", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -409,7 +408,7 @@ func TestListSecrets_PathAndRecursive(t *testing.T) {
 	})
 
 	t.Run("non-recursive only current folder", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -423,7 +422,7 @@ func TestListSecrets_PathAndRecursive(t *testing.T) {
 	})
 
 	t.Run("specific path", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/api",
@@ -445,7 +444,7 @@ func TestListSecrets_Errors(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	t.Run("environment not found", func(t *testing.T) {
-		_, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     "nonexistent",
 			SecretPath:      "/",
@@ -457,7 +456,7 @@ func TestListSecrets_Errors(t *testing.T) {
 	})
 
 	t.Run("folder not found", func(t *testing.T) {
-		_, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/nonexistent/path",
@@ -480,7 +479,7 @@ func TestListSecrets_ReturnsComment(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "comment-test-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
 		SecretPath:      "/",
@@ -528,7 +527,7 @@ func TestListSecrets_Metadata(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "metadata-test-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	getSecretByKey := func(secrets []*gensecrets.SecretRaw, key string) *gensecrets.SecretRaw {
+	getSecretByKey := func(secrets []*secret.SecretRaw, key string) *secret.SecretRaw {
 		for _, s := range secrets {
 			if s.SecretKey == key {
 				return s
@@ -538,7 +537,7 @@ func TestListSecrets_Metadata(t *testing.T) {
 	}
 
 	t.Run("returns metadata fields", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -546,12 +545,12 @@ func TestListSecrets_Metadata(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "SECRET_WITH_METADATA")
-		require.NotNil(t, secret)
+		secretItem := getSecretByKey(result.Secrets, "SECRET_WITH_METADATA")
+		require.NotNil(t, secretItem)
 
-		require.Len(t, secret.SecretMetadata, 2)
+		require.Len(t, secretItem.SecretMetadata, 2)
 		metadataMap := make(map[string]string)
-		for _, m := range secret.SecretMetadata {
+		for _, m := range secretItem.SecretMetadata {
 			metadataMap[m.Key] = m.Value
 		}
 		assert.Equal(t, "platform-team", metadataMap["owner"])
@@ -559,7 +558,7 @@ func TestListSecrets_Metadata(t *testing.T) {
 	})
 
 	t.Run("comment and metadata together", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -567,18 +566,18 @@ func TestListSecrets_Metadata(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "SECRET_WITH_COMMENT")
-		require.NotNil(t, secret)
+		secretItem := getSecretByKey(result.Secrets, "SECRET_WITH_COMMENT")
+		require.NotNil(t, secretItem)
 
-		assert.Equal(t, "full-value", secret.SecretValue)
-		assert.Equal(t, "A secret with both comment and metadata", secret.SecretComment)
-		require.Len(t, secret.SecretMetadata, 1)
-		assert.Equal(t, "env", secret.SecretMetadata[0].Key)
-		assert.Equal(t, "production", secret.SecretMetadata[0].Value)
+		assert.Equal(t, "full-value", secretItem.SecretValue)
+		assert.Equal(t, "A secret with both comment and metadata", secretItem.SecretComment)
+		require.Len(t, secretItem.SecretMetadata, 1)
+		assert.Equal(t, "env", secretItem.SecretMetadata[0].Key)
+		assert.Equal(t, "production", secretItem.SecretMetadata[0].Value)
 	})
 
 	t.Run("encrypted vs plaintext metadata", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
@@ -586,12 +585,12 @@ func TestListSecrets_Metadata(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		secret := getSecretByKey(result.Secrets, "SECRET_MIXED_ENCRYPTION")
-		require.NotNil(t, secret)
-		require.Len(t, secret.SecretMetadata, 2)
+		secretItem := getSecretByKey(result.Secrets, "SECRET_MIXED_ENCRYPTION")
+		require.NotNil(t, secretItem)
+		require.Len(t, secretItem.SecretMetadata, 2)
 
-		metadataMap := make(map[string]*gensecrets.ResourceMetadata)
-		for _, m := range secret.SecretMetadata {
+		metadataMap := make(map[string]*secret.ResourceMetadata)
+		for _, m := range secretItem.SecretMetadata {
 			metadataMap[m.Key] = m
 		}
 
@@ -607,13 +606,12 @@ func TestListSecrets_Metadata(t *testing.T) {
 	})
 
 	t.Run("filter by metadata", func(t *testing.T) {
-		metadataFilter := "key=env,value=production"
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
 			ViewSecretValue: true,
-			MetadataFilter:  &metadataFilter,
+			MetadataFilter:  "key=env,value=production",
 		})
 
 		require.NoError(t, err)
@@ -642,16 +640,7 @@ func TestListSecrets_PersonalOverrides(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	t.Run("never include returns shared only", func(t *testing.T) {
-		svc := newSecretsHandler(t)
-		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-			AuthMode:   auth.AuthModeJWT,
-			Actor:      auth.ActorTypeUser,
-			ActorID:    uuid.MustParse(nodejs.UserID()),
-			OrgID:      uuid.MustParse(nodejs.OrgID()),
-			AuthMethod: "",
-		})
-
-		result, err := svc.ListSecretsV4(ctx, &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeUser, nodejs.UserID(), nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:                proj.ID,
 			Environment:              proj.EnvSlug,
 			SecretPath:               "/",
@@ -666,16 +655,7 @@ func TestListSecrets_PersonalOverrides(t *testing.T) {
 	})
 
 	t.Run("priority returns personal override", func(t *testing.T) {
-		svc := newSecretsHandler(t)
-		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-			AuthMode:   auth.AuthModeJWT,
-			Actor:      auth.ActorTypeUser,
-			ActorID:    uuid.MustParse(nodejs.UserID()),
-			OrgID:      uuid.MustParse(nodejs.OrgID()),
-			AuthMethod: "",
-		})
-
-		result, err := svc.ListSecretsV4(ctx, &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeUser, nodejs.UserID(), nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:                proj.ID,
 			Environment:              proj.EnvSlug,
 			SecretPath:               "/",
@@ -690,7 +670,7 @@ func TestListSecrets_PersonalOverrides(t *testing.T) {
 	})
 
 	t.Run("identity sees shared value", func(t *testing.T) {
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:                proj.ID,
 			Environment:              proj.EnvSlug,
 			SecretPath:               "/",
@@ -720,13 +700,12 @@ func TestListSecrets_TagFiltering(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	t.Run("filter by single tag", func(t *testing.T) {
-		tagSlugs := "api"
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
 			ViewSecretValue: true,
-			TagSlugs:        &tagSlugs,
+			TagSlugs:        "api",
 		})
 
 		require.NoError(t, err)
@@ -735,13 +714,12 @@ func TestListSecrets_TagFiltering(t *testing.T) {
 	})
 
 	t.Run("filter by multiple tags", func(t *testing.T) {
-		tagSlugs := "api,database"
-		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
 			ProjectID:       proj.ID,
 			Environment:     proj.EnvSlug,
 			SecretPath:      "/",
 			ViewSecretValue: true,
-			TagSlugs:        &tagSlugs,
+			TagSlugs:        "api,database",
 		})
 
 		require.NoError(t, err)
@@ -762,18 +740,9 @@ func TestListSecretsRawV3(t *testing.T) {
 	proj := nodejs.CreateProject(t, "v3-test")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_SECRET", "v3-value", nil)
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeJWT,
-		Actor:      auth.ActorTypeUser,
-		ActorID:    uuid.MustParse(nodejs.UserID()),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
 	t.Run("with workspace slug", func(t *testing.T) {
 		env := proj.EnvSlug
-		result, err := svc.ListSecretsRawV3(ctx, &gensecrets.ListSecretsRawV3Payload{
+		result, err := listSecretsRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), &secret.ListSecretsRawV3Request{
 			WorkspaceSlug:   &proj.Slug,
 			Environment:     &env,
 			SecretPath:      "/",
@@ -787,7 +756,7 @@ func TestListSecretsRawV3(t *testing.T) {
 
 	t.Run("requires workspace id or slug", func(t *testing.T) {
 		env := "dev"
-		_, err := svc.ListSecretsRawV3(ctx, &gensecrets.ListSecretsRawV3Payload{
+		_, err := listSecretsRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), &secret.ListSecretsRawV3Request{
 			Environment:     &env,
 			SecretPath:      "/",
 			ViewSecretValue: true,
@@ -795,5 +764,85 @@ func TestListSecretsRawV3(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "workspaceId or workspaceSlug")
+	})
+}
+
+// =============================================================================
+// HTTP Tests - Verify request parsing and response serialization
+// =============================================================================
+
+func TestListSecretsV4_HTTP(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "http-test")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HTTP_SECRET", "http-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/nested/path", "NESTED_SECRET", "nested-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "http-test-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	handler := newSecretsHandler(t)
+	srv := newTestServer(t, handler, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID())
+	defer srv.Close()
+
+	t.Run("success with required params", func(t *testing.T) {
+		resp, status := chita.HTTPTest[*secret.ListSecretsV4Request, secret.ListSecretsV4Response](
+			t, srv, "GET", "/api/v4/secrets", &secret.ListSecretsV4Request{
+				ProjectID:   proj.ID,
+				Environment: proj.EnvSlug,
+			})
+
+		assert.Equal(t, 200, status)
+		require.Len(t, resp.Secrets, 1)
+		assert.Equal(t, "HTTP_SECRET", resp.Secrets[0].SecretKey)
+	})
+
+	t.Run("secretPath filters correctly", func(t *testing.T) {
+		resp, status := chita.HTTPTest[*secret.ListSecretsV4Request, secret.ListSecretsV4Response](
+			t, srv, "GET", "/api/v4/secrets", &secret.ListSecretsV4Request{
+				ProjectID:   proj.ID,
+				Environment: proj.EnvSlug,
+				SecretPath:  "/nested/path",
+			})
+
+		assert.Equal(t, 200, status)
+		require.Len(t, resp.Secrets, 1)
+		assert.Equal(t, "NESTED_SECRET", resp.Secrets[0].SecretKey)
+	})
+
+	t.Run("recursive returns all secrets", func(t *testing.T) {
+		resp, status := chita.HTTPTest[*secret.ListSecretsV4Request, secret.ListSecretsV4Response](
+			t, srv, "GET", "/api/v4/secrets", &secret.ListSecretsV4Request{
+				ProjectID:   proj.ID,
+				Environment: proj.EnvSlug,
+				Recursive:   true,
+			})
+
+		assert.Equal(t, 200, status)
+		require.Len(t, resp.Secrets, 2)
+
+		secretKeys := []string{resp.Secrets[0].SecretKey, resp.Secrets[1].SecretKey}
+		assert.Contains(t, secretKeys, "HTTP_SECRET")
+		assert.Contains(t, secretKeys, "NESTED_SECRET")
+	})
+
+	t.Run("missing projectId returns 400", func(t *testing.T) {
+		resp, status := chita.HTTPTest[*secret.ListSecretsV4Request, chita.ErrorBody](
+			t, srv, "GET", "/api/v4/secrets", &secret.ListSecretsV4Request{
+				Environment: proj.EnvSlug,
+			})
+
+		assert.Equal(t, 400, status)
+		assert.Contains(t, resp.Message, "projectId")
+	})
+
+	t.Run("missing environment returns 400", func(t *testing.T) {
+		resp, status := chita.HTTPTest[*secret.ListSecretsV4Request, chita.ErrorBody](
+			t, srv, "GET", "/api/v4/secrets", &secret.ListSecretsV4Request{
+				ProjectID: proj.ID,
+			})
+
+		assert.Equal(t, 400, status)
+		assert.Contains(t, resp.Message, "environment")
 	})
 }

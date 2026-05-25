@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
+
+	// TODO(go): move this to prod build
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/infisical/api/internal/libs/errutil"
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
@@ -13,74 +12,77 @@ import (
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
 
-func (h *Handler) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecretByNameV4Payload) (*gensecrets.GetSecretResult, error) {
+// GetSecretByNameV4 is the handler for getting a secret by name (V4).
+func (h *Handler) GetSecretByNameV4(ctx context.Context, req *GetSecretByNameV4Request) (GetSecretByNameV4Response, error) {
 	h.logger.InfoContext(ctx, "getting secret by name v4",
-		slog.String("secretName", p.SecretName),
-		slog.String("projectId", p.ProjectID),
-		slog.String("environment", p.Environment),
+		slog.String("projectId", req.ProjectID),
+		slog.String("environment", req.Environment),
+		slog.String("secretPath", req.SecretPath),
+		slog.String("secretName", req.SecretName),
 	)
 
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
-		return nil, errutil.Unauthorized("Authentication required")
+		return GetSecretByNameV4Response{}, errutil.Unauthorized("Authentication required")
 	}
 
 	permResult, err := h.permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		Actor:             identity.Actor,
 		ActorID:           identity.ActorID,
-		ProjectID:         p.ProjectID,
+		ProjectID:         req.ProjectID,
 		ActorAuthMethod:   identity.AuthMethod,
 		ActorOrgID:        identity.OrgID,
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
 	})
 	if err != nil {
-		return nil, err
+		return GetSecretByNameV4Response{}, err
 	}
 
 	result, err := h.secrets.GetSecretByName(ctx, &secretsvc.GetSecretByNameOpts{
-		ProjectID:              p.ProjectID,
-		Environment:            p.Environment,
-		SecretPath:             p.SecretPath,
-		SecretName:             p.SecretName,
-		SecretType:             getSecretType(identity, p.Type),
+		ProjectID:              req.ProjectID,
+		Environment:            req.Environment,
+		SecretPath:             req.SecretPath,
+		SecretName:             req.SecretName,
+		SecretType:             getSecretType(identity, req.Type),
 		UserID:                 getUserID(identity),
-		ViewSecretValue:        p.ViewSecretValue,
-		ExpandSecretReferences: p.ExpandSecretReferences,
-		IncludeImports:         p.IncludeImports,
+		ViewSecretValue:        req.ViewSecretValue,
+		ExpandSecretReferences: req.ExpandSecretReferences,
+		IncludeImports:         req.IncludeImports,
 		Access:                 secretsvc.AccessControl{Checker: permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)},
 	})
 	if err != nil {
-		return nil, err
+		return GetSecretByNameV4Response{}, err
 	}
 
-	secretRaw := h.buildSecretRaw(result.Secret, p.ProjectID)
+	secretRaw := h.buildSecretRaw(result.Secret, req.ProjectID)
 
-	if err := h.createGetSecretAuditLog(ctx, p.ProjectID, p.Environment, p.SecretPath, secretRaw); err != nil {
-		return nil, err
+	if err := h.createGetSecretAuditLog(ctx, req.ProjectID, req.Environment, req.SecretPath, secretRaw); err != nil {
+		return GetSecretByNameV4Response{}, err
 	}
 
-	return &gensecrets.GetSecretResult{Secret: secretRaw}, nil
+	return GetSecretByNameV4Response{Secret: secretRaw}, nil
 }
 
-func (h *Handler) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSecretByNameRawV3Payload) (*gensecrets.GetSecretResult, error) {
+// GetSecretByNameRawV3 is the handler for getting a raw secret by name (V3, deprecated).
+func (h *Handler) GetSecretByNameRawV3(ctx context.Context, req *GetSecretByNameRawV3Request) (GetSecretByNameV4Response, error) {
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
-		return nil, errutil.Unauthorized("Authentication required")
+		return GetSecretByNameV4Response{}, errutil.Unauthorized("Authentication required")
 	}
 
-	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, p.WorkspaceID, p.WorkspaceSlug)
+	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, req.WorkspaceID, req.WorkspaceSlug)
 	if err != nil {
-		return nil, err
+		return GetSecretByNameV4Response{}, err
 	}
 
 	h.logger.InfoContext(ctx, "getting secret by name raw v3",
-		slog.String("secretName", p.SecretName),
+		slog.String("secretName", req.SecretName),
 		slog.String("projectId", projectID),
-		slog.String("environment", ptrToString(p.Environment)),
+		slog.String("environment", ptrToString(req.Environment)),
 	)
 
-	if p.Environment == nil || *p.Environment == "" {
-		return nil, errutil.BadRequest("Environment is required")
+	if req.Environment == nil || *req.Environment == "" {
+		return GetSecretByNameV4Response{}, errutil.BadRequest("Environment is required")
 	}
 
 	permResult, err := h.permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
@@ -92,35 +94,35 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
 	})
 	if err != nil {
-		return nil, err
+		return GetSecretByNameV4Response{}, err
 	}
 
 	result, err := h.secrets.GetSecretByName(ctx, &secretsvc.GetSecretByNameOpts{
 		ProjectID:              projectID,
-		Environment:            *p.Environment,
-		SecretPath:             p.SecretPath,
-		SecretName:             p.SecretName,
-		SecretType:             getSecretType(identity, p.Type),
+		Environment:            *req.Environment,
+		SecretPath:             req.SecretPath,
+		SecretName:             req.SecretName,
+		SecretType:             getSecretType(identity, req.Type),
 		UserID:                 getUserID(identity),
-		ViewSecretValue:        p.ViewSecretValue,
-		ExpandSecretReferences: p.ExpandSecretReferences,
-		IncludeImports:         p.IncludeImports,
+		ViewSecretValue:        req.ViewSecretValue,
+		ExpandSecretReferences: req.ExpandSecretReferences,
+		IncludeImports:         req.IncludeImports,
 		Access:                 secretsvc.AccessControl{Checker: permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)},
 	})
 	if err != nil {
-		return nil, err
+		return GetSecretByNameV4Response{}, err
 	}
 
 	secretRaw := h.buildSecretRaw(result.Secret, projectID)
 
-	if err := h.createGetSecretAuditLog(ctx, projectID, *p.Environment, p.SecretPath, secretRaw); err != nil {
-		return nil, err
+	if err := h.createGetSecretAuditLog(ctx, projectID, *req.Environment, req.SecretPath, secretRaw); err != nil {
+		return GetSecretByNameV4Response{}, err
 	}
 
-	return &gensecrets.GetSecretResult{Secret: secretRaw}, nil
+	return GetSecretByNameV4Response{Secret: secretRaw}, nil
 }
 
-func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *gensecrets.SecretRaw) error {
+func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
 		return nil

@@ -7,49 +7,63 @@ import (
 	"sync"
 	"time"
 
-	goahttp "goa.design/goa/v3/http"
-
-	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
+	serverauth "github.com/infisical/api/internal/server/auth"
 	"github.com/infisical/api/internal/server/middlewares"
+	"github.com/infisical/api/pkg/chita"
 )
 
+// Server is the HTTP server for the Infisical API.
 type Server struct {
-	svc       *api.Registry
-	logger    *slog.Logger
-	mux       goahttp.Muxer
-	dec       func(*http.Request) goahttp.Decoder
-	enc       func(context.Context, http.ResponseWriter) goahttp.Encoder
-	eh        func(context.Context, http.ResponseWriter, error)
-	formatter func(ctx context.Context, err error) goahttp.Statuser
+	services *api.Services
+	logger   *slog.Logger
+	router   *chita.Router
 }
 
-func NewServer(svc *api.Registry, logger *slog.Logger) *Server {
-	s := &Server{
-		svc:       svc,
-		logger:    logger,
-		mux:       goahttp.NewMuxer(),
-		dec:       goahttp.RequestDecoder,
-		enc:       goahttp.ResponseEncoder,
-		formatter: errutil.NewFormatter(logger),
-	}
-	// eh only fires when encoding the error response itself fails.
-	s.eh = func(ctx context.Context, w http.ResponseWriter, err error) {
-		logger.ErrorContext(ctx, "failed to encode error response", slog.Any("error", err))
-	}
+// NewServer creates a new HTTP server with chita routing.
+func NewServer(services *api.Services, logger *slog.Logger) *Server {
+	securityRegistry := serverauth.NewSecurityRegistry(services.Platform.Authenticator)
 
-	s.mountPlatform()
-	s.mountSecretManager()
+	app := chita.NewApp(chita.AppConfig{
+		ErrorHandler:     NewErrorHandler(logger),
+		SecurityRegistry: securityRegistry,
+	})
 
-	return s
+	router := chita.NewRouter(chita.RouterConfig{
+		App: app,
+		Spec: &chita.OpenAPIConfig{
+			Info: chita.OpenAPIInfo{
+				Title:       "Infisical API",
+				Version:     "0.0.1",
+				Description: "Infisical secret management API",
+			},
+			Servers: []chita.Server{
+				{URL: "/api", Description: "API server"},
+			},
+			SecuritySchemes: securityRegistry.Schemes(),
+		},
+	})
+
+	// Register domain routes
+	api.RegisterPlatformRoutes(router, app, logger, services.Platform)
+	api.RegisterSecretManagerRoutes(router, app, logger, services.Platform, services.SecretManager)
+
+	return &Server{
+		services: services,
+		logger:   logger,
+		router:   router,
+	}
 }
 
+// Listen starts the HTTP server.
 func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, errc chan error) {
-	var handler http.Handler = s.mux
-	// the order is other way around. Last one wraps the previous one, so request ID is set before logging.
+	var handler http.Handler = s.router
+
+	// Middleware stack (applied in reverse order - last wraps first)
 	handler = requestLogger(handler, s.logger)
 	handler = middlewares.HTTPInfoMiddleware(handler)
+	handler = middlewares.IdentityMiddleware(handler)
 	handler = requestid.Middleware(handler)
 
 	srv := &http.Server{
@@ -59,7 +73,6 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	}
 
 	wg.Go(func() {
-
 		go func() {
 			s.logger.InfoContext(ctx, "HTTP server listening", slog.String("addr", addr))
 			errc <- srv.ListenAndServe()

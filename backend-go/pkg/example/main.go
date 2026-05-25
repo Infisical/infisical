@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
-	"github.com/infisical/api/pkg/api"
+	"github.com/infisical/api/pkg/chita"
 )
 
 // =============================================================================
@@ -22,19 +22,19 @@ import (
 // =============================================================================
 
 // ErrorResponse is a shared error schema registered as a component.
-// Use api.Ref("ErrorResponse") to reference it in other schemas.
+// Use chita.Ref("ErrorResponse") to reference it in other schemas.
 type ErrorResponse struct {
-	api.StatusBadRequest
+	chita.StatusBadRequest
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
 	Error      string `json:"error"`
 }
 
-func (r *ErrorResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"statusCode": api.Int(&r.StatusCode).Required(),
-		"message":    api.String(&r.Message).Required(),
-		"error":      api.String(&r.Error).Required(),
+func (r *ErrorResponse) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"statusCode": chita.Int(&r.StatusCode).Required(),
+		"message":    chita.String(&r.Message).Required(),
+		"error":      chita.String(&r.Error).Required(),
 	}).Ref("ErrorResponse") // Registers in components/schemas
 }
 
@@ -46,12 +46,12 @@ type User struct {
 	Role  string    `json:"role"`
 }
 
-func (u *User) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"id":    api.UUID(&u.ID).Required(),
-		"email": api.String(&u.Email).Required().Email(),
-		"name":  api.String(&u.Name).Required(),
-		"role":  api.String(&u.Role).Required().Enum("admin", "member", "viewer"),
+func (u *User) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"id":    chita.UUID(&u.ID).Required(),
+		"email": chita.String(&u.Email).Required().Email(),
+		"name":  chita.String(&u.Name).Required(),
+		"role":  chita.String(&u.Role).Required().Enum("admin", "member", "viewer"),
 	}).Ref("User") // Registers in components/schemas
 }
 
@@ -60,27 +60,27 @@ func (u *User) Schema() *api.ObjectSchema {
 // =============================================================================
 
 // WebhookTarget is the union interface for delivery targets.
-// All variants must embed api.UnionBase and implement Schema().
+// All variants must embed chita.UnionBase and implement Schema().
 type WebhookTarget interface {
-	api.Union
+	chita.Union
 	Deliver(payload []byte) error
 }
 
 // HTTPTarget delivers webhooks via HTTP
 type HTTPTarget struct {
-	api.UnionBase
+	chita.UnionBase
 	Type    string            `json:"type"`
 	URL     string            `json:"url"`
 	Method  string            `json:"method"`
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-func (h *HTTPTarget) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"type":    api.Const("http"),
-		"url":     api.String(&h.URL).Required().URL(),
-		"method":  api.String(&h.Method).Required().Enum("POST", "PUT"),
-		"headers": api.Map(api.String(nil)).Optional(),
+func (h *HTTPTarget) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"type":    chita.Const("http"),
+		"url":     chita.String(&h.URL).Required().URL(),
+		"method":  chita.String(&h.Method).Required().Enum("POST", "PUT"),
+		"headers": chita.Map(chita.String(nil)).Optional(),
 	})
 }
 
@@ -91,17 +91,17 @@ func (h *HTTPTarget) Deliver(payload []byte) error {
 
 // SlackTarget delivers webhooks to Slack
 type SlackTarget struct {
-	api.UnionBase
+	chita.UnionBase
 	Type       string `json:"type"`
 	WebhookURL string `json:"webhookUrl"`
 	Channel    string `json:"channel,omitempty"`
 }
 
-func (s *SlackTarget) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"type":       api.Const("slack"),
-		"webhookUrl": api.String(&s.WebhookURL).Required().URL(),
-		"channel":    api.String(&s.Channel).Optional().Pattern(`^#[a-z0-9_-]+$`),
+func (s *SlackTarget) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"type":       chita.Const("slack"),
+		"webhookUrl": chita.String(&s.WebhookURL).Required().URL(),
+		"channel":    chita.String(&s.Channel).Optional().Pattern(`^#[a-z0-9_-]+$`),
 	})
 }
 
@@ -112,15 +112,15 @@ func (s *SlackTarget) Deliver(payload []byte) error {
 
 // DiscordTarget delivers webhooks to Discord
 type DiscordTarget struct {
-	api.UnionBase
+	chita.UnionBase
 	Type       string `json:"type"`
 	WebhookURL string `json:"webhookUrl"`
 }
 
-func (d *DiscordTarget) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"type":       api.Const("discord"),
-		"webhookUrl": api.String(&d.WebhookURL).Required().URL(),
+func (d *DiscordTarget) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"type":       chita.Const("discord"),
+		"webhookUrl": chita.String(&d.WebhookURL).Required().URL(),
 	})
 }
 
@@ -130,7 +130,7 @@ func (d *DiscordTarget) Deliver(payload []byte) error {
 }
 
 // WebhookTargetParser parses webhook target union
-var WebhookTargetParser = api.UnionDef[WebhookTarget]{
+var WebhookTargetParser = chita.UnionDef[WebhookTarget]{
 	Discriminator: "type",
 	Variants: map[string]func() WebhookTarget{
 		"http":    func() WebhookTarget { return &HTTPTarget{} },
@@ -144,60 +144,60 @@ var WebhookTargetParser = api.UnionDef[WebhookTarget]{
 // =============================================================================
 
 type AuthMethod interface {
-	api.Union
+	chita.Union
 	GetIdentifier() string
 }
 
 type PasswordAuth struct {
-	api.UnionBase
+	chita.UnionBase
 	Method   string `json:"method"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func (p *PasswordAuth) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"method":   api.Const("password"),
-		"username": api.String(&p.Username).Required().MinLength(1),
-		"password": api.String(&p.Password).Required().MinLength(8),
+func (p *PasswordAuth) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"method":   chita.Const("password"),
+		"username": chita.String(&p.Username).Required().MinLength(1),
+		"password": chita.String(&p.Password).Required().MinLength(8),
 	})
 }
 
 func (p *PasswordAuth) GetIdentifier() string { return p.Username }
 
 type SAMLAuth struct {
-	api.UnionBase
+	chita.UnionBase
 	Method       string `json:"method"`
 	SAMLResponse string `json:"samlResponse"`
 }
 
-func (s *SAMLAuth) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"method":       api.Const("saml"),
-		"samlResponse": api.String(&s.SAMLResponse).Required(),
+func (s *SAMLAuth) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"method":       chita.Const("saml"),
+		"samlResponse": chita.String(&s.SAMLResponse).Required(),
 	})
 }
 
 func (s *SAMLAuth) GetIdentifier() string { return "saml-user" }
 
 type OIDCAuth struct {
-	api.UnionBase
+	chita.UnionBase
 	Method      string `json:"method"`
 	Code        string `json:"code"`
 	RedirectURI string `json:"redirectUri"`
 }
 
-func (o *OIDCAuth) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"method":      api.Const("oidc"),
-		"code":        api.String(&o.Code).Required(),
-		"redirectUri": api.String(&o.RedirectURI).Required().URL(),
+func (o *OIDCAuth) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"method":      chita.Const("oidc"),
+		"code":        chita.String(&o.Code).Required(),
+		"redirectUri": chita.String(&o.RedirectURI).Required().URL(),
 	})
 }
 
 func (o *OIDCAuth) GetIdentifier() string { return "oidc-user" }
 
-var AuthMethodParser = api.UnionDef[AuthMethod]{
+var AuthMethodParser = chita.UnionDef[AuthMethod]{
 	Discriminator: "method",
 	Variants: map[string]func() AuthMethod{
 		"password": func() AuthMethod { return &PasswordAuth{} },
@@ -217,12 +217,12 @@ type ListUsersRequest struct {
 	Role     string    `json:"-"`
 }
 
-func (r *ListUsersRequest) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"orgId":    api.UUID(&r.OrgID).Required().From(api.SourcePath),
-		"page":     api.Int(&r.Page).Optional().Min(1).Default(1).From(api.SourceQuery),
-		"pageSize": api.Int(&r.PageSize).Optional().Min(1).Max(100).Default(20).From(api.SourceQuery),
-		"role":     api.String(&r.Role).Optional().Enum("admin", "member", "viewer").From(api.SourceQuery),
+func (r *ListUsersRequest) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"orgId":    chita.UUID(&r.OrgID).Required().From(chita.SourcePath),
+		"page":     chita.Int(&r.Page).Optional().Min(1).Default(1).From(chita.SourceQuery),
+		"pageSize": chita.Int(&r.PageSize).Optional().Min(1).Max(100).Default(20).From(chita.SourceQuery),
+		"role":     chita.String(&r.Role).Optional().Enum("admin", "member", "viewer").From(chita.SourceQuery),
 	})
 }
 
@@ -233,12 +233,12 @@ type CreateUserRequest struct {
 	Role  string    `json:"role"`
 }
 
-func (r *CreateUserRequest) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"orgId": api.UUID(&r.OrgID).Required().From(api.SourcePath),
-		"email": api.String(&r.Email).Required().EmailStrict(),
-		"name":  api.String(&r.Name).Required().MinLength(1).MaxLength(100),
-		"role":  api.String(&r.Role).Required().Enum("admin", "member", "viewer"),
+func (r *CreateUserRequest) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"orgId": chita.UUID(&r.OrgID).Required().From(chita.SourcePath),
+		"email": chita.String(&r.Email).Required().EmailStrict(),
+		"name":  chita.String(&r.Name).Required().MinLength(1).MaxLength(100),
+		"role":  chita.String(&r.Role).Required().Enum("admin", "member", "viewer"),
 	})
 }
 
@@ -246,16 +246,16 @@ func (r *CreateUserRequest) Schema() *api.ObjectSchema {
 type UpdateUserRequest struct {
 	OrgID  uuid.UUID                `json:"-"`
 	UserID uuid.UUID                `json:"-"`
-	Name   api.JsonNullable[string] `json:"name"`
-	Role   api.JsonNullable[string] `json:"role"`
+	Name   chita.JsonNullable[string] `json:"name"`
+	Role   chita.JsonNullable[string] `json:"role"`
 }
 
-func (r *UpdateUserRequest) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"orgId":  api.UUID(&r.OrgID).Required().From(api.SourcePath),
-		"userId": api.UUID(&r.UserID).Required().From(api.SourcePath),
-		"name":   api.Nullable(&r.Name, api.String(&r.Name.Value).MinLength(1).MaxLength(100)).Optional(),
-		"role":   api.Nullable(&r.Role, api.String(&r.Role.Value).Enum("admin", "member", "viewer")).Optional(),
+func (r *UpdateUserRequest) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"orgId":  chita.UUID(&r.OrgID).Required().From(chita.SourcePath),
+		"userId": chita.UUID(&r.UserID).Required().From(chita.SourcePath),
+		"name":   chita.Nullable(&r.Name, chita.String(&r.Name.Value).MinLength(1).MaxLength(100)).Optional(),
+		"role":   chita.Nullable(&r.Role, chita.String(&r.Role.Value).Enum("admin", "member", "viewer")).Optional(),
 	})
 }
 
@@ -269,14 +269,14 @@ type CreateWebhookRequest struct {
 	Enabled   bool            `json:"enabled"`
 }
 
-func (r *CreateWebhookRequest) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"projectId": api.UUID(&r.ProjectID).Required().From(api.SourcePath),
-		"name":      api.String(&r.Name).Required().MinLength(1).MaxLength(100),
-		"events":    api.Array(api.String(nil).Enum("secret.created", "secret.updated", "secret.deleted")).Required(),
+func (r *CreateWebhookRequest) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"projectId": chita.UUID(&r.ProjectID).Required().From(chita.SourcePath),
+		"name":      chita.String(&r.Name).Required().MinLength(1).MaxLength(100),
+		"events":    chita.Array(chita.String(nil).Enum("secret.created", "secret.updated", "secret.deleted")).Required(),
 		// Connected union: parses TargetRaw → Target, validates variant, generates OpenAPI
-		"target":  api.UnionFrom(&r.TargetRaw, &r.Target, WebhookTargetParser).Required(),
-		"enabled": api.Bool(&r.Enabled).Optional().Default(true),
+		"target":  chita.UnionFrom(&r.TargetRaw, &r.Target, WebhookTargetParser).Required(),
+		"enabled": chita.Bool(&r.Enabled).Optional().Default(true),
 	})
 }
 
@@ -286,11 +286,11 @@ type LoginRequest struct {
 	Auth          AuthMethod      `json:"-"` // Parsed automatically by UnionFrom
 }
 
-func (r *LoginRequest) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"orgSlug": api.String(&r.OrgSlug).Required().From(api.SourcePath).Pattern(`^[a-z0-9-]+$`),
+func (r *LoginRequest) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"orgSlug": chita.String(&r.OrgSlug).Required().From(chita.SourcePath).Pattern(`^[a-z0-9-]+$`),
 		// Connected union: parses AuthMethodRaw → Auth, validates variant, generates OpenAPI
-		"authMethod": api.UnionFrom(&r.AuthMethodRaw, &r.Auth, AuthMethodParser).Required(),
+		"authMethod": chita.UnionFrom(&r.AuthMethodRaw, &r.Auth, AuthMethodParser).Required(),
 	})
 }
 
@@ -303,7 +303,7 @@ type JWTValidator struct{}
 func (v *JWTValidator) Validate(ctx context.Context, r *http.Request) (any, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" || len(auth) < 7 || auth[:7] != "Bearer " {
-		return nil, api.ErrSkipToNextAuth
+		return nil, chita.ErrSkipToNextAuth
 	}
 	return map[string]any{"sub": "user-123"}, nil
 }
@@ -312,7 +312,7 @@ type APIKeyValidator struct{}
 
 func (v *APIKeyValidator) Validate(ctx context.Context, r *http.Request) (any, error) {
 	if r.Header.Get("X-API-Key") == "" {
-		return nil, api.ErrSkipToNextAuth
+		return nil, chita.ErrSkipToNextAuth
 	}
 	return map[string]any{"keyId": "key-123"}, nil
 }
@@ -323,47 +323,47 @@ func (v *APIKeyValidator) Validate(ctx context.Context, r *http.Request) (any, e
 
 // ListUsersResponse for paginated user list
 type ListUsersResponse struct {
-	api.StatusOK // embed mixin instead of writing Status()
+	chita.StatusOK       // embed mixin instead of writing Status()
 	Users        []any `json:"users"`
 	Page         int   `json:"page"`
 	PageSize     int   `json:"pageSize"`
 }
 
-func (r *ListUsersResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"users":    api.Array((&User{}).Schema()).Required(), // Auto-registers User, returns $ref
-		"page":     api.Int(&r.Page).Required(),
-		"pageSize": api.Int(&r.PageSize).Required(),
+func (r *ListUsersResponse) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"users":    chita.Array((&User{}).Schema()).Required(), // Auto-registers User, returns $ref
+		"page":     chita.Int(&r.Page).Required(),
+		"pageSize": chita.Int(&r.PageSize).Required(),
 	})
 }
 
 // UserResponse for created/updated user
 type UserResponse struct {
-	api.StatusCreated // 201
+	chita.StatusCreated           // 201
 	ID                uuid.UUID `json:"id"`
 	Email             string    `json:"email"`
 	Name              string    `json:"name"`
 	Role              string    `json:"role"`
 }
 
-func (r *UserResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"id":    api.UUID(&r.ID).Required(),
-		"email": api.String(&r.Email).Required(),
-		"name":  api.String(&r.Name).Required(),
-		"role":  api.String(&r.Role).Required(),
+func (r *UserResponse) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"id":    chita.UUID(&r.ID).Required(),
+		"email": chita.String(&r.Email).Required(),
+		"name":  chita.String(&r.Name).Required(),
+		"role":  chita.String(&r.Role).Required(),
 	})
 }
 
 // UpdateUserResponse for patch response
 type UpdateUserResponse struct {
-	api.StatusOK
+	chita.StatusOK
 	Changes map[string]any `json:"changes"`
 }
 
-func (r *UpdateUserResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"changes": api.Map(api.Object(nil)).Required(),
+func (r *UpdateUserResponse) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"changes": chita.Map(chita.Object(nil)).Required(),
 	})
 }
 
@@ -375,12 +375,12 @@ type WebhookResponse struct {
 	Enabled bool          `json:"enabled"`
 }
 
-func (r *WebhookResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"id":      api.UUID(&r.ID).Required(),
-		"name":    api.String(&r.Name).Required(),
-		"target":  api.UnionField(&r.Target, WebhookTargetParser).Required(),
-		"enabled": api.Bool(&r.Enabled).Required(),
+func (r *WebhookResponse) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"id":      chita.UUID(&r.ID).Required(),
+		"name":    chita.String(&r.Name).Required(),
+		"target":  chita.UnionField(&r.Target, WebhookTargetParser).Required(),
+		"enabled": chita.Bool(&r.Enabled).Required(),
 	})
 }
 
@@ -392,10 +392,10 @@ type LoginResponse struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-func (r *LoginResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"token":     api.String(&r.Token).Required(),
-		"expiresAt": api.String(nil).Required().Format("date-time"),
+func (r *LoginResponse) Schema() *chita.ObjectSchema {
+	return chita.Object(map[string]chita.Schema{
+		"token":     chita.String(&r.Token).Required(),
+		"expiresAt": chita.String(nil).Required().Format("date-time"),
 	})
 }
 
@@ -416,7 +416,7 @@ func listUsers(_ context.Context, req *ListUsersRequest) (ListUsersResponse, err
 func createUser(_ context.Context, req *CreateUserRequest) (UserResponse, error) {
 	// Example: check for conflict
 	if req.Email == "existing@example.com" {
-		return UserResponse{}, api.Conflict("user %s already exists", req.Email)
+		return UserResponse{}, chita.Conflict("user %s already exists", req.Email)
 	}
 
 	return UserResponse{
@@ -484,10 +484,10 @@ func login(_ context.Context, req *LoginRequest) (LoginResponse, error) {
 // Error Handler (centralized)
 // =============================================================================
 
-func newErrorHandler(logger *slog.Logger) api.ErrorHandler {
-	return func(ctx context.Context, err error) *api.ErrorBody {
-		// Check for api.Error
-		var apiErr *api.Error
+func newErrorHandler(logger *slog.Logger) chita.ErrorHandler {
+	return func(ctx context.Context, err error) *chita.ErrorBody {
+		// Check for chita.Error
+		var apiErr *chita.Error
 		if errors.As(err, &apiErr) {
 			if apiErr.Status >= 500 {
 				logger.ErrorContext(ctx, "server error",
@@ -496,7 +496,7 @@ func newErrorHandler(logger *slog.Logger) api.ErrorHandler {
 					slog.String("message", apiErr.Message),
 					slog.Any("cause", apiErr.Err),
 				)
-				return &api.ErrorBody{
+				return &chita.ErrorBody{
 					StatusCode: apiErr.Status,
 					Message:    "Something went wrong",
 					Error:      apiErr.Name,
@@ -508,7 +508,7 @@ func newErrorHandler(logger *slog.Logger) api.ErrorHandler {
 				slog.Int("status", apiErr.Status),
 				slog.String("message", apiErr.Message),
 			)
-			return &api.ErrorBody{
+			return &chita.ErrorBody{
 				StatusCode: apiErr.Status,
 				Message:    apiErr.Message,
 				Error:      apiErr.Name,
@@ -517,10 +517,10 @@ func newErrorHandler(logger *slog.Logger) api.ErrorHandler {
 		}
 
 		// Check for validation errors from ParseAndValidate
-		var validationErrs api.ValidationErrors
+		var validationErrs chita.ValidationErrors
 		if errors.As(err, &validationErrs) {
 			logger.WarnContext(ctx, "validation error", slog.Int("count", len(validationErrs)))
-			return &api.ErrorBody{
+			return &chita.ErrorBody{
 				StatusCode: 400,
 				Message:    "Validation failed",
 				Error:      "ValidationError",
@@ -530,7 +530,7 @@ func newErrorHandler(logger *slog.Logger) api.ErrorHandler {
 
 		// Unknown error
 		logger.ErrorContext(ctx, "unhandled error", slog.Any("err", err))
-		return &api.ErrorBody{
+		return &chita.ErrorBody{
 			StatusCode: 500,
 			Message:    "Something went wrong",
 			Error:      "InternalServerError",
@@ -547,29 +547,29 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	// Security registry
-	securityRegistry := api.NewSecurityRegistry()
-	securityRegistry.MustRegister("bearer", api.HTTPBearerJWT(), &JWTValidator{})
-	securityRegistry.MustRegister("apiKey", api.APIKeyHeader("X-API-Key"), &APIKeyValidator{})
+	securityRegistry := chita.NewSecurityRegistry()
+	securityRegistry.MustRegister("bearer", chita.HTTPBearerJWT(), &JWTValidator{})
+	securityRegistry.MustRegister("apiKey", chita.APIKeyHeader("X-API-Key"), &APIKeyValidator{})
 
 	// App with centralized error handler and security registry
 	// SecurityRegistry enables WithSecurity to auto-install auth middleware
-	app := api.NewApp(api.AppConfig{
+	app := chita.NewApp(chita.AppConfig{
 		ErrorHandler:     newErrorHandler(logger),
 		SecurityRegistry: securityRegistry,
 	})
 
 	// Create the main router with OpenAPI configuration
-	r := api.NewRouter(api.RouterConfig{
+	r := chita.NewRouter(chita.RouterConfig{
 		App: app,
-		Spec: &api.OpenAPIConfig{
-			Info: api.OpenAPIInfo{
+		Spec: &chita.OpenAPIConfig{
+			Info: chita.OpenAPIInfo{
 				Title:       "Example API",
 				Description: "Demonstrates unions, tri-state PATCH, typed handlers, and centralized error handling",
 				Version:     "1.0.0",
 			},
-			Servers:         []api.Server{{URL: "http://localhost:8080"}},
+			Servers:         []chita.Server{{URL: "http://localhost:8080"}},
 			SecuritySchemes: securityRegistry.Schemes(),
-			Tags: []api.OpenAPITag{
+			Tags: []chita.OpenAPITag{
 				{Name: "auth", Description: "Authentication (password, SAML, OIDC)"},
 				{Name: "users", Description: "User management"},
 				{Name: "webhooks", Description: "Webhooks (HTTP, Slack, Discord)"},
@@ -582,48 +582,48 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	// Auth routes (no auth required)
-	r.Route("/auth/{orgSlug}", func(auth *api.Router) {
+	r.Route("/auth/{orgSlug}", func(auth *chita.Router) {
 		auth.WithTags("auth")
 
-		auth.POST("/login", api.Handler(app, login).
+		auth.POST("/login", chita.Handler(app, login).
 			Summary("Login (union: password|saml|oidc)").
 			OperationID("login").
-			Security(api.Security{})) // No auth required (empty security)
+			Security(chita.Security{})) // No auth required (empty security)
 	})
 
 	// Protected routes - WithSecurity auto-installs middleware when registry is configured
-	r.Route("/orgs/{orgId}", func(orgs *api.Router) {
-		orgs.WithSecurity(api.NewSecurity("bearer"), api.NewSecurity("apiKey"))
+	r.Route("/orgs/{orgId}", func(orgs *chita.Router) {
+		orgs.WithSecurity(chita.NewSecurity("bearer"), chita.NewSecurity("apiKey"))
 		orgs.WithTags("users")
 
-		orgs.GET("/users", api.Handler(app, listUsers).
+		orgs.GET("/users", chita.Handler(app, listUsers).
 			Summary("List users").
 			OperationID("listUsers"))
 
-		orgs.POST("/users", api.Handler(app, createUser).
+		orgs.POST("/users", chita.Handler(app, createUser).
 			Summary("Create user").
 			OperationID("createUser"))
 
-		orgs.PATCH("/users/{userId}", api.Handler(app, updateUser).
+		orgs.PATCH("/users/{userId}", chita.Handler(app, updateUser).
 			Summary("Update user (PATCH with tri-state)").
 			OperationID("updateUser"))
 	})
 
 	// Webhooks routes
-	r.Route("/projects/{projectId}", func(projects *api.Router) {
-		projects.WithSecurity(api.NewSecurity("bearer"))
+	r.Route("/projects/{projectId}", func(projects *chita.Router) {
+		projects.WithSecurity(chita.NewSecurity("bearer"))
 		projects.WithTags("webhooks")
 
-		projects.POST("/webhooks", api.Handler(app, createWebhook).
+		projects.POST("/webhooks", chita.Handler(app, createWebhook).
 			Summary("Create webhook (union: http|slack|discord)").
 			OperationID("createWebhook"))
 	})
 
 	// Serve OpenAPI spec
-	r.ServeSpec("/openapi.json")
+	r.ServeSpec("/openchita.json")
 
 	log.Println("Server: http://localhost:8080")
-	log.Println("OpenAPI: http://localhost:8080/openapi.json")
+	log.Println("OpenAPI: http://localhost:8080/openchita.json")
 	log.Println("")
 	log.Println("Examples:")
 	log.Println(`  curl -X POST localhost:8080/auth/acme/login -H "Content-Type: application/json" \`)

@@ -1,19 +1,16 @@
 # backend-go
 
-Partial Go rewrite of the Node.js backend using Goa v3 + raw pgx queries.
+Partial Go rewrite of the Node.js backend using chi + chita framework + raw pgx queries.
 
 ## Commands
 
 ```
 make build      # build binary
 make dev        # hot-reload via docker-compose + air
-make gen-goa    # regenerate Goa handlers (design/ → gen/)
 make test       # integration tests (testcontainers, -race)
 make lint       # must pass before submission
 make lint-fix   # auto-fix linting issues
 ```
-
-Never edit `gen/` directories — always regenerate.
 
 ## Code Rules
 
@@ -50,18 +47,19 @@ internal/
 │   ├── fn/                     # Generic utilities (AppendUnique, etc.)
 │   └── logutil/                # Logging utilities (context handler)
 ├── server/
-│   ├── design/                 # Goa DSL definitions
-│   ├── gen/                    # Goa generated (DO NOT EDIT)
 │   ├── api/                    # Endpoint implementations + DI wiring
-│   └── middlewares/            # HTTP middlewares (httpinfo, etc.)
+│   ├── auth/                   # Security registry + auth validators
+│   └── middlewares/            # HTTP middlewares (httpinfo, identity, etc.)
 ├── services/                   # Shared business logic (auth, permission, kms)
 ├── keystore/                   # Redis key-value operations
 └── testutil/                   # Test infra (testcontainers)
+pkg/
+└── api/                        # HTTP routing framework (chi + OpenAPI)
 ```
 
 **Two tiers:**
-- `server/api/` — DI wiring + Goa endpoint implementations. Handlers 1:1 with endpoints.
-- `services/` — Business logic. No Goa dependency. Uses `pg.DB` directly.
+- `server/api/` — DI wiring + chi endpoint implementations. Handlers 1:1 with endpoints.
+- `services/` — Business logic. Uses `pg.DB` directly.
 
 ### Wiring (Composition Root)
 
@@ -79,6 +77,84 @@ server/api/
 ```
 
 Pattern: initialize as local variables first, then assign to struct fields.
+
+### Handler Package Structure
+
+Each handler package follows this structure:
+
+```
+server/api/<product>/<handler>/
+├── models.go      # ALL request/response types with Schema() methods
+├── <endpoint>.go  # Handler methods (e.g., list_secrets.go, get_secret.go)
+├── routes.go      # Route registration with RegisterRoutes()
+└── secret.go      # Handler struct, NewHandler(), and dependencies
+```
+
+**models.go**: All request inputs and response outputs must be defined here. Includes shared types like `SecretRaw`, `SecretTag`, etc.
+
+### Handler Pattern
+
+Handlers use the `chita` framework with typed request/response structs:
+
+```go
+// models.go - ALL request/response types with Schema() for validation + OpenAPI
+type GetSecretRequest struct {
+    SecretName  string `json:"-"`
+    ProjectID   string `json:"projectId"`
+    Environment string `json:"environment"`
+}
+
+func (r *GetSecretRequest) Schema() *chita.ObjectSchema {
+    return chita.Object(map[string]chita.Schema{
+        "secretName":  chita.String(&r.SecretName).From(chita.SourcePath).Required(),
+        "projectId":   chita.String(&r.ProjectID).From(chita.SourceQuery).Required(),
+        "environment": chita.String(&r.Environment).From(chita.SourceQuery).Required(),
+    })
+}
+
+type GetSecretResponse struct {
+    chita.StatusOK
+    Secret *SecretRaw `json:"secret"`
+}
+
+func (r *GetSecretResponse) Schema() *chita.ObjectSchema {
+    return chita.Object(map[string]chita.Schema{
+        "secret": (&SecretRaw{}).Schema().Required(),
+    })
+}
+
+// Shared response types also go in models.go
+type SecretRaw struct {
+    ID          string       `json:"id"`
+    SecretKey   string       `json:"secretKey"`
+    SecretValue string       `json:"secretValue"`
+    // ...
+}
+
+func (r *SecretRaw) Schema() *chita.ObjectSchema {
+    return chita.Object(map[string]chita.Schema{
+        "id":          chita.String(&r.ID).Required(),
+        "secretKey":   chita.String(&r.SecretKey).Required(),
+        "secretValue": chita.String(&r.SecretValue),
+    })
+}
+
+// get_secret.go - Handler method
+func (h *Handler) GetSecret(ctx context.Context, req *GetSecretRequest) (GetSecretResponse, error) {
+    // ... implementation
+    return GetSecretResponse{Secret: secret}, nil
+}
+
+// routes.go - Route registration
+func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
+    router.Route("/api/v4/secrets", func(r *chita.Router) {
+        r.WithTags("Secrets")
+        r.GET("/{secretName}", chita.Handler(app, handler.GetSecret).
+            Summary("Get a secret by name").
+            OperationID("getSecretByNameV4"))
+    })
+}
+```
 
 ### Handler vs Service Responsibilities
 
@@ -183,10 +259,13 @@ secrets, err := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])
 
 ## Wiring a New Feature
 
-1. Define API in Goa DSL (`server/design/<product>/`)
-2. `make gen-goa`
-3. Create service in `services/<product>/<name>/` with interface-based deps
-4. Implement handler in `server/api/<product>/<name>/` with interface-based deps
-5. Add service init to `server/api/<product>_services.go`
-6. Add handler init to `server/api/<product>_handlers.go`
-7. Add tests, run `make test && make lint`
+1. Create service in `services/<product>/<name>/` with interface-based deps
+2. Create handler in `server/api/<product>/<name>/`:
+   - `models.go` — ALL request/response types with `Schema()` methods
+   - `<handler>.go` — handler struct, `NewHandler()`, and dependencies
+   - `<endpoint>.go` — handler methods (e.g., `list_secrets.go`, `get_secret.go`)
+   - `routes.go` — route registration with `RegisterRoutes()`
+3. Add service init to `server/api/<product>_services.go`
+4. Add handler init to `server/api/<product>_handlers.go`
+5. Register routes in `server/routes.go`
+6. Add tests, run `make test && make lint`

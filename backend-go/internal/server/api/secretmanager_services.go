@@ -9,14 +9,15 @@ import (
 	"github.com/infisical/api/internal/services/secretmanager/secretimport"
 )
 
-type secretManagerServices struct {
-	secretFolder *secretfolder.Service
-	secretImport *secretimport.Service
-	environment  *environment.Service
-	secret       *secret.Service
+// SecretManagerServices holds secret manager services shared across handlers.
+type SecretManagerServices struct {
+	SecretFolder *secretfolder.Service
+	SecretImport *secretimport.Service
+	Environment  *environment.Service
+	Secret       *secret.Service
 }
 
-func newSecretManagerServices(ctx context.Context, infra *Infra, platform *platformServices) *secretManagerServices {
+func newSecretManagerServices(ctx context.Context, infra *Infra, platform *PlatformServices) *SecretManagerServices {
 	secretFolderSvc := secretfolder.NewService(ctx, infra.Logger, &secretfolder.Deps{DB: infra.DB})
 	secretImportSvc := secretimport.NewService(ctx, infra.Logger, &secretimport.Deps{DB: infra.DB})
 	environmentSvc := environment.NewService(ctx, infra.Logger, &environment.Deps{DB: infra.DB})
@@ -25,14 +26,14 @@ func newSecretManagerServices(ctx context.Context, infra *Infra, platform *platf
 		DB:                  infra.DB,
 		SecretFolderService: secretFolderSvc,
 		SecretImportService: secretImportSvc,
-		KMSService:          platform.kms,
+		KMSService:          platform.KMS,
 	})
 
-	svc := &secretManagerServices{
-		secretFolder: secretFolderSvc,
-		secretImport: secretImportSvc,
-		environment:  environmentSvc,
-		secret:       secretSvc,
+	svc := &SecretManagerServices{
+		SecretFolder: secretFolderSvc,
+		SecretImport: secretImportSvc,
+		Environment:  environmentSvc,
+		Secret:       secretSvc,
 	}
 
 	return svc
