@@ -82,7 +82,7 @@ export const SecretSyncKeySchemaField = () => {
         <FieldContent>
           <Label htmlFor="customize-key-names">Customize key names</Label>
           <FieldDescription>
-            Add a prefix or pattern so Infisical can identify which keys in {destinationName} it
+            Add a prefix or suffix so Infisical can identify which keys in {destinationName} it
             manages — anything else is left untouched.
           </FieldDescription>
         </FieldContent>
