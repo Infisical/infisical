@@ -18,7 +18,8 @@ It can also automatically reload dependent Deployment resources whenever relevan
 
 <Info>
   The operator supports two CRD API versions. **v1beta1** is the recommended version for new installations.
-  v1alpha1 CRDs are deprecated and will be removed in a future release. See the [migration guide](#migrating-from-v1alpha1-to-v1beta1) below.
+  The v1alpha1 `InfisicalSecret` CRD is deprecated in favor of `InfisicalStaticSecret` (v1beta1) and will be removed in a future release — see the [migration guide](#migrating-from-v1alpha1-to-v1beta1) below.
+  The v1alpha1 `InfisicalPushSecret` and `InfisicalDynamicSecret` CRDs are **not deprecated** and remain the current way to use those features until v1beta1 replacements are available.
 </Info>
 
 <Note>
@@ -192,19 +193,14 @@ controllerManager:
     | --- | ----------- |
     | [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) | Defines how to connect to an Infisical instance (host, TLS). Referenced by other CRDs. |
     | [InfisicalAuth](/integrations/platforms/kubernetes/infisical-auth-crd) | Defines authentication credentials for a machine identity. Referenced by other CRDs. |
-    | [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. Replaces `InfisicalSecret`. |
+    | [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. Replaces `InfisicalSecret`. |
   </Tab>
-  <Tab title="v1alpha1 (Deprecated)">
-    <Warning>
-      v1alpha1 CRDs are deprecated and will be removed in a future release.
-      We recommend migrating to v1beta1. See [Migrating from v1alpha1 to v1beta1](#migrating-from-v1alpha1-to-v1beta1).
-    </Warning>
-
-    | CRD | Description |
-    | --- | ----------- |
-    | [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. |
-    | [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd) | Push secrets from a Kubernetes secret to Infisical. |
-    | [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) | Sync dynamic secrets and create leases automatically in Kubernetes. |
+  <Tab title="v1alpha1">
+    | CRD | Status | Description |
+    | --- | ------ | ----------- |
+    | [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd) | Deprecated | Sync secrets from Infisical to a Kubernetes secret. Use [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) (v1beta1) instead. See [migration guide](#migrating-from-v1alpha1-to-v1beta1). |
+    | [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd) | Active | Push secrets from a Kubernetes secret to Infisical. |
+    | [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) | Active | Sync dynamic secrets and create leases automatically in Kubernetes. |
   </Tab>
 </Tabs>
 
@@ -363,7 +359,7 @@ to point to a CA certificate stored in a Kubernetes secret resource.
 
     All CRDs that reference this `InfisicalConnection` will automatically use the configured TLS settings.
   </Tab>
-  <Tab title="v1alpha1 (Deprecated)">
+  <Tab title="v1alpha1">
     In v1alpha1, TLS is configured inline on each CRD:
 
     ```yaml
@@ -431,6 +427,10 @@ kubectl apply -f infisical-config.yaml
 
 ## Migrating from v1alpha1 to v1beta1
 
+<Info>
+  This migration guide applies to `InfisicalSecret` only. `InfisicalPushSecret` and `InfisicalDynamicSecret` do not have v1beta1 replacements yet and should continue to be used as-is.
+</Info>
+
 The v1beta1 API introduces a cleaner separation of concerns. Instead of defining authentication and connection details inline in each secret CRD, you now create dedicated `InfisicalConnection` and `InfisicalAuth` resources that can be shared across multiple secret resources.
 
 ### Key changes
@@ -454,7 +454,7 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
   </Step>
   <Step title="Replace InfisicalSecret with InfisicalStaticSecret">
     Create a new `InfisicalStaticSecret` resource that references your `InfisicalConnection` and `InfisicalAuth` resources.
-    See the [InfisicalStaticSecret CRD](/integrations/platforms/kubernetes/infisical-secret-crd) documentation for the full spec.
+    See the [InfisicalStaticSecret CRD](/integrations/platforms/kubernetes/infisical-static-secret-crd) documentation for the full spec.
   </Step>
   <Step title="Delete the old v1alpha1 resource">
     Once you have verified that the new v1beta1 resources are working, delete the old `InfisicalSecret` CRD instance.
@@ -496,7 +496,7 @@ All operator CRDs use the `status.conditions` field to report their current stat
     $ kubectl describe infisicalauth my-infisical-auth
     ```
   </Tab>
-  <Tab title="v1alpha1 (Deprecated)">
+  <Tab title="v1alpha1">
     ```bash
     $ kubectl get infisicalSecrets
     NAME                     AGE
