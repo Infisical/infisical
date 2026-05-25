@@ -5,7 +5,15 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl } from "@app/components/v2";
+import { RoleOption } from "@app/components/roles";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetOrgRoles } from "@app/hooks/api";
 import { useCreateOrgIdentityMembership } from "@app/hooks/api/orgIdentityMembership";
@@ -73,59 +81,59 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
         name="identity"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Machine Identity" errorText={error?.message} isError={Boolean(error)}>
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              placeholder="Select machine identity..."
-              // onInputChange={setSearchValue}
-              autoFocus
-              options={rootOrgIdentities}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-              isLoading={isRootOrgLoading}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Machine Identity</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                value={value}
+                onChange={onChange}
+                placeholder="Select machine identity..."
+                // onInputChange={setSearchValue}
+                autoFocus
+                options={rootOrgIdentities}
+                getOptionValue={(option) => option.id}
+                getOptionLabel={(option) => option.name}
+                isLoading={isRootOrgLoading}
+                isError={Boolean(error)}
+              />
+            </FieldContent>
+            {error && <FieldError>{error.message}</FieldError>}
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="role"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Role"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            className="mt-4"
-          >
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              options={roles}
-              placeholder="Select role..."
-              getOptionValue={(option) => option.slug}
-              getOptionLabel={(option) => option.name}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Role</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                value={value}
+                onChange={onChange}
+                options={roles}
+                placeholder="Select role..."
+                getOptionValue={(option) => option.slug}
+                getOptionLabel={(option) => option.name}
+                components={{ Option: RoleOption }}
+                isError={Boolean(error)}
+              />
+            </FieldContent>
+            {error && <FieldError>{error.message}</FieldError>}
+          </Field>
         )}
       />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          Link
-        </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => onClose()}>
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => onClose()}>
           Cancel
+        </Button>
+        <Button type="submit" variant="sub-org" isPending={isSubmitting} isDisabled={isSubmitting}>
+          Assign to Sub-Organization
         </Button>
       </div>
     </form>

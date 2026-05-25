@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   ButtonGroup,
@@ -17,6 +17,11 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   OrgIcon,
   ProjectIcon,
@@ -196,17 +201,23 @@ export const ProjectIdentityDetailsSection = ({
           </DetailGroup>
         </CardContent>
       </Card>
-      <Modal
-        isOpen={popUp.editIdentity.isOpen}
+      <Dialog
+        open={popUp.editIdentity.isOpen}
         onOpenChange={(open) => handlePopUpToggle("editIdentity", open)}
       >
-        <ModalContent bodyClassName="overflow-visible" title="Edit Project Identity">
+        <DialogContent className="max-w-xl overflow-visible">
+          <DialogHeader>
+            <DialogTitle>Edit Project Identity</DialogTitle>
+            <DialogDescription>
+              Update the identity&apos;s name, delete protection, and metadata.
+            </DialogDescription>
+          </DialogHeader>
           <ProjectIdentityModal
             identity={identity}
             onClose={() => handlePopUpToggle("editIdentity", false)}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
