@@ -528,6 +528,8 @@ export const appConnectionServiceFactory = ({
         credentials,
         method,
         orgId: actor.orgId,
+        projectId,
+        version: 2,
         gatewayId: validationGatewayId
       } as TAppConnectionConfig,
       gatewayService,
