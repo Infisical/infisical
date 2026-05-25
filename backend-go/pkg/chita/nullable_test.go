@@ -1,4 +1,4 @@
-package api
+package chita
 
 import (
 	"encoding/json"
