@@ -135,7 +135,7 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       subtitle: "Double-check everything before creating the sync.",
       rightLabel: "REVIEW",
       rightDescription:
-        "Verify your configuration. Once created, you can edit most fields, but you can't change the destination provider.",
+        "Verify your configuration before creating the sync. You can edit these settings later if needed.",
       fields: []
     }
   ];
