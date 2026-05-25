@@ -753,6 +753,28 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         }
       };
 
+      // Identity-auth login services update the lastLogin* columns on exactly one Membership row
+      // keyed on Identity.projectId (always NULL for org identities, so always the org Membership).
+      // The project Membership row created at `createMembershipIdentity` time therefore never
+      // receives a login timestamp for org identities. To avoid surfacing "Never" in the project /
+      // all tabs for an identity that authenticates regularly, fall back to the matching
+      // (actorIdentityId, scope=Organization, scopeOrgId) row via a correlated subquery.
+      const lastLoginFallbackRaw = (column: "lastLoginTime" | "lastLoginAuthMethod", outputAlias: string) =>
+        db.raw(`COALESCE(??.??, (SELECT om.?? FROM ?? AS om WHERE om.?? = ??.?? AND om.?? = ? AND om.?? = ?)) as ??`, [
+          TableName.Membership,
+          column,
+          column,
+          TableName.Membership,
+          "actorIdentityId",
+          TableName.Membership,
+          "actorIdentityId",
+          "scope",
+          AccessScope.Organization,
+          "scopeOrgId",
+          orgId,
+          outputAlias
+        ]);
+
       const searchedMemberships = (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
@@ -761,7 +783,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .groupBy(`${TableName.Membership}.id`, `${TableName.Identity}.name`, `${TableName.Membership}.lastLoginTime`)
         .select(`${TableName.Membership}.id`)
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
-        .select(db.ref("lastLoginTime").withSchema(TableName.Membership).as("lastLoginSort"))
+        .select(lastLoginFallbackRaw("lastLoginTime", "lastLoginSort"))
         .select<{ id: string; identityName: string; roleSort: string; total_count: string }>(
           db.raw(`MIN(COALESCE(??, ??)) as "roleSort"`, [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`])
         )
@@ -881,8 +903,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("total_count").withSchema("searchedMemberships"),
           db.ref("createdAt").withSchema(TableName.Membership),
           db.ref("updatedAt").withSchema(TableName.Membership),
-          db.ref("lastLoginAuthMethod").withSchema(TableName.Membership),
-          db.ref("lastLoginTime").withSchema(TableName.Membership),
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
@@ -919,7 +939,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("name").as("crName").withSchema(TableName.Role))
         .select(db.ref("slug").as("crSlug").withSchema(TableName.Role))
         .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
-        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role));
+        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role))
+        .select(
+          lastLoginFallbackRaw("lastLoginTime", "lastLoginTime"),
+          lastLoginFallbackRaw("lastLoginAuthMethod", "lastLoginAuthMethod")
+        );
 
       if (orderBy === OrgIdentitySearchOrderBy.Role) {
         void query.orderBy("searchedMemberships.roleSort", orderDirection, "last");
@@ -930,7 +954,15 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       }
       void query.orderBy("searchedMemberships.id", "asc");
 
-      const docs = await query;
+      // lastLoginTime / lastLoginAuthMethod are produced by raw COALESCE expressions
+      // (see lastLoginFallbackRaw), so Knex's inferred record type doesn't include them.
+      // They are present at runtime — add them to the type explicitly so the nest-mapper
+      // destructuring below compiles.
+      const docs = (await query) as (typeof query extends PromiseLike<infer R>
+        ? R extends (infer Row)[]
+          ? Row & { lastLoginTime: Date | null; lastLoginAuthMethod: string | null }
+          : never
+        : never)[];
 
       const formattedDocs = sqlNestRelationships({
         data: docs,
