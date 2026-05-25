@@ -1,4 +1,3 @@
-import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
@@ -319,42 +318,36 @@ export const fnTriggerWebhook = async ({
   );
 
   const eventPayloads: WebhookTriggeredEvent["metadata"][] = [];
-  // filter hooks by status
-  const successWebhooks = webhooksTriggered
-    .filter(({ status }) => status === "fulfilled")
-    .map((_, i) => {
-      eventPayloads.push({
-        webhookId: toBeTriggeredHooks[i].id,
-        type: event.type,
-        payload: {
-          type: toBeTriggeredHooks[i].type!,
-          ...event.payload,
-          projectName
-        },
-        status: "success"
-      } as WebhookTriggeredEvent["metadata"]);
+  const successWebhooks: string[] = [];
+  const failedWebhooks: { id: string; error: string }[] = [];
 
-      return toBeTriggeredHooks[i].id;
-    });
-  const failedWebhooks = webhooksTriggered
-    .filter(({ status }) => status === "rejected")
-    .map((data, i) => {
-      eventPayloads.push({
-        webhookId: toBeTriggeredHooks[i].id,
-        type: event.type,
-        payload: {
-          type: toBeTriggeredHooks[i].type!,
-          ...event.payload,
-          projectName
-        },
-        status: "failed"
-      } as WebhookTriggeredEvent["metadata"]);
+  webhooksTriggered.forEach((result, i) => {
+    const hook = toBeTriggeredHooks[i];
+    const eventMetadata = {
+      webhookId: hook.id,
+      type: event.type,
+      payload: {
+        type: hook.type!,
+        ...event.payload,
+        projectName
+      }
+    };
 
-      return {
-        id: toBeTriggeredHooks[i].id,
-        error: data.status === "rejected" ? (data.reason as AxiosError).message : ""
-      };
-    });
+    if (result.status === "rejected") {
+      const reason = result.reason as unknown;
+      const error = reason instanceof Error ? reason.message : String(reason ?? "Unknown webhook error");
+      logger.warn(
+        { webhookId: hook.id, projectId, environment, secretPath, err: reason },
+        `Webhook delivery failed [webhookId=${hook.id}] [projectId=${projectId}] [environment=${environment}] [secretPath=${secretPath}] [error=${error}]`
+      );
+      failedWebhooks.push({ id: hook.id, error });
+      eventPayloads.push({ ...eventMetadata, status: "failed" } as WebhookTriggeredEvent["metadata"]);
+      return;
+    }
+
+    successWebhooks.push(hook.id);
+    eventPayloads.push({ ...eventMetadata, status: "success" } as WebhookTriggeredEvent["metadata"]);
+  });
 
   await webhookDAL.transaction(async (tx) => {
     const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
