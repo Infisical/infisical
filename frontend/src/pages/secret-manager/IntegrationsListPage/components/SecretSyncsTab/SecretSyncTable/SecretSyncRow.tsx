@@ -151,7 +151,7 @@ export const SecretSyncRow = ({
         <img
           alt={`${destinationDetails.name} sync`}
           src={`/images/integrations/${destinationDetails.image}`}
-          className="size-6 min-w-6"
+          className="min-w-[26px] object-contain"
         />
       </TableCell>
       <TableCell className="max-w-0 min-w-32!">
