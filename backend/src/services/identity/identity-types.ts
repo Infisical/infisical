@@ -48,6 +48,16 @@ export type TListOrgIdentitiesByOrgIdDTO = {
 
 export enum OrgIdentityOrderBy {
   Name = "name",
+  Role = "role"
+}
+
+// The v2 search endpoint joins Membership and can sort by lastLoginTime; the legacy
+// v1 search / v2 identity-memberships endpoints bind orderBy straight into an
+// `identity.<col>` SQL fragment and would fail with a 500 on LastLogin since the
+// identities table has no such column. Keep this enum separate so the legacy paths
+// reject lastLogin at the Zod boundary.
+export enum OrgIdentitySearchOrderBy {
+  Name = "name",
   Role = "role",
   LastLogin = "lastLogin"
 }
@@ -88,7 +98,7 @@ export const accessScopeToSearchIdentitiesScope = (scope: string): SearchIdentit
 export type TSearchIdentitiesV2DAL = {
   limit?: number;
   offset?: number;
-  orderBy?: OrgIdentityOrderBy;
+  orderBy?: OrgIdentitySearchOrderBy;
   orderDirection?: OrderByDirection;
   orgId: string;
   scope: SearchIdentitiesScope[];
@@ -102,7 +112,7 @@ export type TSearchIdentitiesV2DAL = {
 export type TSearchIdentitiesV2DTO = {
   limit?: number;
   offset?: number;
-  orderBy?: OrgIdentityOrderBy;
+  orderBy?: OrgIdentitySearchOrderBy;
   orderDirection?: OrderByDirection;
   scope: SearchIdentitiesScope[];
   searchFilter?: Partial<{

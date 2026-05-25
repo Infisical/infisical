@@ -28,6 +28,7 @@ import { OrderByDirection } from "@app/lib/types";
 import {
   accessScopeToSearchIdentitiesScope,
   OrgIdentityOrderBy,
+  OrgIdentitySearchOrderBy,
   SearchIdentitiesScope,
   TCountIdentitiesV2DAL,
   TListOrgIdentitiesByOrgIdDTO,
@@ -706,7 +707,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     {
       limit,
       offset = 0,
-      orderBy = OrgIdentityOrderBy.Name,
+      orderBy = OrgIdentitySearchOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       searchFilter,
       orgId,
@@ -781,9 +782,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         });
       }
 
-      if (orderBy === OrgIdentityOrderBy.Role) {
+      if (orderBy === OrgIdentitySearchOrderBy.Role) {
         void searchedMemberships.orderBy("roleSort", orderDirection, "last");
-      } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
+      } else if (orderBy === OrgIdentitySearchOrderBy.LastLogin) {
         // Never-used identities (lastLoginTime IS NULL) are always pushed to the bottom
         // regardless of sort direction so the visible page is dominated by real activity.
         void searchedMemberships.orderBy("lastLoginSort", orderDirection, "last");
@@ -920,9 +921,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role));
 
-      if (orderBy === OrgIdentityOrderBy.Role) {
+      if (orderBy === OrgIdentitySearchOrderBy.Role) {
         void query.orderBy("searchedMemberships.roleSort", orderDirection, "last");
-      } else if (orderBy === OrgIdentityOrderBy.LastLogin) {
+      } else if (orderBy === OrgIdentitySearchOrderBy.LastLogin) {
         void query.orderBy("searchedMemberships.lastLoginSort", orderDirection, "last");
       } else {
         void query.orderBy("searchedMemberships.identityName", orderDirection);

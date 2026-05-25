@@ -8,7 +8,7 @@ import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validat
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { OrgIdentityOrderBy, SearchIdentitiesScope } from "@app/services/identity/identity-types";
+import { OrgIdentitySearchOrderBy, SearchIdentitiesScope } from "@app/services/identity/identity-types";
 
 const searchResourceZodValidate = zodValidateCharacters([
   CharacterType.AlphaNumeric,
@@ -85,8 +85,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           .describe(IDENTITIES.SEARCH_V2.scope)
           .optional(),
         orderBy: z
-          .nativeEnum(OrgIdentityOrderBy)
-          .default(OrgIdentityOrderBy.Name)
+          .nativeEnum(OrgIdentitySearchOrderBy)
+          .default(OrgIdentitySearchOrderBy.Name)
           .describe(IDENTITIES.SEARCH_V2.orderBy)
           .optional(),
         orderDirection: z
