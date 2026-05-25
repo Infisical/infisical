@@ -90,7 +90,7 @@ export const projectEnvQueueFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         logger.info(`cron[${CronJobName.ProjectEnvHardDelete}]: task started`);
-        const expiredEnvs = await projectEnvDAL.findExpiredForHardDelete();
+        const expiredEnvs = await projectEnvDAL.transaction((tx) => projectEnvDAL.findExpiredForHardDelete(tx));
         logger.info(
           `cron[${CronJobName.ProjectEnvHardDelete}]: found ${expiredEnvs.length} expired environment(s) to hard-delete`
         );

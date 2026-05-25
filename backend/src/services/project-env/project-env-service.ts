@@ -299,7 +299,7 @@ export const projectEnvServiceFactory = ({
         // Shift active rows first (closes the gap at oldPos), then place the
         // soft-deleted row at the pre-shift max active position. That slot is
         // now free since its previous active occupant was shifted down.
-        await projectEnvDAL.closeActivePositionGap(projectId, target.position, tx);
+        await projectEnvDAL.closePositionGap(projectId, target.position, tx);
 
         const softDeletedAt = new Date();
         const hardDeletesAt = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);

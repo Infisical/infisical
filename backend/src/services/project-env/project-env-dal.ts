@@ -140,7 +140,6 @@ export const projectEnvDALFactory = (db: TDbClient) => {
 
     const lastPos = await (tx || db)(TableName.Environment)
       .where({ projectId })
-      .whereNull("hardDeletesAt")
       .max("position", { as: "position" })
       .first();
 
@@ -190,17 +189,6 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       .decrement("position", 1);
   };
 
-  // Closes a gap at `pos` only among active environments. Soft-deleted rows
-  // must keep their tail positions so a new soft-delete can move into the
-  // pre-shift max active slot without colliding on (projectId, position).
-  const closeActivePositionGap = async (projectId: string, pos: number, tx?: Knex) => {
-    await (tx || db)(TableName.Environment)
-      .where({ projectId })
-      .whereNull("hardDeletesAt")
-      .andWhere("position", ">", pos)
-      .decrement("position", 1);
-  };
-
   const findExpiredForHardDelete = async (tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
@@ -227,7 +215,6 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     updateAllPosition,
     shiftPositions,
     closePositionGap,
-    closeActivePositionGap,
     findExpiredForHardDelete
   };
 };
