@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DocumentationLinkBadge,
   Field,
   FieldContent,
   FieldDescription,
@@ -318,9 +319,14 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange }: Pr
 
           <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
             <div className="mb-auto">
-              <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                Step {selectedStepIndex + 1} · {currentStep.rightLabel}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Step {selectedStepIndex + 1} · {currentStep.rightLabel}
+                </p>
+                <DocumentationLinkBadge
+                  href={`https://infisical.com/docs/integrations/secret-syncs/${secretSync.destination}`}
+                />
+              </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 {currentStep.rightDescription}

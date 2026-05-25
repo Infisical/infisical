@@ -8,11 +8,7 @@ type Props = {
   showDocLink?: boolean;
 };
 
-export const SecretSyncModalHeader = ({
-  destination,
-  isConfigured,
-  showDocLink = true
-}: Props) => {
+export const SecretSyncModalHeader = ({ destination, isConfigured, showDocLink = true }: Props) => {
   const destinationDetails = SECRET_SYNC_MAP[destination];
 
   return (
