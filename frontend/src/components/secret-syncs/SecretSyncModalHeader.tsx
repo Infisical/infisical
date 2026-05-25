@@ -5,9 +5,14 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 type Props = {
   destination: SecretSync;
   isConfigured: boolean;
+  showDocLink?: boolean;
 };
 
-export const SecretSyncModalHeader = ({ destination, isConfigured }: Props) => {
+export const SecretSyncModalHeader = ({
+  destination,
+  isConfigured,
+  showDocLink = true
+}: Props) => {
   const destinationDetails = SECRET_SYNC_MAP[destination];
 
   return (
@@ -22,9 +27,11 @@ export const SecretSyncModalHeader = ({ destination, isConfigured }: Props) => {
       <div>
         <div className="flex items-center gap-x-2 text-mineshaft-300">
           {destinationDetails.name} Sync
-          <DocumentationLinkBadge
-            href={`https://infisical.com/docs/integrations/secret-syncs/${destination}`}
-          />
+          {showDocLink && (
+            <DocumentationLinkBadge
+              href={`https://infisical.com/docs/integrations/secret-syncs/${destination}`}
+            />
+          )}
         </div>
         <p className="text-sm leading-4 text-mineshaft-400">
           {isConfigured

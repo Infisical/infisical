@@ -88,7 +88,11 @@ export const CreateSecretSyncModal = ({
           <SheetHeader className="border-b">
             <SheetTitle>
               {selectedSync ? (
-                <SecretSyncModalHeader isConfigured={false} destination={selectedSync} />
+                <SecretSyncModalHeader
+                  isConfigured={false}
+                  destination={selectedSync}
+                  showDocLink={false}
+                />
               ) : (
                 "Choose a destination"
               )}
