@@ -237,21 +237,21 @@ export const ChangeEmailSection = () => {
       </div>
 
       <Modal
-          isOpen={isOtpModalOpen}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) closeOtpModal();
-          }}
-        >
-          <ModalContent title={otpTitle} subTitle={otpSubTitle}>
-            <div className="flex flex-col items-center space-y-4">
-              <div className="flex justify-center">
-                <ReactCodeInput
-                  key={otpStep ?? "closed"}
-                  name="otp-input"
-                  inputMode="tel"
-                  type="text"
-                  fields={6}
-                  onChange={handleOtpCodeChange}
+        isOpen={isOtpModalOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) closeOtpModal();
+        }}
+      >
+        <ModalContent title={otpTitle} subTitle={otpSubTitle}>
+          <div className="flex flex-col items-center space-y-4">
+            <div className="flex justify-center">
+              <ReactCodeInput
+                key={otpStep ?? "closed"}
+                name="otp-input"
+                inputMode="tel"
+                type="text"
+                fields={6}
+                onChange={handleOtpCodeChange}
                 value={typedOTP}
                 {...otpInputProps}
                 className="mb-4"

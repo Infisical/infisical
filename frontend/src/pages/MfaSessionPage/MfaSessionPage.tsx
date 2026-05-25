@@ -94,11 +94,19 @@ export const MfaSessionPage = () => {
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
-  const handleVerifyMfa = async (event?: React.FormEvent<HTMLFormElement>, codeToVerify?: string) => {
+  const handleVerifyMfa = async (
+    event?: React.FormEvent<HTMLFormElement>,
+    codeToVerify?: string
+  ) => {
     if (event) event.preventDefault();
 
     const finalCode = codeToVerify ?? mfaCode;
-    if (!finalCode.trim() || finalCode.length !== getExpectedCodeLength() || !sessionStatus?.mfaMethod) return;
+    if (
+      !finalCode.trim() ||
+      finalCode.length !== getExpectedCodeLength() ||
+      !sessionStatus?.mfaMethod
+    )
+      return;
 
     setIsLoading(true);
     setError(null);
