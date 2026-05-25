@@ -276,7 +276,12 @@ const BEHAVIOR_ORDER: SecretSyncInitialSyncBehavior[] = [
   SecretSyncInitialSyncBehavior.ImportPrioritizeDestination
 ];
 
-export const InitialSyncAlerts = () => {
+type InitialSyncAlertsProps = {
+  onGoToInitialSync: () => void;
+  onGoToOptions: () => void;
+};
+
+export const InitialSyncAlerts = ({ onGoToInitialSync, onGoToOptions }: InitialSyncAlertsProps) => {
   const { watch } = useFormContext<TSecretSyncForm>();
   const destination = watch("destination");
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -288,6 +293,9 @@ export const InitialSyncAlerts = () => {
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const keySchema = watch("syncOptions.keySchema");
 
+  const linkClass =
+    "font-medium text-warning cursor-pointer underline underline-offset-2 hover:text-warning/80 focus-visible:outline-1 focus-visible:outline-danger";
+
   return (
     !vercelSensitive &&
     initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
@@ -295,10 +303,23 @@ export const InitialSyncAlerts = () => {
     !keySchema && (
       <Alert variant="warning">
         <TriangleAlert />
-        <AlertTitle>Secrets will be deleted</AlertTitle>
+        <AlertTitle>External secrets will be deleted</AlertTitle>
         <AlertDescription>
-          Anything in {destinationName} not in Infisical will be removed. To keep them, import
-          instead, add a key schema, or disable secret deletion.
+          <p>
+            Anything in {destinationName} not in Infisical will be removed. To keep them,{" "}
+            <button type="button" onClick={onGoToInitialSync} className={linkClass}>
+              import from provider
+            </button>
+            ,{" "}
+            <button type="button" onClick={onGoToOptions} className={linkClass}>
+              customize key names
+            </button>
+            , or{" "}
+            <button type="button" onClick={onGoToOptions} className={linkClass}>
+              disable secret deletion
+            </button>
+            .
+          </p>
         </AlertDescription>
       </Alert>
     )

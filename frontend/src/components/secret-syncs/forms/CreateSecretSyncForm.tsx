@@ -359,7 +359,16 @@ export const CreateSecretSyncForm = ({
                 {currentTab.rightDescription}
               </p>
             </div>
-            {selectedTabIndex >= 2 && <InitialSyncAlerts />}
+            {selectedTabIndex >= 2 && (
+              <InitialSyncAlerts
+                onGoToInitialSync={() =>
+                  setSelectedTabIndex(formTabs.findIndex((t) => t.key === "initialSync"))
+                }
+                onGoToOptions={() =>
+                  setSelectedTabIndex(formTabs.findIndex((t) => t.key === "options"))
+                }
+              />
+            )}
           </aside>
         </div>
 
