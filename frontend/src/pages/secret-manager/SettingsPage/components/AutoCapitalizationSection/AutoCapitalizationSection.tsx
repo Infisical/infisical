@@ -4,11 +4,10 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Card,
-  CardContent,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldTitle,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Switch
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
@@ -37,16 +36,14 @@ export const AutoCapitalizationSection = () => {
 
   return (
     <Card className="mb-6">
-      <CardContent>
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-          {(isAllowed) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>{t("settings.project.enforce-capitalization")}</FieldTitle>
-                <FieldDescription>
-                  {t("settings.project.enforce-capitalization-description")}
-                </FieldDescription>
-              </FieldContent>
+      <CardHeader>
+        <CardTitle>{t("settings.project.enforce-capitalization")}</CardTitle>
+        <CardDescription>
+          {t("settings.project.enforce-capitalization-description")}
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+            {(isAllowed) => (
               <Switch
                 id="autoCapitalization"
                 variant="project"
@@ -56,10 +53,10 @@ export const AutoCapitalizationSection = () => {
                   handleToggleCapitalizationToggle(state);
                 }}
               />
-            </Field>
-          )}
-        </ProjectPermissionCan>
-      </CardContent>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
     </Card>
   );
 };

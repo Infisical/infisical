@@ -6,8 +6,7 @@ import {
   HourglassIcon,
   PencilIcon,
   RotateCcwIcon,
-  Trash2Icon,
-  XIcon
+  Trash2Icon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -194,132 +193,130 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Edit}
-                  a={ProjectPermissionSub.Environments}
-                >
-                  {(isAllowed) => (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <IconButton
-                            aria-label="Edit environment"
-                            variant="ghost-muted"
-                            onClick={() => {
-                              handlePopUpOpen("updateEnv", { name, slug, id });
-                            }}
-                            isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
-                          >
-                            <PencilIcon />
-                          </IconButton>
-                        </span>
-                      </TooltipTrigger>
-                      {!isMoreEnvironmentsAllowed && (
-                        <TooltipContent>
-                          You have exceeded the number of environments allowed by your plan. To edit
-                          an existing environment, either upgrade your plan or remove at least{" "}
-                          {environmentsOverPlanLimit} environment
-                          {environmentsOverPlanLimit === 1 ? "" : "s"}.
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  )}
-                </ProjectPermissionCan>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Delete}
-                  a={ProjectPermissionSub.Environments}
-                >
-                  {(isAllowed) => (
-                    <IconButton
-                      aria-label="Delete environment"
-                      variant="danger"
-                      onClick={() => {
-                        handlePopUpOpen("deleteEnv", { name, slug, id });
-                      }}
-                      isDisabled={!isAllowed}
-                    >
-                      <XIcon />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton aria-label="Environment options" variant="ghost-muted">
+                      <Ellipsis />
                     </IconButton>
-                  )}
-                </ProjectPermissionCan>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-        {deletedEnvironments.map(
-          ({ name, slug, id, hardDeletesAt, softDeletedAt, deletedBy }) => {
-            const hardDeletesAtDate = new Date(hardDeletesAt);
-            const remaining = formatRemainingDuration(hardDeletesAtDate);
-
-            return (
-              <TableRow key={id} className="bg-warning/[0.025]">
-                <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
-                <TableCell className="text-mineshaft-400">{slug}</TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="warning">
-                          <HourglassIcon />
-                          Pending deletion
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-sm font-semibold text-foreground">
-                            {remaining
-                              ? `${remaining} until permanent deletion`
-                              : "Awaiting permanent deletion"}
-                          </span>
-                          <span className="text-xs text-mineshaft-300">
-                            Scheduled for {format(hardDeletesAtDate, "MMM d, yyyy, h:mm a")}
-                          </span>
-                          <span className="text-xs text-mineshaft-300">
-                            Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
-                            {format(new Date(softDeletedAt), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={ProjectPermissionSub.Environments}
+                    >
+                      {(isAllowed) => (
+                        <Tooltip open={!isMoreEnvironmentsAllowed ? undefined : false}>
+                          <TooltipTrigger asChild>
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
+                              onClick={() => handlePopUpOpen("updateEnv", { name, slug, id })}
+                            >
+                              <PencilIcon />
+                              Edit environment
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            You have exceeded the number of environments allowed by your plan. To
+                            edit an existing environment, either upgrade your plan or remove at
+                            least {environmentsOverPlanLimit} environment
+                            {environmentsOverPlanLimit === 1 ? "" : "s"}.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </ProjectPermissionCan>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Delete}
                       a={ProjectPermissionSub.Environments}
                     >
                       {(isAllowed) => (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild disabled={!isAllowed}>
-                            <IconButton
-                              aria-label="Environment options"
-                              variant="ghost-muted"
-                              isDisabled={!isAllowed}
-                            >
-                              <Ellipsis />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleRestoreEnv(id)}>
-                              <RotateCcwIcon />
-                              Restore environment
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() =>
-                                handlePopUpOpen("hardDeleteEnv", { name, slug, id, hardDeletesAt })
-                              }
-                            >
-                              <Trash2Icon />
-                              Delete permanently
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <DropdownMenuItem
+                          variant="danger"
+                          isDisabled={!isAllowed}
+                          onClick={() => handlePopUpOpen("deleteEnv", { name, slug, id })}
+                        >
+                          <Trash2Icon />
+                          Delete environment
+                        </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          }
-        )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+        {deletedEnvironments.map(({ name, slug, id, hardDeletesAt, softDeletedAt, deletedBy }) => {
+          const hardDeletesAtDate = new Date(hardDeletesAt);
+          const remaining = formatRemainingDuration(hardDeletesAtDate);
+
+          return (
+            <TableRow key={id} className="bg-warning/[0.025]">
+              <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
+              <TableCell className="text-mineshaft-400">{slug}</TableCell>
+              <TableCell>
+                <div className="flex items-center justify-end gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="warning">
+                        <HourglassIcon />
+                        Pending deletion
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-foreground">
+                          {remaining
+                            ? `${remaining} until permanent deletion`
+                            : "Awaiting permanent deletion"}
+                        </span>
+                        <span className="text-xs text-mineshaft-300">
+                          Scheduled for {format(hardDeletesAtDate, "MMM d, yyyy, h:mm a")}
+                        </span>
+                        <span className="text-xs text-mineshaft-300">
+                          Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
+                          {format(new Date(softDeletedAt), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={ProjectPermissionSub.Environments}
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                          <IconButton
+                            aria-label="Environment options"
+                            variant="ghost-muted"
+                            isDisabled={!isAllowed}
+                          >
+                            <Ellipsis />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleRestoreEnv(id)}>
+                            <RotateCcwIcon />
+                            Restore environment
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="danger"
+                            onClick={() =>
+                              handlePopUpOpen("hardDeleteEnv", { name, slug, id, hardDeletesAt })
+                            }
+                          >
+                            <Trash2Icon />
+                            Delete permanently
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </ProjectPermissionCan>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

@@ -4,11 +4,10 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Card,
-  CardContent,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldTitle,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Switch
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
@@ -45,17 +44,14 @@ export const SecretSnapshotsLegacySection = () => {
 
   return (
     <Card className="mb-6">
-      <CardContent>
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-          {(isAllowed) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>Show Secret Snapshots (legacy)</FieldTitle>
-                <FieldDescription>
-                  This feature enables your project members to view secret snapshots in the legacy
-                  format.
-                </FieldDescription>
-              </FieldContent>
+      <CardHeader>
+        <CardTitle>Show Secret Snapshots (legacy)</CardTitle>
+        <CardDescription>
+          This feature enables your project members to view secret snapshots in the legacy format.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+            {(isAllowed) => (
               <Switch
                 id="showSnapshotsLegacy"
                 variant="project"
@@ -63,10 +59,10 @@ export const SecretSnapshotsLegacySection = () => {
                 disabled={!isAllowed || isLoading}
                 onCheckedChange={(state) => handleToggle(state)}
               />
-            </Field>
-          )}
-        </ProjectPermissionCan>
-      </CardContent>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
     </Card>
   );
 };

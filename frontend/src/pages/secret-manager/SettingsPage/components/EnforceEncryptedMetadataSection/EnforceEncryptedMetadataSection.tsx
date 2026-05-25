@@ -2,11 +2,10 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Card,
-  CardContent,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldTitle,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Switch
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
@@ -33,17 +32,15 @@ export const EnforceEncryptedMetadataSection = () => {
 
   return (
     <Card className="mb-6">
-      <CardContent>
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-          {(isAllowed) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>Enforce Encrypted Metadata</FieldTitle>
-                <FieldDescription>
-                  When enabled, secrets in this project can only have encrypted metadata.
-                  Unencrypted metadata fields will be rejected.
-                </FieldDescription>
-              </FieldContent>
+      <CardHeader>
+        <CardTitle>Enforce Encrypted Metadata</CardTitle>
+        <CardDescription>
+          When enabled, secrets in this project can only have encrypted metadata. Unencrypted
+          metadata fields will be rejected.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+            {(isAllowed) => (
               <Switch
                 id="enforceEncryptedMetadata"
                 variant="project"
@@ -53,10 +50,10 @@ export const EnforceEncryptedMetadataSection = () => {
                   handleToggle(state);
                 }}
               />
-            </Field>
-          )}
-        </ProjectPermissionCan>
-      </CardContent>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
     </Card>
   );
 };

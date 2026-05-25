@@ -285,11 +285,27 @@ export const projectEnvServiceFactory = ({
               name: "DeleteEnvironment"
             });
 
+          await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+
           // Clear any pending soft-delete cleanup; harmless if none exists.
           await projectEnvQueue.cancelScheduledHardDelete(id);
 
           return doc;
         }
+
+        const target = await projectEnvDAL.findOne({ id, projectId }, tx);
+        if (!target)
+          throw new NotFoundError({
+            message: `Environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "DeleteEnvironment"
+          });
+
+        const maxPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
+        // Shift first (closes the gap at oldPos), then place the soft-deleted row at the
+        // pre-shift max position — that slot is now free since its previous occupant was
+        // shifted down to maxPos - 1. Deferred UNIQUE (projectId, position) tolerates the
+        // intermediate duplicate at oldPos.
+        await projectEnvDAL.closePositionGap(projectId, target.position, tx);
 
         const softDeletedAt = new Date();
         const hardDeletesAt = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
@@ -302,6 +318,7 @@ export const projectEnvServiceFactory = ({
           softDeletedAt,
           deletedByUserId,
           deletedByIdentityId,
+          maxPos,
           tx
         );
         if (!doc)
@@ -352,7 +369,8 @@ export const projectEnvServiceFactory = ({
         await keyStore.waitTillReady({
           key: operationMarkerKey,
           keyCheckCb: (val) => !val || val === "false",
-          waitingCb: () => logger.debug("Restore project environment. Waiting for "),
+          waitingCb: () =>
+            logger.debug("Restore project environment. Waiting for previous environment operation to finish"),
           delay: 500
         });
       }

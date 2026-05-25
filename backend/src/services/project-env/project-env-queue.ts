@@ -12,7 +12,10 @@ export const SOFT_DELETE_GRACE_MS = SOFT_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000
 
 type TProjectEnvQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findByIdIncludingExpired" | "delete" | "transaction">;
+  projectEnvDAL: Pick<
+    TProjectEnvDALFactory,
+    "findByIdIncludingExpired" | "delete" | "transaction" | "closePositionGap"
+  >;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
@@ -85,7 +88,10 @@ export const projectEnvQueueFactory = ({
         return;
       }
 
-      await projectEnvDAL.delete({ id: envId, projectId });
+      await projectEnvDAL.transaction(async (tx) => {
+        await projectEnvDAL.delete({ id: envId, projectId }, tx);
+        await projectEnvDAL.closePositionGap(projectId, fresh.position, tx);
+      });
       logger.info(`project-env-hard-delete: hard-deleted environment [envId=${envId}] [projectId=${projectId}]`);
 
       await auditLogService.createAuditLog({

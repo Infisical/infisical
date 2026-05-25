@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { addDays, format } from "date-fns";
-import {
-  ClockIcon,
-  KeyIcon,
-  PlusIcon,
-  RotateCcwIcon,
-  Trash2Icon,
-  TriangleAlertIcon
-} from "lucide-react";
+import { ClockIcon, KeyIcon, PlusIcon, RotateCcwIcon, TriangleAlertIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -230,22 +225,19 @@ export const EnvironmentSection = () => {
               secrets, folders, and history will be lost. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2 rounded-md border border-danger/30 bg-danger/5 p-3 text-sm">
-            <div className="flex gap-2">
-              <Trash2Icon className="mt-0.5 size-4 shrink-0 text-danger" />
+          <Alert variant="danger">
+            <TriangleAlertIcon />
+            <AlertDescription>
               <p>
-                <span className="font-medium text-foreground">All secrets and folders</span>{" "}
-                <span className="opacity-80">will be wiped from storage.</span>
+                <span className="font-medium text-foreground">All secrets and folders</span> will be
+                wiped from storage.
               </p>
-            </div>
-            <div className="flex gap-2">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-danger" />
-              <span className="opacity-80">
+              <p>
                 Any service token or integration referencing {hardDeleteEnvData?.slug ?? ""} will
                 fail immediately and cannot be restored from this UI.
-              </span>
-            </div>
-          </div>
+              </p>
+            </AlertDescription>
+          </Alert>
           <div className="w-full pt-2 pb-4">
             <p className="mb-2 text-sm text-muted">
               Type {hardDeleteEnvData?.slug ?? ""} to confirm.

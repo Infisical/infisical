@@ -74,13 +74,14 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     softDeletedAt: Date,
     deletedByUserId: string | null,
     deletedByIdentityId: string | null,
+    position: number,
     tx?: Knex
   ) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNull("hardDeletesAt")
-        .update({ hardDeletesAt, softDeletedAt, deletedByUserId, deletedByIdentityId })
+        .update({ hardDeletesAt, softDeletedAt, deletedByUserId, deletedByIdentityId, position })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
@@ -179,6 +180,15 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     await (tx || db)(TableName.Environment).where({ projectId }).where("position", ">=", pos).increment("position", 1);
   };
 
+  // Closes a gap at `pos` by shifting all higher positions down by 1.
+  // Symmetric to shiftPositions, which opens a slot at `pos`.
+  const closePositionGap = async (projectId: string, pos: number, tx?: Knex) => {
+    await (tx || db)(TableName.Environment)
+      .where({ projectId })
+      .andWhere("position", ">", pos)
+      .decrement("position", 1);
+  };
+
   return {
     ...projectEnvOrm,
     findById,
@@ -191,6 +201,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     restoreById,
     findLastEnvPosition,
     updateAllPosition,
-    shiftPositions
+    shiftPositions,
+    closePositionGap
   };
 };
