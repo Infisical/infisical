@@ -153,6 +153,7 @@ export const CreateSecretSyncForm = ({
   const formTabs = getFormTabs(destination, destinationName);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmBackToProvidersOpen, setConfirmBackToProvidersOpen] = useState(false);
 
   // scoot: right now we only do this when creating a connection so we know index 1
   const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
@@ -175,6 +176,8 @@ export const CreateSecretSyncForm = ({
     reValidateMode: "onChange"
   });
 
+  const { handleSubmit, trigger, control, watch, formState } = formMethods;
+
   const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
     try {
       const secretSync = await createSecretSync.mutateAsync({
@@ -196,14 +199,16 @@ export const CreateSecretSyncForm = ({
 
   const handlePrev = () => {
     if (selectedTabIndex === 0) {
+      if (formState.isDirty) {
+        setConfirmBackToProvidersOpen(true);
+        return;
+      }
       onCancel();
       return;
     }
 
     setSelectedTabIndex((prev) => prev - 1);
   };
-
-  const { handleSubmit, trigger, control, watch, formState } = formMethods;
 
   const { hasDuplicate } = useDuplicateDestinationCheck({
     destination,
@@ -235,6 +240,10 @@ export const CreateSecretSyncForm = ({
     // Provider step (index 0) jumps directly back to the provider selection screen,
     // regardless of which form tab the user is currently on.
     if (stepperIndex === 0) {
+      if (formState.isDirty) {
+        setConfirmBackToProvidersOpen(true);
+        return;
+      }
       onCancel();
       return;
     }
@@ -393,6 +402,28 @@ export const CreateSecretSyncForm = ({
               onClick={handleSubmit(onSubmit)}
             >
               I Understand
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={confirmBackToProvidersOpen}
+        onOpenChange={setConfirmBackToProvidersOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangleIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Discard Sync Setup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your progress configuring this sync will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={onCancel}>
+              Discard
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
