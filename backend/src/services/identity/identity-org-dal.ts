@@ -1058,7 +1058,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       const query = (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
-        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`);
 
