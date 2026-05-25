@@ -364,12 +364,12 @@ export const useDeleteWsEnvironment = () => {
   });
 };
 
-export const useRestoreWsEnvironment = () => {
+export const useRestoreEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, RestoreEnvironmentDTO>({
     mutationFn: ({ id, projectId }) => {
-      return apiRequest.post(`/api/v1/projects/${projectId}/environments/restore/${id}`);
+      return apiRequest.post(`/api/v1/projects/${projectId}/environments/${id}/restore`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

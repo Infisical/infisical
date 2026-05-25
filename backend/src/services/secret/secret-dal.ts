@@ -325,7 +325,7 @@ export const secretDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .whereNull(`${TableName.Environment}.hardDeletesAt`)
         .select(selectAllTableCols(TableName.SecretReference))
         .select("folderId");
       return docs;
@@ -341,7 +341,7 @@ export const secretDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
-        .whereNull(`${TableName.Environment}.expireAfter`)
+        .whereNull(`${TableName.Environment}.hardDeletesAt`)
         // not empty
         .whereNotNull("secretValueCiphertext")
         .select("secretValueTag", "secretValueCiphertext", "secretValueIV", `${TableName.Secret}.id` as "id");

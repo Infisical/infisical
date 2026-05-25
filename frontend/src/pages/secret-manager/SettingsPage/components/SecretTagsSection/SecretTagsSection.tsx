@@ -76,7 +76,7 @@ export const SecretTagsSection = (): JSX.Element => {
             {(isAllowed) => (
               <Button
                 variant="project"
-                size="xs"
+                size="sm"
                 onClick={() => {
                   handlePopUpOpen("CreateSecretTag");
                 }}

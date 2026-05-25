@@ -1,8 +1,18 @@
 import { useMemo } from "react";
-import { ArrowDownIcon, ArrowUpIcon, SearchIcon, TrashIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -143,7 +153,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                     </IconButton>
                   </div>
                 </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -157,20 +167,32 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                         a={ProjectPermissionSub.Tags}
                       >
                         {(isAllowed) => (
-                          <IconButton
-                            aria-label="Delete tag"
-                            variant="danger"
-                            size="xs"
-                            onClick={() =>
-                              handlePopUpOpen("deleteTagConfirmation", {
-                                name: slug,
-                                id
-                              })
-                            }
-                            isDisabled={!isAllowed}
-                          >
-                            <TrashIcon className="size-4" />
-                          </IconButton>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                              <IconButton
+                                aria-label="Tag options"
+                                variant="ghost"
+                                size="xs"
+                                isDisabled={!isAllowed}
+                              >
+                                <MoreHorizontalIcon className="size-4" />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() =>
+                                  handlePopUpOpen("deleteTagConfirmation", {
+                                    name: slug,
+                                    id
+                                  })
+                                }
+                              >
+                                <TrashIcon />
+                                Delete tag
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </ProjectPermissionCan>
                     </div>

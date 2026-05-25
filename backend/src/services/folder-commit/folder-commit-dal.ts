@@ -66,7 +66,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         .where({ folderId })
         .leftJoin(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.expireAfter`
+            `${TableName.Environment}.hardDeletesAt`
           );
         })
         .where((qb) => {
@@ -383,11 +383,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ id }, TableName.FolderCommit))
-        .leftJoin<TProjectEnvironments>(
-          TableName.Environment,
-          `${TableName.FolderCommit}.envId`,
-          `${TableName.Environment}.id`
-        )
+        .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
+          this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.hardDeletesAt`
+          );
+        })
         .where((qb) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);

@@ -65,8 +65,8 @@ export type ProjectDeletedEnvActor =
   | { type: "identity"; id: string; name: string };
 
 export type ProjectDeletedEnv = ProjectEnv & {
-  expireAfter: string;
-  requestedSoftDeleteAt: string;
+  hardDeletesAt: string;
+  softDeletedAt: string;
   deletedBy: ProjectDeletedEnvActor | null;
 };
 

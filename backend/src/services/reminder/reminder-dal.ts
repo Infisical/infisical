@@ -51,7 +51,7 @@ export const reminderDALFactory = (db: TDbClient) => {
       )
       .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolder() {
         this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-          `${TableName.Environment}.expireAfter`
+          `${TableName.Environment}.hardDeletesAt`
         );
       })
       .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
@@ -170,7 +170,7 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretFolder}.envId`,
         `${TableName.Environment}.id`
       )
-      .whereNull(`${TableName.Environment}.expireAfter`)
+      .whereNull(`${TableName.Environment}.hardDeletesAt`)
       .where(`${TableName.Environment}.projectId`, projectId);
 
     const rawReminders = await query

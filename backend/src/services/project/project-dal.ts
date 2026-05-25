@@ -53,7 +53,7 @@ export const projectDALFactory = (db: TDbClient) => {
         })
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expireAfter`
+            `${TableName.Environment}.hardDeletesAt`
           );
         })
         .select(
@@ -119,7 +119,7 @@ export const projectDALFactory = (db: TDbClient) => {
         })
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expireAfter`
+            `${TableName.Environment}.hardDeletesAt`
           );
         })
         .select(
@@ -194,7 +194,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.id`, id)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expireAfter`
+            `${TableName.Environment}.hardDeletesAt`
           );
         })
         .select(
@@ -251,7 +251,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.orgId`, orgId)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.expireAfter`
+            `${TableName.Environment}.hardDeletesAt`
           );
         })
         .select(
@@ -447,7 +447,7 @@ export const projectDALFactory = (db: TDbClient) => {
     const project = await (tx || db.replicaNode())(TableName.Project)
       .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
         this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-          `${TableName.Environment}.expireAfter`
+          `${TableName.Environment}.hardDeletesAt`
         );
       })
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -463,8 +463,8 @@ export const projectDALFactory = (db: TDbClient) => {
         id: string;
         slug: string;
         name: string;
-        expireAfter: Date;
-        requestedSoftDeleteAt: Date;
+        hardDeletesAt: Date;
+        softDeletedAt: Date;
         deletedByUserId: string | null;
         deletedByIdentityId: string | null;
         deletedByUserEmail: string | null;
@@ -478,14 +478,14 @@ export const projectDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Users, `${TableName.Environment}.deletedByUserId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Identity, `${TableName.Environment}.deletedByIdentityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNotNull(`${TableName.Environment}.expireAfter`)
-        .whereNotNull(`${TableName.Environment}.requestedSoftDeleteAt`)
+        .whereNotNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNotNull(`${TableName.Environment}.softDeletedAt`)
         .select(
           `${TableName.Environment}.id`,
           `${TableName.Environment}.slug`,
           `${TableName.Environment}.name`,
-          `${TableName.Environment}.expireAfter`,
-          `${TableName.Environment}.requestedSoftDeleteAt`,
+          `${TableName.Environment}.hardDeletesAt`,
+          `${TableName.Environment}.softDeletedAt`,
           `${TableName.Environment}.deletedByUserId`,
           `${TableName.Environment}.deletedByIdentityId`,
           db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
@@ -530,8 +530,8 @@ export const projectDALFactory = (db: TDbClient) => {
           id: row.id,
           slug: row.slug,
           name: row.name,
-          expireAfter: row.expireAfter,
-          requestedSoftDeleteAt: row.requestedSoftDeleteAt,
+          hardDeletesAt: row.hardDeletesAt,
+          softDeletedAt: row.softDeletedAt,
           deletedBy
         };
       });

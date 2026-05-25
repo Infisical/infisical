@@ -53,7 +53,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.Project),
         countTable(db, TableName.Secret),
         countTable(db, TableName.SecretV2),
-        countTable(db, TableName.Environment),
+        (async () => {
+          const result = (await db(TableName.Environment).whereNull("hardDeletesAt").count().first())?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         countTable(db, TableName.SecretSync),
         countTable(db, TableName.AppConnection),
         countTable(db, TableName.Integration),

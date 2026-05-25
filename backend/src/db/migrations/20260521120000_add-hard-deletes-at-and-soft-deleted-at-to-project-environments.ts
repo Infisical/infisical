@@ -2,19 +2,21 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
+const DELETED_ENVIRONMENTS_INDEX = "idx_project_environments_soft_deleted_project_position";
+
 export async function up(knex: Knex): Promise<void> {
   const hasTable = await knex.schema.hasTable(TableName.Environment);
   if (!hasTable) return;
 
-  const hasExpireAfter = await knex.schema.hasColumn(TableName.Environment, "expireAfter");
-  const hasRequestedSoftDeleteAt = await knex.schema.hasColumn(TableName.Environment, "requestedSoftDeleteAt");
+  const hasHardDeletesAt = await knex.schema.hasColumn(TableName.Environment, "hardDeletesAt");
+  const hasSoftDeletedAt = await knex.schema.hasColumn(TableName.Environment, "softDeletedAt");
   const hasDeletedByUserId = await knex.schema.hasColumn(TableName.Environment, "deletedByUserId");
   const hasDeletedByIdentityId = await knex.schema.hasColumn(TableName.Environment, "deletedByIdentityId");
 
-  if (!hasExpireAfter || !hasRequestedSoftDeleteAt || !hasDeletedByUserId || !hasDeletedByIdentityId) {
+  if (!hasHardDeletesAt || !hasSoftDeletedAt || !hasDeletedByUserId || !hasDeletedByIdentityId) {
     await knex.schema.alterTable(TableName.Environment, (t) => {
-      if (!hasExpireAfter) t.timestamp("expireAfter", { useTz: true }).nullable();
-      if (!hasRequestedSoftDeleteAt) t.timestamp("requestedSoftDeleteAt", { useTz: true }).nullable();
+      if (!hasHardDeletesAt) t.timestamp("hardDeletesAt", { useTz: true }).nullable();
+      if (!hasSoftDeletedAt) t.timestamp("softDeletedAt", { useTz: true }).nullable();
       if (!hasDeletedByUserId) {
         t.uuid("deletedByUserId").nullable();
         t.foreign("deletedByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
@@ -25,23 +27,31 @@ export async function up(knex: Knex): Promise<void> {
       }
     });
   }
+
+  await knex.raw(`
+    CREATE INDEX IF NOT EXISTS "${DELETED_ENVIRONMENTS_INDEX}"
+      ON ${TableName.Environment} ("projectId", "position")
+      WHERE "softDeletedAt" IS NOT NULL
+  `);
 }
 
 export async function down(knex: Knex): Promise<void> {
   const hasTable = await knex.schema.hasTable(TableName.Environment);
   if (!hasTable) return;
 
-  const hasExpireAfter = await knex.schema.hasColumn(TableName.Environment, "expireAfter");
-  const hasRequestedSoftDeleteAt = await knex.schema.hasColumn(TableName.Environment, "requestedSoftDeleteAt");
+  await knex.raw(`DROP INDEX IF EXISTS "${DELETED_ENVIRONMENTS_INDEX}"`);
+
+  const hasHardDeletesAt = await knex.schema.hasColumn(TableName.Environment, "hardDeletesAt");
+  const hasSoftDeletedAt = await knex.schema.hasColumn(TableName.Environment, "softDeletedAt");
   const hasDeletedByUserId = await knex.schema.hasColumn(TableName.Environment, "deletedByUserId");
   const hasDeletedByIdentityId = await knex.schema.hasColumn(TableName.Environment, "deletedByIdentityId");
 
-  if (hasExpireAfter || hasRequestedSoftDeleteAt || hasDeletedByUserId || hasDeletedByIdentityId) {
+  if (hasHardDeletesAt || hasSoftDeletedAt || hasDeletedByUserId || hasDeletedByIdentityId) {
     await knex.schema.alterTable(TableName.Environment, (t) => {
       if (hasDeletedByUserId) t.dropColumn("deletedByUserId");
       if (hasDeletedByIdentityId) t.dropColumn("deletedByIdentityId");
-      if (hasExpireAfter) t.dropColumn("expireAfter");
-      if (hasRequestedSoftDeleteAt) t.dropColumn("requestedSoftDeleteAt");
+      if (hasHardDeletesAt) t.dropColumn("hardDeletesAt");
+      if (hasSoftDeletedAt) t.dropColumn("softDeletedAt");
     });
   }
 }

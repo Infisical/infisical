@@ -2,8 +2,8 @@ import { format, intervalToDuration } from "date-fns";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  Ellipsis,
   HourglassIcon,
-  MoreVerticalIcon,
   PencilIcon,
   RotateCcwIcon,
   Trash2Icon,
@@ -39,13 +39,13 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { useRestoreWsEnvironment, useUpdateWsEnvironment } from "@app/hooks/api";
+import { useRestoreEnvironment, useUpdateWsEnvironment } from "@app/hooks/api";
 import { ProjectDeletedEnvActor } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type PopUpKeys = "updateEnv" | "deleteEnv" | "hardDeleteEnv" | "upgradePlan";
 
-type EnvPayload = { name: string; slug: string; id: string; expireAfter?: string };
+type EnvPayload = { name: string; slug: string; id: string; hardDeletesAt?: string };
 
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
@@ -82,7 +82,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { subscription } = useSubscription();
 
   const updateEnvironment = useUpdateWsEnvironment();
-  const restoreEnvironment = useRestoreWsEnvironment();
+  const restoreEnvironment = useRestoreEnvironment();
 
   const activeEnvironments = currentProject.environments ?? [];
   const deletedEnvironments = currentProject.deletedEnvironments ?? [];
@@ -153,7 +153,6 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Slug</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -171,13 +170,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     <IconButton
                       aria-label="Move down"
                       variant="ghost-muted"
-                      size="xs"
                       onClick={() =>
                         handleReorderEnv(id, Math.min(activeEnvironments.length, pos + 2))
                       }
                       isDisabled={pos === activeEnvironments.length - 1 || !isAllowed}
                     >
-                      <ArrowDownIcon className="size-4" />
+                      <ArrowDownIcon />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
@@ -189,11 +187,10 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     <IconButton
                       aria-label="Move up"
                       variant="ghost-muted"
-                      size="xs"
                       onClick={() => handleReorderEnv(id, Math.max(1, pos))}
                       isDisabled={pos === 0 || !isAllowed}
                     >
-                      <ArrowUpIcon className="size-4" />
+                      <ArrowUpIcon />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
@@ -208,13 +205,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                           <IconButton
                             aria-label="Edit environment"
                             variant="ghost-muted"
-                            size="xs"
                             onClick={() => {
                               handlePopUpOpen("updateEnv", { name, slug, id });
                             }}
                             isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
                           >
-                            <PencilIcon className="size-4" />
+                            <PencilIcon />
                           </IconButton>
                         </span>
                       </TooltipTrigger>
@@ -237,13 +233,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     <IconButton
                       aria-label="Delete environment"
                       variant="danger"
-                      size="xs"
                       onClick={() => {
                         handlePopUpOpen("deleteEnv", { name, slug, id });
                       }}
                       isDisabled={!isAllowed}
                     >
-                      <XIcon className="size-4" />
+                      <XIcon />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
@@ -252,9 +247,9 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           </TableRow>
         ))}
         {deletedEnvironments.map(
-          ({ name, slug, id, expireAfter, requestedSoftDeleteAt, deletedBy }) => {
-            const expireAfterDate = new Date(expireAfter);
-            const remaining = formatRemainingDuration(expireAfterDate);
+          ({ name, slug, id, hardDeletesAt, softDeletedAt, deletedBy }) => {
+            const hardDeletesAtDate = new Date(hardDeletesAt);
+            const remaining = formatRemainingDuration(hardDeletesAtDate);
 
             return (
               <TableRow key={id} className="bg-warning/[0.025]">
@@ -265,7 +260,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Badge variant="warning">
-                          <HourglassIcon className="size-3" />
+                          <HourglassIcon />
                           Pending deletion
                         </Badge>
                       </TooltipTrigger>
@@ -277,11 +272,11 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                               : "Awaiting permanent deletion"}
                           </span>
                           <span className="text-xs text-mineshaft-300">
-                            Scheduled for {format(expireAfterDate, "MMM d, yyyy, h:mm a")}
+                            Scheduled for {format(hardDeletesAtDate, "MMM d, yyyy, h:mm a")}
                           </span>
                           <span className="text-xs text-mineshaft-300">
                             Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
-                            {format(new Date(requestedSoftDeleteAt), "MMM d, yyyy")}
+                            {format(new Date(softDeletedAt), "MMM d, yyyy")}
                           </span>
                         </div>
                       </TooltipContent>
@@ -296,10 +291,9 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                             <IconButton
                               aria-label="Environment options"
                               variant="ghost-muted"
-                              size="xs"
                               isDisabled={!isAllowed}
                             >
-                              <MoreVerticalIcon className="size-4" />
+                              <Ellipsis />
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -310,7 +304,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                             <DropdownMenuItem
                               variant="danger"
                               onClick={() =>
-                                handlePopUpOpen("hardDeleteEnv", { name, slug, id, expireAfter })
+                                handlePopUpOpen("hardDeleteEnv", { name, slug, id, hardDeletesAt })
                               }
                             >
                               <Trash2Icon />

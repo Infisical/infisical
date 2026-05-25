@@ -21,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -71,7 +70,7 @@ export const EnvironmentSection = () => {
     | undefined;
 
   const hardDeleteEnvData = popUp?.hardDeleteEnv?.data as
-    | { name: string; slug: string; id: string; expireAfter?: string }
+    | { name: string; slug: string; id: string; hardDeletesAt?: string }
     | undefined;
 
   const onEnvDeleteSubmit = async () => {
@@ -130,7 +129,7 @@ export const EnvironmentSection = () => {
             {(isAllowed) => (
               <Button
                 variant="project"
-                size="xs"
+                size="sm"
                 onClick={() => {
                   if (isMoreEnvironmentsAllowed) {
                     handlePopUpOpen("createEnv");
@@ -173,8 +172,8 @@ export const EnvironmentSection = () => {
               Schedule deletion of {deleteEnvData?.name ?? "environment"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The <Badge variant="neutral">{deleteEnvData?.slug ?? ""}</Badge> environment will be
-              inaccessible immediately, then permanently deleted on{" "}
+              The {deleteEnvData?.slug ?? ""} environment will be inaccessible immediately, then
+              permanently deleted on{" "}
               <span className="font-medium text-foreground">
                 {format(addDays(new Date(), 14), "MMM d, yyyy")}
               </span>
@@ -192,9 +191,8 @@ export const EnvironmentSection = () => {
             <div className="flex gap-2 opacity-80">
               <KeyIcon className="mt-0.5 size-4 shrink-0 text-muted" />
               <p>
-                Service tokens and integrations referencing{" "}
-                <Badge variant="neutral">{deleteEnvData?.slug ?? ""}</Badge> will fail to resolve.
-                Fix or remove them before the grace period ends.
+                Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail to
+                resolve. Fix or remove them before the grace period ends.
               </p>
             </div>
             <div className="flex gap-2 opacity-80">
@@ -203,14 +201,8 @@ export const EnvironmentSection = () => {
             </div>
           </div>
           <AlertDialogFooter className="sm:justify-between">
-            <Button
-              variant="danger"
-              size="sm"
-              className="text-danger"
-              onClick={onSwitchToHardDelete}
-            >
-              <Trash2Icon className="size-4" />
-              Delete permanently
+            <Button variant="danger" size="sm" onClick={onSwitchToHardDelete}>
+              delete permanently
             </Button>
             <div className="flex gap-2">
               <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -234,8 +226,7 @@ export const EnvironmentSection = () => {
               Permanently delete {hardDeleteEnvData?.name ?? "environment"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Bypass the grace period and wipe{" "}
-              <Badge variant="neutral">{hardDeleteEnvData?.slug ?? ""}</Badge> immediately. All
+              Bypass the grace period and wipe {hardDeleteEnvData?.slug ?? ""} immediately. All
               secrets, folders, and history will be lost. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -244,7 +235,7 @@ export const EnvironmentSection = () => {
               <Trash2Icon className="mt-0.5 size-4 shrink-0 text-danger" />
               <p>
                 <span className="font-medium text-foreground">All secrets and folders</span>{" "}
-                <span className="opacity-80">will be wiped from storage and audit reads.</span>
+                <span className="opacity-80">will be wiped from storage.</span>
               </p>
             </div>
             <div className="flex gap-2">
@@ -257,7 +248,7 @@ export const EnvironmentSection = () => {
           </div>
           <div className="w-full pt-2 pb-4">
             <p className="mb-2 text-sm text-muted">
-              Type <Badge variant="neutral">{hardDeleteEnvData?.slug ?? ""}</Badge> to confirm.
+              Type {hardDeleteEnvData?.slug ?? ""} to confirm.
             </p>
             <Input
               value={hardDeleteConfirmation}
@@ -270,14 +261,12 @@ export const EnvironmentSection = () => {
             <Button
               variant="danger"
               size="sm"
-              className="text-danger"
               onClick={onEnvHardDeleteSubmit}
               isDisabled={
                 !hardDeleteEnvData?.slug || hardDeleteConfirmation !== hardDeleteEnvData.slug
               }
             >
-              <Trash2Icon className="size-4" />
-              Delete permanently
+              delete permanently
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -77,7 +77,7 @@ export const projectEnvServiceFactory = ({
 
       const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
       if (slugHolder) {
-        if (slugHolder.expireAfter) {
+        if (slugHolder.hardDeletesAt) {
           throw new BadRequestError({
             message: `Environment slug '${slug}' is held by a pending-deletion environment. Permanently delete that environment first, then retry.`,
             name: "CreateEnvironment"
@@ -180,7 +180,7 @@ export const projectEnvServiceFactory = ({
       if (slug) {
         const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
         if (slugHolder && slugHolder.id !== id) {
-          if (slugHolder.expireAfter) {
+          if (slugHolder.hardDeletesAt) {
             throw new BadRequestError({
               message: `Environment slug '${slug}' is held by a pending-deletion environment. Permanently delete that environment first, then retry.`,
               name: "UpdateEnvironment"
@@ -291,15 +291,15 @@ export const projectEnvServiceFactory = ({
           return doc;
         }
 
-        const requestedSoftDeleteAt = new Date();
-        const expireAfter = new Date(requestedSoftDeleteAt.getTime() + SOFT_DELETE_GRACE_MS);
+        const softDeletedAt = new Date();
+        const hardDeletesAt = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
         const deletedByUserId = actor === ActorType.USER ? actorId : null;
         const deletedByIdentityId = actor === ActorType.IDENTITY ? actorId : null;
         const doc = await projectEnvDAL.softDeleteById(
           id,
           projectId,
-          expireAfter,
-          requestedSoftDeleteAt,
+          hardDeletesAt,
+          softDeletedAt,
           deletedByUserId,
           deletedByIdentityId,
           tx
@@ -365,7 +365,7 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.expireAfter === null) {
+        if (!target || target.projectId !== projectId || target.hardDeletesAt === null) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
             name: "RestoreEnvironment"
@@ -402,7 +402,7 @@ export const projectEnvServiceFactory = ({
         return doc;
       });
 
-      // Cancel the scheduled hard-delete BEFORE clearing expireAfter so the worker cannot
+      // Cancel the scheduled hard-delete BEFORE clearing hardDeletesAt so the worker cannot
       // race-fire between commit and removal. cancelScheduledHardDelete is idempotent.
       await projectEnvQueue.cancelScheduledHardDelete(id);
 

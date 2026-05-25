@@ -78,7 +78,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     tx(TableName.SecretApprovalRequest)
       .where(filter)
       .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
-      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
+        this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+          `${TableName.Environment}.hardDeletesAt`
+        );
+      })
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .join(
         TableName.SecretApprovalPolicy,
@@ -390,7 +394,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           "temp",
           (tx || db.replicaNode())(TableName.SecretApprovalRequest)
             .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
-            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
+              this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+                `${TableName.Environment}.hardDeletesAt`
+              );
+            })
             .join(
               TableName.SecretApprovalPolicy,
               `${TableName.SecretApprovalRequest}.policyId`,
@@ -443,7 +451,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       // this is the place u wanna look at.
       const innerQuery = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.hardDeletesAt`
+          );
+        })
         .join(
           TableName.SecretApprovalPolicy,
           `${TableName.SecretApprovalRequest}.policyId`,
@@ -652,7 +664,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       // this is the place u wanna look at.
       const innerQuery = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.hardDeletesAt`
+          );
+        })
         .join(
           TableName.SecretApprovalPolicy,
           `${TableName.SecretApprovalRequest}.policyId`,
@@ -885,6 +901,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where({ projectId })
+        .whereNull(`${TableName.Environment}.hardDeletesAt`)
         .delete();
 
       return query;

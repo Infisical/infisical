@@ -273,7 +273,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:projectId/environments/restore/:id",
+    url: "/:projectId/environments/:id/restore",
     config: {
       rateLimit: writeLimit
     },
