@@ -34,6 +34,7 @@ import { SecretSyncSourceFields } from "./SecretSyncSourceFields";
 type Props = {
   onComplete: (secretSync: TSecretSync) => void;
   secretSync: TSecretSync;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 type FormStep = {
@@ -123,7 +124,7 @@ const normalizeConfig = (config: unknown): unknown => {
   return normalized;
 };
 
-export const EditSecretSyncForm = ({ secretSync, onComplete }: Props) => {
+export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange }: Props) => {
   const updateSecretSync = useUpdateSecretSync();
   const { name: destinationName } = SECRET_SYNC_MAP[secretSync.destination];
   const { currentOrg } = useOrganization();
@@ -228,6 +229,10 @@ export const EditSecretSyncForm = ({ secretSync, onComplete }: Props) => {
     control,
     formState: { isSubmitting, isDirty }
   } = formMethods;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const isLoading = isSubmitting || isCheckingDuplicate;
   const currentStep = steps[selectedStepIndex];
