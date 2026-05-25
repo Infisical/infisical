@@ -123,19 +123,19 @@ const ReconciliationLegend = () => (
       unchanged
     </span>
     <span className="flex items-center gap-1">
-      <span className="inline-block h-2 w-3 rounded-[2px] border border-warning/40 bg-warning/5" />
+      <span className="inline-block h-2 w-3 rounded-[2px] border border-warning/75 bg-warning/10" />
       value updated
     </span>
     <span className="flex items-center gap-1">
-      <span className="inline-block h-2 w-3 rounded-[2px] border border-success/50 bg-success/5" />
+      <span className="inline-block h-2 w-3 rounded-[2px] border border-success/75 bg-success/10" />
       added
     </span>
     <span className="flex items-center gap-1">
-      <span className="inline-block h-2 w-3 rounded-[2px] border border-info/50 bg-info/5" />
+      <span className="inline-block h-2 w-3 rounded-[2px] border border-info/75 bg-info/10" />
       imported
     </span>
     <span className="flex items-center gap-1">
-      <span className="inline-block h-2 w-3 rounded-[2px] border border-danger/40 bg-danger/5" />
+      <span className="inline-block h-2 w-3 rounded-[2px] border border-danger/75 bg-danger/10" />
       removed
     </span>
   </div>
