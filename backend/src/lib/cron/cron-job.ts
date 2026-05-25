@@ -29,7 +29,8 @@ export const CronJobName = {
   TelemetryInstanceStats: "telemetry-instance-stats",
   TelemetryAggregatedEvents: "telemetry-aggregated-events",
   DigiCertOrderPolling: "digicert-order-polling",
-  CaCrlRotation: "ca-crl-rotation"
+  CaCrlRotation: "ca-crl-rotation",
+  ProjectEnvHardDelete: "project-env-hard-delete"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

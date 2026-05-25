@@ -13,7 +13,7 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
-import { SOFT_DELETE_GRACE_MS, TProjectEnvQueueFactory } from "./project-env-queue";
+import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
 import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TRestoreEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
@@ -24,7 +24,6 @@ type TProjectEnvServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
-  projectEnvQueue: Pick<TProjectEnvQueueFactory, "scheduleHardDelete" | "cancelScheduledHardDelete">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -36,8 +35,7 @@ export const projectEnvServiceFactory = ({
   keyStore,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
-  secretApprovalPolicyEnvironmentDAL,
-  projectEnvQueue
+  secretApprovalPolicyEnvironmentDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -287,9 +285,6 @@ export const projectEnvServiceFactory = ({
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
 
-          // Clear any pending soft-delete cleanup; harmless if none exists.
-          await projectEnvQueue.cancelScheduledHardDelete(id);
-
           return doc;
         }
 
@@ -301,11 +296,10 @@ export const projectEnvServiceFactory = ({
           });
 
         const maxPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
-        // Shift first (closes the gap at oldPos), then place the soft-deleted row at the
-        // pre-shift max position — that slot is now free since its previous occupant was
-        // shifted down to maxPos - 1. Deferred UNIQUE (projectId, position) tolerates the
-        // intermediate duplicate at oldPos.
-        await projectEnvDAL.closePositionGap(projectId, target.position, tx);
+        // Shift active rows first (closes the gap at oldPos), then place the
+        // soft-deleted row at the pre-shift max active position. That slot is
+        // now free since its previous active occupant was shifted down.
+        await projectEnvDAL.closeActivePositionGap(projectId, target.position, tx);
 
         const softDeletedAt = new Date();
         const hardDeletesAt = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
@@ -329,12 +323,6 @@ export const projectEnvServiceFactory = ({
 
         return doc;
       });
-
-      if (!hardDelete) {
-        // Schedule a hard delete for the environment outside of the transaction
-        // so we are sure that the transaction is committed before the hard delete is scheduled
-        await projectEnvQueue.scheduleHardDelete(id, projectId, SOFT_DELETE_GRACE_MS);
-      }
 
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
@@ -419,10 +407,6 @@ export const projectEnvServiceFactory = ({
 
         return doc;
       });
-
-      // Cancel the scheduled hard-delete BEFORE clearing hardDeletesAt so the worker cannot
-      // race-fire between commit and removal. cancelScheduledHardDelete is idempotent.
-      await projectEnvQueue.cancelScheduledHardDelete(id);
 
       return env;
     } finally {

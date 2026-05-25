@@ -99,8 +99,7 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal",
-  ProjectEnvHardDelete = "project-env-hard-delete"
+  CaAutoRenewal = "ca-auto-renewal"
 }
 
 export enum QueueJobs {
@@ -172,8 +171,7 @@ export enum QueueJobs {
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
-  DigiCertOrderPolling = "digicert-order-polling-job",
-  ProjectEnvHardDelete = "project-env-hard-delete-job"
+  DigiCertOrderPolling = "digicert-order-polling-job"
 }
 
 export type TQueueOptions = {
@@ -487,10 +485,6 @@ export type TQueueJobTypes = {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
-  [QueueName.ProjectEnvHardDelete]: {
-    name: QueueJobs.ProjectEnvHardDelete;
-    payload: { envId: string; projectId: string };
-  };
 };
 
 const SECRET_SCANNING_QUEUES = [

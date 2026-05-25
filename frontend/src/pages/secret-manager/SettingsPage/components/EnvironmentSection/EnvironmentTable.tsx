@@ -267,10 +267,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                         <span className="text-sm font-semibold text-foreground">
                           {remaining
                             ? `${remaining} until permanent deletion`
-                            : "Awaiting permanent deletion"}
+                            : "Will be permanently deleted soon"}
                         </span>
                         <span className="text-xs text-mineshaft-300">
-                          Scheduled for {format(hardDeletesAtDate, "MMM d, yyyy, h:mm a")}
+                          {remaining
+                            ? `Scheduled for ${format(hardDeletesAtDate, "MMM d, yyyy, h:mm a")}`
+                            : "Awaiting the next daily cleanup sweep"}
                         </span>
                         <span className="text-xs text-mineshaft-300">
                           Soft-deleted by {getActorLabel(deletedBy)} ·{" "}

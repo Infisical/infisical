@@ -1726,7 +1726,7 @@ export const registerRoutes = async (
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
-    queueService,
+    cronJob,
     projectEnvDAL,
     keyStore,
     auditLogService
@@ -1739,8 +1739,7 @@ export const registerRoutes = async (
     licenseService,
     folderDAL,
     accessApprovalPolicyEnvironmentDAL,
-    secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL,
-    projectEnvQueue
+    secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL
   });
 
   const snapshotService = secretSnapshotServiceFactory({
@@ -3377,6 +3376,7 @@ export const registerRoutes = async (
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
   dailyResourceCleanUp.init();
+  projectEnvQueue.init();
   healthAlert.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();

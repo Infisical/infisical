@@ -1,8 +1,8 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { InternalServerError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectEnvDALFactory } from "./project-env-dal";
@@ -10,81 +10,50 @@ import { TProjectEnvDALFactory } from "./project-env-dal";
 export const SOFT_DELETE_GRACE_DAYS = 14;
 export const SOFT_DELETE_GRACE_MS = SOFT_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000;
 
+const HANDLER_TIMEOUT_MS = 15 * 60_000;
+
 type TProjectEnvQueueFactoryDep = {
-  queueService: TQueueServiceFactory;
   projectEnvDAL: Pick<
     TProjectEnvDALFactory,
-    "findByIdIncludingExpired" | "delete" | "transaction" | "closePositionGap"
+    "findByIdIncludingExpired" | "findExpiredForHardDelete" | "delete" | "transaction" | "closePositionGap"
   >;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  cronJob: TCronJobFactory;
 };
 
 export type TProjectEnvQueueFactory = ReturnType<typeof projectEnvQueueFactory>;
 
 export const projectEnvQueueFactory = ({
-  queueService,
   projectEnvDAL,
   keyStore,
-  auditLogService
+  auditLogService,
+  cronJob
 }: TProjectEnvQueueFactoryDep) => {
-  const scheduleHardDelete = async (envId: string, projectId: string, delayMs: number) => {
-    await queueService.queue(
-      QueueName.ProjectEnvHardDelete,
-      QueueJobs.ProjectEnvHardDelete,
-      { envId, projectId },
-      {
-        jobId: envId,
-        delay: delayMs,
-        attempts: 3,
-        backoff: { type: "exponential", delay: 60_000 },
-        removeOnComplete: true,
-        removeOnFail: { count: 50 }
-      }
-    );
-  };
+  const appCfg = getConfig();
 
-  const cancelScheduledHardDelete = async (envId: string) => {
-    await queueService.stopJobById(QueueName.ProjectEnvHardDelete, envId);
+  if (appCfg.isDailyResourceCleanUpDevelopmentMode) {
+    logger.warn("Project environment hard-delete cron is in development mode.");
+  }
 
-    // stop by ID swallows the error, so we need to check if the job still exists
-    const stillScheduled = await queueService.jobExistsById(QueueName.ProjectEnvHardDelete, envId);
-    if (stillScheduled) {
-      logger.error(
-        { envId, queue: QueueName.ProjectEnvHardDelete },
-        `project-env: failed to cancel scheduled hard-delete [envId=${envId}]`
-      );
-      throw new InternalServerError({
-        name: "CancelScheduledHardDelete",
-        message: "Failed to cancel scheduled environment hard-delete. Please retry."
-      });
-    }
-  };
-
-  queueService.start(QueueName.ProjectEnvHardDelete, async (job) => {
-    const { envId, projectId } = job.data;
-
-    // first we check to see if a lock needs to be acquired, if not we skip the job
-    // Read via transaction → primary, not replica. Defeats replica-lag races against a recent restore commit.
-    const env = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdIncludingExpired(envId, tx));
-    if (!env || !env.hardDeletesAt || env.hardDeletesAt.getTime() > Date.now()) {
-      logger.info(
-        `project-env-hard-delete: skipping (gone/restored/not-yet-expired) [envId=${envId}] [projectId=${projectId}]`
-      );
-      return;
-    }
-
+  const hardDeleteEnvironment = async (envId: string, projectId: string) => {
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
       .catch(() => null);
     if (!lock) {
-      throw new Error(`project-env-hard-delete: could not acquire project lock [envId=${envId}]`);
+      logger.warn(
+        `project-env-hard-delete: could not acquire project lock, will retry next firing [envId=${envId}] [projectId=${projectId}]`
+      );
+      return;
     }
 
     try {
+      // Read via transaction → primary, not replica. Defeats replica-lag races against a recent restore commit.
       const fresh = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdIncludingExpired(envId, tx));
       if (!fresh || !fresh.hardDeletesAt || fresh.hardDeletesAt.getTime() > Date.now()) {
-        logger.info(`project-env-hard-delete: restored during lock acquisition, skipping [envId=${envId}]`);
+        logger.info(
+          `project-env-hard-delete: skipping (gone/restored/not-yet-expired) [envId=${envId}] [projectId=${projectId}]`
+        );
         return;
       }
 
@@ -109,7 +78,37 @@ export const projectEnvQueueFactory = ({
     } finally {
       await lock.release();
     }
-  });
+  };
 
-  return { scheduleHardDelete, cancelScheduledHardDelete };
+  const init = () => {
+    cronJob.register({
+      name: CronJobName.ProjectEnvHardDelete,
+      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: HANDLER_TIMEOUT_MS,
+      leaseDurationMs: HANDLER_TIMEOUT_MS,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.ProjectEnvHardDelete}]: task started`);
+        const expiredEnvs = await projectEnvDAL.findExpiredForHardDelete();
+        logger.info(
+          `cron[${CronJobName.ProjectEnvHardDelete}]: found ${expiredEnvs.length} expired environment(s) to hard-delete`
+        );
+
+        for (const env of expiredEnvs) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await hardDeleteEnvironment(env.id, env.projectId);
+          } catch (err) {
+            logger.error(
+              { err, envId: env.id, projectId: env.projectId },
+              `project-env-hard-delete: failed to hard-delete environment, will retry next firing [envId=${env.id}] [projectId=${env.projectId}]`
+            );
+          }
+        }
+      }
+    });
+  };
+
+  return { init };
 };
