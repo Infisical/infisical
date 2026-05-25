@@ -544,42 +544,51 @@ export const identityServiceFactory = ({
         OrgPermissionAdminConsoleAction.AccessAllProjects,
         OrgPermissionSubjects.AdminConsole
       );
-      const candidateProjectIds = canAccessAllProjects
-        ? await projectDAL.findOrgProjectIds(actorOrgId)
-        : await projectDAL.findActorAccessibleProjectIds(actorId, actor, actorOrgId);
 
-      const projectAccessChecks = await Promise.all(
-        candidateProjectIds.map(async (projectId) => {
-          try {
-            const { permission: projectPermission } = await permissionService.getProjectPermission({
-              actor,
-              actorId,
-              actionProjectType: ActionProjectType.Any,
-              actorAuthMethod,
-              projectId,
-              actorOrgId
-            });
-            // Broad `can(Read, Identity)` returns true for conditional rules too. We keep the
-            // project here and use the per-row check below to honor `identityId` conditions.
-            return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
-              ? { projectId, permission: projectPermission }
-              : null;
-          } catch {
-            return null;
-          }
-        })
-      );
+      if (canAccessAllProjects) {
+        // Org admins read unconditionally across every project — skip the per-project probe,
+        // which would otherwise throw ProjectMembershipNotFound for projects the admin hasn't
+        // explicitly joined and drop them from accessibleProjectIds.
+        accessibleProjectIds.push(...(await projectDAL.findOrgProjectIds(actorOrgId)));
+      } else {
+        const candidateProjectIds = await projectDAL.findActorAccessibleProjectIds(actorId, actor, actorOrgId);
 
-      for (const entry of projectAccessChecks) {
-        if (entry) {
-          accessibleProjectIds.push(entry.projectId);
-          projectPermissions.set(entry.projectId, entry.permission);
-          // Tracking which projects carry conditional Read(Identity) rules lets the row filter
-          // skip CASL.can() for projects whose access is already unconditional — the broad
-          // can(Read, Identity) check above is authoritative for them.
-          const rules = entry.permission.rulesFor(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
-          if (rules.some((rule) => rule.conditions)) {
-            conditionalProjectIds.add(entry.projectId);
+        const projectAccessChecks = await Promise.all(
+          candidateProjectIds.map(async (projectId) => {
+            try {
+              const { permission: projectPermission } = await permissionService.getProjectPermission({
+                actor,
+                actorId,
+                actionProjectType: ActionProjectType.Any,
+                actorAuthMethod,
+                projectId,
+                actorOrgId
+              });
+              // Broad `can(Read, Identity)` returns true for conditional rules too. We keep the
+              // project here and use the per-row check below to honor `identityId` conditions.
+              return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
+                ? { projectId, permission: projectPermission }
+                : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        for (const entry of projectAccessChecks) {
+          if (entry) {
+            accessibleProjectIds.push(entry.projectId);
+            projectPermissions.set(entry.projectId, entry.permission);
+            // Tracking which projects carry conditional Read(Identity) rules lets the row filter
+            // skip CASL.can() for projects whose access is already unconditional — the broad
+            // can(Read, Identity) check above is authoritative for them.
+            const rules = entry.permission.rulesFor(
+              ProjectPermissionIdentityActions.Read,
+              ProjectPermissionSub.Identity
+            );
+            if (rules.some((rule) => rule.conditions)) {
+              conditionalProjectIds.add(entry.projectId);
+            }
           }
         }
       }
