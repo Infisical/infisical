@@ -11,23 +11,80 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- Basic Route Registration ---
+// =============================================================================
+// Test types for router tests
+// =============================================================================
 
-func TestRouter_Get(t *testing.T) {
-	r := NewRouter()
+// EmptyRequest for handlers that don't need request parsing
+type EmptyRequest struct{}
 
-	called := false
-	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		w.WriteHeader(http.StatusOK)
+func (r *EmptyRequest) Schema() *ObjectSchema {
+	return Object(map[string]Schema{})
+}
+
+// TestOKResponse is a simple 200 response
+type TestOKResponse struct {
+	Message string `json:"message"`
+}
+
+func (r *TestOKResponse) Schema() *ObjectSchema {
+	return Object(map[string]Schema{
+		"message": String(&r.Message).Optional(),
 	})
+}
+
+func (*TestOKResponse) Status() int { return http.StatusOK }
+
+// TestCreatedResponse is a 201 response
+type TestCreatedResponse struct {
+	ID string `json:"id"`
+}
+
+func (r *TestCreatedResponse) Schema() *ObjectSchema {
+	return Object(map[string]Schema{
+		"id": String(&r.ID).Optional(),
+	})
+}
+
+func (*TestCreatedResponse) Status() int { return http.StatusCreated }
+
+// TestNoContent is a 204 response
+type TestNoContent struct{}
+
+func (*TestNoContent) Schema() *ObjectSchema { return nil }
+func (*TestNoContent) Status() int           { return http.StatusNoContent }
+
+// =============================================================================
+// Test handlers
+// =============================================================================
+
+func testOKHandler(_ context.Context, _ *EmptyRequest) (TestOKResponse, error) {
+	return TestOKResponse{Message: "ok"}, nil
+}
+
+func testCreatedHandler(_ context.Context, _ *EmptyRequest) (TestCreatedResponse, error) {
+	return TestCreatedResponse{ID: "123"}, nil
+}
+
+func testNoContentHandler(_ context.Context, _ *EmptyRequest) (TestNoContent, error) {
+	return TestNoContent{}, nil
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+func TestRouter_GET(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
+
+	r.GET("/test", Handler(app, testOKHandler))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	r.ServeHTTP(rec, req)
 
-	assert.True(t, called)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	endpoints := r.Endpoints()
@@ -36,12 +93,11 @@ func TestRouter_Get(t *testing.T) {
 	assert.Equal(t, "/test", endpoints[0].Pattern)
 }
 
-func TestRouter_Post(t *testing.T) {
-	r := NewRouter()
+func TestRouter_POST(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-	})
+	r.POST("/create", Handler(app, testCreatedHandler))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/create", http.NoBody)
 	rec := httptest.NewRecorder()
@@ -55,57 +111,57 @@ func TestRouter_Post(t *testing.T) {
 	assert.Equal(t, http.MethodPost, endpoints[0].Method)
 }
 
-func TestRouter_Put(t *testing.T) {
-	r := NewRouter()
+func TestRouter_PUT(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Put("/update", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	r.PUT("/update", Handler(app, testOKHandler))
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
 	assert.Equal(t, http.MethodPut, endpoints[0].Method)
 }
 
-func TestRouter_Patch(t *testing.T) {
-	r := NewRouter()
+func TestRouter_PATCH(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Patch("/partial", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	r.PATCH("/partial", Handler(app, testOKHandler))
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
 	assert.Equal(t, http.MethodPatch, endpoints[0].Method)
 }
 
-func TestRouter_Delete(t *testing.T) {
-	r := NewRouter()
+func TestRouter_DELETE(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Delete("/remove", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
+	r.DELETE("/remove", Handler(app, testNoContentHandler))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/remove", http.NoBody)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
 	assert.Equal(t, http.MethodDelete, endpoints[0].Method)
 }
 
-// --- Route with Options ---
+func TestRouter_WithBuilderOptions(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-func TestRouter_WithOptions(t *testing.T) {
-	r := NewRouter()
-
-	r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	},
-		WithSummary("Get user by ID"),
-		WithDescription("Retrieves a user by their unique ID"),
-		WithOperationID("getUser"),
-		WithTags("Users"),
-		WithSecurityRequirements(NewSecurity("jwt")),
-		WithDeprecated(),
-	)
+	r.GET("/users/{id}", Handler(app, testOKHandler).
+		Summary("Get user by ID").
+		Description("Retrieves a user by their unique ID").
+		OperationID("getUser").
+		Tags("Users").
+		Security(NewSecurity("jwt")).
+		Deprecated())
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
@@ -122,31 +178,13 @@ func TestRouter_WithOptions(t *testing.T) {
 	assert.Equal(t, "jwt", reqs[0].Scheme)
 }
 
-func TestRouter_WithNoAuth(t *testing.T) {
-	r := NewRouter()
-
-	r.Get("/public", func(w http.ResponseWriter, r *http.Request) {},
-		WithNoAuth(),
-	)
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-	require.Len(t, endpoints[0].Security, 1)
-	assert.True(t, endpoints[0].Security[0].IsEmpty())
-}
-
-// --- Route Groups ---
-
 func TestRouter_Route(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Route("/api/v1", func(sub *Router) {
-		sub.Get("/users", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		})
-		sub.Post("/users", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusCreated)
-		})
+		sub.GET("/users", Handler(app, testOKHandler))
+		sub.POST("/users", Handler(app, testCreatedHandler))
 	})
 
 	endpoints := r.Endpoints()
@@ -162,17 +200,14 @@ func TestRouter_Route(t *testing.T) {
 }
 
 func TestRouter_NestedRoutes(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Route("/api", func(api *Router) {
 		api.Route("/v1", func(v1 *Router) {
 			v1.Route("/users", func(users *Router) {
-				users.Get("/", func(w http.ResponseWriter, r *http.Request) {
-					_, _ = w.Write([]byte("list users"))
-				})
-				users.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-					_, _ = w.Write([]byte("get user"))
-				})
+				users.GET("/", Handler(app, testOKHandler))
+				users.GET("/{id}", Handler(app, testOKHandler))
 			})
 		})
 	})
@@ -187,19 +222,18 @@ func TestRouter_NestedRoutes(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	body, _ := io.ReadAll(rec.Body)
-	assert.Equal(t, "list users", string(body))
+	assert.Contains(t, string(body), "ok")
 }
 
-// --- Default Security and Tags ---
-
 func TestRouter_WithSecurity(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Route("/api", func(api *Router) {
 		api.WithSecurity(NewSecurity("jwt"))
 
-		api.Get("/protected", func(w http.ResponseWriter, r *http.Request) {})
-		api.Post("/protected", func(w http.ResponseWriter, r *http.Request) {})
+		api.GET("/protected", Handler(app, testOKHandler))
+		api.POST("/protected", Handler(app, testCreatedHandler))
 	})
 
 	endpoints := r.Endpoints()
@@ -214,13 +248,14 @@ func TestRouter_WithSecurity(t *testing.T) {
 }
 
 func TestRouter_WithTags(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Route("/api/users", func(users *Router) {
 		users.WithTags("Users", "Admin")
 
-		users.Get("/", func(w http.ResponseWriter, r *http.Request) {})
-		users.Post("/", func(w http.ResponseWriter, r *http.Request) {})
+		users.GET("/", Handler(app, testOKHandler))
+		users.POST("/", Handler(app, testCreatedHandler))
 	})
 
 	endpoints := r.Endpoints()
@@ -232,7 +267,8 @@ func TestRouter_WithTags(t *testing.T) {
 }
 
 func TestRouter_InheritedDefaults(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Route("/api", func(api *Router) {
 		api.WithSecurity(NewSecurity("jwt"))
@@ -240,7 +276,7 @@ func TestRouter_InheritedDefaults(t *testing.T) {
 
 		api.Route("/v1", func(v1 *Router) {
 			// Should inherit security and tags from parent
-			v1.Get("/test", func(w http.ResponseWriter, r *http.Request) {})
+			v1.GET("/test", Handler(app, testOKHandler))
 		})
 	})
 
@@ -255,54 +291,18 @@ func TestRouter_InheritedDefaults(t *testing.T) {
 	assert.Equal(t, []string{"API"}, ep.Tags)
 }
 
-func TestRouter_OverrideDefaults(t *testing.T) {
-	r := NewRouter()
-
-	r.Route("/api", func(api *Router) {
-		api.WithSecurity(NewSecurity("jwt"))
-		api.WithTags("API")
-
-		api.Route("/public", func(pub *Router) {
-			pub.WithSecurity() // Clear security
-
-			pub.Get("/health", func(w http.ResponseWriter, r *http.Request) {})
-		})
-
-		api.Get("/protected", func(w http.ResponseWriter, r *http.Request) {})
-	})
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 2)
-
-	// Find public endpoint
-	var publicEp, protectedEp *Endpoint
-	for i := range endpoints {
-		if endpoints[i].Pattern == "/api/public/health" {
-			publicEp = &endpoints[i]
-		} else {
-			protectedEp = &endpoints[i]
-		}
-	}
-
-	require.NotNil(t, publicEp)
-	require.NotNil(t, protectedEp)
-
-	assert.Empty(t, publicEp.Security)
-	require.Len(t, protectedEp.Security, 1)
-}
-
-func TestRouter_EndpointOverridesGroupDefaults(t *testing.T) {
-	r := NewRouter()
+func TestRouter_BuilderOverridesDefaults(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Route("/api", func(api *Router) {
 		api.WithSecurity(NewSecurity("jwt"))
 		api.WithTags("API")
 
 		// This endpoint overrides both security and tags
-		api.Get("/special", func(w http.ResponseWriter, r *http.Request) {},
-			WithSecurityRequirements(NewSecurity("api_key")),
-			WithTags("Special"),
-		)
+		api.GET("/special", Handler(app, testOKHandler).
+			Security(NewSecurity("api_key")).
+			Tags("Special"))
 	})
 
 	endpoints := r.Endpoints()
@@ -316,16 +316,15 @@ func TestRouter_EndpointOverridesGroupDefaults(t *testing.T) {
 	assert.Equal(t, []string{"Special"}, ep.Tags)
 }
 
-// --- Group without path prefix ---
-
 func TestRouter_Group(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	r.Group(func(g *Router) {
 		g.WithSecurity(NewSecurity("jwt"))
 
-		g.Get("/a", func(w http.ResponseWriter, r *http.Request) {})
-		g.Get("/b", func(w http.ResponseWriter, r *http.Request) {})
+		g.GET("/a", Handler(app, testOKHandler))
+		g.GET("/b", Handler(app, testOKHandler))
 	})
 
 	endpoints := r.Endpoints()
@@ -338,38 +337,9 @@ func TestRouter_Group(t *testing.T) {
 	assert.Equal(t, "/b", endpoints[1].Pattern)
 }
 
-// --- Handle with Endpoint struct ---
-
-func TestRouter_Handle(t *testing.T) {
-	r := NewRouter()
-
-	r.Handle(Endpoint{
-		Method:  http.MethodGet,
-		Pattern: "/custom",
-		Handler: func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		},
-		Summary:     "Custom endpoint",
-		Description: "A custom endpoint",
-		Tags:        []string{"Custom"},
-		Security:    []Security{NewSecurity("bearer")},
-	})
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-
-	ep := endpoints[0]
-	assert.Equal(t, http.MethodGet, ep.Method)
-	assert.Equal(t, "/custom", ep.Pattern)
-	assert.Equal(t, "Custom endpoint", ep.Summary)
-	assert.Equal(t, "A custom endpoint", ep.Description)
-	assert.Equal(t, []string{"Custom"}, ep.Tags)
-}
-
-// --- Middleware ---
-
 func TestRouter_Use(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	middlewareCalled := false
 	r.Use(func(next http.Handler) http.Handler {
@@ -379,9 +349,7 @@ func TestRouter_Use(t *testing.T) {
 		})
 	})
 
-	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	r.GET("/test", Handler(app, testOKHandler))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	rec := httptest.NewRecorder()
@@ -393,7 +361,8 @@ func TestRouter_Use(t *testing.T) {
 }
 
 func TestRouter_With(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
 	middlewareCalled := false
 	withRouter := r.With(func(next http.Handler) http.Handler {
@@ -404,14 +373,10 @@ func TestRouter_With(t *testing.T) {
 	})
 
 	// Original router
-	r.Get("/original", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	r.GET("/original", Handler(app, testOKHandler))
 
 	// Router with middleware
-	withRouter.Get("/with-middleware", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	withRouter.GET("/with-middleware", Handler(app, testOKHandler))
 
 	// Test original - middleware should NOT be called
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/original", http.NoBody)
@@ -426,15 +391,12 @@ func TestRouter_With(t *testing.T) {
 	assert.True(t, middlewareCalled)
 }
 
-// --- Mount ---
-
 func TestRouter_Mount(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	sub := NewRouter()
-	sub.Get("/users", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("users"))
-	})
+	sub := NewRouter(RouterConfig{App: app})
+	sub.GET("/users", Handler(app, testOKHandler))
 
 	r.Mount("/api/v1", sub)
 
@@ -442,8 +404,7 @@ func TestRouter_Mount(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/users", http.NoBody)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
-	body, _ := io.ReadAll(rec.Body)
-	assert.Equal(t, "users", string(body))
+	assert.Equal(t, http.StatusOK, rec.Code)
 
 	// Check endpoints are collected with prefix
 	endpoints := r.Endpoints()
@@ -451,150 +412,31 @@ func TestRouter_Mount(t *testing.T) {
 	assert.Equal(t, "/api/v1/users", endpoints[0].Pattern)
 }
 
-// --- Path Parameters ---
+func TestRouter_WithDefaultResponses(t *testing.T) {
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-func TestRouter_PathParams(t *testing.T) {
-	r := NewRouter()
+	// Create a router with default responses
+	r.Route("/api", func(api *Router) {
+		api.WithDefaultResponses()
 
-	r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		_ = r.PathValue("id")
-		w.WriteHeader(http.StatusOK)
-	}, WithPathParams(map[string]Schema{
-		"id": String(new(string)).Required().UUID(),
-	}))
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-
-	ep := endpoints[0]
-	require.Contains(t, ep.PathParams, "id")
-}
-
-// --- Query Parameters ---
-
-func TestRouter_QueryParams(t *testing.T) {
-	r := NewRouter()
-
-	r.Get("/search", func(w http.ResponseWriter, r *http.Request) {},
-		WithQueryParams(map[string]Schema{
-			"q":      String(new(string)).Required().MinLength(1),
-			"limit":  Int(new(int)).Optional().Min(1).Max(100),
-			"offset": Int(new(int)).Optional().Min(0),
-		}),
-	)
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-
-	ep := endpoints[0]
-	require.Len(t, ep.QueryParams, 3)
-	assert.Contains(t, ep.QueryParams, "q")
-	assert.Contains(t, ep.QueryParams, "limit")
-	assert.Contains(t, ep.QueryParams, "offset")
-}
-
-// --- Header and Cookie Parameters ---
-
-func TestRouter_HeaderParams(t *testing.T) {
-	r := NewRouter()
-
-	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {},
-		WithHeaderParams(map[string]Schema{
-			"X-Request-ID": String(new(string)).Required().UUID(),
-		}),
-	)
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-	require.Contains(t, endpoints[0].HeaderParams, "X-Request-ID")
-}
-
-func TestRouter_CookieParams(t *testing.T) {
-	r := NewRouter()
-
-	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {},
-		WithCookieParams(map[string]Schema{
-			"session": String(new(string)).Required(),
-		}),
-	)
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-	require.Contains(t, endpoints[0].CookieParams, "session")
-}
-
-// --- Request and Response Schemas ---
-
-type TestRequest struct {
-	Name string
-}
-
-func (r *TestRequest) Schema() *ObjectSchema {
-	return Object(map[string]Schema{
-		"name": String(&r.Name).Required(),
+		api.GET("/test", Handler(app, testOKHandler))
 	})
-}
-
-type TestResponse struct {
-	ID   string
-	Name string
-}
-
-func (r *TestResponse) Schema() *ObjectSchema {
-	return Object(map[string]Schema{
-		"id":   String(&r.ID).Required(),
-		"name": String(&r.Name).Required(),
-	})
-}
-
-func TestRouter_WithRequestResponse(t *testing.T) {
-	r := NewRouter()
-
-	r.Post("/users", func(w http.ResponseWriter, r *http.Request) {},
-		WithRequest(&TestRequest{}),
-		WithResponse(&TestResponse{}),
-	)
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
-
-	ep := endpoints[0]
-	require.NotNil(t, ep.Request)
-	require.NotNil(t, ep.Response)
+	// The responses should include the handler's response
+	assert.NotNil(t, endpoints[0].Responses)
 }
-
-func TestRouter_WithResponses(t *testing.T) {
-	r := NewRouter()
-
-	r.Post("/users", func(w http.ResponseWriter, r *http.Request) {},
-		WithResponses(map[int]SchemaProvider{
-			201: &TestResponse{},
-			400: nil,
-		}),
-	)
-
-	endpoints := r.Endpoints()
-	require.Len(t, endpoints, 1)
-	require.Len(t, endpoints[0].Responses, 2)
-}
-
-// --- Multiple Methods Same Path ---
 
 func TestRouter_MultipleMethods(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Get("/resource", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("GET"))
-	})
-	r.Post("/resource", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("POST"))
-	})
-	r.Put("/resource", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("PUT"))
-	})
-	r.Delete("/resource", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("DELETE"))
-	})
+	r.GET("/resource", Handler(app, testOKHandler))
+	r.POST("/resource", Handler(app, testCreatedHandler))
+	r.PUT("/resource", Handler(app, testOKHandler))
+	r.DELETE("/resource", Handler(app, testNoContentHandler))
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 4)
@@ -610,16 +452,12 @@ func TestRouter_MultipleMethods(t *testing.T) {
 	assert.True(t, methods[http.MethodDelete])
 }
 
-// --- Security with Scopes ---
-
 func TestRouter_SecurityWithScopes(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {},
-		WithSecurityRequirements(
-			NewSecurity("oauth2", "read:admin", "write:admin"),
-		),
-	)
+	r.GET("/admin", Handler(app, testOKHandler).
+		Security(NewSecurity("oauth2", "read:admin", "write:admin")))
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
@@ -633,70 +471,15 @@ func TestRouter_SecurityWithScopes(t *testing.T) {
 }
 
 func TestRouter_MultipleSecurityOptions(t *testing.T) {
-	r := NewRouter()
+	app := NewApp(AppConfig{})
+	r := NewRouter(RouterConfig{App: app})
 
-	r.Get("/flexible", func(w http.ResponseWriter, r *http.Request) {},
-		WithSecurityRequirements(
-			NewSecurity("jwt"),
-			NewSecurity("api_key"),
-		),
-	)
+	r.GET("/flexible", Handler(app, testOKHandler).
+		Security(NewSecurity("jwt"), NewSecurity("api_key")))
 
 	endpoints := r.Endpoints()
 	require.Len(t, endpoints, 1)
 
 	ep := endpoints[0]
 	require.Len(t, ep.Security, 2)
-}
-
-func TestRouter_Mount_PropagatesDefaults(t *testing.T) {
-	parent := NewRouter()
-	parent.WithSecurity(NewSecurity("jwt"))
-	parent.WithTags("api", "v1")
-
-	child := NewRouter()
-	child.Handle(Endpoint{
-		Method:  http.MethodGet,
-		Pattern: "/users",
-		Handler: func(w http.ResponseWriter, r *http.Request) {},
-	})
-
-	parent.Mount("/api", child)
-
-	endpoints := parent.Endpoints()
-	require.Len(t, endpoints, 1)
-
-	ep := endpoints[0]
-	assert.Equal(t, "/api/users", ep.Pattern)
-
-	// Verify defaults propagated
-	require.Len(t, ep.Security, 1)
-	assert.Equal(t, "jwt", ep.Security[0].Requirements()[0].Scheme)
-	assert.Equal(t, []string{"api", "v1"}, ep.Tags)
-}
-
-func TestRouter_Mount_DoesNotOverrideExplicit(t *testing.T) {
-	parent := NewRouter()
-	parent.WithSecurity(NewSecurity("jwt"))
-	parent.WithTags("parent-tag")
-
-	child := NewRouter()
-	child.Handle(Endpoint{
-		Method:   http.MethodGet,
-		Pattern:  "/secure",
-		Handler:  func(w http.ResponseWriter, r *http.Request) {},
-		Security: []Security{NewSecurity("apikey")}, // explicit
-		Tags:     []string{"child-tag"},             // explicit
-	})
-
-	parent.Mount("/api", child)
-
-	endpoints := parent.Endpoints()
-	require.Len(t, endpoints, 1)
-
-	ep := endpoints[0]
-	// Explicit values should NOT be overwritten
-	require.Len(t, ep.Security, 1)
-	assert.Equal(t, "apikey", ep.Security[0].Requirements()[0].Scheme)
-	assert.Equal(t, []string{"child-tag"}, ep.Tags)
 }

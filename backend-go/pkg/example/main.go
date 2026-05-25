@@ -5,15 +5,55 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/infisical/api/pkg/api"
 )
+
+// =============================================================================
+// Shared Schema Components (registered via .Ref() for OpenAPI $ref)
+// =============================================================================
+
+// ErrorResponse is a shared error schema registered as a component.
+// Use api.Ref("ErrorResponse") to reference it in other schemas.
+type ErrorResponse struct {
+	api.StatusBadRequest
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
+	Error      string `json:"error"`
+}
+
+func (r *ErrorResponse) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"statusCode": api.Int(&r.StatusCode).Required(),
+		"message":    api.String(&r.Message).Required(),
+		"error":      api.String(&r.Error).Required(),
+	}).Ref("ErrorResponse") // Registers in components/schemas
+}
+
+// User is a shared user schema for reuse across endpoints.
+type User struct {
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+	Name  string    `json:"name"`
+	Role  string    `json:"role"`
+}
+
+func (u *User) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"id":    api.UUID(&u.ID).Required(),
+		"email": api.String(&u.Email).Required().Email(),
+		"name":  api.String(&u.Name).Required(),
+		"role":  api.String(&u.Role).Required().Enum("admin", "member", "viewer"),
+	}).Ref("User") // Registers in components/schemas
+}
 
 // =============================================================================
 // Union Types for Webhook Targets
@@ -254,18 +294,6 @@ func (r *LoginRequest) Schema() *api.ObjectSchema {
 	})
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-	Code  string `json:"code"`
-}
-
-func (r *ErrorResponse) Schema() *api.ObjectSchema {
-	return api.Object(map[string]api.Schema{
-		"error": api.String(&r.Error).Required(),
-		"code":  api.String(&r.Code).Required(),
-	})
-}
-
 // =============================================================================
 // Auth Validators
 // =============================================================================
@@ -290,43 +318,116 @@ func (v *APIKeyValidator) Validate(ctx context.Context, r *http.Request) (any, e
 }
 
 // =============================================================================
-// Handlers
+// Response Types (typed responses with Status() and Schema())
 // =============================================================================
 
-func listUsersHandler(w http.ResponseWriter, r *http.Request) {
-	var req ListUsersRequest
-	if err := api.ParseAndValidate(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"users":    []any{},
-		"page":     req.Page,
-		"pageSize": req.PageSize,
+// ListUsersResponse for paginated user list
+type ListUsersResponse struct {
+	api.StatusOK // embed mixin instead of writing Status()
+	Users        []any `json:"users"`
+	Page         int   `json:"page"`
+	PageSize     int   `json:"pageSize"`
+}
+
+func (r *ListUsersResponse) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"users":    api.Array((&User{}).Schema()).Required(), // Auto-registers User, returns $ref
+		"page":     api.Int(&r.Page).Required(),
+		"pageSize": api.Int(&r.PageSize).Required(),
 	})
 }
 
-func createUserHandler(w http.ResponseWriter, r *http.Request) {
-	var req CreateUserRequest
-	if err := api.ParseAndValidate(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":    uuid.New(),
-		"email": req.Email,
-		"name":  req.Name,
-		"role":  req.Role,
+// UserResponse for created/updated user
+type UserResponse struct {
+	api.StatusCreated // 201
+	ID                uuid.UUID `json:"id"`
+	Email             string    `json:"email"`
+	Name              string    `json:"name"`
+	Role              string    `json:"role"`
+}
+
+func (r *UserResponse) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"id":    api.UUID(&r.ID).Required(),
+		"email": api.String(&r.Email).Required(),
+		"name":  api.String(&r.Name).Required(),
+		"role":  api.String(&r.Role).Required(),
 	})
 }
 
-func updateUserHandler(w http.ResponseWriter, r *http.Request) {
-	var req UpdateUserRequest
-	if err := api.ParseAndValidate(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
-		return
+// UpdateUserResponse for patch response
+type UpdateUserResponse struct {
+	api.StatusOK
+	Changes map[string]any `json:"changes"`
+}
+
+func (r *UpdateUserResponse) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"changes": api.Map(api.Object(nil)).Required(),
+	})
+}
+
+// WebhookResponse for created webhook
+type WebhookResponse struct {
+	ID      uuid.UUID     `json:"id"`
+	Name    string        `json:"name"`
+	Target  WebhookTarget `json:"target"`
+	Enabled bool          `json:"enabled"`
+}
+
+func (r *WebhookResponse) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"id":      api.UUID(&r.ID).Required(),
+		"name":    api.String(&r.Name).Required(),
+		"target":  api.UnionField(&r.Target, WebhookTargetParser).Required(),
+		"enabled": api.Bool(&r.Enabled).Required(),
+	})
+}
+
+func (*WebhookResponse) Status() int { return http.StatusCreated }
+
+// LoginResponse for successful login
+type LoginResponse struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+func (r *LoginResponse) Schema() *api.ObjectSchema {
+	return api.Object(map[string]api.Schema{
+		"token":     api.String(&r.Token).Required(),
+		"expiresAt": api.String(nil).Required().Format("date-time"),
+	})
+}
+
+func (*LoginResponse) Status() int { return http.StatusOK }
+
+// =============================================================================
+// Typed Handlers (return value types, not pointers)
+// =============================================================================
+
+func listUsers(_ context.Context, req *ListUsersRequest) (ListUsersResponse, error) {
+	return ListUsersResponse{
+		Users:    []any{},
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}, nil
+}
+
+func createUser(_ context.Context, req *CreateUserRequest) (UserResponse, error) {
+	// Example: check for conflict
+	if req.Email == "existing@example.com" {
+		return UserResponse{}, api.Conflict("user %s already exists", req.Email)
 	}
 
+	return UserResponse{
+		ID:    uuid.New(),
+		Email: req.Email,
+		Name:  req.Name,
+		Role:  req.Role,
+	}, nil
+}
+
+func updateUser(_ context.Context, req *UpdateUserRequest) (UpdateUserResponse, error) {
 	// Tri-state PATCH handling
 	changes := map[string]any{}
 	if req.Name.IsSet() {
@@ -340,16 +441,10 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		changes["role"] = req.Role.Value
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"changes": changes})
+	return UpdateUserResponse{Changes: changes}, nil
 }
 
-func createWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	var req CreateWebhookRequest
-	if err := api.ParseAndValidate(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
-		return
-	}
-
+func createWebhook(_ context.Context, req *CreateWebhookRequest) (WebhookResponse, error) {
 	// req.Target is already parsed and validated by UnionFrom!
 	switch t := req.Target.(type) {
 	case *HTTPTarget:
@@ -360,21 +455,15 @@ func createWebhookHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Creating Discord webhook")
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":      uuid.New(),
-		"name":    req.Name,
-		"target":  req.Target,
-		"enabled": req.Enabled,
-	})
+	return WebhookResponse{
+		ID:      uuid.New(),
+		Name:    req.Name,
+		Target:  req.Target,
+		Enabled: req.Enabled,
+	}, nil
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
-	if err := api.ParseAndValidate(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
-		return
-	}
-
+func login(_ context.Context, req *LoginRequest) (LoginResponse, error) {
 	// req.Auth is already parsed and validated by UnionFrom!
 	switch auth := req.Auth.(type) {
 	case *PasswordAuth:
@@ -385,31 +474,68 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("OIDC login: redirect=%s", auth.RedirectURI)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"token":     "jwt-token",
-		"expiresAt": time.Now().Add(24 * time.Hour),
-	})
+	return LoginResponse{
+		Token:     "jwt-token",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}, nil
 }
 
-func openAPIHandler(spec *api.OpenAPISpec) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(spec.Generate())
+// =============================================================================
+// Error Handler (centralized)
+// =============================================================================
+
+func newErrorHandler(logger *slog.Logger) api.ErrorHandler {
+	return func(ctx context.Context, err error) *api.ErrorBody {
+		// Check for api.Error
+		var apiErr *api.Error
+		if errors.As(err, &apiErr) {
+			if apiErr.Status >= 500 {
+				logger.ErrorContext(ctx, "server error",
+					slog.String("name", apiErr.Name),
+					slog.Int("status", apiErr.Status),
+					slog.String("message", apiErr.Message),
+					slog.Any("cause", apiErr.Err),
+				)
+				return &api.ErrorBody{
+					StatusCode: apiErr.Status,
+					Message:    "Something went wrong",
+					Error:      apiErr.Name,
+				}
+			}
+
+			logger.WarnContext(ctx, "api error",
+				slog.String("name", apiErr.Name),
+				slog.Int("status", apiErr.Status),
+				slog.String("message", apiErr.Message),
+			)
+			return &api.ErrorBody{
+				StatusCode: apiErr.Status,
+				Message:    apiErr.Message,
+				Error:      apiErr.Name,
+				Details:    apiErr.Details,
+			}
+		}
+
+		// Check for validation errors from ParseAndValidate
+		var validationErrs api.ValidationErrors
+		if errors.As(err, &validationErrs) {
+			logger.WarnContext(ctx, "validation error", slog.Int("count", len(validationErrs)))
+			return &api.ErrorBody{
+				StatusCode: 400,
+				Message:    "Validation failed",
+				Error:      "ValidationError",
+				Details:    validationErrs,
+			}
+		}
+
+		// Unknown error
+		logger.ErrorContext(ctx, "unhandled error", slog.Any("err", err))
+		return &api.ErrorBody{
+			StatusCode: 500,
+			Message:    "Something went wrong",
+			Error:      "InternalServerError",
+		}
 	}
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, code, msg string) {
-	writeJSON(w, status, ErrorResponse{Error: msg, Code: code})
 }
 
 // =============================================================================
@@ -417,111 +543,84 @@ func writeError(w http.ResponseWriter, status int, code, msg string) {
 // =============================================================================
 
 func main() {
-	// Security
-	security := api.NewSecurityRegistry()
-	security.MustRegister("bearer", api.HTTPBearerJWT(), &JWTValidator{})
-	security.MustRegister("apiKey", api.APIKeyHeader("X-API-Key"), &APIKeyValidator{})
+	// Logger
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	// Users router
-	users := api.NewRouter()
-	users.WithSecurity(api.NewSecurity("bearer"), api.NewSecurity("apiKey"))
-	users.WithTags("users")
+	// Security registry
+	securityRegistry := api.NewSecurityRegistry()
+	securityRegistry.MustRegister("bearer", api.HTTPBearerJWT(), &JWTValidator{})
+	securityRegistry.MustRegister("apiKey", api.APIKeyHeader("X-API-Key"), &APIKeyValidator{})
 
-	users.Handle(api.Endpoint{
-		Method:      http.MethodGet,
-		Pattern:     "/users",
-		Handler:     listUsersHandler,
-		Summary:     "List users",
-		OperationID: "listUsers",
-		Request:     &ListUsersRequest{},
-	})
-	users.Handle(api.Endpoint{
-		Method:      http.MethodPost,
-		Pattern:     "/users",
-		Handler:     createUserHandler,
-		Summary:     "Create user",
-		OperationID: "createUser",
-		Request:     &CreateUserRequest{},
-	})
-	users.Handle(api.Endpoint{
-		Method:      http.MethodPatch,
-		Pattern:     "/users/{userId}",
-		Handler:     updateUserHandler,
-		Summary:     "Update user (PATCH with tri-state)",
-		OperationID: "updateUser",
-		Request:     &UpdateUserRequest{},
+	// App with centralized error handler and security registry
+	// SecurityRegistry enables WithSecurity to auto-install auth middleware
+	app := api.NewApp(api.AppConfig{
+		ErrorHandler:     newErrorHandler(logger),
+		SecurityRegistry: securityRegistry,
 	})
 
-	// Webhooks router
-	webhooks := api.NewRouter()
-	webhooks.WithSecurity(api.NewSecurity("bearer"))
-	webhooks.WithTags("webhooks")
-
-	webhooks.Handle(api.Endpoint{
-		Method:      http.MethodPost,
-		Pattern:     "/webhooks",
-		Handler:     createWebhookHandler,
-		Summary:     "Create webhook (union: http|slack|discord)",
-		OperationID: "createWebhook",
-		Request:     &CreateWebhookRequest{},
-	})
-
-	// Auth router (no auth required)
-	auth := api.NewRouter()
-	auth.WithTags("auth")
-
-	auth.Handle(api.Endpoint{
-		Method:      http.MethodPost,
-		Pattern:     "/login",
-		Handler:     loginHandler,
-		Summary:     "Login (union: password|saml|oidc)",
-		OperationID: "login",
-		Request:     &LoginRequest{},
-		Security:    []api.Security{}, // No auth
-	})
-
-	// Main router
-	root := api.NewRouter()
-	root.Mount("/orgs/{orgId}", users)
-	root.Mount("/projects/{projectId}", webhooks)
-	root.Mount("/auth/{orgSlug}", auth)
-
-	// OpenAPI spec
-	spec := api.NewOpenAPISpec(&api.OpenAPIConfig{
-		Info: api.OpenAPIInfo{
-			Title:       "Example API",
-			Description: "Demonstrates unions, tri-state PATCH, validation, and OpenAPI generation",
-			Version:     "1.0.0",
-		},
-		Servers:         []api.Server{{URL: "http://localhost:8080"}},
-		SecuritySchemes: security.Schemes(),
-		Tags: []api.OpenAPITag{
-			{Name: "auth", Description: "Authentication (password, SAML, OIDC)"},
-			{Name: "users", Description: "User management"},
-			{Name: "webhooks", Description: "Webhooks (HTTP, Slack, Discord)"},
+	// Create the main router with OpenAPI configuration
+	r := api.NewRouter(api.RouterConfig{
+		App: app,
+		Spec: &api.OpenAPIConfig{
+			Info: api.OpenAPIInfo{
+				Title:       "Example API",
+				Description: "Demonstrates unions, tri-state PATCH, typed handlers, and centralized error handling",
+				Version:     "1.0.0",
+			},
+			Servers:         []api.Server{{URL: "http://localhost:8080"}},
+			SecuritySchemes: securityRegistry.Schemes(),
+			Tags: []api.OpenAPITag{
+				{Name: "auth", Description: "Authentication (password, SAML, OIDC)"},
+				{Name: "users", Description: "User management"},
+				{Name: "webhooks", Description: "Webhooks (HTTP, Slack, Discord)"},
+			},
 		},
 	})
-	spec.AddEndpoints(root.Endpoints())
 
-	// Chi router
-	r := chi.NewRouter()
+	// Add chi middlewares
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/openapi.json", openAPIHandler(spec))
-	r.Post("/auth/{orgSlug}/login", loginHandler)
+	// Auth routes (no auth required)
+	r.Route("/auth/{orgSlug}", func(auth *api.Router) {
+		auth.WithTags("auth")
 
-	r.Group(func(r chi.Router) {
-		r.Use(security.Middleware(
-			[]api.Security{api.NewSecurity("bearer"), api.NewSecurity("apiKey")},
-			nil,
-		))
-		for _, ep := range root.Endpoints() {
-			if len(ep.Security) > 0 {
-				r.Method(ep.Method, ep.Pattern, ep.Handler)
-			}
-		}
+		auth.POST("/login", api.Handler(app, login).
+			Summary("Login (union: password|saml|oidc)").
+			OperationID("login").
+			Security(api.Security{})) // No auth required (empty security)
 	})
+
+	// Protected routes - WithSecurity auto-installs middleware when registry is configured
+	r.Route("/orgs/{orgId}", func(orgs *api.Router) {
+		orgs.WithSecurity(api.NewSecurity("bearer"), api.NewSecurity("apiKey"))
+		orgs.WithTags("users")
+
+		orgs.GET("/users", api.Handler(app, listUsers).
+			Summary("List users").
+			OperationID("listUsers"))
+
+		orgs.POST("/users", api.Handler(app, createUser).
+			Summary("Create user").
+			OperationID("createUser"))
+
+		orgs.PATCH("/users/{userId}", api.Handler(app, updateUser).
+			Summary("Update user (PATCH with tri-state)").
+			OperationID("updateUser"))
+	})
+
+	// Webhooks routes
+	r.Route("/projects/{projectId}", func(projects *api.Router) {
+		projects.WithSecurity(api.NewSecurity("bearer"))
+		projects.WithTags("webhooks")
+
+		projects.POST("/webhooks", api.Handler(app, createWebhook).
+			Summary("Create webhook (union: http|slack|discord)").
+			OperationID("createWebhook"))
+	})
+
+	// Serve OpenAPI spec
+	r.ServeSpec("/openapi.json")
 
 	log.Println("Server: http://localhost:8080")
 	log.Println("OpenAPI: http://localhost:8080/openapi.json")
@@ -536,6 +635,10 @@ func main() {
 	log.Println("")
 	log.Println(`  curl -X PATCH localhost:8080/orgs/$(uuidgen)/users/$(uuidgen) -H "Authorization: Bearer x" \`)
 	log.Println(`    -H "Content-Type: application/json" -d '{"name":"New Name","role":null}'`)
+	log.Println("")
+	log.Println(`  # Test conflict error:`)
+	log.Println(`  curl -X POST localhost:8080/orgs/$(uuidgen)/users -H "Authorization: Bearer x" \`)
+	log.Println(`    -H "Content-Type: application/json" -d '{"email":"existing@example.com","name":"Test","role":"member"}'`)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

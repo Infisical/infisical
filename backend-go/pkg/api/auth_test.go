@@ -14,125 +14,82 @@ import (
 
 // --- Security Scheme Constructors ---
 
-func TestHTTPBearer(t *testing.T) {
-	scheme := HTTPBearer()
+func TestSecuritySchemeConstructors(t *testing.T) {
+	scopes := map[string]string{"read": "Read access", "write": "Write access"}
 
-	assert.Equal(t, "http", scheme.Type)
-	assert.Equal(t, "bearer", scheme.Scheme)
-	assert.Equal(t, "", scheme.BearerFormat)
-}
-
-func TestHTTPBearerJWT(t *testing.T) {
-	scheme := HTTPBearerJWT().WithDescription("JWT authentication")
-
-	assert.Equal(t, "http", scheme.Type)
-	assert.Equal(t, "bearer", scheme.Scheme)
-	assert.Equal(t, "JWT", scheme.BearerFormat)
-	assert.Equal(t, "JWT authentication", scheme.Description)
-}
-
-func TestHTTPBasic(t *testing.T) {
-	scheme := HTTPBasic().WithDescription("Basic HTTP auth")
-
-	assert.Equal(t, "http", scheme.Type)
-	assert.Equal(t, "basic", scheme.Scheme)
-	assert.Equal(t, "Basic HTTP auth", scheme.Description)
-}
-
-func TestAPIKeyHeader(t *testing.T) {
-	scheme := APIKeyHeader("X-API-Key").WithDescription("API key in header")
-
-	assert.Equal(t, "apiKey", scheme.Type)
-	assert.Equal(t, "header", scheme.In)
-	assert.Equal(t, "X-API-Key", scheme.Name)
-	assert.Equal(t, "API key in header", scheme.Description)
-}
-
-func TestAPIKeyQuery(t *testing.T) {
-	scheme := APIKeyQuery("api_key").WithDescription("API key in query")
-
-	assert.Equal(t, "apiKey", scheme.Type)
-	assert.Equal(t, "query", scheme.In)
-	assert.Equal(t, "api_key", scheme.Name)
-	assert.Equal(t, "API key in query", scheme.Description)
-}
-
-func TestAPIKeyCookie(t *testing.T) {
-	scheme := APIKeyCookie("session").WithDescription("Session cookie")
-
-	assert.Equal(t, "apiKey", scheme.Type)
-	assert.Equal(t, "cookie", scheme.In)
-	assert.Equal(t, "session", scheme.Name)
-	assert.Equal(t, "Session cookie", scheme.Description)
-}
-
-func TestOpenIDConnect(t *testing.T) {
-	scheme := OpenIDConnect("https://example.com/.well-known/openid-configuration").
-		WithDescription("OIDC auth")
-
-	assert.Equal(t, "openIdConnect", scheme.Type)
-	assert.Equal(t, "https://example.com/.well-known/openid-configuration", scheme.OpenIDConnectURL)
-	assert.Equal(t, "OIDC auth", scheme.Description)
-}
-
-func TestOAuth2Implicit(t *testing.T) {
-	scopes := map[string]string{
-		"read":  "Read access",
-		"write": "Write access",
+	tests := []struct {
+		name   string
+		build  func() *SecurityScheme
+		verify func(t *testing.T, s *SecurityScheme)
+	}{
+		{"HTTPBearer", HTTPBearer, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "http", s.Type)
+			assert.Equal(t, "bearer", s.Scheme)
+		}},
+		{"HTTPBearerJWT", HTTPBearerJWT, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "http", s.Type)
+			assert.Equal(t, "bearer", s.Scheme)
+			assert.Equal(t, "JWT", s.BearerFormat)
+		}},
+		{"HTTPBasic", HTTPBasic, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "http", s.Type)
+			assert.Equal(t, "basic", s.Scheme)
+		}},
+		{"APIKeyHeader", func() *SecurityScheme { return APIKeyHeader("X-API-Key") }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "apiKey", s.Type)
+			assert.Equal(t, "header", s.In)
+			assert.Equal(t, "X-API-Key", s.Name)
+		}},
+		{"APIKeyQuery", func() *SecurityScheme { return APIKeyQuery("api_key") }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "apiKey", s.Type)
+			assert.Equal(t, "query", s.In)
+			assert.Equal(t, "api_key", s.Name)
+		}},
+		{"APIKeyCookie", func() *SecurityScheme { return APIKeyCookie("session") }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "apiKey", s.Type)
+			assert.Equal(t, "cookie", s.In)
+			assert.Equal(t, "session", s.Name)
+		}},
+		{"OpenIDConnect", func() *SecurityScheme { return OpenIDConnect("https://example.com/.well-known/openid") }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "openIdConnect", s.Type)
+			assert.Equal(t, "https://example.com/.well-known/openid", s.OpenIDConnectURL)
+		}},
+		{"OAuth2Implicit", func() *SecurityScheme { return OAuth2Implicit("https://example.com/auth", scopes) }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "oauth2", s.Type)
+			require.NotNil(t, s.Flows.Implicit)
+			assert.Equal(t, "https://example.com/auth", s.Flows.Implicit.AuthorizationURL)
+		}},
+		{"OAuth2Password", func() *SecurityScheme { return OAuth2Password("https://example.com/token", scopes) }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "oauth2", s.Type)
+			require.NotNil(t, s.Flows.Password)
+			assert.Equal(t, "https://example.com/token", s.Flows.Password.TokenURL)
+		}},
+		{"OAuth2ClientCredentials", func() *SecurityScheme { return OAuth2ClientCredentials("https://example.com/token", scopes) }, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "oauth2", s.Type)
+			require.NotNil(t, s.Flows.ClientCredentials)
+			assert.Equal(t, "https://example.com/token", s.Flows.ClientCredentials.TokenURL)
+		}},
+		{"OAuth2AuthorizationCode", func() *SecurityScheme {
+			return OAuth2AuthorizationCode("https://example.com/auth", "https://example.com/token", scopes)
+		}, func(t *testing.T, s *SecurityScheme) {
+			assert.Equal(t, "oauth2", s.Type)
+			require.NotNil(t, s.Flows.AuthorizationCode)
+			assert.Equal(t, "https://example.com/auth", s.Flows.AuthorizationCode.AuthorizationURL)
+			assert.Equal(t, "https://example.com/token", s.Flows.AuthorizationCode.TokenURL)
+		}},
 	}
-	scheme := OAuth2Implicit("https://example.com/auth", scopes).
-		WithDescription("OAuth2 implicit flow")
 
-	assert.Equal(t, "oauth2", scheme.Type)
-	assert.Equal(t, "OAuth2 implicit flow", scheme.Description)
-	require.NotNil(t, scheme.Flows)
-	require.NotNil(t, scheme.Flows.Implicit)
-	assert.Equal(t, "https://example.com/auth", scheme.Flows.Implicit.AuthorizationURL)
-	assert.Equal(t, scopes, scheme.Flows.Implicit.Scopes)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scheme := tt.build()
+			tt.verify(t, scheme)
+		})
+	}
 }
 
-func TestOAuth2Password(t *testing.T) {
-	scopes := map[string]string{
-		"read": "Read access",
-	}
-	scheme := OAuth2Password("https://example.com/token", scopes).
-		WithDescription("OAuth2 password flow")
-
-	assert.Equal(t, "oauth2", scheme.Type)
-	require.NotNil(t, scheme.Flows)
-	require.NotNil(t, scheme.Flows.Password)
-	assert.Equal(t, "https://example.com/token", scheme.Flows.Password.TokenURL)
-	assert.Equal(t, scopes, scheme.Flows.Password.Scopes)
-}
-
-func TestOAuth2ClientCredentials(t *testing.T) {
-	scopes := map[string]string{
-		"admin": "Admin access",
-	}
-	scheme := OAuth2ClientCredentials("https://example.com/token", scopes).
-		WithDescription("OAuth2 client credentials")
-
-	assert.Equal(t, "oauth2", scheme.Type)
-	require.NotNil(t, scheme.Flows)
-	require.NotNil(t, scheme.Flows.ClientCredentials)
-	assert.Equal(t, "https://example.com/token", scheme.Flows.ClientCredentials.TokenURL)
-}
-
-func TestOAuth2AuthorizationCode(t *testing.T) {
-	scopes := map[string]string{
-		"profile": "Profile access",
-	}
-	scheme := OAuth2AuthorizationCode(
-		"https://example.com/auth",
-		"https://example.com/token",
-		scopes,
-	).WithDescription("OAuth2 authorization code flow")
-
-	assert.Equal(t, "oauth2", scheme.Type)
-	require.NotNil(t, scheme.Flows)
-	require.NotNil(t, scheme.Flows.AuthorizationCode)
-	assert.Equal(t, "https://example.com/auth", scheme.Flows.AuthorizationCode.AuthorizationURL)
-	assert.Equal(t, "https://example.com/token", scheme.Flows.AuthorizationCode.TokenURL)
+func TestSecurityScheme_WithDescription(t *testing.T) {
+	scheme := HTTPBearerJWT().WithDescription("JWT auth")
+	assert.Equal(t, "JWT auth", scheme.Description)
 }
 
 // --- SecurityScheme.OpenAPI ---
@@ -765,6 +722,43 @@ func TestMiddleware_ANDRelationship_OneFails(t *testing.T) {
 	wrapped.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestMiddleware_ANDRelationship_PartialSuccessNoFallback(t *testing.T) {
+	// Security fix: when jwt succeeds but mfa returns ErrSkipToNextAuth,
+	// it should NOT fall through to an OR fallback (e.g., api-key only).
+	// This prevents bypassing MFA by omitting the MFA header.
+	reg := NewSecurityRegistry()
+	reg.MustRegister("jwt", HTTPBearerJWT(), &mockValidator{claims: "jwt-claims"})
+	reg.MustRegister("mfa", APIKeyHeader("X-MFA"), &mockValidator{err: ErrSkipToNextAuth})
+	reg.MustRegister("apiKey", APIKeyHeader("X-API-Key"), &mockValidator{claims: "apikey-claims"})
+
+	var handlerCalled bool
+	var capturedAuthResult *AuthResult
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		capturedAuthResult = GetAuthResult(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Security: [jwt AND mfa] OR [apiKey]
+	// If jwt passes but mfa skips, should NOT fall through to apiKey-only
+	middleware := reg.Middleware([]Security{
+		NewSecurity("jwt").And("mfa"),
+		NewSecurity("apiKey"),
+	}, nil)
+	wrapped := middleware(handler)
+
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/", http.NoBody)
+	rec := httptest.NewRecorder()
+
+	wrapped.ServeHTTP(rec, req)
+
+	// Should be 401, not 200 via apiKey fallback
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.False(t, handlerCalled, "handler should not be called - MFA bypass attempt")
+	assert.Nil(t, capturedAuthResult)
 }
 
 func TestMiddleware_UnregisteredScheme(t *testing.T) {

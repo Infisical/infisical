@@ -1,329 +1,261 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
-// Router wraps chi.Router with endpoint collection for OpenAPI generation
+// RouterConfig configures the router
+type RouterConfig struct {
+	// App for typed handler wrapping and error handling
+	App *App
+
+	// OpenAPI spec configuration
+	Spec *OpenAPIConfig
+}
+
+// Router wraps chi.Router with typed handlers and OpenAPI generation
 type Router struct {
-	chi.Router
-	endpoints       []Endpoint
-	defaultSecurity []Security
-	defaultTags     []string
-	basePath        string
+	chi chi.Router
+	app *App
+
+	// OpenAPI
+	specConfig *OpenAPIConfig
+	endpoints  []Endpoint
+
+	// Inherited defaults
+	basePath         string
+	defaultSecurity  []Security
+	defaultTags      []string
+	defaultResponses []TypedResponse
+
+	// Reference to root router for endpoint collection
+	root *Router
 }
 
-// NewRouter creates a new Router
-func NewRouter() *Router {
-	return &Router{
-		Router: chi.NewRouter(),
+// NewRouter creates a new Router with typed handler support and OpenAPI generation
+func NewRouter(config RouterConfig) *Router {
+	if config.App == nil {
+		config.App = NewApp(AppConfig{})
 	}
-}
-
-// WithSecurity sets the default security requirements for all endpoints in this router
-// Multiple Security entries = OR relationship (any one suffices)
-func (r *Router) WithSecurity(security ...Security) *Router {
-	r.defaultSecurity = security
+	r := &Router{
+		chi:        chi.NewRouter(),
+		app:        config.App,
+		specConfig: config.Spec,
+	}
+	r.root = r // root points to itself
 	return r
 }
 
-// WithTags sets the default tags for all endpoints in this router
+// =============================================================================
+// HTTP Methods — New Builder API
+// =============================================================================
+
+// GET registers a GET endpoint with a typed handler builder
+func (r *Router) GET(pattern string, spec EndpointSpec) {
+	r.registerEndpoint(http.MethodGet, pattern, spec)
+}
+
+// POST registers a POST endpoint with a typed handler builder
+func (r *Router) POST(pattern string, spec EndpointSpec) {
+	r.registerEndpoint(http.MethodPost, pattern, spec)
+}
+
+// PUT registers a PUT endpoint with a typed handler builder
+func (r *Router) PUT(pattern string, spec EndpointSpec) {
+	r.registerEndpoint(http.MethodPut, pattern, spec)
+}
+
+// PATCH registers a PATCH endpoint with a typed handler builder
+func (r *Router) PATCH(pattern string, spec EndpointSpec) {
+	r.registerEndpoint(http.MethodPatch, pattern, spec)
+}
+
+// DELETE registers a DELETE endpoint with a typed handler builder
+func (r *Router) DELETE(pattern string, spec EndpointSpec) {
+	r.registerEndpoint(http.MethodDelete, pattern, spec)
+}
+
+// registerEndpoint builds and registers an endpoint from a spec
+func (r *Router) registerEndpoint(method, pattern string, spec EndpointSpec) {
+	// Collect default responses from router chain + app
+	defaults := r.collectDefaultResponses()
+
+	// Build the endpoint
+	handler, ep := spec.build(r.basePath, defaults, r.defaultTags, r.defaultSecurity)
+
+	// Set method and pattern
+	ep.Method = method
+	ep.Pattern = r.basePath + pattern
+
+	// Collect endpoint at root
+	r.root.endpoints = append(r.root.endpoints, ep)
+
+	// Register with chi
+	r.chi.Method(method, pattern, handler)
+}
+
+// collectDefaultResponses gathers defaults from app and router chain
+func (r *Router) collectDefaultResponses() []TypedResponse {
+	var defaults []TypedResponse
+
+	// App defaults first (lowest precedence)
+	if r.app != nil {
+		defaults = append(defaults, r.app.DefaultResponses()...)
+	}
+
+	// Router defaults (higher precedence - will override app defaults by status code)
+	defaults = append(defaults, r.defaultResponses...)
+
+	return defaults
+}
+
+// =============================================================================
+// Chi Router Methods
+// =============================================================================
+
+// Route creates a subrouter with a path prefix
+func (r *Router) Route(pattern string, fn func(r *Router)) {
+	sub := &Router{
+		chi:              chi.NewRouter(),
+		app:              r.app,
+		specConfig:       r.specConfig,
+		basePath:         r.basePath + pattern,
+		defaultSecurity:  r.defaultSecurity,
+		defaultTags:      r.defaultTags,
+		defaultResponses: r.defaultResponses, // Inherit default responses
+		root:             r.root,
+	}
+
+	fn(sub)
+
+	r.chi.Mount(pattern, sub.chi)
+}
+
+// Group creates a route group with shared middleware but no path prefix
+func (r *Router) Group(fn func(r *Router)) {
+	sub := &Router{
+		chi:              r.chi,
+		app:              r.app,
+		specConfig:       r.specConfig,
+		basePath:         r.basePath,
+		defaultSecurity:  r.defaultSecurity,
+		defaultTags:      r.defaultTags,
+		defaultResponses: r.defaultResponses,
+		root:             r.root,
+	}
+
+	fn(sub)
+}
+
+// Mount attaches another http.Handler at a given pattern
+func (r *Router) Mount(pattern string, handler http.Handler) {
+	// If mounting another Router, collect its endpoints
+	if subRouter, ok := handler.(*Router); ok {
+		for i := range subRouter.endpoints {
+			ep := subRouter.endpoints[i]
+			ep.Pattern = pattern + ep.Pattern
+			r.root.endpoints = append(r.root.endpoints, ep)
+		}
+	}
+	r.chi.Mount(pattern, handler)
+}
+
+// Use appends middleware to the router
+func (r *Router) Use(middlewares ...func(http.Handler) http.Handler) {
+	r.chi.Use(middlewares...)
+}
+
+// With returns a new router context with the middleware applied
+func (r *Router) With(middlewares ...func(http.Handler) http.Handler) *Router {
+	return &Router{
+		chi:              r.chi.With(middlewares...),
+		app:              r.app,
+		specConfig:       r.specConfig,
+		basePath:         r.basePath,
+		defaultSecurity:  r.defaultSecurity,
+		defaultTags:      r.defaultTags,
+		defaultResponses: r.defaultResponses,
+		root:             r.root,
+	}
+}
+
+// =============================================================================
+// Default Configuration
+// =============================================================================
+
+// WithSecurity sets default security for all endpoints in this router/group.
+// If the App has a SecurityRegistry configured, this also installs the auth middleware.
+// This combines OpenAPI documentation and runtime enforcement in one call.
+func (r *Router) WithSecurity(security ...Security) *Router {
+	r.defaultSecurity = security
+
+	// Auto-install middleware if registry is available
+	if r.app != nil && r.app.securityRegistry != nil {
+		r.chi.Use(r.app.securityRegistry.Middleware(security, nil))
+	}
+
+	return r
+}
+
+// WithTags sets default tags for all endpoints in this router/group
 func (r *Router) WithTags(tags ...string) *Router {
 	r.defaultTags = tags
 	return r
 }
 
-// Route creates a subrouter with a path prefix
-func (r *Router) Route(pattern string, fn func(sub *Router)) {
-	sub := &Router{
-		Router:          chi.NewRouter(),
-		defaultSecurity: r.defaultSecurity,
-		defaultTags:     r.defaultTags,
-		basePath:        r.basePath + pattern,
-	}
-
-	fn(sub)
-
-	r.endpoints = append(r.endpoints, sub.endpoints...)
-
-	r.Router.Mount(pattern, sub.Router)
+// WithDefaultResponses sets default error responses for all endpoints in this router/group.
+// These are merged with app-level defaults. Router defaults override app defaults by status code.
+func (r *Router) WithDefaultResponses(responses ...TypedResponse) *Router {
+	r.defaultResponses = append(r.defaultResponses, responses...)
+	return r
 }
 
-// Group creates a route group with shared configuration but no path prefix
-func (r *Router) Group(fn func(sub *Router)) {
-	sub := &Router{
-		Router:          r.Router,
-		defaultSecurity: r.defaultSecurity,
-		defaultTags:     r.defaultTags,
-		basePath:        r.basePath,
-	}
+// =============================================================================
+// OpenAPI
+// =============================================================================
 
-	fn(sub)
-
-	r.endpoints = append(r.endpoints, sub.endpoints...)
-}
-
-// Mount attaches a sub-router at a given pattern
-func (r *Router) Mount(pattern string, handler http.Handler) {
-	r.Router.Mount(pattern, handler)
-
-	if subRouter, ok := handler.(*Router); ok {
-		for i := range subRouter.endpoints {
-			ep := subRouter.endpoints[i]
-			ep.Pattern = pattern + ep.Pattern
-			// Propagate defaults if endpoint doesn't have its own
-			if len(ep.Security) == 0 && len(r.defaultSecurity) > 0 {
-				ep.Security = make([]Security, len(r.defaultSecurity))
-				copy(ep.Security, r.defaultSecurity)
-			}
-			if len(ep.Tags) == 0 && len(r.defaultTags) > 0 {
-				ep.Tags = make([]string, len(r.defaultTags))
-				copy(ep.Tags, r.defaultTags)
-			}
-			r.endpoints = append(r.endpoints, ep)
+// Spec generates the OpenAPI spec from registered endpoints
+func (r *Router) Spec() *OpenAPISpec {
+	if r.specConfig == nil {
+		r.specConfig = &OpenAPIConfig{
+			Info: OpenAPIInfo{
+				Title:   "API",
+				Version: "1.0.0",
+			},
 		}
 	}
+	spec := NewOpenAPISpec(r.specConfig)
+	spec.AddEndpoints(r.root.endpoints)
+	return spec
 }
 
-// Use appends middleware to the router
-func (r *Router) Use(middlewares ...func(http.Handler) http.Handler) {
-	r.Router.Use(middlewares...)
+// ServeSpec registers a handler that serves the OpenAPI spec as JSON
+func (r *Router) ServeSpec(pattern string) {
+	spec := r.Spec()
+	r.chi.Get(pattern, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(spec.Generate())
+	})
 }
 
-// With returns a new router with the given middlewares
-func (r *Router) With(middlewares ...func(http.Handler) http.Handler) *Router {
-	return &Router{
-		Router:          r.Router.With(middlewares...),
-		endpoints:       r.endpoints,
-		defaultSecurity: r.defaultSecurity,
-		defaultTags:     r.defaultTags,
-		basePath:        r.basePath,
-	}
-}
-
-// Handle registers an endpoint
-func (r *Router) Handle(ep Endpoint) { //nolint:gocritic // intentional copy - we modify and store
-	if len(ep.Security) == 0 && len(r.defaultSecurity) > 0 {
-		ep.Security = make([]Security, len(r.defaultSecurity))
-		copy(ep.Security, r.defaultSecurity)
-	}
-	if len(ep.Tags) == 0 && len(r.defaultTags) > 0 {
-		ep.Tags = make([]string, len(r.defaultTags))
-		copy(ep.Tags, r.defaultTags)
-	}
-
-	// Store original pattern for chi registration (relative to this router)
-	chiPattern := ep.Pattern
-	if chiPattern == "" {
-		chiPattern = "/"
-	}
-
-	// Store full path for OpenAPI
-	ep.Pattern = r.basePath + ep.Pattern
-
-	r.endpoints = append(r.endpoints, ep)
-
-	switch ep.Method {
-	case http.MethodGet:
-		r.Router.Get(chiPattern, ep.Handler)
-	case http.MethodPost:
-		r.Router.Post(chiPattern, ep.Handler)
-	case http.MethodPut:
-		r.Router.Put(chiPattern, ep.Handler)
-	case http.MethodPatch:
-		r.Router.Patch(chiPattern, ep.Handler)
-	case http.MethodDelete:
-		r.Router.Delete(chiPattern, ep.Handler)
-	case http.MethodHead:
-		r.Head(chiPattern, ep.Handler)
-	case http.MethodOptions:
-		r.Options(chiPattern, ep.Handler)
-	default:
-		r.Method(ep.Method, chiPattern, ep.Handler)
-	}
-}
-
-// Get registers a GET endpoint
-func (r *Router) Get(pattern string, handler http.HandlerFunc, opts ...EndpointOption) {
-	ep := Endpoint{
-		Method:  http.MethodGet,
-		Pattern: pattern,
-		Handler: handler,
-	}
-	for _, opt := range opts {
-		opt(&ep)
-	}
-	r.Handle(ep)
-}
-
-// Post registers a POST endpoint
-func (r *Router) Post(pattern string, handler http.HandlerFunc, opts ...EndpointOption) {
-	ep := Endpoint{
-		Method:  http.MethodPost,
-		Pattern: pattern,
-		Handler: handler,
-	}
-	for _, opt := range opts {
-		opt(&ep)
-	}
-	r.Handle(ep)
-}
-
-// Put registers a PUT endpoint
-func (r *Router) Put(pattern string, handler http.HandlerFunc, opts ...EndpointOption) {
-	ep := Endpoint{
-		Method:  http.MethodPut,
-		Pattern: pattern,
-		Handler: handler,
-	}
-	for _, opt := range opts {
-		opt(&ep)
-	}
-	r.Handle(ep)
-}
-
-// Patch registers a PATCH endpoint
-func (r *Router) Patch(pattern string, handler http.HandlerFunc, opts ...EndpointOption) {
-	ep := Endpoint{
-		Method:  http.MethodPatch,
-		Pattern: pattern,
-		Handler: handler,
-	}
-	for _, opt := range opts {
-		opt(&ep)
-	}
-	r.Handle(ep)
-}
-
-// Delete registers a DELETE endpoint
-func (r *Router) Delete(pattern string, handler http.HandlerFunc, opts ...EndpointOption) {
-	ep := Endpoint{
-		Method:  http.MethodDelete,
-		Pattern: pattern,
-		Handler: handler,
-	}
-	for _, opt := range opts {
-		opt(&ep)
-	}
-	r.Handle(ep)
-}
-
-// Endpoints returns all registered endpoints (for OpenAPI generation)
+// Endpoints returns all registered endpoints
 func (r *Router) Endpoints() []Endpoint {
-	return r.endpoints
+	return r.root.endpoints
 }
+
+// =============================================================================
+// http.Handler
+// =============================================================================
 
 // ServeHTTP implements http.Handler
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r.Router.ServeHTTP(w, req)
+	r.chi.ServeHTTP(w, req)
 }
 
-// EndpointOption configures an endpoint
-type EndpointOption func(*Endpoint)
-
-// WithRequest sets the request schema
-func WithRequest(req SchemaProvider) EndpointOption {
-	return func(e *Endpoint) {
-		e.Request = req
-	}
-}
-
-// WithResponse sets the response schema
-func WithResponse(resp SchemaProvider) EndpointOption {
-	return func(e *Endpoint) {
-		e.Response = resp
-	}
-}
-
-// WithResponses sets multiple response schemas by status code
-func WithResponses(responses map[int]SchemaProvider) EndpointOption {
-	return func(e *Endpoint) {
-		e.Responses = responses
-	}
-}
-
-// WithSecurityRequirements sets the security requirements (OR relationship)
-func WithSecurityRequirements(security ...Security) EndpointOption {
-	return func(e *Endpoint) {
-		e.Security = security
-	}
-}
-
-// WithNoAuth explicitly marks endpoint as requiring no authentication
-func WithNoAuth() EndpointOption {
-	return func(e *Endpoint) {
-		e.Security = []Security{{}}
-	}
-}
-
-// WithTags sets the tags
-func WithTags(tags ...string) EndpointOption {
-	return func(e *Endpoint) {
-		e.Tags = tags
-	}
-}
-
-// WithSummary sets the summary
-func WithSummary(summary string) EndpointOption {
-	return func(e *Endpoint) {
-		e.Summary = summary
-	}
-}
-
-// WithDescription sets the description
-func WithDescription(desc string) EndpointOption {
-	return func(e *Endpoint) {
-		e.Description = desc
-	}
-}
-
-// WithOperationID sets the operation ID
-func WithOperationID(id string) EndpointOption {
-	return func(e *Endpoint) {
-		e.OperationID = id
-	}
-}
-
-// WithDeprecated marks the endpoint as deprecated
-func WithDeprecated() EndpointOption {
-	return func(e *Endpoint) {
-		e.Deprecated = true
-	}
-}
-
-// WithPathParams sets the path parameter schemas
-func WithPathParams(params map[string]Schema) EndpointOption {
-	return func(e *Endpoint) {
-		e.PathParams = params
-	}
-}
-
-// WithQueryParams sets the query parameter schemas
-func WithQueryParams(params map[string]Schema) EndpointOption {
-	return func(e *Endpoint) {
-		e.QueryParams = params
-	}
-}
-
-// WithHeaderParams sets the header parameter schemas
-func WithHeaderParams(params map[string]Schema) EndpointOption {
-	return func(e *Endpoint) {
-		e.HeaderParams = params
-	}
-}
-
-// WithCookieParams sets the cookie parameter schemas
-func WithCookieParams(params map[string]Schema) EndpointOption {
-	return func(e *Endpoint) {
-		e.CookieParams = params
-	}
-}
-
-// WithResponseDescriptions sets custom descriptions for response status codes
-func WithResponseDescriptions(descriptions map[int]string) EndpointOption {
-	return func(e *Endpoint) {
-		e.ResponseDescriptions = descriptions
-	}
+// Chi returns the underlying chi.Router (for advanced use cases)
+func (r *Router) Chi() chi.Router {
+	return r.chi
 }

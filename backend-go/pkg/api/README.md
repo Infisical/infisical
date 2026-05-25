@@ -5,25 +5,181 @@ Type-safe API framework with pointer-binding schemas. Single source of truth for
 ## Quick Start
 
 ```go
+// Request type (pointer receiver for Schema)
 type CreateUserRequest struct {
     Name  string `json:"name"`
     Email string `json:"email"`
-    Age   int    `json:"age"`
 }
 
 func (r *CreateUserRequest) Schema() *api.ObjectSchema {
     return api.Object(map[string]api.Schema{
         "name":  api.String(&r.Name).Required().MinLength(1).MaxLength(100),
         "email": api.String(&r.Email).Required().Email(),
-        "age":   api.Int(&r.Age).Optional().Min(0).Max(150),
     })
 }
 
-// Validate
-errs := req.Schema().Validate()
+// Response type (pointer receiver for Schema AND Status)
+type UserResponse struct {
+    ID    string `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+func (r *UserResponse) Schema() *api.ObjectSchema {
+    return api.Object(map[string]api.Schema{
+        "id":    api.String(&r.ID).Required(),
+        "name":  api.String(&r.Name).Required(),
+        "email": api.String(&r.Email).Required(),
+    })
+}
+
+func (*UserResponse) Status() int { return http.StatusCreated }
+
+// Handler returns VALUE type (not pointer)
+func createUser(ctx context.Context, req *CreateUserRequest) (UserResponse, error) {
+    return UserResponse{ID: "123", Name: req.Name, Email: req.Email}, nil
+}
+
+// Registration with builder
+r.POST("/users", api.Handler(app, createUser).
+    Summary("Create user").
+    OperationID("createUser"))
+```
+
+## Typed Responses
+
+Handlers return **value types**, response types use **pointer receiver methods**.
+
+```go
+// Response type — embed status mixin to avoid writing Status()
+type UserResponse struct {
+    api.StatusOK  // embeds Status() int { return 200 }
+    ID   string `json:"id"`
+}
+
+func (r *UserResponse) Schema() *api.ObjectSchema {
+    return api.Object(map[string]api.Schema{
+        "id": api.String(&r.ID).Required(),
+    })
+}
+
+// Handler returns VALUE (not pointer)
+func getUser(ctx context.Context, req *GetUserRequest) (UserResponse, error) {
+    return UserResponse{ID: "123"}, nil
+}
+
+// No-content response (204)
+type Deleted struct{ api.StatusNoContent }
+
+func (*Deleted) Schema() *api.ObjectSchema { return nil }
+
+func deleteUser(ctx context.Context, req *DeleteRequest) (Deleted, error) {
+    return Deleted{}, nil
+}
+```
+
+### Status Mixins
+
+Embed these instead of writing `Status()` manually:
+
+```go
+api.StatusOK                  // 200
+api.StatusCreated             // 201
+api.StatusAccepted            // 202
+api.StatusNoContent           // 204
+api.StatusBadRequest          // 400
+api.StatusUnauthorized        // 401
+api.StatusForbidden           // 403
+api.StatusNotFound            // 404
+api.StatusConflict            // 409
+api.StatusUnprocessableEntity // 422
+api.StatusInternalServerError // 500
+```
+
+### Multi-Status Responses (InterfaceHandler)
+
+For handlers returning different response types at runtime:
+
+```go
+// Marker interface
+type CreateOrFetchResult interface {
+    api.TypedResponse
+    marker()
+}
+
+// Variant 1 — 201 Created
+type CreatedUser struct { ID string }
+func (r *CreatedUser) Schema() *api.ObjectSchema { ... }
+func (*CreatedUser) Status() int { return 201 }
+func (*CreatedUser) marker() {}
+
+// Variant 2 — 200 OK
+type ExistingUser struct { ID string }
+func (r *ExistingUser) Schema() *api.ObjectSchema { ... }
+func (*ExistingUser) Status() int { return 200 }
+func (*ExistingUser) marker() {}
+
+// Handler returns interface
+func createOrFetch(ctx context.Context, req *Request) (CreateOrFetchResult, error) {
+    if existed {
+        return &ExistingUser{ID: id}, nil
+    }
+    return &CreatedUser{ID: id}, nil
+}
+
+// Use InterfaceHandler + declare all variants
+r.POST("/users", api.InterfaceHandler(app, createOrFetch).
+    Responses(&CreatedUser{}, &ExistingUser{}))
+```
+
+## Handler Builder
+
+```go
+r.GET("/users/{id}", api.Handler(app, getUser).
+    Summary("Get user").
+    Description("Retrieves a user by ID").
+    OperationID("getUser").
+    Tags("Users").
+    Security(api.NewSecurity("jwt")).
+    Deprecated())
+
+// Additional responses (e.g., error types for OpenAPI)
+r.POST("/users", api.Handler(app, createUser).
+    Responses(&ConflictError{}).      // Add 409 to OpenAPI
+    WithoutDefault(401, 403))          // Remove inherited defaults
+```
+
+## Router
+
+```go
+// 1. Create security registry with validators
+registry := api.NewSecurityRegistry()
+registry.MustRegister("bearer", api.HTTPBearerJWT(), &JWTValidator{})
+registry.MustRegister("apiKey", api.APIKeyHeader("X-API-Key"), &APIKeyValidator{})
+
+// 2. Create app with registry — enables unified WithSecurity
+app := api.NewApp(api.AppConfig{
+    ErrorHandler:     errorHandler,
+    DefaultResponses: []api.TypedResponse{&ValidationError{}, &InternalError{}},
+    SecurityRegistry: registry,  // enables WithSecurity to auto-install middleware
+})
+
+router := api.NewRouter(api.RouterConfig{App: app})
+router.Use(loggingMiddleware)
+
+router.Route("/v1/orgs/{orgId}", func(r *api.Router) {
+    // WithSecurity now does BOTH: OpenAPI doc + middleware (one call!)
+    r.WithSecurity(api.NewSecurity("bearer"), api.NewSecurity("apiKey"))
+    r.WithTags("Organizations")
+    r.WithDefaultResponses(&Unauthorized{}, &Forbidden{})
+    
+    r.GET("/users", api.Handler(app, listUsers).Summary("List users"))
+    r.POST("/users", api.Handler(app, createUser).Summary("Create user"))
+})
 
 // Generate OpenAPI
-openapi := req.Schema().OpenAPI()
+spec := router.Spec()
+jsonSpec := spec.Generate()
 ```
 
 ## Schema Types
@@ -38,53 +194,74 @@ api.Bool(&b).Required()
 api.UUID(&u).Required()
 api.Time(&t).Required()
 api.Bytes(&b).Required().MinLength(1)
-api.Any(&a).Required()
-api.Raw(&r).Required()
 ```
 
 ### Composites
 
 ```go
-// Object
 api.Object(map[string]api.Schema{...}).Required()
-
-// Array
-api.Array(api.String(new(string))).Required().MinItems(1).MaxItems(10)
-
-// Map (string keys)
-api.Map(api.String(new(string))).Required()
-
-// Reference
-api.Ref("#/components/schemas/User")
-
-// Const
+api.Array(api.String(nil)).Required().MinItems(1).MaxItems(10)
+api.Map(api.String(nil)).Required()
 api.Const("fixed-value")
+```
+
+### Component Refs ($ref)
+
+Define reusable schemas that appear in `components/schemas`:
+
+```go
+// Shared schema — .Ref() registers it and makes OpenAPI() return $ref
+type User struct {
+    ID   uuid.UUID `json:"id"`
+    Name string    `json:"name"`
+}
+
+func (u *User) Schema() *api.ObjectSchema {
+    return api.Object(map[string]api.Schema{
+        "id":   api.UUID(&u.ID).Required(),
+        "name": api.String(&u.Name).Required(),
+    }).Ref("User")  // Registers in components/schemas
+}
+
+// Use it — calling Schema() triggers registration and returns $ref
+type ListResponse struct {
+    Users []User `json:"users"`
+}
+
+func (r *ListResponse) Schema() *api.ObjectSchema {
+    return api.Object(map[string]api.Schema{
+        "users": api.Array((&User{}).Schema()).Required(),  // → {"$ref": "#/components/schemas/User"}
+    })
+}
+```
+
+### Parameter Sources
+
+```go
+api.String(&r.ID).From(api.SourcePath).Required().UUID()
+api.Int(&r.Page).From(api.SourceQuery).Optional().Default(1)
+api.String(&r.Token).From(api.SourceHeader).Required()
+api.String(&r.SessionID).From(api.SourceCookie).Required()
 ```
 
 ## Union Types
 
 ### Flat Discriminated Union
 
-```json
-{"type": "dog", "breed": "Labrador"}
-```
-
 ```go
-// 1. Define interface + variants
 type Animal interface {
     api.Union
     animalMarker()
 }
 
 type Dog struct {
+    api.UnionBase
     Type  string `json:"type"`
     Breed string `json:"breed"`
 }
-func (d *Dog) Schema() *api.ObjectSchema { return api.Object(map[string]api.Schema{...}) }
-func (d *Dog) unionMarker() {}
+func (d *Dog) Schema() *api.ObjectSchema { ... }
 func (d *Dog) animalMarker() {}
 
-// 2. Define parser
 var AnimalParser = api.UnionDef[Animal]{
     Discriminator: "type",
     Variants: map[string]func() Animal{
@@ -93,193 +270,60 @@ var AnimalParser = api.UnionDef[Animal]{
     },
 }
 
-// 3. Use in request (single-pass with json.RawMessage)
-type Request struct {
-    PetRaw json.RawMessage `json:"pet"`
-    Pet    Animal          `json:"-"`
-}
+// In request schema
+"pet": api.UnionField(&r.Pet, AnimalParser).Required()
 
-func (r *Request) UnmarshalJSON(data []byte) error {
-    type Plain Request
-    if err := json.Unmarshal(data, (*Plain)(r)); err != nil {
-        return err
-    }
-    return api.ParseUnionField(r.PetRaw, &r.Pet, AnimalParser)
-}
-
-func (r *Request) Schema() *api.ObjectSchema {
-    return api.Object(map[string]api.Schema{
-        "pet": api.UnionField(&r.Pet, AnimalParser).Required(),
-    })
-}
-```
-
-### Nested Discriminated Union
-
-```json
-{"method": "password", "payload": {"username": "john", "password": "secret"}}
-```
-
-```go
-var AuthParser = api.NestedUnionDef[AuthMethod]{
-    Discriminator: "method",
-    PayloadField:  "payload",
-    Variants: map[string]func() AuthMethod{
-        "password": func() AuthMethod { return &PasswordPayload{} },
-        "oauth":    func() AuthMethod { return &OAuthPayload{} },
-    },
-}
-
-// Parse from separate fields
-api.ParseNestedUnionField(r.MethodRaw, r.PayloadRaw, &r.Auth, AuthParser)
+// Parse in UnmarshalJSON
+api.ParseUnions(data, api.U("pet", &r.Pet, AnimalParser))
 ```
 
 ### OneOf / AnyOf
 
 ```go
-// OneOf - exactly one must be present
-api.OneOfSchemas(
-    api.String(&v.Plaintext),
-    v.Reference.Schema(),
-).Required()
-
-// AnyOf - at least one must be present  
-api.AnyOf(
-    emailConfig.Schema(),
-    slackConfig.Schema(),
-).Required()
-
-// AllOf - all must be valid (composition)
-api.AllOf(
-    auditFields.Schema(),
-    deleteFields.Schema(),
-)
+api.OneOfSchemas(api.String(&v.A), api.String(&v.B)).Required()
+api.AnyOf(schemaA, schemaB).Required()
+api.AllOf(schemaA, schemaB)
 ```
 
 ## Authentication
 
 ```go
-// 1. Define schemes (OpenAPI metadata)
-var UserJWTScheme = api.HTTPBearerJWT().WithDescription("User JWT")
-var APIKeyScheme = api.APIKeyHeader("X-API-Key").WithDescription("API Key")
-
-// 2. Implement validators
-type JWTValidator struct {
-    db       pg.DB
-    keyStore kms.KeyStore
-}
-
-func (v *JWTValidator) Validate(ctx context.Context, r *http.Request) (any, error) {
-    token := extractBearer(r)
-    claims, err := v.validateToken(token)
-    if err != nil {
-        return nil, api.ErrSkipToNextAuth // Try next auth method
-    }
-    return claims, nil
-}
-
-// 3. Register at startup
+// 1. Define schemes + validators, pass to App
 registry := api.NewSecurityRegistry()
-registry.MustRegister("userJWT", UserJWTScheme, &JWTValidator{db: db})
-registry.MustRegister("apiKey", APIKeyScheme, &APIKeyValidator{db: db})
+registry.MustRegister("jwt", api.HTTPBearerJWT(), &JWTValidator{})
+registry.MustRegister("apiKey", api.APIKeyHeader("X-API-Key"), &APIKeyValidator{})
 
-// 4. Apply middleware
-middleware := registry.Middleware([]api.Security{
-    api.NewSecurity("userJWT"),  // OR
-    api.NewSecurity("apiKey"),
-}, errorHandler)
+app := api.NewApp(api.AppConfig{
+    SecurityRegistry: registry,  // enables unified WithSecurity
+})
 
-// 5. Get auth result in handler
-auth := api.GetAuthResult(r.Context())
-fmt.Printf("Authenticated via %s\n", auth.Scheme)
+// 2. WithSecurity handles BOTH OpenAPI + middleware
+r.Route("/protected", func(r *api.Router) {
+    r.WithSecurity(api.NewSecurity("jwt"), api.NewSecurity("apiKey"))
+    // ... endpoints automatically protected
+})
+
+// 3. Get result in handler
+auth := api.GetAuthResult(ctx)
+claims := auth.GetClaims()
 ```
 
 ### Security Relationships
 
 ```go
 // OR - any one succeeds
-[]api.Security{
-    api.NewSecurity("jwt"),
-    api.NewSecurity("apiKey"),
-}
+[]api.Security{api.NewSecurity("jwt"), api.NewSecurity("apiKey")}
 
-// AND - both must pass
-[]api.Security{
-    api.NewSecurity("jwt").And("mfa"),
-}
+// AND - all must pass (MFA example)
+[]api.Security{api.NewSecurity("jwt").And("mfa")}
 
 // No auth required
 []api.Security{{}}
 ```
 
-## Router
+**AND Security Note:** If the first scheme passes but the second returns `ErrSkipToNextAuth`, the request is rejected (401) — it does NOT fall through to an OR fallback. This prevents MFA bypass.
 
-```go
-router := api.NewRouter()
-
-// Top-level middleware
-router.Use(loggingMiddleware)
-
-// Route group with defaults
-router.Route("/v1/secrets", func(r *api.Router) {
-    r.WithSecurity(api.NewSecurity("bearerAuth"))
-    r.WithTags("Secrets")
-    
-    r.Handle(api.Endpoint{
-        Method:      http.MethodPost,
-        Pattern:     "",
-        Handler:     createSecretHandler,
-        Request:     &CreateSecretRequest{},
-        Response:    &SecretResponse{},
-        Summary:     "Create secret",
-        OperationID: "createSecret",
-    })
-})
-
-// Generate OpenAPI
-spec := api.NewOpenAPISpec(&api.OpenAPIConfig{
-    Info: api.OpenAPIInfo{Title: "My API", Version: "1.0.0"},
-    SecuritySchemes: registry.Schemes(),
-})
-spec.AddEndpoints(router.Endpoints())
-jsonSpec, _ := spec.JSONIndent("", "  ")
-```
-
-## Validation Pattern
-
-```go
-func handler(w http.ResponseWriter, r *http.Request) {
-    var req CreateSecretRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, err.Error(), 400)
-        return
-    }
-    
-    if errs := req.Schema().Validate(); len(errs) > 0 {
-        w.WriteHeader(400)
-        json.NewEncoder(w).Encode(map[string]any{"errors": errs})
-        return
-    }
-    
-    // Use req...
-}
-```
-
-## IsPresent() for OneOf/AnyOf
-
-Used internally by `OneOfSchemas` and `AnyOf` to detect which option is provided:
-
-| Type | Present When |
-|------|--------------|
-| String | `ptr != nil && *ptr != ""` |
-| Int/Float/Bool | `ptr != nil` |
-| UUID | `ptr != nil && *ptr != uuid.Nil` |
-| Time | `ptr != nil && !ptr.IsZero()` |
-| Object | Any property is present |
-| Array/Map | Custom `IsPresentFn()` |
-| Union | `ptr != nil && *ptr != nil` |
-
-## Available Security Schemes
+### Available Schemes
 
 ```go
 api.HTTPBearer()
@@ -295,53 +339,50 @@ api.OAuth2ClientCredentials(tokenURL, scopes)
 api.OAuth2AuthorizationCode(authURL, tokenURL, scopes)
 ```
 
-## JsonNullable for Optional Fields
-
-Distinguish between absent, null, and present values:
+## JsonNullable (Tri-State PATCH)
 
 ```go
-type Request struct {
-    Count api.JsonNullable[int] `json:"count"`
+type UpdateRequest struct {
+    Name api.JsonNullable[string] `json:"name"`
 }
 
-// After unmarshaling:
-// - {"count": 5}  → Present=true, Null=false, Value=5
-// - {"count": null} → Present=true, Null=true
-// - {}            → Present=false, Null=false
+// {"name": "Bob"}  → Present=true, Null=false, Value="Bob"
+// {"name": null}   → Present=true, Null=true (explicitly clear)
+// {}               → Present=false (don't touch)
 
-// Use Ptr() for schema validation
-schema := api.Int(req.Count.Ptr()).Required()
-// Returns nil if absent/null, pointer to value if present
-```
-
-## Required Validation
-
-For `Int`, `Float`, `Bool` — required checks `ptr == nil`, not zero value:
-
-```go
-// ptr == nil → required error
-// ptr != nil && *ptr == 0 → valid (0 is a value, not missing)
-
-// To detect missing vs zero, use pointer fields:
-type Request struct {
-    Count *int `json:"count"`  // nil when field absent
+func (r *UpdateRequest) Schema() *api.ObjectSchema {
+    return api.Object(map[string]api.Schema{
+        "name": api.Nullable(&r.Name, api.String(&r.Name.Value)).Optional(),
+    })
 }
-api.Int(r.Count).Required()  // fails if Count is nil
 ```
 
-## AdditionalProperties
-
-`AdditionalProperties(false)` is **OpenAPI metadata only** — it doesn't enforce validation. To reject unknown fields at parse time:
+## Error Handling
 
 ```go
-decoder := json.NewDecoder(r.Body)
-decoder.DisallowUnknownFields()
-if err := decoder.Decode(&req); err != nil { ... }
+// In handlers, return typed errors
+return UserResponse{}, api.NotFound("user %s not found", id)
+return UserResponse{}, api.Conflict("email already exists")
+return UserResponse{}, api.BadRequest("invalid input")
+return UserResponse{}, api.Forbidden("access denied")
+
+// Custom error handler
+app := api.NewApp(api.AppConfig{
+    ErrorHandler: func(ctx context.Context, err error) *api.ErrorBody {
+        if apiErr, ok := api.AsError(err); ok {
+            return &api.ErrorBody{
+                StatusCode: apiErr.Status,
+                Message:    apiErr.Message,
+                Error:      apiErr.Name,
+            }
+        }
+        return &api.ErrorBody{StatusCode: 500, Message: "Internal error"}
+    },
+})
 ```
 
 ## Common Chainable Methods
 
-All schemas support:
 ```go
 .Required()
 .Optional()
@@ -353,4 +394,5 @@ All schemas support:
 .ReadOnly()
 .WriteOnly()
 .Default(value)
+.From(source)  // SourcePath, SourceQuery, SourceHeader, SourceCookie
 ```

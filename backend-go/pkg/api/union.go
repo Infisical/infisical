@@ -589,7 +589,6 @@ type BodyUnionBuilder[T Union] struct {
 	rawPtr    *json.RawMessage
 	targetPtr *T
 	parser    UnionDef[T]
-	fields    map[string]Schema
 }
 
 // BodyUnion creates an ObjectSchema where the request body IS a union.

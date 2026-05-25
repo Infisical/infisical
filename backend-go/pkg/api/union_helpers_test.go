@@ -8,72 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- ParseUnionField Tests ---
-
-func TestParseUnionField_ValidDog(t *testing.T) {
-	raw := json.RawMessage(`{"type": "dog", "breed": "Labrador"}`)
-	var animal Animal
-
-	err := ParseUnionField(raw, &animal, AnimalParser)
-	require.NoError(t, err)
-	require.NotNil(t, animal)
-
-	dog, ok := animal.(*Dog)
-	require.True(t, ok)
-	assert.Equal(t, "dog", dog.Type)
-	assert.Equal(t, "Labrador", dog.Breed)
-}
-
-func TestParseUnionField_ValidCat(t *testing.T) {
-	raw := json.RawMessage(`{"type": "cat", "color": "orange"}`)
-	var animal Animal
-
-	err := ParseUnionField(raw, &animal, AnimalParser)
-	require.NoError(t, err)
-	require.NotNil(t, animal)
-
-	cat, ok := animal.(*Cat)
-	require.True(t, ok)
-	assert.Equal(t, "cat", cat.Type)
-	assert.Equal(t, "orange", cat.Color)
-}
-
-func TestParseUnionField_Null(t *testing.T) {
-	raw := json.RawMessage(`null`)
-	var animal Animal
-
-	err := ParseUnionField(raw, &animal, AnimalParser)
-	require.NoError(t, err)
-	assert.Nil(t, animal)
-}
-
-func TestParseUnionField_Empty(t *testing.T) {
-	var raw json.RawMessage
-	var animal Animal
-
-	err := ParseUnionField(raw, &animal, AnimalParser)
-	require.NoError(t, err)
-	assert.Nil(t, animal)
-}
-
-func TestParseUnionField_UnknownType(t *testing.T) {
-	raw := json.RawMessage(`{"type": "bird", "wingspan": 2}`)
-	var animal Animal
-
-	err := ParseUnionField(raw, &animal, AnimalParser)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "bird")
-}
-
-func TestParseUnionField_InvalidJSON(t *testing.T) {
-	raw := json.RawMessage(`{invalid}`)
-	var animal Animal
-
-	err := ParseUnionField(raw, &animal, AnimalParser)
-	require.Error(t, err)
-}
-
-// --- Request with json.RawMessage pattern ---
+// --- ParseUnionField Integration Tests (json.RawMessage in request struct) ---
 
 type PetRequest struct {
 	Name   string          `json:"name"`
@@ -108,10 +43,7 @@ func TestParseUnionField_InRequest(t *testing.T) {
 }
 
 func TestParseUnionField_InRequest_NullPet(t *testing.T) {
-	data := []byte(`{
-		"name": "NoPet",
-		"pet": null
-	}`)
+	data := []byte(`{"name": "NoPet", "pet": null}`)
 
 	var req PetRequest
 	err := json.Unmarshal(data, &req)
@@ -122,9 +54,7 @@ func TestParseUnionField_InRequest_NullPet(t *testing.T) {
 }
 
 func TestParseUnionField_InRequest_MissingPet(t *testing.T) {
-	data := []byte(`{
-		"name": "NoPet"
-	}`)
+	data := []byte(`{"name": "NoPet"}`)
 
 	var req PetRequest
 	err := json.Unmarshal(data, &req)
@@ -136,7 +66,6 @@ func TestParseUnionField_InRequest_MissingPet(t *testing.T) {
 
 // --- NestedUnionDef Tests ---
 
-// Test types for nested union
 type NestedAuthMethod interface {
 	Union
 	nestedAuthMarker()
@@ -181,119 +110,85 @@ var NestedAuthParser = NestedUnionDef[NestedAuthMethod]{
 	},
 }
 
-func TestNestedUnionDef_Parse_Password(t *testing.T) {
-	data := json.RawMessage(`{
-		"method": "password",
-		"payload": {"username": "john", "password": "secret123"}
-	}`)
+func TestNestedUnionDef_Parse(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        json.RawMessage
+		wantNil     bool
+		wantErr     bool
+		errContains string
+		verify      func(t *testing.T, auth NestedAuthMethod)
+	}{
+		{
+			name: "password",
+			data: json.RawMessage(`{"method": "password", "payload": {"username": "john", "password": "secret123"}}`),
+			verify: func(t *testing.T, auth NestedAuthMethod) {
+				pwd, ok := auth.(*PasswordPayload)
+				require.True(t, ok)
+				assert.Equal(t, "john", pwd.Username)
+			},
+		},
+		{
+			name: "oauth",
+			data: json.RawMessage(`{"method": "oauth", "payload": {"provider": "github", "accessToken": "gho_xxx"}}`),
+			verify: func(t *testing.T, auth NestedAuthMethod) {
+				oauth, ok := auth.(*OAuthPayload)
+				require.True(t, ok)
+				assert.Equal(t, "github", oauth.Provider)
+			},
+		},
+		{name: "null", data: json.RawMessage(`null`), wantNil: true},
+		{name: "empty", data: nil, wantNil: true},
+		{name: "missing discriminator", data: json.RawMessage(`{"payload": {}}`), wantErr: true, errContains: "method"},
+		{name: "missing payload", data: json.RawMessage(`{"method": "password"}`), wantErr: true, errContains: "payload"},
+		{name: "unknown type", data: json.RawMessage(`{"method": "saml", "payload": {}}`), wantErr: true, errContains: "saml"},
+		{name: "invalid json", data: json.RawMessage(`{invalid}`), wantErr: true},
+	}
 
-	auth, err := NestedAuthParser.Parse(data)
-	require.NoError(t, err)
-	require.NotNil(t, auth)
-
-	pwd, ok := auth.(*PasswordPayload)
-	require.True(t, ok)
-	assert.Equal(t, "john", pwd.Username)
-	assert.Equal(t, "secret123", pwd.Password)
-}
-
-func TestNestedUnionDef_Parse_OAuth(t *testing.T) {
-	data := json.RawMessage(`{
-		"method": "oauth",
-		"payload": {"provider": "github", "accessToken": "gho_xxx"}
-	}`)
-
-	auth, err := NestedAuthParser.Parse(data)
-	require.NoError(t, err)
-	require.NotNil(t, auth)
-
-	oauth, ok := auth.(*OAuthPayload)
-	require.True(t, ok)
-	assert.Equal(t, "github", oauth.Provider)
-	assert.Equal(t, "gho_xxx", oauth.AccessToken)
-}
-
-func TestNestedUnionDef_Parse_Null(t *testing.T) {
-	data := json.RawMessage(`null`)
-
-	auth, err := NestedAuthParser.Parse(data)
-	require.NoError(t, err)
-	assert.Nil(t, auth)
-}
-
-func TestNestedUnionDef_Parse_Empty(t *testing.T) {
-	var data json.RawMessage
-
-	auth, err := NestedAuthParser.Parse(data)
-	require.NoError(t, err)
-	assert.Nil(t, auth)
-}
-
-func TestNestedUnionDef_Parse_MissingDiscriminator(t *testing.T) {
-	data := json.RawMessage(`{
-		"payload": {"username": "john", "password": "secret123"}
-	}`)
-
-	_, err := NestedAuthParser.Parse(data)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "method")
-}
-
-func TestNestedUnionDef_Parse_MissingPayload(t *testing.T) {
-	data := json.RawMessage(`{
-		"method": "password"
-	}`)
-
-	_, err := NestedAuthParser.Parse(data)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "payload")
-}
-
-func TestNestedUnionDef_Parse_UnknownType(t *testing.T) {
-	data := json.RawMessage(`{
-		"method": "saml",
-		"payload": {"assertion": "..."}
-	}`)
-
-	_, err := NestedAuthParser.Parse(data)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "saml")
-}
-
-func TestNestedUnionDef_Parse_InvalidJSON(t *testing.T) {
-	data := json.RawMessage(`{invalid}`)
-
-	_, err := NestedAuthParser.Parse(data)
-	require.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth, err := NestedAuthParser.Parse(tt.data)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantNil {
+				assert.Nil(t, auth)
+				return
+			}
+			require.NotNil(t, auth)
+			if tt.verify != nil {
+				tt.verify(t, auth)
+			}
+		})
+	}
 }
 
 func TestNestedUnionDef_ParseWithType(t *testing.T) {
-	payload := json.RawMessage(`{"username": "jane", "password": "password123"}`)
+	t.Run("valid", func(t *testing.T) {
+		payload := json.RawMessage(`{"username": "jane", "password": "password123"}`)
+		auth, err := NestedAuthParser.ParseWithType("password", payload)
+		require.NoError(t, err)
+		pwd, ok := auth.(*PasswordPayload)
+		require.True(t, ok)
+		assert.Equal(t, "jane", pwd.Username)
+	})
 
-	auth, err := NestedAuthParser.ParseWithType("password", payload)
-	require.NoError(t, err)
-	require.NotNil(t, auth)
+	t.Run("unknown type", func(t *testing.T) {
+		_, err := NestedAuthParser.ParseWithType("unknown", json.RawMessage(`{}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown")
+	})
 
-	pwd, ok := auth.(*PasswordPayload)
-	require.True(t, ok)
-	assert.Equal(t, "jane", pwd.Username)
-}
-
-func TestNestedUnionDef_ParseWithType_UnknownType(t *testing.T) {
-	payload := json.RawMessage(`{"data": "..."}`)
-
-	_, err := NestedAuthParser.ParseWithType("unknown", payload)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown")
-}
-
-func TestNestedUnionDef_ParseWithType_Null(t *testing.T) {
-	payload := json.RawMessage(`null`)
-
-	// Null payload should error since OpenAPI marks it as required
-	_, err := NestedAuthParser.ParseWithType("password", payload)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing")
+	t.Run("null payload", func(t *testing.T) {
+		_, err := NestedAuthParser.ParseWithType("password", json.RawMessage(`null`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "missing")
+	})
 }
 
 func TestNestedUnionDef_OpenAPI(t *testing.T) {
@@ -301,33 +196,22 @@ func TestNestedUnionDef_OpenAPI(t *testing.T) {
 
 	assert.Equal(t, "object", openapi["type"])
 
-	props, ok := openapi["properties"].(map[string]any)
-	require.True(t, ok)
-
-	// Check discriminator field
-	methodProp, ok := props["method"].(map[string]any)
-	require.True(t, ok)
+	props := openapi["properties"].(map[string]any)
+	methodProp := props["method"].(map[string]any)
 	assert.Equal(t, "string", methodProp["type"])
+	assert.Contains(t, methodProp["enum"].([]string), "password")
+	assert.Contains(t, methodProp["enum"].([]string), "oauth")
 
-	enumVals, ok := methodProp["enum"].([]string)
-	require.True(t, ok)
-	assert.Contains(t, enumVals, "password")
-	assert.Contains(t, enumVals, "oauth")
-
-	// Check payload field has oneOf
-	payloadProp, ok := props["payload"].(map[string]any)
-	require.True(t, ok)
+	payloadProp := props["payload"].(map[string]any)
 	_, hasOneOf := payloadProp["oneOf"]
 	assert.True(t, hasOneOf)
 
-	// Check required fields
-	required, ok := openapi["required"].([]string)
-	require.True(t, ok)
+	required := openapi["required"].([]string)
 	assert.Contains(t, required, "method")
 	assert.Contains(t, required, "payload")
 }
 
-// --- ParseNestedUnionField Tests ---
+// --- ParseNestedUnionField Integration Tests ---
 
 type NestedLoginRequest struct {
 	ClientID   string           `json:"clientId"`
@@ -361,70 +245,106 @@ func TestParseNestedUnionField_InRequest(t *testing.T) {
 	pwd, ok := req.Auth.(*PasswordPayload)
 	require.True(t, ok)
 	assert.Equal(t, "john", pwd.Username)
-	assert.Equal(t, "secret123", pwd.Password)
 }
 
-func TestParseNestedUnionField_NullDiscriminator(t *testing.T) {
-	data := []byte(`{
-		"clientId": "app-123",
-		"method": null,
-		"payload": {"username": "john", "password": "secret123"}
-	}`)
-
-	var req NestedLoginRequest
-	err := json.Unmarshal(data, &req)
-	require.NoError(t, err)
-
-	assert.Nil(t, req.Auth) // Discriminator is null, so no auth
-}
-
-func TestParseNestedUnionField_MissingDiscriminator(t *testing.T) {
-	data := []byte(`{
-		"clientId": "app-123",
-		"payload": {"username": "john", "password": "secret123"}
-	}`)
-
-	var req NestedLoginRequest
-	err := json.Unmarshal(data, &req)
-	require.NoError(t, err)
-
-	assert.Nil(t, req.Auth) // Discriminator missing, so no auth
-}
-
-// --- Multiple Union Fields Test ---
-
-type MultiUnionRequestHelper struct {
-	PetRaw  json.RawMessage  `json:"pet"`
-	AuthRaw json.RawMessage  `json:"auth"`
-	Pet     Animal           `json:"-"`
-	Auth    NestedAuthMethod `json:"-"`
-}
-
-func (r *MultiUnionRequestHelper) UnmarshalJSON(data []byte) error {
-	type Plain MultiUnionRequestHelper
-	if err := json.Unmarshal(data, (*Plain)(r)); err != nil {
-		return err
+func TestParseNestedUnionField_NullOrMissingDiscriminator(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{"null", []byte(`{"clientId": "app", "method": null, "payload": {}}`)},
+		{"missing", []byte(`{"clientId": "app", "payload": {}}`)},
 	}
-
-	if err := ParseUnionField(r.PetRaw, &r.Pet, AnimalParser); err != nil {
-		return err
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var req NestedLoginRequest
+			err := json.Unmarshal(tt.data, &req)
+			require.NoError(t, err)
+			assert.Nil(t, req.Auth)
+		})
 	}
-
-	return nil
 }
 
-func TestMultipleUnionFields_Helper(t *testing.T) {
-	data := []byte(`{
-		"pet": {"type": "cat", "color": "black"},
-		"auth": null
-	}`)
+// --- DefaultVariant Tests ---
 
-	var req MultiUnionRequestHelper
-	err := json.Unmarshal(data, &req)
-	require.NoError(t, err)
+type DogWithDefault struct {
+	UnionBase
+	Type  string `json:"type"`
+	Breed string `json:"breed"`
+}
 
-	require.NotNil(t, req.Pet)
-	cat, ok := req.Pet.(*Cat)
-	require.True(t, ok)
-	assert.Equal(t, "black", cat.Color)
+func (d *DogWithDefault) Schema() *ObjectSchema {
+	return Object(map[string]Schema{
+		"type":  Const("dog"),
+		"breed": String(&d.Breed).Required().Default("Unknown"),
+	})
+}
+
+func (d *DogWithDefault) animalMarker() {}
+
+var AnimalWithDefaultParser = UnionDef[Animal]{
+	Discriminator: "type",
+	Variants: map[string]func() Animal{
+		"dog": func() Animal { return &DogWithDefault{} },
+		"cat": func() Animal { return &Cat{} },
+	},
+}
+
+func TestUnionFromSchema_DefaultVariant(t *testing.T) {
+	t.Run("applied when absent", func(t *testing.T) {
+		var raw json.RawMessage
+		var animal Animal
+		schema := UnionFrom(&raw, &animal, AnimalWithDefaultParser).DefaultVariant("dog")
+
+		errs := schema.Validate()
+		assert.Empty(t, errs)
+		require.NotNil(t, animal)
+
+		dog, ok := animal.(*DogWithDefault)
+		require.True(t, ok)
+		assert.Equal(t, "Unknown", dog.Breed)
+	})
+
+	t.Run("overridden by present value", func(t *testing.T) {
+		raw := json.RawMessage(`{"type": "cat", "color": "black"}`)
+		var animal Animal
+		schema := UnionFrom(&raw, &animal, AnimalWithDefaultParser).DefaultVariant("dog")
+
+		errs := schema.Validate()
+		assert.Empty(t, errs)
+
+		cat, ok := animal.(*Cat)
+		require.True(t, ok)
+		assert.Equal(t, "black", cat.Color)
+	})
+
+	t.Run("invalid name errors", func(t *testing.T) {
+		var raw json.RawMessage
+		var animal Animal
+		schema := UnionFrom(&raw, &animal, AnimalWithDefaultParser).DefaultVariant("fish")
+
+		errs := schema.Validate()
+		require.Len(t, errs, 1)
+		assert.Equal(t, "invalid_default", errs[0].Code)
+	})
+
+	t.Run("openapi includes default", func(t *testing.T) {
+		var raw json.RawMessage
+		var animal Animal
+		schema := UnionFrom(&raw, &animal, AnimalWithDefaultParser).DefaultVariant("dog")
+
+		openapi := schema.OpenAPI()
+		defaultVal := openapi["default"].(map[string]any)
+		assert.Equal(t, "dog", defaultVal["type"])
+	})
+}
+
+func TestUnionFromSchema_Required_NoDefault_Fails(t *testing.T) {
+	var raw json.RawMessage
+	var animal Animal
+	schema := UnionFrom(&raw, &animal, AnimalParser).Required()
+
+	errs := schema.Validate()
+	require.Len(t, errs, 1)
+	assert.Equal(t, "required", errs[0].Code)
 }

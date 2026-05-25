@@ -525,6 +525,14 @@ func (s *OpenAPISpec) generateResponses(ep *Endpoint) map[string]any {
 }
 
 func (s *OpenAPISpec) generateResponseObject(schema SchemaProvider, contentType, description string) map[string]any {
+	objSchema := schema.Schema()
+	if objSchema == nil {
+		// No content response (e.g., 204)
+		return map[string]any{
+			"description": description,
+		}
+	}
+
 	if contentType == "" {
 		contentType = "application/json"
 	}
@@ -533,7 +541,7 @@ func (s *OpenAPISpec) generateResponseObject(schema SchemaProvider, contentType,
 		"description": description,
 		"content": map[string]any{
 			contentType: map[string]any{
-				"schema": schema.Schema().OpenAPI(),
+				"schema": objSchema.OpenAPI(),
 			},
 		},
 	}
@@ -586,11 +594,24 @@ func (s *OpenAPISpec) generateComponents() map[string]any {
 		components["securitySchemes"] = secSchemes
 	}
 
-	if len(s.schemas) > 0 {
-		schemas := make(map[string]any)
-		for name, provider := range s.schemas {
-			schemas[name] = provider.Schema().OpenAPI()
+	// Merge explicitly added schemas with registry schemas
+	schemas := make(map[string]any)
+
+	// Add schemas from DefaultRegistry (registered via .Ref())
+	for name, schema := range DefaultRegistry.All() {
+		if refable, ok := schema.(Refable); ok {
+			schemas[name] = refable.Definition()
+		} else {
+			schemas[name] = schema.OpenAPI()
 		}
+	}
+
+	// Add explicitly registered schemas (can override registry)
+	for name, provider := range s.schemas {
+		schemas[name] = provider.Schema().OpenAPI()
+	}
+
+	if len(schemas) > 0 {
 		components["schemas"] = schemas
 	}
 

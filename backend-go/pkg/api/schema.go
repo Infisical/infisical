@@ -575,6 +575,7 @@ func (s *IntSchema) IsPresent() bool {
 	return s.ptr != nil || s.ptr64 != nil
 }
 
+//nolint:unparam // bool used for interface consistency
 func (s *IntSchema) value() (int64, bool) {
 	if s.ptr != nil {
 		return int64(*s.ptr), true

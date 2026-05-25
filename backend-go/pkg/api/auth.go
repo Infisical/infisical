@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -604,10 +605,14 @@ func (r *SecurityRegistry) trySecurityRequirement(req *http.Request, sec Securit
 
 		claims, err := registered.validator.Validate(req.Context(), req)
 		if err != nil {
-			// Inside AND: ErrSkipToNextAuth means this requirement failed
-			// (the scheme wasn't present/applicable), so the whole AND fails.
-			// We still return ErrSkipToNextAuth to try the next OR option.
 			if errors.Is(err, ErrSkipToNextAuth) {
+				// If a previous scheme in this AND already succeeded, we cannot
+				// skip to the next OR option — that would bypass the second factor.
+				// Return a hard 401 instead.
+				if len(result.Schemes) > 0 {
+					return nil, fmt.Errorf("missing required auth scheme %q after %v succeeded", requirement.Scheme, result.Schemes)
+				}
+				// No scheme has succeeded yet; safe to try the next OR option.
 				return nil, ErrSkipToNextAuth
 			}
 			// Any other error (invalid token, expired, etc.) is a hard failure

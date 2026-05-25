@@ -23,6 +23,7 @@ type ObjectSchema struct {
 	writeOnly        bool
 	discriminator    string
 	discriminatorMap map[string]string
+	refName          string
 
 	// For root-level unions (body IS the union)
 	bodyUnion *bodyUnionConfig
@@ -186,7 +187,33 @@ func (s *ObjectSchema) Validate() []ValidationError {
 	return errs
 }
 
+// Ref registers this schema in the default registry and makes OpenAPI() return a $ref.
+// Use this for reusable schemas that should appear in components/schemas.
+func (s *ObjectSchema) Ref(name string) *ObjectSchema {
+	s.refName = name
+	DefaultRegistry.Register(name, s)
+	return s
+}
+
+// RefName returns the registered ref name, or empty if not a ref.
+func (s *ObjectSchema) RefName() string {
+	return s.refName
+}
+
+// Definition returns the full schema definition, ignoring any ref.
+// Use this when you need the actual schema structure (e.g., for components/schemas).
+func (s *ObjectSchema) Definition() map[string]any {
+	return s.definition()
+}
+
 func (s *ObjectSchema) OpenAPI() map[string]any {
+	if s.refName != "" {
+		return map[string]any{"$ref": "#/components/schemas/" + s.refName}
+	}
+	return s.definition()
+}
+
+func (s *ObjectSchema) definition() map[string]any {
 	schema := map[string]any{"type": "object"}
 
 	if len(s.properties) > 0 {
@@ -264,6 +291,7 @@ type ArraySchema struct {
 	nullable    bool
 	readOnly    bool
 	writeOnly   bool
+	refName     string
 
 	validateFn  func() []ValidationError
 	isPresentFn func() bool
@@ -365,7 +393,31 @@ func (s *ArraySchema) Validate() []ValidationError {
 	return nil
 }
 
+// Ref registers this schema in the default registry and makes OpenAPI() return a $ref.
+func (s *ArraySchema) Ref(name string) *ArraySchema {
+	s.refName = name
+	DefaultRegistry.Register(name, s)
+	return s
+}
+
+// RefName returns the registered ref name, or empty if not a ref.
+func (s *ArraySchema) RefName() string {
+	return s.refName
+}
+
+// Definition returns the full schema definition, ignoring any ref.
+func (s *ArraySchema) Definition() map[string]any {
+	return s.definition()
+}
+
 func (s *ArraySchema) OpenAPI() map[string]any {
+	if s.refName != "" {
+		return map[string]any{"$ref": "#/components/schemas/" + s.refName}
+	}
+	return s.definition()
+}
+
+func (s *ArraySchema) definition() map[string]any {
 	schema := map[string]any{"type": "array"}
 
 	if s.items != nil {
