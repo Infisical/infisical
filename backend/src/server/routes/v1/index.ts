@@ -4,7 +4,6 @@ import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
   registerAppConnectionRouter
 } from "@app/server/routes/v1/app-connection-routers";
-import { registerDummyConnectionStubHook } from "@app/server/routes/v1/app-connection-routers/app-connection-dummy-stub";
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
@@ -317,10 +316,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (appConnectionRouter) => {
-      // Short-circuit list-resource calls against seeded "Dummy" connections
-      // (id prefix 00000000-0000-0000-0000-) with canned fixtures so the
-      // secret-sync destination-config dropdowns work without real provider credentials.
-      registerDummyConnectionStubHook(appConnectionRouter);
 
       // register generic app connection endpoints
       await appConnectionRouter.register(registerAppConnectionRouter);
