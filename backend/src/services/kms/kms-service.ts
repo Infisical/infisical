@@ -71,6 +71,9 @@ export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
 const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
+const OPENSSL_TO_KMS: Record<string, string> = Object.fromEntries(
+  Object.entries(KMS_TO_OPENSSL_NAME).map(([k, v]) => [v, k])
+);
 
 export const kmsServiceFactory = ({
   envConfig,
@@ -431,7 +434,6 @@ export const kmsServiceFactory = ({
         const detectedVariant = detectPqcVariantFromDer(key);
         const expectedVariant = KMS_TO_OPENSSL_NAME[algorithm as AsymmetricKeyAlgorithm];
         if (detectedVariant && expectedVariant && detectedVariant !== expectedVariant) {
-          const OPENSSL_TO_KMS = Object.fromEntries(Object.entries(KMS_TO_OPENSSL_NAME).map(([k, v]) => [v, k]));
           throw new BadRequestError({
             message: `Key material does not match the declared algorithm. Expected ${algorithm as string} but the key is ${OPENSSL_TO_KMS[detectedVariant] || detectedVariant}.`
           });
