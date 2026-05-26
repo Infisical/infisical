@@ -6,3 +6,4 @@ export * from "./PasswordGenerator";
 export * from "./ScopeIcons";
 export * from "./SecretInput";
 export * from "./SecretPathInput";
+export * from "./TreePicker";

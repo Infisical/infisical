@@ -168,7 +168,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
   server.route({
     method: "GET",
-    url: `/:connectionId/root-groups`,
+    url: `/:connectionId/groups/root`,
     config: {
       rateLimit: readLimit
     },

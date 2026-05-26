@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -17,7 +17,7 @@ const gitlabConnectionKeys = {
   listGroups: (connectionId: string) =>
     [...gitlabConnectionKeys.all, "groups", connectionId] as const,
   listRootGroups: (connectionId: string) =>
-    [...gitlabConnectionKeys.all, "root-groups", connectionId] as const,
+    [...gitlabConnectionKeys.all, "groups", "root", connectionId] as const,
   searchGroups: (connectionId: string, search: string) =>
     [...gitlabConnectionKeys.all, "search-groups", connectionId, search] as const,
   searchGroupsAndProjects: (connectionId: string, search: string) =>
@@ -32,8 +32,6 @@ const buildProjectsQueryParams = (params?: TGitLabListProjectsParams) => {
   const search = new URLSearchParams();
   if (params?.owned !== undefined) search.set("owned", String(params.owned));
   if (params?.search) search.set("search", params.search);
-  if (params?.page !== undefined) search.set("page", String(params.page));
-  if (params?.perPage !== undefined) search.set("perPage", String(params.perPage));
   const qs = search.toString();
   return qs ? `?${qs}` : "";
 };
@@ -60,7 +58,6 @@ export const useGitLabConnectionListProjects = (
 
       return data;
     },
-    placeholderData: keepPreviousData,
     ...options
   });
 };
@@ -106,7 +103,7 @@ export const useGitLabConnectionListRootGroups = (
     queryKey: gitlabConnectionKeys.listRootGroups(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitLabGroupTreeItem[]>(
-        `/api/v1/app-connections/gitlab/${connectionId}/root-groups`
+        `/api/v1/app-connections/gitlab/${connectionId}/groups/root`
       );
 
       return data;

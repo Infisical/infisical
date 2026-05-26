@@ -17,8 +17,6 @@ export type TGitLabGroupTreeItem = {
 export type TGitLabListProjectsParams = {
   owned?: boolean;
   search?: string;
-  page?: number;
-  perPage?: number;
 };
 
 export enum GitLabAccessTokenType {

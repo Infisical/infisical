@@ -36,12 +36,11 @@ export const GitLabDataSourceConfigFields = () => {
   const groupName = watch("config.groupName");
   const includeProjects = watch("config.includeProjects");
 
-  const { data: projectsData, isPending: isProjectsPending } = useGitLabConnectionListProjects(
+  const { data: projects, isPending: isProjectsPending } = useGitLabConnectionListProjects(
     connectionId,
-    { perPage: 100 },
+    undefined,
     { enabled: Boolean(connectionId) }
   );
-  const projects = projectsData?.items;
 
   const { data: groups, isPending: isGroupsPending } = useGitLabConnectionListGroups(connectionId, {
     enabled: Boolean(connectionId) && scope === GitLabDataSourceScope.Group
