@@ -6,7 +6,7 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -17,6 +17,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -208,17 +213,24 @@ const Page = () => {
           </div>
         </>
       )}
-      <Modal
-        isOpen={popUp?.identity?.isOpen}
+      <Dialog
+        open={popUp?.identity?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("identity", isOpen)}
       >
-        <ModalContent
-          bodyClassName="overflow-visible"
-          title={`${popUp?.identity?.data ? "Update" : "Create"} Machine Identity`}
-        >
+        <DialogContent className="max-w-xl overflow-visible">
+          <DialogHeader>
+            <DialogTitle>
+              {`${popUp?.identity?.data ? "Update" : "Create"} Machine Identity`}
+            </DialogTitle>
+            <DialogDescription>
+              {popUp?.identity?.data
+                ? "Update the identity's name, role, and metadata."
+                : "Create a new machine identity in the organization."}
+            </DialogDescription>
+          </DialogHeader>
           <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <IdentityAuthMethodModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
