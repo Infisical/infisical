@@ -33,7 +33,7 @@ const SHA256_DIGEST_LENGTH = 32;
 const SHA384_DIGEST_LENGTH = 48;
 const SHA512_DIGEST_LENGTH = 64;
 
-const KMS_TO_OPENSSL_NAME: Record<string, string> = {
+const KMS_TO_OPENSSL_NAME: Partial<Record<AsymmetricKeyAlgorithm, string>> = {
   [AsymmetricKeyAlgorithm.ML_DSA_44]: "ML-DSA-44",
   [AsymmetricKeyAlgorithm.ML_DSA_65]: "ML-DSA-65",
   [AsymmetricKeyAlgorithm.ML_DSA_87]: "ML-DSA-87"
@@ -546,6 +546,9 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   const generateAsymmetricPrivateKey = async () => {
     if (isPqcKeyAlgorithm(algorithm)) {
       const opensslName = KMS_TO_OPENSSL_NAME[algorithm];
+      if (!opensslName) {
+        throw new Error(`Unsupported PQC algorithm: ${algorithm}`);
+      }
       return opensslGenpkey(opensslName);
     }
 
