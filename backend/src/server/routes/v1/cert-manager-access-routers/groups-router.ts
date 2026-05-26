@@ -220,10 +220,19 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
-        permission: req.permission,
-        selector: { groupId: req.params.groupId },
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
+      const { membership: groupMembership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
+        projectId,
+        actorKind: ApplicationMemberKind.Group,
+        actorId: req.params.groupId,
+        performDelete: (tx) =>
+          server.services.membershipGroup.deleteMembership(
+            {
+              permission: req.permission,
+              selector: { groupId: req.params.groupId },
+              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
+            },
+            tx
+          )
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -232,11 +241,6 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
           type: EventType.REMOVE_CERT_MANAGER_GROUP,
           metadata: { groupId: req.params.groupId, membershipId: groupMembership.id }
         }
-      });
-      await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
-        projectId,
-        actorKind: ApplicationMemberKind.Group,
-        actorId: req.params.groupId
       });
       return {
         groupMembership: {
