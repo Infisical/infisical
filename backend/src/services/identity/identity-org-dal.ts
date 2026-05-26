@@ -761,21 +761,24 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       // correlated subquery. The bound scopeOrgId must reference Identity.orgId (not the caller's
       // orgId) so the fallback also works for a root-org identity linked into a sub-org.
       const lastLoginFallbackRaw = (column: "lastLoginTime" | "lastLoginAuthMethod", outputAlias: string) =>
-        db.raw(`COALESCE(??.??, (SELECT om.?? FROM ?? AS om WHERE om.?? = ??.?? AND om.?? = ? AND om.?? = ??.??)) as ??`, [
-          TableName.Membership,
-          column,
-          column,
-          TableName.Membership,
-          "actorIdentityId",
-          TableName.Membership,
-          "actorIdentityId",
-          "scope",
-          AccessScope.Organization,
-          "scopeOrgId",
-          TableName.Identity,
-          "orgId",
-          outputAlias
-        ]);
+        db.raw(
+          `COALESCE(??.??, (SELECT om.?? FROM ?? AS om WHERE om.?? = ??.?? AND om.?? = ? AND om.?? = ??.??)) as ??`,
+          [
+            TableName.Membership,
+            column,
+            column,
+            TableName.Membership,
+            "actorIdentityId",
+            TableName.Membership,
+            "actorIdentityId",
+            "scope",
+            AccessScope.Organization,
+            "scopeOrgId",
+            TableName.Identity,
+            "orgId",
+            outputAlias
+          ]
+        );
 
       const searchedMemberships = (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
