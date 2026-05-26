@@ -483,13 +483,15 @@ export const identityV2ServiceFactory = ({
     }
 
     if (requestedProject && uniqueScope.has(SearchIdentitiesScope.ProjectScope)) {
-      const { docs } = await identityMembershipV2DAL.searchIdentitiesV2({
+      // Only identityId / scope / projectId are needed to apply the per-row CASL filter, so fetch
+      // the lean refs instead of the full search payload (which the count would otherwise discard).
+      const refs = await identityMembershipV2DAL.listIdentityRefsV2({
         orgId: actorOrgId,
         scope: [SearchIdentitiesScope.ProjectScope],
         accessibleProjectIds,
         searchFilter
       });
-      counts.project = filterIdentitiesByProjectPermission(docs, projectPermissions, conditionalProjectIds).length;
+      counts.project = filterIdentitiesByProjectPermission(refs, projectPermissions, conditionalProjectIds).length;
     }
 
     return counts;

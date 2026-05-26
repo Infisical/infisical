@@ -18,6 +18,48 @@ import {
 
 export type TIdentityMembershipV2DALFactory = ReturnType<typeof identityMembershipV2DALFactory>;
 
+// Restricts a Membership query to the requested org/project scopes. Shared by searchIdentitiesV2,
+// countIdentitiesV2 and listIdentityRefsV2 so the three stay in lockstep on which membership rows
+// they consider. Expects the Identity table to be joined (org branch reads Identity.projectId).
+const applyIdentityScopeFilter = (
+  qb: Knex.QueryBuilder,
+  { orgId, scope, accessibleProjectIds }: Pick<TSearchIdentitiesV2DAL, "orgId" | "scope" | "accessibleProjectIds">
+) => {
+  const includeOrgScope = scope.includes(SearchIdentitiesScope.OrganizationScope);
+  const includeProjectScope = scope.includes(SearchIdentitiesScope.ProjectScope);
+
+  void qb.whereNotNull(`${TableName.Membership}.actorIdentityId`);
+
+  // Project-owned identities (Identity.projectId IS NOT NULL) always carry a NoAccess
+  // org-level Membership row as an implementation detail of their creation flow
+  // (see identity-v2/identity-service.ts createIdentity). Excluding them here keeps
+  // the org-scope listing limited to true org-level identities, matching V1 behavior
+  // and preventing duplicate rows in the combined org+project view.
+  const orgScopeBranch = (sub: Knex.QueryBuilder) => {
+    void sub
+      .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
+      .whereNull(`${TableName.Identity}.projectId`);
+  };
+
+  const projectScopeBranch = (sub: Knex.QueryBuilder) => {
+    void sub
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
+      .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
+  };
+
+  if (includeOrgScope && includeProjectScope) {
+    void qb.where((nested) => {
+      void nested.where((sub) => orgScopeBranch(sub)).orWhere((sub) => projectScopeBranch(sub));
+    });
+  } else if (includeOrgScope) {
+    void qb.where((sub) => orgScopeBranch(sub));
+  } else if (includeProjectScope) {
+    void qb.where((sub) => projectScopeBranch(sub));
+  }
+};
+
 export const identityMembershipV2DALFactory = (db: TDbClient) => {
   const searchIdentitiesV2 = async (
     {
@@ -33,42 +75,6 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const includeOrgScope = scope.includes(SearchIdentitiesScope.OrganizationScope);
-      const includeProjectScope = scope.includes(SearchIdentitiesScope.ProjectScope);
-
-      const applyScopeFilter = (qb: Knex.QueryBuilder) => {
-        void qb.whereNotNull(`${TableName.Membership}.actorIdentityId`);
-
-        // Project-owned identities (Identity.projectId IS NOT NULL) always carry a NoAccess
-        // org-level Membership row as an implementation detail of their creation flow
-        // (see identity-v2/identity-service.ts createIdentity). Excluding them here keeps
-        // the org-scope listing limited to true org-level identities, matching V1 behavior
-        // and preventing duplicate rows in the combined org+project view.
-        const orgScopeBranch = (sub: Knex.QueryBuilder) => {
-          void sub
-            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-            .where(`${TableName.Membership}.scopeOrgId`, orgId)
-            .whereNull(`${TableName.Identity}.projectId`);
-        };
-
-        const projectScopeBranch = (sub: Knex.QueryBuilder) => {
-          void sub
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .where(`${TableName.Membership}.scopeOrgId`, orgId)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
-        };
-
-        if (includeOrgScope && includeProjectScope) {
-          void qb.where((nested) => {
-            void nested.where((sub) => orgScopeBranch(sub)).orWhere((sub) => projectScopeBranch(sub));
-          });
-        } else if (includeOrgScope) {
-          orgScopeBranch(qb);
-        } else if (includeProjectScope) {
-          projectScopeBranch(qb);
-        }
-      };
-
       // Identity-auth login services update the lastLogin* columns on exactly one Membership row
       // keyed on the identity's home org (scope=Organization, scopeOrgId=Identity.orgId, projectId
       // omitted). The project Membership row created at `createMembershipIdentity` time therefore
@@ -100,7 +106,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .where(applyScopeFilter)
+        .where((qb) => applyIdentityScopeFilter(qb, { orgId, scope, accessibleProjectIds }))
         .groupBy(
           `${TableName.Membership}.id`,
           `${TableName.Identity}.name`,
@@ -411,37 +417,16 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
       const includeOrgScope = scope.includes(SearchIdentitiesScope.OrganizationScope);
       const includeProjectScope = scope.includes(SearchIdentitiesScope.ProjectScope);
 
+      if (!includeOrgScope && !includeProjectScope) {
+        return { organization: undefined, project: undefined };
+      }
+
       const query = (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .whereNotNull(`${TableName.Membership}.actorIdentityId`);
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
 
-      const orgScopeBranch = (sub: Knex.QueryBuilder) => {
-        void sub
-          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-          .where(`${TableName.Membership}.scopeOrgId`, orgId)
-          .whereNull(`${TableName.Identity}.projectId`);
-      };
-
-      const projectScopeBranch = (sub: Knex.QueryBuilder) => {
-        void sub
-          .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .where(`${TableName.Membership}.scopeOrgId`, orgId)
-          .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
-      };
-
-      if (includeOrgScope && includeProjectScope) {
-        void query.where((nested) => {
-          void nested.where((sub) => orgScopeBranch(sub)).orWhere((sub) => projectScopeBranch(sub));
-        });
-      } else if (includeOrgScope) {
-        void query.where((sub) => orgScopeBranch(sub));
-      } else if (includeProjectScope) {
-        void query.where((sub) => projectScopeBranch(sub));
-      } else {
-        return { organization: includeOrgScope ? 0 : undefined, project: includeProjectScope ? 0 : undefined };
-      }
+      applyIdentityScopeFilter(query, { orgId, scope, accessibleProjectIds });
 
       if (searchFilter) {
         buildKnexFilterForSearchResource(query, searchFilter, (attr) => {
@@ -480,5 +465,55 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  return { searchIdentitiesV2, countIdentitiesV2 };
+  // Lightweight sibling of searchIdentitiesV2 used by the count path when a project carries a
+  // conditional Read(Identity) rule. The per-identity CASL condition can't be expressed in SQL,
+  // so callers list rows and count the survivors of filterIdentitiesByProjectPermission — which
+  // only reads identityId / scope / projectId. Returning just those refs (no auth-table joins,
+  // no lastLogin fallback, no window function, no nesting) avoids the full search query. DISTINCT
+  // on the membership id collapses the MembershipRole fan-out, matching countIdentitiesV2's
+  // COUNT(DISTINCT membership.id) semantics.
+  const listIdentityRefsV2 = async (
+    { orgId, scope, accessibleProjectIds, searchFilter }: TCountIdentitiesV2DAL,
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Membership)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
+
+      applyIdentityScopeFilter(query, { orgId, scope, accessibleProjectIds });
+
+      if (searchFilter) {
+        buildKnexFilterForSearchResource(query, searchFilter, (attr) => {
+          switch (attr) {
+            case "role":
+              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+            case "name":
+              return `${TableName.Identity}.name`;
+            default:
+              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+          }
+        });
+      }
+
+      const rows = (await query.distinct(
+        db.ref("id").withSchema(TableName.Membership).as("id"),
+        db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
+        db.ref("scope").withSchema(TableName.Membership).as("membershipScope"),
+        db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+      )) as { id: string; identityId: string; membershipScope: string; projectId: string | null }[];
+
+      return rows.map((row) => ({
+        id: row.id,
+        identityId: row.identityId,
+        scope: accessScopeToSearchIdentitiesScope(row.membershipScope),
+        projectId: row.projectId
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ListIdentityRefsV2" });
+    }
+  };
+
+  return { searchIdentitiesV2, countIdentitiesV2, listIdentityRefsV2 };
 };
