@@ -122,6 +122,10 @@ type Identity struct {
 	AuthMethod   ActorAuthMethod
 	IsSuperAdmin bool
 
+	// TokenVersionID is the session/token version ID (for JWT user auth).
+	// Used for assume privilege validation to ensure token is still valid.
+	TokenVersionID uuid.UUID
+
 	// MFA fields (for JWT user auth).
 	IsMfaVerified bool
 	MfaMethod     string
@@ -183,4 +187,27 @@ func WithAuthInfo(ctx context.Context, info *AuthInfo) context.Context {
 func AuthInfoFromContext(ctx context.Context) *AuthInfo {
 	info, _ := ctx.Value(authInfoKey{}).(*AuthInfo)
 	return info
+}
+
+// AssumedPrivilegeDetails holds the decoded assume privilege token payload.
+// This is stored in request context when a user is assuming another actor's privileges.
+type AssumedPrivilegeDetails struct {
+	TokenVersionID uuid.UUID
+	ProjectID      string
+	RequesterID    uuid.UUID
+	ActorType      ActorType
+	ActorID        uuid.UUID
+}
+
+type assumedPrivilegeKey struct{}
+
+// WithAssumedPrivilege stores the assumed privilege details in the context.
+func WithAssumedPrivilege(ctx context.Context, details *AssumedPrivilegeDetails) context.Context {
+	return context.WithValue(ctx, assumedPrivilegeKey{}, details)
+}
+
+// AssumedPrivilegeFromContext returns the assumed privilege details stored in ctx, or nil if absent.
+func AssumedPrivilegeFromContext(ctx context.Context) *AssumedPrivilegeDetails {
+	details, _ := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	return details
 }

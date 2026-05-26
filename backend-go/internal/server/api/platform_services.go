@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/kms"
@@ -14,12 +15,13 @@ import (
 
 // PlatformServices holds platform-level services shared across handlers.
 type PlatformServices struct {
-	Authenticator apiauth.Authenticator
-	Permission    *permission.Service
-	KMS           *kms.Service
-	License       *license.Service
-	Project       *project.Service
-	AuditLog      *auditlog.Service
+	Authenticator   apiauth.Authenticator
+	Permission      *permission.Service
+	KMS             *kms.Service
+	License         *license.Service
+	Project         *project.Service
+	AuditLog        *auditlog.Service
+	AssumePrivilege *assumeprivilege.Service
 }
 
 func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, error) {
@@ -49,6 +51,11 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 
 	projectSvc := project.NewService(ctx, infra.Logger, &project.Deps{DB: infra.DB})
 
+	assumePrivilegeSvc := assumeprivilege.NewService(ctx, infra.Logger, &assumeprivilege.Deps{
+		AuthSecret:        infra.Config.AuthSecret,
+		PermissionService: permissionSvc,
+	})
+
 	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,
 		Config: infra.Config,
@@ -64,12 +71,13 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 	auditLogQueueHandler.Register(infra.Queue)
 
 	svc := &PlatformServices{
-		Authenticator: authenticator,
-		Permission:    permissionSvc,
-		KMS:           kmsSvc,
-		License:       licenseSvc,
-		Project:       projectSvc,
-		AuditLog:      auditLogSvc,
+		Authenticator:   authenticator,
+		Permission:      permissionSvc,
+		KMS:             kmsSvc,
+		License:         licenseSvc,
+		Project:         projectSvc,
+		AuditLog:        auditLogSvc,
+		AssumePrivilege: assumePrivilegeSvc,
 	}
 
 	return svc, nil

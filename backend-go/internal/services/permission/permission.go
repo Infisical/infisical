@@ -106,12 +106,16 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		return p.getServiceTokenProjectPermission(ctx, args.ActorID.String(), args.ProjectID, args.ActorOrgID, args.ActionProjectType)
 	}
 
-	// 2. TODO(go): assumed privilege check — allows users to assume another actor's privileges
-	// (identity impersonation). Port of permission-service.ts:427-436.
-	// Implementation requires:
-	// - Request context key for AssumedPrivilegeDetails
-	// - Check if current user is assuming another identity's privileges
-	// - Swap actor/actorId if assumption is valid
+	// 2. Assumed privilege check — allows users to assume another actor's privileges.
+	// Port of permission-service.ts:482-492.
+	if assumed := auth.AssumedPrivilegeFromContext(ctx); assumed != nil {
+		if args.Actor == auth.ActorTypeUser &&
+			args.ActorID == assumed.RequesterID &&
+			args.ProjectID == assumed.ProjectID {
+			args.Actor = assumed.ActorType
+			args.ActorID = assumed.ActorID
+		}
+	}
 
 	// 3. Validate actor type
 	if args.Actor != auth.ActorTypeUser && args.Actor != auth.ActorTypeIdentity {
