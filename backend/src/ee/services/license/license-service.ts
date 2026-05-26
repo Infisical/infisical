@@ -603,7 +603,7 @@ export const licenseServiceFactory = ({
 
     const mappedRows = Object.values(BillingPlanRows).map(({ name, field }) => ({
       name,
-      allowed: onPremFeatures[field as keyof TFeatureSet] || false,
+      allowed: onPremFeatures[field as keyof TFeatureSet] as boolean | number | null,
       used: calculateUsageValue(name, field, projectCount, totalIdentities)
     }));
 
