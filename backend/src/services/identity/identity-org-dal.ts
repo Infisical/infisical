@@ -785,7 +785,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .where(applyScopeFilter)
-        .groupBy(`${TableName.Membership}.id`, `${TableName.Identity}.name`, `${TableName.Membership}.lastLoginTime`)
+        .groupBy(
+          `${TableName.Membership}.id`,
+          `${TableName.Identity}.name`,
+          `${TableName.Identity}.orgId`,
+          `${TableName.Membership}.lastLoginTime`
+        )
         .select(`${TableName.Membership}.id`)
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
         .select(lastLoginFallbackRaw("lastLoginTime", "lastLoginSort"))
