@@ -192,7 +192,11 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.groupName || destinationConfig.groupId || "Checkly Account";
       break;
     case SecretSync.Supabase:
-      primaryText = destinationConfig.projectName;
+      if (destinationConfig?.projectBranchId) {
+        primaryText = `${destinationConfig.projectName} / ${destinationConfig.projectBranchName}`;
+      } else {
+        primaryText = destinationConfig.projectName;
+      }
       secondaryText = "Supabase Project";
       break;
     case SecretSync.DigitalOceanAppPlatform:

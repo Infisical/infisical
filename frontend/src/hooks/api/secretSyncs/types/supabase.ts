@@ -8,6 +8,8 @@ export type TSupabaseSync = TRootSecretSync & {
   destinationConfig: {
     projectId: string;
     projectName: string;
+    projectBranchName?: string;
+    projectBranchId?: string;
   };
   connection: {
     app: AppConnection.Supabase;
