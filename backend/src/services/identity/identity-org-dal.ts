@@ -754,13 +754,14 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       };
 
       // Identity-auth login services update the lastLogin* columns on exactly one Membership row
-      // keyed on Identity.projectId (always NULL for org identities, so always the org Membership).
-      // The project Membership row created at `createMembershipIdentity` time therefore never
-      // receives a login timestamp for org identities. To avoid surfacing "Never" in the project /
-      // all tabs for an identity that authenticates regularly, fall back to the matching
-      // (actorIdentityId, scope=Organization, scopeOrgId) row via a correlated subquery.
+      // keyed on the identity's home org (scope=Organization, scopeOrgId=Identity.orgId, projectId
+      // omitted). The project Membership row created at `createMembershipIdentity` time therefore
+      // never receives a login timestamp. To avoid surfacing "Never" in the project / all tabs for
+      // an identity that authenticates regularly, fall back to the matching org Membership via a
+      // correlated subquery. The bound scopeOrgId must reference Identity.orgId (not the caller's
+      // orgId) so the fallback also works for a root-org identity linked into a sub-org.
       const lastLoginFallbackRaw = (column: "lastLoginTime" | "lastLoginAuthMethod", outputAlias: string) =>
-        db.raw(`COALESCE(??.??, (SELECT om.?? FROM ?? AS om WHERE om.?? = ??.?? AND om.?? = ? AND om.?? = ?)) as ??`, [
+        db.raw(`COALESCE(??.??, (SELECT om.?? FROM ?? AS om WHERE om.?? = ??.?? AND om.?? = ? AND om.?? = ??.??)) as ??`, [
           TableName.Membership,
           column,
           column,
@@ -771,7 +772,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "scope",
           AccessScope.Organization,
           "scopeOrgId",
-          orgId,
+          TableName.Identity,
+          "orgId",
           outputAlias
         ]);
 
