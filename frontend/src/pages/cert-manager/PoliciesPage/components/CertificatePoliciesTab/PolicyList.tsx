@@ -9,6 +9,7 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -32,7 +33,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
@@ -47,6 +48,7 @@ interface Props {
 
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
@@ -114,7 +116,17 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
           <TableRow key={policy.id}>
             <TableCell>
               <div className="flex items-center gap-2">
-                <div className="text-mineshaft-200">{policy.name}</div>
+                <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id,
+                    policyId: policy.id
+                  }}
+                  className="text-mineshaft-200 hover:text-primary-400"
+                >
+                  {policy.name}
+                </Link>
                 {policy.description && (
                   <Tooltip content={policy.description}>
                     <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />

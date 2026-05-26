@@ -10,6 +10,7 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -21,6 +22,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { TableCell, TableRow } from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -37,6 +39,8 @@ interface Props {
 }
 
 export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) => {
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const isInternalCa = !profile.certificateAuthority?.isExternal;
   const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
 
@@ -62,7 +66,17 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
     <TableRow key={profile.id}>
       <TableCell>
         <div className="flex items-center gap-2">
-          <div className="text-mineshaft-300">{profile.slug}</div>
+          <Link
+            to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+            params={{
+              orgId: currentOrg.id,
+              projectId: currentProject.id,
+              profileId: profile.id
+            }}
+            className="text-mineshaft-300 hover:text-primary-400"
+          >
+            {profile.slug}
+          </Link>
           {profile.description && (
             <Tooltip content={profile.description}>
               <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
@@ -82,9 +96,17 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
         </span>
       </TableCell>
       <TableCell>
-        <span className="text-sm text-mineshaft-300">
+        <Link
+          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
+          params={{
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            policyId: profile.certificatePolicyId
+          }}
+          className="text-sm text-mineshaft-300 hover:text-primary-400"
+        >
           {policyData?.name || profile.certificatePolicyId}
-        </span>
+        </Link>
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>

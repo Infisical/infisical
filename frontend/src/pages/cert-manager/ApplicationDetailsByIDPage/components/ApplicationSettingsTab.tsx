@@ -590,7 +590,20 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   const hasMethods = methods.length > 0;
                   return (
                     <TableRow key={p.profileId}>
-                      <TableCell className="font-mono">{p.profileSlug}</TableCell>
+                      <TableCell className="font-mono">
+                        <Link
+                          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                          params={{
+                            orgId: orgId ?? "",
+                            projectId: projectId ?? "",
+                            profileId: p.profileId
+                          }}
+                          search={{ from: "application", applicationName: application.name }}
+                          className="text-mineshaft-200 hover:text-primary-400"
+                        >
+                          {p.profileSlug}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         {/* eslint-disable-next-line no-nested-ternary */}
                         {canConfigureEnrollment ? (

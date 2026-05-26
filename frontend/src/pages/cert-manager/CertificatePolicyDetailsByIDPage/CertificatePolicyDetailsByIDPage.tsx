@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
@@ -16,29 +17,26 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization, useProject } from "@app/context";
 import {
-  ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProject
-} from "@app/context";
-import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
-import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+  ProjectPermissionCertificatePolicyActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
+  useDeleteCertificatePolicy,
+  useGetCertificatePolicyById
+} from "@app/hooks/api/certificatePolicies";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { usePopUp } from "@app/hooks/usePopUp";
 
-import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
-import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
+import { CreatePolicyModal } from "../PoliciesPage/components/CertificatePoliciesTab/CreatePolicyModal";
 import {
-  CaCertDetailsSection,
-  CaCertificatesSection,
-  CaCrlsSection,
-  CaDetailsSection,
-  CaDistributionPointsSection,
-  CaGenerateRootCertModal,
-  CaRenewalModal,
-  CaSigningConfigSection
+  PolicyAlgorithmsSection,
+  PolicyDetailsSection,
+  PolicyKeyUsagesSection,
+  PolicySansRulesSection,
+  PolicySubjectRulesSection,
+  PolicyValiditySection
 } from "./components";
 
 const Page = () => {
@@ -46,18 +44,15 @@ const Page = () => {
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
-    from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
+    from: ROUTE_PATHS.CertManager.CertificatePolicyDetailsByIDPage.id
   });
-  const { caId } = params as { caId: string };
+  const { policyId } = params as { policyId: string };
   const search = useSearch({
-    from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
+    from: ROUTE_PATHS.CertManager.CertificatePolicyDetailsByIDPage.id
   }) as { from?: "settings" | "profile"; profileId?: string };
-  const { data } = useGetCa({
-    caId,
-    type: CaType.INTERNAL
-  }) as { data: TInternalCertificateAuthority };
 
-  const projectId = currentProject?.id || "";
+  const { data: policy } = useGetCertificatePolicyById({ policyId });
+  const { mutateAsync: deletePolicy } = useDeleteCertificatePolicy();
 
   const cameFromProfile = search.from === "profile" && Boolean(search.profileId);
 
@@ -65,48 +60,38 @@ const Page = () => {
     profileId: cameFromProfile && search.profileId ? search.profileId : ""
   });
 
-  const { mutateAsync: deleteCa } = useDeleteCa();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "ca",
-    "deleteCa",
-    "installCaCert",
-    "renewCa",
-    "generateRootCaCert"
-  ] as const);
+  const projectId = currentProject?.id || "";
 
-  const onRemoveCaSubmit = async () => {
-    if (!currentProject?.slug) return;
+  const handleDeleteConfirm = async () => {
+    if (!policy) return;
 
-    await deleteCa({
-      id: data.id,
-      type: CaType.INTERNAL
-    });
+    await deletePolicy({ policyId: policy.id });
 
     createNotification({
-      text: "Successfully deleted CA",
+      text: `Certificate policy "${policy.name}" deleted successfully`,
       type: "success"
     });
 
-    handlePopUpClose("deleteCa");
+    setIsDeleteModalOpen(false);
     navigate({
       to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
       params: {
         orgId: currentOrg.id,
         projectId
       },
-      search: { selectedTab: "certificate-authorities" }
+      search: { selectedTab: "certificate-policies" }
     });
   };
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      {data && (
+      {policy && (
         <ProjectPermissionCan
-          I={ProjectPermissionCertificateAuthorityActions.Read}
-          a={subject(ProjectPermissionSub.CertificateAuthorities, {
-            name: data.name
-          })}
+          I={ProjectPermissionCertificatePolicyActions.Read}
+          a={subject(ProjectPermissionSub.CertificatePolicies, { name: policy.name })}
         >
           {(isAllowed) =>
             isAllowed ? (
@@ -131,17 +116,17 @@ const Page = () => {
                       orgId: currentOrg.id,
                       projectId
                     }}
-                    search={{ selectedTab: "certificate-authorities" }}
+                    search={{ selectedTab: "certificate-policies" }}
                     className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
                   >
                     <FontAwesomeIcon icon={faChevronLeft} />
-                    Certificate Authorities
+                    Certificate Policies
                   </Link>
                 )}
                 <PageHeader
                   scope={ProjectType.CertificateManager}
-                  description="Manage certificate authority"
-                  title={data.name}
+                  description="Manage certificate policy"
+                  title={policy.name}
                 >
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -152,18 +137,33 @@ const Page = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <ProjectPermissionCan
-                        I={ProjectPermissionCertificateAuthorityActions.Delete}
-                        a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                          name: data.name
+                        I={ProjectPermissionCertificatePolicyActions.Edit}
+                        a={subject(ProjectPermissionSub.CertificatePolicies, {
+                          name: policy.name
+                        })}
+                      >
+                        {(canEdit) => (
+                          <DropdownMenuItem
+                            isDisabled={!canEdit}
+                            onClick={() => setIsEditModalOpen(true)}
+                          >
+                            Edit Policy
+                          </DropdownMenuItem>
+                        )}
+                      </ProjectPermissionCan>
+                      <ProjectPermissionCan
+                        I={ProjectPermissionCertificatePolicyActions.Delete}
+                        a={subject(ProjectPermissionSub.CertificatePolicies, {
+                          name: policy.name
                         })}
                       >
                         {(canDelete) => (
                           <DropdownMenuItem
                             variant="danger"
                             isDisabled={!canDelete}
-                            onClick={() => handlePopUpOpen("deleteCa")}
+                            onClick={() => setIsDeleteModalOpen(true)}
                           >
-                            Delete CA
+                            Delete Policy
                           </DropdownMenuItem>
                         )}
                       </ProjectPermissionCan>
@@ -172,20 +172,31 @@ const Page = () => {
                 </PageHeader>
                 <div className="flex flex-col gap-5 lg:flex-row">
                   <div className="w-full lg:max-w-[24rem]">
-                    <CaDetailsSection caId={data.id} />
-                    <CaSigningConfigSection caId={data.id} />
-                    <CaCertDetailsSection caId={data.id} />
+                    <PolicyDetailsSection policy={policy} />
                   </div>
                   <div className="flex flex-1 flex-col gap-y-5">
-                    <CaCertificatesSection
-                      caId={data.id}
-                      caName={data.name}
-                      handlePopUpOpen={handlePopUpOpen}
-                    />
-                    <CaCrlsSection caId={data.id} />
-                    <CaDistributionPointsSection caId={data.id} />
+                    <PolicyValiditySection policy={policy} />
+                    <PolicySubjectRulesSection policy={policy} />
+                    <PolicySansRulesSection policy={policy} />
+                    <PolicyKeyUsagesSection policy={policy} />
+                    <PolicyAlgorithmsSection policy={policy} />
                   </div>
                 </div>
+
+                <CreatePolicyModal
+                  isOpen={isEditModalOpen}
+                  onClose={() => setIsEditModalOpen(false)}
+                  policy={policy}
+                  mode="edit"
+                />
+
+                <DeleteActionModal
+                  isOpen={isDeleteModalOpen}
+                  title={`Delete Certificate Policy ${policy.name}?`}
+                  onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
+                  deleteKey={policy.name}
+                  onDeleteApproved={handleDeleteConfirm}
+                />
               </div>
             ) : (
               <div className="container mx-auto flex h-full items-center justify-center">
@@ -195,29 +206,15 @@ const Page = () => {
           }
         </ProjectPermissionCan>
       )}
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
-        isOpen={popUp.deleteCa.isOpen}
-        title={`Are you sure you want to remove the CA ${
-          (popUp?.deleteCa?.data as { dn: string })?.dn || ""
-        }?`}
-        subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
-        onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onRemoveCaSubmit}
-      />
     </div>
   );
 };
 
-export const CertAuthDetailsByIDPage = () => {
+export const CertificatePolicyDetailsByIDPage = () => {
   return (
     <>
       <Helmet>
-        <title>Certificate Authority</title>
+        <title>Certificate Policy</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <Page />
