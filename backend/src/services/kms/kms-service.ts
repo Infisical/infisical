@@ -18,7 +18,7 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
-import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -429,10 +429,11 @@ export const kmsServiceFactory = ({
 
       if (isPqcKeyAlgorithm(algorithm as string)) {
         const detectedVariant = detectPqcVariantFromDer(key);
-        const expectedVariant = (algorithm as string).replace(/_/g, "-");
-        if (detectedVariant && detectedVariant !== expectedVariant) {
+        const expectedVariant = KMS_TO_OPENSSL_NAME[algorithm as AsymmetricKeyAlgorithm];
+        if (detectedVariant && expectedVariant && detectedVariant !== expectedVariant) {
+          const OPENSSL_TO_KMS = Object.fromEntries(Object.entries(KMS_TO_OPENSSL_NAME).map(([k, v]) => [v, k]));
           throw new BadRequestError({
-            message: `Key material does not match the declared algorithm. Expected ${algorithm as string} but the key is ${detectedVariant.replace(/-/g, "_")}.`
+            message: `Key material does not match the declared algorithm. Expected ${algorithm as string} but the key is ${OPENSSL_TO_KMS[detectedVariant] || detectedVariant}.`
           });
         }
       } else {
