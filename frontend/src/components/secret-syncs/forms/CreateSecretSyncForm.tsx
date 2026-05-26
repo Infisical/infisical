@@ -218,6 +218,14 @@ export const CreateSecretSyncForm = ({
     destinationConfig: watch("destinationConfig")
   });
 
+  const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
+  const keySchema = watch("syncOptions.keySchema");
+  const initialSyncBehavior = watch("syncOptions.initialSyncBehavior");
+  const willDeleteUnmatchedSecrets =
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
+    !disableSecretDeletion &&
+    !keySchema;
+
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
@@ -403,9 +411,14 @@ export const CreateSecretSyncForm = ({
               <div className="flex flex-col gap-2">
                 <p>Infisical is the source of truth for synced destinations.</p>
                 <p>
-                  Secrets not in Infisical will be overwritten in the destination, and any direct
-                  edits there may be overwritten by future syncs.
+                  Secrets in the destination will be overwritten, and any direct edits there may be
+                  overwritten by future syncs.
                 </p>
+                {willDeleteUnmatchedSecrets && (
+                  <p>
+                    Secrets in {destinationName} that don&apos;t exist in Infisical will be deleted.
+                  </p>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
