@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "How to use Infisical to inject, push, and manage secrets within Kubernetes clusters"
 ---
 
-import KubernetesOperatorTemplating from "/snippets/kubernetes-operator-templating.mdx";
+import KubernetesOperatorTemplating from "/snippets/kubernetes-operator-v1beta1-templating.mdx";
 
 The Infisical Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Infisical and your Kubernetes cluster.
 It provides multiple Custom Resource Definitions (CRDs) which enable you to:
@@ -17,9 +17,7 @@ When these CRDs are configured, the Infisical Operator will continuously monitor
 It can also automatically reload dependent Deployment resources whenever relevant secrets are updated.
 
 <Info>
-  The operator supports two CRD API versions. **v1beta1** is the recommended version for new installations.
-  The v1alpha1 `InfisicalSecret` CRD is deprecated in favor of `InfisicalStaticSecret` (v1beta1) and will be removed in a future release — see the [migration guide](#migrating-from-v1alpha1-to-v1beta1) below.
-  The v1alpha1 `InfisicalPushSecret` and `InfisicalDynamicSecret` CRDs are **not deprecated** and remain the current way to use those features until v1beta1 replacements are available.
+  The operator supports two CRD API versions: **v1beta1** and **v1alpha1**. Use **v1beta1** for new installations; **v1alpha1** is legacy and will be deprecated soon.
 </Info>
 
 <Note>
@@ -196,6 +194,10 @@ controllerManager:
     | [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) | Sync secrets from Infisical to a Kubernetes secret. Replaces `InfisicalSecret`. |
   </Tab>
   <Tab title="v1alpha1">
+    <Warning>
+      The v1alpha1 CRDs are legacy and are planned for deprecation.
+    </Warning>
+
     | CRD | Status | Description |
     | --- | ------ | ----------- |
     | [InfisicalSecret](/integrations/platforms/kubernetes/infisical-secret-crd) | Deprecated | Sync secrets from Infisical to a Kubernetes secret. Use [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) (v1beta1) instead. See [migration guide](#migrating-from-v1alpha1-to-v1beta1). |
@@ -349,7 +351,7 @@ to point to a CA certificate stored in a Kubernetes secret resource.
     metadata:
       name: my-infisical-connection
     spec:
-      address: https://app.infisical.com/api
+      address: https://infisical.mydomain.com
       tls:
         caCertificate:
           name: custom-ca-certificate
@@ -376,55 +378,6 @@ to point to a CA certificate stored in a Kubernetes secret resource.
 
 <KubernetesOperatorTemplating />
 
-
-## Global configuration (v1alpha1 only)
-
-<Warning>
-  Global configuration via ConfigMap only applies to v1alpha1 CRDs (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`).
-  In v1beta1, connection and TLS settings are configured through the [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) CRD, which can be shared across multiple resources.
-</Warning>
-
-To configure global settings that will apply to all v1alpha1 CRD instances, you can define these configurations in a Kubernetes ConfigMap.
-For example, you can configure all CRD instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
-
-### Available global properties
-
-| Property | Description                                                                       | Default value                 |
-| -------- | --------------------------------------------------------------------------------- | ----------------------------- |
-| hostAPI  | If `hostAPI` in a CRD instance is left empty, this value will be used | https://app.infisical.com/api |
-| tls.caRef.secretName | If `tls.caRef.secretName` in a CRD instance is left empty, this value will be used | - |
-| tls.caRef.secretNamespace | If `tls.caRef.secretNamespace` in a CRD instance is left empty, this value will be used | - |
-| tls.caRef.key | If `tls.caRef.key` in a CRD instance is left empty, this value will be used | - |
-
-### Applying global configurations
-
-All global configurations must reside in a Kubernetes ConfigMap named `infisical-config` in the namespace `infisical-operator-system`.
-To apply global configuration to the operator, copy the following yaml into `infisical-config.yaml` file.
-
-```yaml infisical-config.yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: infisical-operator-system
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: infisical-config
-  namespace: infisical-operator-system
-data:
-  hostAPI: https://example.com/api # <-- global hostAPI
-  tls.caRef.secretName: custom-ca-certificate # <-- global TLS CA secret name
-  tls.caRef.secretNamespace: default # <-- global TLS CA secret namespace
-  tls.caRef.key: ca.crt # <-- global TLS CA secret key
-```
-
-Then apply this change via kubectl by running the following
-
-```bash
-kubectl apply -f infisical-config.yaml
-```
-
 ## Migrating from v1alpha1 to v1beta1
 
 <Info>
@@ -435,11 +388,17 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
 
 ### Key changes
 
-| v1alpha1 | v1beta1 | What changed |
-| -------- | ------- | ------------ |
-| `InfisicalSecret` | `InfisicalStaticSecret` | New CRD that replaces `InfisicalSecret`. Auth and connection are now referenced via `InfisicalAuth` and `InfisicalConnection` instead of inline. |
-| Inline `authentication` block | `InfisicalAuth` CRD | Auth config is now a standalone resource, reusable across CRDs. Authenticated credentials are cached and shared by all resources referencing the same `InfisicalAuth`. |
-| Inline `hostAPI` / `tls` | `InfisicalConnection` CRD | Connection config is now a standalone resource. |
+- **Secret resource:** `InfisicalSecret` -> `InfisicalStaticSecret`
+
+  `InfisicalStaticSecret` replaces the v1alpha1 `InfisicalSecret` CRD. Instead of defining auth and connection settings inline, it references dedicated `InfisicalAuth` and `InfisicalConnection` resources.
+
+- **Authentication:** inline `authentication` -> `InfisicalAuth`
+
+  Authentication config is now defined in a standalone `InfisicalAuth` resource that can be reused across CRDs. Authenticated credentials are cached and shared by all resources referencing the same `InfisicalAuth`.
+
+- **Connection:** inline `hostAPI` / `tls` -> `InfisicalConnection`
+
+  Connection config is now defined in a standalone `InfisicalConnection` resource that can be reused by auth and secret resources.
 
 ### Migration steps
 
@@ -461,75 +420,11 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
   </Step>
 </Steps>
 
-## Troubleshoot operator
-
-If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
-It will continue attempting to reconnect to the API indefinitely.
-All operator CRDs use the `status.conditions` field to report their current state and any errors encountered.
-
-<Tabs>
-  <Tab title="v1beta1 (Recommended)">
-    In v1beta1, check the status of each resource independently: `InfisicalConnection`, `InfisicalAuth`, and `InfisicalStaticSecret`.
-
-    ```bash
-    # List all v1beta1 resources
-    $ kubectl get infisicalconnections
-    $ kubectl get infisicalauths
-    $ kubectl get infisicalstaticsecrets
-
-    # Inspect a specific resource
-    $ kubectl describe infisicalstaticsecret my-static-secret
-    ...
-    Status:
-      Conditions:
-        Last Transition Time:  2025-01-15T10:00:00Z
-        Message:               Secrets synced successfully.
-        Reason:                OK
-        Status:                True
-        Type:                  secrets.infisical.com/LastReconcileStatus
-    Events:                    <none>
-    ```
-
-    If your `InfisicalStaticSecret` is not syncing, also verify the `InfisicalConnection` and `InfisicalAuth` resources it references are both in a ready state:
-    ```bash
-    $ kubectl describe infisicalconnection my-infisical-connection
-    $ kubectl describe infisicalauth my-infisical-auth
-    ```
-  </Tab>
-  <Tab title="v1alpha1">
-    ```bash
-    $ kubectl get infisicalSecrets
-    NAME                     AGE
-    infisicalsecret-sample   12s
-
-    $ kubectl describe infisicalSecret infisicalsecret-sample
-    ...
-    Status:
-      Conditions:
-        Last Transition Time:  2022-12-18T04:29:09Z
-        Message:               Infisical controller has located the Infisical token in provided Kubernetes secret
-        Reason:                OK
-        Status:                True
-        Type:                  secrets.infisical.com/LoadedInfisicalToken
-        Last Transition Time:  2022-12-18T04:29:10Z
-        Message:               Failed to update secret because: 400 Bad Request
-        Reason:                Error
-        Status:                False
-        Type:                  secrets.infisical.com/ReadyToSyncSecrets
-    Events:                    <none>
-    ```
-  </Tab>
-</Tabs>
-
 ## Uninstall Operator
 
 The managed secret created by the operator will not be deleted when the operator is uninstalled.
 
-<Tabs>
-	 <Tab title="Helm">
-		Uninstall Infisical Helm repository 
-    ```bash
-    helm uninstall <release name>
-    ```
-   </Tab>
-</Tabs>
+Uninstall Infisical Helm repository 
+```bash
+  helm uninstall <release name>
+```

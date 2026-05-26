@@ -4,10 +4,6 @@ title: "Using the InfisicalConnection CRD"
 description: "Learn how to configure the InfisicalConnection CRD to define how the operator connects to your Infisical instance."
 ---
 
-<Info>
-  This CRD is part of the **v1beta1** API and is only used with v1beta1 secret resources (`InfisicalStaticSecret`).
-</Info>
-
 ## Overview
 
 The **InfisicalConnection** CRD defines how the Infisical Operator connects to your Infisical instance. It holds the instance address and optional TLS configuration. Once created, it can be referenced by multiple `InfisicalAuth` so you only need to define connection details once per Infisical instance.
@@ -25,7 +21,8 @@ kind: InfisicalConnection
 metadata:
   name: my-infisical-connection
 spec:
-  address: https://app.infisical.com/api
+  address: https://infisical.domain.com
+  # If you are using cloud instances, this is not necessary
   tls:
     caCertificate:
       name: custom-ca-certificate
@@ -44,7 +41,7 @@ kubectl apply -f infisical-connection.yaml
 <Accordion title="address">
   The URL of the Infisical API to connect to.
 
-  When `address` is not defined, the operator connects to the address defined in the environment variable `INFISICAL_HOST_API`.
+  When `address` is not defined, the operator connects to the address defined by the Helm value `hostAPI`.
 
   For self-hosted instances, set this to `https://your-self-hosted-instance.com/api`.
 </Accordion>
@@ -57,7 +54,7 @@ kubectl apply -f infisical-connection.yaml
   A reference to a Kubernetes secret containing a CA certificate for SSL/TLS connections.
 
   - `name`: Name of the Kubernetes secret containing the CA certificate.
-  - `namespace`: Namespace of the Kubernetes secret.
+  - `namespace`: Namespace of the Kubernetes secret containing the CA certificate.
   - `key`: The key within the secret that holds the CA certificate value.
 
   ```yaml
