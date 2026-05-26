@@ -316,7 +316,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (appConnectionRouter) => {
-
       // register generic app connection endpoints
       await appConnectionRouter.register(registerAppConnectionRouter);
 
