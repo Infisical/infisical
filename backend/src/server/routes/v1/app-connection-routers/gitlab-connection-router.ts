@@ -130,6 +130,44 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
   server.route({
     method: "GET",
+    url: `/:connectionId/search-groups-and-projects`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "searchGitLabGroupsAndProjects",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        search: z.string().trim().min(1).max(255)
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            fullPath: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+      const { search } = req.query;
+      const items: TGitLabGroupTreeItem[] = await server.services.appConnection.gitlab.searchGroupAndProject(
+        connectionId,
+        search,
+        req.permission
+      );
+
+      return items;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: `/:connectionId/root-groups`,
     config: {
       rateLimit: readLimit

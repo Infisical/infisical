@@ -14,13 +14,6 @@ export type TGitLabGroupTreeItem = {
   fullPath: string;
 };
 
-export type TGitLabPaginatedProjects = {
-  items: TGitLabProject[];
-  totalCount: number;
-  totalPages: number;
-  page: number;
-};
-
 export type TGitLabListProjectsParams = {
   owned?: boolean;
   search?: string;

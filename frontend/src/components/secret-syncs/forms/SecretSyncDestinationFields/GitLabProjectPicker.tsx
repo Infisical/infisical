@@ -18,6 +18,7 @@ import {
   useGitLabConnectionListProjects,
   useGitLabConnectionListRootGroups,
   useGitLabConnectionListSubgroups,
+  useGitLabConnectionSearchGroupsAndProjects,
   useGitLabConnectionSearchGroups
 } from "@app/hooks/api/appConnections/gitlab";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -367,9 +368,9 @@ export const GitLabProjectPicker = ({
     enabled: hasConnection
   });
 
-  const personalCountQuery = useGitLabConnectionListProjects(
+  const personalProjectsQuery = useGitLabConnectionListProjects(
     connectionId,
-    { owned: true, page: 1, perPage: 1 },
+    { owned: true },
     { enabled: hasConnection }
   );
 
@@ -385,9 +386,9 @@ export const GitLabProjectPicker = ({
     }
   );
 
-  const groupsSearchQuery = useGitLabConnectionListProjects(
+  const groupsAndProjectsSearchQuery = useGitLabConnectionSearchGroupsAndProjects(
     connectionId,
-    { search: debouncedSearch, page: 1, perPage: GROUPS_SEARCH_PER_PAGE },
+    debouncedSearch,
     {
       enabled: hasConnection && tab === "groups" && isSearching
     }
@@ -396,19 +397,6 @@ export const GitLabProjectPicker = ({
   const groupNameSearchQuery = useGitLabConnectionSearchGroups(connectionId, debouncedSearch, {
     enabled: hasConnection && tab === "groups" && isSearching
   });
-
-  const personalProjectsQuery = useGitLabConnectionListProjects(
-    connectionId,
-    {
-      owned: true,
-      search: isSearching ? debouncedSearch : undefined,
-      page: personalPage,
-      perPage: PERSONAL_PROJECTS_PER_PAGE
-    },
-    {
-      enabled: hasConnection && tab === "yours"
-    }
-  );
 
   const handleTabChange = (next: TabKey) => {
     if (next === tab) return;
@@ -448,8 +436,34 @@ export const GitLabProjectPicker = ({
       ? subgroupsQuery.isLoading || groupProjectsQuery.isLoading
       : rootGroupsQuery.isLoading);
 
-  const personalTotalPages = personalProjectsQuery.data?.totalPages ?? 0;
-  const personalTotalCount = personalProjectsQuery.data?.totalCount ?? 0;
+  const normalizedSearch = debouncedSearch.toLowerCase();
+  const personalProjects = personalProjectsQuery.data ?? [];
+  const filteredPersonalProjects = personalProjects.filter((project) =>
+    project.name.toLowerCase().includes(normalizedSearch)
+  );
+  const personalTotalCount = filteredPersonalProjects.length;
+  const personalTotalPages = Math.ceil(personalTotalCount / PERSONAL_PROJECTS_PER_PAGE);
+  const paginatedPersonalProjects = filteredPersonalProjects.slice(
+    (personalPage - 1) * PERSONAL_PROJECTS_PER_PAGE,
+    personalPage * PERSONAL_PROJECTS_PER_PAGE
+  );
+  const searchedGroupIds = new Set((groupNameSearchQuery.data ?? []).map((group) => group.id));
+  const searchedGroupProjects = (groupsAndProjectsSearchQuery.data ?? [])
+    .filter((item) => !searchedGroupIds.has(item.id))
+    .filter((project) => project.name.toLowerCase().includes(normalizedSearch))
+    .map((project) => ({ id: project.id, name: project.name }))
+    .slice(0, GROUPS_SEARCH_PER_PAGE);
+
+  useEffect(() => {
+    if (personalTotalPages === 0) {
+      if (personalPage !== 1) setPersonalPage(1);
+      return;
+    }
+
+    if (personalPage > personalTotalPages) {
+      setPersonalPage(personalTotalPages);
+    }
+  }, [personalPage, personalTotalPages]);
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
@@ -472,7 +486,7 @@ export const GitLabProjectPicker = ({
               icon={<User />}
               label="Your projects"
               isActive={tab === "yours"}
-              count={personalCountQuery.data?.totalCount}
+              count={personalProjects.length}
               onClick={() => handleTabChange("yours")}
             />
           </div>
@@ -558,9 +572,9 @@ export const GitLabProjectPicker = ({
           {hasConnection && tab === "groups" && isSearching && (
             <SearchResultsList
               query={debouncedSearch}
-              isLoading={groupsSearchQuery.isLoading || groupNameSearchQuery.isLoading}
+              isLoading={groupsAndProjectsSearchQuery.isLoading || groupNameSearchQuery.isLoading}
               groups={groupNameSearchQuery.data ?? []}
-              projects={groupsSearchQuery.data?.items ?? []}
+              projects={searchedGroupProjects}
               selectedProjectId={selectedProjectId}
               onSelectGroup={handleSearchGroupSelect}
               onSelectProject={handleProjectSelect}
@@ -601,7 +615,7 @@ export const GitLabProjectPicker = ({
           {hasConnection && tab === "yours" && (
             <PersonalProjectsList
               isLoading={personalProjectsQuery.isLoading}
-              projects={personalProjectsQuery.data?.items ?? []}
+              projects={paginatedPersonalProjects}
               selectedProjectId={selectedProjectId}
               onSelect={handleProjectSelect}
               isSearching={isSearching}
@@ -613,7 +627,7 @@ export const GitLabProjectPicker = ({
         {tab === "yours" && hasConnection && personalTotalCount > PERSONAL_PROJECTS_PER_PAGE && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-2 py-2 text-xs text-muted">
             <span className="whitespace-nowrap">
-              Page {personalProjectsQuery.data?.page ?? personalPage} of {personalTotalPages}
+              Page {personalPage} of {personalTotalPages}
             </span>
             <div className="flex shrink-0 items-center gap-1">
               <Button
