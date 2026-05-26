@@ -814,10 +814,7 @@ export const AcmeCertificateAuthorityFns = ({
 
         let resolvedEabHmacKey = eabHmacKey;
         if (eabHmacKey === "__INFISICAL_UNCHANGED__" || eabHmacKey === undefined) {
-          const existingExternalCa = await externalCertificateAuthorityDAL.findOne(
-            { caId: id, type: CaType.ACME },
-            tx
-          );
+          const existingExternalCa = await externalCertificateAuthorityDAL.findOne({ caId: id, type: CaType.ACME }, tx);
           const existingConfig = existingExternalCa?.configuration as DBConfigurationColumn | undefined;
           resolvedEabHmacKey = existingConfig?.eabHmacKey;
         } else if (eabHmacKey === "") {
