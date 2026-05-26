@@ -1,33 +1,19 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  OrganizationActionScope,
-  OrgMembershipRole,
-  TableName,
-  TRoles
-} from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  OrgPermissionAdminConsoleAction,
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -36,18 +22,15 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
-import { filterIdentitiesByProjectPermission, TProjectPermissionAbility } from "./identity-fns";
+import { getIdentityActiveLockoutAuthMethods } from "./identity-fns";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
-  SearchIdentitiesScope,
-  TCountIdentitiesV2DTO,
   TCreateIdentityDTO,
   TDeleteIdentityDTO,
   TGetIdentityByIdDTO,
   TListOrgIdentitiesByOrgIdDTO,
   TListProjectIdentitiesByIdentityIdDTO,
-  TSearchIdentitiesV2DTO,
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
@@ -59,16 +42,12 @@ type TIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getOrgPermissionByRoles" | "getProjectPermission"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -85,8 +64,7 @@ export const identityServiceFactory = ({
   orgDAL,
   membershipIdentityDAL,
   membershipRoleDAL,
-  additionalPrivilegeDAL,
-  projectDAL
+  additionalPrivilegeDAL
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -504,235 +482,6 @@ export const identityServiceFactory = ({
     return { identityMemberships: docs, totalCount };
   };
 
-  const resolveIdentitySearchScope = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    scope
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: TSearchIdentitiesV2DTO["actorAuthMethod"];
-    actorOrgId: string;
-    scope: SearchIdentitiesScope[];
-  }): Promise<{
-    uniqueScope: Set<SearchIdentitiesScope>;
-    accessibleProjectIds: string[];
-    projectPermissions: Map<string, TProjectPermissionAbility>;
-    conditionalProjectIds: Set<string>;
-  }> => {
-    const uniqueScope = new Set(scope);
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    const canReadOrgIdentities = orgPermission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    if (uniqueScope.has(SearchIdentitiesScope.OrganizationScope) && !canReadOrgIdentities) {
-      uniqueScope.delete(SearchIdentitiesScope.OrganizationScope);
-    }
-
-    const accessibleProjectIds: string[] = [];
-    const projectPermissions = new Map<string, TProjectPermissionAbility>();
-    const conditionalProjectIds = new Set<string>();
-    if (uniqueScope.has(SearchIdentitiesScope.ProjectScope)) {
-      const canAccessAllProjects = orgPermission.can(
-        OrgPermissionAdminConsoleAction.AccessAllProjects,
-        OrgPermissionSubjects.AdminConsole
-      );
-
-      if (canAccessAllProjects && canReadOrgIdentities) {
-        // Org admins read unconditionally across every project — skip the per-project probe,
-        // which would otherwise throw ProjectMembershipNotFound for projects the admin hasn't
-        // explicitly joined and drop them from accessibleProjectIds. The org-level identity:read
-        // gate stops access-all-projects holders without identity:read from enumerating
-        // project-scoped machine identities across the org.
-        accessibleProjectIds.push(...(await projectDAL.findOrgProjectIds(actorOrgId)));
-      } else {
-        const candidateProjectIds = await projectDAL.findActorAccessibleProjectIds(actorId, actor, actorOrgId);
-
-        const projectAccessChecks = await Promise.all(
-          candidateProjectIds.map(async (projectId) => {
-            try {
-              const { permission: projectPermission } = await permissionService.getProjectPermission({
-                actor,
-                actorId,
-                actionProjectType: ActionProjectType.Any,
-                actorAuthMethod,
-                projectId,
-                actorOrgId
-              });
-              // Broad `can(Read, Identity)` returns true for conditional rules too. We keep the
-              // project here and use the per-row check below to honor `identityId` conditions.
-              return projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
-                ? { projectId, permission: projectPermission }
-                : null;
-            } catch {
-              return null;
-            }
-          })
-        );
-
-        for (const entry of projectAccessChecks) {
-          if (entry) {
-            accessibleProjectIds.push(entry.projectId);
-            projectPermissions.set(entry.projectId, entry.permission);
-            // Tracking which projects carry conditional Read(Identity) rules lets the row filter
-            // skip CASL.can() for projects whose access is already unconditional — the broad
-            // can(Read, Identity) check above is authoritative for them.
-            const rules = entry.permission.rulesFor(
-              ProjectPermissionIdentityActions.Read,
-              ProjectPermissionSub.Identity
-            );
-            if (rules.some((rule) => rule.conditions)) {
-              conditionalProjectIds.add(entry.projectId);
-            }
-          }
-        }
-      }
-
-      if (accessibleProjectIds.length === 0) {
-        uniqueScope.delete(SearchIdentitiesScope.ProjectScope);
-      }
-    }
-
-    return { uniqueScope, accessibleProjectIds, projectPermissions, conditionalProjectIds };
-  };
-
-  const searchOrgIdentitiesV2 = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    limit,
-    offset,
-    orderBy,
-    orderDirection,
-    scope,
-    searchFilter = {}
-  }: TSearchIdentitiesV2DTO) => {
-    const { uniqueScope, accessibleProjectIds, projectPermissions, conditionalProjectIds } =
-      await resolveIdentitySearchScope({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        scope
-      });
-
-    if (!uniqueScope.size) {
-      return { identityMemberships: [], totalCount: 0 };
-    }
-
-    if (conditionalProjectIds.size === 0) {
-      const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentitiesV2({
-        orgId: actorOrgId,
-        limit,
-        offset,
-        orderBy,
-        orderDirection,
-        searchFilter,
-        scope: Array.from(uniqueScope),
-        accessibleProjectIds
-      });
-
-      return { identityMemberships: docs, totalCount };
-    }
-
-    // Conditional Read rules on Identity exist for at least one accessible project. SQL pagination
-    // would over-return rows the caller can't see, so fetch the full ordered set and filter by
-    // per-row CASL before paginating in memory. Mirrors the tier-2 pattern in pam-resource-service.
-    const { docs } = await identityOrgMembershipDAL.searchIdentitiesV2({
-      orgId: actorOrgId,
-      orderBy,
-      orderDirection,
-      searchFilter,
-      scope: Array.from(uniqueScope),
-      accessibleProjectIds
-    });
-
-    const filtered = filterIdentitiesByProjectPermission(docs, projectPermissions, conditionalProjectIds);
-    const pageOffset = offset ?? 0;
-    const pageLimit = limit ?? filtered.length;
-    return {
-      identityMemberships: filtered.slice(pageOffset, pageOffset + pageLimit),
-      totalCount: filtered.length
-    };
-  };
-
-  const countOrgIdentitiesV2 = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    scope,
-    searchFilter = {}
-  }: TCountIdentitiesV2DTO) => {
-    const requestedOrg = scope.includes(SearchIdentitiesScope.OrganizationScope);
-    const requestedProject = scope.includes(SearchIdentitiesScope.ProjectScope);
-
-    const { uniqueScope, accessibleProjectIds, projectPermissions, conditionalProjectIds } =
-      await resolveIdentitySearchScope({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        scope
-      });
-
-    // Build the response shape from the *requested* scopes so callers always get a number
-    // for every scope they asked about (zero when permissions/projects filter the scope out).
-    const counts: { organization?: number; project?: number } = {};
-    if (requestedOrg) counts.organization = 0;
-    if (requestedProject) counts.project = 0;
-
-    if (!uniqueScope.size) {
-      return counts;
-    }
-
-    if (conditionalProjectIds.size === 0) {
-      const dalCounts = await identityOrgMembershipDAL.countIdentitiesV2({
-        orgId: actorOrgId,
-        scope: Array.from(uniqueScope),
-        accessibleProjectIds,
-        searchFilter
-      });
-
-      if (requestedOrg && dalCounts.organization !== undefined) counts.organization = dalCounts.organization;
-      if (requestedProject && dalCounts.project !== undefined) counts.project = dalCounts.project;
-
-      return counts;
-    }
-
-    // Project-scope count must respect identityId conditions, so list the rows and count survivors.
-    // Org-scope rows have no per-identity conditions, so the SQL count is still correct.
-    if (requestedOrg && uniqueScope.has(SearchIdentitiesScope.OrganizationScope)) {
-      const orgOnly = await identityOrgMembershipDAL.countIdentitiesV2({
-        orgId: actorOrgId,
-        scope: [SearchIdentitiesScope.OrganizationScope],
-        accessibleProjectIds: [],
-        searchFilter
-      });
-      counts.organization = orgOnly.organization ?? 0;
-    }
-
-    if (requestedProject && uniqueScope.has(SearchIdentitiesScope.ProjectScope)) {
-      const { docs } = await identityOrgMembershipDAL.searchIdentitiesV2({
-        orgId: actorOrgId,
-        scope: [SearchIdentitiesScope.ProjectScope],
-        accessibleProjectIds,
-        searchFilter
-      });
-      counts.project = filterIdentitiesByProjectPermission(docs, projectPermissions, conditionalProjectIds).length;
-    }
-
-    return counts;
-  };
-
   const listProjectIdentitiesByIdentityId = async ({
     identityId,
     actor,
@@ -768,8 +517,6 @@ export const identityServiceFactory = ({
     listOrgIdentities,
     getIdentityById,
     searchOrgIdentities,
-    searchOrgIdentitiesV2,
-    countOrgIdentitiesV2,
     listProjectIdentitiesByIdentityId
   };
 };

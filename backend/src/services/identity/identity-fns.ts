@@ -1,38 +1,28 @@
-import { MongoAbility, subject } from "@casl/ability";
-
 import { IdentityAuthMethod } from "@app/db/schemas";
-import {
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
-import { SearchIdentitiesScope } from "./identity-types";
+export const getIdentityActiveLockoutAuthMethods = async (
+  identityId: string,
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">
+) => {
+  const activeLockouts = await keyStore.getKeysByPattern(KeyStorePrefixes.IdentityLockoutStatePattern(identityId));
 
-export type TProjectPermissionAbility = MongoAbility<ProjectPermissionSet>;
+  const activeLockoutAuthMethods = new Set<string>();
+  for await (const key of activeLockouts) {
+    const parts = key.split(":");
+    if (parts.length > 3) {
+      const lockoutRaw = await keyStore.getItem(key);
+      if (lockoutRaw) {
+        const lockout = JSON.parse(lockoutRaw) as { lockedOut: boolean };
+        if (lockout.lockedOut) {
+          activeLockoutAuthMethods.add(parts[3]);
+        }
+      }
+    }
+  }
 
-// Drops project-scope rows whose `identityId` fails the per-row CASL check. Org-scope rows are
-// unconditional (org-level Identity rules don't accept conditions) and pass through. Rows in
-// projects whose Read(Identity) rules carry no conditions also pass through without a CASL call:
-// the broader `can(Read, Identity)` check during scope resolution already authorized them.
-export const filterIdentitiesByProjectPermission = <
-  TRow extends { identityId: string; scope: SearchIdentitiesScope; projectId?: string | null }
->(
-  rows: TRow[],
-  projectPermissions: Map<string, TProjectPermissionAbility>,
-  conditionalProjectIds: Set<string>
-): TRow[] =>
-  rows.filter((row) => {
-    if (row.scope !== SearchIdentitiesScope.ProjectScope) return true;
-    if (!row.projectId) return false;
-    if (!conditionalProjectIds.has(row.projectId)) return true;
-    const projectPermission = projectPermissions.get(row.projectId);
-    if (!projectPermission) return false;
-    return projectPermission.can(
-      ProjectPermissionIdentityActions.Read,
-      subject(ProjectPermissionSub.Identity, { identityId: row.identityId })
-    );
-  });
+  return Array.from(activeLockoutAuthMethods);
+};
 
 export const buildAuthMethods = ({
   uaId,

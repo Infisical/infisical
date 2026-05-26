@@ -8,7 +8,7 @@ import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validat
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { OrgIdentitySearchOrderBy, SearchIdentitiesScope } from "@app/services/identity/identity-types";
+import { OrgIdentitySearchOrderBy, SearchIdentitiesScope } from "@app/services/identity-v2/identity-types";
 
 const searchResourceZodValidate = zodValidateCharacters([
   CharacterType.AlphaNumeric,
@@ -137,7 +137,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityMemberships, totalCount } = await server.services.identityV1.searchOrgIdentitiesV2({
+      const { identityMemberships, totalCount } = await server.services.identityV2.searchOrgIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -223,7 +223,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const counts = await server.services.identityV1.countOrgIdentitiesV2({
+      const counts = await server.services.identityV2.countOrgIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

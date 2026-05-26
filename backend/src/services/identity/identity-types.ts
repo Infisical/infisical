@@ -1,4 +1,3 @@
-import { AccessScope } from "@app/db/schemas";
 import { IPType } from "@app/lib/ip";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, TOrgPermission } from "@app/lib/types";
@@ -51,17 +50,6 @@ export enum OrgIdentityOrderBy {
   Role = "role"
 }
 
-// The v2 search endpoint joins Membership and can sort by lastLoginTime; the legacy
-// v1 search / v2 identity-memberships endpoints bind orderBy straight into an
-// `identity.<col>` SQL fragment and would fail with a 500 on LastLogin since the
-// identities table has no such column. Keep this enum separate so the legacy paths
-// reject lastLogin at the Zod boundary.
-export enum OrgIdentitySearchOrderBy {
-  Name = "name",
-  Role = "role",
-  LastLogin = "lastLogin"
-}
-
 export type TSearchOrgIdentitiesByOrgIdDAL = {
   limit?: number;
   offset?: number;
@@ -75,66 +63,3 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
 };
 
 export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
-
-export enum SearchIdentitiesScope {
-  OrganizationScope = "organization",
-  ProjectScope = "project"
-}
-
-// Translate a raw `Membership.scope` value into a SearchIdentitiesScope. The two enums share
-// string values today but live in separate files — go through this helper so a future drift
-// (extra AccessScope variant, renamed value) surfaces here instead of silently mistyping rows.
-export const accessScopeToSearchIdentitiesScope = (scope: string): SearchIdentitiesScope => {
-  switch (scope) {
-    case AccessScope.Organization:
-      return SearchIdentitiesScope.OrganizationScope;
-    case AccessScope.Project:
-      return SearchIdentitiesScope.ProjectScope;
-    default:
-      throw new Error(`Unexpected membership scope for identity search: ${scope}`);
-  }
-};
-
-export type TSearchIdentitiesV2DAL = {
-  limit?: number;
-  offset?: number;
-  orderBy?: OrgIdentitySearchOrderBy;
-  orderDirection?: OrderByDirection;
-  orgId: string;
-  scope: SearchIdentitiesScope[];
-  accessibleProjectIds: string[];
-  searchFilter?: Partial<{
-    name: Omit<TSearchResourceOperator, "number">;
-    role: Omit<TSearchResourceOperator, "number">;
-  }>;
-};
-
-export type TSearchIdentitiesV2DTO = {
-  limit?: number;
-  offset?: number;
-  orderBy?: OrgIdentitySearchOrderBy;
-  orderDirection?: OrderByDirection;
-  scope: SearchIdentitiesScope[];
-  searchFilter?: Partial<{
-    name: Omit<TSearchResourceOperator, "number">;
-    role: Omit<TSearchResourceOperator, "number">;
-  }>;
-} & TOrgPermission;
-
-export type TCountIdentitiesV2DAL = {
-  orgId: string;
-  scope: SearchIdentitiesScope[];
-  accessibleProjectIds: string[];
-  searchFilter?: Partial<{
-    name: Omit<TSearchResourceOperator, "number">;
-    role: Omit<TSearchResourceOperator, "number">;
-  }>;
-};
-
-export type TCountIdentitiesV2DTO = {
-  scope: SearchIdentitiesScope[];
-  searchFilter?: Partial<{
-    name: Omit<TSearchResourceOperator, "number">;
-    role: Omit<TSearchResourceOperator, "number">;
-  }>;
-} & TOrgPermission;

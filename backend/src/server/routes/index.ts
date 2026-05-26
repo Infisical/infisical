@@ -358,6 +358,7 @@ import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/iden
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { identityV2DALFactory } from "@app/services/identity-v2/identity-dal";
+import { identityMembershipV2DALFactory } from "@app/services/identity-v2/identity-membership-dal";
 import { identityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { integrationDALFactory } from "@app/services/integration/integration-dal";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
@@ -589,6 +590,7 @@ export const registerRoutes = async (
 
   const identityDAL = identityDALFactory(db);
   const identityV2DAL = identityV2DALFactory(db);
+  const identityMembershipV2DAL = identityMembershipV2DALFactory(db);
   const identityMetadataDAL = identityMetadataDALFactory(db);
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
   const identityAccessTokenRevocationDAL = identityAccessTokenRevocationDALFactory(db);
@@ -2000,8 +2002,7 @@ export const registerRoutes = async (
     keyStore,
     orgDAL,
     membershipIdentityDAL,
-    membershipRoleDAL,
-    projectDAL
+    membershipRoleDAL
   });
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({
@@ -2019,8 +2020,10 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     identityDAL: identityV2DAL,
+    identityMembershipV2DAL,
     identityAccessTokenService,
-    keyStore
+    keyStore,
+    projectDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({
