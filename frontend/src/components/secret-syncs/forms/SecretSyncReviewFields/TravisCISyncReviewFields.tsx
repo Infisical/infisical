@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const TravisCISyncReviewFields = () => {
@@ -11,8 +11,16 @@ export const TravisCISyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Repository">{config.repositorySlug}</GenericFieldLabel>
-      {config.branch && <GenericFieldLabel label="Branch">{config.branch}</GenericFieldLabel>}
+      <Detail>
+        <DetailLabel>Repository</DetailLabel>
+        <DetailValue>{config.repositorySlug}</DetailValue>
+      </Detail>
+      {config.branch && (
+        <Detail>
+          <DetailLabel>Branch</DetailLabel>
+          <DetailValue>{config.branch}</DetailValue>
+        </Detail>
+      )}
     </>
   );
 };

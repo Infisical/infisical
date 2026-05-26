@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TTeamCitySync } from "@app/hooks/api/secretSyncs/types/teamcity-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const TeamCitySyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{project}</GenericFieldLabel>
-      <GenericFieldLabel label="Build Configuration">{buildConfig}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{project}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Build Configuration</DetailLabel>
+        <DetailValue>{buildConfig}</DetailValue>
+      </Detail>
     </>
   );
 };

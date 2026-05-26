@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TDevinSync } from "@app/hooks/api/secretSyncs/types/devin-sync";
 
 type Props = {
@@ -8,5 +8,10 @@ type Props = {
 export const DevinSyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
-  return <GenericFieldLabel label="Organization ID">{destinationConfig.orgId}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>Organization ID</DetailLabel>
+      <DetailValue>{destinationConfig.orgId}</DetailValue>
+    </Detail>
+  );
 };

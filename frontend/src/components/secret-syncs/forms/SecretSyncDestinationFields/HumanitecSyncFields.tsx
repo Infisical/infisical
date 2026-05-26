@@ -1,10 +1,24 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { HUMANITEC_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
   THumanitecConnectionApp,
@@ -37,7 +51,7 @@ export const HumanitecSyncFields = () => {
   const environments = selectedApp?.envs || [];
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.org", "");
@@ -49,69 +63,68 @@ export const HumanitecSyncFields = () => {
         name="destinationConfig.org"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Organization"
-          >
-            <FilterableSelect
-              isLoading={isOrganizationsPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={organizations ? (organizations.find((org) => org.id === value) ?? []) : []}
-              onChange={(option) => {
-                onChange((option as SingleValue<THumanitecConnectionOrganization>)?.id ?? null);
-                setValue("destinationConfig.app", "");
-                setValue("destinationConfig.env", "");
-              }}
-              options={organizations}
-              placeholder="Select an organization..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id.toString()}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Organization</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isOrganizationsPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={organizations ? (organizations.find((org) => org.id === value) ?? []) : []}
+                onChange={(option) => {
+                  onChange((option as SingleValue<THumanitecConnectionOrganization>)?.id ?? null);
+                  setValue("destinationConfig.app", "");
+                  setValue("destinationConfig.env", "");
+                }}
+                options={organizations}
+                placeholder="Select an organization..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id.toString()}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         name="destinationConfig.app"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="App"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure that the app exists in the selected organization and the service account used on this connection has write permissions for the specified app."
-              >
-                <div>
-                  <span>Don&#39;t see the app you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
+          <Field>
+            <FieldLabel>
+              App
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  Ensure that the app exists in the selected organization and the service account
+                  used on this connection has write permissions for the specified app.
+                </TooltipContent>
               </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
-              isDisabled={!connectionId || !currentOrg}
-              value={
-                organizations
-                  .find((org) => org.id === currentOrg)
-                  ?.apps?.find((app) => app.id === value) ?? null
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<THumanitecConnectionApp>)?.id ?? null);
-                setValue("destinationConfig.env", "");
-              }}
-              options={
-                currentOrg ? (organizations.find((org) => org.id === currentOrg)?.apps ?? []) : []
-              }
-              placeholder="Select an app..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id.toString()}
-            />
-          </FormControl>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
+                isDisabled={!connectionId || !currentOrg}
+                value={
+                  organizations
+                    .find((org) => org.id === currentOrg)
+                    ?.apps?.find((app) => app.id === value) ?? null
+                }
+                onChange={(option) => {
+                  onChange((option as SingleValue<THumanitecConnectionApp>)?.id ?? null);
+                  setValue("destinationConfig.env", "");
+                }}
+                options={
+                  currentOrg ? (organizations.find((org) => org.id === currentOrg)?.apps ?? []) : []
+                }
+                placeholder="Select an app..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id.toString()}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
@@ -119,49 +132,55 @@ export const HumanitecSyncFields = () => {
         control={control}
         defaultValue={HumanitecSyncScope.Application}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Scope"
-            tooltipClassName="max-w-lg py-3"
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <p>
-                  Specify how Infisical should manage secrets from Humanitec. The following options
-                  are available:
-                </p>
-                <ul className="flex list-disc flex-col gap-3 pl-4">
-                  {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => {
-                    return (
-                      <li key={name}>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            }
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => {
-                onChange(val);
-                setValue("destinationConfig.env", "");
-              }}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select a scope..."
-              dropdownContainerClassName="max-w-none"
-            >
-              {Object.values(HumanitecSyncScope).map((scope) => (
-                <SelectItem className="capitalize" value={scope} key={scope}>
-                  {scope.replace("-", " ")}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Scope
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg">
+                  <div className="flex flex-col gap-3">
+                    <p>
+                      Specify how Infisical should manage secrets from Humanitec. The following
+                      options are available:
+                    </p>
+                    <ul className="flex list-disc flex-col gap-3 pl-4">
+                      {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => (
+                        <li key={name}>
+                          <p className="text-mineshaft-300">
+                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                            {description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Select
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  setValue("destinationConfig.env", "");
+                }}
+              >
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a scope..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(HumanitecSyncScope).map((scope) => (
+                    <SelectItem className="capitalize" value={scope} key={scope}>
+                      {scope.replace("-", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       {currentScope === HumanitecSyncScope.Environment && (
@@ -169,29 +188,32 @@ export const HumanitecSyncFields = () => {
           name="destinationConfig.env"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} label="Environment">
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={
-                  isOrganizationsPending &&
-                  Boolean(connectionId) &&
-                  Boolean(currentOrg) &&
-                  Boolean(currentApp)
-                }
-                isDisabled={!connectionId || !currentApp}
-                value={environments.find((env) => env.id === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<THumanitecConnectionEnvironment>)?.id ?? null)
-                }
-                options={environments}
-                placeholder="Select an env..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id.toString()}
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Environment</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isLoading={
+                    isOrganizationsPending &&
+                    Boolean(connectionId) &&
+                    Boolean(currentOrg) &&
+                    Boolean(currentApp)
+                  }
+                  isDisabled={!connectionId || !currentApp}
+                  value={environments.find((env) => env.id === value) ?? null}
+                  onChange={(option) =>
+                    onChange((option as SingleValue<THumanitecConnectionEnvironment>)?.id ?? null)
+                  }
+                  options={environments}
+                  placeholder="Select an env..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id.toString()}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
-    </>
+    </FieldGroup>
   );
 };

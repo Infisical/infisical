@@ -268,7 +268,12 @@ const ApiPanel = ({
                   Automatically renew certificates issued via this profile before they expire.
                 </p>
               </div>
-              <Switch id="api-auto-renew" checked={field.value} onCheckedChange={field.onChange} />
+              <Switch
+                variant="project"
+                id="api-auto-renew"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
             </div>
           )}
         />
@@ -447,6 +452,7 @@ const EstPanel = ({
                 </p>
               </div>
               <Switch
+                variant="project"
                 id="est-disable-bootstrap"
                 checked={field.value}
                 onCheckedChange={field.onChange}
@@ -636,6 +642,7 @@ const AcmePanel = ({
                     {/* span wrapper lets the tooltip listen for hover on a disabled control */}
                     <span className="inline-flex">
                       <Switch
+                        variant="project"
                         id="acme-skip-dns"
                         checked={field.value}
                         onCheckedChange={(v) => {
@@ -652,6 +659,7 @@ const AcmePanel = ({
                 </Tooltip>
               ) : (
                 <Switch
+                  variant="project"
                   id="acme-skip-dns"
                   checked={field.value}
                   onCheckedChange={(v) => {
@@ -679,6 +687,7 @@ const AcmePanel = ({
                   <TooltipTrigger asChild>
                     <span className="inline-flex">
                       <Switch
+                        variant="project"
                         id="acme-skip-eab"
                         checked={field.value}
                         onCheckedChange={(v) => {
@@ -696,6 +705,7 @@ const AcmePanel = ({
                 </Tooltip>
               ) : (
                 <Switch
+                  variant="project"
                   id="acme-skip-eab"
                   checked={field.value}
                   onCheckedChange={(v) => {
@@ -970,7 +980,12 @@ const ScepPanel = ({
                   Return the issuing CA certificate inline alongside the issued cert.
                 </p>
               </div>
-              <Switch id="scep-include-ca" checked={field.value} onCheckedChange={field.onChange} />
+              <Switch
+                variant="project"
+                id="scep-include-ca"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
             </div>
           )}
         />
@@ -986,6 +1001,7 @@ const ScepPanel = ({
                 </p>
               </div>
               <Switch
+                variant="project"
                 id="scep-cert-renewal"
                 checked={field.value}
                 onCheckedChange={field.onChange}
