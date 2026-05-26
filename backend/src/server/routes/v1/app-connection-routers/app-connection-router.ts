@@ -148,6 +148,10 @@ import {
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
 import {
+  NutanixPrismCentralConnectionListItemSchema,
+  SanitizedNutanixPrismCentralConnectionSchema
+} from "@app/services/app-connection/nutanix-prism-central";
+import {
   OctopusDeployConnectionListItemSchema,
   SanitizedOctopusDeployConnectionSchema
 } from "@app/services/app-connection/octopus-deploy";
@@ -279,7 +283,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSalesforceConnectionSchema.options,
   ...SanitizedSnowflakeConnectionSchema.options,
   ...SanitizedDatadogConnectionSchema.options,
-  ...SanitizedF5BigIpConnectionSchema.options
+  ...SanitizedF5BigIpConnectionSchema.options,
+  ...SanitizedNutanixPrismCentralConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -350,7 +355,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SalesforceConnectionListItemSchema,
   SnowflakeConnectionListItemSchema,
   DatadogConnectionListItemSchema,
-  F5BigIpConnectionListItemSchema
+  F5BigIpConnectionListItemSchema,
+  NutanixPrismCentralConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

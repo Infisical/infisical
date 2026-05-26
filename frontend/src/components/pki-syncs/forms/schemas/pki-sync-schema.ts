@@ -32,6 +32,10 @@ import {
   NetScalerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema
 } from "./netscaler-pki-sync-destination-schema";
+import {
+  NutanixPrismCentralPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
+} from "./nutanix-prism-central-pki-sync-destination-schema";
 
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
@@ -41,7 +45,8 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema,
   NetScalerPkiSyncDestinationSchema,
-  F5BigIpPkiSyncDestinationSchema
+  F5BigIpPkiSyncDestinationSchema,
+  NutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
@@ -52,7 +57,8 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema,
-  UpdateF5BigIpPkiSyncDestinationSchema
+  UpdateF5BigIpPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
 export const PkiSyncFormSchema = PkiSyncUnionSchema;

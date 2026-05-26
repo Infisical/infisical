@@ -6,7 +6,8 @@ export enum PkiSync {
   Chef = "chef",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
-  F5BigIp = "f5-big-ip"
+  F5BigIp = "f5-big-ip",
+  NutanixPrismCentral = "nutanix-prism-central"
 }
 
 export enum PkiSyncStatus {

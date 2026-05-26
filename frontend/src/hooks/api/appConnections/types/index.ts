@@ -19,6 +19,7 @@ import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
+import { TNutanixPrismCentralConnection } from "./nutanix-prism-central-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
@@ -133,6 +134,7 @@ export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./nutanix-prism-central-connection";
 export * from "./zabbix-connection";
 
 export type TAppConnection =
@@ -204,6 +206,7 @@ export type TAppConnection =
   | TSnowflakeConnection
   | TDatadogConnection
   | TF5BigIpConnection;
+  | TNutanixPrismCentralConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

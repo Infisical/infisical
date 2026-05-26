@@ -57,6 +57,7 @@ import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/che
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
+import { NutanixPrismCentralConnectionMethod } from "@app/hooks/api/appConnections/types/nutanix-prism-central-connection";
 import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
@@ -185,7 +186,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
   [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
   [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" },
-  [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" }
+  [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" },
+  [AppConnection.NutanixPrismCentral]: { name: "Nutanix Prism Central", image: "Nutanix.png", size: 120 }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -302,7 +304,10 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case NutanixPrismCentralConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
     case F5BigIpConnectionMethod.BasicAuth:

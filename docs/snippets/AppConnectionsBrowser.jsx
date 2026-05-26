@@ -411,6 +411,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "Nutanix Prism Central",
+      slug: "nutanix-prism-central",
+      path: "/integrations/app-connections/nutanix-prism-central",
+      description:
+        "Learn how to connect your Nutanix Prism Central to push certificates from Infisical.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Ona",
       slug: "ona",
       path: "/integrations/app-connections/ona",
