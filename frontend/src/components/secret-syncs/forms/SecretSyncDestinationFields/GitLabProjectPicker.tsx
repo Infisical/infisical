@@ -18,8 +18,8 @@ import {
   useGitLabConnectionListProjects,
   useGitLabConnectionListRootGroups,
   useGitLabConnectionListSubgroups,
-  useGitLabConnectionSearchGroupsAndProjects,
-  useGitLabConnectionSearchGroups
+  useGitLabConnectionSearchGroups,
+  useGitLabConnectionSearchGroupsAndProjects
 } from "@app/hooks/api/appConnections/gitlab";
 import { useDebounce } from "@app/hooks/useDebounce";
 
@@ -650,19 +650,6 @@ export const GitLabProjectPicker = ({
           </div>
         )}
       </div>
-
-      {/* <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          {tab === "yours"
-            ? "Projects owned directly by your GitLab user."
-            : "Browse groups, then pick a project."}
-        </span>
-        {selectedProjectId && selectedProjectName && (
-          <Badge variant="project" className="font-mono">
-            <span className="truncate">{selectedProjectName}</span>
-          </Badge>
-        )}
-      </div> */}
     </div>
   );
 };

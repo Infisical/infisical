@@ -146,6 +146,39 @@ export const refreshGitLabToken = async (
   }
 };
 
+const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
+  let { accessToken } = appConnection.credentials;
+
+  if (
+    appConnection.method === GitLabConnectionMethod.AccessToken &&
+    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
+  ) {
+    return null;
+  }
+
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    accessToken = await refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnection.projectId,
+      appConnectionDAL,
+      kmsService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  return getGitLabClient(
+    accessToken,
+    appConnection.credentials.instanceUrl,
+    appConnection.method === GitLabConnectionMethod.OAuth
+  );
+};
+
 export const exchangeGitLabOAuthCode = async (
   code: string,
   instanceUrl?: string
@@ -358,38 +391,10 @@ export const listGitLabGroups = async ({
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }): Promise<TGitLabGroup[]> => {
-  let { accessToken } = appConnection.credentials;
-
-  if (
-    appConnection.method === GitLabConnectionMethod.AccessToken &&
-    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
-  ) {
-    return [];
-  }
-
-  if (
-    appConnection.method === GitLabConnectionMethod.OAuth &&
-    appConnection.credentials.refreshToken &&
-    new Date(appConnection.credentials.expiresAt) < new Date()
-  ) {
-    accessToken = await refreshGitLabToken(
-      appConnection.credentials.refreshToken,
-      appConnection.id,
-      appConnection.orgId,
-      appConnection.projectId,
-      appConnectionDAL,
-      kmsService,
-      appConnection.credentials.instanceUrl
-    );
-  }
+  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
+  if (!client) return [];
 
   try {
-    const client = await getGitLabClient(
-      accessToken,
-      appConnection.credentials.instanceUrl,
-      appConnection.method === GitLabConnectionMethod.OAuth
-    );
-
     const groups = await client.Groups.all({
       orderBy: "name",
       sort: "asc",
@@ -415,39 +420,6 @@ export const listGitLabGroups = async ({
       message: "Unable to fetch GitLab groups"
     });
   }
-};
-
-const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
-  let { accessToken } = appConnection.credentials;
-
-  if (
-    appConnection.method === GitLabConnectionMethod.AccessToken &&
-    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
-  ) {
-    return null;
-  }
-
-  if (
-    appConnection.method === GitLabConnectionMethod.OAuth &&
-    appConnection.credentials.refreshToken &&
-    new Date(appConnection.credentials.expiresAt) < new Date()
-  ) {
-    accessToken = await refreshGitLabToken(
-      appConnection.credentials.refreshToken,
-      appConnection.id,
-      appConnection.orgId,
-      appConnection.projectId,
-      appConnectionDAL,
-      kmsService,
-      appConnection.credentials.instanceUrl
-    );
-  }
-
-  return getGitLabClient(
-    accessToken,
-    appConnection.credentials.instanceUrl,
-    appConnection.method === GitLabConnectionMethod.OAuth
-  );
 };
 
 export const listGitLabRootGroups = async (params: TNavigationParams): Promise<TGitLabGroupTreeItem[]> => {
