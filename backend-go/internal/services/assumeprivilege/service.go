@@ -12,7 +12,7 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
-	"github.com/infisical/api/internal/services/permission/project"
+	"github.com/infisical/api/internal/services/permission/platform"
 )
 
 const tokenExpiry = time.Hour // 1 hour, matches Node.js
@@ -71,7 +71,7 @@ func (s *Service) AssumeProjectPrivileges(ctx context.Context, opts *AssumeProje
 	}
 
 	// Check permission based on target actor type
-	checker := project.NewAssumePrivilegeChecker(permResult.Permission.Ability)
+	checker := platform.NewAssumePrivilegeChecker(permResult.Permission.Ability)
 	if opts.TargetActorType == auth.ActorTypeUser {
 		if !checker.CanAssumeMemberPrivileges() {
 			return nil, errutil.Forbidden("You do not have permission to assume member privileges")
@@ -171,7 +171,7 @@ func (s *Service) VerifyAssumePrivilegeToken(ctx context.Context, opts *VerifyTo
 	}
 
 	actorType := auth.ActorType(claims.ActorType)
-	checker := project.NewAssumePrivilegeChecker(permResult.Permission.Ability)
+	checker := platform.NewAssumePrivilegeChecker(permResult.Permission.Ability)
 	if actorType == auth.ActorTypeUser {
 		if !checker.CanAssumeMemberPrivileges() {
 			return nil, errutil.Forbidden("Requester no longer has permission to assume member privileges")

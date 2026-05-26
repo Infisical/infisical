@@ -1,7 +1,9 @@
-package project
+package platform
 
 import (
 	"github.com/infisical/gocasl"
+
+	"github.com/infisical/api/internal/services/permission/project"
 )
 
 // AssumePrivilegeChecker implements permission checks for assume privilege operations.
@@ -16,13 +18,13 @@ func NewAssumePrivilegeChecker(ability *gocasl.Ability) *AssumePrivilegeChecker 
 
 // CanAssumeMemberPrivileges checks if the actor can assume another member's privileges.
 func (c *AssumePrivilegeChecker) CanAssumeMemberPrivileges() bool {
-	return gocasl.Can(c.ability, MemberActionAssumePrivileges, MemberSubject{})
+	return gocasl.Can(c.ability, project.MemberActionAssumePrivileges, project.MemberSubject{})
 }
 
 // CanAssumeIdentityPrivileges checks if the actor can assume an identity's privileges.
 func (c *AssumePrivilegeChecker) CanAssumeIdentityPrivileges(identityID string) bool {
-	subject := IdentitySubject{
+	subject := project.IdentitySubject{
 		IdentityID: identityID,
 	}
-	return gocasl.Can(c.ability, IdentityActionAssumePrivileges, subject)
+	return gocasl.Can(c.ability, project.IdentityActionAssumePrivileges, subject)
 }
