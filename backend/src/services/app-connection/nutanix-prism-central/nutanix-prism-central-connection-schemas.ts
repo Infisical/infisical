@@ -25,7 +25,10 @@ const BaseHostSchema = z.object({
 });
 
 export const NutanixPrismCentralApiKeyCredentialsSchema = BaseHostSchema.extend({
-  apiKey: z.string().trim().min(1, "API key is required").max(2048, "API key cannot exceed 2048 characters")
+  apiKey: z
+    .string()
+    .trim()
+    .regex(/^[0-9a-f]{32}$/, "API key must be a 32-character lowercase hexadecimal string")
 });
 
 export const NutanixPrismCentralBasicAuthCredentialsSchema = BaseHostSchema.extend({

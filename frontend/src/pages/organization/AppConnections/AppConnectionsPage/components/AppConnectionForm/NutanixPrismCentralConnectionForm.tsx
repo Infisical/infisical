@@ -56,8 +56,7 @@ const formSchema = z.discriminatedUnion("method", [
       apiKey: z
         .string()
         .trim()
-        .min(1, "API Key is required")
-        .max(1024, "API Key cannot exceed 1024 characters")
+        .regex(/^[0-9a-f]{32}$/, "API key must be a 32-character lowercase hexadecimal string")
     })
   }),
   rootSchema.extend({
