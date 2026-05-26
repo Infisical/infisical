@@ -17,7 +17,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -112,7 +112,7 @@ export const kmsServiceFactory = ({
       kmsKeyMaterial = await generateAsymmetricPrivateKey();
 
       // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
-      getPublicKeyFromPrivateKey(kmsKeyMaterial);
+      await getPublicKeyFromPrivateKey(kmsKeyMaterial);
     }
 
     if (!kmsKeyMaterial) {
@@ -418,10 +418,11 @@ export const kmsServiceFactory = ({
     if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
       const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
       try {
-        getPublicKeyFromPrivateKey(key);
+        await getPublicKeyFromPrivateKey(key);
       } catch {
+        const expectedFormat = isPqcKeyAlgorithm(algorithm as string) ? "PKCS8 DER-encoded" : "PKCS8 PEM-encoded";
         throw new BadRequestError({
-          message: "Invalid private key material. Expected a PKCS8 PEM-encoded private key."
+          message: `Invalid private key material. Expected a ${expectedFormat} private key.`
         });
       }
     }
@@ -521,7 +522,7 @@ export const kmsServiceFactory = ({
     return async ({ data, signature, isDigest }: Pick<TVerifyWithKmsDTO, "data" | "signature" | "isDigest">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
-      const publicKey = getPublicKeyFromPrivateKey(kmsKey);
+      const publicKey = await getPublicKeyFromPrivateKey(kmsKey);
       const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
       return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
     };

@@ -1,9 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { AsymmetricKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -32,11 +33,17 @@ type TCmekServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   kmsDAL: TKmsKeyDALFactory;
   permissionService: TPermissionServiceFactory;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 
-export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TCmekServiceFactoryDep) => {
+export const cmekServiceFactory = ({
+  kmsService,
+  kmsDAL,
+  permissionService,
+  licenseService
+}: TCmekServiceFactoryDep) => {
   const createCmek = async ({ projectId, ...dto }: TCreateCmekDTO, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -47,6 +54,16 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actionProjectType: ActionProjectType.KMS
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
+
+    if (isPqcKeyAlgorithm(dto.encryptionAlgorithm as string)) {
+      const plan = await licenseService.getPlan(dto.orgId);
+      if (!plan.kmsPqc) {
+        throw new BadRequestError({
+          message:
+            "Your license does not include PQC algorithms for KMS. Please upgrade to the Enterprise plan to use ML-DSA algorithms."
+        });
+      }
+    }
 
     try {
       const cmek = await kmsService.generateKmsKey({
@@ -245,18 +262,18 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
 
     const encryptionAlgorithm = key.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm;
 
+    if (isPqcKeyAlgorithm(encryptionAlgorithm as string)) {
+      return { signingAlgorithms: [encryptionAlgorithm as unknown as SigningAlgorithm], projectId: key.projectId };
+    }
+
     const algos = [
       {
         keyAlgorithm: "rsa",
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((algorithm) =>
-          algorithm.toLowerCase().startsWith("rsa")
-        )
+        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("rsa"))
       },
       {
         keyAlgorithm: "ecc",
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((algorithm) =>
-          algorithm.toLowerCase().startsWith("ecdsa")
-        )
+        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("ecdsa"))
       }
     ];
 
@@ -366,30 +383,32 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     const materialByKmsId = new Map(bulkMaterials.map((m) => [m.kmsId, m]));
     const asymmetricAlgorithms = new Set<string>(Object.values(AsymmetricKeyAlgorithm));
 
-    const result = keys.map((key) => {
-      const materialEntry = materialByKmsId.get(key.id);
+    const result = await Promise.all(
+      keys.map(async (key) => {
+        const materialEntry = materialByKmsId.get(key.id);
 
-      if (!materialEntry) {
-        throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
-      }
+        if (!materialEntry) {
+          throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
+        }
 
-      let publicKey: string | undefined;
-      if (asymmetricAlgorithms.has(key.encryptionAlgorithm)) {
-        const pubKeyBuffer = signingService(
-          key.encryptionAlgorithm as AsymmetricKeyAlgorithm
-        ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);
-        publicKey = pubKeyBuffer.toString("base64");
-      }
+        let publicKey: string | undefined;
+        if (asymmetricAlgorithms.has(key.encryptionAlgorithm)) {
+          const pubKeyBuffer = await signingService(
+            key.encryptionAlgorithm as AsymmetricKeyAlgorithm
+          ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);
+          publicKey = pubKeyBuffer.toString("base64");
+        }
 
-      return {
-        keyId: key.id,
-        name: key.name,
-        keyUsage: key.keyUsage,
-        algorithm: key.encryptionAlgorithm,
-        privateKey: materialEntry.keyMaterial.toString("base64"),
-        ...(publicKey ? { publicKey } : {})
-      };
-    });
+        return {
+          keyId: key.id,
+          name: key.name,
+          keyUsage: key.keyUsage,
+          algorithm: key.encryptionAlgorithm,
+          privateKey: materialEntry.keyMaterial.toString("base64"),
+          ...(publicKey ? { publicKey } : {})
+        };
+      })
+    );
 
     return { keys: result, projectId };
   };
@@ -510,8 +529,21 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
+    const hasPqcKeys = keys.some((entry) => isPqcKeyAlgorithm(entry.algorithm as string));
+    let pqcLicensed = true;
+    if (hasPqcKeys) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      pqcLicensed = !!plan.kmsPqc;
+    }
+
     const results = await Promise.allSettled(
       keys.map(async (entry): Promise<{ id: string; name: string }> => {
+        if (isPqcKeyAlgorithm(entry.algorithm as string) && !pqcLicensed) {
+          throw new BadRequestError({
+            message:
+              "Your license does not include PQC algorithms for KMS. Please upgrade to the Enterprise plan to use ML-DSA algorithms."
+          });
+        }
         const imported = await kmsService.importKeyMaterial({
           key: Buffer.from(entry.keyMaterial, "base64"),
           algorithm: entry.algorithm,
