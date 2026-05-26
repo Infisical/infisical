@@ -28,6 +28,7 @@ func NewErrorHandler(logger *slog.Logger) chita.ErrorHandler {
 					slog.Any("cause", apiErr.Err),
 				)
 				return &chita.ErrorBody{
+					ReqID:      reqID,
 					StatusCode: apiErr.Status,
 					Message:    "Something went wrong",
 					Error:      apiErr.Name,
@@ -41,6 +42,7 @@ func NewErrorHandler(logger *slog.Logger) chita.ErrorHandler {
 				slog.String("message", apiErr.Message),
 			)
 			return &chita.ErrorBody{
+				ReqID:      reqID,
 				StatusCode: apiErr.Status,
 				Message:    apiErr.Message,
 				Error:      apiErr.Name,
@@ -60,6 +62,7 @@ func NewErrorHandler(logger *slog.Logger) chita.ErrorHandler {
 					slog.Any("cause", chitaErr.Err),
 				)
 				return &chita.ErrorBody{
+					ReqID:      reqID,
 					StatusCode: chitaErr.Status,
 					Message:    "Something went wrong",
 					Error:      chitaErr.Name,
@@ -73,6 +76,7 @@ func NewErrorHandler(logger *slog.Logger) chita.ErrorHandler {
 				slog.String("message", chitaErr.Message),
 			)
 			return &chita.ErrorBody{
+				ReqID:      reqID,
 				StatusCode: chitaErr.Status,
 				Message:    chitaErr.Message,
 				Error:      chitaErr.Name,
@@ -87,10 +91,10 @@ func NewErrorHandler(logger *slog.Logger) chita.ErrorHandler {
 				slog.Any("errors", validationErrs),
 			)
 			return &chita.ErrorBody{
-				StatusCode: 400,
-				Message:    "Validation failed",
-				Error:      "ValidationError",
-				Details:    validationErrs,
+				ReqID:      reqID,
+				StatusCode: 422,
+				Message:    validationErrs.Error(),
+				Error:      "ValidationFailure",
 			}
 		}
 
@@ -100,6 +104,7 @@ func NewErrorHandler(logger *slog.Logger) chita.ErrorHandler {
 			slog.Any("error", err),
 		)
 		return &chita.ErrorBody{
+			ReqID:      reqID,
 			StatusCode: 500,
 			Message:    "Something went wrong",
 			Error:      "InternalServerError",

@@ -13,7 +13,7 @@ func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
 			chita.NewSecurity("service_token"),
 		)
 
-		r.GET("", chita.Handler(app, handler.ListSecretsV4).
+		r.GET("/", chita.Handler(app, handler.ListSecretsV4).
 			Summary("List secrets for a project environment").
 			Description("Returns all secrets in the specified project environment and path").
 			OperationID("listSecretsV4"))
@@ -33,7 +33,7 @@ func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
 			chita.NewSecurity("service_token"),
 		)
 
-		r.GET("", chita.Handler(app, handler.ListSecretsRawV3).
+		r.GET("/", chita.Handler(app, handler.ListSecretsRawV3).
 			Summary("List raw secrets (deprecated)").
 			Description("Returns all secrets in the specified workspace environment and path. Deprecated: use V4 endpoint instead.").
 			OperationID("listSecretsRawV3").

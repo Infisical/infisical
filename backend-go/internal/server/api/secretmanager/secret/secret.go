@@ -36,6 +36,9 @@ type AuditLogService interface {
 type SecretsService interface {
 	ListSecrets(ctx context.Context, opts *secretsvc.ListSecretsOpts) (*secretsvc.ListSecretsResult, error)
 	GetSecretByName(ctx context.Context, opts *secretsvc.GetSecretByNameOpts) (*secretsvc.GetSecretByNameResult, error)
+	FetchAbsoluteSecrets(ctx context.Context, refs []secretsvc.AbsoluteSecretRef, opts secretsvc.AbsoluteFetchOpts) []*secretsvc.ProcessedSecret
+	LoadProjectImports(ctx context.Context, projectID string) (*secretsvc.ImportLookup, error)
+	FindByFolderIds(ctx context.Context, folderIDs []uuid.UUID, userID *uuid.UUID, filters *secretsvc.FindByFolderIdsFilter) ([]secretsvc.Secret, error)
 }
 
 // --- Handler ---
@@ -184,12 +187,4 @@ func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, 
 	}
 
 	return nil
-}
-
-// ptrToString safely dereferences a string pointer, returning empty string if nil.
-func ptrToString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

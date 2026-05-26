@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/queue"
+	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
@@ -175,34 +176,6 @@ func getSecretByName(t *testing.T, actorType auth.ActorType, actorID, orgID stri
 	return resp, nil
 }
 
-// testErrorHandler is a simple error handler for HTTP tests.
-func testErrorHandler(_ context.Context, err error) *chita.ErrorBody {
-	var validationErrs chita.ValidationErrors
-	if ok := errors.As(err, &validationErrs); ok {
-		return &chita.ErrorBody{
-			StatusCode: 400,
-			Message:    validationErrs.Error(),
-			Error:      "ValidationError",
-			Details:    validationErrs,
-		}
-	}
-
-	var apiErr *chita.Error
-	if ok := errors.As(err, &apiErr); ok {
-		return &chita.ErrorBody{
-			StatusCode: apiErr.Status,
-			Message:    apiErr.Message,
-			Error:      apiErr.Name,
-		}
-	}
-
-	return &chita.ErrorBody{
-		StatusCode: 500,
-		Message:    err.Error(),
-		Error:      "InternalServerError",
-	}
-}
-
 // testAuthMiddleware injects a test identity into the request context.
 func testAuthMiddleware(actorType auth.ActorType, actorID, orgID string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -224,7 +197,7 @@ func newTestServer(t *testing.T, handler *secret.Handler, actorType auth.ActorTy
 	t.Helper()
 
 	app := chita.NewApp(chita.AppConfig{
-		ErrorHandler: testErrorHandler,
+		ErrorHandler: server.NewErrorHandler(testutil.NopLogger()),
 	})
 
 	router := chita.NewRouter(chita.RouterConfig{App: app})

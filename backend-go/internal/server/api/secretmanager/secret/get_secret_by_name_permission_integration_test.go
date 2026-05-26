@@ -11,6 +11,7 @@ import (
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/pkg/chita"
 )
 
 // =============================================================================
@@ -46,57 +47,57 @@ func TestGetSecretByName_ImportPermissions(t *testing.T) {
 
 	t.Run("direct secret allowed with env-scoped permission", func(t *testing.T) {
 		result, err := getSecretByName(t, auth.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-			SecretName:      "DEV_DIRECT",
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  false,
+			SecretName:      chita.NewRequired("DEV_DIRECT"),
+			ProjectID:       chita.NewRequired(proj.ID),
+			Environment:     chita.NewRequired("dev"),
+			SecretPath:      chita.NewOptional("/"),
+			ViewSecretValue: chita.NewOptional(true),
+			IncludeImports:  chita.NewOptional(false),
 		})
 
 		require.NoError(t, err)
-		assert.Equal(t, "DEV_DIRECT", result.Secret.SecretKey)
-		assert.Equal(t, "dev-direct-value", result.Secret.SecretValue)
+		assert.Equal(t, "DEV_DIRECT", result.Secret.SecretKey.Get())
+		assert.Equal(t, "dev-direct-value", result.Secret.SecretValue.Get())
 	})
 
 	t.Run("imported secret denied without source env permission", func(t *testing.T) {
 		_, err := getSecretByName(t, auth.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-			SecretName:      "STAGING_SECRET",
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  true,
+			SecretName:      chita.NewRequired("STAGING_SECRET"),
+			ProjectID:       chita.NewRequired(proj.ID),
+			Environment:     chita.NewRequired("dev"),
+			SecretPath:      chita.NewOptional("/"),
+			ViewSecretValue: chita.NewOptional(true),
+			IncludeImports:  chita.NewOptional(true),
 		})
 
 		require.Error(t, err, "should deny access to imported secret when lacking source env permission")
-		assert.Contains(t, err.Error(), "permission")
+		assert.Contains(t, err.Error(), "Permission")
 	})
 
 	t.Run("imported secret allowed with admin permission", func(t *testing.T) {
 		result, err := getSecretByName(t, auth.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-			SecretName:      "STAGING_SECRET",
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  true,
+			SecretName:      chita.NewRequired("STAGING_SECRET"),
+			ProjectID:       chita.NewRequired(proj.ID),
+			Environment:     chita.NewRequired("dev"),
+			SecretPath:      chita.NewOptional("/"),
+			ViewSecretValue: chita.NewOptional(true),
+			IncludeImports:  chita.NewOptional(true),
 		})
 
 		require.NoError(t, err)
-		assert.Equal(t, "STAGING_SECRET", result.Secret.SecretKey)
-		assert.Equal(t, "staging-value", result.Secret.SecretValue)
-		assert.Equal(t, "staging", result.Secret.Environment, "should return actual source environment")
+		assert.Equal(t, "STAGING_SECRET", result.Secret.SecretKey.Get())
+		assert.Equal(t, "staging-value", result.Secret.SecretValue.Get())
+		assert.Equal(t, "staging", result.Secret.Environment.Get(), "should return actual source environment")
 	})
 
 	t.Run("imported secret not found when includeImports is false", func(t *testing.T) {
 		_, err := getSecretByName(t, auth.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-			SecretName:      "STAGING_SECRET",
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  false,
+			SecretName:      chita.NewRequired("STAGING_SECRET"),
+			ProjectID:       chita.NewRequired(proj.ID),
+			Environment:     chita.NewRequired("dev"),
+			SecretPath:      chita.NewOptional("/"),
+			ViewSecretValue: chita.NewOptional(true),
+			IncludeImports:  chita.NewOptional(false),
 		})
 
 		require.Error(t, err)

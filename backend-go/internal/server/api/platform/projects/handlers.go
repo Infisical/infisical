@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/pkg/chita"
 )
 
 // PermissionService provides project permission checks.
@@ -36,16 +37,16 @@ func NewHandler(deps *Deps) *Handler {
 func (h *Handler) GetHealth(ctx context.Context, _ *GetHealthRequest) (GetHealthResponse, error) {
 	h.logger.InfoContext(ctx, "health check")
 	return GetHealthResponse{
-		Message: "projects service is healthy",
+		Message: chita.NewRequired("projects service is healthy"),
 	}, nil
 }
 
 // CreateProject handles the create project endpoint.
 func (h *Handler) CreateProject(ctx context.Context, req *CreateProjectRequest) (CreateProjectResponse, error) {
-	h.logger.InfoContext(ctx, "creating project", slog.String("name", req.Name))
+	h.logger.InfoContext(ctx, "creating project", slog.String("name", req.Name.Get()))
 	return CreateProjectResponse{
-		ID:    "generated-id",
-		Name:  req.Name,
-		OrgID: req.OrgID,
+		ID:    chita.NewRequired("generated-id"),
+		Name:  chita.NewRequired(req.Name.Get()),
+		OrgID: chita.NewRequired(req.OrgID.Get()),
 	}, nil
 }

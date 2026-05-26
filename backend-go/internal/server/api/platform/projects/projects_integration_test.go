@@ -14,6 +14,7 @@ import (
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/pkg/chita"
 )
 
 var stack *infra.Stack
@@ -48,19 +49,19 @@ func TestGetHealth_ReturnsOK(t *testing.T) {
 
 	result, err := handler.GetHealth(context.Background(), nil)
 	require.NoError(t, err)
-	assert.Equal(t, "projects service is healthy", result.Message)
+	assert.Equal(t, "projects service is healthy", result.Message.Get())
 }
 
 func TestCreateProject_Success(t *testing.T) {
 	handler := newProjectsHandler(t)
 
 	result, err := handler.CreateProject(context.Background(), &projects.CreateProjectRequest{
-		Name:  "my-new-project",
-		OrgID: stack.NodeJS().OrgID(),
+		Name:  chita.NewRequired("my-new-project"),
+		OrgID: chita.NewRequired(stack.NodeJS().OrgID()),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "my-new-project", result.Name)
-	assert.Equal(t, stack.NodeJS().OrgID(), result.OrgID)
-	assert.NotEmpty(t, result.ID)
+	assert.Equal(t, "my-new-project", result.Name.Get())
+	assert.Equal(t, stack.NodeJS().OrgID(), result.OrgID.Get())
+	assert.NotEmpty(t, result.ID.Get())
 }

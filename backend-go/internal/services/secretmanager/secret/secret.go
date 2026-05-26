@@ -536,11 +536,22 @@ func (e *DecryptErrors) HasErrors() bool {
 	return e.ValueErr != nil || e.CommentErr != nil || e.MetadataErr != nil
 }
 
-// decryptSecretFields decrypts the value, comment, and metadata of a secret.
+// ResolvedImport is a resolved import with folder ID. Re-exported from secretimport.
+type ResolvedImport = secretimport.ResolvedImport
+
+// ImportLookup provides import chain resolution. Re-exported from secretimport.
+type ImportLookup = secretimport.ImportLookup
+
+// LoadProjectImports loads all imports for a project.
+func (s *Service) LoadProjectImports(ctx context.Context, projectID string) (*secretimport.ImportLookup, error) {
+	return s.secretImportService.LoadProjectImports(ctx, projectID)
+}
+
+// DecryptSecretFields decrypts the value, comment, and metadata of a secret.
 // If valueHidden is true, the displayValue is replaced with the hidden mask.
 // Returns rawValue (actual decrypted), displayValue (masked if hidden), comment, metadata,
 // and any decryption errors encountered (callers should log these).
-func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata, decryptErrs *DecryptErrors) {
+func DecryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata, decryptErrs *DecryptErrors) {
 	decryptErrs = &DecryptErrors{}
 
 	// Decrypt value

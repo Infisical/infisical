@@ -63,40 +63,50 @@ func (r *Required[T]) UnmarshalJSON(data []byte) error {
 // For requests: defaults apply if not set.
 // For responses: field may be omitted if not set (with omitempty).
 // Tracks three states: absent, null, or value present.
-type Optional[T any] struct {
-	value  T
-	isSet  bool
-	isNull bool
-}
+//
+// Implementation uses map[bool]T so that nil maps are properly omitted
+// by json.Marshal with omitempty (structs are never considered empty).
+// - nil map = not set (omitempty skips)
+// - map[false]T = explicit null
+// - map[true]T = value present
+type Optional[T any] map[bool]T
 
 // Get returns the value.
 func (o Optional[T]) Get() T {
-	return o.value
+	return o[true]
 }
 
 // Set sets the value and marks it as set (not null).
 func (o *Optional[T]) Set(v T) {
-	o.value = v
-	o.isSet = true
-	o.isNull = false
+	if *o == nil {
+		*o = make(Optional[T])
+	}
+	delete(*o, false) // remove null marker if present
+	(*o)[true] = v
 }
 
 // SetNull marks the field as explicitly null.
 func (o *Optional[T]) SetNull() {
+	if *o == nil {
+		*o = make(Optional[T])
+	}
+	delete(*o, true) // remove value if present
 	var zero T
-	o.value = zero
-	o.isSet = true
-	o.isNull = true
+	(*o)[false] = zero
 }
 
 // IsSet returns true if the field was present in JSON (including null).
 func (o Optional[T]) IsSet() bool {
-	return o.isSet
+	return o != nil
 }
 
 // IsNull returns true if the field was explicitly set to null.
 func (o Optional[T]) IsNull() bool {
-	return o.isNull
+	if o == nil {
+		return false
+	}
+	_, ok := o[false]
+	return ok
 }
 
 // IsRequired returns false (Optional fields are never required).
@@ -105,32 +115,26 @@ func (o Optional[T]) IsRequired() bool {
 }
 
 // MarshalJSON marshals the value. If null, marshals as null.
+// If not set (nil map), this won't be called when omitempty is used.
 func (o Optional[T]) MarshalJSON() ([]byte, error) {
-	if o.isNull {
+	if o.IsNull() {
 		return []byte("null"), nil
 	}
-	return json.Marshal(o.value)
+	return json.Marshal(o[true])
 }
 
 // UnmarshalJSON unmarshals into the value and tracks null vs value.
 func (o *Optional[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
-		o.isSet = true
-		o.isNull = true
+		o.SetNull()
 		return nil
 	}
-	if err := json.Unmarshal(data, &o.value); err != nil {
+	var v T
+	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
-	o.isSet = true
-	o.isNull = false
+	o.Set(v)
 	return nil
-}
-
-// IsZero returns true if the Optional is not set (absent).
-// Used by json.Marshal with omitempty to omit absent fields.
-func (o Optional[T]) IsZero() bool {
-	return !o.isSet
 }
 
 // NewRequired creates a Required field with the given value (marked as set).
@@ -142,7 +146,13 @@ func NewRequired[T any](v T) Required[T] {
 // NewOptional creates an Optional field with the given value (marked as set).
 // Use this when constructing responses or test requests.
 func NewOptional[T any](v T) Optional[T] {
-	return Optional[T]{value: v, isSet: true}
+	return Optional[T]{true: v}
+}
+
+// NewOptionalNull creates an Optional field explicitly set to null.
+func NewOptionalNull[T any]() Optional[T] {
+	var zero T
+	return Optional[T]{false: zero}
 }
 
 // --- String field helpers ---

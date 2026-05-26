@@ -7,15 +7,11 @@ lint:
 lint-fix:
 	go fix ./... && golangci-lint run --build-tags integration --fix
 
-test:
+test-unit:
 	go test -v ./internal/... -count=1 -race -timeout 120s
 
 # Run integration tests — testcontainers spins up isolated containers per package
-test-integration:
-	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
-
-# Run all tests (unit + integration)
-test-all:
+test:
 	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
 
 # Start Go backend with hot-reload (uses root docker-compose.dev.yml)
