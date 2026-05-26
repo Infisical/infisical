@@ -189,6 +189,7 @@ export const webhookServiceFactory = ({
           projectName: project.name,
           projectId: webhook.projectId,
           environment: webhook.environment.slug,
+          environmentName: webhook.environment.name,
           secretPath: webhook.secretPath,
           type: webhook.type
         }

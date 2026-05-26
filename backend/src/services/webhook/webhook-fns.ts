@@ -60,7 +60,8 @@ export const triggerWebhookRequest = async (
 
 export const getWebhookPayload = (event: TWebhookPayloads) => {
   if (event.type === WebhookEvents.SecretModified) {
-    const { projectName, projectId, environment, secretPath, type, changedBy, changedByActorType } = event.payload;
+    const { projectName, projectId, environment, environmentName, secretPath, type, changedBy, changedByActorType } =
+      event.payload;
 
     switch (type) {
       case WebhookType.SLACK:
@@ -78,6 +79,11 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                 {
                   title: "Environment",
                   value: environment,
+                  short: false
+                },
+                {
+                  title: "Environment Name",
+                  value: environmentName,
                   short: false
                 },
                 {
@@ -120,6 +126,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                     facts: [
                       { title: "Project", value: projectName || "" },
                       { title: "Environment", value: environment },
+                      { title: "Environment Name", value: environmentName || "" },
                       { title: "Secret Path", value: secretPath || "" },
                       { title: "Modified By", value: changedBy || "" },
                       {
@@ -142,6 +149,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             projectId,
             projectName,
             environment,
+            environmentName,
             secretPath,
             changedBy,
             changedByActorType
@@ -151,8 +159,17 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
   }
 
   if (event.type === WebhookEvents.SecretRotationFailed) {
-    const { projectName, projectId, environment, secretPath, type, rotationName, errorMessage, triggeredManually } =
-      event.payload;
+    const {
+      projectName,
+      projectId,
+      environment,
+      environmentName,
+      secretPath,
+      type,
+      rotationName,
+      errorMessage,
+      triggeredManually
+    } = event.payload;
 
     switch (type) {
       case WebhookType.SLACK:
@@ -175,6 +192,11 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                 {
                   title: "Environment",
                   value: environment,
+                  short: false
+                },
+                {
+                  title: "Environment Name",
+                  value: environmentName,
                   short: false
                 },
                 {
@@ -219,6 +241,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                       { title: "Rotation Name", value: rotationName || "" },
                       { title: "Project", value: projectName || "" },
                       { title: "Environment", value: environment },
+                      { title: "Environment Name", value: environmentName || "" },
                       { title: "Secret Path", value: secretPath || "" },
                       { title: "Error Message", value: errorMessage || "" },
                       { title: "Triggered Manually", value: triggeredManually ? "Yes" : "No" }
@@ -237,6 +260,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             projectId,
             projectName,
             environment,
+            environmentName,
             secretPath,
             rotationName,
             errorMessage,
@@ -247,7 +271,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
   }
 
   if (event.type === WebhookEvents.TestEvent) {
-    const { projectName, projectId, environment, secretPath } = event.payload;
+    const { projectName, projectId, environment, environmentName, secretPath } = event.payload;
     return {
       event: event.type,
       project: {
@@ -255,6 +279,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
         projectId,
         projectName,
         environment,
+        environmentName,
         secretPath
       }
     };
@@ -304,12 +329,13 @@ export const fnTriggerWebhook = async ({
     );
     projectName = project.name;
   }
+  const { environmentName } = event.payload;
 
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) => {
       const formattedEvent = {
         type: event.type,
-        payload: { ...event.payload, type: hook.type, projectName }
+        payload: { ...event.payload, type: hook.type, projectName, environmentName }
       } as TWebhookPayloads;
       const payload = getWebhookPayload(formattedEvent);
       if (!payload) return;

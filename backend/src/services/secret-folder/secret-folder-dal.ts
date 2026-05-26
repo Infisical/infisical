@@ -218,7 +218,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .where(`${TableName.Environment}.projectId`, projectId)
         .select(
           selectAllTableCols(TableName.SecretFolder),
-          db.ref("slug").withSchema(TableName.Environment).as("environmentSlug")
+          db.ref("slug").withSchema(TableName.Environment).as("environmentSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("environmentName")
         );
 
       if (!targetFolders.length) {
@@ -236,10 +237,10 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
       const idMap = buildFolderIdMap(allEnvFolders);
 
-      // Map environmentSlug by envId from target folders
-      const envSlugMap: Record<string, string> = {};
+      // Map env slug/name by envId from target folders
+      const envMap: Record<string, (typeof targetFolders)[number]> = {};
       for (const f of targetFolders) {
-        envSlugMap[f.envId] = (f as typeof f & { environmentSlug: string }).environmentSlug;
+        envMap[f.envId] = f;
       }
 
       return folderIds.map((folderId) => {
@@ -247,7 +248,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         if (!folder) return undefined;
 
         const path = buildFolderPath(folder, idMap);
-        return { ...folder, path, environmentSlug: envSlugMap[folder.envId] };
+        return {
+          ...folder,
+          path,
+          environmentSlug: envMap[folder.envId].environmentSlug,
+          environmentName: envMap[folder.envId].environmentName
+        };
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });
