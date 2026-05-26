@@ -264,8 +264,6 @@ export const nutanixPrismCentralPkiSyncFactory = ({
       logger.info({ syncId: pkiSync.id, clusterId, hasEtag: Boolean(etag) }, "[nutanix-pki-sync] Fetched current SSL certificate for ETag");
 
       // Build the SSLCertificate payload using the SDK model.
-      // Nutanix API v4 expects raw base64 DER for privateKey, publicCertificate, and caChain —
-      // not PEM format (PEM headers cause base64 decode failure on the server side).
       const { default: SSLCertificate } = await import(
         "@nutanix-api/clustermgmt-js-client/dist/es/models/clustermgmt/v4/config/SSLCertificate"
       );
