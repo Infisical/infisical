@@ -2,6 +2,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { logger } from "@app/lib/logger";
+import { buildNutanixApiClient } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-fns";
 import { NutanixPrismCentralConnectionMethod } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-enums";
 import { TNutanixPrismCentralConnection } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -80,31 +81,6 @@ const inferPrivateKeyAlgorithm = (certPem: string): NutanixKeyAlgorithm => {
 // So the correct format is base64(PEM string) — i.e. the full PEM including headers, base64-encoded.
 const pemToNutanixFormat = (pem: string): string => Buffer.from(pem.trim()).toString("base64");
 
-const buildNutanixApiClient = async (credentials: TNutanixCredentials, method: string) => {
-  const { ApiClient, SSLCertificateApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
-
-  const { hostname, port, sslRejectUnauthorized } = credentials;
-
-  const apiClient = new ApiClient();
-  apiClient.host = hostname;
-  apiClient.port = String(port ?? 9440);
-  apiClient.scheme = "https";
-
-  // Use the SDK's per-client verifySsl setter (creates a scoped https.Agent) instead of
-  // the process-wide NODE_TLS_REJECT_UNAUTHORIZED env var which leaks across all connections.
-  apiClient.verifySsl = sslRejectUnauthorized !== false;
-
-  if (method === NutanixPrismCentralConnectionMethod.ApiKey) {
-    const { apiKey } = credentials as { apiKey: string; hostname: string };
-    apiClient.setApiKey(apiKey);
-  } else {
-    const { username, password } = credentials as { username: string; password: string; hostname: string };
-    apiClient.username = username;
-    apiClient.password = password;
-  }
-
-  return { apiClient, SSLCertificateApi };
-};
 
 // Minimal SDK-compatible response class for the Prism v4 tasks endpoint.
 // The clustermgmt ApiClient's _deserialize calls returnType.constructFromObject(body),
@@ -265,7 +241,8 @@ export const nutanixPrismCentralPkiSyncFactory = ({
     );
 
     try {
-      const { apiClient, SSLCertificateApi } = await buildNutanixApiClient(credentials, pkiSync.connection.method);
+      const { SSLCertificateApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
+      const apiClient = await buildNutanixApiClient(credentials, pkiSync.connection.method as NutanixPrismCentralConnectionMethod);
       const sslApi = new SSLCertificateApi(apiClient);
 
       // Nutanix v4 API requires an ETag (If-Match header) for PUT operations.

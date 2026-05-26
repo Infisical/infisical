@@ -16,10 +16,14 @@ export const getNutanixPrismCentralConnectionListItem = () => {
   };
 };
 
-const buildNutanixApiClient = async (config: TNutanixPrismCentralConnectionConfig) => {
-  const { ClustersApi, ApiClient } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
+// Shared builder: configures an ApiClient with host, TLS, and auth settings.
+// Exported so the PKI sync module can reuse it without duplicating the auth wiring.
+export const buildNutanixApiClient = async (
+  credentials: TNutanixPrismCentralConnectionConfig["credentials"],
+  method: NutanixPrismCentralConnectionMethod
+) => {
+  const { ApiClient } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
 
-  const { credentials, method } = config;
   const { hostname, port, sslRejectUnauthorized } = credentials;
 
   const apiClient = new ApiClient();
@@ -40,7 +44,7 @@ const buildNutanixApiClient = async (config: TNutanixPrismCentralConnectionConfi
     apiClient.password = password;
   }
 
-  return { apiClient, ClustersApi };
+  return apiClient;
 };
 
 export const validateNutanixPrismCentralConnectionCredentials = async (
@@ -52,7 +56,8 @@ export const validateNutanixPrismCentralConnectionCredentials = async (
   await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
   try {
-    const { apiClient, ClustersApi } = await buildNutanixApiClient(config);
+    const { ClustersApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
+    const apiClient = await buildNutanixApiClient(config.credentials, config.method);
     const clustersApi = new ClustersApi(apiClient);
     await clustersApi.listClusters({ $limit: 1 } as Parameters<typeof clustersApi.listClusters>[0]);
   } catch (error: unknown) {
@@ -74,7 +79,8 @@ export const listNutanixClusters = async (
   await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
   try {
-    const { apiClient, ClustersApi } = await buildNutanixApiClient(config);
+    const { ClustersApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
+    const apiClient = await buildNutanixApiClient(config.credentials, config.method);
     const clustersApi = new ClustersApi(apiClient);
     const response = await clustersApi.listClusters({ $limit: 100 } as Parameters<typeof clustersApi.listClusters>[0]);
     const apiResponse = (response as unknown as { data: { getData: () => unknown } }).data;
@@ -96,4 +102,3 @@ export const listNutanixClusters = async (
   }
 };
 
-export { buildNutanixApiClient };
