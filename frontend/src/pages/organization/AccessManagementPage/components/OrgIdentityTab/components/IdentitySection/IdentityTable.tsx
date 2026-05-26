@@ -454,7 +454,7 @@ const renderTabCount = (count: number | undefined) =>
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
-  const [scopeTab, setScopeTab] = useState<ScopeTab>("all");
+  const [scopeTab, setScopeTab] = useState<ScopeTab>("organization");
 
   const {
     offset,
@@ -575,7 +575,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Tabs value={scopeTab} onValueChange={(value) => setScopeTab(value as ScopeTab)}>
           <TabsList variant="filled">
-            <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
             <TabsTrigger value="organization">
               <span
                 className={twMerge(
@@ -592,6 +591,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               Project
               {renderTabCount(projectScopeCount)}
             </TabsTrigger>
+            <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex w-1/2 justify-end gap-2">
