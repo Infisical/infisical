@@ -197,7 +197,7 @@ export const EnvironmentSection = () => {
           </div>
           <AlertDialogFooter className="sm:justify-between">
             <Button variant="danger" size="sm" onClick={onSwitchToHardDelete}>
-              delete permanently
+              Delete Permanently
             </Button>
             <div className="flex gap-2">
               <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -258,7 +258,7 @@ export const EnvironmentSection = () => {
                 !hardDeleteEnvData?.slug || hardDeleteConfirmation !== hardDeleteEnvData.slug
               }
             >
-              delete permanently
+              Delete Permanently
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
