@@ -2,6 +2,8 @@ import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import RE2 from "re2";
 
+import { BadRequestError } from "@app/lib/errors";
+
 const CERT_MANAGER_PREFIXES = ["/api/v1/cert-manager/", "/api/v1/pki/", "/api/v2/pki/"];
 
 const COOKIE_PREFIX = "infisical-cm-active-project-";
@@ -50,6 +52,18 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
 
     const explicit = readProjectIdFromRequest(req);
     if (explicit) {
+      if (!isUuid(explicit)) {
+        throw new BadRequestError({ message: "Invalid Certificate Manager project." });
+      }
+      const isValidForOrg = await server.services.certManagerProjectResolver.isCertManagerProject(
+        explicit,
+        req.permission.orgId
+      );
+      if (!isValidForOrg) {
+        throw new BadRequestError({
+          message: "Invalid Certificate Manager project."
+        });
+      }
       req.internalCertManagerProjectId = explicit;
       return;
     }

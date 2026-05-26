@@ -1,14 +1,8 @@
 import { ReactNode } from "react";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { IconButton } from "@app/components/v2";
-import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { Detail, DetailGroupHeader, DetailLabel, DetailValue } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { OnePassSyncDestinationSection } from "./1PasswordSyncDestinationSection";
 import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";
@@ -55,10 +49,9 @@ import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
-  onEditDestination: VoidFunction;
 };
 
-export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: Props) => {
+export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
   const { destination, connection } = secretSync;
 
   const app = APP_CONNECTION_MAP[connection.app].name;
@@ -199,30 +192,14 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       throw new Error(`Unhandled Destination Section components: ${destination}`);
   }
 
-  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
-
   return (
-    <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="font-medium text-mineshaft-100">Destination Configuration</h3>
-        <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
-          {(isAllowed) => (
-            <IconButton
-              variant="plain"
-              colorSchema="secondary"
-              isDisabled={!isAllowed}
-              ariaLabel="Edit sync destination"
-              onClick={onEditDestination}
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </IconButton>
-          )}
-        </ProjectPermissionCan>
-      </div>
-      <div className="flex w-full flex-wrap gap-8">
-        <GenericFieldLabel label={`${app} Connection`}>{connection.name}</GenericFieldLabel>
-        {DestinationComponents}
-      </div>
-    </div>
+    <>
+      <DetailGroupHeader>Destination Configuration</DetailGroupHeader>
+      <Detail>
+        <DetailLabel>{`${app} Connection`}</DetailLabel>
+        <DetailValue>{connection.name}</DetailValue>
+      </Detail>
+      {DestinationComponents}
+    </>
   );
 };

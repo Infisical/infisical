@@ -195,6 +195,11 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import {
+  getSalesforceConnectionListItem,
+  SalesforceConnectionMethod,
+  validateSalesforceConnectionCredentials
+} from "./salesforce";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import {
   getSnowflakeConnectionListItem,
@@ -330,6 +335,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
     getTravisCIConnectionListItem(),
+    getSalesforceConnectionListItem(),
     getSnowflakeConnectionListItem(),
     getDatadogConnectionListItem()
   ]
@@ -554,6 +560,7 @@ export const validateAppConnectionCredentials = async (
         deps.identityUaDAL
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Salesforce]: validateSalesforceConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -630,6 +637,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case FlyioConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
+    case SalesforceConnectionMethod.ClientCredentials:
       return "Client Credentials";
     case HCVaultConnectionMethod.AppRole:
       return "App Role";
@@ -788,6 +796,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
   [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Salesforce]: platformManagedCredentialsNotSupported,
   [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported
 };

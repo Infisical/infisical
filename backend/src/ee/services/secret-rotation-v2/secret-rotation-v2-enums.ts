@@ -17,6 +17,7 @@ export enum SecretRotation {
   OpenRouterApiKey = "open-router-api-key",
   HpIloLocalAccount = "hp-ilo-local-account",
   SupabaseApiKey = "supabase-api-key",
+  SalesforceOauthCredentials = "salesforce-oauth-credentials",
   DatadogApplicationKeySecret = "datadog-application-key-secret"
 }
 

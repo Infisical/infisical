@@ -2,7 +2,14 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import { useDigitalOceanConnectionListApps } from "@app/hooks/api/appConnections/digital-ocean";
 import { TDigitalOceanApp } from "@app/hooks/api/appConnections/digital-ocean/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -24,7 +31,7 @@ export const DigitalOceanAppPlatformSyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.appId", "");
@@ -35,29 +42,28 @@ export const DigitalOceanAppPlatformSyncFields = () => {
         name="destinationConfig.appId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select an app"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isAccountsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={apps.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TDigitalOceanApp>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.appName", v?.spec.name ?? "");
-              }}
-              options={apps}
-              placeholder="Select an app..."
-              getOptionLabel={(option) => option.spec.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Select an app</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isAccountsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={apps.find((p) => p.id === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TDigitalOceanApp>;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.appName", v?.spec.name ?? "");
+                }}
+                options={apps}
+                placeholder="Select an app..."
+                getOptionLabel={(option) => option.spec.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

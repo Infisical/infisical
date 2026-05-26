@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const BitbucketSyncReviewFields = () => {
@@ -12,9 +12,18 @@ export const BitbucketSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Repository">{repository}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">{environment}</GenericFieldLabel>
-      <GenericFieldLabel label="Workspace">{workspace}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Repository</DetailLabel>
+        <DetailValue>{repository}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{environment}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Workspace</DetailLabel>
+        <DetailValue>{workspace}</DetailValue>
+      </Detail>
     </>
   );
 };

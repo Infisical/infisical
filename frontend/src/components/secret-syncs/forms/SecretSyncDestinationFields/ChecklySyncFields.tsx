@@ -2,7 +2,15 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import {
   TChecklyAccount,
   useChecklyConnectionListAccounts,
@@ -37,7 +45,7 @@ export const ChecklySyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.accountId", "");
@@ -50,27 +58,26 @@ export const ChecklySyncFields = () => {
         name="destinationConfig.accountId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select an account"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isAccountsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={accounts.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TChecklyAccount>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.accountName", v?.name ?? "");
-              }}
-              options={accounts}
-              placeholder="Select an account..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Select an account</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isAccountsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={accounts.find((p) => p.id === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TChecklyAccount>;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.accountName", v?.name ?? "");
+                }}
+                options={accounts}
+                placeholder="Select an account..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -78,32 +85,32 @@ export const ChecklySyncFields = () => {
         name="destinationConfig.groupId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select a group"
-            isOptional
-            helperText="If provided, secrets will be scoped to a check group instead"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isGroupsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              isClearable
-              value={groups.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TChecklyAccount>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.groupName", v?.name ?? undefined);
-              }}
-              options={groups}
-              placeholder="Select a group..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Select a group (Optional)</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isGroupsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                isClearable
+                value={groups.find((p) => p.id === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TChecklyAccount>;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.groupName", v?.name ?? undefined);
+                }}
+                options={groups}
+                placeholder="Select a group..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldDescription>
+                If provided, secrets will be scoped to a check group instead
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

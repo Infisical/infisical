@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import {
   AccessScope,
   ProjectMembershipRole,
@@ -300,7 +302,7 @@ export const membershipGroupServiceFactory = ({
     return { membership: membershipDoc, group };
   };
 
-  const deleteMembership = async (dto: TDeleteMembershipGroupDTO) => {
+  const deleteMembership = async (dto: TDeleteMembershipGroupDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -366,11 +368,15 @@ export const membershipGroupServiceFactory = ({
       }
     }
 
-    const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
+    const performDelete = async (tx: Knex) => {
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
       return doc;
-    });
+    };
+
+    const membershipDoc = externalTx
+      ? await performDelete(externalTx)
+      : await membershipGroupDAL.transaction(performDelete);
     return { membership: membershipDoc, group };
   };
 

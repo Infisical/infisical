@@ -115,6 +115,13 @@ import {
   TRedisCredentialsRotationListItem,
   TRedisCredentialsRotationWithConnection
 } from "./redis-credentials/redis-credentials-rotation-types";
+import {
+  TSalesforceOauthCredentialsRotation,
+  TSalesforceOauthCredentialsRotationGeneratedCredentials,
+  TSalesforceOauthCredentialsRotationInput,
+  TSalesforceOauthCredentialsRotationListItem,
+  TSalesforceOauthCredentialsRotationWithConnection
+} from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 import {
@@ -158,6 +165,7 @@ export type TSecretRotationV2 =
   | TOpenRouterApiKeyRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
+  | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation;
 
 export type TSecretRotationV2WithConnection =
@@ -179,6 +187,7 @@ export type TSecretRotationV2WithConnection =
   | TOpenRouterApiKeyRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
+  | TSalesforceOauthCredentialsRotationWithConnection
   | TDatadogApplicationKeySecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
@@ -196,6 +205,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TOpenRouterApiKeyRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
+  | TSalesforceOauthCredentialsRotationGeneratedCredentials
   | TDatadogApplicationKeySecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
@@ -217,6 +227,7 @@ export type TSecretRotationV2Input =
   | TOpenRouterApiKeyRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
+  | TSalesforceOauthCredentialsRotationInput
   | TDatadogApplicationKeySecretRotationInput;
 
 export type TSecretRotationV2ListItem =
@@ -238,6 +249,7 @@ export type TSecretRotationV2ListItem =
   | TOpenRouterApiKeyRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
+  | TSalesforceOauthCredentialsRotationListItem
   | TDatadogApplicationKeySecretRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =

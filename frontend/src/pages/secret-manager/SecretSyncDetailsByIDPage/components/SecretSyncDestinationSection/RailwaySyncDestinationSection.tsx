@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TRailwaySync } from "@app/hooks/api/secretSyncs/types/railway-sync";
 
 type Props = {
@@ -10,8 +10,14 @@ export const RailwaySyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{destinationConfig.projectName}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">{destinationConfig.environmentName}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{destinationConfig.projectName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{destinationConfig.environmentName}</DetailValue>
+      </Detail>
     </>
   );
 };
