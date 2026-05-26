@@ -17,6 +17,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -424,6 +425,38 @@ export const kmsServiceFactory = ({
         throw new BadRequestError({
           message: `Invalid private key material. Expected a ${expectedFormat} private key.`
         });
+      }
+
+      if (isPqcKeyAlgorithm(algorithm as string)) {
+        const detectedVariant = detectPqcVariantFromDer(key);
+        const expectedVariant = (algorithm as string).replace(/_/g, "-");
+        if (detectedVariant && detectedVariant !== expectedVariant) {
+          throw new BadRequestError({
+            message: `Key material does not match the declared algorithm. Expected ${algorithm as string} but the key is ${detectedVariant.replace(/-/g, "_")}.`
+          });
+        }
+      } else {
+        const keyObj = crypto.nativeCrypto.createPrivateKey({
+          key,
+          format: "pem",
+          type: "pkcs8"
+        });
+        const keyType = keyObj.asymmetricKeyType;
+        const keyDetails = keyObj.asymmetricKeyDetails;
+
+        if (algorithm === AsymmetricKeyAlgorithm.RSA_4096) {
+          if (keyType !== "rsa" || keyDetails?.modulusLength !== 4096) {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
+            });
+          }
+        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
+          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
+            });
+          }
+        }
       }
     }
 

@@ -345,4 +345,4 @@ const derivePublicKeyFromSecret = async (
   return { raw, spkiDer };
 };
 
-export { derivePublicKeyFromSecret, isPqcCryptoKey, PqcCryptoKey };
+export { derivePublicKeyFromSecret, detectPqcVariantFromDer, isPqcCryptoKey, PqcCryptoKey };

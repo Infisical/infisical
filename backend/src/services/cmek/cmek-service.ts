@@ -60,7 +60,7 @@ export const cmekServiceFactory = ({
       if (!plan.kmsPqc) {
         throw new BadRequestError({
           message:
-            "Your license does not include PQC algorithms for KMS. Please upgrade to the Enterprise plan to use ML-DSA algorithms."
+            "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
         });
       }
     }
@@ -433,6 +433,16 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Sign, ProjectPermissionSub.Cmek);
 
+    if (isPqcKeyAlgorithm(key.encryptionAlgorithm)) {
+      const plan = await licenseService.getPlan(key.orgId);
+      if (!plan.kmsPqc) {
+        throw new BadRequestError({
+          message:
+            "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
+        });
+      }
+    }
+
     const sign = await kmsService.signWithKmsKey({ kmsId: keyId });
 
     const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, isDigest });
@@ -467,6 +477,16 @@ export const cmekServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Verify, ProjectPermissionSub.Cmek);
+
+    if (isPqcKeyAlgorithm(key.encryptionAlgorithm)) {
+      const plan = await licenseService.getPlan(key.orgId);
+      if (!plan.kmsPqc) {
+        throw new BadRequestError({
+          message:
+            "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
+        });
+      }
+    }
 
     const verify = await kmsService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
 
@@ -541,7 +561,7 @@ export const cmekServiceFactory = ({
         if (isPqcKeyAlgorithm(entry.algorithm as string) && !pqcLicensed) {
           throw new BadRequestError({
             message:
-              "Your license does not include PQC algorithms for KMS. Please upgrade to the Enterprise plan to use ML-DSA algorithms."
+              "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
           });
         }
         const imported = await kmsService.importKeyMaterial({
