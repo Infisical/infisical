@@ -33,30 +33,47 @@ const getNutanixCredentials = (pkiSync: TPkiSyncWithCredentials): TNutanixCreden
   return credentials;
 };
 
-const inferPrivateKeyAlgorithm = (certPem: string): string => {
+// Nutanix Prism Central only accepts these four algorithm values.
+const NUTANIX_SUPPORTED_ALGORITHMS = ["RSA_2048", "RSA_4096", "ECDSA_256", "ECDSA_521"] as const;
+type NutanixKeyAlgorithm = (typeof NUTANIX_SUPPORTED_ALGORITHMS)[number];
+
+const inferPrivateKeyAlgorithm = (certPem: string): NutanixKeyAlgorithm => {
+  let detected: string | undefined;
+
   try {
     const cert = new x509.X509Certificate(certPem);
     const alg = cert.publicKey.algorithm;
 
     if (alg.name === "RSASSA-PKCS1-v1_5" || alg.name === "RSA-PSS" || alg.name === "RSAES-PKCS1-v1_5") {
       const rsaAlg = alg as { modulusLength?: number };
-      if (rsaAlg.modulusLength && rsaAlg.modulusLength >= 4096) return "RSA_4096";
-      return "RSA_2048";
-    }
-
-    if (alg.name === "ECDSA" || alg.name === "EC") {
+      const bits = rsaAlg.modulusLength;
+      if (bits === 2048) detected = "RSA_2048";
+      else if (bits === 4096) detected = "RSA_4096";
+      else detected = `RSA_${bits ?? "unknown"}`;
+    } else if (alg.name === "ECDSA" || alg.name === "EC") {
       const ecAlg = alg as { namedCurve?: string };
-      const curve = ecAlg.namedCurve || "";
-      if (curve.includes("521") || curve.includes("P-521")) return "ECDSA_521";
-      if (curve.includes("384") || curve.includes("P-384")) return "ECDSA_384";
-      return "ECDSA_256";
+      const curve = ecAlg.namedCurve ?? "";
+      if (curve.includes("256") || curve.includes("P-256")) detected = "ECDSA_256";
+      else if (curve.includes("521") || curve.includes("P-521")) detected = "ECDSA_521";
+      else detected = `ECDSA_${curve || "unknown"}`;
+    } else {
+      detected = alg.name;
     }
   } catch (err) {
-    logger.warn({ err }, "Failed to parse certificate for key algorithm inference — defaulting to RSA_2048");
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: `Failed to parse certificate to determine key algorithm: ${err instanceof Error ? err.message : String(err)}`
+    });
   }
 
-  logger.warn("Unable to infer private key algorithm from certificate — defaulting to RSA_2048");
-  return "RSA_2048";
+  if (!detected || !(NUTANIX_SUPPORTED_ALGORITHMS as readonly string[]).includes(detected)) {
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: `Certificate uses key algorithm "${detected}" which is not supported by Nutanix Prism Central. Supported algorithms: ${NUTANIX_SUPPORTED_ALGORITHMS.join(", ")}`
+    });
+  }
+
+  return detected as NutanixKeyAlgorithm;
 };
 
 // Nutanix API v4 base64-decodes the field value server-side before parsing it as PEM.
