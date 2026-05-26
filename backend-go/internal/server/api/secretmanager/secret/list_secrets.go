@@ -44,9 +44,9 @@ type listSecretsInternalOpts struct {
 // listSecrets is the unified internal method for listing secrets.
 // Both V3 and V4 handlers call this with different options.
 func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts) (ListSecretsV4Response, error) {
-	identity := auth.IdentityFromContext(ctx)
-	if identity == nil {
-		return ListSecretsV4Response{}, errutil.Unauthorized("Authentication required")
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return ListSecretsV4Response{}, err
 	}
 
 	// 1. Get permission
@@ -186,7 +186,10 @@ func (h *Handler) ListSecretsV4(ctx context.Context, req *ListSecretsV4Request) 
 		slog.String("secretPath", req.SecretPath.Get()),
 	)
 
-	identity := auth.IdentityFromContext(ctx)
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return ListSecretsV4Response{}, err
+	}
 
 	behavior := PersonalOverridesNeverInclude
 	if req.IncludePersonalOverrides.Get() {
@@ -213,9 +216,9 @@ func (h *Handler) ListSecretsV4(ctx context.Context, req *ListSecretsV4Request) 
 
 // ListSecretsRawV3 is the handler for listing raw secrets (V3, deprecated).
 func (h *Handler) ListSecretsRawV3(ctx context.Context, req *ListSecretsRawV3Request) (ListSecretsV4Response, error) {
-	identity := auth.IdentityFromContext(ctx)
-	if identity == nil {
-		return ListSecretsV4Response{}, errutil.Unauthorized("Authentication required")
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return ListSecretsV4Response{}, err
 	}
 
 	// Convert Optional to *string for ResolveProjectID

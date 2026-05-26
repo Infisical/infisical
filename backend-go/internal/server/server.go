@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	chimw "github.com/go-chi/chi/v5/middleware"
+
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
 	serverauth "github.com/infisical/api/internal/server/auth"
@@ -64,7 +66,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	handler = requestLogger(handler, s.logger)
 	handler = middlewares.HTTPInfoMiddleware(handler)
 	handler = middlewares.AssumePrivilege(s.services.Platform.AssumePrivilege)(handler)
-	handler = middlewares.IdentityMiddleware(handler)
+	handler = chimw.StripSlashes(handler)
 	handler = requestid.Middleware(handler)
 
 	srv := &http.Server{

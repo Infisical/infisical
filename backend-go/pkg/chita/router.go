@@ -194,7 +194,11 @@ func (r *Router) WithSecurity(security ...Security) *Router {
 
 	// Auto-install middleware if registry is available
 	if r.app != nil && r.app.securityRegistry != nil {
-		r.chi.Use(r.app.securityRegistry.Middleware(security, nil))
+		// Use the app's error handler for auth failures
+		authErrHandler := func(w http.ResponseWriter, req *http.Request, err error) {
+			writeErrorResponse(w, r.app.errorHandler(req.Context(), err))
+		}
+		r.chi.Use(r.app.securityRegistry.Middleware(security, authErrHandler))
 	}
 
 	return r

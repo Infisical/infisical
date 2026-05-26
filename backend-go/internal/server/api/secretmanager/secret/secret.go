@@ -136,6 +136,9 @@ func parseMetadataFilter(metadataFilterStr *string) []secretsvc.MetadataFilter {
 
 // getUserID extracts user ID from identity if actor is a user.
 func getUserID(identity *auth.Identity) *uuid.UUID {
+	if identity == nil {
+		return nil
+	}
 	if identity.Actor == auth.ActorTypeUser {
 		return &identity.ActorID
 	}
@@ -145,6 +148,9 @@ func getUserID(identity *auth.Identity) *uuid.UUID {
 // getSecretType returns the secret type, defaulting to "shared" and forcing "shared" for non-user actors.
 func getSecretType(identity *auth.Identity, requestedType string) string {
 	if requestedType == "" {
+		return "shared"
+	}
+	if identity == nil {
 		return "shared"
 	}
 	switch identity.Actor {
@@ -157,7 +163,7 @@ func getSecretType(identity *auth.Identity, requestedType string) string {
 
 // createGetSecretsAuditLog creates an audit log entry for listing secrets.
 func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) error {
-	identity := auth.IdentityFromContext(ctx)
+	identity, _ := auth.IdentityFromContext(ctx)
 	if identity == nil {
 		return nil
 	}

@@ -30,9 +30,9 @@ type getSecretByNameInternalOpts struct {
 // getSecretByName is the unified internal method for getting a secret by name.
 // Both V3 and V4 handlers call this with different options.
 func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInternalOpts) (GetSecretByNameV4Response, error) {
-	identity := auth.IdentityFromContext(ctx)
-	if identity == nil {
-		return GetSecretByNameV4Response{}, errutil.Unauthorized("Authentication required")
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return GetSecretByNameV4Response{}, err
 	}
 
 	// 1. Get permission
@@ -197,7 +197,10 @@ func (h *Handler) GetSecretByNameV4(ctx context.Context, req *GetSecretByNameV4R
 		slog.String("secretName", req.SecretName.Get()),
 	)
 
-	identity := auth.IdentityFromContext(ctx)
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return GetSecretByNameV4Response{}, err
+	}
 
 	return h.getSecretByName(ctx, &getSecretByNameInternalOpts{
 		ProjectID:              req.ProjectID.Get(),
@@ -214,9 +217,9 @@ func (h *Handler) GetSecretByNameV4(ctx context.Context, req *GetSecretByNameV4R
 
 // GetSecretByNameRawV3 is the handler for getting a raw secret by name (V3, deprecated).
 func (h *Handler) GetSecretByNameRawV3(ctx context.Context, req *GetSecretByNameRawV3Request) (GetSecretByNameV4Response, error) {
-	identity := auth.IdentityFromContext(ctx)
-	if identity == nil {
-		return GetSecretByNameV4Response{}, errutil.Unauthorized("Authentication required")
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return GetSecretByNameV4Response{}, err
 	}
 
 	// Convert Optional to *string for ResolveProjectID
@@ -259,7 +262,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, req *GetSecretByName
 }
 
 func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {
-	identity := auth.IdentityFromContext(ctx)
+	identity, _ := auth.IdentityFromContext(ctx)
 	if identity == nil {
 		return nil
 	}

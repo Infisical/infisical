@@ -12,7 +12,7 @@ func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
 			Description("Returns health status for the projects service").
 			OperationID("getProjectsHealth"))
 
-		r.POST("", chita.Handler(app, handler.CreateProject).
+		r.POST("/", chita.Handler(app, handler.CreateProject).
 			Security(
 				chita.NewSecurity("jwt"),
 				chita.NewSecurity("identity_access_token"),

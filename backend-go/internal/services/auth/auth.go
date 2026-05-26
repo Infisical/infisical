@@ -6,6 +6,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // ActorType identifies the kind of entity performing an action.
@@ -172,10 +174,14 @@ func WithIdentity(ctx context.Context, id *Identity) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
-// IdentityFromContext returns the identity stored in ctx, or nil if absent.
-func IdentityFromContext(ctx context.Context) *Identity {
-	id, _ := ctx.Value(ctxKey{}).(*Identity)
-	return id
+// IdentityFromContext returns the identity stored in ctx.
+// Returns an error if identity is not present (authentication required).
+func IdentityFromContext(ctx context.Context) (*Identity, error) {
+	id, ok := ctx.Value(ctxKey{}).(*Identity)
+	if !ok || id == nil {
+		return nil, errutil.Unauthorized("Authentication required")
+	}
+	return id, nil
 }
 
 // WithAuthInfo stores the actor auth info in the context.

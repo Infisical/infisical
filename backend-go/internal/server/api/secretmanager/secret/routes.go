@@ -1,13 +1,16 @@
 package secret
 
-import "github.com/infisical/api/pkg/chita"
+import (
+	serverauth "github.com/infisical/api/internal/server/auth"
+	"github.com/infisical/api/pkg/chita"
+)
 
 // RegisterRoutes registers the routes for secrets endpoints.
 func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
 	// V4 endpoints
 	router.Route("/api/v4/secrets", func(r *chita.Router) {
 		r.WithTags("Secrets")
-		r.WithSecurity(
+		serverauth.WithAuth(r,
 			chita.NewSecurity("jwt"),
 			chita.NewSecurity("identity_access_token"),
 			chita.NewSecurity("service_token"),
@@ -27,7 +30,7 @@ func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
 	// V3 endpoints (deprecated)
 	router.Route("/api/v3/secrets/raw", func(r *chita.Router) {
 		r.WithTags("Secrets")
-		r.WithSecurity(
+		serverauth.WithAuth(r,
 			chita.NewSecurity("jwt"),
 			chita.NewSecurity("identity_access_token"),
 			chita.NewSecurity("service_token"),

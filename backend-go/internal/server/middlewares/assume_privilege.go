@@ -27,8 +27,8 @@ func AssumePrivilege(verifier AssumePrivilegeVerifier) func(next http.Handler) h
 				return
 			}
 
-			identity := auth.IdentityFromContext(r.Context())
-			if identity == nil || identity.AuthMode != auth.AuthModeJWT {
+			identity, err := auth.IdentityFromContext(r.Context())
+			if err != nil || identity.AuthMode != auth.AuthModeJWT {
 				next.ServeHTTP(w, r)
 				return
 			}

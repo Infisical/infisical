@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/infisical/api/internal/server/middlewares"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/pkg/chita"
 )
@@ -29,4 +30,11 @@ func NewSecurityRegistry(authenticator apiauth.Authenticator) *chita.SecurityReg
 	)
 
 	return registry
+}
+
+// WithAuth applies security schemes and identity middleware to a router.
+// This is a convenience wrapper that combines WithSecurity + IdentityMiddleware.
+func WithAuth(r *chita.Router, security ...chita.Security) {
+	r.WithSecurity(security...)
+	r.Use(middlewares.IdentityMiddleware)
 }
