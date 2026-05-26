@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { IdentitiesSchema } from "@app/db/schemas";
-import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
+import { ApiDocsTags, IDENTITIES_V2 } from "@app/lib/api-docs";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
@@ -81,20 +81,20 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           .array(z.nativeEnum(SearchIdentitiesScope))
           .min(1)
           .default([SearchIdentitiesScope.OrganizationScope])
-          .describe(IDENTITIES.SEARCH_V2.scope)
+          .describe(IDENTITIES_V2.SEARCH.scope)
           .optional(),
         orderBy: z
           .nativeEnum(OrgIdentitySearchOrderBy)
           .default(OrgIdentitySearchOrderBy.Name)
-          .describe(IDENTITIES.SEARCH_V2.orderBy)
+          .describe(IDENTITIES_V2.SEARCH.orderBy)
           .optional(),
         orderDirection: z
           .nativeEnum(OrderByDirection)
           .default(OrderByDirection.ASC)
-          .describe(IDENTITIES.SEARCH_V2.orderDirection)
+          .describe(IDENTITIES_V2.SEARCH.orderDirection)
           .optional(),
-        limit: z.number().int().min(1).max(100).default(50).describe(IDENTITIES.SEARCH_V2.limit),
-        offset: z.number().int().min(0).default(0).describe(IDENTITIES.SEARCH_V2.offset),
+        limit: z.number().int().min(1).max(100).default(50).describe(IDENTITIES_V2.SEARCH.limit),
+        offset: z.number().int().min(0).default(0).describe(IDENTITIES_V2.SEARCH.offset),
         search: buildSearchZodSchema(
           z
             .object({
@@ -112,7 +112,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                     })
                     .partial()
                 ])
-                .describe(IDENTITIES.SEARCH_V2.search.name),
+                .describe(IDENTITIES_V2.SEARCH.search.name),
               role: z
                 .union([
                   searchResourceZodValidate(z.string().max(255), "Role"),
@@ -123,9 +123,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                     })
                     .partial()
                 ])
-                .describe(IDENTITIES.SEARCH_V2.search.role)
+                .describe(IDENTITIES_V2.SEARCH.search.role)
             })
-            .describe(IDENTITIES.SEARCH_V2.search.desc)
+            .describe(IDENTITIES_V2.SEARCH.search.desc)
             .partial()
         )
       }),
@@ -178,7 +178,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           .array(z.nativeEnum(SearchIdentitiesScope))
           .min(1)
           .default([SearchIdentitiesScope.OrganizationScope, SearchIdentitiesScope.ProjectScope])
-          .describe(IDENTITIES.SEARCH_COUNT_V2.scope),
+          .describe(IDENTITIES_V2.SEARCH_COUNT.scope),
         search: buildSearchZodSchema(
           z
             .object({
@@ -196,7 +196,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                     })
                     .partial()
                 ])
-                .describe(IDENTITIES.SEARCH_COUNT_V2.search.name),
+                .describe(IDENTITIES_V2.SEARCH_COUNT.search.name),
               role: z
                 .union([
                   searchResourceZodValidate(z.string().max(255), "Role"),
@@ -207,9 +207,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                     })
                     .partial()
                 ])
-                .describe(IDENTITIES.SEARCH_COUNT_V2.search.role)
+                .describe(IDENTITIES_V2.SEARCH_COUNT.search.role)
             })
-            .describe(IDENTITIES.SEARCH_COUNT_V2.search.desc)
+            .describe(IDENTITIES_V2.SEARCH_COUNT.search.desc)
             .partial()
         )
       }),

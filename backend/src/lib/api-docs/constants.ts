@@ -208,8 +208,11 @@ export const IDENTITIES = {
     limit: "The number of identities to return.",
     orderBy: "The column to order identities by.",
     orderDirection: "The direction to order identities in."
-  },
-  SEARCH_V2: {
+  }
+} as const;
+
+export const IDENTITIES_V2 = {
+  SEARCH: {
     scope:
       "Array of scopes to search across. Accepts 'organization' to include organization-level identities and/or 'project' to include identities from projects the caller has access to. Defaults to ['organization'].",
     search: {
@@ -222,7 +225,7 @@ export const IDENTITIES = {
     orderBy: "The column to order identities by.",
     orderDirection: "The direction to order identities in."
   },
-  SEARCH_COUNT_V2: {
+  SEARCH_COUNT: {
     scope:
       "Array of scopes to count. Returns a count for each requested scope. Accepts 'organization' and/or 'project'.",
     search: {
