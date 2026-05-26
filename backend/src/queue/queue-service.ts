@@ -10,7 +10,6 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -64,7 +63,6 @@ export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
   SecretReminder = "secret-reminder",
-  AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   PkiAlertV2Event = "pki-alert-v2-event",
@@ -97,14 +95,13 @@ export enum QueueName {
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
-  AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
+  AuditLogBatch = "audit-log-batch",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal"
 }
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
@@ -163,7 +160,7 @@ export enum QueueJobs {
   AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
-  AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
+  AuditLogBatch = "audit-log-batch-job",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
@@ -204,10 +201,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.AuditLog]: {
-    name: QueueJobs.AuditLog;
-    payload: TCreateAuditLogDTO;
   };
   [QueueName.PkiAlertV2Event]: {
     name: QueueJobs.PkiAlertV2ProcessEvent;
@@ -459,8 +452,8 @@ export type TQueueJobTypes = {
     name: QueueJobs.AppConnectionCredentialRotationRotate;
     payload: TAppConnectionCredentialRotationRotateJobPayload;
   };
-  [QueueName.AuditLogClickHouseBatch]: {
-    name: QueueJobs.AuditLogClickHouseBatch;
+  [QueueName.AuditLogBatch]: {
+    name: QueueJobs.AuditLogBatch;
     payload: undefined;
   };
   [QueueName.PamDiscoveryScan]:
@@ -594,6 +587,10 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "queue-internal-recovery",
       "queue-internal-reconciliation",
       "secret-rotation",
+      // AuditLog queue removed: producers now write directly to the Redis stream.
+      // Old ClickHouse-only batch queue replaced by the unified AuditLogBatch queue.
+      "audit-log",
+      "audit-log-clickhouse-batch",
       // Queues replaced by cronJobFactory (src/lib/cron/cron-job.ts)
       "daily-resource-cleanup",
       "frequent-resource-cleanup",

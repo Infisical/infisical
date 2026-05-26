@@ -2,11 +2,13 @@ import type { ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
-import type { TProjects } from "@app/db/schemas";
+import type { TAuditLogs, TProjects } from "@app/db/schemas";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -46,13 +48,11 @@ const normalizeEmptyValue = (value: string | undefined | null, isClickhouse: boo
   return value;
 };
 
-// keep this timeout 5s it must be fast because else the queue will take time to finish
-// audit log is a crowded queue thus needs to be fast
 export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
-const AUDIT_LOG_CLICKHOUSE_STREAM_KEY = "audit-log-stream";
-const AUDIT_LOG_CLICKHOUSE_BATCH_SIZE = 10_000;
-const AUDIT_LOG_CLICKHOUSE_MAX_ENTRIES = 50_000;
+const AUDIT_LOG_STREAM_KEY = "audit-log-stream";
+const AUDIT_LOG_BATCH_SIZE = 10_000;
+const AUDIT_LOG_MAX_ENTRIES = 50_000;
 
 export const auditLogQueueServiceFactory = async ({
   auditLogDAL,
@@ -69,39 +69,24 @@ export const auditLogQueueServiceFactory = async ({
   const isClickHouseBatchEnabled = Boolean(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED);
 
   const pushToLog = async (data: TCreateAuditLogDTO) => {
-    await queueService.queue<QueueName.AuditLog>(QueueName.AuditLog, QueueJobs.AuditLog, data, {
-      removeOnFail: {
-        count: 3
-      },
-      removeOnComplete: true,
-      jobId: randomUUID()
-    });
-  };
-
-  queueService.start(QueueName.AuditLog, async (job) => {
     try {
-      if (!job.data) {
-        logger.error({ jobId: job.id }, "audit-log-queue: Received job with empty data, skipping");
-        return;
-      }
-
-      const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
-      let { orgId } = job.data;
-      let project: TProjects | undefined;
-
+      const { actor, event, ipAddress, projectId, userAgent, userAgentType } = data;
+      let { orgId } = data;
       if (!orgId && !projectId) {
         logger.error(
-          `audit-log-queue: Received job with neither orgId nor projectId, skipping [jobId=${job.id}] [event=${job.data.event?.type}]`
+          `audit-log-queue: Received audit log with neither orgId nor projectId, skipping [event=${event?.type}]`
         );
         return;
       }
 
+      let project: TProjects | undefined;
       if (!orgId) {
-        // TODO(akhilmhdh): use caching here in dal to avoid db calls
-        project = await projectDAL.findById(projectId!);
+        project =
+          (await requestMemoize(requestMemoKeys.projectFindById(projectId!), () => projectDAL.findById(projectId!))) ??
+          undefined;
         if (!project) {
           logger.error(
-            `audit-log-queue: projecet was deleted, skipping [jobId=${job.id}] [projectId=${projectId}] [event=${job.data.event?.type}]`
+            `audit-log-queue: project was deleted, skipping [projectId=${projectId}] [event=${event?.type}]`
           );
           return;
         }
@@ -111,108 +96,119 @@ export const auditLogQueueServiceFactory = async ({
       const plan = await licenseService.getPlan(orgId);
 
       // skip inserting if audit log retention is 0 meaning its not supported
-      if (plan.auditLogsRetentionDays) {
-        // For project actions, set TTL to project-level audit log retention config
-        // This condition ensures that the plan's audit log retention days cannot be bypassed
-        const ttlInDays =
-          project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
-            ? project.auditLogsRetentionDays
-            : plan.auditLogsRetentionDays;
+      if (!plan.auditLogsRetentionDays) return;
 
-        const ttl = ttlInDays * MS_IN_DAY;
+      // For project actions, set TTL to project-level audit log retention config
+      // This condition ensures that the plan's audit log retention days cannot be bypassed
+      const ttlInDays =
+        project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
+          ? project.auditLogsRetentionDays
+          : plan.auditLogsRetentionDays;
 
-        const createdAt = new Date(job.timestamp);
-        const eventMetadata = normalizeJsonPayload(event.metadata);
-        const actorMetadata = normalizeJsonPayload(actor.metadata);
+      const ttl = ttlInDays * MS_IN_DAY;
+      const createdAt = new Date();
+      const eventMetadata = normalizeJsonPayload(event.metadata);
+      const actorMetadata = normalizeJsonPayload(actor.metadata);
 
-        // UUIDv7 embeds job.timestamp so the id's time matches createdAt
-        // UUIDv4 for Postgres (existing schema expectation)
-        const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
-        const auditLog = {
-          id,
-          actor: actor.type,
-          actorMetadata,
-          ipAddress: normalizeEmptyValue(ipAddress, isClickHouseBatchEnabled),
-          eventType: event.type,
-          eventMetadata,
-          userAgent: normalizeEmptyValue(userAgent, isClickHouseBatchEnabled),
-          userAgentType: normalizeEmptyValue(userAgentType, isClickHouseBatchEnabled),
-          projectId: normalizeEmptyValue(projectId, isClickHouseBatchEnabled),
-          orgId,
-          expiresAt: new Date(createdAt.getTime() + ttl),
-          createdAt,
-          updatedAt: createdAt,
-          // project name is only used for non-ClickHouse insertion
-          ...(!isClickHouseBatchEnabled ? { projectName: project?.name } : {})
-        };
+      // UUIDv7 embeds createdAt so the id's time matches createdAt for ClickHouse
+      // UUIDv4 for Postgres (existing schema expectation)
+      const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
+      const auditLog = {
+        id,
+        actor: actor.type,
+        actorMetadata,
+        ipAddress: normalizeEmptyValue(ipAddress, isClickHouseBatchEnabled),
+        eventType: event.type,
+        eventMetadata,
+        userAgent: normalizeEmptyValue(userAgent, isClickHouseBatchEnabled),
+        userAgentType: normalizeEmptyValue(userAgentType, isClickHouseBatchEnabled),
+        projectId: normalizeEmptyValue(projectId, isClickHouseBatchEnabled),
+        orgId,
+        expiresAt: new Date(createdAt.getTime() + ttl),
+        createdAt,
+        updatedAt: createdAt,
+        // project name is only used for non-ClickHouse insertion
+        ...(!isClickHouseBatchEnabled ? { projectName: project?.name } : {})
+      };
 
-        // Push to Redis stream for ClickHouse batch processing
-        if (isClickHouseBatchEnabled) {
-          try {
-            await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
-              data: JSON.stringify(auditLog)
-            });
-          } catch (error) {
-            logger.error(
-              error,
-              `audit-log-queue: Failed to push audit log to Redis stream for ClickHouse batch [jobId=${job.id}] [event=${job.data.event?.type}] [orgId=${job.data.orgId}] [projectId=${job.data.projectId}]`
-            );
-          }
-        } else {
-          await auditLogDAL.create(auditLog);
-        }
-
-        if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
-          await auditLogStreamService.streamLog(orgId, auditLog);
-        }
-      }
+      await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(auditLog) });
     } catch (error) {
+      // Best-effort: never let audit logging break the calling request
       logger.error(
         error,
-        `audit-log-queue: Failed to process audit log job [jobId=${job.id}] [event=${job.data.event?.type}] [orgId=${job.data.orgId}] [projectId=${job.data.projectId}]`
+        `audit-log-queue: Failed to push audit log to stream [event=${data.event?.type}] [orgId=${data.orgId}] [projectId=${data.projectId}]`
       );
-      throw error;
     }
-  });
+  };
 
-  // Batch consumer: reads from Redis stream and inserts into ClickHouse every 5 seconds
-  if (isClickHouseBatchEnabled) {
-    queueService.start(QueueName.AuditLogClickHouseBatch, async () => {
-      const { entries, lastId } = await keyStore.streamCollect(
-        AUDIT_LOG_CLICKHOUSE_STREAM_KEY,
-        AUDIT_LOG_CLICKHOUSE_BATCH_SIZE,
-        AUDIT_LOG_CLICKHOUSE_MAX_ENTRIES
-      );
+  // Batch consumer: drains the Redis stream every 5s and bulk-inserts into ClickHouse (when enabled) or Postgres.
+  queueService.start(QueueName.AuditLogBatch, async () => {
+    const { entries, lastId } = await keyStore.streamCollect(
+      AUDIT_LOG_STREAM_KEY,
+      AUDIT_LOG_BATCH_SIZE,
+      AUDIT_LOG_MAX_ENTRIES
+    );
 
-      if (entries.length === 0 || !lastId) return;
+    if (entries.length === 0 || !lastId) return;
 
-      const values = entries.map(([, fields]) => JSON.parse(fields[1]) as Record<string, unknown>);
+    // JSON.stringify serializes Date as ISO strings, so the on-wire shape uses strings.
+    type TStreamedAuditLog = Omit<TAuditLogs, "createdAt" | "updatedAt" | "expiresAt"> & {
+      createdAt: string;
+      updatedAt: string;
+      expiresAt?: string | null;
+    };
 
-      try {
+    const values = entries.map(([, fields]) => JSON.parse(fields[1]) as TStreamedAuditLog);
+
+    const hydrate = (v: TStreamedAuditLog): TAuditLogs => ({
+      ...v,
+      createdAt: new Date(v.createdAt),
+      updatedAt: new Date(v.updatedAt),
+      expiresAt: v.expiresAt ? new Date(v.expiresAt) : null
+    });
+
+    try {
+      if (isClickHouseBatchEnabled) {
         await clickhouseClient!.insert({
           table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
           clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
           values,
           format: "JSONEachRow"
         });
-
-        // Only trim after successful insert
-        await keyStore.streamTrim(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, lastId, true);
-
-        logger.info({ count: values.length }, "audit-log-queue: Batch inserted audit logs into ClickHouse");
-      } catch (error) {
-        logger.error(error, `audit-log-queue: Failed to batch insert ${values.length} audit logs into ClickHouse`);
+      } else {
+        await auditLogDAL.bulkInsertIgnoreConflicts(values.map(hydrate));
       }
-    });
 
-    // Schedule repeatable job every 5 seconds
-    await queueService.upsertJobScheduler(
-      QueueName.AuditLogClickHouseBatch,
-      `${JOB_SCHEDULER_PREFIX}:audit-log-clickhouse-batch`,
-      { every: 5000 },
-      { name: QueueJobs.AuditLogClickHouseBatch }
-    );
-  }
+      // Only trim after successful insert; on crash between insert and trim,
+      // ClickHouse async_insert dedup + Postgres ON CONFLICT make replay idempotent.
+      await keyStore.streamTrim(AUDIT_LOG_STREAM_KEY, lastId, true);
+
+      logger.info(
+        { count: values.length, backend: isClickHouseBatchEnabled ? "clickhouse" : "postgres" },
+        "audit-log-queue: Batch inserted audit logs"
+      );
+
+      // Forward to external streams (Datadog/Splunk/etc) post-persist, fire-and-forget
+      if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
+        setImmediate(() => {
+          void Promise.allSettled(
+            values
+              .filter((v): v is TStreamedAuditLog & { orgId: string } => Boolean(v.orgId))
+              .map((v) => auditLogStreamService.streamLog(v.orgId, hydrate(v)))
+          );
+        });
+      }
+    } catch (error) {
+      logger.error(error, `audit-log-queue: Failed to batch insert ${values.length} audit logs`);
+    }
+  });
+
+  await queueService.upsertJobScheduler(
+    QueueName.AuditLogBatch,
+    `${JOB_SCHEDULER_PREFIX}:audit-log-batch`,
+    { every: 5000 },
+    { name: QueueJobs.AuditLogBatch }
+  );
 
   return {
     pushToLog

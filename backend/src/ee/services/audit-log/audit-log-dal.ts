@@ -23,6 +23,7 @@ type TAggregateQuery = {
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
+  bulkInsertIgnoreConflicts: (records: TAuditLogs[]) => Promise<void>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -264,6 +265,17 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
+  const bulkInsertIgnoreConflicts: TAuditLogDALFactory["bulkInsertIgnoreConflicts"] = async (records) => {
+    if (!records.length) return;
+    if (getConfig().DISABLE_POSTGRES_AUDIT_LOG_STORAGE) return;
+
+    try {
+      await db(TableName.AuditLog).insert(records).onConflict(["id", "createdAt"]).ignore();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "auditLogBulkInsert" });
+    }
+  };
+
   const countByDateAndActor = async (
     {
       orgId,
@@ -364,6 +376,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   return {
     ...auditLogOrm,
     create,
+    bulkInsertIgnoreConflicts,
     pruneAuditLog,
     getApproximateRowCount,
     find,
