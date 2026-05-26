@@ -466,12 +466,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       if (isDigest) {
         throw new BadRequestError({ message: "ML-DSA does not support digested input" });
       }
-      try {
-        return await opensslVerify(publicKey, signature, data);
-      } catch (error) {
-        logger.error(error, "KMS: Failed to verify PQC signature");
-        return false;
-      }
+      return opensslVerify(publicKey, signature, data);
     }
 
     try {
