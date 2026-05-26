@@ -12,6 +12,7 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { RolesUpdateBodySchema } from "./schemas";
 
@@ -219,15 +220,19 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
+      const { membership: groupMembership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
         projectId,
-        actorKind: "group",
-        actorId: req.params.groupId
-      });
-      const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
-        permission: req.permission,
-        selector: { groupId: req.params.groupId },
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
+        actorKind: ApplicationMemberKind.Group,
+        actorId: req.params.groupId,
+        performDelete: (tx) =>
+          server.services.membershipGroup.deleteMembership(
+            {
+              permission: req.permission,
+              selector: { groupId: req.params.groupId },
+              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
+            },
+            tx
+          )
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
