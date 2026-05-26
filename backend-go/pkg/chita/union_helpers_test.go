@@ -39,7 +39,7 @@ func TestParseUnionField_InRequest(t *testing.T) {
 
 	dog, ok := req.Pet.(*Dog)
 	require.True(t, ok)
-	assert.Equal(t, "Golden Retriever", dog.Breed)
+	assert.Equal(t, "Golden Retriever", dog.Breed.Get())
 }
 
 func TestParseUnionField_InRequest_NullPet(t *testing.T) {
@@ -72,14 +72,14 @@ type NestedAuthMethod interface {
 }
 
 type PasswordPayload struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username Required[string] `json:"username"`
+	Password Required[string] `json:"password"`
 }
 
 func (p *PasswordPayload) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"username": String(&p.Username).Required().MinLength(1),
-		"password": String(&p.Password).Required().MinLength(8),
+		"username": Str(&p.Username).MinLength(1),
+		"password": Str(&p.Password).MinLength(8),
 	})
 }
 
@@ -87,14 +87,14 @@ func (p *PasswordPayload) unionMarker()      {}
 func (p *PasswordPayload) nestedAuthMarker() {}
 
 type OAuthPayload struct {
-	Provider    string `json:"provider"`
-	AccessToken string `json:"accessToken"`
+	Provider    Required[string] `json:"provider"`
+	AccessToken Required[string] `json:"accessToken"`
 }
 
 func (o *OAuthPayload) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"provider":    String(&o.Provider).Required().Enum("google", "github"),
-		"accessToken": String(&o.AccessToken).Required(),
+		"provider":    Str(&o.Provider).Enum("google", "github"),
+		"accessToken": Str(&o.AccessToken),
 	})
 }
 
@@ -125,7 +125,7 @@ func TestNestedUnionDef_Parse(t *testing.T) {
 			verify: func(t *testing.T, auth NestedAuthMethod) {
 				pwd, ok := auth.(*PasswordPayload)
 				require.True(t, ok)
-				assert.Equal(t, "john", pwd.Username)
+				assert.Equal(t, "john", pwd.Username.Get())
 			},
 		},
 		{
@@ -134,7 +134,7 @@ func TestNestedUnionDef_Parse(t *testing.T) {
 			verify: func(t *testing.T, auth NestedAuthMethod) {
 				oauth, ok := auth.(*OAuthPayload)
 				require.True(t, ok)
-				assert.Equal(t, "github", oauth.Provider)
+				assert.Equal(t, "github", oauth.Provider.Get())
 			},
 		},
 		{name: "null", data: json.RawMessage(`null`), wantNil: true},
@@ -175,7 +175,7 @@ func TestNestedUnionDef_ParseWithType(t *testing.T) {
 		require.NoError(t, err)
 		pwd, ok := auth.(*PasswordPayload)
 		require.True(t, ok)
-		assert.Equal(t, "jane", pwd.Username)
+		assert.Equal(t, "jane", pwd.Username.Get())
 	})
 
 	t.Run("unknown type", func(t *testing.T) {
@@ -244,7 +244,7 @@ func TestParseNestedUnionField_InRequest(t *testing.T) {
 
 	pwd, ok := req.Auth.(*PasswordPayload)
 	require.True(t, ok)
-	assert.Equal(t, "john", pwd.Username)
+	assert.Equal(t, "john", pwd.Username.Get())
 }
 
 func TestParseNestedUnionField_NullOrMissingDiscriminator(t *testing.T) {
@@ -269,14 +269,14 @@ func TestParseNestedUnionField_NullOrMissingDiscriminator(t *testing.T) {
 
 type DogWithDefault struct {
 	UnionBase
-	Type  string `json:"type"`
-	Breed string `json:"breed"`
+	Type  Required[string] `json:"type"`
+	Breed Required[string] `json:"breed"`
 }
 
 func (d *DogWithDefault) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
 		"type":  Const("dog"),
-		"breed": String(&d.Breed).Required().Default("Unknown"),
+		"breed": Str(&d.Breed).Default("Unknown"),
 	})
 }
 
@@ -302,7 +302,7 @@ func TestUnionFromSchema_DefaultVariant(t *testing.T) {
 
 		dog, ok := animal.(*DogWithDefault)
 		require.True(t, ok)
-		assert.Equal(t, "Unknown", dog.Breed)
+		assert.Equal(t, "Unknown", dog.Breed.Get())
 	})
 
 	t.Run("overridden by present value", func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestUnionFromSchema_DefaultVariant(t *testing.T) {
 
 		cat, ok := animal.(*Cat)
 		require.True(t, ok)
-		assert.Equal(t, "black", cat.Color)
+		assert.Equal(t, "black", cat.Color.Get())
 	})
 
 	t.Run("invalid name errors", func(t *testing.T) {

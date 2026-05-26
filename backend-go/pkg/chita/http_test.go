@@ -24,32 +24,32 @@ import (
 // --- Body validation (mixed) ---
 
 type SimpleRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Count int    `json:"count"`
+	Name  Required[string] `json:"name"`
+	Email Required[string] `json:"email"`
+	Count Optional[int]    `json:"count"`
 }
 
 func (r *SimpleRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":  String(&r.Name).Required().MinLength(2).MaxLength(50),
-		"email": String(&r.Email).Required().Email(),
-		"count": Int(&r.Count).Optional().Min(0).Max(1000),
+		"name":  Str(&r.Name).MinLength(2).MaxLength(50),
+		"email": Str(&r.Email).Email(),
+		"count": OptInt(&r.Count).Min(0).Max(1000),
 	}).Title("SimpleRequest")
 }
 
 type SimpleResponse struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Count int    `json:"count"`
+	ID    Required[string] `json:"id"`
+	Name  Required[string] `json:"name"`
+	Email Required[string] `json:"email"`
+	Count Optional[int]    `json:"count"`
 }
 
 func (r *SimpleResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":    String(&r.ID).Required(),
-		"name":  String(&r.Name).Required(),
-		"email": String(&r.Email).Required(),
-		"count": Int(&r.Count).Optional(),
+		"id":    Str(&r.ID),
+		"name":  Str(&r.Name),
+		"email": Str(&r.Email),
+		"count": OptInt(&r.Count),
 	}).Title("SimpleResponse")
 }
 
@@ -65,79 +65,79 @@ func (*CreatedSimpleResponse) Status() int { return http.StatusCreated }
 // --- Path + query (no body) ---
 
 type GetItemRequest struct {
-	ID          string `json:"-"`
-	Page        int    `json:"-"`
-	PageSize    int    `json:"-"`
-	Search      string `json:"-"`
-	StatusField string `json:"-"`
+	ID          Required[string] `json:"-"`
+	Page        Optional[int]    `json:"-"`
+	PageSize    Optional[int]    `json:"-"`
+	Search      Optional[string] `json:"-"`
+	StatusField Optional[string] `json:"-"`
 }
 
 func (r *GetItemRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":       String(&r.ID).From(SourcePath).Required().UUID(),
-		"page":     Int(&r.Page).From(SourceQuery).Optional().Min(1).Default(1),
-		"pageSize": Int(&r.PageSize).From(SourceQuery).Optional().Min(1).Max(100).Default(20),
-		"search":   String(&r.Search).From(SourceQuery).Optional().MaxLength(100),
-		"status":   String(&r.StatusField).From(SourceQuery).Optional().Enum("active", "inactive", "pending"),
+		"id":       Str(&r.ID).From(SourcePath).UUID(),
+		"page":     OptInt(&r.Page).From(SourceQuery).Min(1).Default(1),
+		"pageSize": OptInt(&r.PageSize).From(SourceQuery).Min(1).Max(100).Default(20),
+		"search":   OptStr(&r.Search).From(SourceQuery).MaxLength(100),
+		"status":   OptStr(&r.StatusField).From(SourceQuery).Enum("active", "inactive", "pending"),
 	}).Title("GetItemRequest")
 }
 
 // --- Full mixed request: body + path + query + header ---
 
 type FullRequest struct {
-	ID          string    `json:"-"`
-	Page        int       `json:"-"`
-	PageSize    int       `json:"-"`
-	RequestID   string    `json:"-"`
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Age         int       `json:"age"`
-	Score       float64   `json:"score"`
-	IsActive    bool      `json:"isActive"`
-	Tags        []string  `json:"tags"`
-	ResourceID  uuid.UUID `json:"resourceId"`
-	Description string    `json:"description"`
+	ID          Required[string]  `json:"-"`
+	Page        Optional[int]     `json:"-"`
+	PageSize    Optional[int]     `json:"-"`
+	RequestID   Optional[string]  `json:"-"`
+	Name        Required[string]  `json:"name"`
+	Email       Required[string]  `json:"email"`
+	Age         Optional[int]     `json:"age"`
+	Score       Optional[float64] `json:"score"`
+	IsActive    Optional[bool]    `json:"isActive"`
+	Tags        []string          `json:"tags"`
+	ResourceID  uuid.UUID         `json:"resourceId"`
+	Description Optional[string]  `json:"description"`
 }
 
 func (r *FullRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":           String(&r.ID).From(SourcePath).Required().UUID(),
-		"page":         Int(&r.Page).From(SourceQuery).Optional().Min(1).Default(1),
-		"pageSize":     Int(&r.PageSize).From(SourceQuery).Optional().Min(1).Max(100).Default(20),
-		"X-Request-ID": String(&r.RequestID).From(SourceHeader).Optional().UUID(),
+		"id":           Str(&r.ID).From(SourcePath).UUID(),
+		"page":         OptInt(&r.Page).From(SourceQuery).Min(1).Default(1),
+		"pageSize":     OptInt(&r.PageSize).From(SourceQuery).Min(1).Max(100).Default(20),
+		"X-Request-ID": OptStr(&r.RequestID).From(SourceHeader).UUID(),
 
-		"name":        String(&r.Name).Required().MinLength(1).MaxLength(100),
-		"email":       String(&r.Email).Required().Email(),
-		"age":         Int(&r.Age).Optional().Min(0).Max(150),
-		"score":       Float(&r.Score).Optional().Min(0).Max(100),
-		"isActive":    Bool(&r.IsActive).Optional(),
-		"tags":        Array(String(nil)).Optional().MinItems(0).MaxItems(10),
+		"name":        Str(&r.Name).MinLength(1).MaxLength(100),
+		"email":       Str(&r.Email).Email(),
+		"age":         OptInt(&r.Age).Min(0).Max(150),
+		"score":       OptFloat(&r.Score).Min(0).Max(100),
+		"isActive":    OptBool(&r.IsActive),
+		"tags":        Array(StringElem(nil)).Optional().MinItems(0).MaxItems(10),
 		"resourceId":  UUID(&r.ResourceID).Optional(),
-		"description": String(&r.Description).Optional().MaxLength(500),
+		"description": OptStr(&r.Description).MaxLength(500),
 	}).Title("FullRequest")
 }
 
 type FullResponse struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Email       string   `json:"email"`
-	Page        int      `json:"page"`
-	PageSize    int      `json:"pageSize"`
-	Search      string   `json:"search,omitempty"`
-	StatusField string   `json:"status,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
+	ID          Required[string] `json:"id"`
+	Name        Required[string] `json:"name"`
+	Email       Required[string] `json:"email"`
+	Page        Required[int]    `json:"page"`
+	PageSize    Required[int]    `json:"pageSize"`
+	Search      Optional[string] `json:"search,omitempty"`
+	StatusField Optional[string] `json:"status,omitempty"`
+	Tags        []string         `json:"tags,omitempty"`
 }
 
 func (r *FullResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":       String(&r.ID).Required(),
-		"name":     String(&r.Name).Required(),
-		"email":    String(&r.Email).Required(),
-		"page":     Int(&r.Page).Required(),
-		"pageSize": Int(&r.PageSize).Required(),
-		"search":   String(&r.Search).Optional(),
-		"status":   String(&r.StatusField).Optional(),
-		"tags":     Array(String(nil)).Optional(),
+		"id":       Str(&r.ID),
+		"name":     Str(&r.Name),
+		"email":    Str(&r.Email),
+		"page":     Int(&r.Page),
+		"pageSize": Int(&r.PageSize),
+		"search":   OptStr(&r.Search),
+		"status":   OptStr(&r.StatusField),
+		"tags":     Array(StringElem(nil)).Optional(),
 	}).Title("FullResponse")
 }
 
@@ -146,12 +146,12 @@ func (*FullResponse) Status() int { return http.StatusOK }
 // --- Path only ---
 
 type DeleteItemRequest struct {
-	ID string `json:"-"`
+	ID Required[string] `json:"-"`
 }
 
 func (r *DeleteItemRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id": String(&r.ID).From(SourcePath).Required().UUID(),
+		"id": Str(&r.ID).From(SourcePath).UUID(),
 	}).Title("DeleteItemRequest")
 }
 
@@ -164,23 +164,23 @@ func (Deleted) Status() int           { return http.StatusNoContent }
 // --- Path source for error type dispatch ---
 
 type ErrorTypeRequest struct {
-	ErrorType string `json:"-"`
+	ErrorType Required[string] `json:"-"`
 }
 
 func (r *ErrorTypeRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type": String(&r.ErrorType).From(SourcePath).Required(),
+		"type": Str(&r.ErrorType).From(SourcePath),
 	}).Title("ErrorTypeRequest")
 }
 
 // OKStatus is a simple OK response
 type OKStatus struct {
-	StatusMsg string `json:"status"`
+	StatusMsg Required[string] `json:"status"`
 }
 
 func (r *OKStatus) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"status": String(&r.StatusMsg).Required(),
+		"status": Str(&r.StatusMsg),
 	})
 }
 
@@ -189,26 +189,26 @@ func (*OKStatus) Status() int { return http.StatusOK }
 // --- Cookies ---
 
 type CookieRequest struct {
-	SessionID string `json:"-"`
-	UserID    string `json:"-"`
+	SessionID Required[string] `json:"-"`
+	UserID    Optional[string] `json:"-"`
 }
 
 func (r *CookieRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"session_id": String(&r.SessionID).From(SourceCookie).Required(),
-		"user_id":    String(&r.UserID).From(SourceCookie).Optional(),
+		"session_id": Str(&r.SessionID).From(SourceCookie),
+		"user_id":    OptStr(&r.UserID).From(SourceCookie),
 	}).Title("CookieRequest")
 }
 
 type CookieResponse struct {
-	SessionID string `json:"sessionId"`
-	UserID    string `json:"userId"`
+	SessionID Required[string] `json:"sessionId"`
+	UserID    Optional[string] `json:"userId"`
 }
 
 func (r *CookieResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"sessionId": String(&r.SessionID).Required(),
-		"userId":    String(&r.UserID).Optional(),
+		"sessionId": Str(&r.SessionID),
+		"userId":    OptStr(&r.UserID),
 	})
 }
 
@@ -217,26 +217,26 @@ func (*CookieResponse) Status() int { return http.StatusOK }
 // --- Date query param ---
 
 type TimeQueryRequest struct {
-	ID        string `json:"-"`
-	StartDate string `json:"-"`
+	ID        Required[string] `json:"-"`
+	StartDate Optional[string] `json:"-"`
 }
 
 func (r *TimeQueryRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":        String(&r.ID).From(SourcePath).Required().UUID(),
-		"startDate": String(&r.StartDate).From(SourceQuery).Optional().Description("Start date in YYYY-MM-DD format"),
+		"id":        Str(&r.ID).From(SourcePath).UUID(),
+		"startDate": OptStr(&r.StartDate).From(SourceQuery).Description("Start date in YYYY-MM-DD format"),
 	}).Title("TimeQueryRequest")
 }
 
 type TimeResponse struct {
-	ID        string `json:"id"`
-	StartDate string `json:"startDate,omitempty"`
+	ID        Required[string] `json:"id"`
+	StartDate Optional[string] `json:"startDate,omitempty"`
 }
 
 func (r *TimeResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":        String(&r.ID).Required(),
-		"startDate": String(&r.StartDate).Optional(),
+		"id":        Str(&r.ID),
+		"startDate": OptStr(&r.StartDate),
 	})
 }
 
@@ -245,16 +245,16 @@ func (*TimeResponse) Status() int { return http.StatusOK }
 // --- Pattern validation ---
 
 type PatternRequest struct {
-	Code      string `json:"code"`
-	Phone     string `json:"phone"`
-	SlugField string `json:"slug"`
+	Code      Required[string] `json:"code"`
+	Phone     Optional[string] `json:"phone"`
+	SlugField Optional[string] `json:"slug"`
 }
 
 func (r *PatternRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"code":  String(&r.Code).Required().Pattern(`^[A-Z]{3}-\d{4}$`).Description("Format: XXX-0000"),
-		"phone": String(&r.Phone).Optional().Pattern(`^\+\d{1,3}-\d{3}-\d{3}-\d{4}$`),
-		"slug":  String(&r.SlugField).Optional().Pattern(`^[a-z0-9]+(?:-[a-z0-9]+)*$`),
+		"code":  Str(&r.Code).Pattern(`^[A-Z]{3}-\d{4}$`).Description("Format: XXX-0000"),
+		"phone": OptStr(&r.Phone).Pattern(`^\+\d{1,3}-\d{3}-\d{3}-\d{4}$`),
+		"slug":  OptStr(&r.SlugField).Pattern(`^[a-z0-9]+(?:-[a-z0-9]+)*$`),
 	}).Title("PatternRequest")
 }
 
@@ -263,16 +263,16 @@ func (*PatternRequest) Status() int { return http.StatusOK }
 // --- URL/URI format ---
 
 type URLRequest struct {
-	Website     string `json:"website"`
-	Callback    string `json:"callback"`
-	ResourceURI string `json:"resourceUri"`
+	Website     Required[string] `json:"website"`
+	Callback    Optional[string] `json:"callback"`
+	ResourceURI Optional[string] `json:"resourceUri"`
 }
 
 func (r *URLRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"website":     String(&r.Website).Required().URL(),
-		"callback":    String(&r.Callback).Optional().URL(),
-		"resourceUri": String(&r.ResourceURI).Optional().URI(),
+		"website":     Str(&r.Website).URL(),
+		"callback":    OptStr(&r.Callback).URL(),
+		"resourceUri": OptStr(&r.ResourceURI).URI(),
 	}).Title("URLRequest")
 }
 
@@ -281,16 +281,16 @@ func (*URLRequest) Status() int { return http.StatusOK }
 // --- Float validation ---
 
 type MeasurementRequest struct {
-	Temperature float64 `json:"temperature"`
-	Humidity    float64 `json:"humidity"`
-	Pressure    float64 `json:"pressure"`
+	Temperature Required[float64] `json:"temperature"`
+	Humidity    Optional[float64] `json:"humidity"`
+	Pressure    Optional[float64] `json:"pressure"`
 }
 
 func (r *MeasurementRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"temperature": Float(&r.Temperature).Required().Min(-273.15).Max(1000),
-		"humidity":    Float(&r.Humidity).Optional().Min(0).Max(100),
-		"pressure":    Float(&r.Pressure).Optional().Min(0),
+		"temperature": Float(&r.Temperature).Min(-273.15).Max(1000),
+		"humidity":    OptFloat(&r.Humidity).Min(0).Max(100),
+		"pressure":    OptFloat(&r.Pressure).Min(0),
 	}).Title("MeasurementRequest")
 }
 
@@ -299,14 +299,14 @@ func (*MeasurementRequest) Status() int { return http.StatusOK }
 // --- Array with custom validation ---
 
 type TagsRequest struct {
-	Name string   `json:"name"`
-	Tags []string `json:"tags"`
+	Name Required[string] `json:"name"`
+	Tags []string         `json:"tags"`
 }
 
 func (r *TagsRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name": String(&r.Name).Required(),
-		"tags": Array(String(nil)).
+		"name": Str(&r.Name),
+		"tags": Array(StringElem(nil)).
 			Required().
 			MinItems(1).
 			MaxItems(5).
@@ -330,56 +330,56 @@ func (*TagsRequest) Status() int { return http.StatusOK }
 // --- Nested object ---
 
 type CreateOrderRequest struct {
-	CustomerName    string `json:"customerName"`
+	CustomerName    Required[string] `json:"customerName"`
 	ShippingAddress struct {
-		Street  string `json:"street"`
-		City    string `json:"city"`
-		ZipCode string `json:"zipCode"`
-		Country string `json:"country"`
+		Street  Required[string] `json:"street"`
+		City    Required[string] `json:"city"`
+		ZipCode Required[string] `json:"zipCode"`
+		Country Required[string] `json:"country"`
 	} `json:"shippingAddress"`
 }
 
 func (r *CreateOrderRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"customerName": String(&r.CustomerName).Required().MinLength(1),
+		"customerName": Str(&r.CustomerName).MinLength(1),
 		"shippingAddress": Object(map[string]Schema{
-			"street":  String(&r.ShippingAddress.Street).Required().MinLength(1).MaxLength(200),
-			"city":    String(&r.ShippingAddress.City).Required().MinLength(1).MaxLength(100),
-			"zipCode": String(&r.ShippingAddress.ZipCode).Required().Pattern(`^\d{5}(-\d{4})?$`),
-			"country": String(&r.ShippingAddress.Country).Required().Enum("US", "CA", "UK", "DE"),
+			"street":  Str(&r.ShippingAddress.Street).MinLength(1).MaxLength(200),
+			"city":    Str(&r.ShippingAddress.City).MinLength(1).MaxLength(100),
+			"zipCode": Str(&r.ShippingAddress.ZipCode).Pattern(`^\d{5}(-\d{4})?$`),
+			"country": Str(&r.ShippingAddress.Country).Enum("US", "CA", "UK", "DE"),
 		}).Required(),
 	}).Title("CreateOrderRequest")
 }
 
 func (*CreateOrderRequest) Status() int { return http.StatusOK }
 
-// --- Nullable fields bound to actual pointer struct fields ---
+// --- Nullable fields (using Optional to track presence) ---
 
 type NullableRequest struct {
-	Name     string  `json:"name"`
-	Nickname *string `json:"nickname"`
-	Age      *int    `json:"age"`
+	Name     Required[string] `json:"name"`
+	Nickname Optional[string] `json:"nickname"`
+	Age      Optional[int]    `json:"age"`
 }
 
 func (r *NullableRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":     String(&r.Name).Required(),
-		"nickname": String(r.Nickname).Optional().Nullable(),
-		"age":      Int(r.Age).Optional().Nullable().Min(0),
+		"name":     Str(&r.Name),
+		"nickname": OptStr(&r.Nickname).Nullable(),
+		"age":      OptInt(&r.Age).Min(0),
 	}).Title("NullableRequest")
 }
 
 type NullableResponse struct {
-	Name        string `json:"name"`
-	HasNickname bool   `json:"hasNickname"`
-	HasAge      bool   `json:"hasAge"`
+	Name        Required[string] `json:"name"`
+	HasNickname Required[bool]   `json:"hasNickname"`
+	HasAge      Required[bool]   `json:"hasAge"`
 }
 
 func (r *NullableResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":        String(&r.Name).Required(),
-		"hasNickname": Bool(&r.HasNickname).Required(),
-		"hasAge":      Bool(&r.HasAge).Required(),
+		"name":        Str(&r.Name),
+		"hasNickname": Bool(&r.HasNickname),
+		"hasAge":      Bool(&r.HasAge),
 	})
 }
 
@@ -388,24 +388,24 @@ func (*NullableResponse) Status() int { return http.StatusOK }
 // --- Context echo (reads headers, sets headers / cookies) ---
 
 type ContextRequest struct {
-	Data string `json:"data"`
+	Data Optional[string] `json:"data"`
 }
 
 func (r *ContextRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"data": String(&r.Data).Optional(),
+		"data": OptStr(&r.Data),
 	}).Title("ContextRequest")
 }
 
 type ContextResponse struct {
-	ReceivedHeader string `json:"receivedHeader"`
-	Data           string `json:"data"`
+	ReceivedHeader Optional[string] `json:"receivedHeader"`
+	Data           Optional[string] `json:"data"`
 }
 
 func (r *ContextResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"receivedHeader": String(&r.ReceivedHeader).Optional(),
-		"data":           String(&r.Data).Optional(),
+		"receivedHeader": OptStr(&r.ReceivedHeader),
+		"data":           OptStr(&r.Data),
 	})
 }
 
@@ -420,16 +420,16 @@ type PetUnion interface {
 
 type DogPet struct {
 	UnionBase
-	Type  string `json:"type"`
-	Name  string `json:"name"`
-	Breed string `json:"breed"`
+	Type  Required[string] `json:"type"`
+	Name  Required[string] `json:"name"`
+	Breed Required[string] `json:"breed"`
 }
 
 func (d *DogPet) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":  String(&d.Type).Required(),
-		"name":  String(&d.Name).Required().MinLength(1),
-		"breed": String(&d.Breed).Required().MinLength(1),
+		"type":  Str(&d.Type),
+		"name":  Str(&d.Name).MinLength(1),
+		"breed": Str(&d.Breed).MinLength(1),
 	}).Title("DogPet")
 }
 func (d *DogPet) unionMarker() {}
@@ -437,16 +437,16 @@ func (d *DogPet) petMarker()   {}
 
 type CatPet struct {
 	UnionBase
-	Type   string `json:"type"`
-	Name   string `json:"name"`
-	Indoor bool   `json:"indoor"`
+	Type   Required[string] `json:"type"`
+	Name   Required[string] `json:"name"`
+	Indoor Optional[bool]   `json:"indoor"`
 }
 
 func (c *CatPet) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":   String(&c.Type).Required(),
-		"name":   String(&c.Name).Required().MinLength(1),
-		"indoor": Bool(&c.Indoor).Optional(),
+		"type":   Str(&c.Type),
+		"name":   Str(&c.Name).MinLength(1),
+		"indoor": OptBool(&c.Indoor),
 	}).Title("CatPet")
 }
 func (c *CatPet) unionMarker() {}
@@ -461,13 +461,13 @@ var PetUnionDef = UnionDef[PetUnion]{
 }
 
 type AdoptPetRequest struct {
-	AdopterName string   `json:"adopterName"`
-	Pet         PetUnion `json:"-"`
+	AdopterName Required[string] `json:"adopterName"`
+	Pet         PetUnion         `json:"-"`
 }
 
 func (r *AdoptPetRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"adopterName": String(&r.AdopterName).Required().MinLength(1),
+		"adopterName": Str(&r.AdopterName).MinLength(1),
 		"pet":         UnionField(&r.Pet, PetUnionDef).Required(),
 	}).Title("AdoptPetRequest")
 }
@@ -481,16 +481,16 @@ func (r *AdoptPetRequest) UnmarshalJSON(data []byte) error {
 }
 
 type AdoptResponse struct {
-	Adopter string `json:"adopter"`
-	PetType string `json:"petType"`
-	PetName string `json:"petName"`
+	Adopter Required[string] `json:"adopter"`
+	PetType Required[string] `json:"petType"`
+	PetName Required[string] `json:"petName"`
 }
 
 func (r *AdoptResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"adopter": String(&r.Adopter).Required(),
-		"petType": String(&r.PetType).Required(),
-		"petName": String(&r.PetName).Required(),
+		"adopter": Str(&r.Adopter),
+		"petType": Str(&r.PetType),
+		"petName": Str(&r.PetName),
 	})
 }
 
@@ -504,31 +504,31 @@ type ProcessResult interface {
 }
 
 type ProcessOK struct {
-	StatusMsg string `json:"status"`
+	StatusMsg Required[string] `json:"status"`
 }
 
 func (r *ProcessOK) Schema() *ObjectSchema {
-	return Object(map[string]Schema{"status": String(&r.StatusMsg).Required()})
+	return Object(map[string]Schema{"status": Str(&r.StatusMsg)})
 }
 func (*ProcessOK) Status() int    { return http.StatusOK }
 func (*ProcessOK) processMarker() {}
 
 type ProcessCreated struct {
-	ID string `json:"id"`
+	ID Required[string] `json:"id"`
 }
 
 func (r *ProcessCreated) Schema() *ObjectSchema {
-	return Object(map[string]Schema{"id": String(&r.ID).Required()})
+	return Object(map[string]Schema{"id": Str(&r.ID)})
 }
 func (*ProcessCreated) Status() int    { return http.StatusCreated }
 func (*ProcessCreated) processMarker() {}
 
 type ProcessAccepted struct {
-	StatusMsg string `json:"status"`
+	StatusMsg Required[string] `json:"status"`
 }
 
 func (r *ProcessAccepted) Schema() *ObjectSchema {
-	return Object(map[string]Schema{"status": String(&r.StatusMsg).Required()})
+	return Object(map[string]Schema{"status": Str(&r.StatusMsg)})
 }
 func (*ProcessAccepted) Status() int    { return http.StatusAccepted }
 func (*ProcessAccepted) processMarker() {}
@@ -540,11 +540,11 @@ func (*ProcessNoContent) Status() int           { return http.StatusNoContent }
 func (*ProcessNoContent) processMarker()        {}
 
 type ProcessCustom struct {
-	StatusMsg string `json:"status"`
+	StatusMsg Required[string] `json:"status"`
 }
 
 func (r *ProcessCustom) Schema() *ObjectSchema {
-	return Object(map[string]Schema{"status": String(&r.StatusMsg).Required()})
+	return Object(map[string]Schema{"status": Str(&r.StatusMsg)})
 }
 func (*ProcessCustom) Status() int    { return 207 }
 func (*ProcessCustom) processMarker() {}
@@ -552,11 +552,11 @@ func (*ProcessCustom) processMarker() {}
 // --- Health response ---
 
 type HealthResponse struct {
-	StatusMsg string `json:"status"`
+	StatusMsg Required[string] `json:"status"`
 }
 
 func (r *HealthResponse) Schema() *ObjectSchema {
-	return Object(map[string]Schema{"status": String(&r.StatusMsg).Required()})
+	return Object(map[string]Schema{"status": Str(&r.StatusMsg)})
 }
 func (*HealthResponse) Status() int { return http.StatusOK }
 
@@ -569,19 +569,19 @@ func (*HealthResponse) Status() int { return http.StatusOK }
 // =============================================================================
 
 func errorByName(_ context.Context, req *SimpleRequest) (OKStatus, error) {
-	switch req.Name {
+	switch req.Name.Get() {
 	case "conflict":
-		return OKStatus{}, Conflict("item %s already exists", req.Name)
+		return OKStatus{}, Conflict("item %s already exists", req.Name.Get())
 	case "notfound":
 		return OKStatus{}, NotFound("item not found")
 	case "forbidden":
 		return OKStatus{}, Forbidden("access denied")
 	}
-	return OKStatus{StatusMsg: "ok"}, nil
+	return OKStatus{StatusMsg: NewRequired("ok")}, nil
 }
 
 func errorByType(_ context.Context, req *ErrorTypeRequest) (OKStatus, error) {
-	switch req.ErrorType {
+	switch req.ErrorType.Get() {
 	case "bad-request":
 		return OKStatus{}, BadRequest("invalid input")
 	case "unauthorized":
@@ -603,21 +603,21 @@ func errorByType(_ context.Context, req *ErrorTypeRequest) (OKStatus, error) {
 	case "gateway-timeout":
 		return OKStatus{}, GatewayTimeout("upstream timeout")
 	}
-	return OKStatus{StatusMsg: "ok"}, nil
+	return OKStatus{StatusMsg: NewRequired("ok")}, nil
 }
 
 func statusByName(_ context.Context, req *SimpleRequest) (ProcessResult, error) {
-	switch req.Name {
+	switch req.Name.Get() {
 	case "create":
-		return &ProcessCreated{ID: "new-id"}, nil
+		return &ProcessCreated{ID: NewRequired("new-id")}, nil
 	case "accepted":
-		return &ProcessAccepted{StatusMsg: "processing"}, nil
+		return &ProcessAccepted{StatusMsg: NewRequired("processing")}, nil
 	case "nocontent":
 		return &ProcessNoContent{}, nil
 	case "custom":
-		return &ProcessCustom{StatusMsg: "multi-status"}, nil
+		return &ProcessCustom{StatusMsg: NewRequired("multi-status")}, nil
 	}
-	return &ProcessOK{StatusMsg: "ok"}, nil
+	return &ProcessOK{StatusMsg: NewRequired("ok")}, nil
 }
 
 func contextEcho(ctx context.Context, req *ContextRequest) (ContextResponse, error) {
@@ -628,16 +628,16 @@ func contextEcho(ctx context.Context, req *ContextRequest) (ContextResponse, err
 	customHeader := httpCtx.Header("X-Custom-Header")
 	httpCtx.SetHeader("X-Response-Header", "response-value")
 	httpCtx.SetCookie(&http.Cookie{Name: "test_cookie", Value: "cookie-value"})
-	return ContextResponse{ReceivedHeader: customHeader, Data: req.Data}, nil
+	return ContextResponse{ReceivedHeader: NewOptional(customHeader), Data: req.Data}, nil
 }
 
 func getItemEcho(_ context.Context, req *GetItemRequest) (FullResponse, error) {
 	return FullResponse{
 		ID:          req.ID,
-		Name:        "Test Item",
-		Email:       "test@example.com",
-		Page:        req.Page,
-		PageSize:    req.PageSize,
+		Name:        NewRequired("Test Item"),
+		Email:       NewRequired("test@example.com"),
+		Page:        NewRequired(req.Page.Get()),
+		PageSize:    NewRequired(req.PageSize.Get()),
 		Search:      req.Search,
 		StatusField: req.StatusField,
 	}, nil
@@ -648,8 +648,8 @@ func updateItemEcho(_ context.Context, req *FullRequest) (FullResponse, error) {
 		ID:       req.ID,
 		Name:     req.Name,
 		Email:    req.Email,
-		Page:     req.Page,
-		PageSize: req.PageSize,
+		Page:     NewRequired(req.Page.Get()),
+		PageSize: NewRequired(req.PageSize.Get()),
 		Tags:     req.Tags,
 	}, nil
 }
@@ -661,7 +661,7 @@ func deleteItemEcho(_ context.Context, _ *DeleteItemRequest) (Deleted, error) {
 func createItem(_ context.Context, req *SimpleRequest) (CreatedSimpleResponse, error) {
 	return CreatedSimpleResponse{
 		SimpleResponse: SimpleResponse{
-			ID:    uuid.New().String(),
+			ID:    NewRequired(uuid.New().String()),
 			Name:  req.Name,
 			Email: req.Email,
 			Count: req.Count,
@@ -681,22 +681,22 @@ func adoptEcho(_ context.Context, req *AdoptPetRequest) (AdoptResponse, error) {
 	var petType, petName string
 	switch p := req.Pet.(type) {
 	case *DogPet:
-		petType, petName = "dog", p.Name
+		petType, petName = "dog", p.Name.Get()
 	case *CatPet:
-		petType, petName = "cat", p.Name
+		petType, petName = "cat", p.Name.Get()
 	}
 	return AdoptResponse{
-		Adopter: req.AdopterName,
-		PetType: petType,
-		PetName: petName,
+		Adopter: NewRequired(req.AdopterName.Get()),
+		PetType: NewRequired(petType),
+		PetName: NewRequired(petName),
 	}, nil
 }
 
 func nullableEcho(_ context.Context, req *NullableRequest) (NullableResponse, error) {
 	return NullableResponse{
 		Name:        req.Name,
-		HasNickname: req.Nickname != nil,
-		HasAge:      req.Age != nil,
+		HasNickname: NewRequired(req.Nickname.IsSet() && !req.Nickname.IsNull()),
+		HasAge:      NewRequired(req.Age.IsSet() && !req.Age.IsNull()),
 	}, nil
 }
 
@@ -721,7 +721,7 @@ func orderEcho(_ context.Context, req *CreateOrderRequest) (CreateOrderRequest, 
 }
 
 func healthHandler(_ context.Context, _ *EmptyRequest) (HealthResponse, error) {
-	return HealthResponse{StatusMsg: "healthy"}, nil
+	return HealthResponse{StatusMsg: NewRequired("healthy")}, nil
 }
 
 // =============================================================================

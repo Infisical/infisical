@@ -110,48 +110,35 @@ func setFieldValue(schema Schema, value string) error {
 
 	switch s := schema.(type) {
 	case *StringSchema:
-		if s.ptr != nil {
-			*s.ptr = value
-		}
+		s.Set(value)
 
 	case *IntSchema:
 		i, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid integer: %w", err)
 		}
-		if s.ptr != nil {
-			*s.ptr = int(i)
-		}
-		if s.ptr64 != nil {
-			*s.ptr64 = i
-		}
+		s.SetInt64(i)
 
 	case *FloatSchema:
 		f, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return fmt.Errorf("invalid float: %w", err)
 		}
-		if s.ptr != nil {
-			*s.ptr = f
-		}
+		s.Set(f)
 
 	case *BoolSchema:
 		b, err := strconv.ParseBool(value)
 		if err != nil {
 			return fmt.Errorf("invalid boolean: %w", err)
 		}
-		if s.ptr != nil {
-			*s.ptr = b
-		}
+		s.Set(b)
 
 	case *UUIDSchema:
 		u, err := uuid.Parse(value)
 		if err != nil {
 			return fmt.Errorf("invalid UUID: %w", err)
 		}
-		if s.ptr != nil {
-			*s.ptr = u
-		}
+		s.Set(u)
 
 	case *TimeSchema:
 		var t time.Time
@@ -167,9 +154,7 @@ func setFieldValue(schema Schema, value string) error {
 		if err != nil {
 			return fmt.Errorf("invalid time: %w", err)
 		}
-		if s.ptr != nil {
-			*s.ptr = t
-		}
+		s.Set(t)
 
 	default:
 		return fmt.Errorf("unsupported schema type for parameter: %T", schema)
@@ -472,33 +457,25 @@ func ParseQueryArrayCSV(r *http.Request, name string) []string {
 }
 
 // applyDefaults applies default values to schema fields that weren't set.
-// For non-body fields (query, path, etc.), if the value is zero and a default exists, apply it.
+// For non-body fields (query, path, etc.), if the value wasn't explicitly set and a default exists, apply it.
 func applyDefaults(schema *ObjectSchema) {
 	for _, fieldSchema := range schema.properties {
 		switch s := fieldSchema.(type) {
 		case *IntSchema:
-			if s.defaultVal != nil && s.source != SourceBody {
-				val, _ := s.value()
-				if val == 0 {
-					if s.ptr != nil {
-						*s.ptr = int(*s.defaultVal)
-					}
-					if s.ptr64 != nil {
-						*s.ptr64 = *s.defaultVal
-					}
-				}
+			if s.defaultVal != nil && s.source != SourceBody && !s.IsSet() {
+				s.SetInt64(*s.defaultVal)
 			}
 		case *StringSchema:
-			if s.defaultVal != nil && s.source != SourceBody && s.ptr != nil && *s.ptr == "" {
-				*s.ptr = *s.defaultVal
+			if s.defaultVal != nil && s.source != SourceBody && !s.IsSet() {
+				s.Set(*s.defaultVal)
 			}
 		case *BoolSchema:
-			if s.defaultVal != nil && s.source != SourceBody && s.ptr != nil && !*s.ptr {
-				*s.ptr = *s.defaultVal
+			if s.defaultVal != nil && s.source != SourceBody && !s.IsSet() {
+				s.Set(*s.defaultVal)
 			}
 		case *FloatSchema:
-			if s.defaultVal != nil && s.source != SourceBody && s.ptr != nil && *s.ptr == 0 {
-				*s.ptr = *s.defaultVal
+			if s.defaultVal != nil && s.source != SourceBody && !s.IsSet() {
+				s.Set(*s.defaultVal)
 			}
 		}
 	}

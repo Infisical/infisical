@@ -10,12 +10,12 @@ import (
 // --- Object Schema Tests ---
 
 func TestObjectSchema_Validate(t *testing.T) {
-	var name string
-	var age *int
+	var name Required[string]
+	var age Required[int]
 
 	schema := Object(map[string]Schema{
-		"name": String(&name).Required().MinLength(1),
-		"age":  Int(age).Required().Min(0), // nil pointer = missing
+		"name": Str(&name).MinLength(1),
+		"age":  Int(&age).Min(0),
 	})
 
 	// Both fields missing - should have 2 errors
@@ -23,46 +23,40 @@ func TestObjectSchema_Validate(t *testing.T) {
 	require.Len(t, errs, 2)
 
 	// Set valid values
-	name = "John"
-	ageVal := 25
-	age = &ageVal
-	// Rebuild schema with new pointer
-	schema = Object(map[string]Schema{
-		"name": String(&name).Required().MinLength(1),
-		"age":  Int(age).Required().Min(0),
-	})
+	name.Set("John")
+	age.Set(25)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestObjectSchema_NestedValidation(t *testing.T) {
-	var street string
-	var city string
+	var street Required[string]
+	var city Required[string]
 
 	schema := Object(map[string]Schema{
 		"address": Object(map[string]Schema{
-			"street": String(&street).Required(),
-			"city":   String(&city).Required(),
+			"street": Str(&street),
+			"city":   Str(&city),
 		}),
 	})
 
 	errs := schema.Validate()
 	require.Len(t, errs, 2)
 
-	street = "123 Main St"
-	city = "NYC"
+	street.Set("123 Main St")
+	city.Set("NYC")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestObjectSchema_NestedFieldPaths(t *testing.T) {
 	// Issue #6: Nested validation error paths should be properly constructed
-	var email string
+	var email Required[string]
 
 	schema := Object(map[string]Schema{
 		"user": Object(map[string]Schema{
 			"profile": Object(map[string]Schema{
-				"email": String(&email).Required().Email(),
+				"email": Str(&email).Email(),
 			}),
 		}),
 	})
@@ -74,7 +68,7 @@ func TestObjectSchema_NestedFieldPaths(t *testing.T) {
 	assert.Equal(t, "required", errs[0].Code)
 
 	// Invalid email should produce error with full path
-	email = "not-an-email"
+	email.Set("not-an-email")
 	errs = schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "user.profile.email", errs[0].Field)
@@ -82,12 +76,13 @@ func TestObjectSchema_NestedFieldPaths(t *testing.T) {
 }
 
 func TestObjectSchema_NestedFieldPaths_MultipleErrors(t *testing.T) {
-	var name string
+	var name Required[string]
+	var age Required[int]
 
 	schema := Object(map[string]Schema{
 		"data": Object(map[string]Schema{
-			"name": String(&name).Required(),
-			"age":  Int(nil).Required(), // nil pointer = missing
+			"name": Str(&name),
+			"age":  Int(&age),
 		}),
 	})
 
@@ -104,12 +99,12 @@ func TestObjectSchema_NestedFieldPaths_MultipleErrors(t *testing.T) {
 }
 
 func TestObjectSchema_OpenAPI(t *testing.T) {
-	var name string
-	var email string
+	var name Required[string]
+	var email Required[string]
 
 	schema := Object(map[string]Schema{
-		"name":  String(&name).Required().MinLength(1),
-		"email": String(&email).Required().Email(),
+		"name":  Str(&name).MinLength(1),
+		"email": Str(&email).Email(),
 	}).Title("User").Description("A user object").AdditionalProperties(false)
 
 	openapi := schema.OpenAPI()
@@ -155,8 +150,7 @@ func TestObjectSchema_Discriminator(t *testing.T) {
 // --- Array Schema Tests ---
 
 func TestArraySchema_OpenAPI(t *testing.T) {
-	var itemVal string
-	itemSchema := String(&itemVal)
+	itemSchema := StringElem(nil)
 
 	schema := Array(itemSchema).
 		MinItems(1).
@@ -202,8 +196,7 @@ func TestArraySchema_Required(t *testing.T) {
 // --- Map Schema Tests ---
 
 func TestMapSchema_OpenAPI(t *testing.T) {
-	var val string
-	valueSchema := String(&val)
+	valueSchema := StringElem(nil)
 
 	schema := Map(valueSchema).
 		MinProperties(1).
@@ -235,24 +228,24 @@ func TestMapSchema_ValidateFn(t *testing.T) {
 // --- OneOf Schema Tests ---
 
 type testDogSchema struct {
-	Breed string
+	Breed Required[string]
 }
 
 func (d *testDogSchema) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
 		"type":  Const("dog"), // discriminator - OpenAPI only, not validated
-		"breed": String(&d.Breed).Required(),
+		"breed": Str(&d.Breed),
 	})
 }
 
 type testCatSchema struct {
-	Color string
+	Color Required[string]
 }
 
 func (c *testCatSchema) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
 		"type":  Const("cat"), // discriminator - OpenAPI only, not validated
-		"color": String(&c.Color).Required(),
+		"color": Str(&c.Color),
 	})
 }
 
@@ -283,7 +276,7 @@ func TestOneOfSchema_ValidateFn(t *testing.T) {
 }
 
 func TestOneOfSchema_DiscriminatedValidation(t *testing.T) {
-	dog := &testDogSchema{Breed: "Labrador"}
+	dog := &testDogSchema{Breed: NewRequired("Labrador")}
 	cat := &testCatSchema{} // Color not set - will fail validation
 
 	t.Run("validates active variant - valid", func(t *testing.T) {
@@ -342,7 +335,7 @@ func TestOneOfSchema_DiscriminatedValidation(t *testing.T) {
 }
 
 func TestOneOfSchema_DiscriminatedIsPresent(t *testing.T) {
-	dog := &testDogSchema{Breed: "Labrador"}
+	dog := &testDogSchema{Breed: NewRequired("Labrador")}
 	cat := &testCatSchema{}
 
 	t.Run("present when active variant set and has values", func(t *testing.T) {
@@ -367,11 +360,11 @@ func TestOneOfSchema_DiscriminatedIsPresent(t *testing.T) {
 // --- AnyOf Schema Tests ---
 
 func TestAnyOfSchema_OpenAPI(t *testing.T) {
-	var strVal string
-	var intVal int
+	var strVal Required[string]
+	var intVal Required[int]
 
 	schema := AnyOf(
-		String(&strVal),
+		Str(&strVal),
 		Int(&intVal),
 	).Title("StringOrInt").Description("Can be string or integer")
 
@@ -395,11 +388,11 @@ func TestAnyOfSchema_Required(t *testing.T) {
 // --- AllOf Schema Tests ---
 
 func TestAllOfSchema_OpenAPI(t *testing.T) {
-	var name string
-	var age int
+	var name Required[string]
+	var age Required[int]
 
 	schema := AllOf(
-		Object(map[string]Schema{"name": String(&name)}),
+		Object(map[string]Schema{"name": Str(&name)}),
 		Object(map[string]Schema{"age": Int(&age)}),
 	).Title("Combined").Description("Combined schema")
 
@@ -411,25 +404,19 @@ func TestAllOfSchema_OpenAPI(t *testing.T) {
 }
 
 func TestAllOfSchema_Validate(t *testing.T) {
-	var name string
-	var age *int
+	var name Required[string]
+	var age Required[int]
 
 	schema := AllOf(
-		Object(map[string]Schema{"name": String(&name).Required()}),
-		Object(map[string]Schema{"age": Int(age).Required()}), // nil pointer = missing
+		Object(map[string]Schema{"name": Str(&name)}),
+		Object(map[string]Schema{"age": Int(&age)}),
 	)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 2)
 
-	name = "John"
-	ageVal := 25
-	age = &ageVal
-	// Rebuild schema with new pointer
-	schema = AllOf(
-		Object(map[string]Schema{"name": String(&name).Required()}),
-		Object(map[string]Schema{"age": Int(age).Required()}),
-	)
+	name.Set("John")
+	age.Set(25)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }

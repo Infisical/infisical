@@ -24,12 +24,12 @@ func (r *EmptyRequest) Schema() *ObjectSchema {
 
 // TestOKResponse is a simple 200 response
 type TestOKResponse struct {
-	Message string `json:"message"`
+	Message Optional[string] `json:"message"`
 }
 
 func (r *TestOKResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"message": String(&r.Message).Optional(),
+		"message": OptStr(&r.Message),
 	})
 }
 
@@ -37,12 +37,12 @@ func (*TestOKResponse) Status() int { return http.StatusOK }
 
 // TestCreatedResponse is a 201 response
 type TestCreatedResponse struct {
-	ID string `json:"id"`
+	ID Optional[string] `json:"id"`
 }
 
 func (r *TestCreatedResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id": String(&r.ID).Optional(),
+		"id": OptStr(&r.ID),
 	})
 }
 
@@ -59,11 +59,11 @@ func (*TestNoContent) Status() int           { return http.StatusNoContent }
 // =============================================================================
 
 func testOKHandler(_ context.Context, _ *EmptyRequest) (TestOKResponse, error) {
-	return TestOKResponse{Message: "ok"}, nil
+	return TestOKResponse{Message: NewOptional("ok")}, nil
 }
 
 func testCreatedHandler(_ context.Context, _ *EmptyRequest) (TestCreatedResponse, error) {
-	return TestCreatedResponse{ID: "123"}, nil
+	return TestCreatedResponse{ID: NewOptional("123")}, nil
 }
 
 func testNoContentHandler(_ context.Context, _ *EmptyRequest) (TestNoContent, error) {

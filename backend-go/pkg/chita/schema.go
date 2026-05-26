@@ -96,8 +96,7 @@ func (e ValidationErrors) HasErrors() bool {
 // --- String Schema ---
 
 type StringSchema struct {
-	ptr         *string
-	required    bool
+	field       *strFieldAccessor
 	minLength   *int
 	maxLength   *int
 	pattern     *regexp.Regexp
@@ -115,8 +114,50 @@ type StringSchema struct {
 	source      ParamSource
 }
 
-func String(ptr *string) *StringSchema {
-	return &StringSchema{ptr: ptr}
+// Str creates a StringSchema for a Required[string] field (for requests).
+func Str(field *Required[string]) *StringSchema {
+	return &StringSchema{field: &strFieldAccessor{req: field}}
+}
+
+// OptStr creates a StringSchema for an Optional[string] field (for requests).
+func OptStr(field *Optional[string]) *StringSchema {
+	return &StringSchema{field: &strFieldAccessor{opt: field}}
+}
+
+// StringElem creates a StringSchema for array element definitions (no binding).
+func StringElem(_ *string) *StringSchema {
+	var placeholder Optional[string]
+	return &StringSchema{field: &strFieldAccessor{opt: &placeholder}}
+}
+
+// StringPtr creates a StringSchema bound to a raw string pointer.
+// For internal/test use where Required/Optional isn't needed.
+func StringPtr(ptr *string) *StringSchema {
+	if ptr == nil {
+		var placeholder Optional[string]
+		return &StringSchema{field: &strFieldAccessor{opt: &placeholder}}
+	}
+	// Wrap in Optional and set value if non-empty
+	var opt Optional[string]
+	if *ptr != "" {
+		opt.Set(*ptr)
+	}
+	return &StringSchema{field: &strFieldAccessor{opt: &opt}}
+}
+
+// Get returns the current string value.
+func (s *StringSchema) Get() string {
+	return s.field.Get()
+}
+
+// Set sets the string value.
+func (s *StringSchema) Set(v string) {
+	s.field.Set(v)
+}
+
+// IsSet returns true if the value was explicitly set.
+func (s *StringSchema) IsSet() bool {
+	return s.field.IsSet()
 }
 
 // From sets the parameter source (Path, Query, Header, Cookie). Default is Body.
@@ -127,16 +168,6 @@ func (s *StringSchema) From(source ParamSource) *StringSchema {
 
 func (s *StringSchema) GetSource() ParamSource {
 	return s.source
-}
-
-func (s *StringSchema) Required() *StringSchema {
-	s.required = true
-	return s
-}
-
-func (s *StringSchema) Optional() *StringSchema {
-	s.required = false
-	return s
 }
 
 func (s *StringSchema) MinLength(n int) *StringSchema {
@@ -287,24 +318,24 @@ func (s *StringSchema) WriteOnly() *StringSchema {
 }
 
 func (s *StringSchema) IsRequired() bool {
-	return s.required
+	return s.field.IsRequired()
 }
 
 func (s *StringSchema) IsPresent() bool {
-	return s.ptr != nil && *s.ptr != ""
+	return s.field.IsSet() && s.field.Get() != ""
 }
 
 func (s *StringSchema) Validate() []ValidationError {
 	var errs []ValidationError
-	val := ""
-	if s.ptr != nil {
-		val = *s.ptr
+	val := s.Get()
+
+	if s.IsRequired() && !s.IsSet() {
+		errs = append(errs, ValidationError{Code: "required", Message: "is required"})
+		return errs
 	}
 
+	// Skip other validations if value is empty and not required
 	if val == "" {
-		if s.required {
-			errs = append(errs, ValidationError{Code: "required", Message: "is required"})
-		}
 		return errs
 	}
 
@@ -444,9 +475,7 @@ func (s *StringSchema) OpenAPI() map[string]any {
 // --- Int Schema ---
 
 type IntSchema struct {
-	ptr              *int
-	ptr64            *int64
-	required         bool
+	field            *intFieldAccessor
 	minimum          *int64
 	maximum          *int64
 	exclusiveMinimum *int64
@@ -464,12 +493,49 @@ type IntSchema struct {
 	source           ParamSource
 }
 
-func Int(ptr *int) *IntSchema {
-	return &IntSchema{ptr: ptr}
+// Int creates an IntSchema for a Required[int] field.
+func Int(field *Required[int]) *IntSchema {
+	return &IntSchema{field: &intFieldAccessor{req: field}}
 }
 
-func Int64(ptr *int64) *IntSchema {
-	return &IntSchema{ptr64: ptr}
+// OptInt creates an IntSchema for an Optional[int] field.
+func OptInt(field *Optional[int]) *IntSchema {
+	return &IntSchema{field: &intFieldAccessor{opt: field}}
+}
+
+// Int64 creates an IntSchema for a Required[int64] field.
+func Int64(field *Required[int64]) *IntSchema {
+	return &IntSchema{field: &intFieldAccessor{req64: field}}
+}
+
+// OptInt64 creates an IntSchema for an Optional[int64] field.
+func OptInt64(field *Optional[int64]) *IntSchema {
+	return &IntSchema{field: &intFieldAccessor{opt64: field}}
+}
+
+// GetInt returns the current int value.
+func (s *IntSchema) GetInt() int {
+	return s.field.GetInt()
+}
+
+// GetInt64 returns the current int64 value.
+func (s *IntSchema) GetInt64() int64 {
+	return s.field.GetInt64()
+}
+
+// SetInt sets the int value.
+func (s *IntSchema) SetInt(v int) {
+	s.field.SetInt(v)
+}
+
+// SetInt64 sets the int64 value.
+func (s *IntSchema) SetInt64(v int64) {
+	s.field.SetInt64(v)
+}
+
+// IsSet returns true if the value was explicitly set.
+func (s *IntSchema) IsSet() bool {
+	return s.field.IsSet()
 }
 
 func (s *IntSchema) From(source ParamSource) *IntSchema {
@@ -479,16 +545,6 @@ func (s *IntSchema) From(source ParamSource) *IntSchema {
 
 func (s *IntSchema) GetSource() ParamSource {
 	return s.source
-}
-
-func (s *IntSchema) Required() *IntSchema {
-	s.required = true
-	return s
-}
-
-func (s *IntSchema) Optional() *IntSchema {
-	s.required = false
-	return s
 }
 
 func (s *IntSchema) Min(n int64) *IntSchema {
@@ -568,36 +624,26 @@ func (s *IntSchema) WriteOnly() *IntSchema {
 }
 
 func (s *IntSchema) IsRequired() bool {
-	return s.required
+	return s.field.IsRequired()
 }
 
 func (s *IntSchema) IsPresent() bool {
-	return s.ptr != nil || s.ptr64 != nil
-}
-
-//nolint:unparam // bool used for interface consistency
-func (s *IntSchema) value() (int64, bool) {
-	if s.ptr != nil {
-		return int64(*s.ptr), true
-	}
-	if s.ptr64 != nil {
-		return *s.ptr64, true
-	}
-	return 0, false
+	return s.field.IsSet()
 }
 
 func (s *IntSchema) Validate() []ValidationError {
 	var errs []ValidationError
 
-	// ptr == nil means the value was not provided (distinct from value being 0)
-	if s.ptr == nil && s.ptr64 == nil {
-		if s.required {
-			errs = append(errs, ValidationError{Code: "required", Message: "is required"})
-		}
+	if s.IsRequired() && !s.IsSet() {
+		errs = append(errs, ValidationError{Code: "required", Message: "is required"})
 		return errs
 	}
 
-	val, _ := s.value()
+	if !s.IsSet() {
+		return errs
+	}
+
+	val := s.GetInt64()
 
 	if s.minimum != nil && val < *s.minimum {
 		errs = append(errs, ValidationError{
@@ -699,8 +745,7 @@ func (s *IntSchema) OpenAPI() map[string]any {
 // --- Float Schema ---
 
 type FloatSchema struct {
-	ptr              *float64
-	required         bool
+	field            *floatFieldAccessor
 	minimum          *float64
 	maximum          *float64
 	exclusiveMinimum *float64
@@ -717,8 +762,29 @@ type FloatSchema struct {
 	source           ParamSource
 }
 
-func Float(ptr *float64) *FloatSchema {
-	return &FloatSchema{ptr: ptr}
+// Float creates a FloatSchema for a Required[float64] field.
+func Float(field *Required[float64]) *FloatSchema {
+	return &FloatSchema{field: &floatFieldAccessor{req: field}}
+}
+
+// OptFloat creates a FloatSchema for an Optional[float64] field.
+func OptFloat(field *Optional[float64]) *FloatSchema {
+	return &FloatSchema{field: &floatFieldAccessor{opt: field}}
+}
+
+// Set sets the float value.
+func (s *FloatSchema) Set(v float64) {
+	s.field.Set(v)
+}
+
+// Get returns the current float value.
+func (s *FloatSchema) Get() float64 {
+	return s.field.Get()
+}
+
+// IsSet returns true if the value was explicitly set.
+func (s *FloatSchema) IsSet() bool {
+	return s.field.IsSet()
 }
 
 func (s *FloatSchema) From(source ParamSource) *FloatSchema {
@@ -728,16 +794,6 @@ func (s *FloatSchema) From(source ParamSource) *FloatSchema {
 
 func (s *FloatSchema) GetSource() ParamSource {
 	return s.source
-}
-
-func (s *FloatSchema) Required() *FloatSchema {
-	s.required = true
-	return s
-}
-
-func (s *FloatSchema) Optional() *FloatSchema {
-	s.required = false
-	return s
 }
 
 func (s *FloatSchema) Min(n float64) *FloatSchema {
@@ -812,25 +868,24 @@ func (s *FloatSchema) WriteOnly() *FloatSchema {
 }
 
 func (s *FloatSchema) IsRequired() bool {
-	return s.required
+	return s.field.IsRequired()
 }
 
 func (s *FloatSchema) IsPresent() bool {
-	return s.ptr != nil
+	return s.field.IsSet()
 }
 
 func (s *FloatSchema) Validate() []ValidationError {
 	var errs []ValidationError
 
-	// ptr == nil means the value was not provided (distinct from value being 0)
-	if s.ptr == nil {
-		if s.required {
+	if !s.field.IsSet() {
+		if s.field.IsRequired() {
 			errs = append(errs, ValidationError{Code: "required", Message: "is required"})
 		}
 		return errs
 	}
 
-	val := *s.ptr
+	val := s.field.Get()
 
 	if s.minimum != nil && val < *s.minimum {
 		errs = append(errs, ValidationError{
@@ -912,8 +967,7 @@ func (s *FloatSchema) OpenAPI() map[string]any {
 // --- Bool Schema ---
 
 type BoolSchema struct {
-	ptr         *bool
-	required    bool
+	field       *boolFieldAccessor
 	defaultVal  *bool
 	example     any
 	title       string
@@ -925,8 +979,29 @@ type BoolSchema struct {
 	source      ParamSource
 }
 
-func Bool(ptr *bool) *BoolSchema {
-	return &BoolSchema{ptr: ptr}
+// Bool creates a BoolSchema for a Required[bool] field.
+func Bool(field *Required[bool]) *BoolSchema {
+	return &BoolSchema{field: &boolFieldAccessor{req: field}}
+}
+
+// OptBool creates a BoolSchema for an Optional[bool] field.
+func OptBool(field *Optional[bool]) *BoolSchema {
+	return &BoolSchema{field: &boolFieldAccessor{opt: field}}
+}
+
+// Get returns the current bool value.
+func (s *BoolSchema) Get() bool {
+	return s.field.Get()
+}
+
+// Set sets the bool value.
+func (s *BoolSchema) Set(v bool) {
+	s.field.Set(v)
+}
+
+// IsSet returns true if the value was explicitly set.
+func (s *BoolSchema) IsSet() bool {
+	return s.field.IsSet()
 }
 
 func (s *BoolSchema) From(source ParamSource) *BoolSchema {
@@ -936,16 +1011,6 @@ func (s *BoolSchema) From(source ParamSource) *BoolSchema {
 
 func (s *BoolSchema) GetSource() ParamSource {
 	return s.source
-}
-
-func (s *BoolSchema) Required() *BoolSchema {
-	s.required = true
-	return s
-}
-
-func (s *BoolSchema) Optional() *BoolSchema {
-	s.required = false
-	return s
 }
 
 func (s *BoolSchema) Default(val bool) *BoolSchema {
@@ -989,21 +1054,18 @@ func (s *BoolSchema) WriteOnly() *BoolSchema {
 }
 
 func (s *BoolSchema) IsRequired() bool {
-	return s.required
+	return s.field.IsRequired()
 }
 
 func (s *BoolSchema) IsPresent() bool {
-	return s.ptr != nil
+	return s.field.IsSet()
 }
 
 func (s *BoolSchema) Validate() []ValidationError {
 	var errs []ValidationError
 
-	// ptr == nil means the value was not provided (distinct from value being false)
-	if s.ptr == nil {
-		if s.required {
-			errs = append(errs, ValidationError{Code: "required", Message: "is required"})
-		}
+	if s.IsRequired() && !s.IsSet() {
+		errs = append(errs, ValidationError{Code: "required", Message: "is required"})
 	}
 
 	return errs
@@ -1057,6 +1119,26 @@ type UUIDSchema struct {
 
 func UUID(ptr *uuid.UUID) *UUIDSchema {
 	return &UUIDSchema{ptr: ptr}
+}
+
+// Set sets the UUID value.
+func (s *UUIDSchema) Set(v uuid.UUID) {
+	if s.ptr != nil {
+		*s.ptr = v
+	}
+}
+
+// Get returns the current UUID value.
+func (s *UUIDSchema) Get() uuid.UUID {
+	if s.ptr != nil {
+		return *s.ptr
+	}
+	return uuid.Nil
+}
+
+// IsSet returns true if the value is set (non-nil UUID).
+func (s *UUIDSchema) IsSet() bool {
+	return s.ptr != nil && *s.ptr != uuid.Nil
 }
 
 func (s *UUIDSchema) From(source ParamSource) *UUIDSchema {
@@ -1179,6 +1261,26 @@ type TimeSchema struct {
 
 func Time(ptr *time.Time) *TimeSchema {
 	return &TimeSchema{ptr: ptr, format: "date-time"}
+}
+
+// Set sets the time value.
+func (s *TimeSchema) Set(v time.Time) {
+	if s.ptr != nil {
+		*s.ptr = v
+	}
+}
+
+// Get returns the current time value.
+func (s *TimeSchema) Get() time.Time {
+	if s.ptr != nil {
+		return *s.ptr
+	}
+	return time.Time{}
+}
+
+// IsSet returns true if the value is set (non-zero time).
+func (s *TimeSchema) IsSet() bool {
+	return s.ptr != nil && !s.ptr.IsZero()
 }
 
 func (s *TimeSchema) From(source ParamSource) *TimeSchema {

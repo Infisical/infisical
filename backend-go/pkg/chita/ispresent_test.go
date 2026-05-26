@@ -18,27 +18,27 @@ func TestSchema_IsPresent(t *testing.T) {
 		build       func() Schema
 		wantPresent bool
 	}{
-		// String
-		{"string/nil", func() Schema { return String(nil) }, false},
-		{"string/empty", func() Schema { v := ""; return String(&v) }, false},
-		{"string/non-empty", func() Schema { v := "hello"; return String(&v) }, true},
-		{"string/whitespace", func() Schema { v := "   "; return String(&v) }, true},
+		// String (using Required/Optional)
+		{"string/not-set", func() Schema { var v Required[string]; return Str(&v) }, false},
+		{"string/empty", func() Schema { v := NewRequired(""); return Str(&v) }, false},
+		{"string/non-empty", func() Schema { v := NewRequired("hello"); return Str(&v) }, true},
+		{"string/whitespace", func() Schema { v := NewRequired("   "); return Str(&v) }, true},
 
-		// Int
-		{"int/nil", func() Schema { return Int(nil) }, false},
-		{"int/zero", func() Schema { v := 0; return Int(&v) }, true},
-		{"int/non-zero", func() Schema { v := 42; return Int(&v) }, true},
-		{"int/negative", func() Schema { v := -10; return Int(&v) }, true},
+		// Int (using Required/Optional)
+		{"int/not-set", func() Schema { var v Required[int]; return Int(&v) }, false},
+		{"int/zero", func() Schema { v := NewRequired(0); return Int(&v) }, true},
+		{"int/non-zero", func() Schema { v := NewRequired(42); return Int(&v) }, true},
+		{"int/negative", func() Schema { v := NewRequired(-10); return Int(&v) }, true},
 
-		// Float
-		{"float/nil", func() Schema { return Float(nil) }, false},
-		{"float/zero", func() Schema { v := 0.0; return Float(&v) }, true},
-		{"float/non-zero", func() Schema { v := 3.14; return Float(&v) }, true},
+		// Float (using Required/Optional)
+		{"float/not-set", func() Schema { var v Required[float64]; return Float(&v) }, false},
+		{"float/zero", func() Schema { v := NewRequired(0.0); return Float(&v) }, true},
+		{"float/non-zero", func() Schema { v := NewRequired(3.14); return Float(&v) }, true},
 
-		// Bool
-		{"bool/nil", func() Schema { return Bool(nil) }, false},
-		{"bool/false", func() Schema { v := false; return Bool(&v) }, true},
-		{"bool/true", func() Schema { v := true; return Bool(&v) }, true},
+		// Bool (using Required/Optional)
+		{"bool/not-set", func() Schema { var v Required[bool]; return Bool(&v) }, false},
+		{"bool/false", func() Schema { v := NewRequired(false); return Bool(&v) }, true},
+		{"bool/true", func() Schema { v := NewRequired(true); return Bool(&v) }, true},
 
 		// UUID
 		{"uuid/nil", func() Schema { return UUID(nil) }, false},
@@ -83,79 +83,79 @@ func TestSchema_IsPresent(t *testing.T) {
 
 func TestCompositeSchema_IsPresent(t *testing.T) {
 	t.Run("object/none present", func(t *testing.T) {
-		name := ""
-		schema := Object(map[string]Schema{"name": String(&name)})
+		var name Required[string] // not set
+		schema := Object(map[string]Schema{"name": Str(&name)})
 		assert.False(t, schema.IsPresent())
 	})
 
 	t.Run("object/one present", func(t *testing.T) {
-		name := "John"
-		schema := Object(map[string]Schema{"name": String(&name)})
+		name := NewRequired("John")
+		schema := Object(map[string]Schema{"name": Str(&name)})
 		assert.True(t, schema.IsPresent())
 	})
 
 	t.Run("object/partial present", func(t *testing.T) {
-		name := ""
-		age := 25
-		schema := Object(map[string]Schema{"name": String(&name), "age": Int(&age)})
+		var name Required[string] // not set
+		age := NewRequired(25)
+		schema := Object(map[string]Schema{"name": Str(&name), "age": Int(&age)})
 		assert.True(t, schema.IsPresent())
 	})
 
 	t.Run("array/no fn", func(t *testing.T) {
-		schema := Array(String(new(string)))
+		schema := Array(StringElem(nil))
 		assert.False(t, schema.IsPresent())
 	})
 
 	t.Run("array/empty", func(t *testing.T) {
 		items := []string{}
-		schema := Array(String(new(string))).IsPresentFn(func() bool { return len(items) > 0 })
+		schema := Array(StringElem(nil)).IsPresentFn(func() bool { return len(items) > 0 })
 		assert.False(t, schema.IsPresent())
 	})
 
 	t.Run("array/non-empty", func(t *testing.T) {
 		items := []string{"a", "b"}
-		schema := Array(String(new(string))).IsPresentFn(func() bool { return len(items) > 0 })
+		schema := Array(StringElem(nil)).IsPresentFn(func() bool { return len(items) > 0 })
 		assert.True(t, schema.IsPresent())
 	})
 
 	t.Run("map/no fn", func(t *testing.T) {
-		schema := Map(String(new(string)))
+		schema := Map(StringElem(nil))
 		assert.False(t, schema.IsPresent())
 	})
 
 	t.Run("map/non-empty", func(t *testing.T) {
 		m := map[string]string{"key": "value"}
-		schema := Map(String(new(string))).IsPresentFn(func() bool { return len(m) > 0 })
+		schema := Map(StringElem(nil)).IsPresentFn(func() bool { return len(m) > 0 })
 		assert.True(t, schema.IsPresent())
 	})
 
 	t.Run("oneOf/none", func(t *testing.T) {
-		v := ""
-		assert.False(t, OneOfSchemas(String(&v)).IsPresent())
+		var v Required[string]
+		assert.False(t, OneOfSchemas(Str(&v)).IsPresent())
 	})
 
 	t.Run("oneOf/one", func(t *testing.T) {
-		v := "hello"
-		assert.True(t, OneOfSchemas(String(&v)).IsPresent())
+		v := NewRequired("hello")
+		assert.True(t, OneOfSchemas(Str(&v)).IsPresent())
 	})
 
 	t.Run("anyOf/none", func(t *testing.T) {
-		v := ""
-		assert.False(t, AnyOf(String(&v)).IsPresent())
+		var v Required[string]
+		assert.False(t, AnyOf(Str(&v)).IsPresent())
 	})
 
 	t.Run("anyOf/one", func(t *testing.T) {
-		v := "hello"
-		assert.True(t, AnyOf(String(&v)).IsPresent())
+		v := NewRequired("hello")
+		assert.True(t, AnyOf(Str(&v)).IsPresent())
 	})
 
 	t.Run("allOf/none", func(t *testing.T) {
-		v := ""
-		assert.False(t, AllOf(String(&v)).IsPresent())
+		var v Required[string]
+		assert.False(t, AllOf(Str(&v)).IsPresent())
 	})
 
 	t.Run("allOf/present", func(t *testing.T) {
-		v := "hello"
-		assert.True(t, AllOf(String(&v)).IsPresent())
+		v := NewRequired("hello")
+		assert.True(t, AllOf(Str(&v)).IsPresent())
 	})
 }

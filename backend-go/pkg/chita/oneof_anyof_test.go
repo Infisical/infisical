@@ -10,12 +10,12 @@ import (
 // --- OneOfSchemas Validation Tests ---
 
 func TestOneOfSchemas_Validate_NonePresent_Required(t *testing.T) {
-	strVal := ""
-	var intPtr *int
+	var strVal Required[string]
+	var intVal Required[int]
 
 	schema := OneOfSchemas(
-		String(&strVal),
-		Int(intPtr),
+		Str(&strVal),
+		Int(&intVal),
 	).Required()
 
 	errs := schema.Validate()
@@ -25,12 +25,12 @@ func TestOneOfSchemas_Validate_NonePresent_Required(t *testing.T) {
 }
 
 func TestOneOfSchemas_Validate_NonePresent_Optional(t *testing.T) {
-	strVal := ""
-	var intPtr *int
+	var strVal Required[string]
+	var intVal Required[int]
 
 	schema := OneOfSchemas(
-		String(&strVal),
-		Int(intPtr),
+		Str(&strVal),
+		Int(&intVal),
 	).Optional()
 
 	errs := schema.Validate()
@@ -38,12 +38,12 @@ func TestOneOfSchemas_Validate_NonePresent_Optional(t *testing.T) {
 }
 
 func TestOneOfSchemas_Validate_OnePresent(t *testing.T) {
-	strVal := "hello"
-	var intPtr *int
+	strVal := NewRequired("hello")
+	var intVal Required[int]
 
 	schema := OneOfSchemas(
-		String(&strVal).MinLength(1),
-		Int(intPtr),
+		Str(&strVal).MinLength(1),
+		Int(&intVal),
 	).Required()
 
 	errs := schema.Validate()
@@ -51,11 +51,11 @@ func TestOneOfSchemas_Validate_OnePresent(t *testing.T) {
 }
 
 func TestOneOfSchemas_Validate_MultiplePresent(t *testing.T) {
-	strVal := "hello"
-	intVal := 42
+	strVal := NewRequired("hello")
+	intVal := NewRequired(42)
 
 	schema := OneOfSchemas(
-		String(&strVal),
+		Str(&strVal),
 		Int(&intVal),
 	).Required()
 
@@ -66,10 +66,10 @@ func TestOneOfSchemas_Validate_MultiplePresent(t *testing.T) {
 }
 
 func TestOneOfSchemas_Validate_PresentButInvalid(t *testing.T) {
-	strVal := "hi" // Too short for minLength(5)
+	strVal := NewRequired("hi") // Too short for minLength(5)
 
 	schema := OneOfSchemas(
-		String(&strVal).MinLength(5),
+		Str(&strVal).MinLength(5),
 	).Required()
 
 	errs := schema.Validate()
@@ -78,33 +78,32 @@ func TestOneOfSchemas_Validate_PresentButInvalid(t *testing.T) {
 }
 
 func TestOneOfSchemas_Validate_WithObjects(t *testing.T) {
-	// Simulate: either plaintext OR reference
 	type SecretReference struct {
-		SecretID string
-		Version  int
+		SecretID Required[string]
+		Version  Required[int]
 	}
 
-	plaintext := ""
-	ref := SecretReference{SecretID: "abc-123", Version: 1}
+	var plaintext Required[string]
+	ref := SecretReference{SecretID: NewRequired("abc-123"), Version: NewRequired(1)}
 
 	schema := OneOfSchemas(
-		String(&plaintext).Description("Raw value"),
+		Str(&plaintext).Description("Raw value"),
 		Object(map[string]Schema{
-			"secretId": String(&ref.SecretID).Required(),
-			"version":  Int(&ref.Version).Required(),
+			"secretId": Str(&ref.SecretID),
+			"version":  Int(&ref.Version),
 		}).Description("Reference"),
 	).Required()
 
 	errs := schema.Validate()
-	assert.Empty(t, errs) // Object is present (secretId is non-empty)
+	assert.Empty(t, errs) // Object is present (secretId is set)
 }
 
 func TestOneOfSchemas_OpenAPI(t *testing.T) {
-	strVal := ""
-	intVal := 0
+	var strVal Required[string]
+	var intVal Required[int]
 
 	schema := OneOfSchemas(
-		String(&strVal).Description("String option"),
+		Str(&strVal).Description("String option"),
 		Int(&intVal).Description("Int option"),
 	).Title("FlexValue").Description("Either string or int")
 
@@ -117,7 +116,6 @@ func TestOneOfSchemas_OpenAPI(t *testing.T) {
 	assert.Equal(t, "FlexValue", openapi["title"])
 	assert.Equal(t, "Either string or int", openapi["description"])
 
-	// Should NOT have discriminator for simple oneOf
 	_, hasDiscriminator := openapi["discriminator"]
 	assert.False(t, hasDiscriminator)
 }
@@ -125,12 +123,12 @@ func TestOneOfSchemas_OpenAPI(t *testing.T) {
 // --- AnyOf Validation Tests ---
 
 func TestAnyOf_Validate_NonePresent_Required(t *testing.T) {
-	email := ""
-	slack := ""
+	var email Required[string]
+	var slack Required[string]
 
 	schema := AnyOf(
-		String(&email),
-		String(&slack),
+		Str(&email),
+		Str(&slack),
 	).Required()
 
 	errs := schema.Validate()
@@ -140,12 +138,12 @@ func TestAnyOf_Validate_NonePresent_Required(t *testing.T) {
 }
 
 func TestAnyOf_Validate_NonePresent_Optional(t *testing.T) {
-	email := ""
-	slack := ""
+	var email Required[string]
+	var slack Required[string]
 
 	schema := AnyOf(
-		String(&email),
-		String(&slack),
+		Str(&email),
+		Str(&slack),
 	).Optional()
 
 	errs := schema.Validate()
@@ -153,12 +151,12 @@ func TestAnyOf_Validate_NonePresent_Optional(t *testing.T) {
 }
 
 func TestAnyOf_Validate_OnePresent(t *testing.T) {
-	email := "test@example.com"
-	slack := ""
+	email := NewRequired("test@example.com")
+	var slack Required[string]
 
 	schema := AnyOf(
-		String(&email).Email(),
-		String(&slack),
+		Str(&email).Email(),
+		Str(&slack),
 	).Required()
 
 	errs := schema.Validate()
@@ -166,12 +164,12 @@ func TestAnyOf_Validate_OnePresent(t *testing.T) {
 }
 
 func TestAnyOf_Validate_MultiplePresent(t *testing.T) {
-	email := "test@example.com"
-	slack := "#channel"
+	email := NewRequired("test@example.com")
+	slack := NewRequired("#channel")
 
 	schema := AnyOf(
-		String(&email).Email(),
-		String(&slack).MinLength(1),
+		Str(&email).Email(),
+		Str(&slack).MinLength(1),
 	).Required()
 
 	errs := schema.Validate()
@@ -179,12 +177,12 @@ func TestAnyOf_Validate_MultiplePresent(t *testing.T) {
 }
 
 func TestAnyOf_Validate_MultiplePresent_OneInvalid(t *testing.T) {
-	email := "invalid-email" // Invalid email format
-	slack := "#channel"
+	email := NewRequired("invalid-email") // Invalid email format
+	slack := NewRequired("#channel")
 
 	schema := AnyOf(
-		String(&email).Email(),
-		String(&slack).MinLength(1),
+		Str(&email).Email(),
+		Str(&slack).MinLength(1),
 	).Required()
 
 	errs := schema.Validate()
@@ -194,44 +192,37 @@ func TestAnyOf_Validate_MultiplePresent_OneInvalid(t *testing.T) {
 
 func TestAnyOf_Validate_WithObjects(t *testing.T) {
 	type EmailConfig struct {
-		To      string
-		Subject string
+		To      Required[string]
+		Subject Required[string]
 	}
 	type SlackConfig struct {
-		Channel string
+		Channel Required[string]
 	}
 
-	email := EmailConfig{To: "test@example.com", Subject: "Alert"}
-	slack := SlackConfig{} // Empty
+	email := EmailConfig{To: NewRequired("test@example.com"), Subject: NewRequired("Alert")}
+	var slack SlackConfig // Empty
 
 	schema := AnyOf(
 		Object(map[string]Schema{
-			"to":      String(&email.To).Required().Email(),
-			"subject": String(&email.Subject).Required(),
+			"to":      Str(&email.To).Email(),
+			"subject": Str(&email.Subject),
 		}),
 		Object(map[string]Schema{
-			"channel": String(&slack.Channel).Required(),
+			"channel": Str(&slack.Channel),
 		}),
 	).Required()
 
 	errs := schema.Validate()
-	// Email object is present (to is non-empty)
-	// Slack object validation will have errors but email is valid
-	// Actually, let me think about this...
-	// Both objects are validated if present
-	// Email is present (to is non-empty)
-	// Slack is NOT present (channel is empty)
-	// So only email is validated
 	assert.Empty(t, errs)
 }
 
 func TestAnyOf_OpenAPI(t *testing.T) {
-	email := ""
-	slack := ""
+	var email Required[string]
+	var slack Required[string]
 
 	schema := AnyOf(
-		String(&email).Description("Email config"),
-		String(&slack).Description("Slack config"),
+		Str(&email).Description("Email config"),
+		Str(&slack).Description("Slack config"),
 	).Title("NotificationConfig").Description("At least one channel")
 
 	openapi := schema.OpenAPI()
@@ -244,18 +235,18 @@ func TestAnyOf_OpenAPI(t *testing.T) {
 	assert.Equal(t, "At least one channel", openapi["description"])
 }
 
-// --- AllOf Validation Tests (unchanged, but verify) ---
+// --- AllOf Validation Tests ---
 
 func TestAllOf_Validate_AllValid(t *testing.T) {
-	name := "John"
-	age := 25
+	name := NewRequired("John")
+	age := NewRequired(25)
 
 	schema := AllOf(
 		Object(map[string]Schema{
-			"name": String(&name).Required().MinLength(1),
+			"name": Str(&name).MinLength(1),
 		}),
 		Object(map[string]Schema{
-			"age": Int(&age).Required().Min(0),
+			"age": Int(&age).Min(0),
 		}),
 	)
 
@@ -264,15 +255,15 @@ func TestAllOf_Validate_AllValid(t *testing.T) {
 }
 
 func TestAllOf_Validate_OneInvalid(t *testing.T) {
-	name := "" // Invalid - required
-	age := 25
+	var name Required[string] // Not set - invalid
+	age := NewRequired(25)
 
 	schema := AllOf(
 		Object(map[string]Schema{
-			"name": String(&name).Required().MinLength(1),
+			"name": Str(&name).MinLength(1),
 		}),
 		Object(map[string]Schema{
-			"age": Int(&age).Required().Min(0),
+			"age": Int(&age).Min(0),
 		}),
 	)
 
@@ -282,15 +273,15 @@ func TestAllOf_Validate_OneInvalid(t *testing.T) {
 }
 
 func TestAllOf_Validate_MultipleInvalid(t *testing.T) {
-	name := "" // Invalid
-	age := -10 // Invalid - min 0
+	var name Required[string] // Not set
+	age := NewRequired(-10)   // Invalid - min 0
 
 	schema := AllOf(
 		Object(map[string]Schema{
-			"name": String(&name).Required().MinLength(1),
+			"name": Str(&name).MinLength(1),
 		}),
 		Object(map[string]Schema{
-			"age": Int(&age).Required().Min(0),
+			"age": Int(&age).Min(0),
 		}),
 	)
 
@@ -300,23 +291,12 @@ func TestAllOf_Validate_MultipleInvalid(t *testing.T) {
 
 // --- Real-world Use Case Tests ---
 
-func TestOneOf_SecretValue_UsCase(t *testing.T) {
-	// Use case: Secret value can be plaintext OR reference, not both
-	type SecretValue struct {
-		Plaintext *string
-		Reference *struct {
-			SecretID string
-			Version  int
-		}
-	}
-
+func TestOneOf_SecretValue_UseCase(t *testing.T) {
 	t.Run("plaintext provided", func(t *testing.T) {
-		plaintext := "my-secret-value"
-		sv := SecretValue{Plaintext: &plaintext}
+		plaintext := NewRequired("my-secret-value")
 
 		schema := OneOfSchemas(
-			String(sv.Plaintext),
-			// Reference would be nil, so its object properties wouldn't be present
+			Str(&plaintext),
 		).Required()
 
 		errs := schema.Validate()
@@ -324,9 +304,10 @@ func TestOneOf_SecretValue_UsCase(t *testing.T) {
 	})
 
 	t.Run("neither provided", func(t *testing.T) {
-		var plaintext string
+		var plaintext Required[string]
+
 		schema := OneOfSchemas(
-			String(&plaintext), // Empty string
+			Str(&plaintext),
 		).Required()
 
 		errs := schema.Validate()
@@ -336,21 +317,15 @@ func TestOneOf_SecretValue_UsCase(t *testing.T) {
 }
 
 func TestAnyOf_NotificationConfig_UseCase(t *testing.T) {
-	// Use case: Notification config - at least one channel required
-	type NotificationConfig struct {
-		Email   *string
-		Slack   *string
-		Webhook *string
-	}
-
 	t.Run("one channel configured", func(t *testing.T) {
-		email := "ops@example.com"
-		nc := NotificationConfig{Email: &email}
+		email := NewRequired("ops@example.com")
+		var slack Required[string]
+		var webhook Required[string]
 
 		schema := AnyOf(
-			String(nc.Email).Email(),
-			String(nc.Slack),
-			String(nc.Webhook),
+			Str(&email).Email(),
+			Str(&slack),
+			Str(&webhook),
 		).Required()
 
 		errs := schema.Validate()
@@ -358,27 +333,29 @@ func TestAnyOf_NotificationConfig_UseCase(t *testing.T) {
 	})
 
 	t.Run("multiple channels configured", func(t *testing.T) {
-		email := "ops@example.com"
-		slack := "#alerts"
-		nc := NotificationConfig{Email: &email, Slack: &slack}
+		email := NewRequired("ops@example.com")
+		slack := NewRequired("#alerts")
+		var webhook Required[string]
 
 		schema := AnyOf(
-			String(nc.Email).Email(),
-			String(nc.Slack).MinLength(1),
-			String(nc.Webhook),
+			Str(&email).Email(),
+			Str(&slack).MinLength(1),
+			Str(&webhook),
 		).Required()
 
 		errs := schema.Validate()
-		assert.Empty(t, errs) // Both present and valid is OK
+		assert.Empty(t, errs)
 	})
 
 	t.Run("no channels configured", func(t *testing.T) {
-		nc := NotificationConfig{}
+		var email Required[string]
+		var slack Required[string]
+		var webhook Required[string]
 
 		schema := AnyOf(
-			String(nc.Email),
-			String(nc.Slack),
-			String(nc.Webhook),
+			Str(&email),
+			Str(&slack),
+			Str(&webhook),
 		).Required()
 
 		errs := schema.Validate()

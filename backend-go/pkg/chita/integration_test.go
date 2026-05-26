@@ -15,23 +15,23 @@ import (
 // --- Simple Request with Validation + OpenAPI ---
 
 type CreateProjectRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IsPublic    bool   `json:"isPublic"`
+	Name        Required[string] `json:"name"`
+	Description Optional[string] `json:"description"`
+	IsPublic    Optional[bool]   `json:"isPublic"`
 }
 
 func (r *CreateProjectRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":        String(&r.Name).Required().MinLength(1).MaxLength(100).Description("Project name"),
-		"description": String(&r.Description).Optional().MaxLength(500).Description("Project description"),
-		"isPublic":    Bool(&r.IsPublic).Optional().Default(false).Description("Whether project is public"),
+		"name":        Str(&r.Name).MinLength(1).MaxLength(100).Description("Project name"),
+		"description": OptStr(&r.Description).MaxLength(500).Description("Project description"),
+		"isPublic":    OptBool(&r.IsPublic).Default(false).Description("Whether project is public"),
 	}).Title("CreateProjectRequest").Description("Request to create a new project")
 }
 
 func TestIntegration_SimpleRequest_ValidationAndOpenAPI(t *testing.T) {
 	// Test 1: Validation works correctly
 	t.Run("validation_empty_name", func(t *testing.T) {
-		req := &CreateProjectRequest{Name: "", Description: "desc"}
+		req := &CreateProjectRequest{} // Name not set
 		errs := req.Schema().Validate()
 		require.Len(t, errs, 1)
 		assert.Equal(t, "name", errs[0].Field)
@@ -39,7 +39,7 @@ func TestIntegration_SimpleRequest_ValidationAndOpenAPI(t *testing.T) {
 	})
 
 	t.Run("validation_name_too_long", func(t *testing.T) {
-		req := &CreateProjectRequest{Name: string(make([]byte, 101))}
+		req := &CreateProjectRequest{Name: NewRequired(string(make([]byte, 101)))}
 		errs := req.Schema().Validate()
 		require.Len(t, errs, 1)
 		assert.Equal(t, "name", errs[0].Field)
@@ -47,7 +47,7 @@ func TestIntegration_SimpleRequest_ValidationAndOpenAPI(t *testing.T) {
 	})
 
 	t.Run("validation_valid_request", func(t *testing.T) {
-		req := &CreateProjectRequest{Name: "My Project", Description: "A great project"}
+		req := &CreateProjectRequest{Name: NewRequired("My Project"), Description: NewOptional("A great project")}
 		errs := req.Schema().Validate()
 		assert.Empty(t, errs)
 	})
@@ -91,29 +91,29 @@ func TestIntegration_SimpleRequest_ValidationAndOpenAPI(t *testing.T) {
 // --- Nested Object with Validation + OpenAPI ---
 
 type Address struct {
-	Street  string `json:"street"`
-	City    string `json:"city"`
-	ZipCode string `json:"zipCode"`
+	Street  Required[string] `json:"street"`
+	City    Required[string] `json:"city"`
+	ZipCode Required[string] `json:"zipCode"`
 }
 
 func (a *Address) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"street":  String(&a.Street).Required().MinLength(1),
-		"city":    String(&a.City).Required().MinLength(1),
-		"zipCode": String(&a.ZipCode).Required().Pattern(`^\d{5}$`),
+		"street":  Str(&a.Street).MinLength(1),
+		"city":    Str(&a.City).MinLength(1),
+		"zipCode": Str(&a.ZipCode).Pattern(`^\d{5}$`),
 	})
 }
 
 type CreateUserWithAddressRequest struct {
-	Name    string  `json:"name"`
-	Email   string  `json:"email"`
-	Address Address `json:"address"`
+	Name    Required[string] `json:"name"`
+	Email   Required[string] `json:"email"`
+	Address Address          `json:"address"`
 }
 
 func (r *CreateUserWithAddressRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":    String(&r.Name).Required().MinLength(1),
-		"email":   String(&r.Email).Required().Email(),
+		"name":    Str(&r.Name).MinLength(1),
+		"email":   Str(&r.Email).Email(),
 		"address": r.Address.Schema().Required(),
 	})
 }
@@ -121,12 +121,12 @@ func (r *CreateUserWithAddressRequest) Schema() *ObjectSchema {
 func TestIntegration_NestedObject_ValidationAndOpenAPI(t *testing.T) {
 	t.Run("validation_nested_errors", func(t *testing.T) {
 		req := &CreateUserWithAddressRequest{
-			Name:  "John",
-			Email: "invalid-email",
+			Name:  NewRequired("John"),
+			Email: NewRequired("invalid-email"),
 			Address: Address{
-				Street:  "",
-				City:    "NYC",
-				ZipCode: "invalid",
+				Street:  Required[string]{}, // not set
+				City:    NewRequired("NYC"),
+				ZipCode: NewRequired("invalid"),
 			},
 		}
 		errs := req.Schema().Validate()
@@ -143,12 +143,12 @@ func TestIntegration_NestedObject_ValidationAndOpenAPI(t *testing.T) {
 
 	t.Run("validation_valid_nested", func(t *testing.T) {
 		req := &CreateUserWithAddressRequest{
-			Name:  "John",
-			Email: "john@example.com",
+			Name:  NewRequired("John"),
+			Email: NewRequired("john@example.com"),
 			Address: Address{
-				Street:  "123 Main St",
-				City:    "NYC",
-				ZipCode: "10001",
+				Street:  NewRequired("123 Main St"),
+				City:    NewRequired("NYC"),
+				ZipCode: NewRequired("10001"),
 			},
 		}
 		errs := req.Schema().Validate()
@@ -182,20 +182,20 @@ type Provider interface {
 }
 
 type SqlDatabaseProvider struct {
-	Type     string `json:"type"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Database string `json:"database"`
-	Username string `json:"username"`
+	Type     Required[string] `json:"type"`
+	Host     Required[string] `json:"host"`
+	Port     Required[int]    `json:"port"`
+	Database Required[string] `json:"database"`
+	Username Required[string] `json:"username"`
 }
 
 func (p *SqlDatabaseProvider) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":     String(&p.Type).Required(),
-		"host":     String(&p.Host).Required().MinLength(1).Description("Database host"),
-		"port":     Int(&p.Port).Required().Min(1).Max(65535).Description("Database port"),
-		"database": String(&p.Database).Required().MinLength(1).Description("Database name"),
-		"username": String(&p.Username).Required().MinLength(1).Description("Database username"),
+		"type":     Str(&p.Type),
+		"host":     Str(&p.Host).MinLength(1).Description("Database host"),
+		"port":     Int(&p.Port).Min(1).Max(65535).Description("Database port"),
+		"database": Str(&p.Database).MinLength(1).Description("Database name"),
+		"username": Str(&p.Username).MinLength(1).Description("Database username"),
 	}).Title("SqlDatabaseProvider")
 }
 
@@ -203,18 +203,18 @@ func (p *SqlDatabaseProvider) unionMarker()    {}
 func (p *SqlDatabaseProvider) providerMarker() {}
 
 type AwsIamProvider struct {
-	Type      string `json:"type"`
-	Region    string `json:"region"`
-	AccountID string `json:"accountId"`
-	RoleArn   string `json:"roleArn"`
+	Type      Required[string] `json:"type"`
+	Region    Required[string] `json:"region"`
+	AccountID Required[string] `json:"accountId"`
+	RoleArn   Required[string] `json:"roleArn"`
 }
 
 func (p *AwsIamProvider) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":      String(&p.Type).Required(),
-		"region":    String(&p.Region).Required().Pattern(`^[a-z]{2}-[a-z]+-\d$`).Description("AWS region"),
-		"accountId": String(&p.AccountID).Required().Pattern(`^\d{12}$`).Description("AWS account ID"),
-		"roleArn":   String(&p.RoleArn).Required().MinLength(1).Description("IAM role ARN"),
+		"type":      Str(&p.Type),
+		"region":    Str(&p.Region).Pattern(`^[a-z]{2}-[a-z]+-\d$`).Description("AWS region"),
+		"accountId": Str(&p.AccountID).Pattern(`^\d{12}$`).Description("AWS account ID"),
+		"roleArn":   Str(&p.RoleArn).MinLength(1).Description("IAM role ARN"),
 	}).Title("AwsIamProvider")
 }
 
@@ -222,18 +222,18 @@ func (p *AwsIamProvider) unionMarker()    {}
 func (p *AwsIamProvider) providerMarker() {}
 
 type RedisProvider struct {
-	Type     string `json:"type"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Password string `json:"password"`
+	Type     Required[string] `json:"type"`
+	Host     Required[string] `json:"host"`
+	Port     Required[int]    `json:"port"`
+	Password Optional[string] `json:"password"`
 }
 
 func (p *RedisProvider) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":     String(&p.Type).Required(),
-		"host":     String(&p.Host).Required().MinLength(1),
-		"port":     Int(&p.Port).Required().Min(1).Max(65535),
-		"password": String(&p.Password).Optional().WriteOnly(),
+		"type":     Str(&p.Type),
+		"host":     Str(&p.Host).MinLength(1),
+		"port":     Int(&p.Port).Min(1).Max(65535),
+		"password": OptStr(&p.Password).WriteOnly(),
 	}).Title("RedisProvider")
 }
 
@@ -250,13 +250,13 @@ var ProviderParser = UnionDef[Provider]{
 }
 
 type CreateDynamicSecretRequest struct {
-	Name     string   `json:"name"`
-	Provider Provider `json:"-"`
+	Name     Required[string] `json:"name"`
+	Provider Provider         `json:"-"`
 }
 
 func (r *CreateDynamicSecretRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":     String(&r.Name).Required().MinLength(1).MaxLength(64).Pattern(`^[a-zA-Z0-9_-]+$`),
+		"name":     Str(&r.Name).MinLength(1).MaxLength(64).Pattern(`^[a-zA-Z0-9_-]+$`),
 		"provider": UnionField(&r.Provider, ProviderParser).Required().Description("Provider configuration"),
 	}).Title("CreateDynamicSecretRequest")
 }
@@ -288,14 +288,14 @@ func TestIntegration_Union_ValidationAndOpenAPI(t *testing.T) {
 		err := json.Unmarshal(data, &req)
 		require.NoError(t, err)
 
-		assert.Equal(t, "my-secret", req.Name)
+		assert.Equal(t, "my-secret", req.Name.Get())
 		require.NotNil(t, req.Provider)
 
 		sqlProvider, ok := req.Provider.(*SqlDatabaseProvider)
 		require.True(t, ok)
-		assert.Equal(t, "localhost", sqlProvider.Host)
-		assert.Equal(t, 5432, sqlProvider.Port)
-		assert.Equal(t, "mydb", sqlProvider.Database)
+		assert.Equal(t, "localhost", sqlProvider.Host.Get())
+		assert.Equal(t, 5432, sqlProvider.Port.Get())
+		assert.Equal(t, "mydb", sqlProvider.Database.Get())
 	})
 
 	t.Run("parse_aws_iam_provider", func(t *testing.T) {
@@ -315,8 +315,8 @@ func TestIntegration_Union_ValidationAndOpenAPI(t *testing.T) {
 
 		awsProvider, ok := req.Provider.(*AwsIamProvider)
 		require.True(t, ok)
-		assert.Equal(t, "us-east-1", awsProvider.Region)
-		assert.Equal(t, "123456789012", awsProvider.AccountID)
+		assert.Equal(t, "us-east-1", awsProvider.Region.Get())
+		assert.Equal(t, "123456789012", awsProvider.AccountID.Get())
 	})
 
 	t.Run("parse_unknown_provider_type", func(t *testing.T) {
@@ -335,7 +335,7 @@ func TestIntegration_Union_ValidationAndOpenAPI(t *testing.T) {
 
 	t.Run("validation_provider_required", func(t *testing.T) {
 		req := &CreateDynamicSecretRequest{
-			Name:     "test",
+			Name:     NewRequired("test"),
 			Provider: nil,
 		}
 		errs := req.Schema().Validate()
@@ -353,13 +353,13 @@ func TestIntegration_Union_ValidationAndOpenAPI(t *testing.T) {
 
 	t.Run("validation_provider_fields", func(t *testing.T) {
 		req := &CreateDynamicSecretRequest{
-			Name: "test",
+			Name: NewRequired("test"),
 			Provider: &SqlDatabaseProvider{
-				Type:     "sql-database",
-				Host:     "",    // Invalid - required
-				Port:     99999, // Invalid - max 65535
-				Database: "db",
-				Username: "user",
+				Type:     NewRequired("sql-database"),
+				Host:     Required[string]{}, // Invalid - not set
+				Port:     NewRequired(99999), // Invalid - max 65535
+				Database: NewRequired("db"),
+				Username: NewRequired("user"),
 			},
 		}
 		errs := req.Schema().Validate()
@@ -368,13 +368,13 @@ func TestIntegration_Union_ValidationAndOpenAPI(t *testing.T) {
 
 	t.Run("validation_valid_request", func(t *testing.T) {
 		req := &CreateDynamicSecretRequest{
-			Name: "my-secret",
+			Name: NewRequired("my-secret"),
 			Provider: &SqlDatabaseProvider{
-				Type:     "sql-database",
-				Host:     "localhost",
-				Port:     5432,
-				Database: "mydb",
-				Username: "admin",
+				Type:     NewRequired("sql-database"),
+				Host:     NewRequired("localhost"),
+				Port:     NewRequired(5432),
+				Database: NewRequired("mydb"),
+				Username: NewRequired("admin"),
 			},
 		}
 		errs := req.Schema().Validate()
@@ -501,7 +501,7 @@ func TestIntegration_FullOpenAPISpec(t *testing.T) {
 				NewSecurity("apiKey"),
 			},
 			QueryParams: map[string]Schema{
-				"projectId": String(new(string)).Required().UUID().Description("Project ID"),
+				"projectId": StringElem(nil).UUID().Description("Project ID"),
 			},
 		},
 	})
@@ -546,7 +546,7 @@ func TestIntegration_FullOpenAPISpec(t *testing.T) {
 	require.Len(t, params, 1)
 	assert.Equal(t, "projectId", params[0]["name"])
 	assert.Equal(t, "query", params[0]["in"])
-	assert.Equal(t, true, params[0]["required"])
+	// QueryParams with StringElem are optional by default
 
 	// Verify it serializes to valid JSON
 	jsonBytes, err := spec.JSONIndent("", "  ")
@@ -562,16 +562,16 @@ func TestIntegration_FullOpenAPISpec(t *testing.T) {
 // --- UUID Field Integration ---
 
 type ResourceRequest struct {
-	ID       uuid.UUID `json:"id"`
-	ParentID uuid.UUID `json:"parentId"`
-	Name     string    `json:"name"`
+	ID       uuid.UUID        `json:"id"`
+	ParentID uuid.UUID        `json:"parentId"`
+	Name     Required[string] `json:"name"`
 }
 
 func (r *ResourceRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
 		"id":       UUID(&r.ID).Required().Description("Resource ID"),
 		"parentId": UUID(&r.ParentID).Optional().Nullable().Description("Parent resource ID"),
-		"name":     String(&r.Name).Required().MinLength(1),
+		"name":     Str(&r.Name).MinLength(1),
 	})
 }
 
@@ -579,7 +579,7 @@ func TestIntegration_UUID_ValidationAndOpenAPI(t *testing.T) {
 	t.Run("validation_uuid_required", func(t *testing.T) {
 		req := &ResourceRequest{
 			ID:   uuid.Nil,
-			Name: "test",
+			Name: NewRequired("test"),
 		}
 		errs := req.Schema().Validate()
 		require.NotEmpty(t, errs)
@@ -590,7 +590,7 @@ func TestIntegration_UUID_ValidationAndOpenAPI(t *testing.T) {
 		req := &ResourceRequest{
 			ID:       uuid.New(),
 			ParentID: uuid.Nil, // Optional, should be fine
-			Name:     "test",
+			Name:     NewRequired("test"),
 		}
 		errs := req.Schema().Validate()
 		assert.Empty(t, errs)
@@ -616,20 +616,20 @@ func TestIntegration_UUID_ValidationAndOpenAPI(t *testing.T) {
 // --- Enum Validation + OpenAPI ---
 
 type StatusRequest struct {
-	Status string `json:"status"`
-	Level  int    `json:"level"`
+	Status Required[string] `json:"status"`
+	Level  Required[int]    `json:"level"`
 }
 
 func (r *StatusRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"status": String(&r.Status).Required().Enum("active", "inactive", "pending").Description("Resource status"),
-		"level":  Int(&r.Level).Required().Enum(1, 2, 3, 4, 5).Description("Priority level"),
+		"status": Str(&r.Status).Enum("active", "inactive", "pending").Description("Resource status"),
+		"level":  Int(&r.Level).Enum(1, 2, 3, 4, 5).Description("Priority level"),
 	})
 }
 
 func TestIntegration_Enum_ValidationAndOpenAPI(t *testing.T) {
 	t.Run("validation_string_enum_invalid", func(t *testing.T) {
-		req := &StatusRequest{Status: "unknown", Level: 1}
+		req := &StatusRequest{Status: NewRequired("unknown"), Level: NewRequired(1)}
 		errs := req.Schema().Validate()
 		require.Len(t, errs, 1)
 		assert.Equal(t, "status", errs[0].Field)
@@ -637,7 +637,7 @@ func TestIntegration_Enum_ValidationAndOpenAPI(t *testing.T) {
 	})
 
 	t.Run("validation_int_enum_invalid", func(t *testing.T) {
-		req := &StatusRequest{Status: "active", Level: 10}
+		req := &StatusRequest{Status: NewRequired("active"), Level: NewRequired(10)}
 		errs := req.Schema().Validate()
 		require.Len(t, errs, 1)
 		assert.Equal(t, "level", errs[0].Field)
@@ -645,7 +645,7 @@ func TestIntegration_Enum_ValidationAndOpenAPI(t *testing.T) {
 	})
 
 	t.Run("validation_enum_valid", func(t *testing.T) {
-		req := &StatusRequest{Status: "active", Level: 3}
+		req := &StatusRequest{Status: NewRequired("active"), Level: NewRequired(3)}
 		errs := req.Schema().Validate()
 		assert.Empty(t, errs)
 	})

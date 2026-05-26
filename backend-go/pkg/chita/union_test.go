@@ -16,14 +16,14 @@ type Animal interface {
 }
 
 type Dog struct {
-	Type  string `json:"type"`
-	Breed string `json:"breed"`
+	Type  Required[string] `json:"type"`
+	Breed Required[string] `json:"breed"`
 }
 
 func (d *Dog) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":  String(&d.Type).Required(),
-		"breed": String(&d.Breed).Required().MinLength(1),
+		"type":  Str(&d.Type),
+		"breed": Str(&d.Breed).MinLength(1),
 	})
 }
 
@@ -31,14 +31,14 @@ func (d *Dog) unionMarker()  {}
 func (d *Dog) animalMarker() {}
 
 type Cat struct {
-	Type  string `json:"type"`
-	Color string `json:"color"`
+	Type  Required[string] `json:"type"`
+	Color Required[string] `json:"color"`
 }
 
 func (c *Cat) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":  String(&c.Type).Required(),
-		"color": String(&c.Color).Required().MinLength(1),
+		"type":  Str(&c.Type),
+		"color": Str(&c.Color).MinLength(1),
 	})
 }
 
@@ -64,8 +64,8 @@ func TestUnionDef_Parse_Dog(t *testing.T) {
 
 	dog, ok := animal.(*Dog)
 	require.True(t, ok)
-	assert.Equal(t, "dog", dog.Type)
-	assert.Equal(t, "Labrador", dog.Breed)
+	assert.Equal(t, "dog", dog.Type.Get())
+	assert.Equal(t, "Labrador", dog.Breed.Get())
 }
 
 func TestUnionDef_Parse_Cat(t *testing.T) {
@@ -77,8 +77,8 @@ func TestUnionDef_Parse_Cat(t *testing.T) {
 
 	cat, ok := animal.(*Cat)
 	require.True(t, ok)
-	assert.Equal(t, "cat", cat.Type)
-	assert.Equal(t, "orange", cat.Color)
+	assert.Equal(t, "cat", cat.Type.Get())
+	assert.Equal(t, "orange", cat.Color.Get())
 }
 
 func TestUnionDef_Parse_UnknownType(t *testing.T) {
@@ -129,14 +129,14 @@ type Vehicle interface {
 }
 
 type Car struct {
-	Kind  string `json:"kind"`
-	Doors int    `json:"doors"`
+	Kind  Required[string] `json:"kind"`
+	Doors Required[int]    `json:"doors"`
 }
 
 func (c *Car) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"kind":  String(&c.Kind).Required(),
-		"doors": Int(&c.Doors).Required(),
+		"kind":  Str(&c.Kind),
+		"doors": Int(&c.Doors),
 	})
 }
 
@@ -144,14 +144,14 @@ func (c *Car) unionMarker()   {}
 func (c *Car) vehicleMarker() {}
 
 type Bike struct {
-	Kind  string `json:"kind"`
-	Gears int    `json:"gears"`
+	Kind  Required[string] `json:"kind"`
+	Gears Required[int]    `json:"gears"`
 }
 
 func (b *Bike) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"kind":  String(&b.Kind).Required(),
-		"gears": Int(&b.Gears).Required(),
+		"kind":  Str(&b.Kind),
+		"gears": Int(&b.Gears),
 	})
 }
 
@@ -174,8 +174,8 @@ func TestUnionDef_Parse_CustomDiscriminator(t *testing.T) {
 
 	car, ok := vehicle.(*Car)
 	require.True(t, ok)
-	assert.Equal(t, "car", car.Kind)
-	assert.Equal(t, 4, car.Doors)
+	assert.Equal(t, "car", car.Kind.Get())
+	assert.Equal(t, 4, car.Doors.Get())
 }
 
 // --- ParseUnions Helper Tests ---
@@ -210,7 +210,7 @@ func TestParseUnions_SingleField(t *testing.T) {
 
 	dog, ok := req.Animal.(*Dog)
 	require.True(t, ok)
-	assert.Equal(t, "Golden Retriever", dog.Breed)
+	assert.Equal(t, "Golden Retriever", dog.Breed.Get())
 }
 
 func TestParseUnions_NullField(t *testing.T) {
@@ -278,11 +278,11 @@ func TestParseUnions_MultipleFields(t *testing.T) {
 
 	cat, ok := req.Pet.(*Cat)
 	require.True(t, ok)
-	assert.Equal(t, "black", cat.Color)
+	assert.Equal(t, "black", cat.Color.Get())
 
 	bike, ok := req.Vehicle.(*Bike)
 	require.True(t, ok)
-	assert.Equal(t, 21, bike.Gears)
+	assert.Equal(t, 21, bike.Gears.Get())
 }
 
 // --- UnionDef.OpenAPI Tests ---
@@ -322,7 +322,7 @@ func TestUnionSchema_Validate_Optional(t *testing.T) {
 }
 
 func TestUnionSchema_Validate_WithValue(t *testing.T) {
-	dog := &Dog{Type: "dog", Breed: "Poodle"}
+	dog := &Dog{Type: NewRequired("dog"), Breed: NewRequired("Poodle")}
 	var animal Animal = dog
 	schema := UnionField(&animal, AnimalParser).Required()
 
@@ -331,7 +331,7 @@ func TestUnionSchema_Validate_WithValue(t *testing.T) {
 }
 
 func TestUnionSchema_Validate_InvalidValue(t *testing.T) {
-	dog := &Dog{Type: "dog", Breed: ""} // Breed is required, minlength 1
+	dog := &Dog{Type: NewRequired("dog")} // Breed is required but not set
 	var animal Animal = dog
 	schema := UnionField(&animal, AnimalParser).Required()
 
@@ -376,16 +376,16 @@ type NestedAnimal interface {
 }
 
 type WildDog struct {
-	Type   string `json:"type"`
-	Breed  string `json:"breed"`
-	Region string `json:"region"`
+	Type   Required[string] `json:"type"`
+	Breed  Required[string] `json:"breed"`
+	Region Required[string] `json:"region"`
 }
 
 func (w *WildDog) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":   String(&w.Type).Required(),
-		"breed":  String(&w.Breed).Required(),
-		"region": String(&w.Region).Required(),
+		"type":   Str(&w.Type),
+		"breed":  Str(&w.Breed),
+		"region": Str(&w.Region),
 	})
 }
 
@@ -393,16 +393,16 @@ func (w *WildDog) unionMarker()        {}
 func (w *WildDog) nestedAnimalMarker() {}
 
 type DomesticDog struct {
-	Type  string `json:"type"`
-	Breed string `json:"breed"`
-	Owner string `json:"owner"`
+	Type  Required[string] `json:"type"`
+	Breed Required[string] `json:"breed"`
+	Owner Required[string] `json:"owner"`
 }
 
 func (d *DomesticDog) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"type":  String(&d.Type).Required(),
-		"breed": String(&d.Breed).Required(),
-		"owner": String(&d.Owner).Required(),
+		"type":  Str(&d.Type),
+		"breed": Str(&d.Breed),
+		"owner": Str(&d.Owner),
 	})
 }
 
@@ -446,6 +446,6 @@ func TestNestedUnion_Parse(t *testing.T) {
 
 	wild, ok := shelter.Animal.(*WildDog)
 	require.True(t, ok)
-	assert.Equal(t, "Wolf", wild.Breed)
-	assert.Equal(t, "Alaska", wild.Region)
+	assert.Equal(t, "Wolf", wild.Breed.Get())
+	assert.Equal(t, "Alaska", wild.Region.Get())
 }

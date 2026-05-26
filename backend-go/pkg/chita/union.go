@@ -451,27 +451,20 @@ func applySchemaDefaults(schema *ObjectSchema) {
 	for _, fieldSchema := range schema.properties {
 		switch s := fieldSchema.(type) {
 		case *IntSchema:
-			if s.defaultVal != nil {
-				val, _ := s.value()
-				if val == 0 {
-					if s.ptr != nil {
-						*s.ptr = int(*s.defaultVal)
-					}
-					if s.ptr64 != nil {
-						*s.ptr64 = *s.defaultVal
-					}
-				}
+			if s.defaultVal != nil && !s.IsSet() {
+				s.SetInt64(*s.defaultVal)
 			}
 		case *StringSchema:
-			if s.defaultVal != nil && s.ptr != nil && *s.ptr == "" {
-				*s.ptr = *s.defaultVal
+			if s.defaultVal != nil && !s.IsSet() {
+				s.Set(*s.defaultVal)
 			}
 		case *BoolSchema:
-			// For bool, only apply default if we have a way to track "not set"
-			// Since false is a valid value, we skip this for now
+			if s.defaultVal != nil && !s.IsSet() {
+				s.Set(*s.defaultVal)
+			}
 		case *FloatSchema:
-			if s.defaultVal != nil && s.ptr != nil && *s.ptr == 0 {
-				*s.ptr = *s.defaultVal
+			if s.defaultVal != nil && !s.IsSet() {
+				s.Set(*s.defaultVal)
 			}
 		}
 	}

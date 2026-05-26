@@ -15,40 +15,40 @@ import (
 // =============================================================================
 
 type CreateUserRequest struct {
-	Name  string
-	Email string
+	Name  Required[string]
+	Email Required[string]
 }
 
 func (r *CreateUserRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name":  String(&r.Name).Required().MinLength(1).MaxLength(100),
-		"email": String(&r.Email).Required().Email(),
+		"name":  Str(&r.Name).MinLength(1).MaxLength(100),
+		"email": Str(&r.Email).Email(),
 	}).Title("CreateUserRequest")
 }
 
 type UserResponse struct {
-	ID    string
-	Name  string
-	Email string
+	ID    Required[string]
+	Name  Required[string]
+	Email Required[string]
 }
 
 func (r *UserResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"id":    String(&r.ID).Required().UUID(),
-		"name":  String(&r.Name).Required(),
-		"email": String(&r.Email).Required().Email(),
+		"id":    Str(&r.ID).UUID(),
+		"name":  Str(&r.Name),
+		"email": Str(&r.Email).Email(),
 	}).Title("UserResponse")
 }
 
 type ErrorResponse struct {
-	Code    string
-	Message string
+	Code    Required[string]
+	Message Required[string]
 }
 
 func (r *ErrorResponse) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"code":    String(&r.Code).Required(),
-		"message": String(&r.Message).Required(),
+		"code":    Str(&r.Code),
+		"message": Str(&r.Message),
 	}).Title("ErrorResponse")
 }
 
@@ -546,10 +546,10 @@ func TestOpenAPI_DefaultResponseDescriptions(t *testing.T) {
 func TestObjectSchema_Ref(t *testing.T) {
 	DefaultRegistry.Clear()
 
-	var name, email string
+	var name, email Required[string]
 	userSchema := Object(map[string]Schema{
-		"name":  String(&name).Required(),
-		"email": String(&email).Email(),
+		"name":  Str(&name),
+		"email": Str(&email).Email(),
 	}).Title("User").Ref("User")
 
 	openAPI := userSchema.OpenAPI()
@@ -568,10 +568,10 @@ func TestObjectSchema_Ref(t *testing.T) {
 func TestObjectSchema_Ref_InOpenAPISpec(t *testing.T) {
 	DefaultRegistry.Clear()
 
-	var errorCode, errorMsg string
+	var errorCode, errorMsg Required[string]
 	errorSchema := Object(map[string]Schema{
-		"code":    String(&errorCode).Required(),
-		"message": String(&errorMsg).Required(),
+		"code":    Str(&errorCode),
+		"message": Str(&errorMsg),
 	}).Title("Error").Ref("Error")
 
 	result := generate(t, minimalConfig(), Endpoint{
@@ -598,8 +598,7 @@ func TestObjectSchema_Ref_InOpenAPISpec(t *testing.T) {
 func TestArraySchema_Ref(t *testing.T) {
 	DefaultRegistry.Clear()
 
-	var item string
-	tagsSchema := Array(String(&item)).MinItems(1).Ref("Tags")
+	tagsSchema := Array(StringElem(nil)).MinItems(1).Ref("Tags")
 
 	openAPI := tagsSchema.OpenAPI()
 	assert.Equal(t, "#/components/schemas/Tags", openAPI["$ref"])

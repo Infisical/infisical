@@ -10,6 +10,7 @@ import (
 // ErrorBody is the JSON response shape sent to clients on error.
 // Matches the Node.js backend format for API compatibility.
 type ErrorBody struct {
+	ReqID      string `json:"reqId,omitempty"`
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
 	Error      string `json:"error"`

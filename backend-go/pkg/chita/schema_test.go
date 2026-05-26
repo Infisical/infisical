@@ -13,8 +13,8 @@ import (
 // --- String Schema Tests ---
 
 func TestStringSchema_Required(t *testing.T) {
-	var val string
-	schema := String(&val).Required()
+	var val Required[string]
+	schema := Str(&val)
 
 	assert.True(t, schema.IsRequired())
 
@@ -24,8 +24,8 @@ func TestStringSchema_Required(t *testing.T) {
 }
 
 func TestStringSchema_Optional(t *testing.T) {
-	var val string
-	schema := String(&val).Optional()
+	var val Optional[string]
+	schema := OptStr(&val)
 
 	assert.False(t, schema.IsRequired())
 
@@ -34,144 +34,143 @@ func TestStringSchema_Optional(t *testing.T) {
 }
 
 func TestStringSchema_MinLength(t *testing.T) {
-	val := "ab"
-	schema := String(&val).MinLength(3)
+	val := NewRequired("ab")
+	schema := Str(&val).MinLength(3)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "min_length", errs[0].Code)
 
-	val = "abc"
+	val.Set("abc")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_MaxLength(t *testing.T) {
-	val := "abcdef"
-	schema := String(&val).MaxLength(5)
+	val := NewRequired("abcdef")
+	schema := Str(&val).MaxLength(5)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "max_length", errs[0].Code)
 
-	val = "abcde"
+	val.Set("abcde")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_Length(t *testing.T) {
-	val := "ab"
-	schema := String(&val).Length(3, 5)
+	val := NewRequired("ab")
+	schema := Str(&val).Length(3, 5)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "min_length", errs[0].Code)
 
-	val = "abcdef"
+	val.Set("abcdef")
 	errs = schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "max_length", errs[0].Code)
 
-	val = "abcd"
+	val.Set("abcd")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_Pattern(t *testing.T) {
-	val := "abc123"
-	schema := String(&val).Pattern(`^[a-z]+$`)
+	val := NewRequired("abc123")
+	schema := Str(&val).Pattern(`^[a-z]+$`)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "pattern", errs[0].Code)
 
-	val = "abc"
+	val.Set("abc")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_Enum(t *testing.T) {
-	val := "invalid"
-	schema := String(&val).Enum("foo", "bar", "baz")
+	val := NewRequired("invalid")
+	schema := Str(&val).Enum("foo", "bar", "baz")
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "enum", errs[0].Code)
 
-	val = "bar"
+	val.Set("bar")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_FormatEmail(t *testing.T) {
-	val := "not-an-email"
-	schema := String(&val).Email()
+	val := NewRequired("not-an-email")
+	schema := Str(&val).Email()
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "format", errs[0].Code)
 
-	val = "test@example.com"
+	val.Set("test@example.com")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_FormatUUID(t *testing.T) {
-	val := "not-a-uuid"
-	schema := String(&val).UUID()
+	val := NewRequired("not-a-uuid")
+	schema := Str(&val).UUID()
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "format", errs[0].Code)
 
-	val = "550e8400-e29b-41d4-a716-446655440000"
+	val.Set("550e8400-e29b-41d4-a716-446655440000")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_FormatURI(t *testing.T) {
-	val := "not a uri"
-	schema := String(&val).URI()
+	val := NewRequired("not a uri")
+	schema := Str(&val).URI()
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "format", errs[0].Code)
 
-	val = "https://example.com/path"
+	val.Set("https://example.com/path")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_FormatDateTime(t *testing.T) {
-	val := "not-a-date"
-	schema := String(&val).DateTime()
+	val := NewRequired("not-a-date")
+	schema := Str(&val).DateTime()
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "format", errs[0].Code)
 
-	val = "2024-01-15T10:30:00Z"
+	val.Set("2024-01-15T10:30:00Z")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_FormatDate(t *testing.T) {
-	val := "not-a-date"
-	schema := String(&val).Date()
+	val := NewRequired("not-a-date")
+	schema := Str(&val).Date()
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "format", errs[0].Code)
 
-	val = "2024-01-15"
+	val.Set("2024-01-15")
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestStringSchema_OpenAPI(t *testing.T) {
-	var val string
-	schema := String(&val).
-		Required().
+	var val Required[string]
+	schema := Str(&val).
 		MinLength(1).
 		MaxLength(100).
 		Pattern(`^[a-z]+$`).
@@ -201,8 +200,8 @@ func TestStringSchema_OpenAPI(t *testing.T) {
 }
 
 func TestStringSchema_OpenAPI_Enum(t *testing.T) {
-	var val string
-	schema := String(&val).Enum("a", "b", "c")
+	var val Required[string]
+	schema := Str(&val).Enum("a", "b", "c")
 
 	openapi := schema.OpenAPI()
 
@@ -211,9 +210,9 @@ func TestStringSchema_OpenAPI_Enum(t *testing.T) {
 
 // --- Int Schema Tests ---
 
-func TestIntSchema_Required_NilPointer(t *testing.T) {
-	// nil pointer means value was not provided
-	schema := Int(nil).Required()
+func TestIntSchema_Required_NotSet(t *testing.T) {
+	var val Required[int]
+	schema := Int(&val)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
@@ -222,119 +221,119 @@ func TestIntSchema_Required_NilPointer(t *testing.T) {
 
 func TestIntSchema_Required_ZeroValue(t *testing.T) {
 	// Zero is a valid provided value, not "missing"
-	val := 0
-	schema := Int(&val).Required()
+	val := NewRequired(0)
+	schema := Int(&val)
 
 	errs := schema.Validate()
-	assert.Empty(t, errs) // 0 is valid when ptr is non-nil
+	assert.Empty(t, errs) // 0 is valid when isSet is true
 }
 
 func TestIntSchema_Required_NonZeroValue(t *testing.T) {
-	val := 42
-	schema := Int(&val).Required()
+	val := NewRequired(42)
+	schema := Int(&val)
 
 	errs := schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_Min(t *testing.T) {
-	val := 5
+	val := NewRequired(5)
 	schema := Int(&val).Min(10)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "minimum", errs[0].Code)
 
-	val = 10
+	val.Set(10)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_Max(t *testing.T) {
-	val := 15
+	val := NewRequired(15)
 	schema := Int(&val).Max(10)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "maximum", errs[0].Code)
 
-	val = 10
+	val.Set(10)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_Range(t *testing.T) {
-	val := 5
+	val := NewRequired(5)
 	schema := Int(&val).Range(10, 20)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "minimum", errs[0].Code)
 
-	val = 25
+	val.Set(25)
 	errs = schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "maximum", errs[0].Code)
 
-	val = 15
+	val.Set(15)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_ExclusiveMin(t *testing.T) {
-	val := 10
+	val := NewRequired(10)
 	schema := Int(&val).ExclusiveMin(10)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "exclusive_minimum", errs[0].Code)
 
-	val = 11
+	val.Set(11)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_ExclusiveMax(t *testing.T) {
-	val := 10
+	val := NewRequired(10)
 	schema := Int(&val).ExclusiveMax(10)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "exclusive_maximum", errs[0].Code)
 
-	val = 9
+	val.Set(9)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_MultipleOf(t *testing.T) {
-	val := 7
+	val := NewRequired(7)
 	schema := Int(&val).MultipleOf(3)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "multiple_of", errs[0].Code)
 
-	val = 9
+	val.Set(9)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestIntSchema_Enum(t *testing.T) {
-	val := 5
+	val := NewRequired(5)
 	schema := Int(&val).Enum(1, 2, 3)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "enum", errs[0].Code)
 
-	val = 2
+	val.Set(2)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestInt64Schema(t *testing.T) {
-	var val int64 = 100
+	val := NewRequired[int64](100)
 	schema := Int64(&val).Min(50).Max(200)
 
 	errs := schema.Validate()
@@ -346,7 +345,7 @@ func TestInt64Schema(t *testing.T) {
 }
 
 func TestIntSchema_OpenAPI(t *testing.T) {
-	var val int
+	var val Required[int]
 	schema := Int(&val).
 		Min(0).
 		Max(100).
@@ -375,9 +374,9 @@ func TestIntSchema_OpenAPI(t *testing.T) {
 
 // --- Float Schema Tests ---
 
-func TestFloatSchema_Required_NilPointer(t *testing.T) {
-	// nil pointer means value was not provided
-	schema := Float(nil).Required()
+func TestFloatSchema_Required_NotSet(t *testing.T) {
+	var val Required[float64]
+	schema := Float(&val)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
@@ -386,61 +385,61 @@ func TestFloatSchema_Required_NilPointer(t *testing.T) {
 
 func TestFloatSchema_Required_ZeroValue(t *testing.T) {
 	// Zero is a valid provided value, not "missing"
-	val := 0.0
-	schema := Float(&val).Required()
+	val := NewRequired(0.0)
+	schema := Float(&val)
 
 	errs := schema.Validate()
-	assert.Empty(t, errs) // 0.0 is valid when ptr is non-nil
+	assert.Empty(t, errs) // 0.0 is valid when isSet is true
 }
 
 func TestFloatSchema_Required_NonZeroValue(t *testing.T) {
-	val := 3.14
-	schema := Float(&val).Required()
+	val := NewRequired(3.14)
+	schema := Float(&val)
 
 	errs := schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestFloatSchema_Min(t *testing.T) {
-	val := 1.5
+	val := NewRequired(1.5)
 	schema := Float(&val).Min(2.0)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "minimum", errs[0].Code)
 
-	val = 2.5
+	val.Set(2.5)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestFloatSchema_Max(t *testing.T) {
-	val := 5.5
+	val := NewRequired(5.5)
 	schema := Float(&val).Max(5.0)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 	assert.Equal(t, "maximum", errs[0].Code)
 
-	val = 4.5
+	val.Set(4.5)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestFloatSchema_Range(t *testing.T) {
-	val := 0.5
+	val := NewRequired(0.5)
 	schema := Float(&val).Range(1.0, 10.0)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
 
-	val = 5.0
+	val.Set(5.0)
 	errs = schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestFloatSchema_ExclusiveMinMax(t *testing.T) {
-	val := 5.0
+	val := NewRequired(5.0)
 	schema := Float(&val).ExclusiveMin(5.0)
 
 	errs := schema.Validate()
@@ -454,7 +453,7 @@ func TestFloatSchema_ExclusiveMinMax(t *testing.T) {
 }
 
 func TestFloatSchema_OpenAPI(t *testing.T) {
-	var val float64
+	var val Required[float64]
 	schema := Float(&val).Min(0.0).Max(1.0).Title("Ratio")
 
 	openapi := schema.OpenAPI()
@@ -468,9 +467,9 @@ func TestFloatSchema_OpenAPI(t *testing.T) {
 
 // --- Bool Schema Tests ---
 
-func TestBoolSchema_Required_NilPointer(t *testing.T) {
-	// nil pointer means value was not provided
-	schema := Bool(nil).Required()
+func TestBoolSchema_Required_NotSet(t *testing.T) {
+	var val Required[bool]
+	schema := Bool(&val)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 1)
@@ -479,23 +478,23 @@ func TestBoolSchema_Required_NilPointer(t *testing.T) {
 
 func TestBoolSchema_Required_FalseValue(t *testing.T) {
 	// false is a valid provided value, not "missing"
-	val := false
-	schema := Bool(&val).Required()
+	val := NewRequired(false)
+	schema := Bool(&val)
 
 	errs := schema.Validate()
-	assert.Empty(t, errs) // false is valid when ptr is non-nil
+	assert.Empty(t, errs) // false is valid when isSet is true
 }
 
 func TestBoolSchema_Required_TrueValue(t *testing.T) {
-	val := true
-	schema := Bool(&val).Required()
+	val := NewRequired(true)
+	schema := Bool(&val)
 
 	errs := schema.Validate()
 	assert.Empty(t, errs)
 }
 
 func TestBoolSchema_OpenAPI(t *testing.T) {
-	var val bool
+	var val Required[bool]
 	schema := Bool(&val).
 		Default(true).
 		Example(false).
@@ -708,8 +707,8 @@ func TestRawSchema_OpenAPI(t *testing.T) {
 // --- Multiple Validation Errors ---
 
 func TestStringSchema_MultipleErrors(t *testing.T) {
-	val := "ab"
-	schema := String(&val).MinLength(5).Pattern(`^[0-9]+$`)
+	val := NewRequired("ab")
+	schema := Str(&val).MinLength(5).Pattern(`^[0-9]+$`)
 
 	errs := schema.Validate()
 	require.Len(t, errs, 2)

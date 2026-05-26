@@ -15,18 +15,18 @@ import (
 )
 
 type ParseTestRequest struct {
-	OrgID   string `json:"-"`
-	Include string `json:"-"`
-	Name    string `json:"name"`
-	Age     int    `json:"age"`
+	OrgID   Required[string] `json:"-"`
+	Include Optional[string] `json:"-"`
+	Name    Required[string] `json:"name"`
+	Age     Optional[int]    `json:"age"`
 }
 
 func (r *ParseTestRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"orgId":   String(&r.OrgID).Required().From(SourcePath),
-		"include": String(&r.Include).Optional().From(SourceQuery),
-		"name":    String(&r.Name).Required(),
-		"age":     Int(&r.Age).Optional(),
+		"orgId":   Str(&r.OrgID).From(SourcePath),
+		"include": OptStr(&r.Include).From(SourceQuery),
+		"name":    Str(&r.Name),
+		"age":     OptInt(&r.Age),
 	})
 }
 
@@ -39,17 +39,17 @@ func TestParseRequest_PathAndQuery(t *testing.T) {
 			return
 		}
 
-		if req.OrgID != "org-123" {
-			t.Errorf("expected OrgID 'org-123', got %q", req.OrgID)
+		if req.OrgID.Get() != "org-123" {
+			t.Errorf("expected OrgID 'org-123', got %q", req.OrgID.Get())
 		}
-		if req.Include != "metadata" {
-			t.Errorf("expected Include 'metadata', got %q", req.Include)
+		if req.Include.Get() != "metadata" {
+			t.Errorf("expected Include 'metadata', got %q", req.Include.Get())
 		}
-		if req.Name != "John" {
-			t.Errorf("expected Name 'John', got %q", req.Name)
+		if req.Name.Get() != "John" {
+			t.Errorf("expected Name 'John', got %q", req.Name.Get())
 		}
-		if req.Age != 30 {
-			t.Errorf("expected Age 30, got %d", req.Age)
+		if req.Age.Get() != 30 {
+			t.Errorf("expected Age 30, got %d", req.Age.Get())
 		}
 	}
 
@@ -139,13 +139,14 @@ func TestExtractPathParams(t *testing.T) {
 }
 
 func TestSplitSchemaBySource(t *testing.T) {
-	var name, orgID, include, token string
+	var name, orgID, token Required[string]
+	var include Optional[string]
 
 	schema := Object(map[string]Schema{
-		"name":    String(&name).Required(),
-		"orgId":   String(&orgID).Required().From(SourcePath),
-		"include": String(&include).Optional().From(SourceQuery),
-		"token":   String(&token).Required().From(SourceHeader),
+		"name":    Str(&name),
+		"orgId":   Str(&orgID).From(SourcePath),
+		"include": OptStr(&include).From(SourceQuery),
+		"token":   Str(&token).From(SourceHeader),
 	})
 
 	bodySchema, params := SplitSchemaBySource(schema)
@@ -172,14 +173,15 @@ func TestSplitSchemaBySource(t *testing.T) {
 }
 
 func TestBuildOpenAPIParameters(t *testing.T) {
-	var name, orgID, include string
-	var limit int
+	var name, orgID Required[string]
+	var include Optional[string]
+	var limit Optional[int]
 
 	schema := Object(map[string]Schema{
-		"name":    String(&name).Required(),
-		"orgId":   String(&orgID).Required().From(SourcePath).Description("Organization ID"),
-		"include": String(&include).Optional().From(SourceQuery).Description("Fields to include"),
-		"limit":   Int(&limit).Optional().From(SourceQuery),
+		"name":    Str(&name),
+		"orgId":   Str(&orgID).From(SourcePath).Description("Organization ID"),
+		"include": OptStr(&include).From(SourceQuery).Description("Fields to include"),
+		"limit":   OptInt(&limit).From(SourceQuery),
 	})
 
 	params := BuildOpenAPIParameters(schema)
@@ -214,11 +216,11 @@ func TestBuildOpenAPIParameters(t *testing.T) {
 }
 
 func TestBuildOpenAPIRequestBody(t *testing.T) {
-	var name, orgID string
+	var name, orgID Required[string]
 
 	schema := Object(map[string]Schema{
-		"name":  String(&name).Required(),
-		"orgId": String(&orgID).Required().From(SourcePath),
+		"name":  Str(&name),
+		"orgId": Str(&orgID).From(SourcePath),
 	})
 
 	body := BuildOpenAPIRequestBody(schema, "")
@@ -266,16 +268,16 @@ func TestParamSourceString(t *testing.T) {
 }
 
 type HeaderCookieRequest struct {
-	AuthToken   string `json:"-"`
-	SessionID   string `json:"-"`
-	RequestBody string `json:"body"`
+	AuthToken   Required[string] `json:"-"`
+	SessionID   Optional[string] `json:"-"`
+	RequestBody Required[string] `json:"body"`
 }
 
 func (r *HeaderCookieRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"Authorization": String(&r.AuthToken).Required().From(SourceHeader),
-		"session_id":    String(&r.SessionID).Optional().From(SourceCookie),
-		"body":          String(&r.RequestBody).Required(),
+		"Authorization": Str(&r.AuthToken).From(SourceHeader),
+		"session_id":    OptStr(&r.SessionID).From(SourceCookie),
+		"body":          Str(&r.RequestBody),
 	})
 }
 
@@ -288,14 +290,14 @@ func TestParseRequest_HeaderAndCookie(t *testing.T) {
 			return
 		}
 
-		if req.AuthToken != "Bearer token123" {
-			t.Errorf("expected AuthToken 'Bearer token123', got %q", req.AuthToken)
+		if req.AuthToken.Get() != "Bearer token123" {
+			t.Errorf("expected AuthToken 'Bearer token123', got %q", req.AuthToken.Get())
 		}
-		if req.SessionID != "sess-abc" {
-			t.Errorf("expected SessionID 'sess-abc', got %q", req.SessionID)
+		if req.SessionID.Get() != "sess-abc" {
+			t.Errorf("expected SessionID 'sess-abc', got %q", req.SessionID.Get())
 		}
-		if req.RequestBody != "hello" {
-			t.Errorf("expected RequestBody 'hello', got %q", req.RequestBody)
+		if req.RequestBody.Get() != "hello" {
+			t.Errorf("expected RequestBody 'hello', got %q", req.RequestBody.Get())
 		}
 	}
 
@@ -317,38 +319,38 @@ func TestParseRequest_HeaderAndCookie(t *testing.T) {
 }
 
 func TestSetFieldValue_Int(t *testing.T) {
-	var val int
+	var val Required[int]
 	schema := Int(&val)
 
 	if err := setFieldValue(schema, "42"); err != nil {
 		t.Fatalf("setFieldValue failed: %v", err)
 	}
-	if val != 42 {
-		t.Errorf("expected 42, got %d", val)
+	if val.Get() != 42 {
+		t.Errorf("expected 42, got %d", val.Get())
 	}
 }
 
 func TestSetFieldValue_Bool(t *testing.T) {
-	var val bool
+	var val Required[bool]
 	schema := Bool(&val)
 
 	if err := setFieldValue(schema, "true"); err != nil {
 		t.Fatalf("setFieldValue failed: %v", err)
 	}
-	if !val {
+	if !val.Get() {
 		t.Error("expected true, got false")
 	}
 }
 
 func TestSetFieldValue_Float(t *testing.T) {
-	var val float64
+	var val Required[float64]
 	schema := Float(&val)
 
 	if err := setFieldValue(schema, "3.14"); err != nil {
 		t.Fatalf("setFieldValue failed: %v", err)
 	}
-	if val != 3.14 {
-		t.Errorf("expected 3.14, got %f", val)
+	if val.Get() != 3.14 {
+		t.Errorf("expected 3.14, got %f", val.Get())
 	}
 }
 
@@ -366,7 +368,7 @@ func TestSetFieldValue_UUID(t *testing.T) {
 }
 
 func TestSetFieldValue_InvalidInt(t *testing.T) {
-	var val int
+	var val Required[int]
 	schema := Int(&val)
 
 	if err := setFieldValue(schema, "not-a-number"); err == nil {
@@ -409,13 +411,13 @@ func TestParseQueryArrayCSV(t *testing.T) {
 
 func TestParseRequest_NoBody(t *testing.T) {
 	type GetRequest struct {
-		ID string `json:"-"`
+		ID Required[string] `json:"-"`
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		var req GetRequest
 		schema := Object(map[string]Schema{
-			"id": String(&req.ID).Required().From(SourcePath),
+			"id": Str(&req.ID).From(SourcePath),
 		})
 
 		// Extract path param manually (since GetRequest doesn't implement SchemaProvider)
@@ -429,8 +431,8 @@ func TestParseRequest_NoBody(t *testing.T) {
 			}
 		}
 
-		if req.ID != "item-123" {
-			t.Errorf("expected ID 'item-123', got %q", req.ID)
+		if req.ID.Get() != "item-123" {
+			t.Errorf("expected ID 'item-123', got %q", req.ID.Get())
 		}
 	}
 
@@ -449,20 +451,20 @@ func TestParseRequest_NoBody(t *testing.T) {
 
 func TestParseRequest_EmptyBody_RequiredFieldValidation(t *testing.T) {
 	type RequestWithRequiredBody struct {
-		ID   string `json:"-"`
-		Name string `json:"name"`
+		ID   Required[string] `json:"-"`
+		Name Required[string] `json:"name"`
 	}
 
 	var failed bool
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		var req RequestWithRequiredBody
 		schema := Object(map[string]Schema{
-			"id":   String(&req.ID).Required().From(SourcePath),
-			"name": String(&req.Name).Required(),
+			"id":   Str(&req.ID).From(SourcePath),
+			"name": Str(&req.Name),
 		})
 
 		// Parse path params
-		req.ID = chi.URLParam(r, "id")
+		req.ID.Set(chi.URLParam(r, "id"))
 
 		// Body is empty (ContentLength == 0), validation should fail for required "name"
 		errs := schema.Validate()
@@ -495,8 +497,8 @@ func TestParseRequest_ChunkedTransferEncoding(t *testing.T) {
 			return
 		}
 
-		if req.Name != "ChunkedTest" {
-			t.Errorf("expected Name 'ChunkedTest', got %q", req.Name)
+		if req.Name.Get() != "ChunkedTest" {
+			t.Errorf("expected Name 'ChunkedTest', got %q", req.Name.Get())
 		}
 	}
 
@@ -518,12 +520,12 @@ func TestParseRequest_ChunkedTransferEncoding(t *testing.T) {
 }
 
 type RequiredHeaderRequest struct {
-	APIKey string `json:"-"`
+	APIKey Required[string] `json:"-"`
 }
 
 func (r *RequiredHeaderRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"X-API-Key": String(&r.APIKey).Required().From(SourceHeader),
+		"X-API-Key": Str(&r.APIKey).From(SourceHeader),
 	})
 }
 
@@ -552,12 +554,12 @@ func TestParseAndValidate_RequiredHeaderMissing(t *testing.T) {
 }
 
 type RequiredCookieRequest struct {
-	SessionID string `json:"-"`
+	SessionID Required[string] `json:"-"`
 }
 
 func (r *RequiredCookieRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"session_id": String(&r.SessionID).Required().From(SourceCookie),
+		"session_id": Str(&r.SessionID).From(SourceCookie),
 	})
 }
 
@@ -593,7 +595,7 @@ func TestParseRequest_UUIDPath_WithSchemaProvider(t *testing.T) {
 	// Helper to create schema - using closure to bind to request
 	schemaFor := func(req *UUIDPathRequest) *ObjectSchema {
 		return Object(map[string]Schema{
-			"id": UUID(&req.ID).Required().From(SourcePath),
+			"id": UUID(&req.ID).From(SourcePath),
 		})
 	}
 
@@ -663,14 +665,14 @@ func TestParseQueryArrayCSV_SingleValue(t *testing.T) {
 // --- Mass Assignment Tests ---
 
 type MassAssignmentRequest struct {
-	OrgID string `json:"orgId"` // Intentionally NOT json:"-" to test the vulnerability
-	Name  string `json:"name"`
+	OrgID Required[string] `json:"orgId"` // Intentionally NOT json:"-" to test the vulnerability
+	Name  Required[string] `json:"name"`
 }
 
 func (r *MassAssignmentRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"orgId": String(&r.OrgID).Required().From(SourcePath),
-		"name":  String(&r.Name).Required(),
+		"orgId": Str(&r.OrgID).From(SourcePath),
+		"name":  Str(&r.Name),
 	})
 }
 
@@ -685,8 +687,8 @@ func TestParseRequest_MassAssignment_PathWinsOverBody(t *testing.T) {
 
 		// Path parameter should win over body, even with matching JSON tag
 		// This tests the fix for the mass-assignment vulnerability
-		assert.Equal(t, "legitimate-org", req.OrgID, "path param should override body")
-		assert.Equal(t, "secret-name", req.Name)
+		assert.Equal(t, "legitimate-org", req.OrgID.Get(), "path param should override body")
+		assert.Equal(t, "secret-name", req.Name.Get())
 	}
 
 	router := chi.NewRouter()
@@ -706,16 +708,16 @@ func TestParseRequest_MassAssignment_PathWinsOverBody(t *testing.T) {
 // --- Header/Cookie Parameter Tests ---
 
 type HeaderCookieTestRequest struct {
-	AuthHeader string `json:"-"`
-	SessionID  string `json:"-"`
-	BodyField  string `json:"body"`
+	AuthHeader Required[string] `json:"-"`
+	SessionID  Optional[string] `json:"-"`
+	BodyField  Required[string] `json:"body"`
 }
 
 func (r *HeaderCookieTestRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"X-Auth-Token": String(&r.AuthHeader).Required().From(SourceHeader),
-		"session":      String(&r.SessionID).Optional().From(SourceCookie),
-		"body":         String(&r.BodyField).Required(),
+		"X-Auth-Token": Str(&r.AuthHeader).From(SourceHeader),
+		"session":      OptStr(&r.SessionID).From(SourceCookie),
+		"body":         Str(&r.BodyField),
 	})
 }
 
@@ -727,8 +729,8 @@ func TestParseRequest_HeaderParam(t *testing.T) {
 			return
 		}
 
-		assert.Equal(t, "token-value", req.AuthHeader)
-		assert.Equal(t, "data", req.BodyField)
+		assert.Equal(t, "token-value", req.AuthHeader.Get())
+		assert.Equal(t, "data", req.BodyField.Get())
 	}
 
 	router := chi.NewRouter()
@@ -753,7 +755,7 @@ func TestParseRequest_CookieParam(t *testing.T) {
 			return
 		}
 
-		assert.Equal(t, "sess-123", req.SessionID)
+		assert.Equal(t, "sess-123", req.SessionID.Get())
 	}
 
 	router := chi.NewRouter()
@@ -780,7 +782,7 @@ func TestParseRequest_MissingCookie_Tolerated(t *testing.T) {
 		}
 
 		// Missing optional cookie should be tolerated
-		assert.Empty(t, req.SessionID)
+		assert.False(t, req.SessionID.IsSet())
 	}
 
 	router := chi.NewRouter()
@@ -800,12 +802,12 @@ func TestParseRequest_MissingCookie_Tolerated(t *testing.T) {
 
 func TestParseRequest_EmptyBody_SkipsBodyParsing(t *testing.T) {
 	type GetRequest struct {
-		ID string `json:"-"`
+		ID Required[string] `json:"-"`
 	}
 
 	var req GetRequest
 	schema := Object(map[string]Schema{
-		"id": String(&req.ID).Required().From(SourcePath),
+		"id": Str(&req.ID).From(SourcePath),
 	})
 
 	// Create request with Content-Length: 0
@@ -833,8 +835,8 @@ func TestParseAndValidate_ValidRequest(t *testing.T) {
 			return
 		}
 
-		assert.Equal(t, "org-123", req.OrgID)
-		assert.Equal(t, "John", req.Name)
+		assert.Equal(t, "org-123", req.OrgID.Get())
+		assert.Equal(t, "John", req.Name.Get())
 	}
 
 	router := chi.NewRouter()
@@ -877,12 +879,12 @@ func TestParseAndValidate_InvalidRequest(t *testing.T) {
 // --- DisallowUnknownFields Tests ---
 
 type strictBodyRequest struct {
-	Name string `json:"name"`
+	Name Required[string] `json:"name"`
 }
 
 func (r *strictBodyRequest) Schema() *ObjectSchema {
 	return Object(map[string]Schema{
-		"name": String(&r.Name).Required(),
+		"name": Str(&r.Name),
 	})
 }
 
@@ -915,7 +917,7 @@ func TestParseRequestWithOptions_DisallowUnknownFields(t *testing.T) {
 
 func TestSetFieldValue_ErrorPaths(t *testing.T) {
 	t.Run("invalid int", func(t *testing.T) {
-		var val int
+		var val Required[int]
 		schema := Int(&val)
 		err := setFieldValue(schema, "not-a-number")
 		require.Error(t, err)
@@ -923,7 +925,7 @@ func TestSetFieldValue_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("invalid float", func(t *testing.T) {
-		var val float64
+		var val Required[float64]
 		schema := Float(&val)
 		err := setFieldValue(schema, "not-a-float")
 		require.Error(t, err)
@@ -931,7 +933,7 @@ func TestSetFieldValue_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("invalid bool", func(t *testing.T) {
-		var val bool
+		var val Required[bool]
 		schema := Bool(&val)
 		err := setFieldValue(schema, "not-a-bool")
 		require.Error(t, err)

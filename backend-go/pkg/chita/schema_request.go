@@ -14,63 +14,54 @@ type ValueGetter interface {
 
 // GetValue returns the bound string value.
 func (s *StringSchema) GetValue() any {
-	if s.ptr == nil {
+	if !s.IsSet() {
 		return nil
 	}
-	return *s.ptr
+	return s.Get()
 }
 
-// IsZero returns true if the value is zero/empty.
+// IsZero returns true if the value is not set or empty.
 func (s *StringSchema) IsZero() bool {
-	return s.ptr == nil || *s.ptr == ""
+	return !s.IsSet() || s.Get() == ""
 }
 
 // GetValue returns the bound int value.
 func (s *IntSchema) GetValue() any {
-	if s.ptr != nil {
-		return *s.ptr
+	if !s.IsSet() {
+		return nil
 	}
-	if s.ptr64 != nil {
-		return *s.ptr64
-	}
-	return nil
+	return s.GetInt64()
 }
 
-// IsZero returns true if the value is zero/empty.
+// IsZero returns true if the value is not set.
 func (s *IntSchema) IsZero() bool {
-	if s.ptr != nil {
-		return *s.ptr == 0
-	}
-	if s.ptr64 != nil {
-		return *s.ptr64 == 0
-	}
-	return true
+	return !s.IsSet()
 }
 
 // GetValue returns the bound float value.
 func (s *FloatSchema) GetValue() any {
-	if s.ptr == nil {
+	if !s.IsSet() {
 		return nil
 	}
-	return *s.ptr
+	return s.Get()
 }
 
-// IsZero returns true if the value is zero/empty.
+// IsZero returns true if the value is not set.
 func (s *FloatSchema) IsZero() bool {
-	return s.ptr == nil || *s.ptr == 0
+	return !s.IsSet()
 }
 
 // GetValue returns the bound bool value.
 func (s *BoolSchema) GetValue() any {
-	if s.ptr == nil {
+	if !s.IsSet() {
 		return nil
 	}
-	return *s.ptr
+	return s.Get()
 }
 
-// IsZero returns true if the value is zero/empty.
+// IsZero returns true if the value is not set.
 func (s *BoolSchema) IsZero() bool {
-	return s.ptr == nil
+	return !s.IsSet()
 }
 
 // GetValue returns the bound UUID value.
