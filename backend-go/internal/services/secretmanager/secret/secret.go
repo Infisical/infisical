@@ -115,41 +115,6 @@ type FindByFolderIdsFilter struct {
 }
 
 // accessChecker verifies if a user can access secrets at given locations.
-type accessChecker interface {
-	CanDescribeSecret(env, path, key string, tagSlugs []string) bool
-	CanReadSecretValue(env, path, key string, tagSlugs []string) bool
-}
-
-// AccessControl wraps permission checking with explicit opt-out.
-// To skip checks, set SkipChecks=true (Checker can be nil in that case).
-// If SkipChecks=false and Checker=nil, permission checks will fail-closed.
-type AccessControl struct {
-	Checker    accessChecker
-	SkipChecks bool
-}
-
-// CanDescribe returns true if the caller can describe the secret.
-func (ac *AccessControl) CanDescribe(env, path, key string, tagSlugs []string) bool {
-	if ac.SkipChecks {
-		return true
-	}
-	if ac.Checker == nil {
-		return false // fail-closed
-	}
-	return ac.Checker.CanDescribeSecret(env, path, key, tagSlugs)
-}
-
-// CanReadValue returns true if the caller can read the secret value.
-func (ac *AccessControl) CanReadValue(env, path, key string, tagSlugs []string) bool {
-	if ac.SkipChecks {
-		return true
-	}
-	if ac.Checker == nil {
-		return false // fail-closed
-	}
-	return ac.Checker.CanReadSecretValue(env, path, key, tagSlugs)
-}
-
 // DecryptedMetadata holds a decrypted metadata entry.
 type DecryptedMetadata struct {
 	Key         string

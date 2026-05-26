@@ -81,8 +81,8 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 	if opts.ExpandSecretReferences {
 		allSecrets := result.AllSecrets()
 		expander := secretsvc.NewSecretExpander(allSecrets, secretsvc.ExpandOpts{
-			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef) bool {
-				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, nil)
+			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef, tags []string) bool {
+				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, tags)
 			},
 			FetchAbsoluteSecrets: func(refs []secretsvc.AbsoluteSecretRef) []*secretsvc.ProcessedSecret {
 				return h.secrets.FetchAbsoluteSecrets(ctx, refs, secretsvc.AbsoluteFetchOpts{

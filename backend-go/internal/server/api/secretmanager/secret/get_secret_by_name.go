@@ -133,6 +133,16 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 					}
 				}
 
+				// Check per-secret read permission with actual tags before adding to expansion context.
+				// This prevents relative reference expansion from leaking secrets the user can't read.
+				ctxTagSlugs := make([]string, len(sec.Tags))
+				for j, tag := range sec.Tags {
+					ctxTagSlugs[j] = tag.Slug
+				}
+				if !checker.CanReadSecretValue(ctxEnvSlug, ctxPath, sec.Key, ctxTagSlugs) {
+					continue
+				}
+
 				ctxRawValue, ctxDisplayValue, ctxComment, ctxMetadata, _ := secretsvc.DecryptSecretFields(sec, result.CipherPair, false)
 				allSecrets = append(allSecrets, &secretsvc.ProcessedSecret{
 					Secret:      sec,
@@ -148,8 +158,8 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 		}
 
 		expander := secretsvc.NewSecretExpander(allSecrets, secretsvc.ExpandOpts{
-			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef) bool {
-				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, nil)
+			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef, tags []string) bool {
+				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, tags)
 			},
 			FetchAbsoluteSecrets: func(refs []secretsvc.AbsoluteSecretRef) []*secretsvc.ProcessedSecret {
 				return h.secrets.FetchAbsoluteSecrets(ctx, refs, secretsvc.AbsoluteFetchOpts{

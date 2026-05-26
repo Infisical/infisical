@@ -223,6 +223,7 @@ type AbsoluteFetchOpts struct {
 }
 
 // FetchAbsoluteSecrets retrieves secrets for the given absolute references.
+// Returns all matching secrets - permission filtering should happen in the caller.
 func (s *Service) FetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts AbsoluteFetchOpts) []*ProcessedSecret {
 	if len(refs) == 0 {
 		return nil
@@ -285,6 +286,7 @@ func (s *Service) FetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 		}
 
 		envSlug, _ := opts.FolderLookup.GetEnvSlug(loc.envID)
+
 		rawValue, displayValue, comment, metadata, decryptErrs := DecryptSecretFields(sec, opts.CipherPair, false)
 		if decryptErrs.HasErrors() {
 			s.logger.WarnContext(ctx, "absolute ref decryption errors (fail-open)",

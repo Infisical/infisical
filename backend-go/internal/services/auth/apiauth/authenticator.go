@@ -238,6 +238,11 @@ func (a Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, i
 			return nil, errutil.Unauthorized("Cannot renew revoked or unknown access token").WithErrf("validateIdentityAccessToken(tokenId=%s): token not found or revoked", claims.IdentityAccessTokenID)
 		}
 
+		// Validate DB-stored TTL, maxTTL, and usage limits for legacy tokens.
+		if err := validateLegacyAccessTokenConstraints(accessToken, time.Now()); err != nil {
+			return nil, err
+		}
+
 		identityName = accessToken.IdentityName
 		authMethod = accessToken.AuthMethod
 
@@ -896,4 +901,37 @@ func identityTokenUsesRemainingKey(identityID, tokenID string) string {
 // nullUUIDValid returns true when the nullable UUID is present and non-nil.
 func nullUUIDValid(n sql.Null[uuid.UUID]) bool {
 	return n.Valid && n.V != uuid.Nil
+}
+
+// validateLegacyAccessTokenConstraints checks DB-stored TTL, maxTTL, and usage limits
+// for legacy identity access tokens that don't carry these claims in the JWT.
+func validateLegacyAccessTokenConstraints(accessToken *identityAccessTokenRow, now time.Time) error {
+	// Determine reference time for TTL check: use lastRenewedAt if available, else createdAt.
+	referenceTime := accessToken.CreatedAt.V
+	if accessToken.AccessTokenLastRenewedAt.Valid {
+		referenceTime = accessToken.AccessTokenLastRenewedAt.V
+	}
+
+	// Check TTL expiration (time since last renewal/creation).
+	if accessToken.AccessTokenTTL > 0 {
+		expiresAt := referenceTime.Add(time.Duration(accessToken.AccessTokenTTL) * time.Second)
+		if expiresAt.Before(now) {
+			return errutil.Unauthorized("Access token TTL expired")
+		}
+	}
+
+	// Check maxTTL expiration (absolute time since creation).
+	if accessToken.AccessTokenMaxTTL > 0 && accessToken.CreatedAt.Valid {
+		maxExpiresAt := accessToken.CreatedAt.V.Add(time.Duration(accessToken.AccessTokenMaxTTL) * time.Second)
+		if maxExpiresAt.Before(now) {
+			return errutil.Unauthorized("Access token max TTL expired")
+		}
+	}
+
+	// Check usage limit.
+	if accessToken.AccessTokenNumUsesLimit > 0 && accessToken.AccessTokenNumUses >= accessToken.AccessTokenNumUsesLimit {
+		return errutil.Unauthorized("Access token usage limit reached")
+	}
+
+	return nil
 }
