@@ -15,7 +15,13 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
-import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
+import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabGroup,
+  TGitLabGroupTreeItem,
+  TGitLabProject
+} from "./gitlab-connection-types";
 
 interface GitLabOAuthTokenResponse {
   access_token: string;
@@ -25,6 +31,12 @@ interface GitLabOAuthTokenResponse {
   created_at: number;
   scope?: string;
 }
+
+type TNavigationParams = {
+  appConnection: TGitLabConnection;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
 
 export const getGitLabConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID } = getConfig();
@@ -402,5 +414,134 @@ export const listGitLabGroups = async ({
     throw new InternalServerError({
       message: "Unable to fetch GitLab groups"
     });
+  }
+};
+
+const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
+  let { accessToken } = appConnection.credentials;
+
+  if (
+    appConnection.method === GitLabConnectionMethod.AccessToken &&
+    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
+  ) {
+    return null;
+  }
+
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    accessToken = await refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnection.projectId,
+      appConnectionDAL,
+      kmsService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  return getGitLabClient(
+    accessToken,
+    appConnection.credentials.instanceUrl,
+    appConnection.method === GitLabConnectionMethod.OAuth
+  );
+};
+
+export const listGitLabRootGroups = async (params: TNavigationParams): Promise<TGitLabGroupTreeItem[]> => {
+  const client = await getNavigationClient(params);
+  if (!client) return [];
+
+  try {
+    const groups = await client.Groups.all({
+      topLevelOnly: true,
+      orderBy: "name",
+      sort: "asc",
+      minAccessLevel: 20
+    });
+
+    return groups.filter((g) => !g.parentId).map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
+  } catch (error: unknown) {
+    if (error instanceof GitbeakerRequestError) {
+      throw new BadRequestError({
+        message: `Failed to fetch GitLab groups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+      });
+    }
+    if (error instanceof InternalServerError) throw error;
+    throw new InternalServerError({ message: "Unable to fetch GitLab root groups" });
+  }
+};
+
+export const listGitLabSubgroups = async (
+  groupId: string,
+  params: TNavigationParams
+): Promise<TGitLabGroupTreeItem[]> => {
+  const client = await getNavigationClient(params);
+  if (!client) return [];
+
+  try {
+    const subgroups = await client.Groups.allSubgroups(Number(groupId), {
+      orderBy: "name",
+      sort: "asc"
+    });
+
+    return subgroups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
+  } catch (error: unknown) {
+    if (error instanceof GitbeakerRequestError) {
+      throw new BadRequestError({
+        message: `Failed to fetch GitLab subgroups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+      });
+    }
+    if (error instanceof InternalServerError) throw error;
+    throw new InternalServerError({ message: "Unable to fetch GitLab subgroups" });
+  }
+};
+
+export const listGitLabGroupProjects = async (
+  groupId: string,
+  params: TNavigationParams
+): Promise<TGitLabProject[]> => {
+  const client = await getNavigationClient(params);
+  if (!client) return [];
+
+  try {
+    const projects = await client.Groups.allProjects(Number(groupId), {
+      archived: false,
+      includeSubgroups: false
+    });
+
+    return projects.map((p) => ({ id: p.id.toString(), name: p.pathWithNamespace }));
+  } catch (error: unknown) {
+    if (error instanceof GitbeakerRequestError) {
+      throw new BadRequestError({
+        message: `Failed to fetch GitLab group projects: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+      });
+    }
+    if (error instanceof InternalServerError) throw error;
+    throw new InternalServerError({ message: "Unable to fetch GitLab group projects" });
+  }
+};
+
+export const searchGitLabGroups = async (
+  search: string,
+  params: TNavigationParams
+): Promise<TGitLabGroupTreeItem[]> => {
+  const client = await getNavigationClient(params);
+  if (!client) return [];
+
+  try {
+    const groups = await client.Groups.search(search);
+
+    return groups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
+  } catch (error: unknown) {
+    if (error instanceof GitbeakerRequestError) {
+      throw new BadRequestError({
+        message: `Failed to search GitLab groups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+      });
+    }
+    if (error instanceof InternalServerError) throw error;
+    throw new InternalServerError({ message: "Unable to search GitLab groups" });
   }
 };

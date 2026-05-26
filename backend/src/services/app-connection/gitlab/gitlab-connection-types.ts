@@ -26,6 +26,13 @@ export type TGitLabProject = {
   id: string;
 };
 
+export type TGitLabListProjectsParams = {
+  owned?: boolean;
+  search?: string;
+  page?: number;
+  perPage?: number;
+};
+
 export type TGitLabAccessTokenCredentials = {
   accessToken: string;
   instanceUrl: string;
@@ -54,3 +61,9 @@ export interface TGitLabGroup {
   id: string;
   fullName: string;
 }
+
+export type TGitLabGroupTreeItem = {
+  id: string;
+  name: string;
+  fullPath: string;
+};
