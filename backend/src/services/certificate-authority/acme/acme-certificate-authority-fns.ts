@@ -132,7 +132,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     TCertificateAuthorityDALFactory,
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -197,7 +197,6 @@ export const castDbEntryToAcmeCertificateAuthority = (
       directoryUrl: dbConfigurationCol.directoryUrl,
       accountEmail: dbConfigurationCol.accountEmail,
       eabKid: dbConfigurationCol.eabKid,
-      eabHmacKey: dbConfigurationCol.eabHmacKey,
       dnsResolver: dbConfigurationCol.dnsResolver
     },
     status: ca.status as CaStatus
@@ -813,6 +812,18 @@ export const AcmeCertificateAuthorityFns = ({
           actor
         );
 
+        let resolvedEabHmacKey = eabHmacKey;
+        if (eabHmacKey === "__INFISICAL_UNCHANGED__" || eabHmacKey === undefined) {
+          const existingExternalCa = await externalCertificateAuthorityDAL.findOne(
+            { caId: id, type: CaType.ACME },
+            tx
+          );
+          const existingConfig = existingExternalCa?.configuration as DBConfigurationColumn | undefined;
+          resolvedEabHmacKey = existingConfig?.eabHmacKey;
+        } else if (eabHmacKey === "") {
+          resolvedEabHmacKey = undefined;
+        }
+
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -826,7 +837,7 @@ export const AcmeCertificateAuthorityFns = ({
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId,
               eabKid,
-              eabHmacKey,
+              eabHmacKey: resolvedEabHmacKey,
               dnsResolver
             }
           },

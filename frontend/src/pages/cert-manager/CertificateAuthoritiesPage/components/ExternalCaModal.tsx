@@ -105,13 +105,6 @@ const acmeConfigurationSchema = z
           path: ["eabKid"]
         });
       }
-      if (!data.eabHmacKey || data.eabHmacKey.trim() === "") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "EAB HMAC Key is required for this directory URL",
-          path: ["eabHmacKey"]
-        });
-      }
     }
   });
 
@@ -463,7 +456,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             directoryUrl: ca.configuration.directoryUrl,
             accountEmail: ca.configuration.accountEmail,
             eabKid: ca.configuration.eabKid,
-            eabHmacKey: ca.configuration.eabHmacKey,
+            eabHmacKey: "__INFISICAL_UNCHANGED__",
             dnsResolver: ca.configuration.dnsResolver || ""
           }
         });
@@ -929,12 +922,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     label="EAB HMAC Key"
                     isError={Boolean(error)}
                     errorText={error?.message}
-                    isOptional={!REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
-                    isRequired={REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
+                    isOptional
                   >
                     <Input
+                      type="password"
+                      autoComplete="new-password"
                       {...field}
-                      placeholder="dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
+                      placeholder={
+                        ca
+                          ? "Leave blank to keep existing"
+                          : "dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
+                      }
                     />
                   </FormControl>
                 )}
