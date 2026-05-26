@@ -197,6 +197,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
       directoryUrl: dbConfigurationCol.directoryUrl,
       accountEmail: dbConfigurationCol.accountEmail,
       eabKid: dbConfigurationCol.eabKid,
+      eabHmacKey: dbConfigurationCol.eabHmacKey,
       dnsResolver: dbConfigurationCol.dnsResolver
     },
     status: ca.status as CaStatus
