@@ -9,11 +9,13 @@ import { getDbConnectionHost } from "@app/lib/knex";
 export const verifyHostInputValidity = async ({
   host,
   isDynamicSecret,
-  isGateway
+  isGateway,
+  preResolvedIps
 }: {
   host: string;
   isDynamicSecret: boolean;
   isGateway?: boolean;
+  preResolvedIps?: string[];
 }) => {
   const appCfg = getConfig();
 
@@ -42,27 +44,32 @@ export const verifyHostInputValidity = async ({
   }
 
   const normalizedHost = host.split(":")[0].toLowerCase();
-  const inputHostIps: string[] = [];
-  if (net.isIP(host)) {
-    inputHostIps.push(host);
+  let inputHostIps: string[];
+  if (preResolvedIps) {
+    inputHostIps = preResolvedIps;
   } else {
-    if (!appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
-      if (normalizedHost === "localhost" || normalizedHost === "host.docker.internal") {
-        throw new BadRequestError({
-          message: `Local host IP addresses (${normalizedHost}) are not allowed.${!appCfg.isCloud ? ` If you are self-hosting, you can allow local host IP addresses by setting the '${isDynamicSecret ? "'DYNAMIC_SECRET_ALLOW_INTERNAL_IP'" : "'ALLOW_INTERNAL_IP_CONNECTIONS'"}' environment variable to 'true' on your instance.` : ""}`
-        });
+    inputHostIps = [];
+    if (net.isIP(host)) {
+      inputHostIps.push(host);
+    } else {
+      if (!appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+        if (normalizedHost === "localhost" || normalizedHost === "host.docker.internal") {
+          throw new BadRequestError({
+            message: `Local host IP addresses (${normalizedHost}) are not allowed.${!appCfg.isCloud ? ` If you are self-hosting, you can allow local host IP addresses by setting the '${isDynamicSecret ? "'DYNAMIC_SECRET_ALLOW_INTERNAL_IP'" : "'ALLOW_INTERNAL_IP_CONNECTIONS'"}' environment variable to 'true' on your instance.` : ""}`
+          });
+        }
       }
+      const resolvedIps = (await dns.lookup(host, { all: true })).map(({ address }) => address);
+      inputHostIps.push(...resolvedIps);
     }
-    const resolvedIps = (await dns.lookup(host, { all: true })).map(({ address }) => address);
-    inputHostIps.push(...resolvedIps);
-  }
 
-  if (!(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
-    const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
-    if (isInternalIp)
-      throw new BadRequestError({
-        message: `Private IP addresses (${normalizedHost}) are not allowed.${!appCfg.isCloud ? ` If you are self-hosting, you can allow private IP addresses by setting the '${isDynamicSecret ? "'DYNAMIC_SECRET_ALLOW_INTERNAL_IP'" : "'ALLOW_INTERNAL_IP_CONNECTIONS'"}' environment variable to 'true' on your instance.` : ""}`
-      });
+    if (!(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
+      const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
+      if (isInternalIp)
+        throw new BadRequestError({
+          message: `Private IP addresses (${normalizedHost}) are not allowed.${!appCfg.isCloud ? ` If you are self-hosting, you can allow private IP addresses by setting the '${isDynamicSecret ? "'DYNAMIC_SECRET_ALLOW_INTERNAL_IP'" : "'ALLOW_INTERNAL_IP_CONNECTIONS'"}' environment variable to 'true' on your instance.` : ""}`
+        });
+    }
   }
 
   const isAppUsedIps = inputHostIps.some((el) => exclusiveIps.includes(el));

@@ -187,6 +187,19 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
               only Overwrite Destination Secrets is supported.
             </p>
           )}
+          {destination === SecretSync.Vercel &&
+            !vercelSensitive &&
+            currentSyncOption.initialSyncBehavior !==
+              SecretSyncInitialSyncBehavior.OverwriteDestination && (
+              <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
+                <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
+                For team-scoped syncs, only Vercel shared environment variables whose scope exactly
+                matches this sync&apos;s configuration (target environments, target projects, and
+                Apply to all Custom Environments) will be imported. Variables covering a broader
+                scope, or split across separate records per environment, will not be imported on the
+                initial sync.
+              </p>
+            )}
           {!vercelSensitive && !syncOption?.canImportSecrets && (
             <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
               <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
@@ -294,7 +307,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                   onCheckedChange={onChange}
                   isChecked={value}
                 >
-                  <p className="w-44">
+                  <p className="w-52">
                     Disable Secret Deletion{" "}
                     <Tooltip
                       className="max-w-md"

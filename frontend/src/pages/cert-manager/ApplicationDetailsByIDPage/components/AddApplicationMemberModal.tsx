@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups
@@ -26,7 +26,6 @@ import {
   useAddPkiApplicationMember,
   useAddPkiApplicationUserMembers
 } from "@app/hooks/api/pkiApplications";
-import { useCreateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import {
   useCreateProjectIdentityMembership,
   useListProjectIdentityMemberships
@@ -81,8 +80,8 @@ const NoUserOptions = () => (
 
 const NoIdentityOptions = () => (
   <p>
-    No matching identities. Type a name to create a new machine identity in this project and attach
-    it to this Application.
+    No matching identities. Create machine identities from the Access Control page, then return here
+    to attach them to this Application.
   </p>
 );
 
@@ -93,9 +92,7 @@ export const AddApplicationMemberModal = ({
   existingMembers
 }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const orgId = currentOrg?.id ?? "";
-  const projectId = currentProject?.id ?? "";
 
   const [type, setType] = useState<ActorType>("user");
   const [selectedUsers, setSelectedUsers] = useState<Option[]>([]);
@@ -120,7 +117,6 @@ export const AddApplicationMemberModal = ({
 
   const addMember = useAddPkiApplicationMember();
   const addUserMembers = useAddPkiApplicationUserMembers();
-  const createProjectIdentity = useCreateProjectIdentity();
   const addIdentityToProject = useCreateProjectIdentityMembership();
 
   const taken = useMemo(() => {
@@ -209,24 +205,10 @@ export const AddApplicationMemberModal = ({
 
   const submitIdentities = async () => {
     if (selectedIdentities.length === 0) return;
-    const newlyCreatedIds = new Set<string>();
-    const identityIds: string[] = [];
-    await runSequential(selectedIdentities, async (item) => {
-      if (item.isNew) {
-        const created = await createProjectIdentity.mutateAsync({
-          projectId,
-          name: item.value,
-          hasDeleteProtection: false
-        });
-        identityIds.push(created.id);
-        newlyCreatedIds.add(created.id);
-      } else {
-        identityIds.push(item.value);
-      }
-    });
+    const identityIds = selectedIdentities.map((item) => item.value);
 
     const idsNeedingProjectMembership = identityIds.filter(
-      (id) => !newlyCreatedIds.has(id) && !identityIdsAlreadyInProject.has(id)
+      (id) => !identityIdsAlreadyInProject.has(id)
     );
     await runSequential(idsNeedingProjectMembership, async (identityId) => {
       await addIdentityToProject.mutateAsync({
@@ -274,7 +256,6 @@ export const AddApplicationMemberModal = ({
   ];
 
   const isEmail = (s: string) => z.string().email().safeParse(s).success;
-  const isIdentityName = (s: string) => s.trim().length > 0;
 
   const selectedByType: Record<ActorType, number> = {
     user: selectedUsers.length,
@@ -289,8 +270,8 @@ export const AddApplicationMemberModal = ({
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
-            Grant access to this Application. Select one or more existing org members to attach
-            them, or type a new email/identity name to create and attach in one step.
+            Grant access to this Application. Select existing org members, identities, or groups to
+            attach. New machine identities must be created from the Access Control page.
           </DialogDescription>
         </DialogHeader>
 
@@ -341,22 +322,13 @@ export const AddApplicationMemberModal = ({
 
           {type === "identity" && (
             <FormControl label="Machine Identities">
-              <CreatableSelect
+              <FilterableSelect
                 isMulti
                 isLoading={identitiesQuery.isPending}
                 options={identityOptions}
                 value={selectedIdentities}
                 onChange={(v) => setSelectedIdentities((v ?? []) as Option[])}
-                placeholder="Select identities or type a new name…"
-                onCreateOption={(input) => {
-                  if (!isIdentityName(input)) return;
-                  setSelectedIdentities((prev) => [
-                    ...prev,
-                    { value: input.trim(), label: input.trim(), isNew: true }
-                  ]);
-                }}
-                isValidNewOption={(input) => isIdentityName(input)}
-                formatCreateLabel={(input) => `Create identity "${input}"`}
+                placeholder="Select existing identities…"
                 noOptionsMessage={NoIdentityOptions}
               />
             </FormControl>

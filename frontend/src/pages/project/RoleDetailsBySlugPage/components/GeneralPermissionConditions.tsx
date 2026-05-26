@@ -5,7 +5,10 @@ import { ConditionsFields } from "./ConditionsFields";
 type Props = {
   position?: number;
   isDisabled?: boolean;
-  type: ProjectPermissionSub.SecretFolders | ProjectPermissionSub.SecretImports;
+  type:
+    | ProjectPermissionSub.SecretFolders
+    | ProjectPermissionSub.SecretImports
+    | ProjectPermissionSub.Commits;
 };
 
 type SelectOption = { value: string; label: string; description?: string };

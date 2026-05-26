@@ -179,7 +179,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           isActive: true,
           groupSearchBase: "",
           uniqueUserAttribute: "",
-          groupSearchFilter: ""
+          groupSearchFilter: "",
+          clientCertificate: "",
+          clientKeyCertificate: ""
         };
 
         // Authenticate with passport, wrapped in lockout protection

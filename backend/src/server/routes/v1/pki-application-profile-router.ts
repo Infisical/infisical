@@ -3,8 +3,10 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ApplicationIdParamsSchema, ApplicationProfileSchema } from "./pki-application-schemas";
 
@@ -76,6 +78,16 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
             applicationId: req.params.applicationId,
             profileIds: req.body.profileIds
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationProfileAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId
         }
       });
 

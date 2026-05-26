@@ -180,7 +180,7 @@ export const OrgSubOrgsTab = () => {
     SecurityClient.setToken(token);
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-    await navigateUserToOrg({ navigate, organizationId: subOrgId, userId: user?.id });
+    await navigateUserToOrg({ navigate, organizationId: subOrgId });
   };
 
   const handleOpenEditModal = (subOrg: TSubOrganization) => {

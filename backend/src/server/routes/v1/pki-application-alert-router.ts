@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -11,6 +12,7 @@ import {
   PkiAlertV2ResponseSchema,
   UpdatePkiAlertV2Schema
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ApplicationIdParamsSchema } from "./pki-application-schemas";
 
@@ -96,6 +98,17 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
             alertBefore: alert.alertBefore ?? undefined,
             eventType: alert.eventType
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiAlertCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          alertType: alert.eventType,
+          orgId: req.permission.orgId
         }
       });
 
@@ -185,6 +198,16 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
             pkiAlertId: alert.id,
             applicationId: req.params.applicationId
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiAlertDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId
         }
       });
 

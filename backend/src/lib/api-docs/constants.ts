@@ -2198,15 +2198,17 @@ export const CERTIFICATES = {
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
     certificatePem: "The PEM-encoded leaf certificate.",
-    privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
-    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
+    chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
 
-    certificate: "The issued certificate.",
-    certificateChain: "The certificate chain of the issued certificate.",
-    privateKey: "The private key of the issued certificate.",
-    serialNumber: "The serial number of the issued certificate."
+    certificate: "The imported certificate.",
+    certificateChain:
+      "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
+    privateKey:
+      "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
+    serialNumber: "The serial number of the imported certificate."
   }
 };
 
@@ -2662,6 +2664,11 @@ export const AppConnections = {
       clientSecret: "Your Auth0 application's Client Secret.",
       audience: "The unique identifier of the target API you want to access."
     },
+    SALESFORCE_CONNECTION: {
+      instanceUrl: "The instance URL of the Salesforce org to connect to.",
+      consumerKey: "The Consumer Key of your Salesforce External App.",
+      consumerSecret: "The Consumer Secret of your Salesforce External App."
+    },
     SQL_CONNECTION: {
       host: "The hostname of the database server.",
       port: "The port number of the database.",
@@ -2823,7 +2830,9 @@ export const AppConnections = {
       authMethod: "The authentication method to use (password or ssh-key).",
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
-      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod).",
+      blockedUsers:
+        "A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu')."
     },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
@@ -3339,6 +3348,10 @@ export const SecretRotations = {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
     },
+    SALESFORCE_OAUTH_CREDENTIALS: {
+      appId: "The identifier of the Salesforce External Client App to rotate the consumer secret for.",
+      appName: "The developer name of the Salesforce External Client App to rotate the consumer secret for."
+    },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     }
@@ -3404,6 +3417,10 @@ export const SecretRotations = {
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
+    },
+    SALESFORCE_OAUTH_CREDENTIALS: {
+      consumerKey: "The name of the secret that the rotated Salesforce consumer key will be mapped to.",
+      consumerSecret: "The name of the secret that the rotated Salesforce consumer secret will be mapped to."
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
@@ -3597,7 +3614,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   },
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the LDAP config for.",
@@ -3614,7 +3635,11 @@ export const LdapSso = {
     groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
-    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+    caCert: "The CA certificate to use when verifying the LDAP server certificate.",
+    clientCertificate:
+      "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
+    clientKeyCertificate:
+      "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   }
 };
 
@@ -3689,5 +3714,25 @@ export const GATEWAYS = {
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
+  }
+} as const;
+
+export const RELAYS = {
+  CREATE: {
+    name: "Name of the relay.",
+    host: "Host address where the relay is reachable.",
+    authMethod:
+      "Auth method to configure on the relay. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v2/relays/:id/token-auth/generate-enrollment-token call to mint the bootstrap token."
+  },
+  UPDATE: {
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing relays keep working until they restart and re-authenticate via the new method."
+  },
+  LOGIN: {
+    relayId: "The ID of the relay logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this relay (token method only)."
   }
 } as const;

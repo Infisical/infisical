@@ -4,10 +4,12 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "@app/services/pki-sync/pki-sync-maps";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSyncPkiEndpoints = ({
   server,
@@ -170,6 +172,16 @@ export const registerSyncPkiEndpoints = ({
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiSyncCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          destination,
+          orgId: req.permission.orgId
+        }
+      });
+
       return pkiSync;
     }
   });
@@ -251,6 +263,16 @@ export const registerSyncPkiEndpoints = ({
             destination: pkiSync.destination,
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiSyncDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          destination: pkiSync.destination,
+          orgId: req.permission.orgId
         }
       });
 

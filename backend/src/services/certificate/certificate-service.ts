@@ -730,62 +730,66 @@ export const certificateServiceFactory = ({
 
     const leafCert = new x509.X509Certificate(certificatePem);
 
-    // Verify the certificate chain
-    const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+    // Verify the certificate chain when one is provided
+    if (chainPem) {
+      const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
 
-    // Remove leaf cert from the chain if it's present
-    if (chainCerts[0].equal(leafCert)) {
-      chainCerts.splice(0, 1);
-    }
-
-    if (chainCerts.length === 0) {
-      throw new BadRequestError({
-        message: "Certificate chain must contain at least one issuer certificate"
-      });
-    }
-
-    // Verify leaf certificate is signed by the first certificate in the chain
-    const isLeafVerified = await leafCert.verify({ publicKey: chainCerts[0].publicKey }).catch(() => false);
-    if (!isLeafVerified) {
-      throw new BadRequestError({ message: "Leaf certificate verification against chain failed" });
-    }
-
-    // Verify the entire chain of trust
-    const verificationPromises = chainCerts.slice(0, -1).map(async (currentCert, index) => {
-      const issuerCert = chainCerts[index + 1];
-      return currentCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false);
-    });
-
-    const verificationResults = await Promise.all(verificationPromises);
-
-    if (verificationResults.some((result) => !result)) {
-      throw new BadRequestError({
-        message: "Certificate chain verification failed: broken trust chain"
-      });
-    }
-
-    // Verify private key matches the certificate
-    let privateKey;
-    try {
-      privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
-    } catch (err) {
-      throw new BadRequestError({ message: "Invalid private key format" });
-    }
-
-    try {
-      const message = Buffer.from(Buffer.alloc(32));
-      const publicKey = crypto.nativeCrypto.createPublicKey(certificatePem);
-      const signature = crypto.nativeCrypto.sign(null, message, privateKey);
-      const isValid = crypto.nativeCrypto.verify(null, message, publicKey, signature);
-
-      if (!isValid) {
-        throw new BadRequestError({ message: "Private key does not match certificate" });
+      // Remove leaf cert from the chain if it's present
+      if (chainCerts[0]?.equal(leafCert)) {
+        chainCerts.splice(0, 1);
       }
-    } catch (err) {
-      if (err instanceof BadRequestError) {
-        throw err;
+
+      if (chainCerts.length === 0) {
+        throw new BadRequestError({
+          message: "Certificate chain must contain at least one issuer certificate"
+        });
       }
-      throw new BadRequestError({ message: "Error verifying private key against certificate" });
+
+      // Verify leaf certificate is signed by the first certificate in the chain
+      const isLeafVerified = await leafCert.verify({ publicKey: chainCerts[0].publicKey }).catch(() => false);
+      if (!isLeafVerified) {
+        throw new BadRequestError({ message: "Leaf certificate verification against chain failed" });
+      }
+
+      // Verify the entire chain of trust
+      const verificationPromises = chainCerts.slice(0, -1).map(async (currentCert, index) => {
+        const issuerCert = chainCerts[index + 1];
+        return currentCert.verify({ publicKey: issuerCert.publicKey }).catch(() => false);
+      });
+
+      const verificationResults = await Promise.all(verificationPromises);
+
+      if (verificationResults.some((result) => !result)) {
+        throw new BadRequestError({
+          message: "Certificate chain verification failed: broken trust chain"
+        });
+      }
+    }
+
+    // Verify private key matches the certificate when one is provided
+    if (privateKeyPem) {
+      let privateKey;
+      try {
+        privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
+      } catch (err) {
+        throw new BadRequestError({ message: "Invalid private key format" });
+      }
+
+      try {
+        const message = Buffer.from(Buffer.alloc(32));
+        const publicKey = crypto.nativeCrypto.createPublicKey(certificatePem);
+        const signature = crypto.nativeCrypto.sign(null, message, privateKey);
+        const isValid = crypto.nativeCrypto.verify(null, message, publicKey, signature);
+
+        if (!isValid) {
+          throw new BadRequestError({ message: "Private key does not match certificate" });
+        }
+      } catch (err) {
+        if (err instanceof BadRequestError) {
+          throw err;
+        }
+        throw new BadRequestError({ message: "Error verifying private key against certificate" });
+      }
     }
 
     // Get certificate attributes
@@ -814,9 +818,9 @@ export const certificateServiceFactory = ({
       plainText: Buffer.from(certificatePem)
     });
 
-    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-      plainText: Buffer.from(privateKeyPem)
-    });
+    const encryptedPrivateKey = privateKeyPem
+      ? (await kmsEncryptor({ plainText: Buffer.from(privateKeyPem) })).cipherTextBlob
+      : null;
 
     // Extract Key Usage
     const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
@@ -836,9 +840,9 @@ export const certificateServiceFactory = ({
       extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
     }
 
-    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
-      plainText: Buffer.from(chainPem)
-    });
+    const encryptedCertificateChain = chainPem
+      ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
+      : null;
 
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
@@ -872,13 +876,15 @@ export const certificateServiceFactory = ({
           tx
         );
 
-        await certificateSecretDAL.create(
-          {
-            certId: txCert.id,
-            encryptedPrivateKey
-          },
-          tx
-        );
+        if (encryptedPrivateKey) {
+          await certificateSecretDAL.create(
+            {
+              certId: txCert.id,
+              encryptedPrivateKey
+            },
+            tx
+          );
+        }
 
         if (collectionId) {
           await pkiCollectionItemDAL.create(

@@ -1548,6 +1548,16 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
+    resourceAuthMethodDAL,
+    resourceAwsAuthDAL,
+    resourceTokenAuthDAL,
+    gatewayV2DAL,
+    relayDAL,
+    identityDAL,
+    permissionService
+  });
+
   const relayService = relayServiceFactory({
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
@@ -1557,16 +1567,9 @@ export const registerRoutes = async (
     orgDAL,
     notificationService,
     smtpService,
-    userDAL
-  });
-
-  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
-    resourceAuthMethodDAL,
-    resourceAwsAuthDAL,
-    resourceTokenAuthDAL,
-    gatewayV2DAL,
-    identityDAL,
-    permissionService
+    userDAL,
+    resourceAuthMethodService,
+    gatewayV2DAL
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -2247,7 +2250,8 @@ export const registerRoutes = async (
     certificateCleanupConfigDAL,
     certificateDAL,
     certificateRequestDAL,
-    auditLogService
+    auditLogService,
+    telemetryService
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -2571,7 +2575,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateSyncDAL,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2704,11 +2709,13 @@ export const registerRoutes = async (
     queueService,
     cronJob,
     pkiSubscriberDAL,
+    projectDAL,
     certificateAuthorityDAL,
     certificateAuthorityQueue,
     certificateDAL,
     auditLogService,
-    internalCaFns
+    internalCaFns,
+    telemetryService
   });
 
   const certificateService = certificateServiceFactory({
@@ -2773,6 +2780,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
     gatewayV2Service,
     gatewayPoolService
   });
@@ -2791,7 +2800,9 @@ export const registerRoutes = async (
     projectDAL,
     certificatePolicyService,
     certificateIssuanceQueue,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL
   });
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
@@ -2847,6 +2858,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
     licenseService
   });
 

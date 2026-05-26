@@ -238,12 +238,9 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const idMap = buildFolderIdMap(allEnvFolders);
 
       // Map env slug/name by envId from target folders
-      const envSlugMap: Record<string, string> = {};
-      const envNameMap: Record<string, string> = {};
+      const envMap: Record<string, (typeof targetFolders)[number]> = {};
       for (const f of targetFolders) {
-        const typed = f as typeof f & { environmentSlug: string; environmentName: string };
-        envSlugMap[f.envId] = typed.environmentSlug;
-        envNameMap[f.envId] = typed.environmentName;
+        envMap[f.envId] = f;
       }
 
       return folderIds.map((folderId) => {
@@ -254,8 +251,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         return {
           ...folder,
           path,
-          environmentSlug: envSlugMap[folder.envId],
-          environmentName: envNameMap[folder.envId]
+          environmentSlug: envMap[folder.envId].environmentSlug,
+          environmentName: envMap[folder.envId].environmentName
         };
       });
     } catch (error) {

@@ -29,6 +29,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
+  encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
   getAppConnectionMethodName,
@@ -141,6 +142,8 @@ import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
+import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
@@ -247,6 +250,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
+  [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
 };
@@ -426,6 +430,7 @@ export const appConnectionServiceFactory = ({
       method,
       app,
       credentials,
+      configuration,
       gatewayId,
       gatewayPoolId,
       projectId,
@@ -540,10 +545,18 @@ export const appConnectionServiceFactory = ({
             projectId
           });
 
+          const encryptedConfiguration = await encryptAppConnectionConfiguration({
+            configuration,
+            orgId: actor.orgId,
+            kmsService,
+            projectId
+          });
+
           const appConnection = await appConnectionDAL.create(
             {
               orgId: actor.orgId,
               encryptedCredentials,
+              encryptedConfiguration,
               method,
               app,
               gatewayId: gatewayPoolId ? null : gatewayId,
@@ -591,7 +604,8 @@ export const appConnectionServiceFactory = ({
       return {
         ...connection,
         credentialsHash: crypto.nativeCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
-        credentials: validatedCredentials
+        credentials: validatedCredentials,
+        configuration
       } as TAppConnection;
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -606,6 +620,7 @@ export const appConnectionServiceFactory = ({
     {
       connectionId,
       credentials,
+      configuration,
       gatewayId,
       gatewayPoolId,
       isAutoRotationEnabled,
@@ -764,11 +779,22 @@ export const appConnectionServiceFactory = ({
             })
           : undefined;
 
+        const encryptedConfiguration =
+          configuration !== undefined
+            ? await encryptAppConnectionConfiguration({
+                configuration,
+                orgId: actor.orgId,
+                kmsService,
+                projectId: appConnection.projectId
+              })
+            : undefined;
+
         return appConnectionDAL.updateById(
           connectionId,
           {
             orgId: actor.orgId,
             encryptedCredentials,
+            ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
             ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
             ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
             ...params
@@ -1168,6 +1194,7 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    salesforce: salesforceConnectionService(connectAppConnectionById),
     hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),

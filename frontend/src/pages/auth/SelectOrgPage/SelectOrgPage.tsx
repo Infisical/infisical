@@ -241,7 +241,7 @@ export const SelectOrgPage = () => {
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
-      navigateUserToOrg({ navigate, organizationId: targetOrgId, userId: user?.id });
+      navigateUserToOrg({ navigate, organizationId: targetOrgId });
     }
   };
 

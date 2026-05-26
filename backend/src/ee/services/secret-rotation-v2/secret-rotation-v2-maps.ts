@@ -20,6 +20,7 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.OpenRouterApiKey]: "OpenRouter API Key",
   [SecretRotation.HpIloLocalAccount]: "HP iLO Local Account",
   [SecretRotation.SupabaseApiKey]: "Supabase API Key",
+  [SecretRotation.SalesforceOauthCredentials]: "Salesforce OAuth Credentials",
   [SecretRotation.DatadogApplicationKeySecret]: "Datadog Application Key"
 };
 
@@ -42,5 +43,6 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
+  [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
   [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog
 };
