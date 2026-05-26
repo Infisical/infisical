@@ -939,7 +939,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("name").as("crName").withSchema(TableName.Role))
         .select(db.ref("slug").as("crSlug").withSchema(TableName.Role))
         .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
-        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role))
         .select(
           lastLoginFallbackRaw("lastLoginTime", "lastLoginTime"),
           lastLoginFallbackRaw("lastLoginAuthMethod", "lastLoginAuthMethod")
@@ -1050,7 +1049,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               crName,
               crSlug,
               crDescription,
-              crPermission,
               isTemporary,
               temporaryMode,
               temporaryRange,
@@ -1063,7 +1061,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               customRoleName: crName ?? null,
               customRoleSlug: crSlug ?? null,
               customRoleDescription: crDescription ?? null,
-              customRolePermissions: crPermission ?? null,
               isTemporary,
               temporaryMode,
               temporaryRange,

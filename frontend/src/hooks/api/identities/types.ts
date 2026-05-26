@@ -988,7 +988,6 @@ export type IdentityMembershipSearchRole = {
   customRoleName?: string | null;
   customRoleSlug?: string | null;
   customRoleDescription?: string | null;
-  customRolePermissions?: unknown;
   isTemporary: boolean;
   temporaryMode?: string | null;
   temporaryRange?: string | null;

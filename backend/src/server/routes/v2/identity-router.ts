@@ -25,7 +25,6 @@ const roleSchema = z.object({
   customRoleName: z.string().nullable().optional(),
   customRoleSlug: z.string().nullable().optional(),
   customRoleDescription: z.string().nullable().optional(),
-  customRolePermissions: z.unknown().nullable().optional(),
   isTemporary: z.boolean(),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),
