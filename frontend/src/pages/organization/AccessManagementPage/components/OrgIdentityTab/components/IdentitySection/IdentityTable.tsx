@@ -302,20 +302,35 @@ const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
-          {(isAllowed) => (
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              isDisabled={!isAllowed}
-            >
-              <EditIcon />
-              {getEditLabel(props)}
-            </DropdownMenuItem>
-          )}
-        </OrgPermissionCan>
+        {isProjectScoped ? (
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <EditIcon />
+            {getEditLabel(props)}
+          </DropdownMenuItem>
+        ) : (
+          <OrgPermissionCan
+            I={OrgPermissionIdentityActions.Edit}
+            a={OrgPermissionSubjects.Identity}
+          >
+            {(isAllowed) => (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                isDisabled={!isAllowed}
+              >
+                <EditIcon />
+                {getEditLabel(props)}
+              </DropdownMenuItem>
+            )}
+          </OrgPermissionCan>
+        )}
         {!isProjectScoped && (
           <OrgPermissionCan
             I={OrgPermissionIdentityActions.Delete}
