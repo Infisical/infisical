@@ -923,6 +923,16 @@ export const overwriteSchema: {
         description: "The Client Secret of your Heroku application."
       }
     ]
+  },
+  secretSharing: {
+    name: "Secret Sharing",
+    fields: [
+      {
+        key: "DISABLE_PUBLIC_SECRET_SHARING",
+        description:
+          "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
+      }
+    ]
   }
 };
 
