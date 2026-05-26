@@ -95,16 +95,20 @@ export const projectEnvQueueFactory = ({
           `cron[${CronJobName.ProjectEnvHardDelete}]: found ${expiredEnvs.length} expired environment(s) to hard-delete`
         );
 
-        for (const env of expiredEnvs) {
-          try {
-            // eslint-disable-next-line no-await-in-loop
-            await hardDeleteEnvironment(env.id, env.projectId);
-          } catch (err) {
-            logger.error(
-              { err, envId: env.id, projectId: env.projectId },
-              `project-env-hard-delete: failed to hard-delete environment, will retry next firing [envId=${env.id}] [projectId=${env.projectId}]`
-            );
-          }
+        const results = await Promise.allSettled(
+          expiredEnvs.map((env) => hardDeleteEnvironment(env.id, env.projectId))
+        );
+
+        const successfulDeletes = results.filter((result) => result.status === "fulfilled");
+        const failedDeletes = results.filter((result) => result.status === "rejected");
+
+        logger.info(
+          `cron[${CronJobName.ProjectEnvHardDelete}]: hard-deleted ${successfulDeletes.length} environment(s) successfully`
+        );
+        if (failedDeletes.length > 0) {
+          logger.error(
+            `cron[${CronJobName.ProjectEnvHardDelete}]: failed to hard-delete ${failedDeletes.length} environment(s)`
+          );
         }
       }
     });

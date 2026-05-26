@@ -579,7 +579,6 @@ export const secretRotationV2DALFactory = (
             `${TableName.Environment}.hardDeletesAt`
           );
         })
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,

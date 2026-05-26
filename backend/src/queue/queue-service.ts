@@ -543,7 +543,6 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
-  jobExistsById: <T extends QueueName>(name: T, jobId: string) => Promise<boolean>;
   // @deprecated Use getJobSchedulers instead.
   getRepeatableJobs: (
     name: QueueName,
@@ -767,12 +766,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return job?.remove().catch(() => undefined);
   };
 
-  const jobExistsById: TQueueServiceFactory["jobExistsById"] = async (name, jobId) => {
-    const q = queueContainer[name];
-    const job = await q?.getJob(jobId);
-    return Boolean(job);
-  };
-
   const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
     await q?.drain();
@@ -884,7 +877,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
-    jobExistsById,
     getRepeatableJobs,
     getDelayedJobs,
     upsertJobScheduler,
