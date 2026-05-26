@@ -23,16 +23,39 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TGitLabGroup,
-  TGitLabProject,
-  useGitLabConnectionListGroups,
-  useGitLabConnectionListProjects
-} from "@app/hooks/api/appConnections/gitlab";
+import { TGitLabGroup, useGitLabConnectionListGroups } from "@app/hooks/api/appConnections/gitlab";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { TSecretSyncForm } from "../schemas";
+import { GitLabProjectPicker } from "./GitLabProjectPicker";
+
+const ProjectPickerField = ({
+  connectionId,
+  selectedProjectId,
+  isError
+}: {
+  connectionId: string;
+  selectedProjectId: string;
+  isError?: boolean;
+}) => {
+  const { setValue } = useFormContext<TSecretSyncForm & { destination: SecretSync.GitLab }>();
+
+  return (
+    <GitLabProjectPicker
+      connectionId={connectionId}
+      selectedProjectId={selectedProjectId}
+      isError={isError}
+      onChange={(project) => {
+        setValue("destinationConfig.projectId", project.id, {
+          shouldDirty: true,
+          shouldValidate: true
+        });
+        setValue("destinationConfig.projectName", project.name, { shouldDirty: true });
+      }}
+    />
+  );
+};
 
 const SecretProtectionOption = ({
   title,
@@ -78,13 +101,6 @@ export const GitLabSyncFields = () => {
   const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(connectionId, {
     enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
   });
-
-  const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
-    connectionId,
-    {
-      enabled: Boolean(connectionId)
-    }
-  );
 
   return (
     <FieldGroup>
@@ -178,7 +194,7 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.projectId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
+          render={({ field: { value }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
                 GitLab Project
@@ -193,21 +209,10 @@ export const GitLabSyncFields = () => {
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect
-                  isLoading={isProjectsLoading && Boolean(connectionId)}
-                  isDisabled={!connectionId}
-                  value={projects?.find((project) => project.id === value) ?? null}
-                  onChange={(option) => {
-                    onChange((option as SingleValue<TGitLabProject>)?.id ?? "");
-                    setValue(
-                      "destinationConfig.projectName",
-                      (option as SingleValue<TGitLabProject>)?.name ?? ""
-                    );
-                  }}
-                  options={projects}
-                  placeholder="Select a project..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
+                <ProjectPickerField
+                  connectionId={connectionId}
+                  selectedProjectId={value}
+                  isError={Boolean(error)}
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
