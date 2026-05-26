@@ -2880,7 +2880,8 @@ export const registerRoutes = async (
     certificateDAL,
     appConnectionDAL,
     kmsService,
-    auditLogService
+    auditLogService,
+    pkiAlertV2Queue
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({

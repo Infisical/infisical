@@ -75,7 +75,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where({ caId, status: CertStatus.ACTIVE })
         .whereRaw(`"externalMetadata"->>'type' = ?`, ["digicert"])
         .whereRaw(`("externalMetadata"->>'orderId') IN (${placeholders})`, stringIds)
-        .select("id", "commonName", "serialNumber", "projectId");
+        .select("id", "commonName", "serialNumber", "projectId", "applicationId");
 
       return certs;
     } catch (error) {
