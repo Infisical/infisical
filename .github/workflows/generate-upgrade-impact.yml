@@ -102,18 +102,16 @@ jobs:
           git commit -m "$PR_TITLE"
           git push --set-upstream origin "$BRANCH_NAME"
 
-          # Request review from whoever cut the previous GitHub release so a real
-          # human gets pinged rather than only the github-actions bot.
+          # Request review from whoever cut this GitHub release so a real
+          # human with context on the changes gets pinged rather than only the
+          # github-actions bot.
           REVIEWER_FLAG=()
-          PREVIOUS_TAG="$(awk '/^previousTag:/ { print $2; exit }' "upgrade-impact/data/releases/${TAG_NAME}.yaml")"
-          if [ -n "$PREVIOUS_TAG" ]; then
-            PREVIOUS_AUTHOR="$(gh release view "$PREVIOUS_TAG" --json author --jq .author.login 2>/dev/null || true)"
-            if [ -n "$PREVIOUS_AUTHOR" ]; then
-              REVIEWER_FLAG=(--reviewer "$PREVIOUS_AUTHOR")
-              echo "Requesting review from previous release author: $PREVIOUS_AUTHOR"
-            else
-              echo "Skipping reviewer assignment (could not resolve previous release author)."
-            fi
+          RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
+          if [ -n "$RELEASE_AUTHOR" ]; then
+            REVIEWER_FLAG=(--reviewer "$RELEASE_AUTHOR")
+            echo "Requesting review from release author: $RELEASE_AUTHOR"
+          else
+            echo "Skipping reviewer assignment (could not resolve release author)."
           fi
 
           gh pr create \
