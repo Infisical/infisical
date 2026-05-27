@@ -23,7 +23,7 @@ import {
   ConstraintType,
   MAX_PREVENT_VALUE_REUSE_VERSIONS,
   TRuleForm
-} from "./SecretValidationRulesTab.utils";
+} from "./SecretValidationRulesSection.utils";
 
 type Props = {
   index: number;

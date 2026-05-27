@@ -17,6 +17,12 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -72,7 +78,7 @@ import {
   ruleFormSchema,
   RuleType,
   TRuleForm
-} from "./SecretValidationRulesTab.utils";
+} from "./SecretValidationRulesSection.utils";
 
 const RuleFormContent = ({
   defaultValues,
@@ -353,7 +359,7 @@ type SheetState =
   | { open: true; mode: "create" }
   | { open: true; mode: "edit"; ruleId: string };
 
-export const SecretValidationRulesTab = () => {
+export const SecretValidationRulesSection = () => {
   const { currentProject } = useProject();
 
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
@@ -441,15 +447,13 @@ export const SecretValidationRulesTab = () => {
   const isEditing = sheetState.open && sheetState.mode === "edit";
 
   return (
-    <div className="w-full">
-      <div className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4">
-        <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
-          <div>
-            <h3 className="text-lg font-medium text-foreground">Secret Validation Rules</h3>
-            <p className="text-sm leading-3 text-muted">
-              Define validation constraints for secret keys and values
-            </p>
-          </div>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Secret Validation Rules</CardTitle>
+        <CardDescription>
+          Define validation constraints for secret keys and values
+        </CardDescription>
+        <CardAction>
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
             {(isAllowed) => (
               <Tooltip>
@@ -457,8 +461,8 @@ export const SecretValidationRulesTab = () => {
                   <span>
                     <Button
                       isDisabled={!isAllowed}
-                      variant="outline"
-                      size="xs"
+                      variant="project"
+                      size="sm"
                       onClick={() => setSheetState({ open: true, mode: "create" })}
                     >
                       <PlusIcon className="size-4" />
@@ -472,15 +476,15 @@ export const SecretValidationRulesTab = () => {
               </Tooltip>
             )}
           </ProjectPermissionCan>
-        </div>
-        <div className="flex flex-1 flex-col overflow-hidden px-4">
-          <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
-            {isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-sm text-muted">Loading rules...</p>
-              </div>
-            )}
-            {!isLoading && rules.length === 0 ? (
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-muted">Loading rules...</p>
+          </div>
+        )}
+        {!isLoading && rules.length === 0 ? (
               <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>No validation rules configured</EmptyTitle>
