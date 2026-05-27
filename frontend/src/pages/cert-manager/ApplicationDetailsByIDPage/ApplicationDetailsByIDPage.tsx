@@ -102,17 +102,9 @@ export const ApplicationDetailsByIDPage = () => {
   );
   const isNonMemberAdmin = Boolean(permissionData && permissionData.memberships.length === 0);
 
-  const tabEnabled: Record<string, boolean> = {
-    certificates: !isNonMemberAdmin && Boolean(canViewCertificates),
-    requests: !isNonMemberAdmin && Boolean(canViewRequests),
-    syncs: !isNonMemberAdmin && Boolean(canViewSyncs),
-    members: true,
-    settings: true
-  };
-  const allTabs = ["certificates", "requests", "syncs", "members", "settings"] as const;
-  const defaultTab = allTabs.find((t) => tabEnabled[t]) ?? "members";
   const requestedTab = search.selectedTab ?? "";
-  const selectedTab = tabEnabled[requestedTab] ? requestedTab : defaultTab;
+  const defaultTab = canViewCertificates ? "certificates" : "members";
+  const selectedTab = requestedTab || defaultTab;
 
   const handleCopyId = () => {
     if (!application) return;
@@ -246,60 +238,60 @@ export const ApplicationDetailsByIDPage = () => {
               }
             >
               <TabsList variant="project" className="w-full justify-start">
-                {(tabEnabled.certificates || isNonMemberAdmin) && (
+                {(canViewCertificates || isNonMemberAdmin) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>
                         <TabsTrigger
                           value="certificates"
-                          disabled={!tabEnabled.certificates}
+                          disabled={isNonMemberAdmin}
                           className="flex-none"
                         >
                           Certificate Inventory
                         </TabsTrigger>
                       </span>
                     </TooltipTrigger>
-                    {!tabEnabled.certificates && (
+                    {isNonMemberAdmin && (
                       <TooltipContent>
                         You do not have permission to view certificates
                       </TooltipContent>
                     )}
                   </Tooltip>
                 )}
-                {(tabEnabled.requests || isNonMemberAdmin) && (
+                {(canViewRequests || isNonMemberAdmin) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>
                         <TabsTrigger
                           value="requests"
-                          disabled={!tabEnabled.requests}
+                          disabled={isNonMemberAdmin}
                           className="flex-none"
                         >
                           Certificate Requests
                         </TabsTrigger>
                       </span>
                     </TooltipTrigger>
-                    {!tabEnabled.requests && (
+                    {isNonMemberAdmin && (
                       <TooltipContent>
                         You do not have permission to view certificate requests
                       </TooltipContent>
                     )}
                   </Tooltip>
                 )}
-                {(tabEnabled.syncs || isNonMemberAdmin) && (
+                {(canViewSyncs || isNonMemberAdmin) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>
                         <TabsTrigger
                           value="syncs"
-                          disabled={!tabEnabled.syncs}
+                          disabled={isNonMemberAdmin}
                           className="flex-none"
                         >
                           Certificate Syncs
                         </TabsTrigger>
                       </span>
                     </TooltipTrigger>
-                    {!tabEnabled.syncs && (
+                    {isNonMemberAdmin && (
                       <TooltipContent>
                         You do not have permission to view certificate syncs
                       </TooltipContent>
@@ -313,7 +305,7 @@ export const ApplicationDetailsByIDPage = () => {
                   Settings
                 </TabsTrigger>
               </TabsList>
-              {tabEnabled.certificates && (
+              {canViewCertificates && (
                 <TabsContent className="pt-2" value="certificates">
                   <ApplicationCertificatesTab
                     applicationId={application.id}
@@ -322,7 +314,7 @@ export const ApplicationDetailsByIDPage = () => {
                   />
                 </TabsContent>
               )}
-              {tabEnabled.requests && (
+              {canViewRequests && (
                 <TabsContent className="pt-2" value="requests">
                   <ApplicationRequestsTab
                     applicationId={application.id}
@@ -330,7 +322,7 @@ export const ApplicationDetailsByIDPage = () => {
                   />
                 </TabsContent>
               )}
-              {tabEnabled.syncs && (
+              {canViewSyncs && (
                 <TabsContent className="pt-2" value="syncs">
                   <ApplicationSyncsTab
                     applicationId={application.id}
