@@ -3,8 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDownIcon,
-  ClockAlertIcon,
-  ClockIcon,
   EditIcon,
   FilterIcon,
   MoreHorizontalIcon,
@@ -28,14 +26,12 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  IdentityRoleBadges,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   ProjectIcon,
   Skeleton,
   SubOrgIcon,
@@ -54,7 +50,6 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -68,11 +63,7 @@ import {
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import {
-  IdentityMembershipSearchResult,
-  IdentityMembershipSearchRole,
-  SearchIdentitiesScope
-} from "@app/hooks/api/identities";
+import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -94,8 +85,6 @@ type Filter = {
 
 type ScopeTab = "all" | "organization" | "project";
 
-const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
-
 const TAB_TO_SCOPE: Record<ScopeTab, SearchIdentitiesScope[]> = {
   all: [SearchIdentitiesScope.OrganizationScope, SearchIdentitiesScope.ProjectScope],
   organization: [SearchIdentitiesScope.OrganizationScope],
@@ -109,11 +98,6 @@ const formatLastUsed = (lastLoginTime?: string | null) => {
   if (Date.now() - date.getTime() < 60_000) return "Just now";
   return `${formatDistanceToNow(date)} ago`;
 };
-
-const isRoleExpired = (role: IdentityMembershipSearchRole) =>
-  role.isTemporary &&
-  !!role.temporaryAccessEndTime &&
-  new Date() > new Date(role.temporaryAccessEndTime);
 
 type SortableHeadProps = {
   column: OrgIdentityOrderBy;
@@ -136,69 +120,6 @@ const SortableHead = ({ column, label, activeColumn, direction, onSort }: Sortab
         )}
       />
     </TableHead>
-  );
-};
-
-const RoleBadge = ({
-  role,
-  className
-}: {
-  role: IdentityMembershipSearchRole;
-  className?: string;
-}) => {
-  const expired = isRoleExpired(role);
-  return (
-    <Badge variant={expired ? "danger" : "neutral"} className={className}>
-      <span className="capitalize">
-        {formatProjectRoleName(role.role, role.customRoleName ?? undefined)}
-      </span>
-      {role.isTemporary && (
-        <Tooltip>
-          <TooltipTrigger tabIndex={-1}>
-            {expired ? <ClockAlertIcon /> : <ClockIcon />}
-          </TooltipTrigger>
-          <TooltipContent>{expired ? "Access expired" : "Temporary access"}</TooltipContent>
-        </Tooltip>
-      )}
-    </Badge>
-  );
-};
-
-const RolesCell = ({ roles }: { roles: IdentityMembershipSearchRole[] }) => {
-  const visible = roles.slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE);
-  const overflow = roles.slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE);
-
-  return (
-    <div className="flex items-center gap-1.5">
-      {visible.map((role) => (
-        <RoleBadge key={role.id} role={role} />
-      ))}
-      {overflow.length > 0 && (
-        <Popover>
-          <Tooltip>
-            <TooltipTrigger className="flex h-4 items-center">
-              <PopoverTrigger asChild>
-                <Badge variant="neutral" asChild>
-                  <button type="button" onClick={(e) => e.stopPropagation()}>
-                    +{overflow.length}
-                  </button>
-                </Badge>
-              </PopoverTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Click to view additional roles</TooltipContent>
-          </Tooltip>
-          <PopoverContent
-            side="right"
-            className="flex w-auto max-w-sm flex-wrap gap-1.5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {overflow.map((role) => (
-              <RoleBadge key={role.id} role={role} className="z-10" />
-            ))}
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
   );
 };
 
@@ -419,7 +340,7 @@ const IdentityRow = ({ membership, onDelete }: IdentityRowProps) => {
     <TableRow className="cursor-pointer" onClick={navigateToIdentity}>
       <TableCell isTruncatable>{name}</TableCell>
       <TableCell>
-        <RolesCell roles={membershipRoles ?? []} />
+        <IdentityRoleBadges roles={membershipRoles ?? []} />
       </TableCell>
       <TableCell>
         <ManagedByCell

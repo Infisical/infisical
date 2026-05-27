@@ -1,6 +1,7 @@
 export * from "./DateRangeFilter";
 export * from "./DocumentationLinkBadge";
 export * from "./GatewayPicker";
+export * from "./IdentityRoleBadges";
 export * from "./PageLoader";
 export * from "./PasswordGenerator";
 export * from "./ScopeIcons";

@@ -48,7 +48,7 @@ export type TFeatureSet = {
   secretVersioning: true;
   pitRecovery: false;
   ipAllowlisting: false;
-  rbac: false;
+  rbac: true;
   customRateLimits: false;
   customAlerts: false;
   auditLogs: false;
