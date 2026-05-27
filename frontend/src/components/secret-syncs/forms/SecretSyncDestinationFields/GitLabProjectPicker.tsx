@@ -161,7 +161,7 @@ const SearchResultsList = ({
               <BrowserRow
                 key={group.id}
                 icon={<Folder className="text-folder" />}
-                label={<span className="truncate font-mono text-xs">{group.fullPath}</span>}
+                label={<span className="font-mono text-xs">{group.fullPath}</span>}
                 showChevron
                 onClick={() => onSelectGroup(group)}
               />
@@ -177,7 +177,7 @@ const SearchResultsList = ({
               <BrowserRow
                 key={project.id}
                 icon={<Box />}
-                label={<span className="truncate font-mono text-xs">{project.name}</span>}
+                label={<span className="font-mono text-xs">{project.name}</span>}
                 isSelected={project.id === selectedProjectId}
                 onClick={() => onSelectProject(project)}
               />
@@ -215,11 +215,9 @@ export const GitLabProjectPicker = ({
     enabled: hasConnection
   });
 
-  const personalProjectsQuery = useGitLabConnectionListProjects(
-    connectionId,
-    { owned: true },
-    { enabled: hasConnection }
-  );
+  const personalProjectsQuery = useGitLabConnectionListProjects(connectionId, {
+    enabled: hasConnection
+  });
 
   const groupsAndProjectsSearchQuery = useGitLabConnectionSearchGroupsAndProjects(
     connectionId,
@@ -261,111 +259,107 @@ export const GitLabProjectPicker = ({
     .slice(0, SEARCH_ITEMS_LIMIT);
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <div
-        className={cn(
-          "@container/picker flex min-w-0 flex-col gap-2 rounded-md border bg-container",
-          isError ? "border-danger" : "border-border"
-        )}
-      >
-        <div className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border p-2">
-          <div className="flex w-full items-center gap-0.5 rounded-md border border-border bg-bunker-700/30 p-0.5 @md/picker:inline-flex @md/picker:w-auto @md/picker:shrink-0">
-            <SegmentedButton
-              icon={<Folder />}
-              label="Groups"
-              isActive={tab === "groups"}
-              count={rootGroupsQuery.data?.length}
-              onClick={() => handleTabChange("groups")}
-            />
-            <SegmentedButton
-              icon={<User />}
-              label="Projects"
-              isActive={tab === "yours"}
-              count={personalProjects.length}
-              onClick={() => handleTabChange("yours")}
-            />
-          </div>
-          <div className="relative flex min-w-0 flex-1 items-center @md/picker:min-w-[160px]">
-            <Search className="pointer-events-none absolute left-2.5 size-3.5 text-muted" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={
-                tab === "yours" ? "Search your projects..." : "Search groups & projects..."
-              }
-              className="h-8 w-full min-w-0 pr-7 pl-8 text-sm"
-              disabled={!hasConnection}
-            />
-            {search.length > 0 && (
-              <IconButton
-                aria-label="Clear search"
-                variant="ghost-muted"
-                size="xs"
-                className="absolute right-1"
-                onClick={() => setSearch("")}
-              >
-                <X className="size-3.5" />
-              </IconButton>
-            )}
-          </div>
-        </div>
-
-        {!hasConnection && (
-          <div
-            className={cn(TREE_PICKER_SCROLL_CLASS, "px-3 py-10 text-center text-sm text-muted")}
-          >
-            Select a GitLab Connection above to browse projects.
-          </div>
-        )}
-
-        {hasConnection && tab === "groups" && isSearching && (
-          <div className={cn(TREE_PICKER_SCROLL_CLASS, "p-1")}>
-            <SearchResultsList
-              query={debouncedSearch}
-              isLoading={groupsAndProjectsSearchQuery.isLoading || groupNameSearchQuery.isLoading}
-              groups={groupNameSearchQuery.data ?? []}
-              projects={searchedProjects}
-              selectedProjectId={selectedProjectId}
-              onSelectGroup={handleSearchGroupSelect}
-              onSelectProject={handleProjectSelect}
-            />
-          </div>
-        )}
-
-        {hasConnection && tab === "groups" && !isSearching && (
-          <TreePicker
-            dataSource={treeDataSource}
-            path={path}
-            onPathChange={setPath}
-            selectedItemId={selectedProjectId}
-            onSelectItem={handleProjectSelect}
-            rootLabel="Groups"
-            subContainersHeading="Subgroups"
-            itemsHeading="Projects"
-            emptyRoot={{
-              title: "No groups available.",
-              description: "Your GitLab account isn't a member of any group."
-            }}
-            emptyContainer={{
-              title: "This group is empty.",
-              description: "No subgroups or projects available to your token here."
-            }}
+    <div
+      className={cn(
+        "@container/picker flex min-w-0 flex-col gap-2 rounded-md border bg-container",
+        isError ? "border-danger" : "border-border"
+      )}
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border p-2">
+        <div className="flex w-full items-center gap-0.5 rounded-md border border-border bg-bunker-700/30 p-0.5 @md/picker:inline-flex @md/picker:w-auto @md/picker:shrink-0">
+          <SegmentedButton
+            icon={<Folder />}
+            label="Groups"
+            isActive={tab === "groups"}
+            count={rootGroupsQuery.data?.length}
+            onClick={() => handleTabChange("groups")}
           />
-        )}
-
-        {hasConnection && tab === "yours" && (
-          <div className={cn(TREE_PICKER_SCROLL_CLASS, "p-1")}>
-            <PersonalProjectsList
-              isLoading={personalProjectsQuery.isLoading}
-              projects={filteredPersonalProjects}
-              selectedProjectId={selectedProjectId}
-              onSelect={handleProjectSelect}
-              isSearching={isSearching}
-              searchQuery={debouncedSearch}
-            />
-          </div>
-        )}
+          <SegmentedButton
+            icon={<User />}
+            label="Projects"
+            isActive={tab === "yours"}
+            count={personalProjects.length}
+            onClick={() => handleTabChange("yours")}
+          />
+        </div>
+        <div className="relative flex min-w-0 flex-1 items-center @md/picker:min-w-[160px]">
+          <Search className="pointer-events-none absolute left-2.5 size-3.5 text-muted" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={
+              tab === "yours" ? "Search your projects..." : "Search groups & projects..."
+            }
+            className="h-8 w-full min-w-0 pr-7 pl-8 text-sm"
+            disabled={!hasConnection}
+          />
+          {search.length > 0 && (
+            <IconButton
+              aria-label="Clear search"
+              variant="ghost-muted"
+              size="xs"
+              className="absolute right-1"
+              onClick={() => setSearch("")}
+            >
+              <X />
+            </IconButton>
+          )}
+        </div>
       </div>
+
+      {!hasConnection && (
+        <div className={cn(TREE_PICKER_SCROLL_CLASS, "px-3 py-10 text-center text-sm text-muted")}>
+          Select a GitLab Connection above to browse projects.
+        </div>
+      )}
+
+      {hasConnection && tab === "groups" && isSearching && (
+        <div className={cn(TREE_PICKER_SCROLL_CLASS, "p-1")}>
+          <SearchResultsList
+            query={debouncedSearch}
+            isLoading={groupsAndProjectsSearchQuery.isLoading || groupNameSearchQuery.isLoading}
+            groups={groupNameSearchQuery.data ?? []}
+            projects={searchedProjects}
+            selectedProjectId={selectedProjectId}
+            onSelectGroup={handleSearchGroupSelect}
+            onSelectProject={handleProjectSelect}
+          />
+        </div>
+      )}
+
+      {hasConnection && tab === "groups" && !isSearching && (
+        <TreePicker
+          dataSource={treeDataSource}
+          path={path}
+          onPathChange={setPath}
+          selectedItemId={selectedProjectId}
+          onSelectItem={handleProjectSelect}
+          rootLabel="Groups"
+          subContainersHeading="Subgroups"
+          itemsHeading="Projects"
+          emptyRoot={{
+            title: "No groups available.",
+            description: "Your GitLab account isn't a member of any group."
+          }}
+          emptyContainer={{
+            title: "This group is empty.",
+            description: "No subgroups or projects available to your token here."
+          }}
+        />
+      )}
+
+      {hasConnection && tab === "yours" && (
+        <div className={cn(TREE_PICKER_SCROLL_CLASS, "p-1")}>
+          <PersonalProjectsList
+            isLoading={personalProjectsQuery.isLoading}
+            projects={filteredPersonalProjects}
+            selectedProjectId={selectedProjectId}
+            onSelect={handleProjectSelect}
+            isSearching={isSearching}
+            searchQuery={debouncedSearch}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -26,13 +26,6 @@ export type TGitLabProject = {
   id: string;
 };
 
-export type TGitLabListProjectsParams = {
-  owned?: boolean;
-  search?: string;
-  page?: number;
-  perPage?: number;
-};
-
 export type TGitLabAccessTokenCredentials = {
   accessToken: string;
   instanceUrl: string;

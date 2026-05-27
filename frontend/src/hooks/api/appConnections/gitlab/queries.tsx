@@ -3,17 +3,12 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { appConnectionKeys } from "../queries";
-import {
-  TGitLabGroup,
-  TGitLabGroupTreeItem,
-  TGitLabListProjectsParams,
-  TGitLabProject
-} from "./types";
+import { TGitLabGroup, TGitLabGroupTreeItem, TGitLabProject } from "./types";
 
 const gitlabConnectionKeys = {
   all: [...appConnectionKeys.all, "gitlab"] as const,
-  listProjects: (connectionId: string, params?: TGitLabListProjectsParams) =>
-    [...gitlabConnectionKeys.all, "projects", connectionId, params ?? {}] as const,
+  listProjects: (connectionId: string) =>
+    [...gitlabConnectionKeys.all, "projects", connectionId] as const,
   listGroups: (connectionId: string) =>
     [...gitlabConnectionKeys.all, "groups", connectionId] as const,
   listRootGroups: (connectionId: string) =>
@@ -28,17 +23,8 @@ const gitlabConnectionKeys = {
     [...gitlabConnectionKeys.all, "group-projects", connectionId, groupId] as const
 };
 
-const buildProjectsQueryParams = (params?: TGitLabListProjectsParams) => {
-  const search = new URLSearchParams();
-  if (params?.owned !== undefined) search.set("owned", String(params.owned));
-  if (params?.search) search.set("search", params.search);
-  const qs = search.toString();
-  return qs ? `?${qs}` : "";
-};
-
 export const useGitLabConnectionListProjects = (
   connectionId: string,
-  params?: TGitLabListProjectsParams,
   options?: Omit<
     UseQueryOptions<
       TGitLabProject[],
@@ -50,10 +36,10 @@ export const useGitLabConnectionListProjects = (
   >
 ) => {
   return useQuery({
-    queryKey: gitlabConnectionKeys.listProjects(connectionId, params),
+    queryKey: gitlabConnectionKeys.listProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitLabProject[]>(
-        `/api/v1/app-connections/gitlab/${connectionId}/projects${buildProjectsQueryParams(params)}`
+        `/api/v1/app-connections/gitlab/${connectionId}/projects`
       );
 
       return data;

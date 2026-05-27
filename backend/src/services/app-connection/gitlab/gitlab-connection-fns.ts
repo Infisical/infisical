@@ -434,7 +434,7 @@ export const listGitLabRootGroups = async (params: TNavigationParams): Promise<T
       minAccessLevel: 20
     });
 
-    return groups.filter((g) => !g.parentId).map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
+    return groups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
   } catch (error: unknown) {
     if (error instanceof GitbeakerRequestError) {
       throw new BadRequestError({
@@ -456,7 +456,8 @@ export const listGitLabSubgroups = async (
   try {
     const subgroups = await client.Groups.allSubgroups(Number(groupId), {
       orderBy: "name",
-      sort: "asc"
+      sort: "asc",
+      minAccessLevel: 20
     });
 
     return subgroups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
@@ -527,7 +528,8 @@ export const searchGitLabGroupAndProject = async (
 
   try {
     const groups = await client.Groups.all({
-      search
+      search,
+      minAccessLevel: 20
     });
     const projects = await client.Projects.all({
       search,

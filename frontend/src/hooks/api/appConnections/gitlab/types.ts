@@ -14,11 +14,6 @@ export type TGitLabGroupTreeItem = {
   fullPath: string;
 };
 
-export type TGitLabListProjectsParams = {
-  owned?: boolean;
-  search?: string;
-};
-
 export enum GitLabAccessTokenType {
   Personal = "personal",
   Project = "project",

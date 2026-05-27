@@ -163,10 +163,9 @@ export const TreePicker = ({
             aria-label="Back"
             variant="ghost-muted"
             size="xs"
-            className="shrink-0"
             onClick={() => onPathChange(path.slice(0, -1))}
           >
-            <ChevronLeft className="size-3.5" />
+            <ChevronLeft />
           </IconButton>
           <nav
             aria-label="breadcrumb"
