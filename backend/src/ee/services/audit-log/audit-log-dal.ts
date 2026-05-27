@@ -6,11 +6,14 @@ import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
+
+const AUDIT_LOG_INSERT_CHUNK_SIZE = 2000;
 
 type TAggregateQuery = {
   orgId: string;
@@ -270,7 +273,12 @@ export const auditLogDALFactory = (db: TDbClient) => {
     if (getConfig().DISABLE_POSTGRES_AUDIT_LOG_STORAGE) return;
 
     try {
-      await db(TableName.AuditLog).insert(records).onConflict(["id", "createdAt"]).ignore();
+      await db.transaction(async (tx) => {
+        for (const chunk of chunkArray(records, AUDIT_LOG_INSERT_CHUNK_SIZE)) {
+          // eslint-disable-next-line no-await-in-loop
+          await tx(TableName.AuditLog).insert(chunk).onConflict(["id", "createdAt"]).ignore();
+        }
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "auditLogBulkInsert" });
     }

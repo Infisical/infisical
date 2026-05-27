@@ -176,6 +176,12 @@ export const auditLogQueueServiceFactory = async ({
           format: "JSONEachRow"
         });
       } else {
+        // Chunks execute inside a single transaction so the Redis stream can be
+        // acknowledged only after the entire drain commits successfully.
+        //
+        // This preserves atomicity between stream consumption and Postgres persistence:
+        // either every audit log in the drain is persisted, or the consumer replays
+        // the full batch on the next run via ON CONFLICT DO NOTHING idempotency.
         await auditLogDAL.bulkInsertIgnoreConflicts(values.map(hydrate));
       }
 
