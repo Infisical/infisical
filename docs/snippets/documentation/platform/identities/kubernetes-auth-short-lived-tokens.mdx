@@ -1,0 +1,80 @@
+<Accordion title="Short-lived service account tokens (Recommended)">
+<Steps>
+  <Step title="Create a machine identity">
+    To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
+
+    ![identities organization](/images/platform/identities/identities-org.png)
+
+    When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+
+    ![identities organization create](/images/platform/identities/identities-org-create.png)
+
+    Now input a few details for your new identity. Here's some guidance for each field:
+
+    - Name (required): A friendly name for the identity.
+    - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+
+    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **Kubernetes Auth**.
+
+    Use the token reviewer JWT from the previous step when filling the **Token Reviewer JWT** field.
+
+    <Info>
+      To learn more about each field of the Kubernetes native authentication method, see step 2 of [guide](/documentation/platform/identities/kubernetes-auth#guide).
+    </Info>
+
+    ![identities organization create auth method](/images/platform/identities/identities-org-create-kubernetes-auth-method.png)
+  </Step>
+
+  <Step title="Add the identity to a project">
+    To allow the operator to use the given identity to access secrets, you will need to add the identity to project(s) that you would like to grant it access to.
+
+    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+
+    Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
+
+    ![identities project](/images/platform/identities/identities-project.png)
+
+    ![identities project create](/images/platform/identities/identities-project-create.png)
+  </Step>
+  
+  <Step title="Create a service account">
+    Create a reviewer service account in your Kubernetes cluster. Infisical uses this account to authenticate with the Kubernetes API Server through the TokenReview API.
+
+    ```yaml infisical-service-account.yaml
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: infisical-service-account
+      namespace: default
+    ```
+
+    ```bash
+    kubectl apply -f infisical-service-account.yaml
+    ```
+  </Step>
+
+  <Step title="Bind the reviewer service account">
+    Bind the service account to the `system:auth-delegator` cluster role. This allows Infisical to perform delegated authentication checks against the TokenReview API.
+
+    ```yaml infisical-cluster-role-binding.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: infisical-service-account-role-binding
+      namespace: default
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:auth-delegator
+    subjects:
+      - kind: ServiceAccount
+        name: infisical-service-account
+        namespace: default
+    ```
+
+    ```bash
+    kubectl apply -f infisical-cluster-role-binding.yaml
+    ```
+  </Step>
+</Steps>
+</Accordion>

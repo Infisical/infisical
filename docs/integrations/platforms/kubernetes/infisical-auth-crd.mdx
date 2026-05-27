@@ -4,7 +4,8 @@ title: "Using the InfisicalAuth CRD"
 description: "Learn how to configure the InfisicalAuth CRD to define how the operator authenticates with Infisical."
 ---
 
-import KubernetesAuthOperatorSetup from "/snippets/documentation/platform/identities/kubernetes-auth-operator-setup.mdx";
+import KubernetesAuthShortLivedTokens from "/snippets/documentation/platform/identities/kubernetes-auth-short-lived-tokens.mdx";
+import KubernetesAuthGatewayReviewer from "/snippets/documentation/platform/identities/kubernetes-auth-gateway-reviewer.mdx";
 
 ## Overview
 
@@ -28,6 +29,9 @@ Authenticates using a Kubernetes service account token. This is the recommended 
 
 [Read more about Kubernetes Auth](/documentation/platform/identities/kubernetes-auth).
 
+<KubernetesAuthShortLivedTokens />
+<KubernetesAuthGatewayReviewer />
+
 | Field                          | Required | Description                                               |
 | ------------------------------ | -------- | --------------------------------------------------------- |
 | `identityIdRef`                | Yes      | Reference to the secret containing the machine identity ID. |
@@ -50,7 +54,7 @@ spec:
   method: kubernetes
   kubernetes:
     identityIdRef:
-      name: secret-containing-kubernetes-credentials
+      name: kubernetes-credentials
       namespace: default
       key: identityId
     serviceAccountRef:

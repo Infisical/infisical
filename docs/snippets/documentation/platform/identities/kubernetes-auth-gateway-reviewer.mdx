@@ -1,0 +1,54 @@
+<Accordion title="Use Gateway as Reviewer">
+    <Note>
+    **When to use this option**: Choose this approach when you have a gateway deployed in your Kubernetes Cluster and wish to eliminate long-lived tokens. This approach simplifies Infisical Kubernetes Auth configuration, and only one service account will need to have the elevated `system:auth-delegator` ClusterRole binding.
+    </Note>
+
+    <Info>
+      **Note:** Gateway is a paid feature. - **Infisical Cloud users:** Gateway is
+      available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
+      contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
+      enterprise license.
+    </Info>
+
+    <Steps>
+      <Step title="Deploying a gateway">
+        To deploy a gateway in your Kubernetes cluster, follow our [Gateway deployment guide using Helm](/documentation/platform/gateways/gateway-deployment).
+      </Step>
+
+      <Step title="Grant the gateway the system:auth-delegator ClusterRole binding">
+        To grant the gateway the `system:auth-delegator` ClusterRole binding, you can use the following command:
+
+        ```yaml gateway-role-binding.yaml
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: infisical-token-reviewer-role-binding
+          namespace: default # Replace with your namespace if not default
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: system:auth-delegator
+        subjects:
+          - kind: ServiceAccount
+            name: infisical-gateway # The name of the gateway service account
+            namespace: default # Replace with your namespace if not default
+        ```
+
+        ```bash
+        kubectl apply -f gateway-role-binding.yaml
+        ```
+
+        <Tip>
+          The gateway service account name is `infisical-gateway` by default if deployed using Helm.
+        </Tip>
+      </Step>
+
+      <Step title="Configure the Kubernetes Auth authentication method for the identity">
+        To configure your Kubernetes Auth method to use the gateway as the token reviewer, set the `Review Method` to "Gateway as Reviewer", and select the gateway you want to use as the token reviewer.
+
+        You can select either an individual gateway or a **Gateway Pool** for automatic failover. When a pool is selected, the platform routes through a healthy gateway at request time. See [Gateway Pools](/documentation/platform/gateways/gateway-pools) for more details.
+
+        ![identities organization create kubernetes auth method](/images/platform/identities/identities-kubernetes-auth-gateway-as-reviewer.png)
+      </Step>
+    </Steps>
+</Accordion>
