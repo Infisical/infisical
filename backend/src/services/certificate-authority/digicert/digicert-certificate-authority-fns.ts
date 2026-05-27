@@ -104,7 +104,7 @@ export const castDbEntryToDigiCertCertificateAuthority = (
   };
 };
 
-const getDigiCertClientCredentials = async (
+export const getDigiCertClientCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">

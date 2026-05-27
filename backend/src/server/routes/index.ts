@@ -276,6 +276,7 @@ import { certificateAuthorityServiceFactory } from "@app/services/certificate-au
 import { certificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
 import { digicertCertificateAuthorityQueueServiceFactory } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-queue";
+import { digicertRevocationSyncQueueFactory } from "@app/services/certificate-authority/digicert/digicert-revocation-sync-queue";
 import { externalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
@@ -2885,6 +2886,16 @@ export const registerRoutes = async (
     digicertFns: digicertCaFns
   });
 
+  const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
+    cronJob,
+    certificateAuthorityDAL,
+    certificateDAL,
+    appConnectionDAL,
+    kmsService,
+    auditLogService,
+    pkiAlertV2Queue
+  });
+
   const certificateEstV3Service = certificateEstV3ServiceFactory({
     certificateV3Service,
     certificateAuthorityDAL,
@@ -3404,6 +3415,7 @@ export const registerRoutes = async (
   certificateCleanupQueue.init();
   certificateV3Queue.init();
   digicertCaQueue.init();
+  digicertRevocationSyncQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
   await eventBusService.init();
