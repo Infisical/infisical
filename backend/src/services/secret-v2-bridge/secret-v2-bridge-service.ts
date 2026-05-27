@@ -44,7 +44,12 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { recordSecretReadMetric } from "@app/lib/telemetry/metrics";
+import {
+  recordSecretCacheAccessMetric,
+  recordSecretCacheWriteMetric,
+  recordSecretReadMetric,
+  SecretCacheAccessResult
+} from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -1205,6 +1210,7 @@ export const secretV2BridgeServiceFactory = ({
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
       if (storedEtag && storedEtag === ifNoneMatch) {
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED);
         return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
       }
     }
@@ -1226,9 +1232,29 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
-      ...dto,
-      permissionRules: permission.rules
+    // Key only on fields that change the response body. permissionFingerprint stands in for the full
+    // CASL rules (smaller, same discrimination), and transport-only inputs like ifNoneMatch are excluded
+    // so a client's stale ETag can't fork a fresh cache blob. throwOnMissingReadValuePermission is kept
+    // because it changes whether partial-permission reads mask values or throw.
+    const requestParamsHash = generateCacheKeyFromData({
+      environment,
+      path,
+      recursive,
+      includeImports,
+      expandSecretReferences: shouldExpandSecretReferences,
+      expandPersonalOverrides,
+      personalOverridesBehavior,
+      secretImportReferencesBehavior,
+      viewSecretValue,
+      throwOnMissingReadValuePermission,
+      ...params
+    });
+    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
+      projectId,
+      version: secretDalVersion,
+      actorId,
+      permissionFingerprint,
+      requestParamsHash
     });
 
     const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
@@ -1257,6 +1283,7 @@ export const secretV2BridgeServiceFactory = ({
         const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1502,9 +1529,13 @@ export const secretV2BridgeServiceFactory = ({
       const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
         plainText: Buffer.from(JSON.stringify(payload))
       }).cipherTextBlob;
-      if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
+      const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
+      const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+      if (stored) {
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
+      recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
       const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
@@ -1576,9 +1607,13 @@ export const secretV2BridgeServiceFactory = ({
     const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
       plainText: Buffer.from(JSON.stringify(payload))
     }).cipherTextBlob;
-    if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
+    const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
+    const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+    if (stored) {
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
+    recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
     const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
