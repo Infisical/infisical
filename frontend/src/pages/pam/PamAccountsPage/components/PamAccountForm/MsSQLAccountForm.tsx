@@ -38,9 +38,19 @@ const MsSQLNtlmCredentialsSchema = z.object({
   domain: z.string().trim().min(1, "Domain is required for NTLM authentication").max(255)
 });
 
+const MsSQLKerberosCredentialsSchema = z.object({
+  authMethod: z.literal(MsSqlAuthMethod.Kerberos),
+  username: z.string().trim().min(1, "Username is required").max(63),
+  password: z.string().trim().min(1, "Password is required").max(256),
+  realm: z.string().trim().min(1, "Realm is required for Kerberos authentication").max(255),
+  kdcAddress: z.string().trim().max(255).optional(),
+  spn: z.string().trim().min(1, "SPN is required for Kerberos authentication").max(500)
+});
+
 const MsSQLAccountCredentialsSchema = z.discriminatedUnion("authMethod", [
   MsSQLSqlLoginCredentialsSchema,
-  MsSQLNtlmCredentialsSchema
+  MsSQLNtlmCredentialsSchema,
+  MsSQLKerberosCredentialsSchema
 ]);
 
 const formSchema = genericAccountFieldsSchema.extend({
@@ -80,11 +90,17 @@ const MsSQLAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
               onValueChange={(newAuthMethod) => {
                 onChange(newAuthMethod);
                 setValue("credentials.domain", undefined, { shouldDirty: true });
+                setValue("credentials.realm", undefined, { shouldDirty: true });
+                setValue("credentials.kdcAddress", undefined, { shouldDirty: true });
+                setValue("credentials.spn", undefined, { shouldDirty: true });
               }}
               className="w-full border border-mineshaft-500"
             >
               <SelectItem value={MsSqlAuthMethod.SqlLogin}>SQL Server Authentication</SelectItem>
               <SelectItem value={MsSqlAuthMethod.Ntlm}>Windows Authentication (NTLM)</SelectItem>
+              <SelectItem value={MsSqlAuthMethod.Kerberos}>
+                Windows Authentication (Kerberos)
+              </SelectItem>
             </Select>
           </FormControl>
         )}
@@ -104,6 +120,54 @@ const MsSQLAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
             </FormControl>
           )}
         />
+      )}
+
+      {authMethod === MsSqlAuthMethod.Kerberos && (
+        <>
+          <Controller
+            name="credentials.realm"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="Realm"
+              >
+                <Input {...field} autoComplete="off" placeholder="CORP.EXAMPLE.COM" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="credentials.spn"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="Service Principal Name (SPN)"
+              >
+                <Input
+                  {...field}
+                  autoComplete="off"
+                  placeholder="MSSQLSvc/sqlserver.corp.com:1433"
+                />
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="credentials.kdcAddress"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="KDC Address (Optional)"
+              >
+                <Input {...field} autoComplete="off" placeholder="dc.corp.example.com" />
+              </FormControl>
+            )}
+          />
+        </>
       )}
 
       <div className="grid grid-cols-2 gap-2">

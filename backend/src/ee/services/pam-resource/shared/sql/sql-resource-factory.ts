@@ -344,6 +344,13 @@ export const sqlResourceFactory: TPamResourceFactory<
         throw new BadRequestError({ message: "Gateway ID is required" });
       }
 
+      if ("authMethod" in credentials && credentials.authMethod === "kerberos") {
+        await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (client) => {
+          await client.validate(true);
+        });
+        return credentials;
+      }
+
       await executeWithGateway(
         {
           connectionDetails,

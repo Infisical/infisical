@@ -5,7 +5,8 @@ import { TBasePamResource } from "./base-resource";
 
 export enum MsSqlAuthMethod {
   SqlLogin = "sql-login",
-  Ntlm = "ntlm"
+  Ntlm = "ntlm",
+  Kerberos = "kerberos"
 }
 
 export type TMsSQLSqlLoginCredentials = {
@@ -21,7 +22,19 @@ export type TMsSQLNtlmCredentials = {
   domain: string;
 };
 
-export type TMsSQLCredentials = TMsSQLSqlLoginCredentials | TMsSQLNtlmCredentials;
+export type TMsSQLKerberosCredentials = {
+  authMethod: MsSqlAuthMethod.Kerberos;
+  username: string;
+  password: string;
+  realm: string;
+  kdcAddress?: string;
+  spn: string;
+};
+
+export type TMsSQLCredentials =
+  | TMsSQLSqlLoginCredentials
+  | TMsSQLNtlmCredentials
+  | TMsSQLKerberosCredentials;
 
 // Resources
 export type TMsSQLResource = TBasePamResource & { resourceType: PamResourceType.MsSQL } & {

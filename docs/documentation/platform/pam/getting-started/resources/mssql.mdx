@@ -130,10 +130,23 @@ A PAM Account represents a specific set of credentials that users can request ac
       Choose how the account authenticates with SQL Server:
       - **SQL Server Authentication** — standard username and password
       - **Windows Authentication (NTLM)** — authenticates using Active Directory domain credentials
+      - **Windows Authentication (Kerberos)** — authenticates via Kerberos tickets from a Key Distribution Center (KDC)
     </ParamField>
 
     <ParamField path="Domain" type="string">
       The Active Directory domain name (e.g., `CORP`). Only required when using Windows Authentication (NTLM).
+    </ParamField>
+
+    <ParamField path="Realm" type="string">
+      The Kerberos realm, typically the AD domain name in uppercase (e.g., `CORP.EXAMPLE.COM`). Required for Kerberos authentication.
+    </ParamField>
+
+    <ParamField path="Service Principal Name (SPN)" type="string">
+      The SQL Server's SPN registered in Active Directory (e.g., `MSSQLSvc/sqlserver.corp.com:1433`). Required for Kerberos authentication.
+    </ParamField>
+
+    <ParamField path="KDC Address" type="string">
+      Hostname or IP of the Key Distribution Center (e.g., `dc.corp.example.com`). Optional — if omitted, the gateway attempts DNS-based KDC discovery.
     </ParamField>
 
     <ParamField path="Username" type="string" required>
