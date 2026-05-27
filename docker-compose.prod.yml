@@ -10,7 +10,7 @@ services:
       redis:
         condition: service_started
     image: infisical/infisical:latest # PIN THIS TO A SPECIFIC TAG
-    pull_policy: never
+    pull_policy: always
     env_file: .env
     ports:
       - 80:8080
