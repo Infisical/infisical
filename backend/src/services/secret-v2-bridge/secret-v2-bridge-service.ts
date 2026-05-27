@@ -1194,7 +1194,13 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
-    const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
+    // One request identity shared by the ETag field and the cache key, so the 304 short-circuit and the
+    // cached blob can never key on different inputs. Only fields that change the response body belong here:
+    // permissionFingerprint stands in for the full CASL rules (smaller, same discrimination), and
+    // throwOnMissingReadValuePermission is included because it changes whether partial-permission reads
+    // mask values or throw. Transport-only inputs like ifNoneMatch are excluded so a client's stale ETag
+    // can't fork a fresh entry.
+    const requestParamsHash = generateCacheKeyFromData({
       environment,
       path,
       recursive,
@@ -1204,8 +1210,10 @@ export const secretV2BridgeServiceFactory = ({
       personalOverridesBehavior,
       secretImportReferencesBehavior,
       viewSecretValue,
+      throwOnMissingReadValuePermission,
       ...params
-    })}`;
+    });
+    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
@@ -1232,23 +1240,6 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    // Key only on fields that change the response body. permissionFingerprint stands in for the full
-    // CASL rules (smaller, same discrimination), and transport-only inputs like ifNoneMatch are excluded
-    // so a client's stale ETag can't fork a fresh cache blob. throwOnMissingReadValuePermission is kept
-    // because it changes whether partial-permission reads mask values or throw.
-    const requestParamsHash = generateCacheKeyFromData({
-      environment,
-      path,
-      recursive,
-      includeImports,
-      expandSecretReferences: shouldExpandSecretReferences,
-      expandPersonalOverrides,
-      personalOverridesBehavior,
-      secretImportReferencesBehavior,
-      viewSecretValue,
-      throwOnMissingReadValuePermission,
-      ...params
-    });
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
       projectId,
       version: secretDalVersion,
