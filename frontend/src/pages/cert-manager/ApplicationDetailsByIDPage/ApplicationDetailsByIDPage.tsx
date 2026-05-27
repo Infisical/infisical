@@ -9,10 +9,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { AxiosError } from "axios";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
   DocumentationLinkBadge,
@@ -21,7 +22,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   PageLoader,
-  ResourceIcon
+  ResourceIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
@@ -53,12 +61,20 @@ export const ApplicationDetailsByIDPage = () => {
   const search = useSearch({ strict: false }) as { selectedTab?: string; search?: string };
   const navigate = useNavigate();
 
-  const { data: application, isPending } = useGetPkiApplicationByName(applicationName ?? "");
+  const {
+    data: application,
+    isPending,
+    isError: isAppError,
+    error: appError
+  } = useGetPkiApplicationByName(applicationName ?? "");
   const { data: profiles = [] } = useListPkiApplicationProfiles(application?.id ?? "");
   const { data: members = [] } = useListPkiApplicationMembers(application?.id ?? "");
-  const { data: permissionData, isPending: isPermissionsPending } = useGetPkiApplicationPermissions(
-    application?.id ?? ""
-  );
+  const {
+    data: permissionData,
+    isPending: isPermissionsPending,
+    isError: isPermissionsError,
+    error: permissionsError
+  } = useGetPkiApplicationPermissions(application?.id ?? "");
   const deleteApp = useDeletePkiApplication();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isIdCopied, setIsIdCopied] = useToggle(false);
@@ -84,17 +100,19 @@ export const ApplicationDetailsByIDPage = () => {
   const canDeleteApplication = Boolean(
     ability?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.Application)
   );
+  const isNonMemberAdmin = Boolean(permissionData && permissionData.memberships.length === 0);
 
-  const requestedTab = search.selectedTab ?? "";
-  const tabIsVisible: Record<string, boolean> = {
-    certificates: Boolean(canViewCertificates),
-    requests: Boolean(canViewRequests),
-    syncs: Boolean(canViewSyncs),
+  const tabEnabled: Record<string, boolean> = {
+    certificates: !isNonMemberAdmin && Boolean(canViewCertificates),
+    requests: !isNonMemberAdmin && Boolean(canViewRequests),
+    syncs: !isNonMemberAdmin && Boolean(canViewSyncs),
     members: true,
     settings: true
   };
-  const defaultTab = canViewCertificates ? "certificates" : "members";
-  const selectedTab = tabIsVisible[requestedTab] ? requestedTab : defaultTab;
+  const allTabs = ["certificates", "requests", "syncs", "members", "settings"] as const;
+  const defaultTab = allTabs.find((t) => tabEnabled[t]) ?? "members";
+  const requestedTab = search.selectedTab ?? "";
+  const selectedTab = tabEnabled[requestedTab] ? requestedTab : defaultTab;
 
   const handleCopyId = () => {
     if (!application) return;
@@ -122,6 +140,20 @@ export const ApplicationDetailsByIDPage = () => {
 
   if (isPending) {
     return <PageLoader />;
+  }
+
+  const isAccessForbidden =
+    (isAppError && appError instanceof AxiosError && appError.response?.status === 403) ||
+    (isPermissionsError &&
+      permissionsError instanceof AxiosError &&
+      permissionsError.response?.status === 403);
+
+  if (isAccessForbidden) {
+    return (
+      <div className="container mx-auto flex h-full items-center justify-center p-16">
+        <AccessRestrictedBanner body="You do not have access to this application. Reach out to an administrator to request access." />
+      </div>
+    );
   }
 
   if (!application) {
@@ -213,61 +245,94 @@ export const ApplicationDetailsByIDPage = () => {
                 })
               }
             >
-              <TabList>
-                {canViewCertificates && (
-                  <Tab variant="project" value="certificates">
-                    Certificate Inventory
-                  </Tab>
-                )}
-                {canViewRequests && (
-                  <Tab variant="project" value="requests">
-                    Certificate Requests
-                  </Tab>
-                )}
-                {canViewSyncs && (
-                  <Tab variant="project" value="syncs">
-                    Certificate Syncs
-                  </Tab>
-                )}
-                <Tab variant="project" value="members">
+              <TabsList variant="project" className="w-full justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <TabsTrigger
+                        value="certificates"
+                        disabled={!tabEnabled.certificates}
+                        className="flex-none"
+                      >
+                        Certificate Inventory
+                      </TabsTrigger>
+                    </span>
+                  </TooltipTrigger>
+                  {!tabEnabled.certificates && (
+                    <TooltipContent>You do not have permission to view certificates</TooltipContent>
+                  )}
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <TabsTrigger
+                        value="requests"
+                        disabled={!tabEnabled.requests}
+                        className="flex-none"
+                      >
+                        Certificate Requests
+                      </TabsTrigger>
+                    </span>
+                  </TooltipTrigger>
+                  {!tabEnabled.requests && (
+                    <TooltipContent>
+                      You do not have permission to view certificate requests
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <TabsTrigger value="syncs" disabled={!tabEnabled.syncs} className="flex-none">
+                        Certificate Syncs
+                      </TabsTrigger>
+                    </span>
+                  </TooltipTrigger>
+                  {!tabEnabled.syncs && (
+                    <TooltipContent>
+                      You do not have permission to view certificate syncs
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <TabsTrigger value="members" className="flex-none">
                   Members
-                </Tab>
-                <Tab variant="project" value="settings">
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex-none">
                   Settings
-                </Tab>
-              </TabList>
-              {canViewCertificates && (
-                <TabPanel value="certificates">
+                </TabsTrigger>
+              </TabsList>
+              {tabEnabled.certificates && (
+                <TabsContent className="pt-2" value="certificates">
                   <ApplicationCertificatesTab
                     applicationId={application.id}
                     applicationName={application.name}
                     initialSearch={search.search}
                   />
-                </TabPanel>
+                </TabsContent>
               )}
-              {canViewRequests && (
-                <TabPanel value="requests">
+              {tabEnabled.requests && (
+                <TabsContent className="pt-2" value="requests">
                   <ApplicationRequestsTab
                     applicationId={application.id}
                     applicationName={application.name}
                   />
-                </TabPanel>
+                </TabsContent>
               )}
-              {canViewSyncs && (
-                <TabPanel value="syncs">
+              {tabEnabled.syncs && (
+                <TabsContent className="pt-2" value="syncs">
                   <ApplicationSyncsTab
                     applicationId={application.id}
                     applicationName={application.name}
                     projectId={projectId ?? ""}
                   />
-                </TabPanel>
+                </TabsContent>
               )}
-              <TabPanel value="members">
+              <TabsContent className="pt-2" value="members">
                 <ApplicationMembersTab members={members} applicationId={application.id} />
-              </TabPanel>
-              <TabPanel value="settings">
+              </TabsContent>
+              <TabsContent className="pt-2" value="settings">
                 <ApplicationSettingsTab application={application} profiles={profiles} />
-              </TabPanel>
+              </TabsContent>
             </Tabs>
           </div>
         </div>
