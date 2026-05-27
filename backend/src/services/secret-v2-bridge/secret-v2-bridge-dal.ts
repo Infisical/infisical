@@ -30,10 +30,11 @@ export const SecretServiceCacheKeys = {
     version: number;
     actorId: string;
     permissionFingerprint: string;
+    permissionHash: string;
     requestParamsHash: string;
   }) => {
-    const { projectId, version, actorId, permissionFingerprint, requestParamsHash } = arg;
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer:${actorId}-${permissionFingerprint}-${requestParamsHash}`;
+    const { projectId, version, actorId, permissionFingerprint, permissionHash, requestParamsHash } = arg;
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer:${actorId}-${permissionFingerprint}-${permissionHash}-${requestParamsHash}`;
   }
 };
 

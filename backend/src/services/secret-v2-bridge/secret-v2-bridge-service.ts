@@ -1194,12 +1194,10 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
-    // One request identity shared by the ETag field and the cache key, so the 304 short-circuit and the
-    // cached blob can never key on different inputs. Only fields that change the response body belong here:
-    // permissionFingerprint stands in for the full CASL rules (smaller, same discrimination), and
-    // throwOnMissingReadValuePermission is included because it changes whether partial-permission reads
-    // mask values or throw. Transport-only inputs like ifNoneMatch are excluded so a client's stale ETag
-    // can't fork a fresh entry.
+    // Hash of only the request inputs that change the response body, shared by the ETag field and the
+    // cache key. Transport-only inputs like ifNoneMatch are excluded so a client's stale ETag can't fork
+    // a fresh entry, and throwOnMissingReadValuePermission is included because it flips partial-permission
+    // reads between masking values and throwing. The actor's permission identity is keyed separately.
     const requestParamsHash = generateCacheKeyFromData({
       environment,
       path,
@@ -1240,11 +1238,17 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
+    // The ETag field keys on permissionFingerprint alone — the ETag value is a content hash of the
+    // payload, so a shared field across auth contexts can at worst miss a 304, never serve stale content.
+    // The cache blob is returned without re-filtering, so its key additionally folds in the interpolated
+    // permission.rules: those carry request-time identity.auth context that the fingerprint (membership
+    // rows only) does not, and two auth contexts for the same identity must not share a cached payload.
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
       projectId,
       version: secretDalVersion,
       actorId,
       permissionFingerprint,
+      permissionHash: generateCacheKeyFromData(permission.rules),
       requestParamsHash
     });
 
