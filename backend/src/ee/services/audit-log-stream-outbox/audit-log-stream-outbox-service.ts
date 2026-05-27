@@ -84,7 +84,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
 };
 
 export type TAuditLogStreamOutboxServiceFactory = {
-  enqueueForOrg: (orgId: string, auditLog: TAuditLogs) => Promise<void>;
+  enqueueForLogs: (auditLogs: TAuditLogs[]) => Promise<void>;
   drainStream: (data: TAuditLogStreamFlushJobData) => Promise<void>;
   sweepStaleClaims: () => Promise<void>;
 };
@@ -128,22 +128,47 @@ export const auditLogStreamOutboxServiceFactory = ({
     return true;
   };
 
-  // Per-audit-log fanout:
-  //   1. Look up active streams for the org.
-  //   2. Insert one outbox row per stream (payload is self-contained).
-  //   3. For each stream, try to win the 5s debounce SETNX. The winner enqueues
-  //      the flush job (delayed by FLUSH_DEBOUNCE_MS) on the provider queue;
-  //      losers do nothing because their event is already covered by the winner's job.
-  const enqueueForOrg = async (orgId: string, auditLog: TAuditLogs) => {
-    const streams = await auditLogStreamDAL.find({ orgId });
-    if (streams.length === 0) return;
+  // Batch fanout for a drained set of audit logs:
+  //   1. Group logs by org so active streams are looked up once per org (not per log).
+  //   2. Insert one outbox row per (stream, log) in a single batch insert.
+  //   3. For each stream that received rows, try to win the 5s debounce SETNX once.
+  //      The winner enqueues the flush job (delayed by FLUSH_DEBOUNCE_MS) on the
+  //      provider queue; losers do nothing because their events are already covered.
+  const enqueueForLogs = async (auditLogs: TAuditLogs[]) => {
+    if (auditLogs.length === 0) return;
 
-    await auditLogStreamOutboxDAL.batchInsert(
-      streams.map((stream) => ({ streamId: stream.id, orgId, payload: auditLog }))
-    );
+    const logsByOrg = new Map<string, TAuditLogs[]>();
+    for (const log of auditLogs) {
+      if (log.orgId) {
+        const existing = logsByOrg.get(log.orgId);
+        if (existing) existing.push(log);
+        else logsByOrg.set(log.orgId, [log]);
+      }
+    }
+
+    const outboxRows: { streamId: string; orgId: string; payload: TAuditLogs }[] = [];
+    // Dedup streams touched this batch so each is debounced/woken exactly once.
+    const streamsToFlush = new Map<string, { orgId: string; provider: LogProvider }>();
+
+    for (const [orgId, logs] of logsByOrg) {
+      // eslint-disable-next-line no-await-in-loop
+      const streams = await auditLogStreamDAL.find({ orgId });
+      for (const stream of streams) {
+        for (const log of logs) {
+          outboxRows.push({ streamId: stream.id, orgId, payload: log });
+        }
+        streamsToFlush.set(stream.id, { orgId, provider: stream.provider as LogProvider });
+      }
+    }
+
+    if (outboxRows.length === 0) return;
+
+    await auditLogStreamOutboxDAL.batchInsert(outboxRows);
 
     await Promise.allSettled(
-      streams.map((stream) => debounceAndEnqueueFlush(stream.id, orgId, stream.provider as LogProvider))
+      Array.from(streamsToFlush.entries()).map(([streamId, { orgId, provider }]) =>
+        debounceAndEnqueueFlush(streamId, orgId, provider)
+      )
     );
   };
 
@@ -250,7 +275,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   };
 
   return {
-    enqueueForOrg,
+    enqueueForLogs,
     drainStream,
     sweepStaleClaims
   };

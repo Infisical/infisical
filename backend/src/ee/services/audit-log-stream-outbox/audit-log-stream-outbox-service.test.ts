@@ -102,6 +102,7 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
       orgId: ORG_ID,
       streamId: STREAM_ID,
       provider: PROVIDER,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- asymmetric matcher is typed `any`
       errorMessage: expect.stringContaining(FAILURE_MESSAGE)
     });
     expect(auditLogStreamOutboxDAL.markBatchForRetry).toHaveBeenCalledTimes(1);
@@ -148,5 +149,93 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
     expect(auditLogStreamOutboxDAL.claimBatchForStream).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
+  const buildService = () => {
+    const auditLogStreamOutboxDAL = {
+      batchInsert: vi.fn<(rows: unknown[]) => Promise<void>>(async () => undefined),
+      claimBatchForStream: vi.fn(async () => []),
+      deleteByIds: vi.fn(async () => undefined),
+      markBatchForRetry: vi.fn(async () => undefined),
+      moveToDlq: vi.fn(async () => undefined),
+      recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
+    };
+
+    const auditLogStreamDAL = {
+      find: vi.fn<(arg: { orgId: string }) => Promise<{ id: string; provider: LogProvider }[]>>(async () => []),
+      findById: vi.fn()
+    };
+
+    // Win the debounce SETNX so the flush job is always enqueued in these tests.
+    const keyStore = { setItemWithExpiryNX: vi.fn(async () => true) };
+    const queueService = { queue: vi.fn(async () => undefined) };
+
+    const service = auditLogStreamOutboxServiceFactory({
+      auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
+      auditLogStreamDAL: auditLogStreamDAL as never,
+      kmsService: {} as never,
+      keyStore: keyStore as never,
+      queueService: queueService as never
+    });
+
+    return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, keyStore, queueService };
+  };
+
+  const log = (id: string, orgId?: string) => ({ id, orgId }) as TAuditLogStreamOutboxRow["payload"];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("empty input does nothing", async () => {
+    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL } = buildService();
+
+    await service.enqueueForLogs([]);
+
+    expect(auditLogStreamDAL.find).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.batchInsert).not.toHaveBeenCalled();
+  });
+
+  test("groups by org: one find per distinct org, one batchInsert, one debounce per stream", async () => {
+    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, keyStore, queueService } = buildService();
+
+    auditLogStreamDAL.find.mockImplementation(async ({ orgId }) => {
+      if (orgId === "orgA") return [{ id: "sA", provider: PROVIDER }];
+      if (orgId === "orgB") return [{ id: "sB", provider: PROVIDER }];
+      return [];
+    });
+
+    await service.enqueueForLogs([log("1", "orgA"), log("2", "orgA"), log("3", "orgB")]);
+
+    // one lookup per distinct org
+    expect(auditLogStreamDAL.find).toHaveBeenCalledTimes(2);
+    // single batch insert: sA × 2 logs + sB × 1 log = 3 rows
+    expect(auditLogStreamOutboxDAL.batchInsert).toHaveBeenCalledTimes(1);
+    expect(auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0]).toHaveLength(3);
+    // debounce/wake once per distinct stream
+    expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledTimes(2);
+    expect(queueService.queue).toHaveBeenCalledTimes(2);
+  });
+
+  test("skips logs without an orgId", async () => {
+    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL } = buildService();
+
+    await service.enqueueForLogs([log("1")]);
+
+    expect(auditLogStreamDAL.find).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.batchInsert).not.toHaveBeenCalled();
+  });
+
+  test("no active streams for the org → no insert, no debounce", async () => {
+    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, keyStore } = buildService();
+    auditLogStreamDAL.find.mockResolvedValue([]);
+
+    await service.enqueueForLogs([log("1", "orgA")]);
+
+    expect(auditLogStreamDAL.find).toHaveBeenCalledTimes(1);
+    expect(auditLogStreamOutboxDAL.batchInsert).not.toHaveBeenCalled();
+    expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
   });
 });

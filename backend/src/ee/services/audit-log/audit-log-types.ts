@@ -101,6 +101,15 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
+// What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
+// push time so a consumer retry (reprocessing the same batch after a failed insert)
+// re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
+// `createdAt` is an ISO string for JSON round-tripping through the stream.
+export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
+  id: string;
+  createdAt: string;
+};
+
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
