@@ -40,6 +40,7 @@ import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -109,6 +110,7 @@ type TScimServiceFactoryDep = {
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   membershipRoleDAL: TMembershipRoleDALFactory;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     | "find"
@@ -148,6 +150,7 @@ export const scimServiceFactory = ({
   membershipGroupDAL,
   membershipUserDAL,
   membershipRoleDAL,
+  roleDAL,
   additionalPrivilegeDAL,
   scimEventsDAL,
   emailDomainDAL,
@@ -454,7 +457,7 @@ export const scimServiceFactory = ({
         );
 
         if (!effectiveMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(org.defaultMembershipRole);
 
           orgMembership = await membershipUserDAL.create(
             {
@@ -518,7 +521,7 @@ export const scimServiceFactory = ({
         );
 
         if (!effectiveMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(org.defaultMembershipRole);
 
           orgMembership = await membershipUserDAL.create(
             {
@@ -1067,10 +1070,13 @@ export const scimServiceFactory = ({
         tx
       );
 
+      const noAccessRole = await roleDAL.findOne({ slug: OrgMembershipRole.NoAccess, orgId }, tx);
+      if (!noAccessRole) throw new NotFoundError({ message: `'no-access' role not found for organization ${orgId}` });
       await membershipRoleDAL.create(
         {
           membershipId: groupMembership.id,
-          role: OrgMembershipRole.NoAccess
+          role: OrgMembershipRole.NoAccess,
+          customRoleId: noAccessRole.id
         },
         tx
       );

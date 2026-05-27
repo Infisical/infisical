@@ -235,7 +235,7 @@ export const oidcConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           const membership = await orgDAL.createMembership(
             {
@@ -311,7 +311,7 @@ export const oidcConfigServiceFactory = ({
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.OIDC);
 
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           const membership = await orgDAL.createMembership(
             {

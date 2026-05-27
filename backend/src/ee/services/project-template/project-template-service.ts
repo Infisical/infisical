@@ -14,14 +14,12 @@ import {
   TProjectTemplateProjectManagedIdentity,
   TProjectTemplateRole,
   TProjectTemplateServiceFactory,
-  TProjectTemplateUser,
-  TUnpackedPermission
+  TProjectTemplateUser
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
-import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { TGroupDALFactory } from "../group/group-dal";
 import { TProjectTemplateDALFactory } from "./project-template-dal";
@@ -49,19 +47,10 @@ const $unpackProjectTemplate = (
 ) => ({
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
-  roles: [
-    ...getPredefinedRoles({ projectId: "project-template", projectType: rest.type as ProjectType }).map(
-      ({ name, slug, permissions }) => ({
-        name,
-        slug,
-        permissions: permissions as TUnpackedPermission[]
-      })
-    ),
-    ...(roles as TProjectTemplateRole[]).map((role) => ({
-      ...role,
-      permissions: unpackPermissions(role.permissions)
-    }))
-  ],
+  roles: (roles as TProjectTemplateRole[]).map((role) => ({
+    ...role,
+    permissions: unpackPermissions(role.permissions)
+  })),
   users,
   groups,
   identities,

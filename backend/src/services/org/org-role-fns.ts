@@ -4,9 +4,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TRoleDALFactory } from "../role/role-dal";
 
-const RESERVED_ORG_ROLE_SLUGS = Object.values(OrgMembershipRole).filter((role) => role !== "custom");
-
-export const isCustomOrgRole = (roleSlug: string) => !RESERVED_ORG_ROLE_SLUGS.find((r) => r === roleSlug);
+// Only admin is a built-in slug; everything else is a custom role
+export const isCustomOrgRole = (roleSlug: string) => roleSlug !== OrgMembershipRole.Admin;
 
 // this is only for updating an org
 export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
@@ -43,16 +42,8 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   return membershipRoleSlug;
 };
 
-// this is only for creating an org membership
-export const getDefaultOrgMembershipRole = async (
-  defaultOrgMembershipRole: string // can either be ID or reserved slug
-) => {
-  if (isCustomOrgRole(defaultOrgMembershipRole))
-    return {
-      roleId: defaultOrgMembershipRole,
-      role: OrgMembershipRole.Custom
-    };
+export const getDefaultOrgMembershipRole = (defaultOrgMembershipRole: string) => {
+  if (defaultOrgMembershipRole === OrgMembershipRole.Admin) return { roleId: null, role: OrgMembershipRole.Admin };
 
-  // will be reserved slug
-  return { roleId: undefined, role: defaultOrgMembershipRole as OrgMembershipRole };
+  return { roleId: defaultOrgMembershipRole, role: OrgMembershipRole.Custom };
 };

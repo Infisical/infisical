@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -17,6 +18,8 @@ import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
+  orgMemberPermissions,
+  orgNoAccessPermissions,
   OrgPermissionActions,
   OrgPermissionGroupActions,
   OrgPermissionSecretShareAction,
@@ -680,6 +683,31 @@ export const orgServiceFactory = ({
         );
       }
 
+      // Seed built-in org roles as editable DB rows; admin stays hardcoded.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const packPerms = (rules: unknown) => JSON.stringify((packRules as (r: any) => unknown[])(rules));
+      await roleDAL.insertMany(
+        [
+          {
+            orgId: org.id,
+            name: "Member",
+            slug: OrgMembershipRole.Member,
+            description: "Members can read and create projects inside the organization.",
+            permissions: packPerms(orgMemberPermissions),
+            isBuiltIn: true
+          },
+          {
+            orgId: org.id,
+            name: "No Access",
+            slug: OrgMembershipRole.NoAccess,
+            description: "No access to organization resources.",
+            permissions: packPerms(orgNoAccessPermissions),
+            isBuiltIn: true
+          }
+        ],
+        tx
+      );
+
       await bootstrapCertManagerProject(
         {
           orgId: org.id,
@@ -828,21 +856,25 @@ export const orgServiceFactory = ({
     if (foundMembership.actorUserId === userId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
-    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     let userRole = role;
     let userRoleId: string | null = null;
-    if (role && isCustomRole) {
-      const customRole = await roleDAL.findOne({ slug: role, orgId });
-      if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
+    if (role && role !== OrgMembershipRole.Admin) {
+      const resolvedRole = await roleDAL.findOne({ slug: role, orgId });
+      if (!resolvedRole)
+        throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
-      const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
-        throw new BadRequestError({
-          message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
-        });
+      // Only user-created (non-built-in) roles require the enterprise plan.
+      if (!resolvedRole.isBuiltIn) {
+        const plan = await licenseService.getPlan(orgId);
+        if (!plan?.rbac)
+          throw new BadRequestError({
+            message:
+              "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+          });
+      }
 
       userRole = OrgMembershipRole.Custom;
-      userRoleId = customRole.id;
+      userRoleId = resolvedRole.id;
     }
 
     if (role) {

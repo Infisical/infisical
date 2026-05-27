@@ -959,7 +959,7 @@ export const authLoginServiceFactory = ({
           });
 
           if (!existingMembership) {
-            const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
+            const { role, roleId } = getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
 
             const membership = await membershipUserDAL.create(
               {

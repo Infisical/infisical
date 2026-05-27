@@ -64,7 +64,7 @@ export const Page = () => {
     });
   };
 
-  const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
+  const isCustomRole = data?.slug !== "admin";
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">

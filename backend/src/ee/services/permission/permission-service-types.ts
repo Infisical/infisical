@@ -143,6 +143,7 @@ export type TPermissionServiceFactory = {
         createdAt: Date;
         updatedAt: Date;
         slug: string;
+        isBuiltIn: boolean;
         permissions?: unknown;
         description?: string | null | undefined;
       };
@@ -158,6 +159,7 @@ export type TPermissionServiceFactory = {
         name: string;
         slug: string;
         id?: string;
+        isBuiltIn?: boolean;
         createdAt?: Date;
         updatedAt?: Date;
         permissions?: unknown;

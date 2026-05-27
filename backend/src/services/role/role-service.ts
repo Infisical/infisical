@@ -1,7 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrganizationActionScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -9,13 +9,12 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
-import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "../external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { newOrgRoleFactory } from "./org/org-role-factory";
 import { newProjectRoleFactory } from "./project/project-role-factory";
@@ -27,6 +26,7 @@ import {
   TGetRoleBySlugDTO,
   TGetUserPermissionDTO,
   TListRoleDTO,
+  TPredefinedRole,
   TUpdateRoleDTO
 } from "./role-types";
 
@@ -51,7 +51,6 @@ type TRoleServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -62,7 +61,6 @@ export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
 export const roleServiceFactory = ({
   roleDAL,
   permissionService,
-  projectDAL,
   identityDAL,
   userDAL,
   externalGroupOrgRoleMappingDAL,
@@ -74,8 +72,7 @@ export const roleServiceFactory = ({
     externalGroupOrgRoleMappingDAL
   });
   const projectRoleFactory = newProjectRoleFactory({
-    permissionService,
-    projectDAL
+    permissionService
   });
   const scopeFactory = {
     [AccessScope.Organization]: orgRoleFactory,
@@ -86,6 +83,10 @@ export const roleServiceFactory = ({
     const { data, scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
+
+    if (data.slug === OrgMembershipRole.Admin) {
+      throw new BadRequestError({ message: "The 'admin' role slug is reserved and cannot be used." });
+    }
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.rbac) {
@@ -100,7 +101,7 @@ export const roleServiceFactory = ({
       slug: data.slug,
       [scope.key]: scope.value
     });
-    if (existingRole) throw new BadRequestError({ message: `Role with ${data.slug} already exists` });
+    if (existingRole) throw new BadRequestError({ message: `Role with slug '${data.slug}' already exists` });
 
     validateHandlebarTemplate("Role Creation", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
@@ -124,19 +125,26 @@ export const roleServiceFactory = ({
 
     await factory.onUpdateRoleGuard(dto);
 
-    const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.rbac) {
-      throw new BadRequestError({
-        message:
-          "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
-      });
+    // Prevent renaming any role to "admin".
+    if (data.slug === OrgMembershipRole.Admin) {
+      throw new BadRequestError({ message: "The 'admin' role slug is reserved and cannot be used." });
     }
 
     const existingRole = await roleDAL.findOne({
       id: dto.selector.id,
       [scope.key]: scope.value
     });
-    if (!existingRole) throw new NotFoundError({ message: `Role with ${dto.selector.id} not found` });
+    if (!existingRole) throw new NotFoundError({ message: `Role with id '${dto.selector.id}' not found` });
+
+    // Both platform (built-in) and custom roles require the enterprise plan to edit.
+    const plan = await licenseService.getPlan(dto.permission.orgId);
+    if (!plan?.rbac) {
+      throw new BadRequestError({
+        message: existingRole.isBuiltIn
+          ? "Failed to update platform role due to plan RBAC restriction. Upgrade to Infisical Enterprise to customize platform roles."
+          : "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
+      });
+    }
 
     if (data.slug) {
       const existingSlug = await roleDAL.findOne({
@@ -144,7 +152,7 @@ export const roleServiceFactory = ({
         [scope.key]: scope.value
       });
       if (existingSlug && existingRole.id !== existingSlug.id)
-        throw new BadRequestError({ message: `Role with ${data.slug} already exists` });
+        throw new BadRequestError({ message: `Role with slug '${data.slug}' already exists` });
     }
 
     validateHandlebarTemplate("Role Update", JSON.stringify(data.permissions || []), {
@@ -171,23 +179,22 @@ export const roleServiceFactory = ({
       id: dto.selector.id,
       [scope.key]: scope.value
     });
-    if (!existingRole) throw new NotFoundError({ message: `Role with ${dto.selector.id} not found` });
+    if (!existingRole) throw new NotFoundError({ message: `Role with id '${dto.selector.id}' not found` });
 
-    const [roleUsageData] = await membershipRoleDAL.find(
-      {
-        customRoleId: dto.selector.id
-      },
-      { count: true }
-    );
+    // Built-in platform roles can never be deleted — deleting one on enterprise and then
+    // downgrading the plan would permanently remove a role with no way to recover it.
+    if (existingRole.isBuiltIn) {
+      throw new BadRequestError({ message: "Platform roles cannot be deleted." });
+    }
 
-    if (roleUsageData) {
-      const count = Number.parseInt(roleUsageData.count, 10);
-      if (count > 0) {
-        const plural = count > 1 ? "s" : "";
-        throw new BadRequestError({
-          message: `Role is assigned to ${count} identity membership${plural}. Re-assign membership role${plural} to delete this role.`
-        });
-      }
+    const [roleUsageData] = await membershipRoleDAL.find({ customRoleId: dto.selector.id }, { count: true });
+    const usageCount = roleUsageData ? Number.parseInt(roleUsageData.count, 10) : 0;
+
+    if (usageCount > 0) {
+      const plural = usageCount > 1 ? "s" : "";
+      throw new BadRequestError({
+        message: `Role is assigned to ${usageCount} membership${plural}. Re-assign the membership role${plural} before deleting this role.`
+      });
     }
 
     const [role] = await roleDAL.delete({
@@ -205,13 +212,13 @@ export const roleServiceFactory = ({
     await factory.onListRoleGuard(dto);
 
     const scope = factory.getScopeField(scopeData);
-    const predefinedRoles = await factory.getPredefinedRoles(scopeData);
     const roles = await roleDAL.find(
-      {
-        [scope.key]: scope.value
-      },
+      { [scope.key]: scope.value },
       { limit: dto.data.limit, offset: dto.data.offset, sort: [[`${TableName.Role}.slug` as "slug", "asc"]] }
     );
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const predefinedRoles: TPredefinedRole[] = factory.getPredefinedRoles(scopeData);
 
     return {
       roles: [...predefinedRoles, ...roles.map((el) => ({ ...el, permissions: unpackPermissions(el.permissions) }))]
@@ -224,19 +231,15 @@ export const roleServiceFactory = ({
 
     await factory.onGetRoleByIdGuard(dto);
 
+    const predefined = factory.getPredefinedRoles(scopeData).find((r) => r.id === selector.id);
+    if (predefined) return predefined;
+
     const scope = factory.getScopeField(scopeData);
-
-    const predefinedRole = await factory.getPredefinedRoles(scopeData);
-    const selectedRole = predefinedRole.find((el) => el.id === dto.selector.id);
-    if (selectedRole) {
-      return { ...selectedRole, permissions: UnpackedPermissionSchema.array().parse(selectedRole.permissions) };
-    }
-
     const role = await roleDAL.findOne({
       id: selector.id,
       [scope.key]: scope.value
     });
-    if (!role) throw new NotFoundError({ message: `Role with id ${dto.selector.id} not found` });
+    if (!role) throw new NotFoundError({ message: `Role with id '${dto.selector.id}' not found` });
 
     return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
@@ -247,20 +250,15 @@ export const roleServiceFactory = ({
 
     await factory.onGetRoleBySlugGuard(dto);
 
-    const scope = factory.getScopeField(scopeData);
-    const isCustomRole = factory.isCustomRole(dto.selector.slug);
-    if (!isCustomRole) {
-      const predefinedRole = await factory.getPredefinedRoles(scopeData);
-      const selectedRole = predefinedRole.find((el) => el.slug === dto.selector.slug);
-      if (!selectedRole) throw new BadRequestError({ message: `Role with slug ${dto.selector.slug} not found` });
-      return { ...selectedRole, permissions: UnpackedPermissionSchema.array().parse(selectedRole.permissions) };
-    }
+    const predefined = factory.getPredefinedRoles(scopeData).find((r) => r.slug === selector.slug);
+    if (predefined) return predefined;
 
+    const scope = factory.getScopeField(scopeData);
     const role = await roleDAL.findOne({
       slug: selector.slug,
       [scope.key]: scope.value
     });
-    if (!role) throw new NotFoundError({ message: `Role with slug ${dto.selector.slug} not found` });
+    if (!role) throw new NotFoundError({ message: `Role with slug '${dto.selector.slug}' not found` });
 
     return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };

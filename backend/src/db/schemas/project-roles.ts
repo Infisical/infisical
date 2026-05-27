@@ -13,6 +13,7 @@ export const ProjectRolesSchema = z.object({
   description: z.string().nullable().optional(),
   slug: z.string(),
   permissions: z.unknown(),
+  isBuiltIn: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),

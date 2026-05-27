@@ -50,7 +50,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -69,7 +72,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
@@ -151,9 +154,8 @@ export const ProjectRoleList = () => {
             case RolesOrderBy.Slug:
               return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
             case RolesOrderBy.Type: {
-              const roleOneValue = isCustomProjectRole(roleOne.slug) ? -1 : 1;
-              const roleTwoValue = isCustomProjectRole(roleTwo.slug) ? -1 : 1;
-
+              const roleOneValue = roleOne.slug === "admin" || roleOne.isBuiltIn ? 1 : -1;
+              const roleTwoValue = roleTwo.slug === "admin" || roleTwo.isBuiltIn ? 1 : -1;
               return roleTwoValue - roleOneValue;
             }
             case RolesOrderBy.Name:
@@ -347,7 +349,7 @@ export const ProjectRoleList = () => {
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
                         <TableCell>
-                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-16" />
                         </TableCell>
                         <TableCell>
                           <Skeleton className="h-4 w-4" />
@@ -355,10 +357,9 @@ export const ProjectRoleList = () => {
                       </TableRow>
                     ))}
                   {filteredRolesPage.map((role) => {
-                    const { id, name, slug } = role;
-                    const isNonMutatable = Object.values(ProjectMembershipRole).includes(
-                      slug as ProjectMembershipRole
-                    );
+                    const { id, name, slug, isBuiltIn } = role;
+                    const isNonMutatable = slug === "admin";
+                    const isBuiltInRole = slug === "admin" || isBuiltIn;
 
                     return (
                       <TableRow
@@ -378,15 +379,15 @@ export const ProjectRoleList = () => {
                         <TableCell isTruncatable>{slug}</TableCell>
                         <TableCell>
                           <Badge variant="ghost">
-                            {isCustomProjectRole(slug) ? (
-                              <>
-                                <WrenchIcon />
-                                Custom
-                              </>
-                            ) : (
+                            {isBuiltInRole ? (
                               <>
                                 <ServerIcon />
                                 Platform
+                              </>
+                            ) : (
+                              <>
+                                <WrenchIcon />
+                                Custom
                               </>
                             )}
                           </Badge>
@@ -446,24 +447,35 @@ export const ProjectRoleList = () => {
                                 </ProjectPermissionCan>
                               )}
                               {!isNonMutatable && (
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionActions.Delete}
-                                  a={ProjectPermissionSub.Role}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      variant="danger"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteRole", role);
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      <TrashIcon />
-                                      Delete Role
-                                    </DropdownMenuItem>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <ProjectPermissionCan
+                                        I={ProjectPermissionActions.Delete}
+                                        a={ProjectPermissionSub.Role}
+                                      >
+                                        {(isAllowed) => (
+                                          <DropdownMenuItem
+                                            variant="danger"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handlePopUpOpen("deleteRole", role);
+                                            }}
+                                            isDisabled={!isAllowed || isBuiltInRole}
+                                          >
+                                            <TrashIcon />
+                                            Delete Role
+                                          </DropdownMenuItem>
+                                        )}
+                                      </ProjectPermissionCan>
+                                    </div>
+                                  </TooltipTrigger>
+                                  {isBuiltInRole && (
+                                    <TooltipContent side="left">
+                                      Platform roles cannot be deleted.
+                                    </TooltipContent>
                                   )}
-                                </ProjectPermissionCan>
+                                </Tooltip>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>

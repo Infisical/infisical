@@ -20,6 +20,7 @@ export type TProjectRole = {
   createdAt: string;
   updatedAt: string;
   description?: string | null;
+  isBuiltIn?: boolean;
   permissions: TProjectPermission[];
 };
 
@@ -31,6 +32,7 @@ export type TOrgRole = {
   createdAt: string;
   updatedAt: string;
   description?: string;
+  isBuiltIn?: boolean;
   permissions: TPermission[];
 };
 

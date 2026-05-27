@@ -169,9 +169,8 @@ export const OrgRoleTable = () => {
             case RolesOrderBy.Slug:
               return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
             case RolesOrderBy.Type: {
-              const roleOneValue = isCustomOrgRole(roleOne.slug) ? -1 : 1;
-              const roleTwoValue = isCustomOrgRole(roleTwo.slug) ? -1 : 1;
-
+              const roleOneValue = roleOne.slug === "admin" || roleOne.isBuiltIn ? 1 : -1;
+              const roleTwoValue = roleTwo.slug === "admin" || roleTwo.isBuiltIn ? 1 : -1;
               return roleTwoValue - roleOneValue;
             }
             case RolesOrderBy.Name:
@@ -341,7 +340,7 @@ export const OrgRoleTable = () => {
                             <Skeleton className="h-4 w-full" />
                           </TableCell>
                           <TableCell>
-                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-16" />
                           </TableCell>
                           <TableCell>
                             <Skeleton className="h-4 w-4" />
@@ -349,10 +348,9 @@ export const OrgRoleTable = () => {
                         </TableRow>
                       ))}
                     {filteredRolesPage.map((role) => {
-                      const { id, name, slug } = role;
-                      const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(
-                        slug
-                      );
+                      const { id, name, slug, isBuiltIn } = role;
+                      const isNonMutatable = slug === "admin";
+                      const isBuiltInRole = slug === "admin" || isBuiltIn;
                       const isDefaultOrgRole = isCustomOrgRole(slug)
                         ? id === currentOrg?.defaultMembershipRole
                         : slug === currentOrg?.defaultMembershipRole;
@@ -389,15 +387,15 @@ export const OrgRoleTable = () => {
                           <TableCell isTruncatable>{slug}</TableCell>
                           <TableCell>
                             <Badge variant="ghost">
-                              {isCustomOrgRole(slug) ? (
-                                <>
-                                  <WrenchIcon />
-                                  Custom
-                                </>
-                              ) : (
+                              {isBuiltInRole ? (
                                 <>
                                   <ServerIcon />
                                   Platform
+                                </>
+                              ) : (
+                                <>
+                                  <WrenchIcon />
+                                  Custom
                                 </>
                               )}
                             </Badge>
@@ -499,7 +497,9 @@ export const OrgRoleTable = () => {
                                                 e.stopPropagation();
                                                 handlePopUpOpen("deleteRole", role);
                                               }}
-                                              isDisabled={!isAllowed || isDefaultOrgRole}
+                                              isDisabled={
+                                                !isAllowed || isDefaultOrgRole || isBuiltInRole
+                                              }
                                             >
                                               <TrashIcon />
                                               Delete Role
@@ -508,11 +508,17 @@ export const OrgRoleTable = () => {
                                         </OrgPermissionCan>
                                       </div>
                                     </TooltipTrigger>
-                                    {isDefaultOrgRole && (
+                                    {isBuiltInRole ? (
                                       <TooltipContent side="left">
-                                        Cannot delete default organization membership role.
-                                        Re-assign default to allow deletion.
+                                        Platform roles cannot be deleted.
                                       </TooltipContent>
+                                    ) : (
+                                      isDefaultOrgRole && (
+                                        <TooltipContent side="left">
+                                          Cannot delete default organization membership role.
+                                          Re-assign default to allow deletion.
+                                        </TooltipContent>
+                                      )
                                     )}
                                   </Tooltip>
                                 )}

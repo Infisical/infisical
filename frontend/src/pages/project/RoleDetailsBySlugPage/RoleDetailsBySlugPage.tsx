@@ -23,7 +23,6 @@ import {
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RolePermissionsSection } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
@@ -79,9 +78,7 @@ const Page = () => {
     });
   };
 
-  const isCustomRole = !Object.values(ProjectMembershipRole).includes(
-    (data?.slug ?? "") as ProjectMembershipRole
-  );
+  const isCustomRole = (data?.slug ?? roleSlug) !== "admin";
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">

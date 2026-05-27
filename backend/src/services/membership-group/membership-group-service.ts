@@ -13,7 +13,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
@@ -40,9 +39,9 @@ type TMembershipGroupServiceFactoryDep = {
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -57,8 +56,8 @@ export const membershipGroupServiceFactory = ({
   membershipRoleDAL,
   orgDAL,
   permissionService,
-  groupDAL,
-  licenseService
+  licenseService,
+  groupDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -102,9 +101,21 @@ export const membershipGroupServiceFactory = ({
 
     const { group } = await factory.onCreateMembershipGroupGuard(dto);
 
-    const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
-    const hasCustomRole = customInputRoles.length > 0;
-    if (hasCustomRole) {
+    const scopeField = factory.getScopeField(dto.scopeData);
+    const roleSlugsToResolve = data.roles.filter((el) => el.role !== "admin").map(({ role }) => role);
+    const resolvedRoles = roleSlugsToResolve.length
+      ? await roleDAL.find({
+          [scopeField.key]: scopeField.value,
+          $in: { slug: roleSlugsToResolve }
+        })
+      : [];
+    if (resolvedRoles.length !== roleSlugsToResolve.length) {
+      throw new NotFoundError({ message: "One or more roles not found" });
+    }
+
+    // Only user-created (non-built-in) roles require the enterprise plan.
+    const hasUserCreatedRole = resolvedRoles.some((r) => !r.isBuiltIn);
+    if (hasUserCreatedRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
@@ -113,18 +124,7 @@ export const membershipGroupServiceFactory = ({
         });
     }
 
-    const scopeField = factory.getScopeField(dto.scopeData);
-    const customRoles = hasCustomRole
-      ? await roleDAL.find({
-          [scopeField.key]: scopeField.value,
-          $in: { slug: customInputRoles.map(({ role }) => role) }
-        })
-      : [];
-    if (customRoles.length !== customInputRoles.length) {
-      throw new NotFoundError({ message: "One or more custom roles not found" });
-    }
-
-    const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
+    const roleBySlug = new Map(resolvedRoles.map((r) => [r.slug, r]));
 
     const membership = await membershipGroupDAL.transaction(async (tx) => {
       const existingMembership = await membershipGroupDAL.findOne(
@@ -151,15 +151,13 @@ export const membershipGroupServiceFactory = ({
 
       const roleDocs: TMembershipRolesInsert[] = [];
       data.roles.forEach((membershipRole) => {
-        const isCustomRole = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
+        const customRoleId = roleBySlug.get(membershipRole.role)?.id ?? null;
         if (membershipRole.isTemporary) {
           const relativeTimeInMs = membershipRole.temporaryRange ? ms(membershipRole.temporaryRange) : null;
           roleDocs.push({
             membershipId: doc.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-            customRoleId: customRolesGroupBySlug[membershipRole.role]
-              ? customRolesGroupBySlug[membershipRole.role][0].id
-              : null,
+            role: customRoleId != null ? ProjectMembershipRole.Custom : membershipRole.role,
+            customRoleId,
             isTemporary: true,
             temporaryMode: TemporaryPermissionMode.Relative,
             temporaryRange: membershipRole.temporaryRange,
@@ -171,10 +169,8 @@ export const membershipGroupServiceFactory = ({
         } else {
           roleDocs.push({
             membershipId: doc.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-            customRoleId: customRolesGroupBySlug[membershipRole.role]
-              ? customRolesGroupBySlug[membershipRole.role][0].id
-              : null
+            role: customRoleId != null ? ProjectMembershipRole.Custom : membershipRole.role,
+            customRoleId
           });
         }
       });
@@ -190,17 +186,6 @@ export const membershipGroupServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     const { group } = await factory.onUpdateMembershipGroupGuard(dto);
-
-    const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
-    const hasCustomRole = customInputRoles.length > 0;
-    if (hasCustomRole) {
-      const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
-        throw new BadRequestError({
-          message:
-            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
-        });
-    }
 
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
@@ -234,17 +219,29 @@ export const membershipGroupServiceFactory = ({
       });
 
     const scopeField = factory.getScopeField(dto.scopeData);
-    const customRoles = hasCustomRole
+    const roleSlugsToResolve = data.roles.filter((el) => el.role !== "admin").map(({ role }) => role);
+    const resolvedRoles = roleSlugsToResolve.length
       ? await roleDAL.find({
           [scopeField.key]: scopeField.value,
-          $in: { slug: customInputRoles.map(({ role }) => role) }
+          $in: { slug: roleSlugsToResolve }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) {
-      throw new NotFoundError({ message: "One or more custom roles not found" });
+    if (resolvedRoles.length !== roleSlugsToResolve.length) {
+      throw new NotFoundError({ message: "One or more roles not found" });
     }
 
-    const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
+    // Only user-created (non-built-in) roles require the enterprise plan.
+    const hasUserCreatedRole = resolvedRoles.some((r) => !r.isBuiltIn);
+    if (hasUserCreatedRole) {
+      const plan = await licenseService.getPlan(scopeData.orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+    }
+
+    const roleBySlug = new Map(resolvedRoles.map((r) => [r.slug, r]));
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
       const doc =
@@ -260,15 +257,13 @@ export const membershipGroupServiceFactory = ({
 
       const roleDocs: TMembershipRolesInsert[] = [];
       data.roles.forEach((membershipRole) => {
-        const isCustomRole = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
+        const customRoleId = roleBySlug.get(membershipRole.role)?.id ?? null;
         if (membershipRole.isTemporary) {
           const relativeTimeInMs = membershipRole.temporaryRange ? ms(membershipRole.temporaryRange) : null;
           roleDocs.push({
             membershipId: doc.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-            customRoleId: customRolesGroupBySlug[membershipRole.role]
-              ? customRolesGroupBySlug[membershipRole.role][0].id
-              : null,
+            role: customRoleId != null ? ProjectMembershipRole.Custom : membershipRole.role,
+            customRoleId,
             isTemporary: true,
             temporaryMode: TemporaryPermissionMode.Relative,
             temporaryRange: membershipRole.temporaryRange,
@@ -280,10 +275,8 @@ export const membershipGroupServiceFactory = ({
         } else {
           roleDocs.push({
             membershipId: doc.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-            customRoleId: customRolesGroupBySlug[membershipRole.role]
-              ? customRolesGroupBySlug[membershipRole.role][0].id
-              : null
+            role: customRoleId != null ? ProjectMembershipRole.Custom : membershipRole.role,
+            customRoleId
           });
         }
       });

@@ -15,6 +15,7 @@ export const RolesSchema = z.object({
   permissions: z.unknown(),
   orgId: z.string().uuid().nullable().optional(),
   projectId: z.string().nullable().optional(),
+  isBuiltIn: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -1,5 +1,5 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
+import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -16,6 +16,13 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  cryptographicOperatorPermissions,
+  projectMemberPermissions,
+  projectNoAccessPermissions,
+  projectViewerPermission,
+  sshHostBootstrapPermissions
+} from "@app/ee/services/permission/default-roles";
 import {
   OrgPermissionActions,
   OrgPermissionProjectActions,
@@ -85,7 +92,6 @@ import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
@@ -194,7 +200,7 @@ type TProjectServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete" | "update">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -672,6 +678,58 @@ export const projectServiceFactory = ({
         );
       }
 
+      const templateSlugs = new Set((projectTemplate?.packedRoles ?? []).map((r) => r.slug));
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore — packRules type mismatch between CASL overloads
+      const builtInRolesToSeed = [
+        {
+          slug: ProjectMembershipRole.Member,
+          name: "Member",
+          description: "Limited read/write role in a project",
+          permissions: JSON.stringify(packRules(projectMemberPermissions))
+        },
+        {
+          slug: ProjectMembershipRole.Viewer,
+          name: "Viewer",
+          description: "Only read role in a project",
+          permissions: JSON.stringify(packRules(projectViewerPermission))
+        },
+        {
+          slug: ProjectMembershipRole.NoAccess,
+          name: "No Access",
+          description: "No access to any resources in the project",
+          permissions: JSON.stringify(packRules(projectNoAccessPermissions))
+        },
+        ...(project.type === ProjectType.SSH
+          ? [
+              {
+                slug: ProjectMembershipRole.SshHostBootstrapper,
+                name: "SSH Host Bootstrapper",
+                description: "Create and issue SSH Hosts in a project",
+                permissions: JSON.stringify(packRules(sshHostBootstrapPermissions))
+              }
+            ]
+          : []),
+        ...(project.type === ProjectType.KMS
+          ? [
+              {
+                slug: ProjectMembershipRole.KmsCryptographicOperator,
+                name: "Cryptographic Operator",
+                description: "Perform cryptographic operations, such as encryption and signing, in a project",
+                permissions: JSON.stringify(packRules(cryptographicOperatorPermissions))
+              }
+            ]
+          : [])
+      ].filter((r) => !templateSlugs.has(r.slug));
+
+      if (builtInRolesToSeed.length > 0) {
+        await roleDAL.insertMany(
+          builtInRolesToSeed.map((r) => ({ ...r, projectId: project.id, isBuiltIn: true })),
+          tx
+        );
+      }
+
       // If the project is being created by a user, add the user to the project as an admin
       // Skip this if the creator was already added via template with their configured roles
       if (actor === ActorType.USER && !creatorAddedViaTemplate) {
@@ -874,10 +932,7 @@ export const projectServiceFactory = ({
         workspaces.map(async (workspace) => {
           return {
             ...workspace,
-            roles: [
-              ...(workspaceMappedToRoles[workspace.id] || []),
-              ...getPredefinedRoles({ projectId: workspace.id, projectType: workspace.type as ProjectType })
-            ]
+            roles: workspaceMappedToRoles[workspace.id] || []
           };
         })
       );

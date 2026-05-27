@@ -19,12 +19,7 @@ import {
   applicationAuditorPermissions,
   applicationOperatorPermissions,
   applicationProjectAdminFallbackPermissions,
-  cryptographicOperatorPermissions,
-  projectAdminPermissions,
-  projectMemberPermissions,
-  projectNoAccessPermissions,
-  projectViewerPermission,
-  sshHostBootstrapPermissions
+  projectAdminPermissions
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -45,8 +40,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   orgAdminPermissions,
-  orgMemberPermissions,
-  orgNoAccessPermissions,
   OrgPermissionSet,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
@@ -70,20 +63,18 @@ import {
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles
     .map(({ role, permissions }) => {
-      switch (role) {
-        case OrgMembershipRole.Admin:
-          return orgAdminPermissions;
-        case OrgMembershipRole.Member:
-          return orgMemberPermissions;
-        case OrgMembershipRole.NoAccess:
-          return orgNoAccessPermissions;
-        case OrgMembershipRole.Custom:
-          return unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
-            permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
-          );
-        default:
-          throw new NotFoundError({ name: "OrgRoleInvalid", message: `Organization role '${role}' not found` });
+      if (role === OrgMembershipRole.Admin) {
+        return orgAdminPermissions;
       }
+      if (permissions) {
+        return unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
+          permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
+        );
+      }
+      throw new NotFoundError({
+        name: "OrgRoleInvalid",
+        message: `Organization role '${role}' permissions not found.`
+      });
     })
     .reduce((prev, curr) => prev.concat(curr), [])
     .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
@@ -95,30 +86,18 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   const rules = expandLegacyForbidActions(
     projectUserRoles
       .map(({ role, permissions }) => {
-        switch (role) {
-          case ProjectMembershipRole.Admin:
-            return projectAdminPermissions;
-          case ProjectMembershipRole.Member:
-            return projectMemberPermissions;
-          case ProjectMembershipRole.Viewer:
-            return projectViewerPermission;
-          case ProjectMembershipRole.NoAccess:
-            return projectNoAccessPermissions;
-          case ProjectMembershipRole.SshHostBootstrapper:
-            return sshHostBootstrapPermissions;
-          case ProjectMembershipRole.KmsCryptographicOperator:
-            return cryptographicOperatorPermissions;
-          case ProjectMembershipRole.Custom: {
-            return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
-              permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-            );
-          }
-          default:
-            throw new NotFoundError({
-              name: "ProjectRoleInvalid",
-              message: `Project role '${role}' not found`
-            });
+        if (role === ProjectMembershipRole.Admin) {
+          return projectAdminPermissions;
         }
+        if (permissions) {
+          return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
+            permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
+          );
+        }
+        throw new NotFoundError({
+          name: "ProjectRoleInvalid",
+          message: `Project role '${role}' permissions not found.`
+        });
       })
       .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[])
   ).sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));

@@ -500,7 +500,7 @@ export const ldapConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           const membership = await orgDAL.createMembership(
             {
@@ -570,7 +570,7 @@ export const ldapConfigServiceFactory = ({
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.LDAP);
 
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(
             {
               actorUserId: newUser.id,

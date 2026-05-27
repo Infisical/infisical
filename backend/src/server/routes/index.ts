@@ -800,15 +800,14 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     roleDAL,
     permissionService,
+    licenseService,
     orgDAL,
-    groupDAL,
-    licenseService
+    groupDAL
   });
 
   const roleService = roleServiceFactory({
     permissionService,
     roleDAL,
-    projectDAL,
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
@@ -996,7 +995,8 @@ export const registerRoutes = async (
     membershipUserDAL,
     additionalPrivilegeDAL,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    roleDAL
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1078,7 +1078,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     loginService,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    roleDAL
   });
 
   const ldapService = ldapConfigServiceFactory({

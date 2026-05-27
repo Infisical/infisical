@@ -1,45 +1,23 @@
 import { ForbiddenError } from "@casl/ability";
-import { v4 as uuidv4 } from "uuid";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import {
-  cryptographicOperatorPermissions,
-  projectAdminPermissions,
-  projectMemberPermissions,
-  projectNoAccessPermissions,
-  projectViewerPermission,
-  sshHostBootstrapPermissions
-} from "@app/ee/services/permission/default-roles";
+import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  isCustomProjectRole,
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TRoleScopeFactory } from "../role-types";
+import { TPredefinedRole, TRoleScopeFactory } from "../role-types";
 
 type TProjectRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
-export const newProjectRoleFactory = ({
-  permissionService,
-  projectDAL
-}: TProjectRoleScopeFactoryDep): TRoleScopeFactory => {
+export const newProjectRoleFactory = ({ permissionService }: TProjectRoleScopeFactoryDep): TRoleScopeFactory => {
   const getScopeField: TRoleScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
       return { key: "projectId" as const, value: dto.projectId };
     }
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
   };
-
-  const isCustomRole: TRoleScopeFactory["isCustomRole"] = (role: string) => isCustomProjectRole(role);
 
   const onCreateRoleGuard: TRoleScopeFactory["onCreateRoleGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
@@ -119,78 +97,23 @@ export const newProjectRoleFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   };
 
-  const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = async (scopeData) => {
+  const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = (scopeData): TPredefinedRole[] => {
     const scope = getScopeField(scopeData);
-    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
-      projectDAL.findById(scope.value)
-    );
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
-
     return [
       {
-        id: uuidv4(),
-        name: "Admin",
+        // Stable sentinel UUID — admin has no DB row so we use a fixed well-known UUID
+        id: "cc640a06-4b61-4098-9959-4bce8edde79d",
         slug: ProjectMembershipRole.Admin,
-        permissions: projectAdminPermissions,
-        description: "Full administrative access over a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId
-      },
-      {
-        id: uuidv4(),
-        name: "Member",
-        slug: ProjectMembershipRole.Member,
-        permissions: projectMemberPermissions,
-        description: "Limited read/write role in a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId
-      },
-      {
-        id: uuidv4(),
-        name: "SSH Host Bootstrapper",
-        slug: ProjectMembershipRole.SshHostBootstrapper,
-        permissions: sshHostBootstrapPermissions,
-        description: "Create and issue SSH Hosts in a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId,
-        type: ProjectType.SSH
-      },
-      {
-        id: uuidv4(),
-        name: "Cryptographic Operator",
-        slug: ProjectMembershipRole.KmsCryptographicOperator,
-        permissions: cryptographicOperatorPermissions,
-        description: "Perform cryptographic operations, such as encryption and signing, in a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId,
-        type: ProjectType.KMS
-      },
-      {
-        id: uuidv4(),
-        name: "Viewer",
-        slug: ProjectMembershipRole.Viewer,
-        permissions: projectViewerPermission,
-        description: "Only read role in a project",
-        createdAt: new Date(),
-        projectId,
-        updatedAt: new Date()
-      },
-      {
-        id: uuidv4(),
-        name: "No Access",
-        slug: ProjectMembershipRole.NoAccess,
-        permissions: projectNoAccessPermissions,
-        description: "No access to any resources in the project",
-        createdAt: new Date(),
-        projectId,
-        updatedAt: new Date()
+        name: "Admin",
+        description: "Complete administration access over the project",
+        isBuiltIn: true,
+        permissions: [],
+        orgId: null,
+        projectId: scope.value,
+        createdAt: new Date(0),
+        updatedAt: new Date(0)
       }
-    ].filter(({ type }) => (type ? type === project.type : true));
+    ];
   };
 
   return {
@@ -201,7 +124,6 @@ export const newProjectRoleFactory = ({
     onGetRoleByIdGuard,
     onGetRoleBySlugGuard,
     getScopeField,
-    getPredefinedRoles,
-    isCustomRole
+    getPredefinedRoles
   };
 };

@@ -1,19 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
-import {
-  orgAdminPermissions,
-  orgMemberPermissions,
-  orgNoAccessPermissions,
-  OrgPermissionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { AccessScope, OrgMembershipRole, OrganizationActionScope } from "@app/db/schemas";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
-import { TRoleScopeFactory } from "../role-types";
+import { TPredefinedRole, TRoleScopeFactory } from "../role-types";
 
 type TOrgRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -30,8 +23,6 @@ export const newOrgRoleFactory = ({
     }
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
   };
-
-  const isCustomRole: TRoleScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
   const onCreateRoleGuard: TRoleScopeFactory["onCreateRoleGuard"] = async (dto) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -116,38 +107,21 @@ export const newOrgRoleFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   };
 
-  const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = async (scopeData) => {
-    const scopeField = getScopeField(scopeData);
+  const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = (scopeData): TPredefinedRole[] => {
+    const scope = getScopeField(scopeData);
     return [
       {
-        id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid
+        // Stable sentinel UUID — admin has no DB row so we use a fixed well-known UUID
+        id: "b11b49a9-09a9-4443-916a-4246f9ff2c69",
+        slug: OrgMembershipRole.Admin,
         name: "Admin",
-        slug: "admin",
-        orgId: scopeField.value,
         description: "Complete administration access over the organization",
-        permissions: orgAdminPermissions,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: "b11b49a9-09a9-4443-916a-4246f9ff2c70", // dummy user for zod validation in response
-        name: "Member",
-        slug: "member",
-        orgId: scopeField.value,
-        description: "Non-administrative role in an organization",
-        permissions: orgMemberPermissions,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: "b10d49a9-09a9-4443-916a-4246f9ff2c72", // dummy user for zod validation in response
-        name: "No Access",
-        slug: "no-access",
-        orgId: scopeField.value,
-        description: "No access to any resources in the organization",
-        permissions: orgNoAccessPermissions,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        isBuiltIn: true,
+        permissions: [],
+        orgId: scope.value,
+        projectId: null,
+        createdAt: new Date(0),
+        updatedAt: new Date(0)
       }
     ];
   };
@@ -160,7 +134,6 @@ export const newOrgRoleFactory = ({
     onGetRoleByIdGuard,
     onGetRoleBySlugGuard,
     getScopeField,
-    getPredefinedRoles,
-    isCustomRole
+    getPredefinedRoles
   };
 };

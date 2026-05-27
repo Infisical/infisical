@@ -33,6 +33,7 @@ import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -76,6 +77,7 @@ type TSamlConfigServiceFactoryDep = {
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -112,6 +114,7 @@ export const samlConfigServiceFactory = ({
   identityMetadataDAL,
   kmsService,
   membershipRoleDAL,
+  roleDAL,
   membershipGroupDAL,
   loginService,
   emailDomainDAL,
@@ -200,11 +203,14 @@ export const samlConfigServiceFactory = ({
             },
             transaction
           );
+          const noAccessRole = await roleDAL.findOne({ slug: OrgMembershipRole.NoAccess, orgId }, transaction);
+          if (!noAccessRole)
+            throw new NotFoundError({ message: `'no-access' role not found for organization ${orgId}` });
           await membershipRoleDAL.create(
             {
               membershipId: orgMembership.id,
               role: OrgMembershipRole.NoAccess,
-              customRoleId: null
+              customRoleId: noAccessRole.id
             },
             transaction
           );
@@ -571,7 +577,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           const membership = await orgDAL.createMembership(
             {
@@ -671,7 +677,7 @@ export const samlConfigServiceFactory = ({
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.SAML);
 
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           const membership = await orgDAL.createMembership(
             {
