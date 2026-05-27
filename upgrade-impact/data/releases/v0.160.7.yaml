@@ -1,0 +1,48 @@
+version: v0.160.7
+releasedAt: 2026-05-26T20:55:28-03:00
+sourceTag: v0.160.7
+previousTag: v0.160.6
+impactLevel: low
+summary: Adds one startup-run database migration. Existing AWS app connections
+  keep legacy behavior; only recreated project-scoped AWS Assume Role
+  connections use project ID as External ID.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Certificate request pending message
+    description: Adds a nullable pendingMessage column to certificate_requests for
+      pending issuance status details.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260429021227_add-pending-message-to-certificate-requests.ts
+        path: backend/src/db/migrations/20260429021227_add-pending-message-to-certificate-requests.ts
+        description: Adds nullable pendingMessage column
+configChanges: []
+deploymentNotes: []
+knownIssues:
+  - title: AWS Assume Role external ID
+    description: Project-scoped AWS connections created before v0.160.7 keep using
+      organization ID as External ID. Recreated project-scoped connections
+      switch to project ID.
+    action: If you recreate a project-scoped AWS connection, update the IAM role
+      trust policy to require the project ID External ID.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/services/app-connection/aws/aws-connection-fns.ts
+        path: backend/src/services/app-connection/aws/aws-connection-fns.ts
+        description: v1 uses orgId; v2 uses projectId
+      - type: file
+        ref: docs/integrations/app-connections/aws.mdx
+        path: docs/integrations/app-connections/aws.mdx
+        description: Docs note recreate to adopt project ID
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-27T00:38:28.991Z
+  sourceRange:
+    from: v0.160.6
+    to: v0.160.7
