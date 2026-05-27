@@ -43,7 +43,7 @@ const getImageVersionTag = (): string => {
   if (!version) {
     return "development";
   }
-  return `v${version}`;
+  return version.startsWith("v") ? version : `v${version}`;
 };
 
 const getMigrationDateRange = (migrationNames: string[]): { earliest: string; latest: string } | null => {
