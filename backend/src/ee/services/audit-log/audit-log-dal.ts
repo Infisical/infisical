@@ -276,7 +276,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       await db.transaction(async (tx) => {
         for (const chunk of chunkArray(records, AUDIT_LOG_INSERT_CHUNK_SIZE)) {
           // eslint-disable-next-line no-await-in-loop
-          await tx(TableName.AuditLog).insert(chunk).onConflict(["id", "createdAt"]).ignore();
+          await tx(TableName.AuditLog).insert(chunk).onConflict().ignore();
         }
       });
     } catch (error) {
