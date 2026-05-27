@@ -42,11 +42,18 @@ const applyIdentityScopeFilter = (
       .whereNull(`${TableName.Identity}.projectId`);
   };
 
+  // Mirror of the org-scope branch: only project-owned identities (Identity.projectId IS NOT
+  // NULL) belong to the project listing. An org-owned identity (Identity.projectId IS NULL)
+  // that has merely been *assigned* to a project carries a Project Membership row too, but it
+  // is owned/managed by the org and surfaces under the org scope instead. Excluding it here
+  // keeps "Managed by" as ownership and prevents the same identity appearing twice in the
+  // combined org+project view.
   const projectScopeBranch = (sub: Knex.QueryBuilder) => {
     void sub
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .where(`${TableName.Membership}.scopeOrgId`, orgId)
-      .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds);
+      .whereIn(`${TableName.Membership}.scopeProjectId`, accessibleProjectIds)
+      .whereNotNull(`${TableName.Identity}.projectId`);
   };
 
   if (includeOrgScope && includeProjectScope) {
