@@ -11,14 +11,6 @@ import {
   DetailValue
 } from "@app/components/v3";
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
-import {
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm,
-  getKeyAlgorithmDisplayName,
-  getSignatureAlgorithmDisplayName,
-  mapPolicyKeyAlgorithmToApi,
-  mapPolicySignatureAlgorithmToApi
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 type Props = {
   policy: TCertificatePolicy;
@@ -46,9 +38,7 @@ export const PolicyAlgorithmsSection = ({ policy }: Props) => {
               <DetailValue className="flex flex-wrap gap-1">
                 {signatures.map((sig) => (
                   <Badge key={sig} variant="neutral">
-                    {getSignatureAlgorithmDisplayName(
-                      mapPolicySignatureAlgorithmToApi(sig) as CertSignatureAlgorithm
-                    )}
+                    {sig}
                   </Badge>
                 ))}
               </DetailValue>
@@ -61,9 +51,7 @@ export const PolicyAlgorithmsSection = ({ policy }: Props) => {
               <DetailValue className="flex flex-wrap gap-1">
                 {keys.map((key) => (
                   <Badge key={key} variant="neutral">
-                    {getKeyAlgorithmDisplayName(
-                      mapPolicyKeyAlgorithmToApi(key) as CertKeyAlgorithm
-                    )}
+                    {key}
                   </Badge>
                 ))}
               </DetailValue>
