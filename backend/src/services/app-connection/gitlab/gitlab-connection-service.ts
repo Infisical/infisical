@@ -4,13 +4,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
-import {
-  listGitLabGroupProjects,
-  listGitLabGroups,
-  listGitLabProjects,
-  listGitLabRootGroups,
-  listGitLabSubgroups
-} from "./gitlab-connection-fns";
+import { listGitLabGroups, listGitLabProjects } from "./gitlab-connection-fns";
 import { TGitLabConnection } from "./gitlab-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -46,46 +40,8 @@ export const gitlabConnectionService = (
     }
   };
 
-  const listRootGroups = async (connectionId: string, actor: OrgServiceActor) => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      return await listGitLabRootGroups({ appConnection, appConnectionDAL, kmsService });
-    } catch (error) {
-      logger.error(error, `Failed to list root groups for GitLab connection ${connectionId}`);
-      return [];
-    }
-  };
-
-  const listSubgroups = async (connectionId: string, groupId: string, actor: OrgServiceActor) => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const subgroups = await listGitLabSubgroups(groupId, {
-        appConnection,
-        appConnectionDAL,
-        kmsService
-      });
-      return subgroups;
-    } catch (error) {
-      logger.error(error, `Failed to list subgroups for GitLab group ${groupId}`);
-      return [];
-    }
-  };
-
-  const listGroupProjects = async (connectionId: string, groupId: string, actor: OrgServiceActor) => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      return await listGitLabGroupProjects(groupId, { appConnection, appConnectionDAL, kmsService });
-    } catch (error) {
-      logger.error(error, `Failed to list projects for GitLab group ${groupId}`);
-      return [];
-    }
-  };
-
   return {
     listProjects,
-    listGroups,
-    listRootGroups,
-    listSubgroups,
-    listGroupProjects
+    listGroups
   };
 };

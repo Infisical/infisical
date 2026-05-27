@@ -15,13 +15,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
-import {
-  TGitLabConnection,
-  TGitLabConnectionConfig,
-  TGitLabGroup,
-  TGitLabGroupTreeItem,
-  TGitLabProject
-} from "./gitlab-connection-types";
+import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
+
+// Cap provider list calls to the first page; users narrow further via server-side search.
+const SEARCH_ITEMS_LIMIT = 20;
 
 interface GitLabOAuthTokenResponse {
   access_token: string;
@@ -356,6 +353,9 @@ export const listGitLabProjects = async ({
       appConnection.method === GitLabConnectionMethod.OAuth
     );
     const projects = await client.Projects.all({
+      pagination: "offset",
+      perPage: SEARCH_ITEMS_LIMIT,
+      maxPages: 1,
       ...(search ? { search } : {}),
       archived: false,
       includePendingDelete: false,
@@ -401,6 +401,9 @@ export const listGitLabGroups = async ({
 
   try {
     const groups = await client.Groups.all({
+      pagination: "offset",
+      perPage: SEARCH_ITEMS_LIMIT,
+      maxPages: 1,
       orderBy: "name",
       sort: "asc",
       minAccessLevel: 50,
@@ -427,80 +430,5 @@ export const listGitLabGroups = async ({
     throw new InternalServerError({
       message: "Unable to fetch GitLab groups"
     });
-  }
-};
-
-export const listGitLabRootGroups = async (params: TNavigationParams): Promise<TGitLabGroupTreeItem[]> => {
-  const client = await getNavigationClient(params);
-  if (!client) return [];
-
-  try {
-    const groups = await client.Groups.all({
-      topLevelOnly: true,
-      orderBy: "name",
-      sort: "asc",
-      minAccessLevel: 20
-    });
-
-    return groups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
-  } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to fetch GitLab groups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-    if (error instanceof InternalServerError) throw error;
-    throw new InternalServerError({ message: "Unable to fetch GitLab root groups" });
-  }
-};
-
-export const listGitLabSubgroups = async (
-  groupId: string,
-  params: TNavigationParams
-): Promise<TGitLabGroupTreeItem[]> => {
-  const client = await getNavigationClient(params);
-  if (!client) return [];
-
-  try {
-    const subgroups = await client.Groups.allSubgroups(Number(groupId), {
-      orderBy: "name",
-      sort: "asc",
-      minAccessLevel: 20
-    });
-
-    return subgroups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
-  } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to fetch GitLab subgroups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-    if (error instanceof InternalServerError) throw error;
-    throw new InternalServerError({ message: "Unable to fetch GitLab subgroups" });
-  }
-};
-
-export const listGitLabGroupProjects = async (
-  groupId: string,
-  params: TNavigationParams
-): Promise<TGitLabProject[]> => {
-  const client = await getNavigationClient(params);
-  if (!client) return [];
-
-  try {
-    const projects = await client.Groups.allProjects(Number(groupId), {
-      archived: false,
-      includeSubgroups: false
-    });
-
-    return projects.map((p) => ({ id: p.id.toString(), name: p.pathWithNamespace }));
-  } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to fetch GitLab group projects: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-    if (error instanceof InternalServerError) throw error;
-    throw new InternalServerError({ message: "Unable to fetch GitLab group projects" });
   }
 };

@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
@@ -23,39 +24,17 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { TGitLabGroup, useGitLabConnectionListGroups } from "@app/hooks/api/appConnections/gitlab";
+import { useDebounce } from "@app/hooks";
+import {
+  TGitLabGroup,
+  TGitLabProject,
+  useGitLabConnectionListGroups,
+  useGitLabConnectionListProjects
+} from "@app/hooks/api/appConnections/gitlab";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { TSecretSyncForm } from "../schemas";
-import { GitLabProjectPicker } from "./GitLabProjectPicker";
-
-const ProjectPickerField = ({
-  connectionId,
-  selectedProjectId,
-  isError
-}: {
-  connectionId: string;
-  selectedProjectId: string;
-  isError?: boolean;
-}) => {
-  const { setValue } = useFormContext<TSecretSyncForm & { destination: SecretSync.GitLab }>();
-
-  return (
-    <GitLabProjectPicker
-      connectionId={connectionId}
-      selectedProjectId={selectedProjectId}
-      isError={isError}
-      onChange={(project) => {
-        setValue("destinationConfig.projectId", project.id, {
-          shouldDirty: true,
-          shouldValidate: true
-        });
-        setValue("destinationConfig.projectName", project.name, { shouldDirty: true });
-      }}
-    />
-  );
-};
 
 const SecretProtectionOption = ({
   title,
@@ -94,17 +73,55 @@ export const GitLabSyncFields = () => {
     TSecretSyncForm & { destination: SecretSync.GitLab }
   >();
 
+  const [projectSearch, setProjectSearch] = useState("");
+  const [debouncedProjectSearch] = useDebounce(projectSearch, 300);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [debouncedGroupSearch] = useDebounce(groupSearch, 300);
+
   const connectionId = useWatch({ name: "connection.id", control });
   const scope = useWatch({ name: "destinationConfig.scope", control });
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
+  const projectId = useWatch({ name: "destinationConfig.projectId", control });
+  const projectName = useWatch({ name: "destinationConfig.projectName", control });
+  const groupId = useWatch({ name: "destinationConfig.groupId", control });
+  const groupName = useWatch({ name: "destinationConfig.groupName", control });
 
   const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(
     connectionId,
-    undefined,
+    debouncedGroupSearch || undefined,
     {
       enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
     }
   );
+
+  const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
+    connectionId,
+    debouncedProjectSearch || undefined,
+    {
+      enabled: Boolean(connectionId) && scope === GitLabSyncScope.Project
+    }
+  );
+
+  // The provider only returns the first page, so the currently-selected item may not be in the
+  // results. Surface it from the stored name so the selection always renders (e.g. when editing).
+  const groupOptions = useMemo(() => {
+    const results = groups ?? [];
+    if (groupId && groupName && !results.some((group) => group.id === groupId)) {
+      return [
+        { id: groupId, name: groupName, fullName: groupName, fullPath: groupName },
+        ...results
+      ];
+    }
+    return results;
+  }, [groups, groupId, groupName]);
+
+  const projectOptions = useMemo(() => {
+    const results = projects ?? [];
+    if (projectId && projectName && !results.some((project) => project.id === projectId)) {
+      return [{ id: projectId, name: projectName }, ...results];
+    }
+    return results;
+  }, [projects, projectId, projectName]);
 
   return (
     <FieldGroup>
@@ -115,6 +132,8 @@ export const GitLabSyncFields = () => {
           setValue("destinationConfig.groupId", "");
           setValue("destinationConfig.groupName", "");
           setValue("destinationConfig.scope", GitLabSyncScope.Project);
+          setProjectSearch("");
+          setGroupSearch("");
         }}
       />
 
@@ -134,6 +153,8 @@ export const GitLabSyncFields = () => {
                   setValue("destinationConfig.projectName", "");
                   setValue("destinationConfig.groupId", "");
                   setValue("destinationConfig.groupName", "");
+                  setProjectSearch("");
+                  setGroupSearch("");
                 }}
               >
                 <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
@@ -166,7 +187,8 @@ export const GitLabSyncFields = () => {
                     <Info />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-md">
-                    Ensure the group exists in the connection&apos;s GitLab instance URL.
+                    Ensure the group exists in the connection&apos;s GitLab instance URL. Only the
+                    first results are shown — search by name to find more.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -174,18 +196,23 @@ export const GitLabSyncFields = () => {
                 <FilterableSelect
                   isLoading={isGroupsLoading && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={groups?.find((group) => group.id === value) ?? null}
+                  value={groupOptions.find((group) => group.id === value) ?? null}
                   onChange={(option) => {
-                    onChange((option as SingleValue<TGitLabGroup>)?.id ?? "");
-                    setValue(
-                      "destinationConfig.groupName",
-                      (option as SingleValue<TGitLabGroup>)?.fullName ?? ""
-                    );
+                    const selected = option as SingleValue<TGitLabGroup>;
+                    onChange(selected?.id ?? "");
+                    setValue("destinationConfig.groupName", selected?.fullName ?? "", {
+                      shouldDirty: true
+                    });
                   }}
-                  options={groups}
-                  placeholder="Select a group..."
+                  onInputChange={(newValue) => setGroupSearch(newValue)}
+                  filterOption={null}
+                  options={groupOptions}
+                  placeholder="Search for a group..."
                   getOptionLabel={(option) => option.fullName}
                   getOptionValue={(option) => option.id}
+                  noOptionsMessage={({ inputValue }) =>
+                    inputValue ? "No groups found matching your search." : "No groups found."
+                  }
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -198,7 +225,7 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.projectId"
           control={control}
-          render={({ field: { value }, fieldState: { error } }) => (
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
                 GitLab Project
@@ -208,15 +235,32 @@ export const GitLabSyncFields = () => {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-md">
                     Ensure the project exists in the connection&apos;s GitLab instance URL and the
-                    connection has access to it.
+                    connection has access to it. Only the first results are shown — search by name
+                    to find more.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <ProjectPickerField
-                  connectionId={connectionId}
-                  selectedProjectId={value}
-                  isError={Boolean(error)}
+                <FilterableSelect
+                  isLoading={isProjectsLoading && Boolean(connectionId)}
+                  isDisabled={!connectionId}
+                  value={projectOptions.find((project) => project.id === value) ?? null}
+                  onChange={(option) => {
+                    const selected = option as SingleValue<TGitLabProject>;
+                    onChange(selected?.id ?? "");
+                    setValue("destinationConfig.projectName", selected?.name ?? "", {
+                      shouldDirty: true
+                    });
+                  }}
+                  onInputChange={(newValue) => setProjectSearch(newValue)}
+                  filterOption={null}
+                  options={projectOptions}
+                  placeholder="Search for a project..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                  noOptionsMessage={({ inputValue }) =>
+                    inputValue ? "No projects found matching your search." : "No projects found."
+                  }
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

@@ -56,9 +56,3 @@ export interface TGitLabGroup {
   fullName: string;
   fullPath: string;
 }
-
-export type TGitLabGroupTreeItem = {
-  id: string;
-  name: string;
-  fullPath: string;
-};
