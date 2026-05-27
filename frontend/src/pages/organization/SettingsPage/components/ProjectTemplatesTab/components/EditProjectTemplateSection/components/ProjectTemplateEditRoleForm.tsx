@@ -12,10 +12,14 @@ import { isCustomProjectRole } from "@app/helpers/roles";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
-import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import {
+  GeneralPermissionPolicies,
+  TPermissionAction
+} from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 import {
   formRolePermission2API,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   rolePermission2Form
@@ -200,12 +204,13 @@ export const ProjectTemplateEditRoleForm = ({
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
                 <GeneralPermissionPolicies
                   subject={subject}
-                  actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                  actions={PROJECT_PERMISSION_OBJECT[subject].actions as TPermissionAction[]}
                   title={PROJECT_PERMISSION_OBJECT[subject].title}
                   description={PROJECT_PERMISSION_OBJECT[subject].description}
                   key={`project-permission-${subject}`}
                   isDisabled={isDisabled}
                   isOpen={openPolicies.includes(subject)}
+                  isConditional={isConditionalSubjects(subject)}
                 >
                   {renderConditionalComponents(subject, isDisabled)}
                 </GeneralPermissionPolicies>
