@@ -505,7 +505,10 @@ export const searchGitLabGroups = async (
   if (!client) return [];
 
   try {
-    const groups = await client.Groups.search(search);
+    const groups = await client.Groups.all({
+      search,
+      minAccessLevel: 20
+    });
 
     return groups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
   } catch (error: unknown) {
@@ -519,7 +522,7 @@ export const searchGitLabGroups = async (
   }
 };
 
-export const searchGitLabGroupAndProject = async (
+export const searchGitLabProjects = async (
   search: string,
   params: TNavigationParams
 ): Promise<TGitLabGroupTreeItem[]> => {
@@ -527,10 +530,6 @@ export const searchGitLabGroupAndProject = async (
   if (!client) return [];
 
   try {
-    const groups = await client.Groups.all({
-      search,
-      minAccessLevel: 20
-    });
     const projects = await client.Projects.all({
       search,
       archived: false,
@@ -539,17 +538,15 @@ export const searchGitLabGroupAndProject = async (
       includeHidden: false,
       imported: false
     });
-    return [
-      ...groups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath })),
-      ...projects.map((p) => ({ id: p.id.toString(), name: p.name, fullPath: p.pathWithNamespace }))
-    ];
+
+    return projects.map((p) => ({ id: p.id.toString(), name: p.name, fullPath: p.pathWithNamespace }));
   } catch (error: unknown) {
     if (error instanceof GitbeakerRequestError) {
       throw new BadRequestError({
-        message: `Failed to search GitLab group and project: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+        message: `Failed to search GitLab projects: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
       });
     }
     if (error instanceof InternalServerError) throw error;
-    throw new InternalServerError({ message: "Unable to search GitLab group and project" });
+    throw new InternalServerError({ message: "Unable to search GitLab projects" });
   }
 };

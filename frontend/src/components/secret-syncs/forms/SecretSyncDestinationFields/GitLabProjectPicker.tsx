@@ -21,7 +21,7 @@ import {
   useGitLabConnectionListRootGroups,
   useGitLabConnectionListSubgroups,
   useGitLabConnectionSearchGroups,
-  useGitLabConnectionSearchGroupsAndProjects
+  useGitLabConnectionSearchProjects
 } from "@app/hooks/api/appConnections/gitlab";
 import { useDebounce } from "@app/hooks/useDebounce";
 
@@ -219,11 +219,9 @@ export const GitLabProjectPicker = ({
     enabled: hasConnection
   });
 
-  const groupsAndProjectsSearchQuery = useGitLabConnectionSearchGroupsAndProjects(
-    connectionId,
-    debouncedSearch,
-    { enabled: hasConnection && tab === "groups" && isSearching }
-  );
+  const projectSearchQuery = useGitLabConnectionSearchProjects(connectionId, debouncedSearch, {
+    enabled: hasConnection && tab === "groups" && isSearching
+  });
 
   const groupNameSearchQuery = useGitLabConnectionSearchGroups(connectionId, debouncedSearch, {
     enabled: hasConnection && tab === "groups" && isSearching
@@ -251,9 +249,7 @@ export const GitLabProjectPicker = ({
     project.name.toLowerCase().includes(normalizedSearch)
   );
 
-  const searchedGroupIds = new Set((groupNameSearchQuery.data ?? []).map((group) => group.id));
-  const searchedProjects = (groupsAndProjectsSearchQuery.data ?? [])
-    .filter((item) => !searchedGroupIds.has(item.id))
+  const searchedProjects = (projectSearchQuery.data ?? [])
     .filter((project) => project.name.toLowerCase().includes(normalizedSearch))
     .map((project) => ({ id: project.id, name: project.name }))
     .slice(0, SEARCH_ITEMS_LIMIT);
@@ -317,7 +313,7 @@ export const GitLabProjectPicker = ({
         <div className={cn(TREE_PICKER_SCROLL_CLASS, "p-1")}>
           <SearchResultsList
             query={debouncedSearch}
-            isLoading={groupsAndProjectsSearchQuery.isLoading || groupNameSearchQuery.isLoading}
+            isLoading={projectSearchQuery.isLoading || groupNameSearchQuery.isLoading}
             groups={groupNameSearchQuery.data ?? []}
             projects={searchedProjects}
             selectedProjectId={selectedProjectId}

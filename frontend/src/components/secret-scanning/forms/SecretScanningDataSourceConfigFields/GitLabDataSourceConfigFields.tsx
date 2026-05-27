@@ -38,7 +38,6 @@ export const GitLabDataSourceConfigFields = () => {
 
   const { data: projects, isPending: isProjectsPending } = useGitLabConnectionListProjects(
     connectionId,
-    undefined,
     { enabled: Boolean(connectionId) }
   );
 

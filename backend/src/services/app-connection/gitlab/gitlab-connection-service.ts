@@ -10,8 +10,8 @@ import {
   listGitLabProjects,
   listGitLabRootGroups,
   listGitLabSubgroups,
-  searchGitLabGroupAndProject,
-  searchGitLabGroups
+  searchGitLabGroups,
+  searchGitLabProjects
 } from "./gitlab-connection-fns";
 import { TGitLabConnection } from "./gitlab-connection-types";
 
@@ -93,12 +93,12 @@ export const gitlabConnectionService = (
     }
   };
 
-  const searchGroupAndProject = async (connectionId: string, search: string, actor: OrgServiceActor) => {
+  const searchProjects = async (connectionId: string, search: string, actor: OrgServiceActor) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      return await searchGitLabGroupAndProject(search, { appConnection, appConnectionDAL, kmsService });
+      return await searchGitLabProjects(search, { appConnection, appConnectionDAL, kmsService });
     } catch (error) {
-      logger.error(error, `Failed to search group and project for GitLab connection ${connectionId}`);
+      logger.error(error, `Failed to search projects for GitLab connection ${connectionId}`);
       return [];
     }
   };
@@ -107,9 +107,9 @@ export const gitlabConnectionService = (
     listProjects,
     listGroups,
     listRootGroups,
-    searchGroups,
     listSubgroups,
     listGroupProjects,
-    searchGroupAndProject
+    searchGroups,
+    searchProjects
   };
 };

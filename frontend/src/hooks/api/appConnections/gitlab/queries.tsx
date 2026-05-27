@@ -15,8 +15,8 @@ const gitlabConnectionKeys = {
     [...gitlabConnectionKeys.all, "groups", "root", connectionId] as const,
   searchGroups: (connectionId: string, search: string) =>
     [...gitlabConnectionKeys.all, "search-groups", connectionId, search] as const,
-  searchGroupsAndProjects: (connectionId: string, search: string) =>
-    [...gitlabConnectionKeys.all, "search-groups-and-projects", connectionId, search] as const,
+  searchProjects: (connectionId: string, search: string) =>
+    [...gitlabConnectionKeys.all, "search-projects", connectionId, search] as const,
   listSubgroups: (connectionId: string, groupId: string) =>
     [...gitlabConnectionKeys.all, "subgroups", connectionId, groupId] as const,
   listGroupProjects: (connectionId: string, groupId: string) =>
@@ -124,7 +124,7 @@ export const useGitLabConnectionSearchGroups = (
   });
 };
 
-export const useGitLabConnectionSearchGroupsAndProjects = (
+export const useGitLabConnectionSearchProjects = (
   connectionId: string,
   search: string,
   options?: Omit<
@@ -132,16 +132,16 @@ export const useGitLabConnectionSearchGroupsAndProjects = (
       TGitLabGroupTreeItem[],
       unknown,
       TGitLabGroupTreeItem[],
-      ReturnType<typeof gitlabConnectionKeys.searchGroupsAndProjects>
+      ReturnType<typeof gitlabConnectionKeys.searchProjects>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: gitlabConnectionKeys.searchGroupsAndProjects(connectionId, search),
+    queryKey: gitlabConnectionKeys.searchProjects(connectionId, search),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitLabGroupTreeItem[]>(
-        `/api/v1/app-connections/gitlab/${connectionId}/search-groups-and-projects?search=${encodeURIComponent(search)}`
+        `/api/v1/app-connections/gitlab/${connectionId}/search-projects?search=${encodeURIComponent(search)}`
       );
 
       return data;
