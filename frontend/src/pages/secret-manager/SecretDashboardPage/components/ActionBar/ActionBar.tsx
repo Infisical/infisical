@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
@@ -62,7 +63,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
-  useOrgPermission,
   useProject,
   useProjectPermission,
   useSubscription
@@ -72,8 +72,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
-import { OrgMembershipRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { useCanUseProjectAppConnectionImport, usePopUp } from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretBatch,
@@ -81,16 +80,15 @@ import {
   useMoveSecrets,
   useUpdateSecretBatch
 } from "@app/hooks/api";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   dashboardKeys,
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { useGetExternalMigrationConfigs, useImportVaultSecrets } from "@app/hooks/api/migration";
-import {
-  ExternalMigrationImportStatus,
-  ExternalMigrationProviders
-} from "@app/hooks/api/migration/types";
+import { useImportVaultSecrets } from "@app/hooks/api/migration";
+import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -216,12 +214,23 @@ export const ActionBar = ({
   );
 
   const { permission } = useProjectPermission();
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
+  const vaultSecretSubject = useMemo(
+    () =>
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: "*",
+        secretTags: ["*"]
+      }),
+    [environment, secretPath]
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(vaultSecretSubject);
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
+  const hasVaultConnection = vaultAppConnections.length > 0;
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     if (isBatchMode) {
@@ -678,13 +687,18 @@ export const ActionBar = ({
     }
   };
 
-  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+  const handleVaultImport = async (
+    vaultPaths: string[],
+    namespace: string,
+    connectionId: string
+  ) => {
     const { status } = await importVaultSecrets({
       projectId,
       environment,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPaths: vaultPaths
+      vaultSecretPaths: vaultPaths,
+      connectionId
     });
 
     if (status === ExternalMigrationImportStatus.ApprovalRequired) {
@@ -1122,33 +1136,25 @@ export const ActionBar = ({
                     })}
                   >
                     {(isAllowed) => (
-                      <Tooltip
-                        content={
-                          !isOrgAdmin
-                            ? "Only organization admins can import secrets from HashiCorp Vault"
-                            : undefined
+                      <Button
+                        leftIcon={
+                          <img
+                            src="/images/integrations/Vault.png"
+                            alt="HashiCorp Vault"
+                            className="h-4 w-4"
+                          />
                         }
+                        onClick={() => {
+                          handlePopUpOpen("importFromVault");
+                          handlePopUpClose("misc");
+                        }}
+                        isDisabled={!isAllowed}
+                        variant="outline_bg"
+                        className="h-10 text-left"
+                        isFullWidth
                       >
-                        <Button
-                          leftIcon={
-                            <img
-                              src="/images/integrations/Vault.png"
-                              alt="HashiCorp Vault"
-                              className="h-4 w-4"
-                            />
-                          }
-                          onClick={() => {
-                            handlePopUpOpen("importFromVault");
-                            handlePopUpClose("misc");
-                          }}
-                          isDisabled={!isAllowed || !isOrgAdmin}
-                          variant="outline_bg"
-                          className="h-10 text-left"
-                          isFullWidth
-                        >
-                          Add from HashiCorp Vault
-                        </Button>
-                      </Tooltip>
+                        Add from HashiCorp Vault
+                      </Button>
                     )}
                   </ProjectPermissionCan>
                 )}
@@ -1384,6 +1390,7 @@ export const ActionBar = ({
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
         environment={environment}
         secretPath={secretPath}
+        appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
     </>

@@ -1,4 +1,4 @@
-import { cloneElement, Fragment, RefObject, useMemo } from "react";
+import { cloneElement, Fragment, RefObject, useEffect, useMemo } from "react";
 import {
   Control,
   Controller,
@@ -7,8 +7,7 @@ import {
   useFormState,
   useWatch
 } from "react-hook-form";
-import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
-import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -17,8 +16,8 @@ import {
   AccordionTrigger,
   Badge,
   Button,
-  FilterableSelect,
   IconButton,
+  PermissionActionSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -29,98 +28,54 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  OrgPermissionSubjects,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context";
 
-import {
-  isConditionalSubjects,
-  TFormSchema,
-  TProjectPermissionObject
-} from "./ProjectRoleModifySection.utils";
-
-type Props<T extends ProjectPermissionSub> = {
-  title: string;
-  description: string;
-  subject: T;
-  actions: TProjectPermissionObject[T]["actions"];
-  children?: JSX.Element;
-  isDisabled?: boolean;
-  isOpen?: boolean;
-  onShowAccessTree?: (subject: ProjectPermissionSub) => void;
-  menuPortalContainerRef?: RefObject<HTMLElement | null>;
-};
-
-type ActionOption = {
+export type TPermissionAction = {
+  value: string | number;
   label: string;
-  value: string;
   description?: string;
 };
 
-const OptionWithDescription = <T extends ActionOption>(props: OptionProps<T>) => {
-  const { data, children, isSelected } = props;
+type AnyPermissionSubject = ProjectPermissionSub | OrgPermissionSubjects;
 
-  return (
-    <components.Option {...props}>
-      <div className="flex flex-row items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="truncate">{children}</p>
-          {data.description && (
-            <p className="truncate text-xs leading-4 text-muted">{data.description}</p>
-          )}
-        </div>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-      </div>
-    </components.Option>
-  );
-};
-
-const MultiValueRemove = ({ selectProps, ...props }: MultiValueRemoveProps) => {
-  if (selectProps?.isDisabled) {
-    return null;
-  }
-  return <components.MultiValueRemove selectProps={selectProps} {...props} />;
-};
-
-const MultiValueWithTooltip = <T extends ActionOption>(props: MultiValueProps<T>) => {
-  const { data } = props;
-
-  if (!data.description) {
-    return <components.MultiValue {...props} />;
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div>
-          <components.MultiValue {...props} />
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>{data.description}</TooltipContent>
-    </Tooltip>
-  );
-};
-
-type ActionsMultiSelectProps<T extends ProjectPermissionSub> = {
+type Props<T extends AnyPermissionSubject> = {
+  title: string;
+  description: string;
   subject: T;
-  rootIndex: number;
-  actions: TProjectPermissionObject[T]["actions"];
+  actions: readonly TPermissionAction[];
+  isConditional?: boolean;
+  onRemoveLastRule?: () => void;
+  children?: JSX.Element;
   isDisabled?: boolean;
-  control: Control<TFormSchema>;
+  isOpen?: boolean;
+  onShowAccessTree?: (subject: string) => void;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
 };
 
-const ActionsMultiSelect = <T extends ProjectPermissionSub>({
+type ActionsMultiSelectProps = {
+  subject: string;
+  rootIndex: number;
+  actions: readonly TPermissionAction[];
+  isDisabled?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: Control<any>;
+  menuPortalContainerRef?: RefObject<HTMLElement | null>;
+};
+
+const ActionsMultiSelect = ({
   subject,
   rootIndex,
   actions,
   isDisabled,
   control,
   menuPortalContainerRef
-}: ActionsMultiSelectProps<T>) => {
-  const { setValue, trigger } = useFormContext<TFormSchema>();
+}: ActionsMultiSelectProps) => {
+  const { setValue, trigger } = useFormContext();
 
   const { errors } = useFormState({
     control,
@@ -134,16 +89,11 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
     defaultValue: {}
   });
 
-  const secretsRead = Boolean(permissionRule?.read);
-  const memberGrantPrivileges = Boolean(
-    permissionRule?.[ProjectPermissionMemberActions.GrantPrivileges]
-  );
-  const identityGrantPrivileges = Boolean(
-    permissionRule?.[ProjectPermissionIdentityActions.GrantPrivileges]
-  );
-  const groupsGrantPrivileges = Boolean(
-    permissionRule?.[ProjectPermissionGroupActions.GrantPrivileges]
-  );
+  const rule = permissionRule as Record<string, boolean> | undefined;
+  const secretsRead = Boolean(rule?.read);
+  const memberGrantPrivileges = Boolean(rule?.[ProjectPermissionMemberActions.GrantPrivileges]);
+  const identityGrantPrivileges = Boolean(rule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
+  const groupsGrantPrivileges = Boolean(rule?.[ProjectPermissionGroupActions.GrantPrivileges]);
 
   const legacyActionsState = useMemo(
     () => ({
@@ -201,8 +151,8 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
   );
 
   const selectedActions = useMemo(
-    () => actionOptions.filter((opt) => Boolean(permissionRule?.[opt.value])),
-    [actionOptions, permissionRule]
+    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value])),
+    [actionOptions, rule]
   );
 
   const handleChange = (newValue: unknown) => {
@@ -221,8 +171,7 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
 
   return (
     <div className="flex w-full flex-col">
-      <FilterableSelect
-        isMulti
+      <PermissionActionSelect
         value={selectedActions}
         onChange={handleChange}
         options={actionOptions}
@@ -234,11 +183,6 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
         {...(menuPortalContainerRef?.current
           ? { menuPortalTarget: menuPortalContainerRef.current }
           : {})}
-        components={{
-          Option: OptionWithDescription,
-          MultiValueRemove,
-          MultiValue: MultiValueWithTooltip
-        }}
         isError={actionsError}
       />
       {actionsError && (
@@ -248,28 +192,34 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
   );
 };
 
-export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchema["permissions"]>>({
+export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   subject,
   actions,
   children,
   title,
   description,
+  isConditional,
+  onRemoveLastRule,
   isDisabled,
   isOpen = false,
   onShowAccessTree,
   menuPortalContainerRef
 }: Props<T>) => {
-  const { control, watch } = useFormContext<TFormSchema>();
-  const { fields, remove, insert } = useFieldArray({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { control, watch, trigger } = useFormContext<any>();
+
+  useEffect(() => {
+    trigger("permissions");
+  }, []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { fields, remove, insert } = useFieldArray<any>({
     control,
     name: `permissions.${subject}`
   });
 
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
-  const watchFields = useWatch<TFormSchema>({
-    control,
-    name: `permissions.${subject}`
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const watchFields = useWatch({ control, name: `permissions.${subject}` as any }) as unknown[];
 
   if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
 
@@ -302,7 +252,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   Visualize Access
                 </Button>
               )}
-              {!isDisabled && isConditionalSubjects(subject) && (
+              {!isDisabled && isConditional && (
                 <Button
                   type="button"
                   variant="outline"
@@ -360,7 +310,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   )}
                 >
                   <div className="flex items-start gap-2">
-                    {isConditionalSubjects(subject) && (
+                    {isConditional && (
                       <Controller
                         defaultValue={false as any}
                         name={`permissions.${subject}.${rootIndex}.inverted`}
@@ -391,19 +341,29 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         menuPortalContainerRef={menuPortalContainerRef}
                       />
                     </div>
-                    {!isDisabled && (
+                    {!isDisabled && (fields.length > 1 || isConditional || !!onRemoveLastRule) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <IconButton
                             aria-label="Remove rule"
                             variant="danger"
-                            onClick={() => remove(rootIndex)}
+                            onClick={() => {
+                              if (fields.length === 1 && onRemoveLastRule) {
+                                onRemoveLastRule();
+                              } else {
+                                remove(rootIndex);
+                              }
+                            }}
                             isDisabled={isDisabled}
                           >
                             <TrashIcon className="size-4" />
                           </IconButton>
                         </TooltipTrigger>
-                        <TooltipContent side="top">Remove Rule</TooltipContent>
+                        <TooltipContent side="top">
+                          {fields.length === 1 && onRemoveLastRule
+                            ? "Remove Policy"
+                            : "Remove Rule"}
+                        </TooltipContent>
                       </Tooltip>
                     )}
                   </div>

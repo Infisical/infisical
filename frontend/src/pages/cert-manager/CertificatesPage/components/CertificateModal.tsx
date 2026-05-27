@@ -189,12 +189,11 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
     keyUsages,
     extendedKeyUsages
   }: FormData) => {
-    if (!currentProject?.slug) return;
+    if (!currentProject?.id) return;
 
     const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
       caId: !selectedCertTemplate ? caId : undefined,
       certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
-      projectSlug: currentProject.slug,
       pkiCollectionId: collectionId,
       commonName,
       subjectAltNames,

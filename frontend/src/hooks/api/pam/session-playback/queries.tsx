@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -24,13 +24,22 @@ const fetchBundle = async (sessionId: string): Promise<TPamPlaybackBundle> => {
   return data;
 };
 
-export const useGetPamSessionPlaybackBundle = (sessionId: string, enabled = true) =>
+const PLAYBACK_POLL_INTERVAL_MS = 5000;
+
+export const useGetPamSessionPlaybackBundle = (
+  sessionId: string,
+  enabled = true,
+  isActive = false
+) =>
   useQuery({
     queryKey: pamPlaybackKeys.bundle(sessionId),
     enabled: Boolean(sessionId) && enabled,
     queryFn: () => fetchBundle(sessionId),
     staleTime: 0,
-    gcTime: 0
+    gcTime: 0,
+    refetchInterval: isActive
+      ? (query) => (query.state.data?.sessionComplete ? false : PLAYBACK_POLL_INTERVAL_MS)
+      : false
   });
 
 export type DecryptedChunkRecord = {
@@ -47,6 +56,7 @@ export type PlaybackDecryptState = {
   missingChunks: number[];
   totalChunks: number;
   totalDurationMs: number;
+  sessionComplete: boolean;
 };
 
 const fallbackUrlBuilderFor = (sessionId: string) => (chunkIndex: number) =>
@@ -54,11 +64,12 @@ const fallbackUrlBuilderFor = (sessionId: string) => (chunkIndex: number) =>
 
 export const useDecryptedSessionLogs = (
   sessionId: string,
-  enabled = true
+  enabled = true,
+  isActive = false
 ): PlaybackDecryptState => {
-  const bundleQuery = useGetPamSessionPlaybackBundle(sessionId, enabled);
+  const bundleQuery = useGetPamSessionPlaybackBundle(sessionId, enabled, isActive);
   const bundle = bundleQuery.data;
-  const [state, setState] = useState<PlaybackDecryptState>({
+  const [state, setState] = useState<Omit<PlaybackDecryptState, "sessionComplete">>({
     legacy: false,
     loading: true,
     events: [],
@@ -69,6 +80,23 @@ export const useDecryptedSessionLogs = (
   });
 
   const fallbackUrlBuilder = useMemo(() => fallbackUrlBuilderFor(sessionId), [sessionId]);
+
+  // Refs for incremental decryption across poll cycles (active sessions only)
+  const sessionKeyRef = useRef<CryptoKey | null>(null);
+  const decryptedIndicesRef = useRef(new Set<number>());
+  const accChunkEventsRef = useRef(new Map<number, unknown[]>());
+  const accEventCountRef = useRef(0);
+  const accBrokenRef = useRef<TBrokenChunkMarker[]>([]);
+  const prevSessionIdRef = useRef(sessionId);
+
+  if (prevSessionIdRef.current !== sessionId) {
+    sessionKeyRef.current = null;
+    decryptedIndicesRef.current = new Set();
+    accChunkEventsRef.current = new Map();
+    accEventCountRef.current = 0;
+    accBrokenRef.current = [];
+    prevSessionIdRef.current = sessionId;
+  }
 
   useEffect(() => {
     if (!enabled || !bundle) return undefined;
@@ -103,19 +131,22 @@ export const useDecryptedSessionLogs = (
         return;
       }
 
-      let sessionKey: CryptoKey;
-      try {
-        sessionKey = await importSessionKeyFromBase64(bundle.sessionKey);
-      } catch (err) {
-        if (!cancelled) {
-          setState((s) => ({
-            ...s,
-            loading: false,
-            error: `Invalid session key: ${(err as Error).message}`
-          }));
+      // Cache session key across poll cycles
+      if (!sessionKeyRef.current) {
+        try {
+          sessionKeyRef.current = await importSessionKeyFromBase64(bundle.sessionKey);
+        } catch (err) {
+          if (!cancelled) {
+            setState((s) => ({
+              ...s,
+              loading: false,
+              error: `Invalid session key: ${(err as Error).message}`
+            }));
+          }
+          return;
         }
-        return;
       }
+      const sessionKey = sessionKeyRef.current;
 
       const projectId = bundle.projectId ?? "";
       const sortedChunks = [...bundle.chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
@@ -133,48 +164,35 @@ export const useDecryptedSessionLogs = (
       }
 
       const missingChunks = detectChunkGaps(sortedChunks);
-      const missingSet = new Set(missingChunks);
 
-      const events: unknown[] = [];
-      const brokenChunks: PlaybackDecryptState["brokenChunks"] = [];
-      let chunkIdx = 0;
+      const useIncremental = isActive || decryptedIndicesRef.current.size > 0;
 
-      const maxIndex = sortedChunks.length ? sortedChunks[sortedChunks.length - 1].chunkIndex : 0;
+      if (useIncremental) {
+        const newChunks = sortedChunks.filter(
+          (c) => !decryptedIndicesRef.current.has(c.chunkIndex)
+        );
 
-      // Publish total before any chunk decrypts.
-      setState((s) => ({
-        ...s,
-        totalChunks: sortedChunks.length,
-        totalDurationMs,
-        missingChunks
-      }));
+        for (let ci = 0; ci < newChunks.length; ci += 1) {
+          if (cancelled) return;
 
-      for (let i = 0; i <= maxIndex; i += 1) {
-        if (cancelled) return;
-
-        if (missingSet.has(i)) {
-          const marker: TBrokenChunkMarker = {
-            __brokenChunk: true,
-            chunkIndex: i,
-            reason: "missing",
-            message: `Chunk ${i} was not found in the recording`
-          };
-          events.push(marker);
-          brokenChunks.push(marker);
-        } else {
+          const chunk = newChunks[ci];
+          decryptedIndicesRef.current.add(chunk.chunkIndex);
           // eslint-disable-next-line no-await-in-loop
           const r = await decryptOneChunk({
-            chunk: sortedChunks[chunkIdx],
+            chunk,
             sessionKey,
             projectId,
             sessionId,
             fallbackUrlBuilder
           });
-          chunkIdx += 1;
+
+          if (cancelled) return;
+
           if (r.ok) {
-            events.push(...r.events);
-            if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
-              brokenChunks.push({
+            accChunkEventsRef.current.set(chunk.chunkIndex, r.events);
+            accEventCountRef.current += r.events.length;
+            if (accEventCountRef.current > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
+              accBrokenRef.current.push({
                 __brokenChunk: true,
                 chunkIndex: r.chunkIndex,
                 reason: "limit",
@@ -189,33 +207,126 @@ export const useDecryptedSessionLogs = (
               reason: r.reason,
               message: r.message
             };
-            events.push(marker);
-            brokenChunks.push(marker);
+            accBrokenRef.current.push(marker);
+            accChunkEventsRef.current.set(chunk.chunkIndex, [marker]);
           }
         }
 
+        if (cancelled) return;
+
+        if (bundle.sessionComplete) {
+          for (let mi = 0; mi < missingChunks.length; mi += 1) {
+            const idx = missingChunks[mi];
+            if (!accChunkEventsRef.current.has(idx)) {
+              const marker: TBrokenChunkMarker = {
+                __brokenChunk: true,
+                chunkIndex: idx,
+                reason: "missing",
+                message: `Chunk ${idx} was not found in the recording`
+              };
+              accBrokenRef.current.push(marker);
+              accChunkEventsRef.current.set(idx, [marker]);
+            }
+          }
+        }
+
+        const orderedEvents = [...accChunkEventsRef.current.keys()]
+          .sort((a, b) => a - b)
+          .flatMap((key) => accChunkEventsRef.current.get(key) ?? []);
+
         setState({
           legacy: false,
-          loading: true,
-          events: [...events],
-          brokenChunks: [...brokenChunks],
+          loading: isActive && !bundle.sessionComplete,
+          events: orderedEvents,
+          brokenChunks: [...accBrokenRef.current],
+          missingChunks,
+          totalChunks: sortedChunks.length,
+          totalDurationMs
+        });
+      } else {
+        // Full path: decrypt all chunks with gap markers (completed sessions)
+        const missingSet = new Set(missingChunks);
+        const events: unknown[] = [];
+        const brokenChunks: PlaybackDecryptState["brokenChunks"] = [];
+        let chunkIdx = 0;
+
+        const maxIndex = sortedChunks.length ? sortedChunks[sortedChunks.length - 1].chunkIndex : 0;
+
+        setState((s) => ({
+          ...s,
+          totalChunks: sortedChunks.length,
+          totalDurationMs,
+          missingChunks
+        }));
+
+        for (let i = 0; i <= maxIndex; i += 1) {
+          if (cancelled) return;
+
+          if (missingSet.has(i)) {
+            const marker: TBrokenChunkMarker = {
+              __brokenChunk: true,
+              chunkIndex: i,
+              reason: "missing",
+              message: `Chunk ${i} was not found in the recording`
+            };
+            events.push(marker);
+            brokenChunks.push(marker);
+          } else {
+            // eslint-disable-next-line no-await-in-loop
+            const r = await decryptOneChunk({
+              chunk: sortedChunks[chunkIdx],
+              sessionKey,
+              projectId,
+              sessionId,
+              fallbackUrlBuilder
+            });
+            chunkIdx += 1;
+            if (r.ok) {
+              events.push(...r.events);
+              if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
+                brokenChunks.push({
+                  __brokenChunk: true,
+                  chunkIndex: r.chunkIndex,
+                  reason: "limit",
+                  message: `Total event count exceeds playback limit of ${PAM_PLAYBACK_MAX_TOTAL_EVENTS}; remaining chunks skipped`
+                });
+                break;
+              }
+            } else {
+              const marker: TBrokenChunkMarker = {
+                __brokenChunk: true,
+                chunkIndex: r.chunkIndex,
+                reason: r.reason,
+                message: r.message
+              };
+              events.push(marker);
+              brokenChunks.push(marker);
+            }
+          }
+
+          setState({
+            legacy: false,
+            loading: true,
+            events: [...events],
+            brokenChunks: [...brokenChunks],
+            missingChunks,
+            totalChunks: sortedChunks.length,
+            totalDurationMs
+          });
+        }
+
+        if (cancelled) return;
+
+        setState({
+          legacy: false,
+          loading: false,
+          events,
+          brokenChunks,
           missingChunks,
           totalChunks: sortedChunks.length,
           totalDurationMs
         });
       }
-
-      if (cancelled) return;
-
-      setState({
-        legacy: false,
-        loading: false,
-        events,
-        brokenChunks,
-        missingChunks,
-        totalChunks: sortedChunks.length,
-        totalDurationMs
-      });
     };
 
     run().catch((err) => {
@@ -227,7 +338,10 @@ export const useDecryptedSessionLogs = (
     return () => {
       cancelled = true;
     };
-  }, [bundle, enabled, sessionId, fallbackUrlBuilder]);
+  }, [bundle, enabled, sessionId, fallbackUrlBuilder, isActive]);
 
-  return state;
+  return {
+    ...state,
+    sessionComplete: bundle?.sessionComplete ?? false
+  };
 };

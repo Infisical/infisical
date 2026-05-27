@@ -65,6 +65,11 @@ const isVault404Error = (error: unknown): boolean => {
   return false;
 };
 
+// Helper to check if error is 404 from gateway
+const isGateway404Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
+};
+
 // Helper to extract error message from Vault API errors
 const getVaultErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof AxiosError) {
@@ -509,7 +514,7 @@ export const listHCVaultNamespaces = async (
 
       return data.data.keys || [];
     } catch (error: unknown) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         // No child namespaces at this path
         return null;
       }
@@ -674,7 +679,7 @@ export const listHCVaultSecretPaths = async (
 
       return data.data.keys;
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
       }
 
@@ -689,27 +694,25 @@ export const listHCVaultSecretPaths = async (
     limiter: ReturnType<typeof createConcurrencyLimiter>,
     currentPath: string = ""
   ): Promise<string[]> => {
-    const paths = await getPaths(mountPath, currentPath, kvVersion);
+    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion));
 
     if (paths === null || paths.length === 0) {
       return [];
     }
 
-    // Process paths in parallel with concurrency control
+    // Process paths in parallel; concurrency is enforced on getPaths
     const secretPathsArrays = await Promise.all(
-      paths.map((path) =>
-        limiter(async () => {
-          const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
-          const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
+      paths.map(async (path) => {
+        const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
+        const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
 
-          if (path.endsWith("/")) {
-            // it's a folder so we recurse into it
-            return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
-          }
-          // it's a secret so we return it
-          return [`${mountPath}/${fullItemPath}`];
-        })
-      )
+        if (path.endsWith("/")) {
+          // it's a folder so we recurse into it
+          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
+        }
+        // it's a secret so we return it
+        return [`${mountPath}/${fullItemPath}`];
+      })
     );
 
     // Flatten the arrays into a single array
@@ -1086,7 +1089,7 @@ export const getHCVaultKubernetesRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1173,7 +1176,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       connectionNames = connectionListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1221,7 +1224,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1327,7 +1330,7 @@ export const getHCVaultLdapRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 

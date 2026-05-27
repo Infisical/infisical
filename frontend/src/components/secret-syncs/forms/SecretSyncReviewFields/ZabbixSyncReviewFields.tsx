@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -16,16 +16,26 @@ export const ZabbixSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>{scope}</DetailValue>
+      </Detail>
       {scope === ZabbixSyncScope.Host && (
         <>
-          <GenericFieldLabel label="Host ID">{hostId}</GenericFieldLabel>
-          <GenericFieldLabel label="Host Name">{hostName}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Host ID</DetailLabel>
+            <DetailValue>{hostId}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Host Name</DetailLabel>
+            <DetailValue>{hostName}</DetailValue>
+          </Detail>
         </>
       )}
-      <GenericFieldLabel label="Macro Type">
-        {isTextMacro(macroType) ? "Text" : "Secret"}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Macro Type</DetailLabel>
+        <DetailValue>{isTextMacro(macroType) ? "Text" : "Secret"}</DetailValue>
+      </Detail>
     </>
   );
 };

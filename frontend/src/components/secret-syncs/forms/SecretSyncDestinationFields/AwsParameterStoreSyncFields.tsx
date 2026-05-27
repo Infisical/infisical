@@ -1,7 +1,18 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FormControl, Input } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -13,52 +24,65 @@ export const AwsParameterStoreSyncFields = () => {
   >();
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("syncOptions.keyId", undefined);
         }}
       />
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Region">
-            <AwsRegionSelect value={value} onChange={onChange} />
-          </FormControl>
-        )}
         control={control}
         name="destinationConfig.region"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>Region</FieldLabel>
+            <FieldContent>
+              <AwsRegionSelect value={value} onChange={onChange} />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
       />
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Path"
-            tooltipText={
-              <>
-                The path is required and will be prepended to the key schema. For example, if you
-                have a path of{" "}
-                <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
-                  /demo/path/
-                </code>{" "}
-                and a key schema of{" "}
-                <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
-                  INFISICAL_{"{{secretKey}}"}
-                </code>
-                , then the result will be{" "}
-                <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
-                  /demo/path/INFISICAL_{"{{secretKey}}"}
-                </code>
-              </>
-            }
-            tooltipClassName="max-w-lg"
-          >
-            <Input value={value} onChange={onChange} placeholder="Path..." />
-          </FormControl>
-        )}
         control={control}
         name="destinationConfig.path"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>
+              Path
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg">
+                  The path is required and will be prepended to the key schema. For example, if you
+                  have a path of{" "}
+                  <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                    /demo/path/
+                  </code>{" "}
+                  and a key schema of{" "}
+                  <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                    INFISICAL_{"{{secretKey}}"}
+                  </code>
+                  , then the result will be{" "}
+                  <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                    /demo/path/INFISICAL_{"{{secretKey}}"}
+                  </code>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={value}
+                onChange={onChange}
+                placeholder="Path..."
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
       />
-    </>
+    </FieldGroup>
   );
 };

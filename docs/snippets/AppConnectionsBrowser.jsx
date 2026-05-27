@@ -18,6 +18,7 @@ export const AppConnectionsBrowser = () => {
     "DevOps Tools",
     "Security",
     "Networking & DNS",
+    "SaaS",
   ];
 
   const connections = [
@@ -368,6 +369,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect your Okta to pull secrets from Infisical.",
       category: "Identity & Auth",
+    },
+    {
+      name: "Salesforce",
+      slug: "salesforce",
+      path: "/integrations/app-connections/salesforce",
+      description:
+        "Learn how to connect your Salesforce to pull secrets from Infisical.",
+      category: "SaaS",
     },
     {
       name: "OpenRouter",

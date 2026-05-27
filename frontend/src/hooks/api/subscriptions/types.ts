@@ -62,6 +62,7 @@ export type SubscriptionPlan = {
   pkiEst: boolean;
   pkiAcme: boolean;
   pkiLegacyTemplates: boolean;
+  pkiPqc: boolean;
   enforceMfa: boolean;
   enforceGoogleSSO: boolean;
   projectTemplates: boolean;

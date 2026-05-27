@@ -1,4 +1,13 @@
-import { Job, JobSchedulerJson, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
+import {
+  Job,
+  JobSchedulerJson,
+  Queue,
+  QueueOptions,
+  RepeatOptions,
+  Worker,
+  WorkerListener,
+  WorkerOptions
+} from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -67,7 +76,6 @@ export enum QueueName {
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
-  CaCrlRotation = "ca-crl-rotation",
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   CertificateIssuance = "certificate-issuance",
   SecretReplication = "secret-replication",
@@ -91,8 +99,7 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal",
-  DigiCertOrderPolling = "digicert-order-polling"
+  CaAutoRenewal = "ca-auto-renewal"
 }
 
 export enum QueueJobs {
@@ -277,10 +284,6 @@ export type TQueueJobTypes = {
           dynamicSecretCfgId: string;
         };
       };
-  [QueueName.CaCrlRotation]: {
-    name: QueueJobs.CaCrlRotation;
-    payload: undefined;
-  };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
     payload: TSyncSecretsDTO;
@@ -482,10 +485,6 @@ export type TQueueJobTypes = {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
-  [QueueName.DigiCertOrderPolling]: {
-    name: QueueJobs.DigiCertOrderPolling;
-    payload: undefined;
-  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -513,8 +512,12 @@ const isQueueEnabled = (name: QueueName) => {
 export type TQueueServiceFactory = {
   start: <T extends QueueName>(
     name: T,
-    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection">
+    jobFn: (
+      job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>,
+      token?: string,
+      signal?: AbortSignal
+    ) => Promise<void>,
+    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency">
   ) => void;
   listen: <
     T extends QueueName,
@@ -544,6 +547,7 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  cancelActiveJob: <T extends QueueName>(name: T, jobId: string, reason?: string) => boolean;
   // @deprecated Use getJobSchedulers instead.
   getRepeatableJobs: (
     name: QueueName,
@@ -603,7 +607,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value
       "telemetry-aggregated-events",
-      "certificate-v3-auto-renewal"
+      "certificate-v3-auto-renewal",
+      "ca-crl-rotation",
+      "digicert-order-polling"
     ];
     await Promise.allSettled(
       staleQueueNames.map(async (name) => {
@@ -765,6 +771,12 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return job?.remove().catch(() => undefined);
   };
 
+  const cancelActiveJob: TQueueServiceFactory["cancelActiveJob"] = (name, jobId, reason) => {
+    const w = workerContainer[name];
+    if (!w) return false;
+    return w.cancelJob(jobId, reason);
+  };
+
   const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
     await q?.drain();
@@ -876,6 +888,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    cancelActiveJob,
     getRepeatableJobs,
     getDelayedJobs,
     upsertJobScheduler,

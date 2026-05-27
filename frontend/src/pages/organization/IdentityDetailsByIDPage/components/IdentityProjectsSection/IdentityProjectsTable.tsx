@@ -27,6 +27,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityProjectRow } from "./IdentityProjectRow";
@@ -67,9 +68,16 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     setUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
 
+  const visibleProjectMemberships = useMemo(
+    () =>
+      projectMemberships?.filter(
+        (membership) => membership.project.type !== ProjectType.CertificateManager
+      ),
+    [projectMemberships]
+  );
   const filteredProjectMemberships = useMemo(
     () =>
-      projectMemberships
+      visibleProjectMemberships
         ?.filter((membership) =>
           membership.project.name.toLowerCase().includes(search.trim().toLowerCase())
         )
@@ -81,7 +89,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             .toLowerCase()
             .localeCompare(membershipTwo.project.name.toLowerCase());
         }),
-    [projectMemberships, orderDirection, search]
+    [visibleProjectMemberships, orderDirection, search]
   );
 
   useResetPageHelper({
@@ -143,16 +151,16 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {projectMemberships.length
+              {visibleProjectMemberships.length
                 ? "No projects match this search"
                 : "This machine identity is not a member of any projects"}
             </EmptyTitle>
             <EmptyDescription>
-              {projectMemberships.length
+              {visibleProjectMemberships.length
                 ? "Adjust search filters to view project memberships."
                 : "Assign this machine identity to a project."}
             </EmptyDescription>
-            {!projectMemberships.length && (
+            {!visibleProjectMemberships.length && (
               <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}

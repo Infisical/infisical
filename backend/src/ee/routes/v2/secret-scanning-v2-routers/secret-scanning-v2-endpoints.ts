@@ -14,8 +14,10 @@ import {
 import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretScanningEndpoints = <
   T extends TSecretScanningDataSource,
@@ -233,6 +235,19 @@ export const registerSecretScanningEndpoints = <
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretScanningDataSourceCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            dataSourceId: dataSource.id,
+            projectId: dataSource.projectId,
+            type
+          }
+        })
+        .catch(() => {});
 
       return { dataSource };
     }

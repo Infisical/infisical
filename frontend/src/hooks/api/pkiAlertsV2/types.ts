@@ -89,6 +89,7 @@ export interface TLastRun {
 export interface TPkiAlertV2 {
   id: string;
   projectId: string;
+  applicationId?: string | null;
   name: string;
   description?: string;
   eventType: PkiAlertEventTypeV2;
@@ -115,7 +116,7 @@ export interface TPkiCertificateMatchV2 {
 }
 
 export interface TGetPkiAlertsV2 {
-  projectId: string;
+  applicationId?: string;
   search?: string;
   eventType?: PkiAlertEventTypeV2;
   enabled?: boolean;
@@ -133,7 +134,7 @@ export interface TGetPkiAlertV2ById {
 }
 
 export interface TCreatePkiAlertV2 {
-  projectId: string;
+  applicationId?: string;
   name: string;
   description?: string;
   eventType: PkiAlertEventTypeV2;
@@ -174,7 +175,6 @@ export interface TGetPkiAlertV2MatchingCertificatesResponse {
 }
 
 export interface TGetPkiAlertV2CurrentMatchingCertificates {
-  projectId: string;
   filters: TPkiFilterRuleV2[];
   alertBefore?: string;
   limit?: number;
@@ -278,7 +278,7 @@ export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
 ]);
 
 const basePkiAlertV2Schema = z.object({
-  projectId: z.string().uuid(),
+  applicationId: z.string().uuid().optional(),
   name: z
     .string()
     .min(1)
@@ -313,4 +313,4 @@ export const createPkiAlertV2Schema = basePkiAlertV2Schema.superRefine((data, ct
   }
 });
 
-export const updatePkiAlertV2Schema = basePkiAlertV2Schema.partial().omit({ projectId: true });
+export const updatePkiAlertV2Schema = basePkiAlertV2Schema.partial();

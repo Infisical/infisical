@@ -14,7 +14,7 @@ function DetailValue({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="detail-value"
-      className={cn("text-sm break-all text-foreground", className)}
+      className={cn("text-sm wrap-anywhere text-foreground", className)}
       {...props}
     />
   );

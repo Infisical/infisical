@@ -173,8 +173,7 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
 
     await updateRenewalConfig({
       certificateId: certificateData.certificateId,
-      renewBeforeDays: data.renewBeforeDays,
-      projectSlug: currentProject.slug
+      renewBeforeDays: data.renewBeforeDays
     });
 
     createNotification({

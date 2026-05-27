@@ -52,6 +52,7 @@ type TWebhookSecretModifiedEventPayload = {
     projectName?: string;
     projectId: string;
     environment: string;
+    environmentName: string;
     secretPath?: string;
     type?: string | null;
     changedBy?: string;
@@ -67,6 +68,7 @@ type TWebhookSecretRotationFailedEventPayload = {
     projectName?: string;
     projectId: string;
     environment: string;
+    environmentName: string;
     secretPath?: string;
     triggeredManually?: boolean;
     errorMessage?: string;
@@ -80,6 +82,7 @@ type TWebhookTestEventPayload = {
     projectName?: string;
     projectId: string;
     environment: string;
+    environmentName: string;
     secretPath?: string;
     type?: string | null;
   };

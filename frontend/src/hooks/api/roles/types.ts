@@ -36,7 +36,7 @@ export type TOrgRole = {
 
 export type TPermission = {
   conditions?: Record<string, any>;
-  action: string;
+  action: string | string[];
   subject: string;
 };
 
@@ -75,6 +75,7 @@ export type TDeleteOrgRoleDTO = {
 
 export type TCreateProjectRoleDTO = {
   projectId: string;
+  projectType?: string;
   name: string;
   description?: string | null;
   slug: string;
@@ -83,10 +84,12 @@ export type TCreateProjectRoleDTO = {
 
 export type TUpdateProjectRoleDTO = {
   projectId: string;
+  projectType?: string;
   id: string;
 } & Partial<Omit<TCreateProjectRoleDTO, "orgId">>;
 
 export type TDeleteProjectRoleDTO = {
   projectId: string;
+  projectType?: string;
   id: string;
 };

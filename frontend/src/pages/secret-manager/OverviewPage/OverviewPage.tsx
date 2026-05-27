@@ -97,7 +97,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
-  useOrgPermission,
   useProject,
   useProjectPermission,
   useSubscription
@@ -108,7 +107,6 @@ import {
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   getUserTablePreference,
@@ -116,6 +114,7 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import {
+  useCanUseProjectAppConnectionImport,
   useLocalStorageState,
   usePagination,
   usePopUp,
@@ -139,6 +138,8 @@ import {
   useUpdateSecretImport,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   dashboardKeys,
   fetchDashboardProjectSecretsByKeys,
@@ -149,15 +150,8 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
-import {
-  useGetExternalMigrationConfigs,
-  useImportDopplerSecrets,
-  useImportVaultSecrets
-} from "@app/hooks/api/migration";
-import {
-  ExternalMigrationImportStatus,
-  ExternalMigrationProviders
-} from "@app/hooks/api/migration/types";
+import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/migration";
+import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -305,20 +299,6 @@ const OverviewPageContent = () => {
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
-  );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { data: dopplerConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Doppler
-  );
-  const dopplerImportConfigs = useMemo(
-    () => dopplerConfigs.filter((c) => c.connectionId),
-    [dopplerConfigs]
-  );
-  const hasDopplerConnection = dopplerImportConfigs.length > 0;
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const { mutateAsync: importDopplerSecrets } = useImportDopplerSecrets();
   const prevPageSize = useRef(0);
@@ -523,6 +503,24 @@ const OverviewPageContent = () => {
   const canCreateSecrets = singleVisibleEnv
     ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
     : true;
+
+  const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
+    singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
+  );
+
+  const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
+  const { data: dopplerAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.Doppler,
+    projectId,
+    { enabled: canUseAppConnectionImport }
+  );
+
+  const hasVaultConnection = vaultAppConnections.length > 0;
+  const hasDopplerConnection = dopplerAppConnections.length > 0;
 
   const singleEnvChangesCount = subscription.pitRecovery ? singleEnvCommitCount : 0;
   const isSingleEnvChangesCountLoading = subscription.pitRecovery
@@ -877,13 +875,18 @@ const OverviewPageContent = () => {
     handlePopUpOpen("addSecretImport");
   };
 
-  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+  const handleVaultImport = async (
+    vaultPaths: string[],
+    namespace: string,
+    connectionId: string
+  ) => {
     const { status } = await importVaultSecrets({
       projectId,
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPaths: vaultPaths
+      vaultSecretPaths: vaultPaths,
+      connectionId
     });
 
     if (status === ExternalMigrationImportStatus.ApprovalRequired) {
@@ -908,10 +911,10 @@ const OverviewPageContent = () => {
   const handleDopplerImport = async (
     dopplerProject: string,
     dopplerEnvironment: string,
-    configId: string
+    connectionId: string
   ) => {
     await importDopplerSecrets({
-      configId,
+      connectionId,
       dopplerProject,
       dopplerEnvironment,
       targetProjectId: projectId,
@@ -2608,7 +2611,6 @@ const OverviewPageContent = () => {
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
                     hasDopplerConnection={hasDopplerConnection}
-                    isOrgAdmin={isOrgAdmin}
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
                     onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
                   />
@@ -3641,13 +3643,14 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
         environment={singleEnvSlug}
         secretPath={secretPath}
+        appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
-      {dopplerImportConfigs.length > 0 && (
+      {hasDopplerConnection && (
         <DopplerSecretImportModal
           isOpen={popUp.importFromDoppler.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("importFromDoppler", isOpen)}
-          configs={dopplerImportConfigs}
+          connections={dopplerAppConnections}
           environment={singleEnvSlug}
           secretPath={secretPath}
           onImport={handleDopplerImport}

@@ -89,16 +89,18 @@ export type TPkiAcmeServiceFactory = {
     schema?: TSchema;
     expectedAccountId?: string;
   }) => Promise<TAuthenciatedJwsPayload<T>>;
-  getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
+  getAcmeDirectory: (profileId: string, applicationId?: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
   createAcmeAccount: ({
     profileId,
+    applicationId,
     alg,
     jwk,
     payload,
     auditLogInfo
   }: {
     profileId: string;
+    applicationId?: string;
     alg: string;
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;

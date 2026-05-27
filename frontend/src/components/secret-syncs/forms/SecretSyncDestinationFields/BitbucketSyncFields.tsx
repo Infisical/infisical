@@ -2,7 +2,14 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import {
   TBitbucketEnvironment,
   TBitbucketRepo,
@@ -40,7 +47,7 @@ export const BitbucketSyncFields = () => {
     });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.workspaceSlug", "");
@@ -53,29 +60,27 @@ export const BitbucketSyncFields = () => {
         name="destinationConfig.workspaceSlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Bitbucket Workspace"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isWorkspacesLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={workspaces.find((w) => w.slug === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TBitbucketWorkspace>;
-                onChange(v?.slug ?? "");
-                // Clear downstream selections
-                setValue("destinationConfig.repositorySlug", "");
-                setValue("destinationConfig.environmentId", "");
-              }}
-              options={workspaces}
-              placeholder="Select workspace..."
-              getOptionLabel={(option) => option.slug}
-              getOptionValue={(option) => option.slug}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Bitbucket Workspace</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isWorkspacesLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={workspaces.find((w) => w.slug === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TBitbucketWorkspace>;
+                  onChange(v?.slug ?? "");
+                  setValue("destinationConfig.repositorySlug", "");
+                  setValue("destinationConfig.environmentId", "");
+                }}
+                options={workspaces}
+                placeholder="Select workspace..."
+                getOptionLabel={(option) => option.slug}
+                getOptionValue={(option) => option.slug}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -83,28 +88,26 @@ export const BitbucketSyncFields = () => {
         name="destinationConfig.repositorySlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Bitbucket Repository"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isRepositoriesLoading && Boolean(workspace)}
-              isDisabled={!workspace}
-              value={repositories.find((r) => r.slug === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TBitbucketRepo>;
-                onChange(v?.slug ?? "");
-                // Clear downstream selections
-                setValue("destinationConfig.environmentId", "");
-              }}
-              options={repositories}
-              placeholder="Select repository..."
-              getOptionLabel={(option) => option.full_name}
-              getOptionValue={(option) => option.slug}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Bitbucket Repository</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isRepositoriesLoading && Boolean(workspace)}
+                isDisabled={!workspace}
+                value={repositories.find((r) => r.slug === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TBitbucketRepo>;
+                  onChange(v?.slug ?? "");
+                  setValue("destinationConfig.environmentId", "");
+                }}
+                options={repositories}
+                placeholder="Select repository..."
+                getOptionLabel={(option) => option.full_name}
+                getOptionValue={(option) => option.slug}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -112,30 +115,28 @@ export const BitbucketSyncFields = () => {
         name="destinationConfig.environmentId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isOptional
-            label="Bitbucket Deployment Environment"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isEnvironmentsLoading && Boolean(repository)}
-              isDisabled={!repository}
-              value={environments.find((e) => e.uuid === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TBitbucketEnvironment>;
-                onChange(v?.uuid ?? "");
-              }}
-              options={environments}
-              placeholder="Select environment..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.uuid}
-              isClearable
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Bitbucket Deployment Environment (Optional)</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isEnvironmentsLoading && Boolean(repository)}
+                isDisabled={!repository}
+                value={environments.find((e) => e.uuid === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TBitbucketEnvironment>;
+                  onChange(v?.uuid ?? "");
+                }}
+                options={environments}
+                placeholder="Select environment..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.uuid}
+                isClearable
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

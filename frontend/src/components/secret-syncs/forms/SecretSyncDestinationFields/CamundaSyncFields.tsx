@@ -1,11 +1,20 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useCamundaConnectionListClusters } from "@app/hooks/api/appConnections/camunda";
 import { TCamundaCluster } from "@app/hooks/api/appConnections/camunda/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -29,7 +38,7 @@ export const CamundaSyncFields = () => {
   }, []);
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.clusterUUID", "");
@@ -39,42 +48,40 @@ export const CamundaSyncFields = () => {
         name="destinationConfig.clusterUUID"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Cluster"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure that your credential has been granted access to the cluster"
-              >
-                <div>
-                  <span>Don&#39;t see the cluster you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
+          <Field>
+            <FieldLabel>
+              Cluster
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  Ensure that your credential has been granted access to the cluster.
+                </TooltipContent>
               </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={clusters?.find((cluster) => cluster.uuid === value) ?? null}
-              onChange={(option) => {
-                onChange((option as SingleValue<TCamundaCluster>)?.uuid ?? null);
-                setValue(
-                  "destinationConfig.clusterName",
-                  (option as SingleValue<TCamundaCluster>)?.name ?? ""
-                );
-              }}
-              options={clusters}
-              placeholder="Select a cluster..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.uuid}
-            />
-          </FormControl>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={clusters?.find((cluster) => cluster.uuid === value) ?? null}
+                onChange={(option) => {
+                  onChange((option as SingleValue<TCamundaCluster>)?.uuid ?? null);
+                  setValue(
+                    "destinationConfig.clusterName",
+                    (option as SingleValue<TCamundaCluster>)?.name ?? ""
+                  );
+                }}
+                options={clusters}
+                placeholder="Select a cluster..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.uuid}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

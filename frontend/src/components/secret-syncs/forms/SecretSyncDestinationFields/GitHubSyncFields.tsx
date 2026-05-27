@@ -2,7 +2,19 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import {
   TGitHubConnectionEnvironment,
   TGitHubConnectionOrganization,
@@ -59,7 +71,7 @@ export const GitHubSyncFields = () => {
     );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.org", "");
@@ -73,24 +85,24 @@ export const GitHubSyncFields = () => {
         control={control}
         defaultValue={GitHubSyncScope.Repository}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Scope">
-            <Select
-              value={value}
-              onValueChange={(val) => {
-                onChange(val);
-              }}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select a scope..."
-              dropdownContainerClassName="max-w-none"
-            >
-              {Object.values(GitHubSyncScope).map((scope) => (
-                <SelectItem className="capitalize" value={scope} key={scope}>
-                  {scope.replace("-", " ")}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>Scope</FieldLabel>
+            <FieldContent>
+              <Select value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a scope..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitHubSyncScope).map((scope) => (
+                    <SelectItem className="capitalize" value={scope} key={scope}>
+                      {scope.replace("-", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       {currentScope === GitHubSyncScope.Organization && (
@@ -99,20 +111,26 @@ export const GitHubSyncFields = () => {
             name="destinationConfig.org"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} errorText={error?.message} label="Organization">
-                <FilterableSelect
-                  isLoading={isOrganizationsPending && Boolean(connectionId)}
-                  isDisabled={!connectionId}
-                  value={organizations.find((org) => org.login === value) ?? null}
-                  onChange={(option) =>
-                    onChange((option as SingleValue<TGitHubConnectionOrganization>)?.login ?? null)
-                  }
-                  options={organizations}
-                  placeholder="Select an organization..."
-                  getOptionLabel={(option) => option.login}
-                  getOptionValue={(option) => option.login}
-                />
-              </FormControl>
+              <Field>
+                <FieldLabel>Organization</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    isLoading={isOrganizationsPending && Boolean(connectionId)}
+                    isDisabled={!connectionId}
+                    value={organizations.find((org) => org.login === value) ?? null}
+                    onChange={(option) =>
+                      onChange(
+                        (option as SingleValue<TGitHubConnectionOrganization>)?.login ?? null
+                      )
+                    }
+                    options={organizations}
+                    placeholder="Select an organization..."
+                    getOptionLabel={(option) => option.login}
+                    getOptionValue={(option) => option.login}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
           <Controller
@@ -120,55 +138,55 @@ export const GitHubSyncFields = () => {
             control={control}
             defaultValue={GitHubSyncVisibility.All}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Visibility"
-              >
-                <Select
-                  value={value}
-                  onValueChange={(val) => {
-                    onChange(val);
-                    setValue("destinationConfig.selectedRepositoryIds", undefined);
-                  }}
-                  className="w-full border border-mineshaft-500 capitalize"
-                  position="popper"
-                  placeholder="Select visibility..."
-                  dropdownContainerClassName="max-w-none"
-                >
-                  {Object.values(GitHubSyncVisibility).map((scope) => (
-                    <SelectItem className="capitalize" value={scope} key={scope}>
-                      {scope.replace("-", " ")} Repositories
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Field>
+                <FieldLabel>Visibility</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={value}
+                    onValueChange={(val) => {
+                      onChange(val);
+                      setValue("destinationConfig.selectedRepositoryIds", undefined);
+                    }}
+                  >
+                    <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                      <SelectValue placeholder="Select visibility..." />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {Object.values(GitHubSyncVisibility).map((scope) => (
+                        <SelectItem className="capitalize" value={scope} key={scope}>
+                          {scope.replace("-", " ")} Repositories
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
           {currentVisibility === GitHubSyncVisibility.Selected && (
             <Controller
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Selected Repositories"
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
-                    isLoading={isRepositoriesPending && Boolean(currentOrg)}
-                    isDisabled={!currentOrg || !connectionId}
-                    isMulti
-                    value={repositories.filter((repo) => value?.includes(repo.id))}
-                    onChange={(option) => {
-                      const repos = option as MultiValue<TGitHubConnectionRepository>;
-                      onChange(repos.map((repo) => repo.id));
-                    }}
-                    options={repositories.filter((repo) => repo.owner.login === currentOrg)}
-                    placeholder="Select one or more repositories..."
-                    getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
-                    getOptionValue={(option) => option.id.toString()}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel>Selected Repositories</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      isLoading={isRepositoriesPending && Boolean(currentOrg)}
+                      isDisabled={!currentOrg || !connectionId}
+                      isMulti
+                      value={repositories.filter((repo) => value?.includes(repo.id))}
+                      onChange={(option) => {
+                        const repos = option as MultiValue<TGitHubConnectionRepository>;
+                        onChange(repos.map((repo) => repo.id));
+                      }}
+                      options={repositories.filter((repo) => repo.owner.login === currentOrg)}
+                      placeholder="Select one or more repositories..."
+                      getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
+                      getOptionValue={(option) => option.id.toString()}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
               )}
               control={control}
               name="destinationConfig.selectedRepositoryIds"
@@ -179,25 +197,28 @@ export const GitHubSyncFields = () => {
       {currentScope !== GitHubSyncScope.Organization && (
         <Controller
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} label="Repository">
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={isRepositoriesPending && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={repositories.find((repo) => repo.name === value) ?? null}
-                onChange={(option) => {
-                  const repo = option as SingleValue<TGitHubConnectionRepository>;
+            <Field>
+              <FieldLabel>Repository</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isLoading={isRepositoriesPending && Boolean(connectionId)}
+                  isDisabled={!connectionId}
+                  value={repositories.find((repo) => repo.name === value) ?? null}
+                  onChange={(option) => {
+                    const repo = option as SingleValue<TGitHubConnectionRepository>;
 
-                  onChange(repo?.name);
-                  setValue("destinationConfig.owner", repo?.owner.login ?? "");
-                  setValue("destinationConfig.env", "");
-                }}
-                options={repositories}
-                placeholder="Select a repository..."
-                getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
-                getOptionValue={(option) => option.id.toString()}
-              />
-            </FormControl>
+                    onChange(repo?.name);
+                    setValue("destinationConfig.owner", repo?.owner.login ?? "");
+                    setValue("destinationConfig.env", "");
+                  }}
+                  options={repositories}
+                  placeholder="Select a repository..."
+                  getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
+                  getOptionValue={(option) => option.id.toString()}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
           control={control}
           name="destinationConfig.repo"
@@ -208,24 +229,27 @@ export const GitHubSyncFields = () => {
           name="destinationConfig.env"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} label="Environment">
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
-                isDisabled={!connectionId || !currentRepo}
-                value={environments.find((env) => env.name === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<TGitHubConnectionEnvironment>)?.name ?? null)
-                }
-                options={environments}
-                placeholder="Select an environment..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id.toString()}
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Environment</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
+                  isDisabled={!connectionId || !currentRepo}
+                  value={environments.find((env) => env.name === value) ?? null}
+                  onChange={(option) =>
+                    onChange((option as SingleValue<TGitHubConnectionEnvironment>)?.name ?? null)
+                  }
+                  options={environments}
+                  placeholder="Select an environment..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id.toString()}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
-    </>
+    </FieldGroup>
   );
 };

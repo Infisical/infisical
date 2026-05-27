@@ -15,7 +15,8 @@ export const PkiAcmeEnrollmentConfigsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   skipDnsOwnershipVerification: z.boolean().default(false),
-  skipEabBinding: z.boolean().default(false)
+  skipEabBinding: z.boolean().default(false),
+  applicationProfileId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiAcmeEnrollmentConfigs = z.infer<typeof PkiAcmeEnrollmentConfigsSchema>;

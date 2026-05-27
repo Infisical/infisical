@@ -162,6 +162,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (organizationId) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.OrganizationCreated,
+          distinctId: user.username ?? "",
+          organizationId,
+          properties: {
+            name: "organizationName" in req.body ? (req.body.organizationName as string) : ""
+          }
+        });
+      }
+
       const signupDistinctId = user.username ?? user.email ?? "";
       if (signupDistinctId) {
         void server.services.telemetry.identifyUser(

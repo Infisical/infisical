@@ -40,7 +40,11 @@ import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import { getUserTablePreference, PreferenceKey } from "@app/helpers/userTablePreferences";
 import { usePagination } from "@app/hooks";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApproverType
+} from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
@@ -104,7 +108,8 @@ export const ApprovalRequestTab = () => {
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.PamAccess,
-      projectId
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId
     })
   );
 
@@ -324,6 +329,12 @@ export const ApprovalRequestTab = () => {
                           >
                             {request.status.split("-").join(" ")}
                           </Badge>
+                          {request.isBreakGlass && (
+                            <div className="flex items-center gap-1 rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300">
+                              <FontAwesomeIcon icon={faExclamationCircle} className="h-3 w-3" />
+                              <span>Bypassed</span>
+                            </div>
+                          )}
                           {needsApproval && (
                             <div className="flex items-center gap-1 rounded bg-primary/20 px-2 py-0.5 text-xs text-primary">
                               <FontAwesomeIcon icon={faExclamationCircle} className="h-3 w-3" />

@@ -266,6 +266,9 @@ export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TravisCI;
 };
 
+export type TSalesforceConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Salesforce;
+};
 export type TSnowflakeConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Snowflake;
 };
@@ -338,6 +341,7 @@ export type TAppConnectionOption =
   | TOnaConnectionOption
   | TDigiCertConnectionOption
   | TTravisCIConnectionOption
+  | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
   | TDatadogConnectionOption;
 
@@ -405,6 +409,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Ona]: TOnaConnectionOption;
   [AppConnection.DigiCert]: TDigiCertConnectionOption;
   [AppConnection.TravisCI]: TTravisCIConnectionOption;
+  [AppConnection.Salesforce]: TSalesforceConnectionOption;
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
 };

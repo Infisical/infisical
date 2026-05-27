@@ -966,27 +966,33 @@ export const scimServiceFactory = ({
     });
   };
 
-  const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"]) => {
+  const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"], tx?: Knex) => {
     // this function handles configuring newly provisioned users org membership if an external group mapping exists
 
     if (!members.length) return;
 
-    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne({
-      orgId: group.orgId,
-      groupName: group.name
-    });
+    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne(
+      {
+        orgId: group.orgId,
+        groupName: group.name
+      },
+      tx
+    );
 
     // no mapping, user will have default org membership
     if (!externalGroupMapping) return;
 
     // only get org memberships that are new (invites)
-    const newOrgMemberships = await membershipUserDAL.find({
-      status: "invited",
-      scope: AccessScope.Organization,
-      $in: {
-        id: members.map((member) => member.value)
-      }
-    });
+    const newOrgMemberships = await membershipUserDAL.find(
+      {
+        status: "invited",
+        scope: AccessScope.Organization,
+        $in: {
+          id: members.map((member) => member.value)
+        }
+      },
+      { tx }
+    );
 
     if (!newOrgMemberships.length) return;
 
@@ -1000,7 +1006,8 @@ export const scimServiceFactory = ({
       {
         role: externalGroupMapping.role,
         customRoleId: externalGroupMapping.roleId
-      }
+      },
+      tx
     );
   };
 
@@ -1069,13 +1076,16 @@ export const scimServiceFactory = ({
       );
 
       if (members && members.length) {
-        const orgMemberships = await membershipUserDAL.find({
-          scope: AccessScope.Organization,
-          scopeOrgId: orgId,
-          $in: {
-            id: members.map((member) => member.value)
-          }
-        });
+        const orgMemberships = await membershipUserDAL.find(
+          {
+            scope: AccessScope.Organization,
+            scopeOrgId: orgId,
+            $in: {
+              id: members.map((member) => member.value)
+            }
+          },
+          { tx }
+        );
 
         const newMembers = await addUsersToGroupByUserIds({
           group,
@@ -1091,7 +1101,7 @@ export const scimServiceFactory = ({
           shouldFailOnMissingMembers: false
         });
 
-        await $syncNewMembersRoles(group, members);
+        await $syncNewMembersRoles(group, members, tx);
 
         return { group, newMembers };
       }
@@ -1128,7 +1138,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId }) => {
+  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId, isMembersExcluded }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1145,6 +1155,26 @@ export const scimServiceFactory = ({
         detail: "Group Not Found",
         status: 404
       });
+    }
+
+    if (isMembersExcluded) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.GET_GROUP,
+        event: {
+          groupName: group.name
+        }
+      });
+
+      const scimGroup = buildScimGroup({
+        groupId: group.id,
+        name: group.name,
+        members: [],
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt
+      });
+      const { members, ...scimGroupWithoutMembers } = scimGroup;
+      return scimGroupWithoutMembers as TScimGroup;
     }
 
     const users = await groupDAL
@@ -1306,11 +1336,14 @@ export const scimServiceFactory = ({
     let updatedGroup: TGroups;
     if (outerTx) {
       updatedGroup = await processReplacement(outerTx);
+      await $syncNewMembersRoles(updatedGroup, members, outerTx);
     } else {
-      updatedGroup = await groupDAL.transaction(processReplacement);
+      updatedGroup = await groupDAL.transaction(async (tx) => {
+        const replacedGroup = await processReplacement(tx);
+        await $syncNewMembersRoles(updatedGroup, members, tx);
+        return replacedGroup;
+      });
     }
-
-    await $syncNewMembersRoles(updatedGroup, members);
 
     return updatedGroup;
   };

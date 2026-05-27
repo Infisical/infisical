@@ -3,7 +3,7 @@ title: "Azure Key Vault Connection"
 description: "Learn how to configure a Azure Key Vault Connection for Infisical."
 ---
 
-Infisical currently only supports two methods for connecting to Azure, which are OAuth and Client Secrets.
+Infisical supports three methods for connecting to Azure Key Vault: OAuth, Client Secret, and Certificate (SPN with certificate).
 
 <Accordion title="Self-Hosted Instance">
   Using the Azure Key Vault connection on a self-hosted instance of Infisical requires configuring an application in Azure
@@ -79,6 +79,24 @@ Infisical currently only supports two methods for connecting to Azure, which are
   </Steps>
 </Accordion>
 
+<Accordion title="Certificate Authentication">
+  To use certificate authentication, ensure your Azure Service Principal has access to the Azure Key Vault instances you want to use. You'll need a certificate uploaded to the App Registration and the matching private key kept locally.
+
+  **Prerequisites:**
+  - Set up Azure and have an existing Key Vault instance.
+  - The service principal must be granted access to your target Azure Key Vault instance(s) via Access Policies or RBAC (e.g. the **Key Vault Secrets Officer** role).
+  - A certificate (PEM) uploaded to your App Registration and the matching PEM private key.
+
+  <Steps>
+    <Step title="Upload your certificate to your Azure App Registration">
+
+      In the Azure Portal, navigate to your App Registration and open the **Certificates & secrets** section. Choose the **Certificates** tab and press the **Upload certificate** button. Select and upload your public certificate (PEM/CER/CRT).
+
+      You will need both the **certificate body** and the matching **private key** (in PEM format) to configure the connection in Infisical.
+    </Step>
+  </Steps>
+</Accordion>
+
 ## Setup Azure Connection in Infisical
 
 <Steps>
@@ -120,6 +138,28 @@ Infisical currently only supports two methods for connecting to Azure, which are
             <Tip>
                 You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
             </Tip>
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="Certificate">
+        <Steps>
+          <Step title="Create Connection">
+            Select the **Certificate** method and fill in the following fields:
+
+            - **Tenant ID** — the Directory (Tenant) ID of your Azure App Registration.
+            - **Client ID** — the Application (Client) ID of your Azure App Registration.
+            - **Certificate** — the PEM-encoded public certificate that was uploaded to the App Registration.
+            - **Private Key** — the PEM-encoded private key matching the certificate above.
+
+            ![Connect via Certificate](/images/app-connections/azure/key-vault/create-certificate-method.png)
+
+            <Note>
+                The private key is never transmitted to Azure; it is only used locally by Infisical to sign the client assertion used to authenticate with Azure.
+            </Note>
+
+            <Note>
+                Automatic Credential Rotation is not available for the Certificate authentication method.
+            </Note>
           </Step>
         </Steps>
       </Tab>

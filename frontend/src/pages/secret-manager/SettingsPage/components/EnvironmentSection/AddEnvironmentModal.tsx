@@ -130,7 +130,7 @@ export const AddEnvironmentModal = ({ isOpen, onOpenChange, onComplete }: Props)
           />
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" type="button">
+              <Button variant="ghost" type="button">
                 Cancel
               </Button>
             </DialogClose>

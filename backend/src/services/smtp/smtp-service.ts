@@ -10,8 +10,10 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccessPamRequestBypassedTemplate,
   AccountDeletionConfirmationTemplate,
   AuditLogMigrationAlertTemplate,
+  AuditLogStreamFailedTemplate,
   CredentialRotationFailedTemplate,
   EmailChangeRequestNotificationTemplate,
   EmailMfaTemplate,
@@ -72,6 +74,7 @@ export enum SmtpTemplates {
   AccessApprovalRequest = "accessApprovalRequest",
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
+  AccessPamRequestBypassed = "accessPamRequestBypassed",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
@@ -104,7 +107,8 @@ export enum SmtpTemplates {
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
-  HoneyTokenTriggered = "honeyTokenTriggered"
+  HoneyTokenTriggered = "honeyTokenTriggered",
+  AuditLogStreamFailed = "auditLogStreamFailed"
 }
 
 export enum SmtpHost {
@@ -133,6 +137,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.ExternalImportStarted]: ExternalImportStartedTemplate,
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
+  [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
   [SmtpTemplates.OrgAdminBreakglassAccess]: OrgAdminBreakglassAccessTemplate,
   [SmtpTemplates.SecretLeakIncident]: SecretLeakIncidentTemplate,
@@ -159,7 +164,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
-  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate
+  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
+  [SmtpTemplates.AuditLogStreamFailed]: AuditLogStreamFailedTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

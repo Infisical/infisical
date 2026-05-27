@@ -11,7 +11,6 @@ export type TCertificateCleanupConfig = {
 };
 
 export type TUpdateCertificateCleanupConfigDTO = {
-  projectId: string;
   isEnabled?: boolean;
   postExpiryRetentionDays?: number;
   skipCertsWithActiveSyncs?: boolean;

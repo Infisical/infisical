@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const ChecklySyncReviewFields = () => {
@@ -10,11 +10,15 @@ export const ChecklySyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Account">
-        {config.accountName ?? config.accountId}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Account</DetailLabel>
+        <DetailValue>{config.accountName ?? config.accountId}</DetailValue>
+      </Detail>
       {config.groupId && (
-        <GenericFieldLabel label="Group">{config.groupName ?? config.groupId}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Group</DetailLabel>
+          <DetailValue>{config.groupName ?? config.groupId}</DetailValue>
+        </Detail>
       )}
     </>
   );

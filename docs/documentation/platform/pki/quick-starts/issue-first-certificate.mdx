@@ -1,0 +1,95 @@
+---
+title: "Issue Your First Certificate"
+sidebarTitle: "Issue Certificate"
+description: "Issue a TLS certificate in under 10 minutes."
+---
+
+Issue a TLS certificate from your own private CA in about 10 minutes. You'll set up a certificate authority, create a policy and profile, then issue your first certificate.
+
+## Prerequisites
+
+- Product Admin permissions (to create CAs, policies, and profiles)
+
+## Steps
+
+<Steps>
+  <Step title="Create a Certificate Authority">
+    Go to **Certificate Manager → Settings → Certificate Authorities** and click **Create**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Name | `my-root-ca` |
+    | Type | Root CA |
+    | Key Algorithm | EC_prime256v1 |
+    
+    [Learn more about CAs →](/documentation/platform/pki/ca/overview)
+  </Step>
+  <Step title="Create a Certificate Policy">
+    Go to **Settings → Certificate Policies** and click **Create**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Preset | TLS Server Certificate |
+    | Name | `tls-server` |
+    
+    The preset pre-configures all the right settings for standard TLS certificates.
+    
+    [Learn more about policies →](/documentation/platform/pki/settings/policies)
+  </Step>
+  <Step title="Create a Certificate Profile">
+    Go to **Settings → Certificate Profiles** and click **Create**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Name | `web-servers` |
+    | Certificate Authority | Select `my-root-ca` |
+    | Certificate Policy | Select `tls-server` |
+    
+    [Learn more about profiles →](/documentation/platform/pki/settings/profiles)
+  </Step>
+  <Step title="Create an Application">
+    Go to **Certificate Manager → Applications** and click **Create**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Name | `my-first-app` |
+    | Certificate Profile | Select `web-servers` |
+    
+    [Learn more about Applications →](/documentation/platform/pki/applications/overview)
+  </Step>
+  <Step title="Configure Enrollment">
+    In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the `web-servers` profile, then click **Add enrollment method** and select **API**.
+    
+    [Learn more about enrollment →](/documentation/platform/pki/applications/enrollment-methods/overview)
+  </Step>
+  <Step title="Issue Certificate">
+    In your Application, go to the **Certificate Requests** tab and click **Request Certificate**.
+    
+    | Field | Value |
+    |-------|-------|
+    | Profile | Select `web-servers` |
+    | Common Name | `example.local` |
+    
+    Click **Request** and download your certificate and private key.
+  </Step>
+</Steps>
+
+## Result
+
+You now have two files:
+- `certificate.pem` — Your TLS certificate
+- `private-key.pem` — The private key (keep this secure)
+
+**Verify your certificate:**
+
+```bash
+openssl x509 -in certificate.pem -text -noout
+```
+
+You should see your certificate details including the Common Name (`example.local`), validity period, and that it was signed by `my-root-ca`.
+
+## Next Steps
+
+- Set up [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) for automatic renewal
+- Configure [alerting](/documentation/platform/pki/applications/alerting/overview) for expiration notifications
+- Push certificates to cloud with [Certificate Syncs](/documentation/platform/pki/applications/certificate-syncs/overview)

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { THCVaultSync } from "@app/hooks/api/secretSyncs/types/hc-vault-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const HCVaultSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Secrets Engine Mount">{mount}</GenericFieldLabel>
-      <GenericFieldLabel label="Path">{path}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Secrets Engine Mount</DetailLabel>
+        <DetailValue>{mount}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Path</DetailLabel>
+        <DetailValue>{path}</DetailValue>
+      </Detail>
     </>
   );
 };

@@ -144,11 +144,15 @@ export const InternalCertificateAuthorityFns = ({
 
     const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
-    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
+    const cdpUrls = buildCrlDistributionPointUrls(
+      managedCdpUrl,
+      ca.internalCa.crlDistributionPointUrls,
+      ca.internalCa.disableManagedCrlDistributionPointUrl
+    );
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
-      new x509.CRLDistributionPointsExtension(cdpUrls),
+      ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       new x509.AuthorityInfoAccessExtension({
@@ -393,11 +397,15 @@ export const InternalCertificateAuthorityFns = ({
 
     const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
-    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
+    const cdpUrls = buildCrlDistributionPointUrls(
+      managedCdpUrl,
+      ca.internalCa.crlDistributionPointUrls,
+      ca.internalCa.disableManagedCrlDistributionPointUrl
+    );
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
-      new x509.CRLDistributionPointsExtension(cdpUrls),
+      ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       new x509.AuthorityInfoAccessExtension({

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { useVercelConnectionListOrganizations } from "@app/hooks/api/appConnections/vercel";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import {
@@ -46,32 +46,65 @@ export const VercelSyncReviewFields = () => {
     <>
       {scope === VercelSyncScope.Team ? (
         <>
-          <GenericFieldLabel label="Scope">Team</GenericFieldLabel>
-          <GenericFieldLabel label="Vercel Team">{selectedTeam?.name}</GenericFieldLabel>
-          <GenericFieldLabel label="Target Environments">
-            {targetEnvironments?.length
-              ? targetEnvironments
+          <Detail>
+            <DetailLabel>Scope</DetailLabel>
+            <DetailValue>Team</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Vercel Team</DetailLabel>
+            <DetailValue>{selectedTeam?.name}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Target Environments</DetailLabel>
+            {targetEnvironments?.length ? (
+              <DetailValue>
+                {targetEnvironments
                   .map((env: string) => env.charAt(0).toUpperCase() + env.slice(1))
-                  .join(", ")
-              : "None"}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="All Custom Environments">
-            {applyToAllCustomEnvironments ? "Yes" : "No"}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Target Projects">
-            {selectedProjects?.map((project) => project?.name).join(", ")}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Sensitive">{sensitive ? "Yes" : "No"}</GenericFieldLabel>
+                  .join(", ")}
+              </DetailValue>
+            ) : (
+              <DetailValue className="text-muted">—</DetailValue>
+            )}
+          </Detail>
+          <Detail>
+            <DetailLabel>All Custom Environments</DetailLabel>
+            <DetailValue>{applyToAllCustomEnvironments ? "Yes" : "No"}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Target Projects</DetailLabel>
+            <DetailValue>
+              {selectedProjects?.map((project) => project?.name).join(", ")}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Sensitive</DetailLabel>
+            <DetailValue>{sensitive ? "Yes" : "No"}</DetailValue>
+          </Detail>
         </>
       ) : (
         <>
-          <GenericFieldLabel label="Scope">Project</GenericFieldLabel>
-          <GenericFieldLabel label="Vercel Project">{appName}</GenericFieldLabel>
-          <GenericFieldLabel label="Environment">{envId}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Scope</DetailLabel>
+            <DetailValue>Project</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Vercel Project</DetailLabel>
+            <DetailValue>{appName}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Environment</DetailLabel>
+            <DetailValue>{envId}</DetailValue>
+          </Detail>
           {envId === VercelEnvironmentType.Preview && branchId && (
-            <GenericFieldLabel label="Preview Branch">{branchId}</GenericFieldLabel>
+            <Detail>
+              <DetailLabel>Preview Branch</DetailLabel>
+              <DetailValue>{branchId}</DetailValue>
+            </Detail>
           )}
-          <GenericFieldLabel label="Sensitive">{sensitive ? "Yes" : "No"}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Sensitive</DetailLabel>
+            <DetailValue>{sensitive ? "Yes" : "No"}</DetailValue>
+          </Detail>
         </>
       )}
     </>

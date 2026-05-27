@@ -50,6 +50,7 @@ const SanitizedSuperAdminSchema = z.object({
   fipsEnabled: z.boolean().optional(),
   isMigrationModeOn: z.boolean().optional(),
   isSecretScanningDisabled: z.boolean().optional(),
+  isPublicSecretSharingDisabled: z.boolean().optional(),
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
@@ -97,7 +98,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthMethod: config.defaultAuthOrgAuthMethod,
             enabledLoginMethods: config.enabledLoginMethods,
             authConsentContent: config.authConsentContent,
-            pageFrameContent: config.pageFrameContent
+            pageFrameContent: config.pageFrameContent,
+            isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING
           }
         };
       }
@@ -108,6 +110,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
+          isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense
@@ -661,6 +664,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: user.user.username ?? "",
+        organizationId: organization.id,
+        properties: {
+          name: organization.name
+        }
+      });
+
       const adminDistinctId = user.user.username ?? user.user.email ?? "";
       if (adminDistinctId) {
         void server.services.telemetry.identifyUser(
@@ -831,6 +843,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: user.user.username ?? "",
+        organizationId: organization.id,
+        properties: {
+          name: organization.name
+        }
+      });
+
       const bootstrapDistinctId = user.user.username ?? user.user.email ?? "";
       if (bootstrapDistinctId) {
         void server.services.telemetry.identifyUser(
@@ -946,6 +967,16 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const organization = await server.services.superAdmin.createOrganization(req.body, req.permission);
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: organization.id,
+        properties: {
+          name: organization.name
+        }
+      });
+
       return { organization };
     }
   });

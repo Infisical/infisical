@@ -1202,6 +1202,7 @@ export const secretApprovalRequestServiceFactory = ({
       orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
+      environmentName: folder.environmentName,
       actorId,
       actor,
       events

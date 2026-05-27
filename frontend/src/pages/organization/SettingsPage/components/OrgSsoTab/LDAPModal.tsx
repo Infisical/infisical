@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { CSSProperties, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { Lottie } from "@app/components/v2/Lottie";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,15 +19,19 @@ import {
   Button,
   DocumentationLinkBadge,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldTitle,
   Input,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Switch,
   TextArea
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -39,17 +44,34 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const LDAPFormSchema = z.object({
-  url: z.string().trim().min(1, "URL is required"),
-  bindDN: z.string().trim().min(1, "Bind DN is required"),
-  bindPass: z.string().min(1, "Bind Pass is required"),
-  searchBase: z.string().trim().min(1, "User Search Base is required"),
-  groupSearchBase: z.string().default(""),
-  searchFilter: z.string().default(""),
-  uniqueUserAttribute: z.string().default(""),
-  groupSearchFilter: z.string().default(""),
-  caCert: z.string().optional()
-});
+const LDAPFormSchema = z
+  .object({
+    url: z.string().trim().min(1, "URL is required"),
+    bindDN: z.string().trim().min(1, "Bind DN is required"),
+    bindPass: z.string().min(1, "Bind Pass is required"),
+    searchBase: z.string().trim().min(1, "User Search Base is required"),
+    groupSearchBase: z.string().default(""),
+    searchFilter: z.string().default(""),
+    uniqueUserAttribute: z.string().default(""),
+    groupSearchFilter: z.string().default(""),
+    caCert: z.string().optional(),
+    clientCertificate: z.string().optional(),
+    clientKeyCertificate: z.string().optional(),
+    hasStoredClientKey: z.boolean().default(false),
+    enableMtls: z.boolean().default(false)
+  })
+  .refine(
+    (data) => {
+      if (!data.enableMtls) return true;
+      const hasCert = Boolean(data.clientCertificate?.trim());
+      const hasKey = Boolean(data.clientKeyCertificate?.trim()) || data.hasStoredClientKey;
+      return hasCert && hasKey;
+    },
+    {
+      message: "Client Certificate and Client Private Key are required when mTLS is enabled.",
+      path: ["clientKeyCertificate"]
+    }
+  );
 
 export type TLDAPFormData = z.infer<typeof LDAPFormSchema>;
 
@@ -65,7 +87,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateLDAPConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateLDAPConfig();
-  const { mutateAsync: testLDAPConnection } = useTestLDAPConnection();
+  const { mutateAsync: testLDAPConnection, isPending: testIsLoading } = useTestLDAPConnection();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
 
   const { control, handleSubmit, reset, watch } = useForm<TLDAPFormData>({
@@ -90,7 +112,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       uniqueUserAttribute: "",
       groupSearchBase: "",
       groupSearchFilter: "",
-      caCert: ""
+      caCert: "",
+      clientCertificate: "",
+      clientKeyCertificate: ""
     });
 
     createNotification({
@@ -103,9 +127,14 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const watchBindDN = watch("bindDN");
   const watchBindPass = watch("bindPass");
   const watchCaCert = watch("caCert");
+  const watchClientCertificate = watch("clientCertificate");
+  const watchClientKeyCertificate = watch("clientKeyCertificate");
+  const watchHasStoredClientKey = watch("hasStoredClientKey");
+  const watchEnableMtls = watch("enableMtls");
 
   useEffect(() => {
     if (data) {
+      const hasMtls = Boolean(data?.hasClientKeyCertificate) || Boolean(data?.clientCertificate);
       reset({
         url: data?.url ?? "",
         bindDN: data?.bindDN ?? "",
@@ -115,6 +144,10 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         groupSearchBase: data?.groupSearchBase ?? "",
         groupSearchFilter: data?.groupSearchFilter ?? "",
         caCert: data?.caCert ?? "",
+        clientCertificate: data?.clientCertificate ?? "",
+        clientKeyCertificate: "",
+        hasStoredClientKey: Boolean(data?.hasClientKeyCertificate),
+        enableMtls: hasMtls,
         uniqueUserAttribute: data?.uniqueUserAttribute ?? ""
       });
     }
@@ -129,9 +162,26 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
+    caCert,
+    clientCertificate,
+    clientKeyCertificate,
+    hasStoredClientKey,
+    enableMtls
   }: TLDAPFormData) => {
     if (!currentOrg) return;
+
+    // When mTLS is disabled, send empty strings to clear both server-side values.
+    // When enabled: send the cert as-is; omit the key when the user didn't paste a new one
+    // and a key is already stored server-side (so the stored key is preserved).
+    const certForPayload = enableMtls ? clientCertificate : "";
+    let keyForPayload: string | undefined;
+    if (!enableMtls) {
+      keyForPayload = "";
+    } else if (hasStoredClientKey && !clientKeyCertificate?.trim()) {
+      keyForPayload = undefined;
+    } else {
+      keyForPayload = clientKeyCertificate;
+    }
 
     if (!data) {
       await createMutateAsync({
@@ -145,7 +195,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         uniqueUserAttribute,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate: certForPayload,
+        clientKeyCertificate: keyForPayload
       });
     } else {
       await updateMutateAsync({
@@ -158,7 +210,9 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         uniqueUserAttribute,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate: certForPayload,
+        clientKeyCertificate: keyForPayload
       });
     }
 
@@ -171,30 +225,40 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
-    try {
-      const isConnected = await testLDAPConnection({
-        url: watchUrl,
-        bindDN: watchBindDN,
-        bindPass: watchBindPass,
-        caCert: watchCaCert ?? ""
-      });
-
-      if (isConnected) {
+    if (watchEnableMtls) {
+      if (watchHasStoredClientKey && !watchClientKeyCertificate?.trim()) {
         createNotification({
-          text: "Successfully tested the LDAP connection: Bind operation was successful",
-          type: "success"
+          text: "Paste the Client Private Key to test the connection. Stored keys are not sent to the browser.",
+          type: "warning"
         });
-      } else {
+        return;
+      }
+      if (!watchClientCertificate?.trim() || !watchClientKeyCertificate?.trim()) {
         createNotification({
-          text: "Failed to connect to the LDAP server. Verify the URL, bind DN/password, and CA certificate.",
+          text: "Client Certificate and Client Private Key are required when mTLS is enabled.",
           type: "error"
         });
+        return;
       }
-    } catch (err) {
+    }
+
+    const isConnected = await testLDAPConnection({
+      url: watchUrl,
+      bindDN: watchBindDN,
+      bindPass: watchBindPass,
+      caCert: watchCaCert ?? "",
+      clientCertificate: watchEnableMtls ? (watchClientCertificate ?? "") : "",
+      clientKeyCertificate: watchEnableMtls ? (watchClientKeyCertificate ?? "") : ""
+    });
+
+    if (isConnected) {
       createNotification({
-        text:
-          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          "Failed to test LDAP connection.",
+        text: "Successfully tested the LDAP connection: Bind operation was successful",
+        type: "success"
+      });
+    } else {
+      createNotification({
+        text: "Failed to connect to the LDAP server. Verify the URL, bind DN/password, and CA certificate.",
         type: "error"
       });
     }
@@ -377,7 +441,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                   name="caCert"
                   render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel htmlFor="ldap-ca-cert">CA Certificate</FieldLabel>
+                      <FieldLabel htmlFor="ldap-ca-cert">CA Certificate (Optional)</FieldLabel>
                       <TextArea
                         id="ldap-ca-cert"
                         placeholder="-----BEGIN CERTIFICATE----- ..."
@@ -388,6 +452,74 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                     </Field>
                   )}
                 />
+                <Controller
+                  control={control}
+                  name="enableMtls"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>Mutual TLS (mTLS)</FieldTitle>
+                        <FieldDescription>
+                          Enable to present a client certificate during the TLS handshake.
+                        </FieldDescription>
+                      </FieldContent>
+                      <Switch
+                        id="ldap-enable-mtls"
+                        variant="org"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+                {watchEnableMtls && (
+                  <>
+                    <Controller
+                      control={control}
+                      name="clientCertificate"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="ldap-client-cert">Client Certificate</FieldLabel>
+                          <TextArea
+                            id="ldap-client-cert"
+                            placeholder="-----BEGIN CERTIFICATE----- ..."
+                            isError={Boolean(error)}
+                            {...field}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                          <p className="mt-1 text-xs text-mineshaft-400">
+                            PEM-encoded client certificate used for mutual TLS (mTLS).
+                          </p>
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="clientKeyCertificate"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="ldap-client-key">Client Private Key</FieldLabel>
+                          <TextArea
+                            id="ldap-client-key"
+                            placeholder={
+                              watchHasStoredClientKey
+                                ? "Key is configured. Paste a new value to replace it."
+                                : "-----BEGIN PRIVATE KEY----- ..."
+                            }
+                            isError={Boolean(error)}
+                            style={{ WebkitTextSecurity: "disc" } as CSSProperties}
+                            {...field}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                          <p className="mt-1 text-xs text-mineshaft-400">
+                            PEM-encoded private key matching the Client Certificate. Stored
+                            encrypted server-side and never returned to the browser after save.
+                          </p>
+                        </Field>
+                      )}
+                    />
+                  </>
+                )}
               </FieldGroup>
               <Button
                 type="button"
@@ -396,14 +528,23 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 size="lg"
                 className="my-4"
                 onClick={handleTestLDAPConnection}
-                isDisabled={!watchUrl || !watchBindDN || !watchBindPass}
+                isDisabled={!watchUrl || !watchBindDN || !watchBindPass || testIsLoading}
               >
-                Test Connection
+                {testIsLoading ? (
+                  <Lottie icon="infisical_loading" isAutoPlay className="mr-2 h-6 w-6" />
+                ) : (
+                  "Test Connection"
+                )}
               </Button>
             </div>
             <SheetFooter className="justify-between border-t">
               <div className="flex gap-2">
-                <Button type="submit" variant="org" isPending={isPending}>
+                <Button
+                  type="submit"
+                  variant="org"
+                  isPending={isPending}
+                  isDisabled={isPending || testIsLoading}
+                >
                   {isExistingConfig ? "Update" : "Configure LDAP"}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addLDAP")}>

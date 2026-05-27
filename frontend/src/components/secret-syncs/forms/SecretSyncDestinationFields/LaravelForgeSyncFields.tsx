@@ -2,7 +2,14 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import {
   TLaravelForgeOrganization,
   TLaravelForgeServer,
@@ -56,32 +63,35 @@ export const LaravelForgeSyncFields = () => {
   };
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField onChange={handleChangeConnection} />
 
       <Controller
         name="destinationConfig.orgSlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Organization">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isOrganizationsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={organizations?.find((org) => org.slug === value) ?? null}
-              onChange={(option) => {
-                const selectedOrg = option as SingleValue<TLaravelForgeOrganization>;
-                onChange(selectedOrg?.slug ?? "");
-                setValue("destinationConfig.orgName", selectedOrg?.name ?? "");
-                setValue("destinationConfig.serverId", "");
-                setValue("destinationConfig.siteId", "");
-              }}
-              options={organizations}
-              placeholder="Select an organization..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Organization</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isOrganizationsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={organizations?.find((org) => org.slug === value) ?? null}
+                onChange={(option) => {
+                  const selectedOrg = option as SingleValue<TLaravelForgeOrganization>;
+                  onChange(selectedOrg?.slug ?? "");
+                  setValue("destinationConfig.orgName", selectedOrg?.name ?? "");
+                  setValue("destinationConfig.serverId", "");
+                  setValue("destinationConfig.siteId", "");
+                }}
+                options={organizations}
+                placeholder="Select an organization..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -89,24 +99,27 @@ export const LaravelForgeSyncFields = () => {
         name="destinationConfig.serverId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Server">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isServersLoading && Boolean(connectionId && orgSlug)}
-              isDisabled={!connectionId || !orgSlug}
-              value={servers?.find((server) => server.id === value) ?? null}
-              onChange={(option) => {
-                const selectedServer = option as SingleValue<TLaravelForgeServer>;
-                onChange(selectedServer?.id ?? "");
-                setValue("destinationConfig.serverName", selectedServer?.name ?? "");
-                setValue("destinationConfig.siteId", "");
-              }}
-              options={servers}
-              placeholder="Select a server..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Server</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isServersLoading && Boolean(connectionId && orgSlug)}
+                isDisabled={!connectionId || !orgSlug}
+                value={servers?.find((server) => server.id === value) ?? null}
+                onChange={(option) => {
+                  const selectedServer = option as SingleValue<TLaravelForgeServer>;
+                  onChange(selectedServer?.id ?? "");
+                  setValue("destinationConfig.serverName", selectedServer?.name ?? "");
+                  setValue("destinationConfig.siteId", "");
+                }}
+                options={servers}
+                placeholder="Select a server..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -114,25 +127,28 @@ export const LaravelForgeSyncFields = () => {
         name="destinationConfig.siteId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Site">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isSitesLoading && Boolean(connectionId && orgSlug && serverId)}
-              isDisabled={!connectionId || !orgSlug || !serverId}
-              value={sites?.find((site) => site.id === value) ?? null}
-              onChange={(option) => {
-                const selectedSite = option as SingleValue<TLaravelForgeSite>;
-                onChange(selectedSite?.id ?? "");
-                setValue("destinationConfig.siteName", selectedSite?.name ?? "");
-              }}
-              options={sites}
-              placeholder="Select a site..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Site</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isSitesLoading && Boolean(connectionId && orgSlug && serverId)}
+                isDisabled={!connectionId || !orgSlug || !serverId}
+                value={sites?.find((site) => site.id === value) ?? null}
+                onChange={(option) => {
+                  const selectedSite = option as SingleValue<TLaravelForgeSite>;
+                  onChange(selectedSite?.id ?? "");
+                  setValue("destinationConfig.siteName", selectedSite?.name ?? "");
+                }}
+                options={sites}
+                placeholder="Select a site..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

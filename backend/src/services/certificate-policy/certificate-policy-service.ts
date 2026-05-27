@@ -2,12 +2,16 @@ import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionApplicationActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -25,7 +29,7 @@ import {
 
 type TCertificatePolicyServiceFactoryDep = {
   certificatePolicyDAL: TCertificatePolicyDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
 export const certificatePolicyServiceFactory = ({
@@ -802,6 +806,7 @@ export const certificatePolicyServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     policyId,
+    applicationId,
     internal = false
   }: {
     actor?: ActorType;
@@ -809,6 +814,7 @@ export const certificatePolicyServiceFactory = ({
     actorAuthMethod?: ActorAuthMethod;
     actorOrgId?: string;
     policyId: string;
+    applicationId?: string;
     internal?: boolean;
   }): Promise<TCertificatePolicy> => {
     const template = await certificatePolicyDAL.findById(policyId);
@@ -820,21 +826,39 @@ export const certificatePolicyServiceFactory = ({
       if (!actor || !actorId || !actorOrgId) {
         throw new BadRequestError({ message: "Actor is required" });
       }
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: template.projectId,
-        actorAuthMethod: actorAuthMethod || null,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificatePolicyActions.Read,
-        subject(ProjectPermissionSub.CertificatePolicies, {
-          name: template.name
-        })
-      );
+      if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
+        const { permission } = await permissionService.getResourcePermission({
+          actor,
+          actorId,
+          projectId: template.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: applicationId,
+          actorAuthMethod: actorAuthMethod || null,
+          actorOrgId
+        });
+
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionApplicationActions.Read,
+          ResourcePermissionSub.Application
+        );
+      } else {
+        const { permission } = await permissionService.getProjectPermission({
+          actor,
+          actorId,
+          projectId: template.projectId,
+          actorAuthMethod: actorAuthMethod || null,
+          actorOrgId,
+          actionProjectType: ActionProjectType.CertificateManager
+        });
+
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificatePolicyActions.Read,
+          subject(ProjectPermissionSub.CertificatePolicies, {
+            name: template.name
+          })
+        );
+      }
     }
 
     return template;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
@@ -38,7 +39,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get Certificate Authorities",
       querystring: z.object({
-        projectId: z.string()
+        projectId: z.string().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -47,9 +48,10 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
       const internalCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.INTERNAL
         },
         req.permission
@@ -57,7 +59,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       const acmeCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.ACME
         },
         req.permission
@@ -65,7 +67,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       const azureAdCsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.AZURE_AD_CS
         },
         req.permission
@@ -73,7 +75,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.AWS_PCA
         },
         req.permission
@@ -81,7 +83,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       const digicertCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.DIGICERT
         },
         req.permission
@@ -89,7 +91,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       const awsAcmPublicCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.AWS_ACM_PUBLIC_CA
         },
         req.permission
@@ -97,7 +99,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       const venafiTppCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
-          projectId: req.query.projectId,
+          projectId,
           type: CaType.VENAFI_TPP
         },
         req.permission
@@ -105,7 +107,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.GET_CAS,
           metadata: {

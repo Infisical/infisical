@@ -8,7 +8,7 @@ import { useTimedReset } from "@app/hooks";
 type Props = {
   serialNumber: string;
   certificate: string;
-  certificateChain: string;
+  certificateChain?: string;
   privateKey?: string;
 };
 

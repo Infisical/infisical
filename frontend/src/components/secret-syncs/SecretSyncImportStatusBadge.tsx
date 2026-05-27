@@ -4,8 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
 import { AlertTriangleIcon, CheckIcon, DownloadIcon, LucideIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge, TBadgeProps } from "@app/components/v3";
+import { Badge, TBadgeProps, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSyncStatus, TSecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -90,11 +89,16 @@ export const SecretSyncImportStatusBadge = ({ secretSync, mini }: Props) => {
   }
 
   return (
-    <Tooltip position="bottom" className="max-w-sm" content={tooltipContent}>
-      <Badge isSquare={mini} variant={variant}>
-        <Icon />
-        {!mini && label}
-      </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge isSquare={mini} variant={variant}>
+          <Icon />
+          {!mini && label}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-sm">
+        {tooltipContent}
+      </TooltipContent>
     </Tooltip>
   );
 };

@@ -162,6 +162,21 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretLeaseRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            provider: dynamicSecret.type,
+            projectId,
+            environment,
+            secretPath,
+            dynamicSecretId: dynamicSecret.id
+          }
+        })
+        .catch(() => {});
+
       return { lease };
     }
   });

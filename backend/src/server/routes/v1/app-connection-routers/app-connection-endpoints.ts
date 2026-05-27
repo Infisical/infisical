@@ -34,6 +34,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     gatewayPoolId?: string | null;
     projectId?: string;
     rotation?: TCreateAppConnectionCredentialRotationSchema | null;
+    configuration?: Record<string, unknown>;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -44,6 +45,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     gatewayPoolId?: string | null;
     isAutoRotationEnabled?: boolean | null;
     rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
+    configuration?: Record<string, unknown>;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -293,7 +295,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         gatewayPoolId,
         projectId,
         isAutoRotationEnabled,
-        rotation
+        rotation,
+        configuration
       } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
@@ -308,7 +311,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           gatewayPoolId,
           projectId,
           rotation,
-          isAutoRotationEnabled: isAutoRotationEnabled ?? false
+          isAutoRotationEnabled: isAutoRotationEnabled ?? false,
+          configuration
         },
         req.permission
       )) as T;
@@ -375,7 +379,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         gatewayId,
         gatewayPoolId,
         rotation,
-        isAutoRotationEnabled
+        isAutoRotationEnabled,
+        configuration
       } = req.body;
       const { connectionId } = req.params;
 
@@ -389,7 +394,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           gatewayId,
           gatewayPoolId,
           isAutoRotationEnabled: isAutoRotationEnabled ?? undefined,
-          rotation: rotation ?? undefined
+          rotation: rotation ?? undefined,
+          configuration
         },
         req.permission
       )) as T;
@@ -409,6 +415,15 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AppConnectionUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { appConnectionId: connectionId, app }
+        })
+        .catch(() => {});
 
       return { appConnection };
     }
