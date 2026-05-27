@@ -354,7 +354,7 @@ to point to a CA certificate stored in a Kubernetes secret resource.
       address: https://infisical.mydomain.com
       tls:
         caCertificate:
-          name: custom-ca-certificate
+          name: secret-containing-ca-certificate
           namespace: default
           key: ca.crt
     ```

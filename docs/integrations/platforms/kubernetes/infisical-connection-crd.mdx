@@ -25,7 +25,7 @@ spec:
   # If you are using cloud instances, this is not necessary
   tls:
     caCertificate:
-      name: custom-ca-certificate
+      name: secret-containing-ca-certificate
       namespace: default
       key: ca.crt
 ```
@@ -43,7 +43,7 @@ kubectl apply -f infisical-connection.yaml
 
   When `address` is not defined, the operator connects to the address defined by the Helm value `hostAPI`.
 
-  For self-hosted instances, set this to `https://your-self-hosted-instance.com/api`.
+  For self-hosted instances, set this to `https://your-self-hosted-instance.com`.
 </Accordion>
 
 <Accordion title="tls">
@@ -60,7 +60,7 @@ kubectl apply -f infisical-connection.yaml
   ```yaml
   tls:
     caCertificate:
-      name: custom-ca-certificate
+      name: secret-containing-ca-certificate
       namespace: default
       key: ca.crt
   ```
