@@ -4,7 +4,7 @@ import { v7 as uuidv7 } from "uuid";
 
 import type { TAuditLogs, TProjects } from "@app/db/schemas";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -23,7 +23,7 @@ type TAuditLogQueueServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   clickhouseClient: ClickHouseClient | null;
-  keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim">;
+  keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
 };
 
 export type TAuditLogQueueServiceFactory = {
@@ -53,6 +53,7 @@ const MS_IN_DAY = 24 * 60 * 60 * 1000;
 const AUDIT_LOG_STREAM_KEY = "audit-log-stream";
 const AUDIT_LOG_BATCH_SIZE = 10_000;
 const AUDIT_LOG_MAX_ENTRIES = 50_000;
+const AUDIT_LOG_BATCH_LOCK_TIMEOUT = 60 * 1000;
 
 export const auditLogQueueServiceFactory = async ({
   auditLogDAL,
@@ -143,69 +144,82 @@ export const auditLogQueueServiceFactory = async ({
 
   // Batch consumer: drains the Redis stream every 5s and bulk-inserts into ClickHouse (when enabled) or Postgres.
   queueService.start(QueueName.AuditLogBatch, async () => {
-    const { entries, lastId } = await keyStore.streamCollect(
-      AUDIT_LOG_STREAM_KEY,
-      AUDIT_LOG_BATCH_SIZE,
-      AUDIT_LOG_MAX_ENTRIES
-    );
-
-    if (entries.length === 0 || !lastId) return;
-
-    // JSON.stringify serializes Date as ISO strings, so the on-wire shape uses strings.
-    type TStreamedAuditLog = Omit<TAuditLogs, "createdAt" | "updatedAt" | "expiresAt"> & {
-      createdAt: string;
-      updatedAt: string;
-      expiresAt?: string | null;
-    };
-
-    const values = entries.map(([, fields]) => JSON.parse(fields[1]) as TStreamedAuditLog);
-
-    const hydrate = (v: TStreamedAuditLog): TAuditLogs => ({
-      ...v,
-      createdAt: new Date(v.createdAt),
-      updatedAt: new Date(v.updatedAt),
-      expiresAt: v.expiresAt ? new Date(v.expiresAt) : null
-    });
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.AuditLogBatchLock], AUDIT_LOG_BATCH_LOCK_TIMEOUT, {
+        retryCount: 0
+      });
+    } catch {
+      return;
+    }
 
     try {
-      if (isClickHouseBatchEnabled) {
-        await clickhouseClient!.insert({
-          table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
-          clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
-          values,
-          format: "JSONEachRow"
-        });
-      } else {
-        // Chunks execute inside a single transaction so the Redis stream can be
-        // acknowledged only after the entire drain commits successfully.
-        //
-        // This preserves atomicity between stream consumption and Postgres persistence:
-        // either every audit log in the drain is persisted, or the consumer replays
-        // the full batch on the next run via ON CONFLICT DO NOTHING idempotency.
-        await auditLogDAL.bulkInsertIgnoreConflicts(values.map(hydrate));
-      }
-
-      // Only trim after successful insert; on crash between insert and trim,
-      // ClickHouse async_insert dedup + Postgres ON CONFLICT make replay idempotent.
-      await keyStore.streamTrim(AUDIT_LOG_STREAM_KEY, lastId, true);
-
-      logger.info(
-        { count: values.length, backend: isClickHouseBatchEnabled ? "clickhouse" : "postgres" },
-        "audit-log-queue: Batch inserted audit logs"
+      const { entries, lastId } = await keyStore.streamCollect(
+        AUDIT_LOG_STREAM_KEY,
+        AUDIT_LOG_BATCH_SIZE,
+        AUDIT_LOG_MAX_ENTRIES
       );
 
-      // Forward to external streams (Datadog/Splunk/etc) post-persist, fire-and-forget
-      if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
-        setImmediate(() => {
-          void Promise.allSettled(
-            values
-              .filter((v): v is TStreamedAuditLog & { orgId: string } => Boolean(v.orgId))
-              .map((v) => auditLogStreamService.streamLog(v.orgId, hydrate(v)))
-          );
-        });
+      if (entries.length === 0 || !lastId) return;
+
+      // JSON.stringify serializes Date as ISO strings, so the on-wire shape uses strings.
+      type TStreamedAuditLog = Omit<TAuditLogs, "createdAt" | "updatedAt" | "expiresAt"> & {
+        createdAt: string;
+        updatedAt: string;
+        expiresAt?: string | null;
+      };
+
+      const values = entries.map(([, fields]) => JSON.parse(fields[1]) as TStreamedAuditLog);
+
+      const hydrate = (v: TStreamedAuditLog): TAuditLogs => ({
+        ...v,
+        createdAt: new Date(v.createdAt),
+        updatedAt: new Date(v.updatedAt),
+        expiresAt: v.expiresAt ? new Date(v.expiresAt) : null
+      });
+
+      try {
+        if (isClickHouseBatchEnabled) {
+          await clickhouseClient!.insert({
+            table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
+            clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
+            values,
+            format: "JSONEachRow"
+          });
+        } else {
+          // Chunks execute inside a single transaction so the Redis stream can be
+          // acknowledged only after the entire drain commits successfully.
+          //
+          // This preserves atomicity between stream consumption and Postgres persistence:
+          // either every audit log in the drain is persisted, or the consumer replays
+          // the full batch on the next run via ON CONFLICT DO NOTHING idempotency.
+          await auditLogDAL.bulkInsertIgnoreConflicts(values.map(hydrate));
+        }
+
+        // Only trim after successful insert; on crash between insert and trim,
+        // ClickHouse async_insert dedup + Postgres ON CONFLICT make replay idempotent.
+        await keyStore.streamTrim(AUDIT_LOG_STREAM_KEY, lastId, true);
+
+        logger.info(
+          { count: values.length, backend: isClickHouseBatchEnabled ? "clickhouse" : "postgres" },
+          "audit-log-queue: Batch inserted audit logs"
+        );
+
+        // Forward to external streams (Datadog/Splunk/etc) post-persist, fire-and-forget
+        if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
+          setImmediate(() => {
+            void Promise.allSettled(
+              values
+                .filter((v): v is TStreamedAuditLog & { orgId: string } => Boolean(v.orgId))
+                .map((v) => auditLogStreamService.streamLog(v.orgId, hydrate(v)))
+            );
+          });
+        }
+      } catch (error) {
+        logger.error(error, `audit-log-queue: Failed to batch insert ${values.length} audit logs`);
       }
-    } catch (error) {
-      logger.error(error, `audit-log-queue: Failed to batch insert ${values.length} audit logs`);
+    } finally {
+      await lock.release();
     }
   });
 

@@ -133,7 +133,8 @@ export const KeyStorePrefixes = {
   TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
 
   AuditLogStreamFailureCount: (streamId: string) => `audit-log-stream:${streamId}:failures` as const,
-  AuditLogStreamAlertSent: (streamId: string) => `audit-log-stream:${streamId}:alert-sent` as const
+  AuditLogStreamAlertSent: (streamId: string) => `audit-log-stream:${streamId}:alert-sent` as const,
+  AuditLogBatchLock: "audit-log-batch-lock" as const
 };
 
 export const KeyStoreTtls = {
