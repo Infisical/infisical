@@ -172,8 +172,8 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
 
 The systemd service is installed with secure defaults:
 
-- Service file: `/etc/systemd/system/infisical-gateway.service`
-- Config file: `/etc/infisical/gateway.conf`
+- Service file: `/etc/systemd/system/<name>.service`
+- Config file: `/etc/infisical/gateways/<name>.conf`
 - Runs with restricted privileges:
   - InaccessibleDirectories=/home
   - PrivateTmp=yes
@@ -183,14 +183,25 @@ The systemd service is installed with secure defaults:
 - Maintains persistent SSH reverse tunnel connections to the specified relay
 - Handles certificate rotation and connection recovery automatically
 
-After installation, manage the service with standard systemd commands:
+After installation, manage the service with standard systemd commands (replace `my-gateway` with your gateway name):
 
 ```bash
-sudo systemctl start infisical-gateway    # Start the service
-sudo systemctl stop infisical-gateway     # Stop the service
-sudo systemctl status infisical-gateway   # Check service status
-sudo systemctl disable infisical-gateway  # Disable auto-start on boot
+sudo systemctl start my-gateway    # Start the service
+sudo systemctl stop my-gateway     # Stop the service
+sudo systemctl status my-gateway   # Check service status
+sudo systemctl disable my-gateway  # Disable auto-start on boot
 ```
+
+</Accordion>
+
+<Accordion title="infisical gateway systemd uninstall">
+  Uninstall and remove the gateway systemd service. This command must be run with sudo on Linux.
+
+```bash
+sudo infisical gateway systemd uninstall my-gateway
+```
+
+The gateway name is provided as a positional argument. If no service matching the gateway name is found, it will fall back to removing a legacy `infisical-gateway` service if one exists.
 
 </Accordion>
 </AccordionGroup>
