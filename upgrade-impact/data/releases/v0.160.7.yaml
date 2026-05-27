@@ -24,10 +24,10 @@ deploymentNotes: []
 knownIssues:
   - title: AWS Assume Role external ID
     description: Project-scoped AWS connections created before v0.160.7 keep using
-      organization ID as External ID. Recreated project-scoped connections
-      switch to project ID.
-    action: If you recreate a project-scoped AWS connection, update the IAM role
-      trust policy to require the project ID External ID.
+      organization ID as External ID. New project-scoped AWS connections use project ID as External ID.
+      Existing AWS connections and new organization-scoped AWS connections will keep using organization ID as External ID.
+    action: If you want to use project ID as External ID, you need to recreate your existing project-scoped AWS connection.
+      Otherwise, no action is required.
     confidence: high
     evidence:
       - type: file
