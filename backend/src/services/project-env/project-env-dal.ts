@@ -14,7 +14,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
         .where({ id })
-        .whereNull("hardDeletesAt")
+        .whereNull("deleteAfter")
         .first("*");
       return result;
     } catch (error) {
@@ -26,7 +26,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     try {
       const res = await (tx || db.replicaNode())(TableName.Environment)
         .where(filter)
-        .whereNull("hardDeletesAt")
+        .whereNull("deleteAfter")
         .first("*");
       return res;
     } catch (error) {
@@ -42,7 +42,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.Environment)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter))
-        .whereNull("hardDeletesAt");
+        .whereNull("deleteAfter");
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
@@ -60,7 +60,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const envs = await (tx || db.replicaNode())(TableName.Environment)
         .where("projectId", projectId)
         .whereIn("slug", env)
-        .whereNull("hardDeletesAt");
+        .whereNull("deleteAfter");
       return envs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by slugs" });
@@ -70,7 +70,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
   const softDeleteById = async (
     id: string,
     projectId: string,
-    hardDeletesAt: Date,
+    deleteAfter: Date,
     softDeletedAt: Date,
     deletedByUserId: string | null,
     deletedByIdentityId: string | null,
@@ -80,8 +80,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
-        .whereNull("hardDeletesAt")
-        .update({ hardDeletesAt, softDeletedAt, deletedByUserId, deletedByIdentityId, position })
+        .whereNull("deleteAfter")
+        .update({ deleteAfter, softDeletedAt, deletedByUserId, deletedByIdentityId, position })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
@@ -116,9 +116,9 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     try {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
-        .whereNotNull("hardDeletesAt")
+        .whereNotNull("deleteAfter")
         .update({
-          hardDeletesAt: null,
+          deleteAfter: null,
           softDeletedAt: null,
           deletedByUserId: null,
           deletedByIdentityId: null,
@@ -192,8 +192,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
   const findExpiredForHardDelete = async (tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
-        .whereNotNull("hardDeletesAt")
-        .andWhere("hardDeletesAt", "<=", new Date())
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", "<=", new Date())
         .select("*");
       return result as TProjectEnvironments[];
     } catch (error) {

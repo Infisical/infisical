@@ -16,7 +16,7 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
     .leftJoin(TableName.SecretFolder, `${TableName.SecretSync}.folderId`, `${TableName.SecretFolder}.id`)
     .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
       this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-        `${TableName.Environment}.hardDeletesAt`
+        `${TableName.Environment}.deleteAfter`
       );
     })
     .join(TableName.AppConnection, `${TableName.SecretSync}.connectionId`, `${TableName.AppConnection}.id`)

@@ -53,7 +53,7 @@ export const projectDALFactory = (db: TDbClient) => {
         })
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .select(
@@ -119,7 +119,7 @@ export const projectDALFactory = (db: TDbClient) => {
         })
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .select(
@@ -194,7 +194,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.id`, id)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .select(
@@ -251,7 +251,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.orgId`, orgId)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .select(
@@ -447,7 +447,7 @@ export const projectDALFactory = (db: TDbClient) => {
     const project = await (tx || db.replicaNode())(TableName.Project)
       .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
         this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-          `${TableName.Environment}.hardDeletesAt`
+          `${TableName.Environment}.deleteAfter`
         );
       })
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -463,7 +463,7 @@ export const projectDALFactory = (db: TDbClient) => {
         id: string;
         slug: string;
         name: string;
-        hardDeletesAt: Date;
+        deleteAfter: Date;
         softDeletedAt: Date;
         deletedByUserId: string | null;
         deletedByIdentityId: string | null;
@@ -478,13 +478,13 @@ export const projectDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Users, `${TableName.Environment}.deletedByUserId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Identity, `${TableName.Environment}.deletedByIdentityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNotNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNotNull(`${TableName.Environment}.deleteAfter`)
         .whereNotNull(`${TableName.Environment}.softDeletedAt`)
         .select(
           `${TableName.Environment}.id`,
           `${TableName.Environment}.slug`,
           `${TableName.Environment}.name`,
-          `${TableName.Environment}.hardDeletesAt`,
+          `${TableName.Environment}.deleteAfter`,
           `${TableName.Environment}.softDeletedAt`,
           `${TableName.Environment}.deletedByUserId`,
           `${TableName.Environment}.deletedByIdentityId`,
@@ -530,7 +530,7 @@ export const projectDALFactory = (db: TDbClient) => {
           id: row.id,
           slug: row.slug,
           name: row.name,
-          hardDeletesAt: row.hardDeletesAt,
+          deleteAfter: row.deleteAfter,
           softDeletedAt: row.softDeletedAt,
           deletedBy
         };

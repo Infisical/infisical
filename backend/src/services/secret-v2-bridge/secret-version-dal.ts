@@ -29,7 +29,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .select(selectAllTableCols(TableName.SecretVersionV2))
@@ -193,7 +193,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
         // Projects with version >= 3 will require to have all secret versions for PIT
         .andWhere(`${TableName.Project}.version`, "<", 3)
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({
@@ -222,7 +222,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersionV2}.folderId`)
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .leftJoin<TUsers>(

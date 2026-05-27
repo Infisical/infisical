@@ -44,7 +44,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type PopUpKeys = "updateEnv" | "deleteEnv" | "hardDeleteEnv" | "upgradePlan";
 
-type EnvPayload = { name: string; slug: string; id: string; hardDeletesAt?: string };
+type EnvPayload = { name: string; slug: string; id: string; deleteAfter?: string };
 
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
@@ -245,9 +245,9 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
             </TableCell>
           </TableRow>
         ))}
-        {deletedEnvironments.map(({ name, slug, id, hardDeletesAt, softDeletedAt, deletedBy }) => {
-          const hardDeletesAtDate = new Date(hardDeletesAt);
-          const remaining = formatRemainingDuration(hardDeletesAtDate);
+        {deletedEnvironments.map(({ name, slug, id, deleteAfter, softDeletedAt, deletedBy }) => {
+          const deleteAfterDate = new Date(deleteAfter);
+          const remaining = formatRemainingDuration(deleteAfterDate);
 
           return (
             <TableRow key={id} className="bg-warning/[0.025]">
@@ -271,7 +271,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                         </span>
                         <span className="text-xs text-mineshaft-300">
                           {remaining
-                            ? `Scheduled for ${format(hardDeletesAtDate, "MMM d, yyyy, h:mm a")}`
+                            ? `Scheduled for ${format(deleteAfterDate, "MMM d, yyyy, h:mm a")}`
                             : "Awaiting the next daily cleanup sweep"}
                         </span>
                         <span className="text-xs text-mineshaft-300">
@@ -304,7 +304,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                           <DropdownMenuItem
                             variant="danger"
                             onClick={() =>
-                              handlePopUpOpen("hardDeleteEnv", { name, slug, id, hardDeletesAt })
+                              handlePopUpOpen("hardDeleteEnv", { name, slug, id, deleteAfter })
                             }
                           >
                             <Trash2Icon />

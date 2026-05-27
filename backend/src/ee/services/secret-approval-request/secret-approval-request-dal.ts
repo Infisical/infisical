@@ -80,7 +80,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
         this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-          `${TableName.Environment}.hardDeletesAt`
+          `${TableName.Environment}.deleteAfter`
         );
       })
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
@@ -396,7 +396,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
               this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-                `${TableName.Environment}.hardDeletesAt`
+                `${TableName.Environment}.deleteAfter`
               );
             })
             .join(
@@ -453,7 +453,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
           this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .join(
@@ -666,7 +666,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
           this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .join(
@@ -901,7 +901,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where({ projectId })
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
 
       return query;

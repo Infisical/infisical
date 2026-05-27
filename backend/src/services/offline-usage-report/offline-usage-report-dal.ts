@@ -109,7 +109,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .count("s.id as count")
       .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
       .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
-        this.on("sf.envId", "e.id").andOnNull("e.hardDeletesAt");
+        this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
       })
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
       .where("p.type", ProjectType.SecretManager)
@@ -146,7 +146,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .count("s.id as secretCount")
       .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
       .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
-        this.on("sf.envId", "e.id").andOnNull("e.hardDeletesAt");
+        this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
       })
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
       .where("p.type", ProjectType.SecretManager)

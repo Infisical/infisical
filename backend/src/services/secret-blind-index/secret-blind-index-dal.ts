@@ -16,7 +16,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .where({ projectId })
@@ -34,7 +34,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .where({ projectId })
@@ -55,7 +55,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .where({ projectId })

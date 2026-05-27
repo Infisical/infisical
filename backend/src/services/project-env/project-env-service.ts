@@ -75,7 +75,7 @@ export const projectEnvServiceFactory = ({
 
       const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
       if (slugHolder) {
-        if (slugHolder.hardDeletesAt) {
+        if (slugHolder.deleteAfter) {
           throw new BadRequestError({
             message: `Environment slug '${slug}' is held by a pending-deletion environment. Permanently delete that environment first, then retry.`,
             name: "CreateEnvironment"
@@ -178,7 +178,7 @@ export const projectEnvServiceFactory = ({
       if (slug) {
         const slugHolder = await projectEnvDAL.findBySlugIncludingExpired(projectId, slug);
         if (slugHolder && slugHolder.id !== id) {
-          if (slugHolder.hardDeletesAt) {
+          if (slugHolder.deleteAfter) {
             throw new BadRequestError({
               message: `Environment slug '${slug}' is held by a pending-deletion environment. Permanently delete that environment first, then retry.`,
               name: "UpdateEnvironment"
@@ -302,13 +302,13 @@ export const projectEnvServiceFactory = ({
         await projectEnvDAL.closePositionGap(projectId, target.position, tx);
 
         const softDeletedAt = new Date();
-        const hardDeletesAt = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
+        const deleteAfter = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
         const deletedByUserId = actor === ActorType.USER ? actorId : null;
         const deletedByIdentityId = actor === ActorType.IDENTITY ? actorId : null;
         const doc = await projectEnvDAL.softDeleteById(
           id,
           projectId,
-          hardDeletesAt,
+          deleteAfter,
           softDeletedAt,
           deletedByUserId,
           deletedByIdentityId,
@@ -371,7 +371,7 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.hardDeletesAt === null) {
+        if (!target || target.projectId !== projectId || target.deleteAfter === null) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
             name: "RestoreEnvironment"

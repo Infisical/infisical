@@ -86,7 +86,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
         // Projects with version >= 3 will require to have all folder versions for PIT
         .andWhere(`${TableName.Project}.version`, "<", 3)
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({

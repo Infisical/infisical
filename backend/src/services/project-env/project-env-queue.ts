@@ -50,7 +50,7 @@ export const projectEnvQueueFactory = ({
     try {
       // Read via transaction → primary, not replica. Defeats replica-lag races against a recent restore commit.
       const fresh = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdIncludingExpired(envId, tx));
-      if (!fresh || !fresh.hardDeletesAt || fresh.hardDeletesAt.getTime() > Date.now()) {
+      if (!fresh || !fresh.deleteAfter || fresh.deleteAfter.getTime() > Date.now()) {
         logger.info(
           `project-env-hard-delete: skipping (gone/restored/not-yet-expired) [envId=${envId}] [projectId=${projectId}]`
         );

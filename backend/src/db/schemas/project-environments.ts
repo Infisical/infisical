@@ -15,7 +15,7 @@ export const ProjectEnvironmentsSchema = z.object({
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  hardDeletesAt: z.date().nullable().optional(),
+  deleteAfter: z.date().nullable().optional(),
   softDeletedAt: z.date().nullable().optional(),
   deletedByUserId: z.string().uuid().nullable().optional(),
   deletedByIdentityId: z.string().uuid().nullable().optional()

@@ -354,7 +354,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           })
           .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicy() {
             this.on(`${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`).andOnNull(
-              `${TableName.Environment}.hardDeletesAt`
+              `${TableName.Environment}.deleteAfter`
             );
           })
 
@@ -650,7 +650,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
 
       .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicyEnvironment() {
         this.on(`${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`).andOnNull(
-          `${TableName.Environment}.hardDeletesAt`
+          `${TableName.Environment}.deleteAfter`
         );
       })
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
@@ -887,7 +887,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         )
         .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicy() {
           this.on(`${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .leftJoin(

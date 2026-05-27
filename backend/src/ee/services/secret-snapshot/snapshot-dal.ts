@@ -27,7 +27,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, id)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.Snapshot))
         .select(
@@ -65,7 +65,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin(
           TableName.SecretVersion,
@@ -160,7 +160,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .leftJoin(TableName.SnapshotSecretV2, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecretV2}.snapshotId`)
         .leftJoin(
           TableName.SecretVersionV2,
@@ -660,7 +660,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
               .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Snapshot}.folderId`)
               .join(TableName.Environment, function joinActiveEnvForSnapshot() {
                 this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-                  `${TableName.Environment}.hardDeletesAt`
+                  `${TableName.Environment}.deleteAfter`
                 );
               })
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
@@ -717,7 +717,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
               )
               .join(TableName.Environment, function joinActiveEnvForSnapshot() {
                 this.on(`${TableName.SecretFolderVersion}.envId`, `${TableName.Environment}.id`).andOnNull(
-                  `${TableName.Environment}.hardDeletesAt`
+                  `${TableName.Environment}.deleteAfter`
                 );
               })
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)

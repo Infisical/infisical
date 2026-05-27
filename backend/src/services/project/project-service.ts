@@ -743,7 +743,7 @@ export const projectServiceFactory = ({
           id: string;
           name: string;
           slug: string;
-          hardDeletesAt: Date;
+          deleteAfter: Date;
           softDeletedAt: Date;
           deletedBy:
             | {
@@ -873,7 +873,7 @@ export const projectServiceFactory = ({
         id: string;
         name: string;
         slug: string;
-        hardDeletesAt: Date;
+        deleteAfter: Date;
         softDeletedAt: Date;
         deletedBy:
           | {

@@ -66,7 +66,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         .where({ folderId })
         .leftJoin(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .where((qb) => {
@@ -385,7 +385,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         .where(buildFindFilter({ id }, TableName.FolderCommit))
         .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .where((qb) => {

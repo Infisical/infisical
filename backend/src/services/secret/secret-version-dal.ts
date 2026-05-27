@@ -174,13 +174,13 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersion}.folderId`)
         .join(TableName.Environment, function joinActiveEnvForSecretVersion() {
           this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-            `${TableName.Environment}.hardDeletesAt`
+            `${TableName.Environment}.deleteAfter`
           );
         })
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
         .join("version_cte", "version_cte.id", `${TableName.SecretVersion}.id`)
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
-        .whereNull(`${TableName.Environment}.hardDeletesAt`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({

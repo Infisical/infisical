@@ -65,7 +65,7 @@ export const EnvironmentSection = () => {
     | undefined;
 
   const hardDeleteEnvData = popUp?.hardDeleteEnv?.data as
-    | { name: string; slug: string; id: string; hardDeletesAt?: string }
+    | { name: string; slug: string; id: string; deleteAfter?: string }
     | undefined;
 
   const onEnvDeleteSubmit = async () => {
