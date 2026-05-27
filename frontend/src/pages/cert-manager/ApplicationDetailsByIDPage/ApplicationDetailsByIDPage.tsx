@@ -246,54 +246,66 @@ export const ApplicationDetailsByIDPage = () => {
               }
             >
               <TabsList variant="project" className="w-full justify-start">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <TabsTrigger
-                        value="certificates"
-                        disabled={!tabEnabled.certificates}
-                        className="flex-none"
-                      >
-                        Certificate Inventory
-                      </TabsTrigger>
-                    </span>
-                  </TooltipTrigger>
-                  {!tabEnabled.certificates && (
-                    <TooltipContent>You do not have permission to view certificates</TooltipContent>
-                  )}
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <TabsTrigger
-                        value="requests"
-                        disabled={!tabEnabled.requests}
-                        className="flex-none"
-                      >
-                        Certificate Requests
-                      </TabsTrigger>
-                    </span>
-                  </TooltipTrigger>
-                  {!tabEnabled.requests && (
-                    <TooltipContent>
-                      You do not have permission to view certificate requests
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <TabsTrigger value="syncs" disabled={!tabEnabled.syncs} className="flex-none">
-                        Certificate Syncs
-                      </TabsTrigger>
-                    </span>
-                  </TooltipTrigger>
-                  {!tabEnabled.syncs && (
-                    <TooltipContent>
-                      You do not have permission to view certificate syncs
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                {(tabEnabled.certificates || isNonMemberAdmin) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <TabsTrigger
+                          value="certificates"
+                          disabled={!tabEnabled.certificates}
+                          className="flex-none"
+                        >
+                          Certificate Inventory
+                        </TabsTrigger>
+                      </span>
+                    </TooltipTrigger>
+                    {!tabEnabled.certificates && (
+                      <TooltipContent>
+                        You do not have permission to view certificates
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {(tabEnabled.requests || isNonMemberAdmin) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <TabsTrigger
+                          value="requests"
+                          disabled={!tabEnabled.requests}
+                          className="flex-none"
+                        >
+                          Certificate Requests
+                        </TabsTrigger>
+                      </span>
+                    </TooltipTrigger>
+                    {!tabEnabled.requests && (
+                      <TooltipContent>
+                        You do not have permission to view certificate requests
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                {(tabEnabled.syncs || isNonMemberAdmin) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <TabsTrigger
+                          value="syncs"
+                          disabled={!tabEnabled.syncs}
+                          className="flex-none"
+                        >
+                          Certificate Syncs
+                        </TabsTrigger>
+                      </span>
+                    </TooltipTrigger>
+                    {!tabEnabled.syncs && (
+                      <TooltipContent>
+                        You do not have permission to view certificate syncs
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
                 <TabsTrigger value="members" className="flex-none">
                   Members
                 </TabsTrigger>
