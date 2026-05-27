@@ -103,7 +103,7 @@ export const ApplicationDetailsByIDPage = () => {
   const isNonMemberAdmin = Boolean(permissionData && permissionData.memberships.length === 0);
 
   const requestedTab = search.selectedTab ?? "";
-  const defaultTab = canViewCertificates ? "certificates" : "members";
+  const defaultTab = canViewCertificates && !isNonMemberAdmin ? "certificates" : "members";
   const selectedTab = requestedTab || defaultTab;
 
   const handleCopyId = () => {
